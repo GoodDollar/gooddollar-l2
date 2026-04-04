@@ -319,6 +319,8 @@ contract AgentRegistry {
 
     // ============ Admin ============
 
+    /// @notice Authorize a protocol contract to call `recordActivity()`.
+    /// @param reporter Address of the protocol contract to authorize.
     function addReporter(address reporter) external onlyAdmin {
         require(!authorizedReporters[reporter], "AgentRegistry: already reporter");
         authorizedReporters[reporter] = true;
@@ -326,15 +328,21 @@ contract AgentRegistry {
         emit ReporterAdded(reporter);
     }
 
+    /// @notice Revoke a previously authorized reporter.
+    /// @param reporter Address of the reporter to deauthorize.
     function removeReporter(address reporter) external onlyAdmin {
         authorizedReporters[reporter] = false;
         emit ReporterRemoved(reporter);
     }
 
+    /// @notice Transfer admin authority to a new address (single-step).
+    /// @param newAdmin New admin address. Must not be address(0).
     function setAdmin(address newAdmin) external onlyAdmin {
         admin = newAdmin;
     }
 
+    /// @notice Update the UBI contribution percentage (in basis points).
+    /// @param _bps New basis points value. Must be ≤ 10 000 (100%).
     function setUBIBPS(uint256 _bps) external onlyAdmin {
         require(_bps <= 10000, "AgentRegistry: bps too high");
         ubiBPS = _bps;

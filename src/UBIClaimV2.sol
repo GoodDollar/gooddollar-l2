@@ -214,20 +214,29 @@ contract UBIClaimV2 {
 
     // ============ Governance ============
 
+    /// @notice Authorize or revoke a trusted relayer.
+    /// @param relayer  Address to update.
+    /// @param authorized True to authorize, false to revoke.
     function setRelayer(address relayer, bool authorized) external onlyAdmin {
         trustedRelayers[relayer] = authorized;
         emit RelayerSet(relayer, authorized);
     }
 
+    /// @notice Enable or disable direct self-claiming (user-pays-gas mode).
+    /// @param enabled True to allow self-claims; false for relayer-only mode.
     function setSelfClaimEnabled(bool enabled) external onlyAdmin {
         selfClaimEnabled = enabled;
     }
 
+    /// @notice Update the UBIFeeSplitter contract used for pool supplementation.
+    /// @param _feeSplitter New feeSplitter address. Must not be address(0).
     function setFeeSplitter(address _feeSplitter) external onlyAdmin {
         if (_feeSplitter == address(0)) revert ZeroAddress();
         feeSplitter = IUBIFeeSplitter(_feeSplitter);
     }
 
+    /// @notice Transfer admin authority (single-step). Takes effect immediately.
+    /// @param newAdmin New admin address. Must not be address(0).
     function transferAdmin(address newAdmin) external onlyAdmin {
         if (newAdmin == address(0)) revert ZeroAddress();
         emit AdminTransferred(admin, newAdmin);

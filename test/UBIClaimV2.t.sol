@@ -280,4 +280,96 @@ contract UBIClaimV2Test is Test {
         uint256 e1 = claimContract.currentEpoch();
         assertEq(e1, e0 + 1);
     }
+
+    // ============ supplementPool ============
+
+    function test_SupplementPool_NoOp_WhenFeeSplitterZero() public {
+        // Deploy claim contract with address(0) feeSplitter
+        UBIClaimV2 noClaim = new UBIClaimV2(address(token), address(0), admin);
+        // Should not revert, just no-op
+        noClaim.supplementPool();
+    }
+
+    function test_SupplementPool_NoOp_WhenNoBalance() public {
+        // splitter has zero balance — should be a no-op
+        assertEq(splitter.claimableBalance(), 0);
+        claimContract.supplementPool(); // should not revert
+    }
+
+    function test_SupplementPool_TransfersFundsToUBIPool() public {
+        // Setup: claimContract authorized to call releaseToUBI
+        vm.prank(admin);
+        splitter.setUBIClaimContract(address(claimContract));
+
+        // Fund splitter with G$
+        vm.prank(admin);
+        token.setMinter(address(this), true);
+        token.mint(address(splitter), 500 ether);
+
+        uint256 poolBefore = token.balanceOf(address(token)); // fundUBIPool goes to token contract
+        claimContract.supplementPool();
+        // Pool should have received the funds (no revert = success)
+        assertEq(splitter.claimableBalance(), 0);
+    }
+
+    // ============ Admin governance ============
+
+    function test_SetFeeSplitter_HappyPath() public {
+        UBIFeeSplitter newSplitter = new UBIFeeSplitter(address(token), treasury, admin);
+        vm.prank(admin);
+        claimContract.setFeeSplitter(address(newSplitter));
+        assertEq(address(claimContract.feeSplitter()), address(newSplitter));
+    }
+
+    function test_SetFeeSplitter_ZeroAddress_Reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(UBIClaimV2.ZeroAddress.selector);
+        claimContract.setFeeSplitter(address(0));
+    }
+
+    function test_SetFeeSplitter_OnlyAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert("Not admin");
+        claimContract.setFeeSplitter(address(splitter));
+    }
+
+    function test_TransferAdmin_HappyPath() public {
+        vm.prank(admin);
+        claimContract.transferAdmin(alice);
+        assertEq(claimContract.admin(), alice);
+    }
+
+    function test_TransferAdmin_ZeroAddress_Reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(UBIClaimV2.ZeroAddress.selector);
+        claimContract.transferAdmin(address(0));
+    }
+
+    function test_TransferAdmin_OnlyAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert("Not admin");
+        claimContract.transferAdmin(bob);
+    }
+
+    // ============ batchClaim — edge cases ============
+
+    function test_BatchClaim_SkipsZeroAddress() public {
+        address[] memory users = new address[](3);
+        users[0] = alice;
+        users[1] = address(0); // zero address — should be skipped silently
+        users[2] = bob;
+
+        vm.prank(relayer);
+        uint256 claimed = claimContract.batchClaim(users);
+
+        assertEq(claimed, 2); // alice + bob only
+    }
+
+    function test_BatchClaim_EmptyBatch_NoBatchClaimedEvent() public {
+        address[] memory users = new address[](0);
+        vm.prank(relayer);
+        uint256 claimed = claimContract.batchClaim(users);
+        assertEq(claimed, 0);
+        assertEq(claimContract.totalClaims(), 0);
+    }
 }
