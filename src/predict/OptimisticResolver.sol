@@ -245,17 +245,18 @@ contract OptimisticResolver {
         }
         if (msg.sender == r.proposer) revert CannotDisputeOwnProposal();
 
-        // Take disputer bond
-        bool ok = bondToken.transferFrom(msg.sender, address(this), bondAmount);
+        // Take disputer bond — match proposer's bond to prevent asymmetry if admin changed bondAmount
+        uint256 requiredBond = r.proposerBond;
+        bool ok = bondToken.transferFrom(msg.sender, address(this), requiredBond);
         if (!ok) revert TransferFailed();
 
         r.isDisputed = true;
         r.disputer = msg.sender;
-        r.disputerBond = bondAmount;
+        r.disputerBond = requiredBond;
         r.disputeTime = block.timestamp;
         r.status = ResolutionStatus.Disputed;
 
-        emit ResolutionDisputed(marketId, msg.sender, bondAmount);
+        emit ResolutionDisputed(marketId, msg.sender, requiredBond);
     }
 
     /**
@@ -339,10 +340,12 @@ contract OptimisticResolver {
 
         // If there was a proposal, return all bonds
         if (r.proposerBond > 0) {
-            bondToken.transfer(r.proposer, r.proposerBond);
+            bool ok = bondToken.transfer(r.proposer, r.proposerBond);
+            if (!ok) revert TransferFailed();
         }
         if (r.disputerBond > 0) {
-            bondToken.transfer(r.disputer, r.disputerBond);
+            bool ok2 = bondToken.transfer(r.disputer, r.disputerBond);
+            if (!ok2) revert TransferFailed();
         }
 
         r.status = ResolutionStatus.Finalized;
