@@ -26,6 +26,9 @@ contract UBIFeeSplitter {
     address public protocolTreasury;
     address public admin;
 
+    /// @notice The only address allowed to call releaseToUBI() (typically UBIClaimV2).
+    address public ubiClaimContract;
+
     /// @notice Where non-G$ UBI shares (e.g. gUSD) are sent.
     ///         Defaults to address(0) (no-op) until set by admin.
     address public ubiRecipient;
@@ -122,6 +125,11 @@ contract UBIFeeSplitter {
         ubiRecipient = _ubiRecipient;
     }
 
+    function setUBIClaimContract(address _ubiClaimContract) external onlyAdmin {
+        require(_ubiClaimContract != address(0), "zero address");
+        ubiClaimContract = _ubiClaimContract;
+    }
+
     /**
      * @notice Token-agnostic fee split. Use this when fees are denominated in any
      *         ERC-20 other than G$ (e.g. gUSD from VaultManager stability fees).
@@ -156,13 +164,13 @@ contract UBIFeeSplitter {
 
     /**
      * @notice Transfer G$ held by this contract to `recipient` for UBI pool funding.
-     *         Called by UBIClaimV2.supplementPool(). No access control — only moves
-     *         funds already present in this contract, so there is no risk of draining
-     *         funds that were not already routed here.
-     * @param recipient Where to send the G$ (typically UBIClaimV2).
+     *         Restricted to ubiClaimContract (UBIClaimV2) only — prevents arbitrary
+     *         callers from draining accumulated G$ to attacker-controlled addresses.
+     * @param recipient Where to send the G$ (typically UBIClaimV2 itself).
      * @param amount    Amount to transfer. Must be ≤ claimableBalance().
      */
     function releaseToUBI(address recipient, uint256 amount) external {
+        require(msg.sender == ubiClaimContract, "Not UBIClaim");
         require(amount <= goodDollar.balanceOf(address(this)), "insufficient balance");
         goodDollar.transfer(recipient, amount);
     }
