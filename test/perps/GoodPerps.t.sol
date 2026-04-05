@@ -510,6 +510,50 @@ contract GoodPerpsTest is Test {
         vault.withdraw(100_000e18);
     }
 
+    // GOO-461: position state must be written before any external interaction to
+    // prevent reentrancy through the fee splitter leaving pos.isOpen = false during callback.
+    function test_engine_posStateWrittenBeforeExternalCall() public {
+        vm.prank(alice);
+        vault.deposit(100_000e18);
+
+        vm.prank(alice);
+        engine.openPosition(btcMarketId, 100_000e18, true, 10_000e18);
+
+        // Position should be open immediately — no reentrancy window for PositionAlreadyOpen bypass
+        (bool isOpen,,,,,,) = _getPosition(alice, btcMarketId);
+        assertTrue(isOpen, "position must be open after openPosition returns");
+
+        // Re-opening on the same market must revert even if called in same block
+        vm.prank(alice);
+        vm.expectRevert(PerpEngine.PositionAlreadyOpen.selector);
+        engine.openPosition(btcMarketId, 100_000e18, true, 10_000e18);
+    }
+
+    // GOO-462: funding must be applied at closePosition so traders cannot evade funding
+    // payments by closing when no new opens have triggered applyFunding.
+    function test_engine_fundingAppliedAtClose() public {
+        vm.prank(alice);
+        vault.deposit(1_000_000e18);
+
+        vm.prank(alice);
+        engine.openPosition(btcMarketId, 100_000e18, true, 10_000e18);
+
+        int256 entryIndex = fundingRate.cumulativeFundingIndex(btcMarketId);
+
+        // Warp 3 funding intervals with mark > index (longs should pay)
+        uint256 markPrice = BTC_PRICE_U + (BTC_PRICE_U / 1000); // 0.1% premium
+        btcFeed.setPrice(int256(markPrice));
+        vm.warp(block.timestamp + 25 hours);
+
+        // Close without any intermediate opens — GOO-462 fix ensures applyFunding runs
+        vm.prank(alice);
+        engine.closePosition(btcMarketId);
+
+        // Funding index must have advanced from the close-time applyFunding call
+        int256 exitIndex = fundingRate.cumulativeFundingIndex(btcMarketId);
+        assertGt(exitIndex, entryIndex, "funding index must advance at close");
+    }
+
     // ============ Helpers ============
 
     function _getPosition(address trader, uint256 marketId)

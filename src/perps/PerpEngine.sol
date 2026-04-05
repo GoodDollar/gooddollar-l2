@@ -216,17 +216,7 @@ contract PerpEngine {
         uint256 markPrice = oracle.getPriceByKey(m.oracleKey);
         funding.applyFunding(marketId, markPrice, markPrice); // mark == index at open
 
-        // Lock margin in vault (prevents withdrawal while position is open)
-        vault.debit(msg.sender, margin);
-
-        // Debit fee from vault and route to UBI fee splitter
-        if (fee > 0) {
-            vault.debit(msg.sender, fee);
-            vault.flushFee(address(this), fee);
-            IMarginToken2(address(vault.collateral())).approve(feeSplitter, fee);
-            IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));
-        }
-
+        // CEI: write all state before any external interaction (GOO-461)
         pos.isOpen = true;
         pos.isLong = isLong;
         pos.size = size;
@@ -242,6 +232,17 @@ contract PerpEngine {
         }
 
         emit PositionOpened(msg.sender, marketId, isLong, size, margin, markPrice);
+
+        // Lock margin in vault (prevents withdrawal while position is open)
+        vault.debit(msg.sender, margin);
+
+        // Debit fee from vault and route to UBI fee splitter
+        if (fee > 0) {
+            vault.debit(msg.sender, fee);
+            vault.flushFee(address(this), fee);
+            IMarginToken2(address(vault.collateral())).approve(feeSplitter, fee);
+            IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));
+        }
     }
 
     /**
@@ -253,6 +254,8 @@ contract PerpEngine {
         if (!pos.isOpen) revert NoOpenPosition();
 
         uint256 exitPrice = oracle.getPriceByKey(markets[marketId].oracleKey);
+        // GOO-462: apply funding at close so the cumulative index is current
+        funding.applyFunding(marketId, exitPrice, exitPrice);
 
         (int256 pnl, int256 fundingPayment) = _settlePnL(msg.sender, marketId, exitPrice);
 
@@ -271,6 +274,8 @@ contract PerpEngine {
         if (!pos.isOpen) revert NoOpenPosition();
 
         uint256 exitPrice = oracle.getPriceByKey(markets[marketId].oracleKey);
+        // GOO-462: apply funding at liquidation so the cumulative index is current
+        funding.applyFunding(marketId, exitPrice, exitPrice);
         (int256 pnl, int256 fundingPayment) = _settlePnL(trader, marketId, exitPrice);
 
         int256 totalPnL = pnl - fundingPayment;
