@@ -27,8 +27,9 @@
 | 21 | 2026-04-04T14:30Z | 47 | 41 | 6 | 87.2% | +3 tests (404 page, swap redirect, meta tags); GOO-357 filed |
 | 22 | 2026-04-04T15:30Z | 49 | 42 | 7 | 85.7% | +2 tests (perps trading UI canary, lend APY table); lend mock passes |
 | 23 | 2026-04-04T16:30Z | 51 | 43 | 8 | 84.3% | +2 tests (home swap form canary, test-dashboard); 6 GOO-276 canaries total |
+| 24 | 2026-04-05T00:00Z | 52 | 43 | 9 | 82.7% | +1 test (per-page titles); GOO-392 filed: 6/6 routes share root title |
 
-## Current Failures (Run 23)
+## Current Failures (Run 24)
 
 | Page | Check | Status | Root Cause | Ticket |
 |------|-------|--------|------------|--------|
@@ -39,6 +40,7 @@
 | perps | trading_ui_renders | 🔴 CANARY | Pure client component — full trading UI invisible, bodyLen=202 | [GOO-276](/GOO/issues/GOO-276) |
 | swap | redirects_to_home | 🔴 CANARY | RSC redirect payload blocked by GOO-276 CSP | [GOO-276](/GOO/issues/GOO-276) |
 | infra | meta_tags_present | 🟡 MEDIUM | og:title missing from layout.tsx metadata export | [GOO-357](/GOO/issues/GOO-357) |
+| infra | per_page_unique_titles | 🟡 MEDIUM | 6/6 routes share root title — WCAG 2.4.2 + SEO violation | [GOO-392](/GOO/issues/GOO-392) |
 | explorer/address | transactions_visible | Known bug | Blockscout infra issue | [GOO-193](/GOO/issues/GOO-193) |
 
 > **Note:** Canary tests are intentional regression guards. They will auto-pass once GOO-276 (script-src CSP fix) is deployed. Pass rate will return to ~97% at that point.
