@@ -267,11 +267,31 @@ contract AgentRegistryTest is Test {
         registry.setUBIBPS(10001);
     }
 
-    function test_setAdmin() public {
-        registry.setAdmin(alice);
-        // Old admin can't act anymore
+    function test_transferAdmin_TwoStep() public {
+        registry.transferAdmin(alice);
+        assertEq(registry.pendingAdmin(), alice);
+        // Old admin still active until alice accepts
+        registry.addReporter(address(0xABC));
+        // Alice accepts
+        vm.prank(alice);
+        registry.acceptAdmin();
+        assertEq(registry.admin(), alice);
+        assertEq(registry.pendingAdmin(), address(0));
+        // Old admin can no longer act
         vm.expectRevert("AgentRegistry: not admin");
         registry.addReporter(address(0xDEAD));
+    }
+
+    function test_transferAdmin_RejectsZero() public {
+        vm.expectRevert("AgentRegistry: zero admin");
+        registry.transferAdmin(address(0));
+    }
+
+    function test_acceptAdmin_OnlyPending_Reverts() public {
+        registry.transferAdmin(alice);
+        vm.expectRevert("AgentRegistry: not pending admin");
+        vm.prank(bob);
+        registry.acceptAdmin();
     }
 
     // ============ maxAgents Cap ============

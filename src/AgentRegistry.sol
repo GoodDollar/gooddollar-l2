@@ -47,6 +47,7 @@ contract AgentRegistry {
     // ============ State ============
 
     address public admin;
+    address public pendingAdmin;
     uint256 public ubiBPS = 3333; // 33.33% of fees → UBI
 
     /// @notice Hard cap on registered agents to bound getTopAgents gas usage
@@ -335,10 +336,18 @@ contract AgentRegistry {
         emit ReporterRemoved(reporter);
     }
 
-    /// @notice Transfer admin authority to a new address (single-step).
+    /// @notice Initiate two-step admin transfer. New admin must call acceptAdmin() to confirm.
     /// @param newAdmin New admin address. Must not be address(0).
-    function setAdmin(address newAdmin) external onlyAdmin {
-        admin = newAdmin;
+    function transferAdmin(address newAdmin) external onlyAdmin {
+        require(newAdmin != address(0), "AgentRegistry: zero admin");
+        pendingAdmin = newAdmin;
+    }
+
+    /// @notice Accept the pending admin transfer (must be called by pendingAdmin).
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "AgentRegistry: not pending admin");
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
     }
 
     /// @notice Update the UBI contribution percentage (in basis points).
