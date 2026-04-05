@@ -57,17 +57,17 @@ export const CONTRACTS = {
   debtUSDC:              '0x4a679253410272dd5232b3ff7cf5dbb88f295319' as `0x${string}`,
   debtWETH:              '0x09635f643e140090a9a8dcd712ed6285858cebef' as `0x${string}`,
 
-  // ── GoodSwap — deployed to devnet (chain 42069), 2026-04-03 ──────────────
+  // ── GoodSwap — redeployed to devnet (chain 42069), 2026-04-05 (GOO-395) ──
   PoolManager:           '0xC9a43158891282A2B1475592D5719c001986Aaec' as `0x${string}`,
-  GoodSwapRouter:        '0xaC9fCBA56E42d5960f813B9D0387F3D3bC003338' as `0x${string}`,
+  GoodSwapRouter:        '0x975Ab64F4901Af5f0C96636deA0b9de3419D0c2F' as `0x${string}`,
   // GoodSwap Liquidity Pools
-  SwapPoolGdWeth:        '0xA4899D35897033b927acFCf422bc745916139776' as `0x${string}`,
-  SwapPoolGdUsdc:        '0xf953b3A269d80e3eB0F2947630Da976B896A8C5b' as `0x${string}`,
-  SwapPoolWethUsdc:      '0xAA292E8611aDF267e563f334Ee42320aC96D0463' as `0x${string}`,
+  SwapPoolGdWeth:        '0xeAd789bd8Ce8b9E94F5D0FCa99F8787c7e758817' as `0x${string}`,
+  SwapPoolGdUsdc:        '0x95775fD3Afb1F4072794CA4ddA27F2444BCf8Ac3' as `0x${string}`,
+  SwapPoolWethUsdc:      '0xd9fEc8238711935D6c8d79Bef2B9546ef23FC046' as `0x${string}`,
   // GoodSwap pool tokens (devnet mocks)
-  SwapGD:                '0x367761085BF3C12e5DA2Df99AC6E1a824612b8fb' as `0x${string}`,
-  SwapWETH:              '0x7A9Ec1d04904907De0ED7b6839CcdD59c3716AC9' as `0x${string}`,
-  SwapUSDC:              '0x4631BCAbD6dF18D94796344963cB60d44a4136b6' as `0x${string}`,
+  SwapGD:                '0x547382C0D1b23f707918D3c83A77317B71Aa8470' as `0x${string}`,
+  SwapWETH:              '0x7C8BaafA542c57fF9B2B90612bf8aB9E86e22C09' as `0x${string}`,
+  SwapUSDC:              '0x0a17FabeA4633ce714F1Fa4a2dcA62C3bAc4758d' as `0x${string}`,
 
   // ── GoodPerps — deployed to devnet (chain 42069), 2026-04-03 ─────────────
   PerpEngine:            '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853' as `0x${string}`,
