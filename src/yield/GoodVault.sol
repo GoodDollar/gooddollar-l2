@@ -63,6 +63,9 @@ contract GoodVault {
 
     bool public paused;
 
+    // ─── Keeper Access ───
+    mapping(address => bool) public keepers;
+
     // ─── Events ───
     event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);
     event Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares);
@@ -74,6 +77,7 @@ contract GoodVault {
     event AdminTransferInitiated(address indexed previousAdmin, address indexed pendingAdmin);
     event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
     event TokenSwept(address indexed token, address indexed to, uint256 amount);
+    event KeeperSet(address indexed keeper, bool enabled);
 
     // ─── Errors ───
     error NotAdmin();
@@ -87,6 +91,7 @@ contract GoodVault {
     error Reentrant();
     error TransferFailed();
     error CannotSweepAsset();
+    error NotKeeper();
 
     bool private _locked;
 
@@ -104,6 +109,11 @@ contract GoodVault {
 
     modifier whenNotPaused() {
         if (paused) revert Paused();
+        _;
+    }
+
+    modifier onlyKeeper() {
+        if (msg.sender != admin && !keepers[msg.sender]) revert NotKeeper();
         _;
     }
 
@@ -273,7 +283,7 @@ contract GoodVault {
     // ═══════════════════════════════════════════════════
 
     /// @notice Harvest yield from strategy, take fees, compound remainder
-    function harvest() external nonReentrant returns (uint256 profit, uint256 loss) {
+    function harvest() external nonReentrant onlyKeeper returns (uint256 profit, uint256 loss) {
         (profit, loss) = IStrategy(strategy).harvest();
 
         uint256 actualUBIFee;
@@ -377,6 +387,11 @@ contract GoodVault {
             if (!IERC20(token).transfer(to, bal)) revert TransferFailed();
             emit TokenSwept(token, to, bal);
         }
+    }
+
+    function setKeeper(address keeper, bool enabled) external onlyAdmin {
+        keepers[keeper] = enabled;
+        emit KeeperSet(keeper, enabled);
     }
 
     function setFees(uint256 _perfBPS, uint256 _mgmtBPS) external onlyAdmin {

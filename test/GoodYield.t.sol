@@ -346,6 +346,39 @@ contract GoodYieldTest is Test {
         assertEq(vault.totalGainSinceInception(), 0);
     }
 
+    // ─── Keeper access control ───
+
+    function test_harvest_revertsNonKeeper() public {
+        vm.prank(alice);
+        vault.deposit(10 ether, alice);
+        vm.prank(alice);
+        vm.expectRevert(GoodVault.NotKeeper.selector);
+        vault.harvest();
+    }
+
+    function test_harvest_registeredKeeperCanHarvest() public {
+        vm.prank(alice);
+        vault.deposit(10 ether, alice);
+        vault.setKeeper(alice, true);
+        strategy.setGrowth(1 ether);
+        vm.prank(alice);
+        vault.harvest(); // should not revert
+    }
+
+    function test_setKeeper_revokeRemovesAccess() public {
+        vault.setKeeper(alice, true);
+        vault.setKeeper(alice, false);
+        vm.prank(alice);
+        vm.expectRevert(GoodVault.NotKeeper.selector);
+        vault.harvest();
+    }
+
+    function test_setKeeper_revertsNonAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert(GoodVault.NotAdmin.selector);
+        vault.setKeeper(bob, true);
+    }
+
     // ─── Multi-User ───
 
     function test_multiUserDeposit() public {
