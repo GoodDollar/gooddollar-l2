@@ -108,3 +108,40 @@ Domains config: wiki/domains.yaml
 ## Completed (Phase 1 & 2) — 86 items ✅
 
 All 8 protocols built: GoodSwap, GoodPerps, GoodPredict, GoodLend, GoodStable, GoodStocks, GoodBridge, Infrastructure. 53 contracts, 837 tests, 208 frontend files. See git log for details.
+
+## Security Process (MANDATORY for all agents)
+
+### Security Tools
+- **Slither** — runs daily at 06:00 UTC, reports HIGH/MEDIUM/LOW findings
+- **Foundry Fuzz** — `forge test --fuzz-runs 10000` for property testing
+- **Foundry Coverage** — target: >85% line, >50% branch
+- **Mythril** — symbolic execution for deep analysis
+- **Cast** — on-chain contract testing
+
+### Security Agent Tasks
+1. Run Slither on every new commit
+2. Fix all HIGH severity findings (reentrancy, unchecked transfers)
+3. Add fuzz tests for all financial functions
+4. Check oracle staleness and manipulation vectors
+5. Audit bridge contracts for cross-chain replay attacks
+6. Verify access control on all privileged functions
+
+### Auto-Research Protocol
+Every agent should improve daily by:
+1. Search MemClaw for recent DeFi exploits and security patterns
+2. Study new audit tools and techniques
+3. Apply learnings to current codebase
+4. Write new findings back to MemClaw
+
+```bash
+# Example auto-research
+memclaw search "recent DeFi exploit 2026" --limit 5
+memclaw search "smart contract security best practices" --limit 5
+memclaw write "Learned: [new technique or pattern]" --type fact
+```
+
+### Current Security Status (auto-updated)
+- Slither: 30 HIGH / 148 MEDIUM / 344 LOW
+- Tests: 887/887 passing
+- Coverage: 68.66% line, 64.86% branch
+- Key fixes needed: 13 unchecked transfers, 8 missing reentrancy guards
