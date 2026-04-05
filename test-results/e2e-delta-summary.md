@@ -30,8 +30,9 @@
 | 24 | 2026-04-05T00:00Z | 52 | 43 | 9 | 82.7% | +1 test (per-page titles); GOO-392 filed: 6/6 routes share root title |
 | 25 | 2026-04-05T01:00Z | 55 | 45 | 10 | 81.8% | +3 tests (bridge chains ✅, explore count ✅, CoinGecko canary); 7 GOO-276 canaries |
 | 26 | 2026-04-05T02:00Z | 56 | 45 | 11 | 80.4% | +1 test (a11y skip link); GOO-401 filed: 54 commits undeployed, pipeline stuck |
+| 27 | 2026-04-05T03:00Z | 57 | 45 | 12 | 78.9% | +1 test (WalletConnect); GOO-401 assigned to DevOps; GOO-403 filed (WC placeholder) |
 
-## Current Failures (Run 26)
+## Current Failures (Run 27)
 
 | Page | Check | Status | Root Cause | Ticket |
 |------|-------|--------|------------|--------|
@@ -44,6 +45,7 @@
 | infra | meta_tags_present | 🟡 MEDIUM | og:title missing from layout.tsx metadata export | [GOO-357](/GOO/issues/GOO-357) |
 | explore | live_prices_from_coingecko | 🔴 CANARY | 0 CoinGecko calls — showing stale FALLBACK_PRICES (ETH $3,012.45) | [GOO-276](/GOO/issues/GOO-276) |
 | infra | a11y_skip_link | 🔴 WCAG 2.4.1 | Skip link + main#main-content absent — GOO-323 fix undeployed (GOO-401) | [GOO-401](/GOO/issues/GOO-401) |
+| infra | walletconnect_project_id | 🔴 HIGH | placeholder 'goodswap-dev' → 403+400 every page, mobile wallets broken | [GOO-403](/GOO/issues/GOO-403) |
 | infra | per_page_unique_titles | 🟡 MEDIUM | 6/6 routes share root title — WCAG 2.4.2 + SEO violation | [GOO-392](/GOO/issues/GOO-392) |
 | explorer/address | transactions_visible | Known bug | Blockscout infra issue | [GOO-193](/GOO/issues/GOO-193) |
 

@@ -1055,7 +1055,31 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'infra', check: 'a11y_skip_link', passed: false, detail: e.message }); }
 
-  // ═══ TEST 49: Per-page unique titles across key routes (GOO-392) ═══
+  // ═══ TEST 49: WalletConnect project ID is valid (no 403/400 on config) ═══
+  // NEXT_PUBLIC_WC_PROJECT_ID unset → falls back to 'goodswap-dev' placeholder.
+  // Results in 403 on api.web3modal.org/config and 400 on pulse.walletconnect.org
+  // on every single page load. Mobile wallet connections (QR scan) are broken.
+  // Filed: GOO-403
+  try {
+    const page = await context.newPage();
+    const wcErrors = [];
+    page.on('response', r => {
+      const url = r.url();
+      if ((url.includes('walletconnect.org') || url.includes('web3modal.org')) &&
+          (r.status() === 400 || r.status() === 403)) {
+        wcErrors.push({ status: r.status(), url: url.slice(0, 80) });
+      }
+    });
+    await page.goto(FRONTEND_URL, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    totalTests++;
+    const ok = wcErrors.length === 0;
+    logResult({ page: 'infra', check: 'walletconnect_project_id', passed: ok, detail: ok ? 'WalletConnect config loads OK' : `${wcErrors.length} WC errors (GOO-403): ${wcErrors.map(e => e.status + ' ' + e.url.split('?')[0].split('/').slice(-2).join('/')).join(', ')}` });
+    if (ok) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'infra', check: 'walletconnect_project_id', passed: false, detail: e.message }); }
+
+  // ═══ TEST 51: Per-page unique titles across key routes (GOO-392) ═══
   // All pages currently share root title "GoodDollar — DeFi That Funds UBI".
   // WCAG 2.4.2 and SEO require unique, descriptive titles per page.
   try {
