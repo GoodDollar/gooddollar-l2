@@ -28,8 +28,9 @@ import "../src/perps/PerpEngine.sol";
 contract DeployPerps is Script {
 
     // Current devnet addresses (chain 42069)
+    // FEE_SPLITTER updated by FixUBIFeeSplitterGDT.s.sol (GOO-450 fix, 2026-04-05)
     address constant GD_TOKEN_DEFAULT     = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
-    address constant FEE_SPLITTER_DEFAULT = 0x976fcd02f7C4773dd89C309fBF55D5923B4c98a1;
+    address constant FEE_SPLITTER_DEFAULT = 0x3abBB0D6ad848d64c8956edC9Bf6f18aC22E1485;
 
     struct Market {
         string  ticker;

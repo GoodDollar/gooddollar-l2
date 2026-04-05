@@ -10,7 +10,7 @@ import "../src/perps/PerpPriceOracle.sol";
  * @notice Diagnostic script to check the current state of devnet contracts.
  */
 contract CheckDevnetState is Script {
-    address constant PERP_ENGINE      = 0x666D0c3da3dBc946D5128D06115bb4eed4595580;
+    address constant PERP_ENGINE      = 0x021DBfF4A864Aa25c51F0ad2Cd73266Fde66199d; // GOO-450 fix 2026-04-05
     address constant PERP_ORACLE      = 0xf5c4a909455C00B99A90d93b48736F3196DB5621;
     address constant STOCKS_ORACLE    = 0xD0141E899a65C95a556fE2B27e5982A6DE7fDD7A;
 
