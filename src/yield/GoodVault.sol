@@ -71,6 +71,8 @@ contract GoodVault {
     event Harvested(uint256 profit, uint256 loss, uint256 ubiFee, uint256 mgmtFee);
     event StrategyMigrated(address indexed oldStrategy, address indexed newStrategy);
     event EmergencyShutdown(uint256 returned);
+    event AdminTransferInitiated(address indexed previousAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     // ─── Errors ───
     error NotAdmin();
@@ -272,16 +274,16 @@ contract GoodVault {
     function harvest() external nonReentrant returns (uint256 profit, uint256 loss) {
         (profit, loss) = IStrategy(strategy).harvest();
 
-        uint256 _ubiFee;
-        uint256 _mgmtFee;
+        uint256 actualUBIFee;
+        uint256 actualMgmtFee;
 
         if (profit > 0) {
             // Performance fee on profit → UBI
-            _ubiFee = (profit * performanceFeeBPS) / 10000;
+            uint256 _ubiFee = (profit * performanceFeeBPS) / 10000;
 
             // Management fee: 2% annual on total debt, prorated
             uint256 elapsed = block.timestamp - lastReport;
-            _mgmtFee = (totalDebt * managementFeeBPS * elapsed) / (10000 * 365 days);
+            uint256 _mgmtFee = (totalDebt * managementFeeBPS * elapsed) / (10000 * 365 days);
 
             uint256 totalFees = _ubiFee + _mgmtFee;
             if (totalFees > profit) totalFees = profit; // cap at profit
@@ -298,6 +300,14 @@ contract GoodVault {
                     ubiFee.splitFeeToken(totalFees, address(this), address(asset));
                     if (!asset.approve(address(ubiFee), 0)) revert TransferFailed();
                     totalUBIFunded += totalFees;
+                    // Split actual fees proportionally between UBI and mgmt for event accuracy
+                    uint256 estimatedTotal = _ubiFee + _mgmtFee;
+                    if (estimatedTotal > 0) {
+                        actualUBIFee = (totalFees * _ubiFee) / estimatedTotal;
+                        actualMgmtFee = totalFees - actualUBIFee;
+                    } else {
+                        actualUBIFee = totalFees;
+                    }
                 }
             }
 
@@ -315,7 +325,7 @@ contract GoodVault {
         }
 
         lastReport = block.timestamp;
-        emit Harvested(profit, loss, _ubiFee, _mgmtFee);
+        emit Harvested(profit, loss, actualUBIFee, actualMgmtFee);
     }
 
     // ═══════════════════════════════════════════════════
@@ -367,12 +377,15 @@ contract GoodVault {
     function transferAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "GoodVault: zero admin");
         pendingAdmin = newAdmin;
+        emit AdminTransferInitiated(admin, newAdmin);
     }
 
     function acceptAdmin() external {
         require(msg.sender == pendingAdmin, "not pending");
+        address previous = admin;
         admin = pendingAdmin;
         pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     // ═══════════════════════════════════════════════════

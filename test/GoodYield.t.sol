@@ -662,10 +662,14 @@ contract GoodYieldTest is Test {
     // ─── Admin: two-step admin transfer ───
 
     function test_transferAdmin_TwoStep() public {
+        vm.expectEmit(true, true, false, false, address(vault));
+        emit GoodVault.AdminTransferInitiated(address(this), alice);
         vault.transferAdmin(alice);
         assertEq(vault.pendingAdmin(), alice);
         assertEq(vault.admin(), address(this));
 
+        vm.expectEmit(true, true, false, false, address(vault));
+        emit GoodVault.AdminTransferred(address(this), alice);
         vm.prank(alice);
         vault.acceptAdmin();
 
