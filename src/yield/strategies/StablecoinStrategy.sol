@@ -105,12 +105,13 @@ contract StablecoinStrategy {
     function harvest() external onlyVault returns (uint256 profit, uint256 loss) {
         uint256 currentBal = stabilityPool.deposits(address(this));
 
-        // Claim collateral gains (e.g. WETH from liquidations) and forward to vault.
+        // Claim collateral gains (e.g. WETH from liquidations) and accumulate in strategy.
+        // Gains are NOT forwarded to the vault; admin recovers them via a dedicated sweep path.
+        // See GoodVault.sweepToken() for stranded-token recovery.
         if (gainToken != address(0)) {
             stabilityPool.claimGains();
             uint256 gained = IERC20(gainToken).balanceOf(address(this));
             if (gained > 0) {
-                if (!IERC20(gainToken).transfer(vault, gained)) revert TransferFailed();
                 emit GainsClaimed(gained);
             }
         }

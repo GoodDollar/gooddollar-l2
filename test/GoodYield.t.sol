@@ -429,6 +429,37 @@ contract GoodYieldTest is Test {
         assertEq(weth.balanceOf(address(vault)), 10 ether);
     }
 
+    // ─── sweepToken ───
+
+    function test_sweepToken_recoversStrandedTokens() public {
+        MockERC20 stranded = new MockERC20("Stranded", "STR");
+        stranded.mint(address(vault), 7 ether);
+
+        vault.sweepToken(address(stranded), address(this));
+
+        assertEq(stranded.balanceOf(address(this)), 7 ether);
+        assertEq(stranded.balanceOf(address(vault)), 0);
+    }
+
+    function test_sweepToken_noopOnZeroBalance() public {
+        MockERC20 stranded = new MockERC20("Stranded", "STR");
+        // No tokens minted to vault — should not revert
+        vault.sweepToken(address(stranded), address(this));
+        assertEq(stranded.balanceOf(address(this)), 0);
+    }
+
+    function test_sweepToken_revertsForAsset() public {
+        vm.expectRevert(GoodVault.CannotSweepAsset.selector);
+        vault.sweepToken(address(weth), address(this));
+    }
+
+    function test_sweepToken_revertsNonAdmin() public {
+        MockERC20 stranded = new MockERC20("Stranded", "STR");
+        vm.prank(alice);
+        vm.expectRevert(GoodVault.NotAdmin.selector);
+        vault.sweepToken(address(stranded), alice);
+    }
+
     // ─── ERC-20 ───
 
     function test_transfer() public {

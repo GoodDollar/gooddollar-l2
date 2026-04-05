@@ -73,6 +73,7 @@ contract GoodVault {
     event EmergencyShutdown(uint256 returned);
     event AdminTransferInitiated(address indexed previousAdmin, address indexed pendingAdmin);
     event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
+    event TokenSwept(address indexed token, address indexed to, uint256 amount);
 
     // ─── Errors ───
     error NotAdmin();
@@ -85,6 +86,7 @@ contract GoodVault {
     error StrategyAssetMismatch();
     error Reentrant();
     error TransferFailed();
+    error CannotSweepAsset();
 
     bool private _locked;
 
@@ -365,6 +367,16 @@ contract GoodVault {
 
     function setDepositCap(uint256 _cap) external onlyAdmin {
         depositCap = _cap;
+    }
+
+    /// @notice Recover any non-asset token stranded in this vault (e.g. liquidation gains forwarded by strategy).
+    function sweepToken(address token, address to) external onlyAdmin {
+        if (token == address(asset)) revert CannotSweepAsset();
+        uint256 bal = IERC20(token).balanceOf(address(this));
+        if (bal > 0) {
+            if (!IERC20(token).transfer(to, bal)) revert TransferFailed();
+            emit TokenSwept(token, to, bal);
+        }
     }
 
     function setFees(uint256 _perfBPS, uint256 _mgmtBPS) external onlyAdmin {

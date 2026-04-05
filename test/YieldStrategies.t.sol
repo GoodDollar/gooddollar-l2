@@ -575,8 +575,9 @@ contract StablecoinStrategyTest is Test {
         vm.prank(vault);
         strategy.harvest();
 
-        // ETH gain should be transferred to vault
-        assertEq(gainToken.balanceOf(vault), 5 ether);
+        // ETH gain stays in strategy (not forwarded to vault); admin recovers via sweepToken.
+        assertEq(gainToken.balanceOf(address(strategy)), 5 ether);
+        assertEq(gainToken.balanceOf(vault), 0);
     }
 
     function test_harvestNoGainTokenTransferIfZeroAddress() public {
