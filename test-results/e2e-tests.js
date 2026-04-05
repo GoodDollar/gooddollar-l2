@@ -824,7 +824,21 @@ async function run() {
   try {
     const page = await context.newPage();
     const rpcCalls = [];
+    const nonZeroResponses = [];
     page.on('request', req => { if (req.url().includes('rpc.goodclaw.org')) rpcCalls.push(1); });
+    page.on('response', async res => {
+      if (res.url().includes('rpc.goodclaw.org')) {
+        try {
+          const body = await res.text();
+          const data = JSON.parse(body);
+          const result = Array.isArray(data) ? data[0]?.result : data?.result;
+          // Non-zero result = oracle has actual price data
+          if (result && result !== '0x' && result !== '0x' + '0'.repeat(64)) {
+            nonZeroResponses.push(result.slice(0, 20));
+          }
+        } catch {}
+      }
+    });
     await page.goto(`${FRONTEND_URL}/stocks`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(4000);
     totalTests++;
@@ -834,11 +848,12 @@ async function run() {
       const tickers = (t.match(/AAPL|TSLA|NVDA|MSFT|AMZN|GOOGL|META|JPM|NFLX|AMD/g) || []);
       return { priceCount: prices.length, tickerCount: tickers.length, samplePrices: prices.slice(0,3) };
     });
-    const hasLiveData = rpcCalls.length > 0 && d.tickerCount >= 3 && d.priceCount >= 3;
+    // Must have RPC calls AND at least one non-zero response to confirm oracle is seeded
+    const hasLiveData = rpcCalls.length > 0 && nonZeroResponses.length > 0 && d.tickerCount >= 3;
     const detail = rpcCalls.length === 0
-      ? `0 RPC calls — GOO-276 blocks hydration`
-      : d.tickerCount === 0
-        ? 'No tickers — oracle empty or GOO-308'
+      ? `0 RPC calls`
+      : nonZeroResponses.length === 0
+        ? `${rpcCalls.length} RPC calls but ALL return 0 — oracle not seeded (GOO-451)`
         : `${d.tickerCount} tickers, ${d.priceCount} prices (${d.samplePrices.join(', ')})`;
     logResult({ page: 'stocks', check: 'live_prices_from_oracle', passed: hasLiveData, detail });
     if (hasLiveData) passed++; else failed++;
@@ -1148,25 +1163,33 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'perps', check: 'live_order_book_and_trades', passed: false, detail: e.message }); }
 
-  // ═══ TEST 59: Stocks page shows live oracle prices (GOO-414 re-seeding check) ═══
-  // After devnet oracle re-seeding, stocks should show real prices from on-chain oracle.
+  // ═══ TEST 59: Stocks RPC oracle returns non-zero prices (GOO-451 tracker) ═══
+  // Verifies that oracle eth_call responses are non-zero — confirms oracle is seeded.
+  // If all responses are zero, prices shown on the page are hardcoded fallback data.
+  // GOO-451: oracle returns 0 for all 12 assets — tracking here until fixed.
   try {
     const page = await context.newPage();
-    await page.goto(`${FRONTEND_URL}/stocks`, { waitUntil: 'networkidle', timeout: 30000 });
-    await page.waitForTimeout(3000);
-    totalTests++;
-    const d = await page.evaluate(() => {
-      const t = document.body.innerText;
-      const tickerCount = (t.match(/AAPL|TSLA|NVDA|MSFT|AMZN|GOOGL|META|JPM|NFLX|AMD/g) || []).length;
-      const priceCount = (t.match(/\$[\d,]+\.\d{2}/g) || []).length;
-      const hasNonZeroPrice = /\$[1-9][\d,]*\.\d{2}/.test(t);
-      return { tickerCount, priceCount, hasNonZeroPrice };
+    const rpcNonZero = [];
+    page.on('response', async res => {
+      if (res.url().includes('rpc.goodclaw.org')) {
+        try {
+          const body = await res.text();
+          const data = JSON.parse(body);
+          const result = Array.isArray(data) ? data[0]?.result : data?.result;
+          if (result && result !== '0x' && result !== '0x' + '0'.repeat(64)) {
+            rpcNonZero.push(1);
+          }
+        } catch {}
+      }
     });
-    const hasLiveStockPrices = d.tickerCount >= 4 && d.priceCount >= 4 && d.hasNonZeroPrice;
-    logResult({ page: 'stocks', check: 'oracle_prices_live', passed: hasLiveStockPrices, detail: hasLiveStockPrices ? `${d.tickerCount} tickers, ${d.priceCount} prices` : `tickers=${d.tickerCount} prices=${d.priceCount} nonZero=${d.hasNonZeroPrice}` });
-    if (hasLiveStockPrices) passed++; else failed++;
+    await page.goto(`${FRONTEND_URL}/stocks`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(4000);
+    totalTests++;
+    const oracleSeeded = rpcNonZero.length > 0;
+    logResult({ page: 'stocks', check: 'oracle_rpc_nonzero', passed: oracleSeeded, detail: oracleSeeded ? `${rpcNonZero.length} non-zero oracle responses` : 'All RPC responses zero — oracle not seeded (GOO-451)' });
+    if (oracleSeeded) passed++; else failed++;
     await page.close();
-  } catch (e) { totalTests++; failed++; logResult({ page: 'stocks', check: 'oracle_prices_live', passed: false, detail: e.message }); }
+  } catch (e) { totalTests++; failed++; logResult({ page: 'stocks', check: 'oracle_rpc_nonzero', passed: false, detail: e.message }); }
 
   // ═══ TEST 60: Stocks AAPL detail page has real key statistics ═══
   // After oracle re-seeding, the detail page should render full statistics (P/E, EPS, 52W range).

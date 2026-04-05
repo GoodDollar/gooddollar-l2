@@ -37,20 +37,23 @@
 | 31 | 2026-04-05T11:15Z | 57 | 55 | 2 | 96.5% | Fix perps/no_broken_prices test (account $0 when no wallet = correct); all perps tests pass |
 | 32 | 2026-04-05T11:30Z | 62 | 60 | 2 | 96.8% | +5 tests (perps order book, stocks oracle live, AAPL detail stats, predict markets, governance params) |
 | 33 | 2026-04-05T14:30Z | 66 | 63 | 3 | 95.5% | +4 tests (GOO-445 canary, UBI contracts, stable vaults, pool pairs); GOO-472 filed (Vercel analytics 404) |
+| 34 | 2026-04-05T15:00Z | 67 | 63 | 4 | 94.0% | +1 test (GOO-472 Vercel canary); GOO-472 fixed in code (f3a477f); GOO-451 confirmed (oracle returns 0) |
+| 35 | 2026-04-05T15:15Z | 67 | 61 | 6 | 91.0% | Fix oracle tests — were false-positive passing; now correctly fail for GOO-451 |
 
-## Current Failures (Run 33)
+## Current Failures (Run 35)
 
 | Page | Check | Status | Root Cause | Ticket |
 |------|-------|--------|------------|--------|
+| stocks | live_prices_from_oracle | 🔴 HIGH | 48 RPC calls all return 0 — oracle not seeded; page shows hardcoded fallback prices | [GOO-451](/GOO/issues/GOO-451) |
+| stocks | oracle_rpc_nonzero | 🔴 HIGH | All RPC responses zero — setManualPrice() not called against correct oracle | [GOO-451](/GOO/issues/GOO-451) |
 | stocks | disclaimer_updated_goo445 | 🟡 CANARY | Fix in main (862d5f6) but CI broke before deploy. f23aa1c CI fix applied, awaiting redeploy | [GOO-445](/GOO/issues/GOO-445) |
-| infra | walletconnect_project_id | 🔴 HIGH | Code fixed (2df9cd2) but env var NEXT_PUBLIC_WC_PROJECT_ID not set — blocked on WC project registration | [GOO-403](/GOO/issues/GOO-403) |
+| infra | no_vercel_analytics_404 | 🟡 CANARY | Fix in main (f3a477f, 14:11 UTC) — awaiting CI redeploy | [GOO-472](/GOO/issues/GOO-472) |
+| infra | walletconnect_project_id | 🔴 HIGH | Code fixed (2df9cd2) but env var NEXT_PUBLIC_WC_PROJECT_ID not set | [GOO-403](/GOO/issues/GOO-403) |
 | explorer/address | transactions_visible | Known bug | Blockscout infra issue | [GOO-193](/GOO/issues/GOO-193) |
 
-> **GOO-276 fully resolved** — script-src now includes unsafe-inline. All 7 canary tests auto-passed.
-> **GOO-392 fully resolved** — all 7 routes now have unique page titles.
-> **GOO-414 resolved** — StocksPriceOracle re-seeded (18 tickers, 16 prices). PerpEngine 5 markets live.
-> **GOO-445 fixed** (code) — stocks disclaimer updated to oracle copy. Awaiting CI redeploy (f23aa1c CI fix landed at 14:01 UTC).
-> **GOO-472 filed** — @vercel/analytics and @vercel/speed-insights 404 on non-Vercel deployment. Assigned to FE.
+> **Key finding Run 35:** `stocks/live_prices_from_oracle` was a false positive — tests checked page text, not RPC responses. All 48 oracle RPC calls return 0x0. Prices shown ($218.27 AAPL etc.) are hardcoded fallback data, not oracle-sourced. GOO-451 confirmed and tests corrected.
+
+> **GOO-276 fully resolved.** **GOO-392 fully resolved.** **GOO-472 code-fixed** (f3a477f). **GOO-445 code-fixed** (862d5f6). Both awaiting CI redeploy.
 
 **GOO-236 resolved** (ubi-impact now deploys correctly).  
 **GOO-232 resolved** (rpc.goodclaw.org now in connect-src).  
