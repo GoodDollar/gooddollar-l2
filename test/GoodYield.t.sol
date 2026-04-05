@@ -680,6 +680,32 @@ contract GoodYieldTest is Test {
         vm.expectRevert("max 5%");
         vault.setFees(2000, 600); // >500 bps management fee
     }
+
+    // ─── Factory: two-step admin transfer ───
+
+    function test_factoryTransferAdmin_TwoStep() public {
+        factory.transferAdmin(alice);
+        assertEq(factory.pendingAdmin(), alice);
+        assertEq(factory.admin(), address(this));
+
+        vm.prank(alice);
+        factory.acceptAdmin();
+
+        assertEq(factory.admin(), alice);
+        assertEq(factory.pendingAdmin(), address(0));
+    }
+
+    function test_factoryTransferAdmin_RejectsZero() public {
+        vm.expectRevert("VaultFactory: zero admin");
+        factory.transferAdmin(address(0));
+    }
+
+    function test_factoryAcceptAdmin_OnlyPending_Reverts() public {
+        factory.transferAdmin(alice);
+        vm.prank(bob);
+        vm.expectRevert("VaultFactory: not pending");
+        factory.acceptAdmin();
+    }
 }
 
 /// @dev Strategy that reports a loss on harvest (used for loss-path testing).

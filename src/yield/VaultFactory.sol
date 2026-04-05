@@ -17,6 +17,7 @@ import "./GoodVault.sol";
 
 contract VaultFactory {
     address public admin;
+    address public pendingAdmin;
     address public ubiFee;
 
     // Vault registry
@@ -114,7 +115,14 @@ contract VaultFactory {
         defaultDepositCap = _cap;
     }
 
-    function setAdmin(address _admin) external onlyAdmin {
-        admin = _admin;
+    function transferAdmin(address _pendingAdmin) external onlyAdmin {
+        require(_pendingAdmin != address(0), "VaultFactory: zero admin");
+        pendingAdmin = _pendingAdmin;
+    }
+
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "VaultFactory: not pending");
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
     }
 }
