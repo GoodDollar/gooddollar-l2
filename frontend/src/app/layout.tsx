@@ -59,8 +59,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <LandingFooter />
           <Toaster />
         </Providers>
-        <Analytics />
-        <SpeedInsights />
+        {process.env.VERCEL && <Analytics />}
+        {process.env.VERCEL && <SpeedInsights />}
         <AxeDevTools />
       </body>
     </html>
