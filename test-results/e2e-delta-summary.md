@@ -36,19 +36,21 @@
 | 30 | 2026-04-05T11:00Z | 57 | 54 | 3 | 94.7% | GOO-414 resolved: stocks 18 tickers + perps 5 pairs live; page titles all unique (GOO-392 deployed) |
 | 31 | 2026-04-05T11:15Z | 57 | 55 | 2 | 96.5% | Fix perps/no_broken_prices test (account $0 when no wallet = correct); all perps tests pass |
 | 32 | 2026-04-05T11:30Z | 62 | 60 | 2 | 96.8% | +5 tests (perps order book, stocks oracle live, AAPL detail stats, predict markets, governance params) |
+| 33 | 2026-04-05T14:30Z | 66 | 63 | 3 | 95.5% | +4 tests (GOO-445 canary, UBI contracts, stable vaults, pool pairs); GOO-472 filed (Vercel analytics 404) |
 
-## Current Failures (Run 31)
+## Current Failures (Run 33)
 
 | Page | Check | Status | Root Cause | Ticket |
 |------|-------|--------|------------|--------|
-| infra | walletconnect_project_id | 🔴 HIGH | placeholder 'goodswap-dev' → 403+400 every page, mobile wallets broken | [GOO-403](/GOO/issues/GOO-403) |
+| stocks | disclaimer_updated_goo445 | 🟡 CANARY | Fix in main (862d5f6) but CI broke before deploy. f23aa1c CI fix applied, awaiting redeploy | [GOO-445](/GOO/issues/GOO-445) |
+| infra | walletconnect_project_id | 🔴 HIGH | Code fixed (2df9cd2) but env var NEXT_PUBLIC_WC_PROJECT_ID not set — blocked on WC project registration | [GOO-403](/GOO/issues/GOO-403) |
 | explorer/address | transactions_visible | Known bug | Blockscout infra issue | [GOO-193](/GOO/issues/GOO-193) |
 
 > **GOO-276 fully resolved** — script-src now includes unsafe-inline. All 7 canary tests auto-passed.
 > **GOO-392 fully resolved** — all 7 routes now have unique page titles.
-> **GOO-414 resolved** — StocksPriceOracle re-seeded (18 tickers, 16 prices). PerpEngine 5 markets configured with real prices (BTC mark $84,250, live order book + recent trades).
-
-> **Only 2 failures remain:** GOO-403 (WalletConnect placeholder — awaiting FE action) and GOO-193 (Blockscout infra — external dependency).
+> **GOO-414 resolved** — StocksPriceOracle re-seeded (18 tickers, 16 prices). PerpEngine 5 markets live.
+> **GOO-445 fixed** (code) — stocks disclaimer updated to oracle copy. Awaiting CI redeploy (f23aa1c CI fix landed at 14:01 UTC).
+> **GOO-472 filed** — @vercel/analytics and @vercel/speed-insights 404 on non-Vercel deployment. Assigned to FE.
 
 **GOO-236 resolved** (ubi-impact now deploys correctly).  
 **GOO-232 resolved** (rpc.goodclaw.org now in connect-src).  
