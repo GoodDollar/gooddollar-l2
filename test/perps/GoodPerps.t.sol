@@ -325,6 +325,34 @@ contract GoodPerpsTest is Test {
         engine.openPosition(btcMarketId, 60_000e18, true, 1_000e18); // 60x > 50x
     }
 
+    // GOO-468: size/margin integer division truncates down, allowing real leverage > maxLeverage.
+    // Regression: size = maxLeverage * margin + (margin - 1) gives lev = maxLeverage under old check.
+    // New check (size > margin * maxLeverage) must catch this.
+    function test_engine_openPosition_truncationBypass_reverts() public {
+        vm.prank(alice);
+        vault.deposit(1_000_000e18);
+
+        // maxLeverage = 50, margin = 1000e18
+        // size = 50 * 1000e18 + 999e18 = 50_999e18
+        // old check: 50_999e18 / 1000e18 = 50 (truncates) — old code would PASS (bug)
+        // new check: 50_999e18 > 50 * 1000e18 = 50_000e18 — correctly REVERTS
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(PerpEngine.LeverageTooHigh.selector, uint256(50), uint256(50)));
+        engine.openPosition(btcMarketId, 50_999e18, true, 1_000e18);
+    }
+
+    // Boundary: exactly maxLeverage must be allowed.
+    function test_engine_openPosition_exactMaxLeverage_succeeds() public {
+        vm.prank(alice);
+        vault.deposit(1_000_000e18);
+
+        // size = 50 * 1000e18 = exactly 50x — should succeed
+        vm.prank(alice);
+        engine.openPosition(btcMarketId, 50_000e18, true, 1_000e18);
+        (bool isOpen,,,,,, ) = _getPosition(alice, btcMarketId);
+        assertTrue(isOpen);
+    }
+
     function test_engine_cannotOpenTwoPositions_sameMarket() public {
         vm.prank(alice);
         vault.deposit(1_000_000e18);
