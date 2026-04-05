@@ -49,6 +49,7 @@ contract UBIFeeSplitter {
         uint256 dAppShare
     );
     event DAppRegistered(address indexed dApp, string name);
+    event GoodDollarUpdated(address indexed oldAddr, address indexed newAddr);
     
     modifier onlyAdmin() {
         require(msg.sender == admin, "Not admin");
@@ -134,7 +135,9 @@ contract UBIFeeSplitter {
     ///         (e.g. after devnet resets). Immutability prevented live updates — GOO-402.
     function setGoodDollar(address _goodDollar) external onlyAdmin {
         require(_goodDollar != address(0), "zero address");
+        address old = address(goodDollar);
         goodDollar = IGoodDollarToken(_goodDollar);
+        emit GoodDollarUpdated(old, _goodDollar);
     }
 
     /**

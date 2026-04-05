@@ -137,6 +137,8 @@ contract GoodLendPool {
     event FlashLoan(address indexed asset, address indexed receiver, uint256 amount, uint256 premium);
     event TreasuryMint(address indexed asset, uint256 amount);
     event ReserveUpdated(address indexed asset, uint256 liquidityIndex, uint256 borrowIndex);
+    event SupplyCapUpdated(address indexed asset, uint256 oldCap, uint256 newCap);
+    event BorrowCapUpdated(address indexed asset, uint256 oldCap, uint256 newCap);
 
     // ============ Modifiers ============
 
@@ -617,11 +619,17 @@ contract GoodLendPool {
     }
 
     function setSupplyCap(address asset, uint256 newCap) external onlyAdmin {
+        require(reserves[asset].gToken != address(0), "GoodLendPool: reserve not initialized");
+        uint256 old = reserves[asset].supplyCap;
         reserves[asset].supplyCap = newCap;
+        emit SupplyCapUpdated(asset, old, newCap);
     }
 
     function setBorrowCap(address asset, uint256 newCap) external onlyAdmin {
+        require(reserves[asset].gToken != address(0), "GoodLendPool: reserve not initialized");
+        uint256 old = reserves[asset].borrowCap;
         reserves[asset].borrowCap = newCap;
+        emit BorrowCapUpdated(asset, old, newCap);
     }
 
     // ============ Internal: State Update ============

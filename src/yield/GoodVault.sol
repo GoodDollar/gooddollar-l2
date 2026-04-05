@@ -95,6 +95,7 @@ contract GoodVault {
     error Reentrant();
     error TransferFailed();
     error CannotSweepAsset();
+    error StrategyDoesNotSupportSweep();
     error NotKeeper();
 
     bool private _locked;
@@ -395,8 +396,12 @@ contract GoodVault {
 
     /// @notice Recover any non-asset token stranded in the strategy (e.g. WETH liquidation gains).
     ///         Calls strategy.sweepGains(); strategy must implement IStrategyWithGains.
+    ///         Reverts with StrategyDoesNotSupportSweep if the strategy lacks sweepGains().
     function sweepStrategyToken(address token, address to) external onlyAdmin {
-        IStrategyWithGains(strategy).sweepGains(token, to);
+        (bool ok,) = strategy.call(
+            abi.encodeWithSelector(IStrategyWithGains.sweepGains.selector, token, to)
+        );
+        if (!ok) revert StrategyDoesNotSupportSweep();
     }
 
     function setKeeper(address keeper, bool enabled) external onlyAdmin {
