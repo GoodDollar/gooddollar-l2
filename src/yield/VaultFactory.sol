@@ -45,6 +45,7 @@ contract VaultFactory {
     }
 
     constructor(address _ubiFee) {
+        require(_ubiFee != address(0), "VaultFactory: zero ubiFee");
         admin = msg.sender;
         ubiFee = _ubiFee;
     }

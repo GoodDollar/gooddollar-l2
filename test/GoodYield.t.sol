@@ -706,6 +706,20 @@ contract GoodYieldTest is Test {
         vm.expectRevert("VaultFactory: not pending");
         factory.acceptAdmin();
     }
+
+    // ─── GOO-433: VaultFactory constructor rejects zero ubiFee ───
+
+    function test_factoryConstructor_RejectsZeroUbiFee() public {
+        vm.expectRevert("VaultFactory: zero ubiFee");
+        new VaultFactory(address(0));
+    }
+
+    // ─── GOO-434: GoodVault.transferAdmin rejects zero address ───
+
+    function test_transferAdmin_RejectsZero() public {
+        vm.expectRevert("GoodVault: zero admin");
+        vault.transferAdmin(address(0));
+    }
 }
 
 /// @dev Strategy that reports a loss on harvest (used for loss-path testing).

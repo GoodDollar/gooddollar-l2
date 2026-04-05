@@ -333,6 +333,7 @@ contract GoodVault {
     }
 
     function transferAdmin(address newAdmin) external onlyAdmin {
+        require(newAdmin != address(0), "GoodVault: zero admin");
         pendingAdmin = newAdmin;
     }
 
