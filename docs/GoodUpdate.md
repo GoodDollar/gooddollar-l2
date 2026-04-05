@@ -11,7 +11,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | `0.1.0` |
+| Version | `0.2.0` |
 | Commits (24h) | 102 |
 | Chain | 62,438 blocks · 2,220 txs · 195 addresses |
 | Agents | 29 total (11 active, 18 paused) · $808 spend |

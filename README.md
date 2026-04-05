@@ -11,24 +11,24 @@
 
 | Component | Version | Status |
 |-----------|---------|--------|
-| **GoodDollar L2** (root) | `0.1.0` | 🟢 Active |
-| Frontend (GoodSwap) | `0.1.0` | 🟢 Live |
-| SDK | `0.1.0` | 🟢 Published |
-| Backend — Activity Reporter | `0.1.0` | 🟢 Running |
-| Backend — Bridge Keeper | `0.1.0` | 🟢 Running |
-| Backend — Harvest Keeper | `0.1.0` | 🟢 Running |
-| Backend — Indexer | `0.1.0` | 🟢 Running |
-| Backend — Liquidator | `0.1.0` | 🟢 Running |
-| Backend — Monitor | `0.1.0` | 🟢 Running |
-| Backend — Perps | `0.1.0` | 🟢 Running |
-| Backend — Predict | `0.1.0` | 🟢 Running |
-| Backend — Revenue Tracker | `0.1.0` | 🟢 Running |
-| Backend — Rpc Balancer | `0.1.0` | 🟢 Running |
-| Backend — Stocks Keeper | `1.0.0` | 🟢 Running |
-| Backend — Swap Oracle | `1.0.0` | 🟢 Running |
+| **GoodDollar L2** (root) | `0.2.0` | 🟢 Active |
+| Frontend (GoodSwap) | `0.2.0` | 🟢 Live |
+| SDK | `0.2.0` | 🟢 Published |
+| Backend — Activity Reporter | `0.2.0` | 🟢 Running |
+| Backend — Bridge Keeper | `0.2.0` | 🟢 Running |
+| Backend — Harvest Keeper | `0.2.0` | 🟢 Running |
+| Backend — Indexer | `0.2.0` | 🟢 Running |
+| Backend — Liquidator | `0.2.0` | 🟢 Running |
+| Backend — Monitor | `0.2.0` | 🟢 Running |
+| Backend — Perps | `0.2.0` | 🟢 Running |
+| Backend — Predict | `0.2.0` | 🟢 Running |
+| Backend — Revenue Tracker | `0.2.0` | 🟢 Running |
+| Backend — Rpc Balancer | `0.2.0` | 🟢 Running |
+| Backend — Stocks Keeper | `1.1.0` | 🟢 Running |
+| Backend — Swap Oracle | `1.1.0` | 🟢 Running |
 
 
-> *Auto-updated by DevOps Engineer agent. Last sync: 2026-04-04*
+> *Updated: 2026-04-05*
 
 ---
 
@@ -42,9 +42,9 @@ No opt-in. No charity toggle. UBI is baked into every protocol-level interaction
 
 ## 🤖 Built Entirely by AI Agents
 
-This entire project — **152 commits, 109 initiatives, 3,200 lines of Solidity, 108 frontend files** — was built by an autonomous AI agent team managed through [Paperclip](https://paperclip.goodclaw.org).
+This entire project — **425 commits, 122 initiatives, 12,800 lines of Solidity, 208 frontend files** — was built by an autonomous AI agent team managed through [Paperclip](https://paperclip.goodclaw.org).
 
-**The Agent Team (25 agents):**
+**The Agent Team (29 agents):**
 
 | Role | Agent | What They Build |
 |------|-------|-----------------|
@@ -70,7 +70,7 @@ Hourly heartbeats. Agents pick up issues, write code + tests, commit, and report
 
 ## 📦 What's Built
 
-### Core Smart Contracts (16 contracts, 3,200 lines of Solidity)
+### Core Smart Contracts (53 contracts, 12,800 lines of Solidity)
 
 | Contract | Description | Tests |
 |----------|-------------|-------|
@@ -104,7 +104,7 @@ Hourly heartbeats. Agents pick up issues, write code + tests, commit, and report
 
 **All contracts include UBI fee routing** — every trade, every liquidation, every fee flows through `UBIFeeSplitter.splitFee()` which distributes 33% to the UBI pool.
 
-### Test Suite: 205+ Foundry Tests
+### Test Suite: 837 Foundry Tests
 
 ```
 test/
@@ -119,7 +119,7 @@ test/
 
 ---
 
-### Frontend dApps (108 files, Next.js 14 + wagmi + RainbowKit)
+### Frontend dApps (208 files, Next.js 14 + wagmi + RainbowKit)
 
 #### 🔄 GoodSwap DEX
 - Swap interface with 18 tokens (ETH, G$, USDC, WBTC, DAI, etc.)

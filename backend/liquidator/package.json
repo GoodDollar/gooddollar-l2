@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/liquidator-bot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Liquidation bot for GoodLend and GoodStable — monitors undercollateralized positions and executes liquidations",
   "main": "dist/index.js",
   "scripts": {

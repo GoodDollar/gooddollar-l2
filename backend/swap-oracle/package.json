@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar-l2/swap-oracle",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Price keeper for SwapPriceOracle — fetches CoinGecko prices and pushes on-chain",
   "main": "dist/index.js",

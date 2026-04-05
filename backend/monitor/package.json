@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/monitor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "GoodDollar L2 monitoring & alerting — healthchecks for chain, contracts, and backend services",
   "main": "dist/index.js",
   "scripts": {

@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/bridge-keeper",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "GoodDollar multi-chain bridge keeper — processes cross-chain bridge requests via Li.Fi API",
   "main": "dist/index.js",
   "scripts": {

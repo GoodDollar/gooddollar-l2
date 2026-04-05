@@ -12,3 +12,4 @@ playwright-report/
 node_modules/
 *.py
 __pycache__/
+research/aave-v3/aave-v3-core

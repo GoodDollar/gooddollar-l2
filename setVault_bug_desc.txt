@@ -1,0 +1,36 @@
+## Severity: HIGH
+
+## Summary
+
+`LendingStrategy.setVault()` and `StablecoinStrategy.setVault()` have **no access control**. Any EOA can call `setVault(attackerAddress)` during the window between strategy deployment and the deployer's `setVault(realVaultAddress)` call.
+
+The function at `src/yield/strategies/LendingStrategy.sol:79` and `StablecoinStrategy.sol:60`:
+- Is `external` with no `msg.sender` check
+- Callable by anyone while `vault == address(0)`
+
+## Attack Path
+
+1. Deployer broadcasts `new LendingStrategy(..., address(0))` — strategy live with `vault = address(0)`
+2. Attacker (MEV bot) front-runs the deployer's `setVault(realVault)` tx
+3. Attacker calls `setVault(attackerAddress)` — attacker becomes `vault`
+4. Attacker has full control over `deposit()`, `withdraw()`, `harvest()`
+5. Any assets in the strategy can be drained via `withdraw()`
+
+## Deployment Script Context
+
+`DeployInitialVaults.s.sol` deploys 3 strategies with `address(0)` then calls `setVault()`. These are **separate on-chain transactions** inside `vm.startBroadcast()` — not atomic. All 3 strategies (ETH, gUSD, G$) are exposed at deployment time.
+
+## Fix Options
+
+**Option A — Add deployer check (minimal):**
+Store `deployer = msg.sender` in constructor; guard `setVault` with `require(msg.sender == deployer)`.
+
+**Option B — Remove setVault entirely** by knowing vault address via CREATE2 before strategy deployment.
+
+**Option C — Atomic factory deployment** that deploys strategy and vault in a single transaction.
+
+## Affected Files
+
+- `src/yield/strategies/LendingStrategy.sol:79`
+- `src/yield/strategies/StablecoinStrategy.sol:60`
+- `script/DeployInitialVaults.s.sol:57-141`
