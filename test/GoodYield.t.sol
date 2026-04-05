@@ -644,6 +644,25 @@ contract GoodYieldTest is Test {
         assertEq(vault.totalDebt(), debtBefore);
     }
 
+    // ─── harvest with loss > totalDebt (GOO-415 regression) ───
+
+    function test_harvest_LossExceedsTotalDebt_ClampsToZero() public {
+        // Deposit a small amount so totalDebt < the loss MockLossStrategy reports (10 ether)
+        vm.prank(alice);
+        vault.deposit(5 ether, alice);
+        assertEq(vault.totalDebt(), 5 ether);
+
+        // Migrate to MockLossStrategy — it reports 10 ether loss on harvest()
+        MockLossStrategy lossStrategy = new MockLossStrategy(address(weth));
+        weth.mint(address(lossStrategy), 5 ether); // give it enough balance for migration
+        vault.migrateStrategy(address(lossStrategy));
+
+        // harvest() should NOT revert — loss (10) > totalDebt (5) must be clamped to 0
+        (, uint256 loss) = vault.harvest();
+        assertGt(loss, 0, "expected non-zero loss");
+        assertEq(vault.totalDebt(), 0, "totalDebt must clamp to 0 when loss > totalDebt");
+    }
+
     // ─── migrateStrategy asset mismatch ───
 
     function test_migrateStrategy_WrongAsset_Reverts() public {

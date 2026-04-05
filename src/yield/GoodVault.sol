@@ -276,7 +276,7 @@ contract GoodVault {
         }
 
         if (loss > 0) {
-            totalDebt -= loss;
+            totalDebt = loss >= totalDebt ? 0 : totalDebt - loss;
         }
 
         lastReport = block.timestamp;
