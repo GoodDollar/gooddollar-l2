@@ -528,8 +528,8 @@ contract GoodYieldTest is Test {
         vault.sweepStrategyToken(address(gainToken), alice);
     }
 
-    // Strategy with no sweepGains function — call silently no-ops (EVM behaviour for missing selector)
-    function test_sweepStrategyToken_noopWhenStrategyLacksSweepGains() public {
+    // Strategy with no sweepGains function — Solidity ABI dispatcher reverts on unmatched selector
+    function test_sweepStrategyToken_revertsWhenStrategyLacksSweepGains() public {
         MockERC20 gainToken = new MockERC20("GAIN", "GAIN");
         // Deploy a strategy that has NO sweepGains function and no fallback
         MockStrategyNoSweep noSweepStrategy = new MockStrategyNoSweep(address(weth));
@@ -546,12 +546,10 @@ contract GoodYieldTest is Test {
             address(this)
         );
 
-        // Call must NOT revert (missing selector returns ok=true in EVM)
-        // but tokens remain in the strategy — confirmed silent no-op
+        // Solidity-compiled contracts revert via ABI dispatcher when no selector matches and no fallback.
+        // ok=false → StrategyDoesNotSupportSweep is correctly raised.
+        vm.expectRevert(GoodVault.StrategyDoesNotSupportSweep.selector);
         noSweepVault.sweepStrategyToken(address(gainToken), address(this));
-
-        assertEq(gainToken.balanceOf(address(this)), 0, "no tokens recovered: selector missing");
-        assertEq(gainToken.balanceOf(address(noSweepStrategy)), 2 ether, "tokens still in strategy");
     }
 
     // ─── ERC-20 ───

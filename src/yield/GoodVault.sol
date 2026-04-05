@@ -396,9 +396,9 @@ contract GoodVault {
 
     /// @notice Recover any non-asset token stranded in the strategy (e.g. WETH liquidation gains).
     ///         Calls strategy.sweepGains() via low-level call.
-    ///         Reverts with StrategyDoesNotSupportSweep only if the strategy explicitly reverts.
-    ///         NOTE: If the strategy lacks sweepGains() and has no fallback, the call silently no-ops
-    ///         (ok=true, empty returndata) — this is standard EVM behaviour for a missing selector.
+    ///         Reverts with StrategyDoesNotSupportSweep if the strategy does not implement sweepGains().
+    ///         For Solidity-compiled strategies without a fallback, an unmatched selector triggers the
+    ///         ABI dispatcher's built-in revert (ok=false), so the guard fires correctly.
     function sweepStrategyToken(address token, address to) external onlyAdmin {
         (bool ok,) = strategy.call(
             abi.encodeWithSelector(IStrategyWithGains.sweepGains.selector, token, to)
