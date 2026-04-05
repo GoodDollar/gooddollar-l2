@@ -145,3 +145,50 @@ memclaw write "Learned: [new technique or pattern]" --type fact
 - Tests: 887/887 passing
 - Coverage: 68.66% line, 64.86% branch
 - Key fixes needed: 13 unchecked transfers, 8 missing reentrancy guards
+
+## Phase 4: Scale Tokenized Stocks + Stock Perps (PRIORITY: HIGH)
+
+### 4.1 Oracle Upgrade — Pyth Network (Week 1-2)
+- [ ] Write PythPriceAdapter.sol (ticker→Pyth ID mapping, staleness checks, batch updates)
+- [ ] Deploy Pyth mock on devnet for testing
+- [ ] Update stocks-keeper to use Pyth SDK instead of Yahoo Finance
+- [ ] Test price accuracy: Pyth vs Yahoo Finance for 12 existing stocks
+- [ ] Migrate PriceOracle consumers to PythPriceAdapter
+
+### 4.2 NASDAQ-100 Listing (Week 2-3)
+- [ ] Write ListNasdaq100.s.sol batch deploy script (EIP-1167 clones)
+- [ ] Register all 100 Pyth price IDs in PythPriceAdapter
+- [ ] Deploy all 100 synthetic stocks (2 batch txs, ~17M gas total)
+- [ ] Add sector classification (Technology, Healthcare, Finance, Energy, etc.)
+- [ ] Update frontend: paginated stock listing, search, sector filters
+- [ ] Update stocks-keeper for 100 tickers
+
+### 4.3 Stock Perpetuals — Connect Stocks ↔ Perps (Week 3-4)
+- [ ] Write StockPerpEngine.sol (extends PerpEngine, creates perp market per stock)
+- [ ] Add synthetic collateral support (sAAPL as margin for perps at 80% haircut)
+- [ ] Auto-create perp markets for top 100 stocks by volume
+- [ ] Set stock perp leverage limits (max 20x vs 50x for crypto)
+- [ ] Unified liquidation engine: cross-liquidate stock collateral + perp positions
+- [ ] Frontend: unified trading view (spot synthetic + leveraged perp side-by-side)
+- [ ] Tests: fuzz test cross-margin scenarios, liquidation cascades
+
+### 4.4 S&P 500 Expansion (Week 4-6)
+- [ ] Register remaining 400 S&P tickers in PythPriceAdapter
+- [ ] Batch-list in 5 deploy txs (~100 each, ~85M gas total, < $1)
+- [ ] Auto-create perp markets for top 200 by volume
+- [ ] Add basket indices: sTECH, sHEALTH, sFINANCE (sector ETF-like synthetics)
+
+### 4.5 Market Hours Controller (Week 5-6)
+- [ ] Write MarketHoursController.sol (US market 9:30-4pm ET, pre/after-hours)
+- [ ] Synthetic minting/redemption: restricted to market hours
+- [ ] GoodSwap secondary trading: 24/7 (AMM pricing)
+- [ ] Perp trading: 24/7, funding rate adjusts on oracle staleness
+- [ ] Handle market holidays (NYSE calendar on-chain)
+- [ ] Frontend: show market status (open/closed/pre-market/after-hours)
+
+### Reference
+- Full research: research/STOCKS-PERPS-SCALING.md
+- Pyth Network: pyth.network/price-feeds
+- Synthetix V3: github.com/Synthetixio/synthetix-v3
+- GMX V2: github.com/gmx-io/gmx-synthetics
+- GNS/gTrade: github.com/GainsNetwork-org
