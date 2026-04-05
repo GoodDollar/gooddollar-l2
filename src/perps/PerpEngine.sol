@@ -203,9 +203,9 @@ contract PerpEngine {
         Position storage pos = positions[msg.sender][marketId];
         if (pos.isOpen) revert PositionAlreadyOpen();
 
-        // Check leverage (size / margin must not exceed market max)
-        uint256 lev = size / margin;
-        if (lev > m.maxLeverage) revert LeverageTooHigh(lev, m.maxLeverage);
+        // Check leverage: use multiplication to avoid truncation from integer division.
+        // size / margin truncates down and could allow real leverage > maxLeverage.
+        if (size > margin * m.maxLeverage) revert LeverageTooHigh(size / margin, m.maxLeverage);
 
         // Calculate fee
         uint256 fee = (size * TRADE_FEE_BPS) / BPS;

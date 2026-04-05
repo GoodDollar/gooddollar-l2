@@ -84,7 +84,9 @@ contract FundingRate {
         uint256 elapsed = block.timestamp - lastFundingTime[marketId];
         if (elapsed < FUNDING_INTERVAL) return 0;
 
-        lastFundingTime[marketId] = block.timestamp;
+        // Advance by exactly one interval (not to block.timestamp) so that
+        // multiple skipped intervals accumulate correctly on future calls.
+        lastFundingTime[marketId] += FUNDING_INTERVAL;
 
         // rate = (mark - index) / index, clamped to ±MAX_FUNDING_RATE
         int256 diff = int256(markPrice) - int256(indexPrice);
