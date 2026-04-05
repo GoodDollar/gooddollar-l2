@@ -42,6 +42,7 @@ contract LendingStrategy {
     error NotVault();
     error IsPaused();
     error AssetMismatch();
+    error TransferFailed();
 
     modifier onlyVault() {
         if (msg.sender != vault) revert NotVault();
@@ -79,8 +80,8 @@ contract LendingStrategy {
     /// @notice Deposit into GoodLend
     function deposit(uint256 amount) external onlyVault {
         if (paused) revert IsPaused();
-        IERC20(asset).transferFrom(vault, address(this), amount);
-        IERC20(asset).approve(address(lendPool), amount);
+        if (!IERC20(asset).transferFrom(vault, address(this), amount)) revert TransferFailed();
+        if (!IERC20(asset).approve(address(lendPool), amount)) revert TransferFailed();
         lendPool.supply(asset, amount, address(this));
         totalDeposited += amount;
         emit Deposited(amount);

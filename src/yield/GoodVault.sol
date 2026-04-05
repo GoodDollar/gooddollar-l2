@@ -82,6 +82,7 @@ contract GoodVault {
     error InsufficientAllowance();
     error StrategyAssetMismatch();
     error Reentrant();
+    error TransferFailed();
 
     bool private _locked;
 
@@ -178,7 +179,7 @@ contract GoodVault {
         if (shares == 0) revert ZeroShares();
         if (totalAssets() + assets > depositCap) revert DepositCapExceeded();
 
-        asset.transferFrom(msg.sender, address(this), assets);
+        if (!asset.transferFrom(msg.sender, address(this), assets)) revert TransferFailed();
         _mint(receiver, shares);
 
         // Deploy idle funds to strategy
@@ -204,7 +205,7 @@ contract GoodVault {
         _ensureLiquidity(assets);
 
         _burn(owner, shares);
-        asset.transfer(receiver, assets);
+        if (!asset.transfer(receiver, assets)) revert TransferFailed();
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
@@ -224,7 +225,7 @@ contract GoodVault {
         _ensureLiquidity(assets);
 
         _burn(owner, shares);
-        asset.transfer(receiver, assets);
+        if (!asset.transfer(receiver, assets)) revert TransferFailed();
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
@@ -259,7 +260,7 @@ contract GoodVault {
 
                 if (totalFees > 0) {
                     // Route to UBI
-                    asset.approve(address(ubiFee), totalFees);
+                    if (!asset.approve(address(ubiFee), totalFees)) revert TransferFailed();
                     ubiFee.splitFeeToken(totalFees, address(this), address(asset));
                     totalUBIFunded += totalFees;
                 }
@@ -346,7 +347,7 @@ contract GoodVault {
     function _deployToStrategy() internal {
         uint256 idle = asset.balanceOf(address(this));
         if (idle > 0 && !paused) {
-            asset.approve(strategy, idle);
+            if (!asset.approve(strategy, idle)) revert TransferFailed();
             IStrategy(strategy).deposit(idle);
             totalDebt += idle;
         }
