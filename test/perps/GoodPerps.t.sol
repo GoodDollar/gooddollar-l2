@@ -658,6 +658,60 @@ contract GoodPerpsTest is Test {
         assertLt(netPnL, 0, "unrealizedPnL must be negative when funding payment exceeds price gain");
     }
 
+    // ============ GOO-471: two-step admin transfer ============
+
+    function test_engine_transferAdmin_twoStep() public {
+        address newAdmin = address(0xBEEF);
+        vm.prank(admin);
+        engine.transferAdmin(newAdmin);
+        // Admin unchanged until acceptAdmin
+        assertEq(engine.admin(), admin);
+        assertEq(engine.pendingAdmin(), newAdmin);
+        vm.prank(newAdmin);
+        engine.acceptAdmin();
+        assertEq(engine.admin(), newAdmin);
+        assertEq(engine.pendingAdmin(), address(0));
+    }
+
+    function test_engine_transferAdmin_onlyAdmin_reverts() public {
+        vm.prank(alice);
+        vm.expectRevert(PerpEngine.NotAdmin.selector);
+        engine.transferAdmin(address(0xBEEF));
+    }
+
+    function test_engine_acceptAdmin_onlyPending_reverts() public {
+        address newAdmin = address(0xBEEF);
+        vm.prank(admin);
+        engine.transferAdmin(newAdmin);
+        vm.prank(alice);
+        vm.expectRevert(PerpEngine.NotPendingAdmin.selector);
+        engine.acceptAdmin();
+    }
+
+    function test_funding_transferAdmin_twoStep() public {
+        address newAdmin = address(0xCAFE);
+        vm.prank(admin);
+        fundingRate.transferAdmin(newAdmin);
+        assertEq(fundingRate.admin(), admin);
+        assertEq(fundingRate.pendingAdmin(), newAdmin);
+        vm.prank(newAdmin);
+        fundingRate.acceptAdmin();
+        assertEq(fundingRate.admin(), newAdmin);
+        assertEq(fundingRate.pendingAdmin(), address(0));
+    }
+
+    function test_vault_transferAdmin_twoStep() public {
+        address newAdmin = address(0xDEAD);
+        vm.prank(admin);
+        vault.transferAdmin(newAdmin);
+        assertEq(vault.admin(), admin);
+        assertEq(vault.pendingAdmin(), newAdmin);
+        vm.prank(newAdmin);
+        vault.acceptAdmin();
+        assertEq(vault.admin(), newAdmin);
+        assertEq(vault.pendingAdmin(), address(0));
+    }
+
     // ============ Helpers ============
 
     function _getPosition(address trader, uint256 marketId)

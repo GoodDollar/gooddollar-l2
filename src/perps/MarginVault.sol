@@ -19,12 +19,15 @@ contract MarginVault {
     IMarginToken public immutable collateral;
     address public perpEngine;
     address public admin;
+    address public pendingAdmin;
 
     mapping(address => uint256) public balances;
     uint256 public totalDeposited;
 
     // ============ Events ============
 
+    event AdminTransferInitiated(address indexed previousAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
     event Deposited(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event EngineDebit(address indexed user, uint256 amount);
@@ -33,6 +36,7 @@ contract MarginVault {
     // ============ Errors ============
 
     error NotAdmin();
+    error NotPendingAdmin();
     error NotEngine();
     error ZeroAddress();
     error ZeroAmount();
@@ -67,9 +71,18 @@ contract MarginVault {
         perpEngine = engine;
     }
 
-    function setAdmin(address newAdmin) external onlyAdmin {
+    function transferAdmin(address newAdmin) external onlyAdmin {
         if (newAdmin == address(0)) revert ZeroAddress();
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferInitiated(admin, newAdmin);
+    }
+
+    function acceptAdmin() external {
+        if (msg.sender != pendingAdmin) revert NotPendingAdmin();
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     // ============ User ============

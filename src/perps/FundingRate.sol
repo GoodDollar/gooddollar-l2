@@ -24,6 +24,7 @@ contract FundingRate {
     // ============ State ============
 
     address public admin;
+    address public pendingAdmin;
     address public perpEngine;
 
     /// @notice marketId → cumulative funding index (1e18-scaled, signed)
@@ -35,10 +36,13 @@ contract FundingRate {
     // ============ Events ============
 
     event FundingApplied(uint256 indexed marketId, int256 rate, int256 newIndex, uint256 timestamp);
+    event AdminTransferInitiated(address indexed previousAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     // ============ Errors ============
 
     error NotAdmin();
+    error NotPendingAdmin();
     error NotEngine();
     error ZeroAddress();
 
@@ -134,8 +138,17 @@ contract FundingRate {
 
     // ============ Admin ============
 
-    function setAdmin(address newAdmin) external onlyAdmin {
+    function transferAdmin(address newAdmin) external onlyAdmin {
         if (newAdmin == address(0)) revert ZeroAddress();
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferInitiated(admin, newAdmin);
+    }
+
+    function acceptAdmin() external {
+        if (msg.sender != pendingAdmin) revert NotPendingAdmin();
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 }

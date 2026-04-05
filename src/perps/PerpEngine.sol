@@ -71,6 +71,7 @@ contract PerpEngine {
     IPriceOraclePerp public immutable oracle;
     address public immutable feeSplitter;
     address public admin;
+    address public pendingAdmin;
     bool public paused;
 
     Market[] public markets;
@@ -80,6 +81,8 @@ contract PerpEngine {
 
     // ============ Events ============
 
+    event AdminTransferInitiated(address indexed previousAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
     event MarketCreated(uint256 indexed marketId, bytes32 oracleKey, uint256 maxLeverage);
     event PositionOpened(
         address indexed trader,
@@ -105,6 +108,7 @@ contract PerpEngine {
     // ============ Errors ============
 
     error NotAdmin();
+    error NotPendingAdmin();
     error Paused();
     error ZeroAddress();
     error ZeroAmount();
@@ -176,9 +180,18 @@ contract PerpEngine {
         paused = _paused;
     }
 
-    function setAdmin(address newAdmin) external onlyAdmin {
+    function transferAdmin(address newAdmin) external onlyAdmin {
         if (newAdmin == address(0)) revert ZeroAddress();
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferInitiated(admin, newAdmin);
+    }
+
+    function acceptAdmin() external {
+        if (msg.sender != pendingAdmin) revert NotPendingAdmin();
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     // ============ Trading ============
