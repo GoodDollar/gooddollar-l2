@@ -235,6 +235,72 @@ contract GoodYieldTest is Test {
         vault.deposit(10 ether, alice);
     }
 
+    // ─── ERC-4626 mint() ───
+
+    function test_mint_happyPath() public {
+        // First deposit to prime the exchange rate
+        vm.prank(alice);
+        vault.deposit(50 ether, alice);
+
+        // Bob mints exactly 10 shares
+        vm.prank(bob);
+        uint256 assets = vault.mint(10 ether, bob);
+
+        assertEq(vault.balanceOf(bob), 10 ether);
+        assertEq(assets, 10 ether); // 1:1 at initial rate
+    }
+
+    function test_mint_revertsZeroShares() public {
+        vm.prank(alice);
+        vm.expectRevert(GoodVault.ZeroShares.selector);
+        vault.mint(0, alice);
+    }
+
+    function test_mint_revertsWhenPaused() public {
+        vault.emergencyShutdown();
+        vm.prank(alice);
+        vm.expectRevert(GoodVault.Paused.selector);
+        vault.mint(10 ether, alice);
+    }
+
+    function test_mint_revertsDepositCapExceeded() public {
+        // Cap is 1000 ether; try to mint 1001 ether worth of shares
+        uint256 sharesTooMany = vault.convertToShares(1001 ether) + 1;
+        weth.mint(alice, 2000 ether);
+        vm.prank(alice);
+        weth.approve(address(vault), type(uint256).max);
+
+        vm.prank(alice);
+        vm.expectRevert(GoodVault.DepositCapExceeded.selector);
+        vault.mint(sharesTooMany, alice);
+    }
+
+    function test_maxMint_returnsZeroWhenPaused() public {
+        vault.emergencyShutdown();
+        assertEq(vault.maxMint(alice), 0);
+    }
+
+    function test_maxMint_returnsCapRemaining() public {
+        // With nothing deposited: maxMint = convertToShares(depositCap)
+        uint256 expected = vault.convertToShares(vault.depositCap());
+        assertEq(vault.maxMint(alice), expected);
+    }
+
+    function test_maxRedeem_returnsShareBalance() public {
+        vm.prank(alice);
+        vault.deposit(10 ether, alice);
+        assertEq(vault.maxRedeem(alice), vault.balanceOf(alice));
+    }
+
+    function test_previewMint_matchesActualAssets() public {
+        uint256 preview = vault.previewMint(10 ether);
+        uint256 balBefore = weth.balanceOf(alice);
+        vm.prank(alice);
+        vault.mint(10 ether, alice);
+        uint256 spent = balBefore - weth.balanceOf(alice);
+        assertEq(spent, preview);
+    }
+
     // ─── Harvest & Fees ───
 
     function test_harvest() public {

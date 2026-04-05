@@ -153,12 +153,28 @@ contract GoodVault {
         return ta >= depositCap ? 0 : depositCap - ta;
     }
 
+    function maxMint(address) external view returns (uint256) {
+        if (paused) return 0;
+        uint256 ta = totalAssets();
+        if (ta >= depositCap) return 0;
+        return convertToShares(depositCap - ta);
+    }
+
     function maxWithdraw(address owner) external view returns (uint256) {
         return convertToAssets(balanceOf[owner]);
     }
 
+    function maxRedeem(address owner) external view returns (uint256) {
+        return balanceOf[owner];
+    }
+
     function previewDeposit(uint256 assets) external view returns (uint256) {
         return convertToShares(assets);
+    }
+
+    /// @notice Assets required to mint exactly `shares` (rounds up).
+    function previewMint(uint256 shares) external view returns (uint256) {
+        return (shares * (totalAssets() + 1) + totalSupply) / (totalSupply + 1);
     }
 
     function previewWithdraw(uint256 assets) external view returns (uint256) {
@@ -184,6 +200,23 @@ contract GoodVault {
         _mint(receiver, shares);
 
         // Deploy idle funds to strategy
+        _deployToStrategy();
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    /// @notice Mint exactly `shares` vault shares; pull the required assets from msg.sender.
+    ///         Assets are computed with ceiling division so the vault never receives fewer assets
+    ///         than the shares are worth.
+    function mint(uint256 shares, address receiver) external whenNotPaused nonReentrant returns (uint256 assets) {
+        if (shares == 0) revert ZeroShares();
+        // Ceiling division: assets = ceil(shares * (totalAssets+1) / (totalSupply+1))
+        assets = (shares * (totalAssets() + 1) + totalSupply) / (totalSupply + 1);
+        if (assets == 0) revert ZeroAssets();
+        if (totalAssets() + assets > depositCap) revert DepositCapExceeded();
+
+        if (!asset.transferFrom(msg.sender, address(this), assets)) revert TransferFailed();
+        _mint(receiver, shares);
         _deployToStrategy();
 
         emit Deposit(msg.sender, receiver, assets, shares);
