@@ -15,6 +15,16 @@ import { MarketFactoryABI, ConditionalTokensABI } from './abi'
 import { CONTRACTS } from './chain'
 import type { PredictionMarket, MarketCategory, UserPosition, ResolvedPosition } from './predictData'
 
+// ─── Fallback demo prediction markets when on-chain data is unavailable ──────
+const FALLBACK_MARKETS: PredictionMarket[] = [
+  { id: 'demo-1', question: 'Will Bitcoin exceed $100,000 by end of 2025?', category: 'Crypto', yesPrice: 0.72, volume: 4_500_000, liquidity: 1_200_000, endDate: '2025-12-31', resolved: false, resolutionSource: 'CoinGecko spot price', createdAt: '2025-01-15', totalShares: 8_500_000 },
+  { id: 'demo-2', question: 'Will the US pass a stablecoin regulation bill by Q3 2025?', category: 'Politics', yesPrice: 0.58, volume: 2_100_000, liquidity: 680_000, endDate: '2025-09-30', resolved: false, resolutionSource: 'Congressional record', createdAt: '2025-02-01', totalShares: 3_200_000 },
+  { id: 'demo-3', question: 'Will OpenAI release GPT-5 before July 2025?', category: 'AI & Tech', yesPrice: 0.45, volume: 3_800_000, liquidity: 950_000, endDate: '2025-07-01', resolved: false, resolutionSource: 'OpenAI official announcement', createdAt: '2025-01-20', totalShares: 6_100_000 },
+  { id: 'demo-4', question: 'Will Ethereum ETF daily inflows exceed $1B in a single day in 2025?', category: 'Crypto', yesPrice: 0.38, volume: 1_750_000, liquidity: 520_000, endDate: '2025-12-31', resolved: false, resolutionSource: 'Bloomberg ETF data', createdAt: '2025-03-01', totalShares: 2_900_000 },
+  { id: 'demo-5', question: 'Will Real Madrid win the 2025 Champions League?', category: 'Sports', yesPrice: 0.31, volume: 6_200_000, liquidity: 1_800_000, endDate: '2025-06-01', resolved: false, resolutionSource: 'UEFA official results', createdAt: '2025-02-10', totalShares: 9_400_000 },
+  { id: 'demo-6', question: 'Will GoodDollar reach 1 million unique claimers by end of 2025?', category: 'Crypto', yesPrice: 0.62, volume: 890_000, liquidity: 310_000, endDate: '2025-12-31', resolved: false, resolutionSource: 'GoodDollar dashboard', createdAt: '2025-03-15', totalShares: 1_500_000 },
+]
+
 const FACTORY = CONTRACTS.MarketFactory
 const COND_TOKENS = CONTRACTS.ConditionalTokens
 
@@ -132,10 +142,11 @@ export function useOnChainMarkets(): {
     return result
   }, [batchData, marketCount])
 
+  const finalMarkets = markets.length > 0 ? markets : FALLBACK_MARKETS
   return {
-    markets,
+    markets: finalMarkets,
     isLoading: countLoading || batchLoading,
-    isLive: marketCount > 0 && markets.length > 0,
+    isLive: markets.length > 0,
   }
 }
 

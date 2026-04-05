@@ -2356,3 +2356,129 @@ VaultFactory has 6 deployment events. Direct WETH supply to GoodLendPool succeed
 | PerpPriceOracle (v2) | 0x286b8decd5ed79c962b2d8f4346cd97ff0e2c352 |
 | VaultFactory | 0xe70f935c32da4db13e7876795f1e175465e6458e |
 
+---
+
+## Iteration 18
+
+**Date:** 2026-04-05 (block 28126 → 28866)
+**Wallet:** 0x90F79bf6EB2c4f870365E785982E1f101E93b906
+**Chain:** GoodDollar L2 Devnet (Chain ID 42069)
+**JSONL entries:** 201 | **Passed:** 122 | **Failed:** 79 | **Pass rate:** 60.7%
+**Transactions:** 34 | **Total gas used:** 1,622,342 | **Avg gas/tx:** 47,715
+
+### Critical Discovery: Python hashlib.sha3_256 != Ethereum keccak256
+
+All function call failures in iterations prior were due to using Python's `hashlib.sha3_256` for function selectors. NIST SHA3-256 and Ethereum's keccak256 produce different hashes. The fix was to use compiled ABI `methodIdentifiers` from Foundry's output JSON. After applying correct selectors, pass rate for pure reads jumped from ~20% to ~90%.
+
+### GOO Regression Verdicts
+
+| Issue | Status | Details |
+|-------|--------|---------|
+| GOO-365 (Persistence) | **CONFIRMED FIXED** | systemd service with `--dump-state` deployed; state at block 28866 with GDT/WETH/USDC balances intact |
+| GOO-399 (PerpEngine oracle) | **ORACLE PASS** | All 6 markets have prices (BTC≈65k, ETH≈3.2k, GD≈180, stock tickers). openPosition blocked only by GDT balance (tester has 1.4 GDT, needs 50). Oracle confirmed functional. |
+| GOO-402 (UBIFeeSplitter) | **STILL OPEN** | `goodDollar()` returns `0x5fbdb2315678afecb367f032d93f642f64180aa3` (old GDT from Anvil default deploy slot). Current GDT is `0x36c02da8...`. Splitter holds 0.5 GDT but cannot distribute. |
+| GOO-404 (GoodStocks burn) | **FIXED** | `CollateralVault.burn(string,uint256)` with selector `0xb48272cc` succeeded. sAAPL balance went 1000 → 0. CollateralVault returned collateral. |
+| GOO-405 (ValidatorStaking) | **OPEN** | MIN_STAKE = 1,000,000 GDT (1e6 * 1e18). Tester wallet has only 1.4 GDT. No open mint. Need Protocol Engineer to fund test wallet or set MIN_STAKE lower for testing. |
+| GOO-406 (Prediction Markets) | **STILL OPEN** | MarketFactory at `0xc7cdb7a2e5dda1b7a0e792fe1ef08ed20a6f56d4` has 0 bytes code. Not deployed (or not saved to devnet state). SeedPredictMarkets broadcast shows markets were seeded against old factory. |
+| GOO-388 (USDC reserve) | **PARTIAL** | USDC reserve IS initialized and listed (3 reserves: USDC, WETH, GDT). Supply call fails with `GoodLendPool: supply cap` — reserve cap was set low during initReserve. Not a code bug, needs Protocol Engineer to raise supply cap. |
+
+### Priority Test Results
+
+#### Priority 1 — PerpEngine Oracle (GOO-399)
+- `oracle()` → `0xf5c4a909...` (PerpPriceOracle original, 3499 bytes)
+- `paused()` → false
+- `marketCount()` → 6
+- All 6 markets have oracle prices (non-zero via `getPriceByKey(bytes32)`)
+- `openPosition` not tested due to insufficient GDT (tester has 1.4 GDT, margin=50e18)
+- **Verdict: ORACLE PASS, position test requires GDT funding**
+
+#### Priority 2 — GoodStocks Burn (GOO-404)
+- sAAPL balance before: 1000 wei
+- Approved sAAPL to CollateralVault: success
+- `CollateralVault.burn(string,uint256)` selector `0xb48272cc`: **PASS**
+- sAAPL balance after: 0
+- **Verdict: FIXED**
+
+#### Priority 3 — UBIFeeSplitter (GOO-402)
+- `goodDollar()` selector `0x119e5bf3` → returns `0x5fbdb2315678afecb367f032d93f642f64180aa3`
+- This is Anvil's default first-deploy address, not current GDT `0x36c02da8...`
+- `ubiBPS()` = 3333, `protocolBPS()` = 1667 (correct split ratios)
+- Splitter holds 0.5 GDT but `splitFee()` would fail due to wrong token
+- **Verdict: STILL OPEN** (Protocol Engineer must redeploy UBIFeeSplitter with correct GDT address)
+
+#### Priority 4 — GoodDAO Proposals
+- `proposalCount()` → 2 proposals exist
+- `VOTING_DELAY()` → 86400 blocks (~2.4 days at 1 block/sec)
+- Current block ~28760, proposals created ~block 24742 → 4018 blocks elapsed
+- Both proposals in `Pending` state (86400 - 4018 = 82382 blocks until Active)
+- `veGD.votingPowerOf(wallet)` → 11,397,708,174,784,373 (wallet has voting power)
+- **Verdict: WORKING as designed, proposals will become Active in ~22 hours**
+
+#### Priority 5 — GoodLendPool USDC (GOO-388)
+- `getReservesCount()` → 3 reserves: USDC, WETH, GDT
+- USDC reserve IS initialized (liquidityIndex > 0)
+- `supply(USDC, 100e6)` → fails with `GoodLendPool: supply cap`
+- WETH supply continues to work (PASS from previous iterations)
+- **Verdict: PARTIAL — Reserve exists but supply cap set too low at init time**
+
+#### Priority 6 — ValidatorStaking (GOO-405)
+- `MIN_STAKE()` → 1,000,000,000,000,000,000,000,000 (= 1M GDT)
+- `UNBONDING_PERIOD()` → 604,800 blocks
+- `goodDollar()` → `0x36c02da8...` (CORRECT GDT address)
+- `totalStaked()` → 0
+- Tester wallet has 1.4 GDT, stake requires 1,000,000 GDT
+- GDT minting requires `minters` role; deployer is NOT a minter in current state
+- **Verdict: OPEN — Need 1M GDT funded to tester wallet**
+
+#### Priority 7 — Prediction Markets (GOO-406)
+- MarketFactory `0xc7cdb7a2e5...` has 0 bytes of code
+- The address in RedeployPredict broadcast does not have deployed bytecode
+- SeedPredictMarkets DID run (shows approve + createMarket calls) but against a different address
+- **Verdict: STILL OPEN — MarketFactory not persisted or deployed to wrong address**
+
+#### Priority 8 — GoodYield Deposit
+- VaultFactory `vaultCount()` → 3 vaults
+- WETH vault at `0x51cfabdb442281a31eb298c44de4da9c1e7e9de6` (asset=MockWETH)
+- `deposit(uint256,address)` selector `0x6e553f65` → **PASS** (0.1 WETH deposited)
+- **Verdict: PASS** (GOO-365 persistence should preserve this deposit)
+
+#### Priority 9 — Stress Batch
+- 3 GDT transfers: PASS
+- 2 WETH transfers: PASS
+- 2 USDC transfers: PASS
+- Total: 7/7 token transfers successful
+
+### New Bugs Discovered
+
+| Bug | Description | Severity |
+|-----|-------------|----------|
+| `UBIFeeSplitter` stale GDT | Holds 0.5 GDT but `goodDollar()` returns old address, distribution broken | HIGH |
+| `MarketFactory` not deployed | 0 bytes code at broadcast address; prediction markets inaccessible | HIGH |
+| `ValidatorStaking` MIN_STAKE | 1M GDT required; no minter access in test environment | MEDIUM |
+| `GoodLendPool` USDC supply cap | Cap set too low at reserve initialization; blocking USDC deposits | MEDIUM |
+
+### Technical Note: keccak256 vs SHA3-256
+
+Previous iterations used Python `hashlib.sha3_256` for function selectors. Ethereum uses keccak256 (pre-NIST SHA3). These diverge for all inputs. The correct approach is to read `methodIdentifiers` from Foundry's compiled JSON (`/out/<Contract>.sol/<Contract>.json`). This was fixed in iteration 18 and produced accurate results.
+
+### Contract Addresses (Iteration 18 Active)
+
+| Contract | Address |
+|----------|---------|
+| GoodDollarToken (GDT) | 0x36c02da8a0983159322a80ffe9f24b1acff8b570 |
+| PerpEngine | 0x666d0c3da3dbc946d5128d06115bb4eed4595580 |
+| PerpPriceOracle | 0xf5c4a909455c00b99a90d93b48736f3196db5621 |
+| MarginVault | 0xb22c255250d74b0add1bfb936676d2a299bf48bd |
+| CollateralVault | 0xd30bf3219a0416602be8d482e0396ef332b0494e |
+| SyntheticAssetFactory | 0xd710a67624ad831683c86a48291c597ade30f787 |
+| UBIFeeSplitter | 0x976fcd02f7c4773dd89c309fbf55d5923b4c98a1 |
+| GoodDAO | 0x638a246f0ec8883ef68280293ffe8cfbabe61b44 |
+| VoteEscrowedGD | 0x02b0b4efd909240fcb2eb5fae060dc60d112e3a4 |
+| GoodLendPool | 0x49fd2be640db2910c2fab69bb8531ab6e76127ff |
+| VaultFactory | 0xe70f935c32da4db13e7876795f1e175465e6458e |
+| WETH Vault | 0x51cfabdb442281a31eb298c44de4da9c1e7e9de6 |
+| ValidatorStaking | 0x103a3b128991781ee2c8db0454ca99d67b257923 |
+| MarketFactory (no code) | 0xc7cdb7a2e5dda1b7a0e792fe1ef08ed20a6f56d4 |
+| MockUSDC | 0x2b0d36facd61b71cc05ab8f3d2355ec3631c0dd5 |
+| MockWETH | 0xfbc22278a96299d91d41c453234d97b4f5eb9b2d |
+
