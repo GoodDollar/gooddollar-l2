@@ -173,8 +173,43 @@ SCRIPTS=(
 
 cd "$SCRIPT_DIR"
 
+# Read the most recently broadcast address for a given script+contract.
+addr_from_broadcast() {
+  local script="$1" contract="$2"
+  local broadcast_file="$SCRIPT_DIR/broadcast/${script}/42069/run-latest.json"
+  [ -f "$broadcast_file" ] || { echo ""; return; }
+  python3 -c "
+import json, sys
+data = json.load(open('$broadcast_file'))
+for tx in data.get('transactions', []):
+    if tx.get('contractName') == '$contract' and tx.get('contractAddress'):
+        print(tx['contractAddress'])
+        sys.exit(0)
+print('')
+" 2>/dev/null || echo ""
+}
+
 for script in "${SCRIPTS[@]}"; do
   name=$(basename "$script" .s.sol)
+
+  # DeployGoodStocks requires GOOD_DOLLAR_TOKEN and UBI_FEE_SPLITTER.
+  # Derive them from sibling broadcast artifacts so the vault is always
+  # wired to the currently-deployed token and fee-splitter, not a stale
+  # env var from a previous run.
+  if [ "$name" = "DeployGoodStocks" ]; then
+    GDT=$(addr_from_broadcast "RedeployGoodDollarToken.s.sol" "GoodDollarToken")
+    FSP=$(addr_from_broadcast "RedeployUBIAndLiFi.s.sol" "UBIFeeSplitter")
+    if [ -z "$GDT" ] || [ -z "$FSP" ]; then
+      err "DeployGoodStocks: cannot derive GDT/UBIFeeSplitter from broadcast artifacts — aborting"
+      err "  GoodDollarToken : ${GDT:-<not found>}"
+      err "  UBIFeeSplitter  : ${FSP:-<not found>}"
+      exit 1
+    fi
+    export GOOD_DOLLAR_TOKEN="$GDT"
+    export UBI_FEE_SPLITTER="$FSP"
+    log "DeployGoodStocks env: GOOD_DOLLAR_TOKEN=$GDT  UBI_FEE_SPLITTER=$FSP"
+  fi
+
   if [ -f "$script" ]; then
     log "Deploying $name ..."
     $FORGE script "$script" \
