@@ -314,25 +314,31 @@ contract PerpEngine {
     // ============ View ============
 
     /**
-     * @notice Get unrealized PnL for a position.
-     * @return pnl Positive = profit, negative = loss
+     * @notice Get unrealized PnL for a position, including pending funding payments.
+     * @return pnl Positive = profit, negative = loss (net of funding)
      */
     function unrealizedPnL(address trader, uint256 marketId) external view returns (int256 pnl) {
         Position storage pos = positions[trader][marketId];
         if (!pos.isOpen) return 0;
         uint256 currentPrice = oracle.getPriceByKey(markets[marketId].oracleKey);
-        return _calcPnL(pos, currentPrice);
+        int256 rawPnL = _calcPnL(pos, currentPrice);
+        int256 size = pos.isLong ? int256(pos.size) : -int256(pos.size);
+        int256 fundingPayment = funding.accruedFunding(size, pos.entryFundingIdx, marketId);
+        return rawPnL - fundingPayment;
     }
 
     /**
-     * @notice Get current margin ratio in BPS (e.g., 500 = 5%)
+     * @notice Get current margin ratio in BPS (e.g., 500 = 5%), including pending funding.
+     *         Matches the health calculation used in liquidate() — suitable for liquidation bots.
      */
     function marginRatio(address trader, uint256 marketId) external view returns (uint256) {
         Position storage pos = positions[trader][marketId];
         if (!pos.isOpen) return type(uint256).max;
         uint256 currentPrice = oracle.getPriceByKey(markets[marketId].oracleKey);
-        int256 pnl = _calcPnL(pos, currentPrice);
-        int256 remainingMargin = int256(pos.margin) + pnl;
+        int256 rawPnL = _calcPnL(pos, currentPrice);
+        int256 size = pos.isLong ? int256(pos.size) : -int256(pos.size);
+        int256 fundingPayment = funding.accruedFunding(size, pos.entryFundingIdx, marketId);
+        int256 remainingMargin = int256(pos.margin) + rawPnL - fundingPayment;
         if (remainingMargin <= 0) return 0;
         return (uint256(remainingMargin) * BPS) / pos.size;
     }

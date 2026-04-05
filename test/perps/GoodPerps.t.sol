@@ -566,6 +566,36 @@ contract GoodPerpsTest is Test {
         );
     }
 
+    // GOO-467: marginRatio() and unrealizedPnL() must include accrued funding.
+    function test_engine_marginRatio_includesFunding() public {
+        vm.prank(alice);
+        vault.deposit(1_000_000e18);
+
+        vm.prank(alice);
+        engine.openPosition(btcMarketId, 100_000e18, true, 10_000e18); // 10x long
+
+        // Record ratio at entry — no funding accrued yet
+        uint256 ratioAtOpen = engine.marginRatio(alice, btcMarketId);
+
+        // Set mark > index: 1% premium → longs accrue positive funding debt
+        btcIndexFeed.setPrice(int256(BTC_PRICE_U - BTC_PRICE_U / 100));
+
+        // Warp past one funding interval
+        vm.warp(block.timestamp + 9 hours);
+        // Trigger the index update (applyFunding is permissioned to engine/admin)
+        vm.prank(admin);
+        fundingRate.applyFunding(btcMarketId, BTC_PRICE_U, BTC_PRICE_U - BTC_PRICE_U / 100);
+
+        // marginRatio() must now be lower (funding debt reduces effective margin)
+        uint256 ratioAfterFunding = engine.marginRatio(alice, btcMarketId);
+        assertLt(ratioAfterFunding, ratioAtOpen, "marginRatio must decrease when funding accrues against position");
+
+        // unrealizedPnL() must be lower than price-only PnL (funding reduces net profit)
+        int256 netPnL = engine.unrealizedPnL(alice, btcMarketId);
+        // Price unchanged so raw PnL = 0; funding payment reduces net PnL below zero
+        assertLt(netPnL, 0, "unrealizedPnL must be negative when funding payment exceeds price gain");
+    }
+
     // ============ Helpers ============
 
     function _getPosition(address trader, uint256 marketId)
