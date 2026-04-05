@@ -395,8 +395,10 @@ contract GoodVault {
     }
 
     /// @notice Recover any non-asset token stranded in the strategy (e.g. WETH liquidation gains).
-    ///         Calls strategy.sweepGains(); strategy must implement IStrategyWithGains.
-    ///         Reverts with StrategyDoesNotSupportSweep if the strategy lacks sweepGains().
+    ///         Calls strategy.sweepGains() via low-level call.
+    ///         Reverts with StrategyDoesNotSupportSweep only if the strategy explicitly reverts.
+    ///         NOTE: If the strategy lacks sweepGains() and has no fallback, the call silently no-ops
+    ///         (ok=true, empty returndata) — this is standard EVM behaviour for a missing selector.
     function sweepStrategyToken(address token, address to) external onlyAdmin {
         (bool ok,) = strategy.call(
             abi.encodeWithSelector(IStrategyWithGains.sweepGains.selector, token, to)

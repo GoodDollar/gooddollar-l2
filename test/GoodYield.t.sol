@@ -115,6 +115,17 @@ contract MockStrategy {
     }
 }
 
+/// @dev A strategy that intentionally omits sweepGains to test no-op fallback behaviour.
+contract MockStrategyNoSweep {
+    address public immutable asset;
+    constructor(address _asset) { asset = _asset; }
+    function totalAssets() external pure returns (uint256) { return 0; }
+    function deposit(uint256) external {}
+    function withdraw(uint256) external returns (uint256) { return 0; }
+    function harvest() external returns (uint256, uint256) { return (0, 0); }
+    function emergencyWithdraw() external returns (uint256) { return 0; }
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 contract GoodYieldTest is Test {
@@ -515,6 +526,32 @@ contract GoodYieldTest is Test {
         vm.prank(alice);
         vm.expectRevert(GoodVault.NotAdmin.selector);
         vault.sweepStrategyToken(address(gainToken), alice);
+    }
+
+    // Strategy with no sweepGains function — call silently no-ops (EVM behaviour for missing selector)
+    function test_sweepStrategyToken_noopWhenStrategyLacksSweepGains() public {
+        MockERC20 gainToken = new MockERC20("GAIN", "GAIN");
+        // Deploy a strategy that has NO sweepGains function and no fallback
+        MockStrategyNoSweep noSweepStrategy = new MockStrategyNoSweep(address(weth));
+        gainToken.mint(address(noSweepStrategy), 2 ether);
+
+        // Deploy a fresh vault backed by the no-sweep strategy
+        GoodVault noSweepVault = new GoodVault(
+            address(weth),
+            address(noSweepStrategy),
+            address(ubiFee),
+            "NoSweep Vault",
+            "nsV",
+            1000 ether,
+            address(this)
+        );
+
+        // Call must NOT revert (missing selector returns ok=true in EVM)
+        // but tokens remain in the strategy — confirmed silent no-op
+        noSweepVault.sweepStrategyToken(address(gainToken), address(this));
+
+        assertEq(gainToken.balanceOf(address(this)), 0, "no tokens recovered: selector missing");
+        assertEq(gainToken.balanceOf(address(noSweepStrategy)), 2 ether, "tokens still in strategy");
     }
 
     // ─── ERC-20 ───
