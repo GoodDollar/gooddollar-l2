@@ -281,6 +281,17 @@ contract LendingStrategyTest is Test {
         strategy.withdraw(50 ether);
     }
 
+    /// @dev GOO-398: withdraw when gToken balance is 0 (e.g. inactive reserve or stale gToken
+    ///      address) must return 0 instead of calling lendPool.withdraw(asset, 0, vault) which
+    ///      would revert with "bad amount" and cause GoodVault.redeem to revert unexpectedly.
+    function test_withdrawReturnsZeroWhenNoGTokenBalance() public {
+        // No deposit — gToken balance is 0
+        vm.prank(vault);
+        uint256 withdrawn = strategy.withdraw(100 ether);
+        assertEq(withdrawn, 0);
+        assertEq(lendPool.totalWithdrawn(), 0); // lendPool was NOT called
+    }
+
     // ─── Harvest ────────────────────────────────────────────────────────────
 
     function test_harvestNoChange() public {

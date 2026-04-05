@@ -90,6 +90,7 @@ contract LendingStrategy {
     function withdraw(uint256 amount) external onlyVault returns (uint256) {
         uint256 bal = IGoodLendToken(gToken).balanceOf(address(this));
         if (amount > bal) amount = bal;
+        if (amount == 0) return 0; // nothing to withdraw (inactive reserve or no deposits)
         uint256 withdrawn = lendPool.withdraw(asset, amount, vault);
         if (withdrawn > totalDeposited) {
             totalDeposited = 0;

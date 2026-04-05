@@ -43,19 +43,19 @@ export const CONTRACTS = {
   ConditionalTokens:     '0x28f057Dc79e3Cb77B2bbF4358D7A690CFe21b2D5' as `0x${string}`,
   OptimisticResolver:    '0x30426D33a78afdb8788597D5BFaBdADc3Be95698' as `0x${string}`,
 
-  // ── GoodLend — devnet (chain 42069), deployed 2026-04-03 ─────────────────
-  GoodLendPool:                '0x322813fd9a801c5507c9de605d63cea4f2ce6c44' as `0x${string}`,
-  GoodLendPriceOracle:         '0x9a9f2ccfde556a7e9ff0848998aa4a0cfd8863ae' as `0x${string}`,
-  GoodLendInterestRateModel:   '0xc6e7df5e7b4f2a278906862b61205850344d4e7d' as `0x${string}`,
+  // ── GoodLend — devnet (chain 42069), redeployed 2026-04-05 (GOO-388) ──────
+  GoodLendPool:                '0x49fd2be640db2910c2fab69bb8531ab6e76127ff' as `0x${string}`,
+  GoodLendPriceOracle:         '0x46b142dd1e924fab83ecc3c08e4d46e82f005e0e' as `0x${string}`,
+  GoodLendInterestRateModel:   '0x367761085bf3c12e5da2df99ac6e1a824612b8fb' as `0x${string}`,
   // GoodLend reserve tokens
-  MockUSDC:              '0x0b306bf915c4d645ff596e518faf3f9669b97016' as `0x${string}`,
-  MockWETH:              '0x959922be3caee4b8cd9a407cc3ac1c251c2007b1' as `0x${string}`,
+  MockUSDC:              '0x2b0d36facd61b71cc05ab8f3d2355ec3631c0dd5' as `0x${string}`,
+  MockWETH:              '0xfbc22278a96299d91d41c453234d97b4f5eb9b2d' as `0x${string}`,
   // gTokens (interest-bearing)
-  gUSDC:                 '0xa85233c63b9ee964add6f2cffe00fd84eb32338f' as `0x${string}`,
-  gWETH:                 '0x7a2088a1bfc9d81c55368ae168c2c02570cb814f' as `0x${string}`,
+  gUSDC:                 '0x4631bcabd6df18d94796344963cb60d44a4136b6' as `0x${string}`,
+  gWETH:                 '0xa4899d35897033b927acfcf422bc745916139776' as `0x${string}`,
   // Debt tokens
-  debtUSDC:              '0x4a679253410272dd5232b3ff7cf5dbb88f295319' as `0x${string}`,
-  debtWETH:              '0x09635f643e140090a9a8dcd712ed6285858cebef' as `0x${string}`,
+  debtUSDC:              '0x86a2ee8faf9a840f7a2c64ca3d51209f9a02081d' as `0x${string}`,
+  debtWETH:              '0xf953b3a269d80e3eb0f2947630da976b896a8c5b' as `0x${string}`,
 
   // ── GoodSwap — redeployed to devnet (chain 42069), 2026-04-05 (GOO-395) ──
   PoolManager:           '0xC9a43158891282A2B1475592D5719c001986Aaec' as `0x${string}`,
@@ -69,11 +69,11 @@ export const CONTRACTS = {
   SwapWETH:              '0x7C8BaafA542c57fF9B2B90612bf8aB9E86e22C09' as `0x${string}`,
   SwapUSDC:              '0x0a17FabeA4633ce714F1Fa4a2dcA62C3bAc4758d' as `0x${string}`,
 
-  // ── GoodPerps — deployed to devnet (chain 42069), 2026-04-03 ─────────────
-  PerpEngine:            '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853' as `0x${string}`,
-  MarginVault:           '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707' as `0x${string}`,
-  FundingRate:           '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9' as `0x${string}`,
-  PerpPriceOracle:       '0x286B8DecD5ED79c962b2d8F4346CD97FF0E2C352' as `0x${string}`,
+  // ── GoodPerps — redeployed to devnet (chain 42069), 2026-04-05 (GOO-399) ──
+  PerpEngine:            '0x666d0c3da3dbc946d5128d06115bb4eed4595580' as `0x${string}`,
+  MarginVault:           '0xb22c255250d74b0add1bfb936676d2a299bf48bd' as `0x${string}`,
+  FundingRate:           '0xfd2cf3b56a73c75a7535ffe44ebabe7723c64719' as `0x${string}`,
+  PerpPriceOracle:       '0xf5c4a909455c00b99a90d93b48736f3196db5621' as `0x${string}`,
 
   // ── GoodStocks — redeployed with 12 synthetic stocks (chain 42069), 2026-04-03
   StocksPriceOracle:     '0xD0141E899a65C95a556fE2B27e5982A6DE7fDD7A' as `0x${string}`,
