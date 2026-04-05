@@ -1352,6 +1352,54 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'infra', check: 'no_vercel_analytics_404', passed: false, detail: e.message }); }
 
+  // ═══ TEST 68: Bridge token selector shows expected tokens ═══
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/bridge`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(3000);
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const expectedTokens = ['ETH', 'USDC', 'USDT', 'DAI', 'WETH', 'WBTC'];
+      const foundTokens = expectedTokens.filter(tok => t.includes(tok));
+      const hasFromChain = /from\s*chain|from\s*network|source\s*chain/i.test(t) || document.querySelector('[placeholder*="From"], [aria-label*="from"], select') !== null;
+      const hasToChain = /to\s*chain|to\s*network|dest/i.test(t) || t.includes('GoodDollar L2');
+      const hasNativeBridge = /native\s*bridge/i.test(t);
+      const hasLifi = /li\.?fi|lifi/i.test(t);
+      return { foundTokens, hasFromChain, hasToChain, hasNativeBridge, hasLifi, fullText: t.slice(0, 300) };
+    });
+    totalTests++;
+    const tokenOk = d.foundTokens.length >= 4;
+    const bridgeOk = d.hasNativeBridge || d.hasLifi || d.hasToChain;
+    const passed68 = tokenOk && bridgeOk;
+    const detail = passed68
+      ? `${d.foundTokens.length}/6 tokens found (${d.foundTokens.join(', ')}); native bridge: ${d.hasNativeBridge}`
+      : `Only ${d.foundTokens.length}/6 tokens (${d.foundTokens.join(', ')}); bridgeUI: ${bridgeOk}`;
+    logResult({ page: 'bridge', check: 'token_selector_has_expected_tokens', passed: passed68, detail });
+    if (passed68) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'bridge', check: 'token_selector_has_expected_tokens', passed: false, detail: e.message }); }
+
+  // ═══ TEST 69: Lend page shows mock-data disclaimer ═══
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/lend`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(3000);
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const hasDevnetBanner = /devnet\s*preview|mock\s*data/i.test(t);
+      const hasLendContent = /supply|borrow|apy|utilization/i.test(t);
+      return { hasDevnetBanner, hasLendContent, snippet: t.slice(0, 200) };
+    });
+    totalTests++;
+    const ok = d.hasDevnetBanner && d.hasLendContent;
+    const detail = ok
+      ? 'Devnet/mock disclaimer visible + lend content present'
+      : `disclaimer: ${d.hasDevnetBanner}, lendContent: ${d.hasLendContent} — snippet: ${d.snippet.replace(/\n/g, ' ').slice(0, 100)}`;
+    logResult({ page: 'lend', check: 'mock_data_disclaimer_visible', passed: ok, detail });
+    if (ok) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'lend', check: 'mock_data_disclaimer_visible', passed: false, detail: e.message }); }
+
   await browser.close();
 
   // Summary
