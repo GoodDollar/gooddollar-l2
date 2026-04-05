@@ -88,8 +88,8 @@ contract UBIFeeSplitter {
         
         // Route to destinations
         goodDollar.fundUBIPool(ubiShare);
-        goodDollar.transfer(protocolTreasury, protocolShare);
-        goodDollar.transfer(dAppRecipient, dAppShare);
+        require(goodDollar.transfer(protocolTreasury, protocolShare), "transfer failed");
+        require(goodDollar.transfer(dAppRecipient, dAppShare), "transfer failed");
         
         // Update stats
         totalFeesCollected += totalFee;
@@ -162,10 +162,10 @@ contract UBIFeeSplitter {
         dAppShare = totalFee - ubiShare - protocolShare;
 
         IERC20Transfer t = IERC20Transfer(token);
-        t.transferFrom(msg.sender, address(this), totalFee);
-        t.transfer(ubiRecipient, ubiShare);
-        t.transfer(protocolTreasury, protocolShare);
-        t.transfer(dAppRecipient, dAppShare);
+        require(t.transferFrom(msg.sender, address(this), totalFee), "transferFrom failed");
+        require(t.transfer(ubiRecipient, ubiShare), "transfer failed");
+        require(t.transfer(protocolTreasury, protocolShare), "transfer failed");
+        require(t.transfer(dAppRecipient, dAppShare), "transfer failed");
 
         totalFeesCollected += totalFee;
 
@@ -182,7 +182,7 @@ contract UBIFeeSplitter {
     function releaseToUBI(address recipient, uint256 amount) external {
         require(msg.sender == ubiClaimContract, "Not UBIClaim");
         require(amount <= goodDollar.balanceOf(address(this)), "insufficient balance");
-        goodDollar.transfer(recipient, amount);
+        require(goodDollar.transfer(recipient, amount), "transfer failed");
     }
 
     /**

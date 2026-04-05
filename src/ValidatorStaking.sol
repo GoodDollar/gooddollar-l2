@@ -158,7 +158,7 @@ contract ValidatorStaking {
             _removeFromValidatorList(msg.sender);
         }
 
-        goodDollar.transfer(msg.sender, amount);
+        require(goodDollar.transfer(msg.sender, amount), "transfer failed");
         emit UnstakeCompleted(msg.sender, amount);
     }
 
@@ -238,7 +238,7 @@ contract ValidatorStaking {
         );
         v.lastStakeTime = block.timestamp;
         v.rewardDebt = 0;
-        goodDollar.transfer(msg.sender, rewards);
+        require(goodDollar.transfer(msg.sender, rewards), "transfer failed");
         emit RewardsClaimed(msg.sender, rewards);
     }
 
