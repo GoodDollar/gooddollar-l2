@@ -1,17 +1,15 @@
-'use client'
+import type { Metadata } from 'next'
+import { PerpsSectionNav } from './PerpsSectionNav'
 
-import { SectionNav } from '@/components/SectionNav'
-
-const TABS = [
-  { label: 'Trade', href: '/perps', match: (p: string) => p === '/perps' },
-  { label: 'Portfolio', href: '/perps/portfolio', match: (p: string) => p === '/perps/portfolio' },
-  { label: 'Leaderboard', href: '/perps/leaderboard', match: (p: string) => p === '/perps/leaderboard' },
-]
+export const metadata: Metadata = {
+  title: 'Perpetual Futures',
+  description: 'Trade perpetual futures on GoodDollar L2. Long or short any asset with leverage — every fee funds UBI.',
+}
 
 export default function PerpsLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SectionNav tabs={TABS} />
+      <PerpsSectionNav />
       {children}
     </>
   )

@@ -13,8 +13,22 @@ import { AxeDevTools } from '@/components/AxeDevTools'
 import { Toaster } from '@/components/ui/toast'
 
 export const metadata: Metadata = {
-  title: 'GoodDollar — DeFi That Funds UBI',
+  title: {
+    default: 'GoodDollar — DeFi That Funds UBI',
+    template: '%s | GoodDollar',
+  },
   description: 'Trade, predict, and invest on GoodDollar L2. Every platform interaction automatically funds universal basic income for verified humans worldwide.',
+  openGraph: {
+    title: 'GoodDollar — DeFi That Funds UBI',
+    description: 'Trade, predict, and invest on GoodDollar L2. Every fee funds universal basic income.',
+    siteName: 'GoodDollar',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'GoodDollar — DeFi That Funds UBI',
+    description: 'Trade, predict, and invest on GoodDollar L2. Every fee funds universal basic income.',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

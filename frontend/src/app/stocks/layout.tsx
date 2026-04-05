@@ -1,16 +1,15 @@
-'use client'
+import type { Metadata } from 'next'
+import { StocksSectionNav } from './StocksSectionNav'
 
-import { SectionNav } from '@/components/SectionNav'
-
-const TABS = [
-  { label: 'Markets', href: '/stocks', match: (p: string) => p.startsWith('/stocks') && p !== '/stocks/portfolio' },
-  { label: 'Portfolio', href: '/stocks/portfolio', match: (p: string) => p === '/stocks/portfolio' },
-]
+export const metadata: Metadata = {
+  title: 'Synthetic Stocks',
+  description: 'Trade tokenized equities on GoodDollar L2. Synthetic stocks backed by real price feeds — every fee funds UBI.',
+}
 
 export default function StocksLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SectionNav tabs={TABS} />
+      <StocksSectionNav />
       {children}
     </>
   )
