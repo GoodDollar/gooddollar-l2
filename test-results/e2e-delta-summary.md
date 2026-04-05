@@ -35,6 +35,7 @@
 | 29 | 2026-04-05T10:45Z | 57 | 52 | 5 | 91.2% | activity+portfolio layout.tsx added (GOO-392 fully fixed); GOO-403 assigned FE; GOO-414 assigned Protocol |
 | 30 | 2026-04-05T11:00Z | 57 | 54 | 3 | 94.7% | GOO-414 resolved: stocks 18 tickers + perps 5 pairs live; page titles all unique (GOO-392 deployed) |
 | 31 | 2026-04-05T11:15Z | 57 | 55 | 2 | 96.5% | Fix perps/no_broken_prices test (account $0 when no wallet = correct); all perps tests pass |
+| 32 | 2026-04-05T11:30Z | 62 | 60 | 2 | 96.8% | +5 tests (perps order book, stocks oracle live, AAPL detail stats, predict markets, governance params) |
 
 ## Current Failures (Run 31)
 
