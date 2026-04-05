@@ -1189,6 +1189,45 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'stocks/AAPL', check: 'detail_with_stats', passed: false, detail: e.message }); }
 
+  // ═══ TEST 61: Predict page shows active markets with probabilities ═══
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/predict`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const marketCount = (t.match(/\d+d left/g) || []).length;
+      const hasProbs = /\d{1,3}%\s*chance/.test(t);
+      const hasSharePrices = /Yes \d+¢|No \d+¢/.test(t);
+      const categories = (t.match(/Crypto|Politics|Sports|AI & Tech|World Events/g) || []).length;
+      return { marketCount, hasProbs, hasSharePrices, categories };
+    });
+    const hasMarkets = d.marketCount >= 3 && d.hasProbs && d.hasSharePrices;
+    logResult({ page: 'predict', check: 'active_markets_with_probs', passed: hasMarkets, detail: hasMarkets ? `${d.marketCount} markets, probs=✓, shares=✓, ${d.categories} categories` : `markets=${d.marketCount} probs=${d.hasProbs} shares=${d.hasSharePrices}` });
+    if (hasMarkets) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'predict', check: 'active_markets_with_probs', passed: false, detail: e.message }); }
+
+  // ═══ TEST 62: Governance page shows protocol parameters ═══
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/governance`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const hasParams = /Proposal Threshold|Quorum|Voting Period/i.test(t);
+      const hasVeToken = /veG\$|voting power|lock/i.test(t);
+      const paramCount = (t.match(/\d+%|\d+ day/g) || []).length;
+      return { hasParams, hasVeToken, paramCount };
+    });
+    const hasGovData = d.hasParams && d.hasVeToken;
+    logResult({ page: 'governance', check: 'protocol_parameters', passed: hasGovData, detail: hasGovData ? `Params visible (${d.paramCount} numeric values), veG$ voting=✓` : `params=${d.hasParams} veToken=${d.hasVeToken}` });
+    if (hasGovData) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'governance', check: 'protocol_parameters', passed: false, detail: e.message }); }
+
   await browser.close();
 
   // Summary
