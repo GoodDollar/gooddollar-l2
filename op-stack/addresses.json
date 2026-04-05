@@ -1,5 +1,5 @@
 {
-    "_comment": "GoodDollar L2 contract addresses \u2014 updated 2026-04-05 (GOO-450/402 fix: new UBIFeeSplitter+PerpEngine)",
+    "_comment": "GoodDollar L2 contract addresses \u2014 updated 2026-04-05 (GOO-475 fix: governance redeployed with canonical UBIFeeSplitter)",
     "chain_id": 42069,
     "chain_name": "GoodDollar L2 Devnet",
     "rpc_url": "https://rpc.goodclaw.org",
@@ -22,8 +22,8 @@
         "CollateralVault": "0xca57c1d3c2c35e667745448fef8407dd25487ff8",
         "CollateralVault_WRONG_GDT": "0x56D13Eb21a625EdA8438F55DF2C31dC3632034f5",
         "SyntheticAssetFactory": "0x2d13826359803522cce7a4cfa2c1b582303dd0b4",
-        "VoteEscrowedGD": "0x02b0b4efd909240fcb2eb5fae060dc60d112e3a4",
-        "GoodDAO": "0x638a246f0ec8883ef68280293ffe8cfbabe61b44",
+        "VoteEscrowedGD": "0x8B64968F69E669faCc86FA3484FD946f1bBE7c91",
+        "GoodDAO": "0x9A86494Ba45eE1f9EEed9cFC0894f6C5d13a1F0b",
         "GoodLendPool": "0x49fd2be640db2910c2fab69bb8531ab6e76127ff",
         "GoodSwapRouter": "0x975ab64f4901af5f0c96636dea0b9de3419d0c2f",
         "SwapPriceOracle": "0x696358bbb1a743052e0e87bed78aad9d18f0e1f4",

@@ -95,9 +95,9 @@ export const CONTRACTS = {
   sNFLX:                 '0x3B156D26a707de6E792Af47D5890E11D124F8D6C' as `0x${string}`,
   sAMD:                  '0x85eD4d86A147a281569Dac55DA64D74d9fF53409' as `0x${string}`,
 
-  // ── Governance — redeployed 2026-04-04 (GOO-313, GOO-238) ──────────────────
-  VoteEscrowedGD:        '0x0B7108B29ad73097cF7E549D542915348d885e5f' as `0x${string}`,
-  GoodDAO:               '0x53AAfBd184086d72fA233AE83e1a7B1339B5415C' as `0x${string}`,
+  // ── Governance — redeployed 2026-04-05 (GOO-475): fixed ubiFeeSplitter 0x3abBB0D6 ──
+  VoteEscrowedGD:        rawAddresses.contracts.VoteEscrowedGD as `0x${string}`,
+  GoodDAO:               rawAddresses.contracts.GoodDAO as `0x${string}`,
   GoodTimelock:          '0xF66CfDf074D2FFD6A4037be3A669Ed04380Aef2B' as `0x${string}`,
 
   // ── GoodStable — CDP vault system (chain 42069), redeployed 2026-04-04 (GOO-298) ─

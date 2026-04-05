@@ -18,7 +18,7 @@ contract DeployGovernance is Script {
     function run() external {
         // Addresses updated after devnet reset (GOO-363 redeploy)
         address gdToken = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
-        address ubiFeeSplitter = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
+        address ubiFeeSplitter = 0x3abBB0D6ad848d64c8956edC9Bf6f18aC22E1485; // canonical splitter (GOO-402)
         address deployer = msg.sender;
 
         vm.startBroadcast();
