@@ -32,6 +32,7 @@
 | 26 | 2026-04-05T02:00Z | 56 | 45 | 11 | 80.4% | +1 test (a11y skip link); GOO-401 filed: 54 commits undeployed, pipeline stuck |
 | 27 | 2026-04-05T03:00Z | 57 | 45 | 12 | 78.9% | +1 test (WalletConnect); GOO-401 assigned to DevOps; GOO-403 filed (WC placeholder) |
 | 28 | 2026-04-05T10:15Z | 57 | 52 | 5 | 91.2% | **GOO-276 FIXED** — 7 canaries now pass; test fixes (activity, swap_form, no_errors, perps msg); GOO-414 filed |
+| 29 | 2026-04-05T10:45Z | 57 | 52 | 5 | 91.2% | activity+portfolio layout.tsx added (GOO-392 fully fixed); GOO-403 assigned FE; GOO-414 assigned Protocol |
 
 ## Current Failures (Run 28)
 
