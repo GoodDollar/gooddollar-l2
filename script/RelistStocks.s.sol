@@ -12,9 +12,9 @@ import "../src/stocks/PriceOracle.sol";
  *         and sets manual prices on the existing (verified) PriceOracle.
  */
 contract RelistStocks is Script {
-    address constant FACTORY = 0xd9140951d8aE6E5F625a02F5908535e16e3af964;
-    address constant VAULT   = 0x56D13Eb21a625EdA8438F55DF2C31dC3632034f5;
-    address constant ORACLE  = 0xD0141E899a65C95a556fE2B27e5982A6DE7fDD7A;
+    address constant FACTORY = 0xd710a67624Ad831683C86a48291c597adE30F787;
+    address constant VAULT   = 0xd30bF3219A0416602bE8D482E0396eF332b0494E;
+    address constant ORACLE  = 0xa4E00CB342B36eC9fDc4B50b3d527c3643D4C49e;
 
     struct Stock { string ticker; string name; uint256 price; }
 
