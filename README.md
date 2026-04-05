@@ -6,29 +6,48 @@
 
 ---
 
-## 📦 Version Status
+## 📦 Version & Health Status
 
-
-| Component | Version | Status |
-|-----------|---------|--------|
-| **GoodDollar L2** (root) | `0.2.0` | 🟢 Active |
-| Frontend (GoodSwap) | `0.2.0` | 🟢 Live |
-| SDK | `0.2.0` | 🟢 Published |
-| Backend — Activity Reporter | `0.2.0` | 🟢 Running |
-| Backend — Bridge Keeper | `0.2.0` | 🟢 Running |
-| Backend — Harvest Keeper | `0.2.0` | 🟢 Running |
-| Backend — Indexer | `0.2.0` | 🟢 Running |
-| Backend — Liquidator | `0.2.0` | 🟢 Running |
-| Backend — Monitor | `0.2.0` | 🟢 Running |
-| Backend — Perps | `0.2.0` | 🟢 Running |
-| Backend — Predict | `0.2.0` | 🟢 Running |
-| Backend — Revenue Tracker | `0.2.0` | 🟢 Running |
-| Backend — Rpc Balancer | `0.2.0` | 🟢 Running |
-| Backend — Stocks Keeper | `1.1.0` | 🟢 Running |
-| Backend — Swap Oracle | `1.1.0` | 🟢 Running |
-
+| Component | Version | Status | Details |
+|-----------|---------|--------|---------|
+| **GoodDollar L2** (root) | `0.2.0` | 🟢 Active | 426 commits, 53 contracts, 12.8K lines Solidity |
+| **Smart Contracts** | `0.2.0` | ✅ All passing | 837/837 Foundry tests pass, 0 failures |
+| **Devnet Chain** (Anvil) | — | ✅ Running | Block 62,438 · 2,276 txs · 199 addresses · Chain ID 42069 |
+| Frontend (GoodSwap) | `0.2.0` | ✅ Live | goodswap.goodclaw.org (HTTP 200) · 208 files · Next.js 14 |
+| Explorer (Blockscout) | — | ✅ Live | explorer.goodclaw.org (HTTP 200) |
+| Landing Page | — | ✅ Live | goodclaw.org (HTTP 200) |
+| RPC Endpoint | — | ⚠️ Degraded | rpc.goodclaw.org returns 400 (local :8545 works fine) |
+| SDK | `0.2.0` | ✅ Built | @gooddollar/agent-sdk |
+| Backend — Perps | `0.2.0` | ✅ Running (PM2) | Port 8082 · BTC/ETH/SOL markets · WebSocket + REST |
+| Backend — Predict | `0.2.0` | ⚠️ Paper-trading | Port 3040 · On-chain contract init fails — paper mode fallback |
+| Backend — Activity Reporter | `0.2.0` | ⛔ Code only | Not running as service |
+| Backend — Bridge Keeper | `0.2.0` | ⛔ Code only | Not running as service |
+| Backend — Harvest Keeper | `0.2.0` | ⛔ Code only | Not running as service |
+| Backend — Indexer | `0.2.0` | ⛔ Code only | Not running as service |
+| Backend — Liquidator | `0.2.0` | ⛔ Code only | Not running as service |
+| Backend — Monitor | `0.2.0` | ⛔ Code only | Not running as service |
+| Backend — Revenue Tracker | `0.2.0` | ⛔ Code only | Not running as service |
+| Backend — RPC Balancer | `0.2.0` | ⛔ Code only | Not running as service |
+| Backend — Stocks Keeper | `1.1.0` | ⛔ Code only | Not running as service |
+| Backend — Swap Oracle | `1.1.0` | ⛔ Code only | Not running as service |
+| Paperclip (Agents) | — | 🔴 Stopped | Intentionally paused |
+| Autobuilder | — | 🔴 Paused | All 3 cron jobs disabled |
 
-> *Updated: 2026-04-05*
+### Frontend E2E Tests: 45/57 passing (78.9%)
+- **Key blocker:** GOO-276 (CSP inline script violations) — causes 6+ canary failures
+- **Working pages:** Swap, Explore, Stocks, Perps, Predict, Bridge, Pool, Portfolio, Stable, Yield, UBI Impact, Lend, Agents, 404
+- **Issues:** WalletConnect placeholder (GOO-403), stock live prices need RPC fix
+
+### Known Issues
+| Issue | Severity | Description |
+|-------|----------|-------------|
+| GOO-276 | 🚨 Critical | CSP violations — 6 inline scripts blocked, breaks hydration + RPC |
+| GOO-403 | 🟡 Medium | WalletConnect button shows placeholder text |
+| Predict contracts | 🟡 Medium | MarketFactory.marketCount() returns empty — paper-trading fallback |
+| RPC proxy | 🟡 Medium | rpc.goodclaw.org returns 400 (Caddy config, local RPC works) |
+| 10 backends | ℹ️ Info | Code written but never started as services |
+
+> *Updated: 2026-04-05 — honest status audit*
 
 ---
 
