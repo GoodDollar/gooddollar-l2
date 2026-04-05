@@ -41,19 +41,20 @@
 | 35 | 2026-04-05T15:15Z | 67 | 61 | 6 | 91.0% | Fix oracle tests — were false-positive passing; now correctly fail for GOO-451 |
 | 36 | 2026-04-05T15:30Z | 67 | 61 | 6 | 91.0% | No change — oracle/deploy pipeline still stuck |
 | 37 | 2026-04-05T15:45Z | 69 | 61 | 8 | 88.4% | +2 tests (bridge token selector ✅, lend mock disclaimer ✅); canary failures expected |
+| 38 | 2026-04-05T16:00Z | 69 | 65 | 4 | 94.2% | No new tests; GOO-445+GOO-472 confirmed deployed; +4 real failures remain |
+| 39 | 2026-04-05T16:15Z | 70 | 65 | 5 | 92.9% | +1 test (governance/params_read_from_chain ❌); GOO-480 filed: governance page never reads contract |
 
-## Current Failures (Run 37)
+## Current Failures (Run 39)
 
 | Page | Check | Status | Root Cause | Ticket |
 |------|-------|--------|------------|--------|
 | stocks | live_prices_from_oracle | 🔴 HIGH | 48 RPC calls all return 0 — oracle not seeded; page shows hardcoded fallback prices | [GOO-451](/GOO/issues/GOO-451) |
 | stocks | oracle_rpc_nonzero | 🔴 HIGH | All RPC responses zero — setManualPrice() not called against correct oracle | [GOO-451](/GOO/issues/GOO-451) |
-| stocks | disclaimer_updated_goo445 | ✅ PASS | Deployed — "sourced from on-chain oracle" copy live | [GOO-445](/GOO/issues/GOO-445) |
-| infra | no_vercel_analytics_404 | ✅ PASS | Deployed — no Vercel 404s detected | [GOO-472](/GOO/issues/GOO-472) |
+| governance | params_read_from_chain | 🔴 HIGH | 0 RPC calls on /governance — all params hardcoded in frontend JSX, never read from GoodDAO contract | [GOO-480](/GOO/issues/GOO-480) |
 | infra | walletconnect_project_id | 🔴 HIGH | Code fixed (2df9cd2) but env var NEXT_PUBLIC_WC_PROJECT_ID not set | [GOO-403](/GOO/issues/GOO-403) |
 | explorer/address | transactions_visible | Known bug | Blockscout infra issue | [GOO-193](/GOO/issues/GOO-193) |
 
-> **Key finding Run 37:** +2 new tests added — bridge token selector (6/6 tokens ETH/USDC/USDT/DAI/WETH/WBTC ✅) and lend mock-data disclaimer ✅. GOO-445 and GOO-472 now passing — those fixes deployed. GOO-451 (oracle seeding) and GOO-403 (WalletConnect env var) remain open.
+> **Key finding Run 39:** New test `governance/params_read_from_chain` confirms /governance page makes 0 RPC calls — Voting Period/Delay shown ("3 days"/"1 day") are hardcoded JSX strings. Users see fictional governance params. GOO-480 filed (FE) + GOO-475 (Protocol: on-chain values also 0).
 
 > **GOO-276 fully resolved.** **GOO-392 fully resolved.** **GOO-472 deployed** (f3a477f). **GOO-445 deployed** (862d5f6).
 

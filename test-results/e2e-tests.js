@@ -1400,6 +1400,56 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'lend', check: 'mock_data_disclaimer_visible', passed: false, detail: e.message }); }
 
+  // ═══ TEST 70: Governance page reads params from on-chain contract ═══
+  // GOO-475: votingDelay=0 votingPeriod=0 on-chain. GOO-NEW: page never reads from contract.
+  // Currently FAILS because governance page makes 0 RPC calls — params are hardcoded in UI.
+  // Will auto-pass when frontend is wired to read GoodDAO contract + params are non-zero.
+  try {
+    const page = await context.newPage();
+    const govRpcCalls = [];
+    const govNonZero = [];
+    page.on('request', req => {
+      if (req.url().includes('rpc.goodclaw.org')) govRpcCalls.push(1);
+    });
+    page.on('response', async res => {
+      if (res.url().includes('rpc.goodclaw.org')) {
+        try {
+          const body = await res.text();
+          const d = JSON.parse(body);
+          const results = Array.isArray(d) ? d.map(x => x?.result) : [d?.result];
+          results.forEach(r => {
+            if (r && r !== '0x' && r !== '0x' + '0'.repeat(64)) govNonZero.push(1);
+          });
+        } catch {}
+      }
+    });
+    await page.goto(`${FRONTEND_URL}/governance`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(4000);
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const hasVotingPeriod = /voting\s*period.*\d/i.test(t);
+      const hasVotingDelay = /voting\s*delay.*\d/i.test(t);
+      const hasZeroParams = /voting\s*(period|delay).*0\s*(seconds|block)/i.test(t);
+      return { hasVotingPeriod, hasVotingDelay, hasZeroParams };
+    });
+    totalTests++;
+    const readsOnChain = govRpcCalls.length > 0 && govNonZero.length > 0;
+    const passed70 = readsOnChain && !d.hasZeroParams;
+    let detail70;
+    if (govRpcCalls.length === 0) {
+      detail70 = '0 RPC calls — governance params hardcoded in frontend, never read from GoodDAO contract (GOO-476)';
+    } else if (govNonZero.length === 0) {
+      detail70 = `${govRpcCalls.length} RPC calls but all return 0 — votingDelay/votingPeriod=0 on-chain (GOO-475)`;
+    } else if (d.hasZeroParams) {
+      detail70 = `RPC calls active but params show 0 — GOO-475 fix needed`;
+    } else {
+      detail70 = `${govRpcCalls.length} RPC calls, ${govNonZero.length} non-zero — governance params live`;
+    }
+    logResult({ page: 'governance', check: 'params_read_from_chain', passed: passed70, detail: detail70 });
+    if (passed70) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'governance', check: 'params_read_from_chain', passed: false, detail: e.message }); }
+
   await browser.close();
 
   // Summary
