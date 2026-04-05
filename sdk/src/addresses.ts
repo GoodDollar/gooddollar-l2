@@ -22,9 +22,10 @@ export const ADDRESSES = {
   ConditionalTokens: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
   MarketFactory: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318',
 
-  // Stocks / Synthetics
-  CollateralVault: '0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e',
-  SyntheticAssetFactory: '0x610178dA211FEf7D417bC0e6FeD39F05609AD788',
+  // Stocks / Synthetics — redeployed 2026-04-05 (GOO-414)
+  StocksPriceOracle: '0x20d7B364E8Ed1F4260b5B90C41c2deC3C1F6D367',
+  CollateralVault: '0xCa57C1d3c2c35E667745448Fef8407dd25487ff8',
+  SyntheticAssetFactory: '0x2d13826359803522cCe7a4Cfa2c1b582303DD0B4',
 
   // Lending
   GoodLendPool: '0x322813Fd9A801c5507C9de605D63ceA4f2Ce6C44',

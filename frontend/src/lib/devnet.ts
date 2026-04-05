@@ -28,8 +28,8 @@ export const DEVNET_EXPLORER_URL: string = rawAddresses.explorer_url
  * were deployed on 2026-04-03 and are listed here directly.
  *
  * GoodStocks contracts (CollateralVault, SyntheticAssetFactory,
- * StocksPriceOracle) were redeployed on 2026-04-03 with 12 synthetic equities
- * — those addresses below take precedence over the original addresses.json values.
+ * StocksPriceOracle) were redeployed on 2026-04-05 (GOO-414) with 12 synthetic
+ * equities — those addresses below take precedence over the original addresses.json values.
  */
 export const CONTRACTS = {
   // ── Core (from op-stack/addresses.json) ──────────────────────────────────
@@ -75,23 +75,23 @@ export const CONTRACTS = {
   FundingRate:           '0xfd2cf3b56a73c75a7535ffe44ebabe7723c64719' as `0x${string}`,
   PerpPriceOracle:       '0xf5c4a909455c00b99a90d93b48736f3196db5621' as `0x${string}`,
 
-  // ── GoodStocks — redeployed with 12 synthetic stocks (chain 42069), 2026-04-03
-  StocksPriceOracle:     '0xD0141E899a65C95a556fE2B27e5982A6DE7fDD7A' as `0x${string}`,
-  CollateralVault:       '0x56D13Eb21a625EdA8438F55DF2C31dC3632034f5' as `0x${string}`,
-  SyntheticAssetFactory: '0xd9140951d8aE6E5F625a02F5908535e16e3af964' as `0x${string}`,
+  // ── GoodStocks — redeployed with 12 synthetic stocks (chain 42069), 2026-04-05 (GOO-414)
+  StocksPriceOracle:     '0x20d7B364E8Ed1F4260b5B90C41c2deC3C1F6D367' as `0x${string}`,
+  CollateralVault:       '0xCa57C1d3c2c35E667745448Fef8407dd25487ff8' as `0x${string}`,
+  SyntheticAssetFactory: '0x2d13826359803522cCe7a4Cfa2c1b582303DD0B4' as `0x${string}`,
   // Synthetic stock tokens (sToken ERC-20s)
-  sAAPL:                 '0x9587cd15faa3E816127F4FDaE090c40Dd5248Af6' as `0x${string}`,
-  sTSLA:                 '0x50BF91221d69370f534a8898159A80b1CBd12B72' as `0x${string}`,
-  sNVDA:                 '0x59ed2002eDA2BbF12fdD28755A28638eb90b1a41' as `0x${string}`,
-  sMSFT:                 '0x2AB7856411662E5c3452BFa63fFB626e2594C088' as `0x${string}`,
-  sAMZN:                 '0x43cA2d043964cFde45405367036f9eC991301918' as `0x${string}`,
-  sGOOGL:                '0xf2Da7A9324397eBe46b5fA2eCf2C2852afece06b' as `0x${string}`,
-  sMETA:                 '0xbbE5C4aDb5170717b658550c2e5cA49C791E4ca5' as `0x${string}`,
-  sJPM:                  '0x0aD41337532BfedCa58815b13cF8960fCabD9975' as `0x${string}`,
-  sV:                    '0xf17726B913d04950D62A79CFc141a8D090344791' as `0x${string}`,
-  sDIS:                  '0x60039b5e160972673B5865CE82DfEeE35D8e94a6' as `0x${string}`,
-  sNFLX:                 '0x63dF691A295f0c59980bC0B388B26E897885C603' as `0x${string}`,
-  sAMD:                  '0xeBE18012222d1bDdA9eaFeD66d3259c11fbebd61' as `0x${string}`,
+  sAAPL:                 '0x5CD50EA9490889cd9bF0Be5E4B7d14d10BafcA2B' as `0x${string}`,
+  sTSLA:                 '0x65703FC15C25bf6CC2d6B8c17B50020F14F0DE01' as `0x${string}`,
+  sNVDA:                 '0xF31b86A295a6006c81c795d00f123FeB5Afdf472' as `0x${string}`,
+  sMSFT:                 '0x99F3D3F8feE4e5aCA92927c5E8D0495b8d008480' as `0x${string}`,
+  sAMZN:                 '0x66e356591Fcf2A44D85Fb48a0DcB89b4EaFeF39d' as `0x${string}`,
+  sGOOGL:                '0x525679c456C772EA5a44ac83696677b473fcb7EA' as `0x${string}`,
+  sMETA:                 '0x863dDb1Dd6D87CA97eCDee7A330890914C185e01' as `0x${string}`,
+  sJPM:                  '0x0e4cFDa4118D7B73619ccCe1f7E7d83bdAb6BA84' as `0x${string}`,
+  sV:                    '0xb30C073428D029Af183475F44BEAeD4bBfa0A039' as `0x${string}`,
+  sDIS:                  '0xB32580EbF3d5Ae6365B191D19233777A324DcC0f' as `0x${string}`,
+  sNFLX:                 '0xE86b8E2b0952B04885df6063df92484bc2006B0a' as `0x${string}`,
+  sAMD:                  '0xD327c8301A078DaA271dd357Ddd63A8432219308' as `0x${string}`,
 
   // ── Governance — redeployed 2026-04-04 (GOO-313, GOO-238) ──────────────────
   VoteEscrowedGD:        '0x0B7108B29ad73097cF7E549D542915348d885e5f' as `0x${string}`,
