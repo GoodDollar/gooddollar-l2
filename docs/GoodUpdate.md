@@ -1,4 +1,4 @@
-# 🟢 GoodUpdate — 2026-04-04
+# 🟢 GoodUpdate — 2026-04-05
 
 > Daily status report for GoodDollar L2
 
@@ -12,9 +12,9 @@
 | Metric | Value |
 |--------|-------|
 | Version | `0.1.0` |
-| Commits (24h) | 172 |
-| Chain | 53,201 blocks · 915 txs · 110 addresses |
-| Agents | 29 total (10 active, 19 paused) · $588 spend |
+| Commits (24h) | 102 |
+| Chain | 62,438 blocks · 2,220 txs · 195 addresses |
+| Agents | 29 total (11 active, 18 paused) · $808 spend |
 
 ---
 
@@ -22,18 +22,18 @@
 
 | # | Project | Version | Link | Status | Latest |
 |---|---------|---------|------|--------|--------|
-| 1 | GoodSwap | `0.1.0` | [goodswap.goodclaw.org](https://goodswap.goodclaw.org) · [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src/GoodSwap.sol) | ✅ Live | ERC-20 return value audit fix + UBIFeeHook redeployed with correct afterSwap flag |
-| 2 | GoodPerps | `0.1.0` | [PM2: goodperps](https://paperclip.goodclaw.org) · [code](https://github.com/yoniassia/gooddollar-l2/tree/main/backend/perps) | ✅ Live | Multi-venue SOR running with Hyperliquid/GMX/dYdX routing + Pyth oracle keeper |
-| 3 | GoodPredict | `0.1.0` | [PM2: goodpredict](https://paperclip.goodclaw.org) · [code](https://github.com/yoniassia/gooddollar-l2/tree/main/backend/predict) | ✅ Live | OptimisticResolver deployed — bonded propose/dispute/finalize for market resolution |
-| 4 | GoodLend | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src) | ✅ Live | Aave V3 fork with flash loans + liquidation bot running continuously |
-| 5 | GoodStable | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src) | ✅ Live | PSM solvency fix — gross-issuance tracking prevents bypass + splitFeeToken fix |
-| 6 | GoodStocks | `1.0.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/backend/stocks-keeper) | ✅ Live | 12 synthetic stocks deployed with MIN_DEPOSIT guard on CollateralVault |
-| 7 | GoodYield | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src) | ✅ Live | Share inflation protection (+1 offset) + harvest over-distribution fix shipped |
-| 8 | GoodBridge | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/backend/bridge-keeper) | ✅ Live | FastWithdrawalLP UBI pool address fix + multi-chain Li.Fi router running |
-| 9 | Governance | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src) | ✅ Live | veG$ + GoodDAO + Timelock deployed with analytics dashboard |
-| 10 | Agent SDK | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/sdk) | ✅ Published | Agent Registry on-chain + activity reporter keeper + registration frontend |
-| 11 | UBI Impact | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src/UBIRevenueTracker.sol) | ✅ Live | Revenue tracker address fix — per-protocol fee accounting now correct |
-| 12 | Infrastructure | — | [explorer.goodclaw.org](https://explorer.goodclaw.org) · [rpc.goodclaw.org](https://rpc.goodclaw.org) | ✅ Live | CI/CD pipeline with GitHub Actions + release-please + health checker deployed |
+| 1 | GoodSwap | `0.1.0` | [goodswap.goodclaw.org](https://goodswap.goodclaw.org) · [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src/GoodSwap.sol) | ✅ Live | LimitOrderBook deployed + reentrancy fix + GoodSwapRouter UniV2 AMM on devnet |
+| 2 | GoodPerps | `0.1.0` | [PM2: goodperps](https://paperclip.goodclaw.org) · [code](https://github.com/yoniassia/gooddollar-l2/tree/main/backend/perps) | ✅ Live | Full perps stack redeployed on devnet + PerpEngine deploy script + SOL/BNB/MATIC/ARB oracle prices |
+| 3 | GoodPredict | `0.1.0` | [PM2: goodpredict](https://paperclip.goodclaw.org) · [code](https://github.com/yoniassia/gooddollar-l2/tree/main/backend/predict) | ✅ Live | OptimisticResolver deployed — ConditionalTokens cleaned from redeploy list |
+| 4 | GoodLend | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src) | ✅ Live | Aave V3-compatible supply/withdraw overloads added (GOO-370) |
+| 5 | GoodStable | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src) | ✅ Live | epochBoundaryScaleIndex fix + gainSnapshots reset + drainEpoch protection + scaleIndex + full suite redeployed |
+| 6 | GoodStocks | `1.0.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/backend/stocks-keeper) | ✅ Live | Redeployed on devnet with ValidatorStaking deploy script |
+| 7 | GoodYield | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src) | ✅ Live | StablecoinStrategy gain claiming fix + totalDebt underflow clamp + setVault access control |
+| 8 | GoodBridge | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/backend/bridge-keeper) | ✅ Live | FastWithdrawalLP UBI pool fix + multi-chain Li.Fi router running |
+| 9 | Governance | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src) | ✅ Live | VoteEscrowedGD + GoodDAO redeployed with correct GDT address (GOO-313) |
+| 10 | Agent SDK | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/sdk) | ✅ Published | Agent Registry on-chain + activity reporter + registration frontend — all complete |
+| 11 | UBI Impact | `0.1.0` | [code](https://github.com/yoniassia/gooddollar-l2/tree/main/src/UBIRevenueTracker.sol) | ✅ Live | UBIFeeSplitter address updated to canonical 0xc0bf43a4 |
+| 12 | Infrastructure | — | [explorer.goodclaw.org](https://explorer.goodclaw.org) · [rpc.goodclaw.org](https://rpc.goodclaw.org) | ✅ Live | Anvil state persistence + redeploy-check script + CI/CD pipeline with GitHub Actions |
 
 ---
 
@@ -41,12 +41,12 @@
 
 | Agent | Spent | What They Did |
 |-------|-------|---------------|
-| [Lead Blockchain Engineer](https://paperclip.goodclaw.org) | $162 | Contract fixes — UBIFeeHook, GoodStable solvency, CollateralVault guards, OptimisticResolver |
-| [Lead Frontend Engineer](https://paperclip.goodclaw.org) | $101 | UX audit — responsive grids, live price feeds, UBI Impact page fixes |
-| [Chief Architect](https://paperclip.goodclaw.org) | $51 | Architecture oversight, workstream coordination |
-| [Tester Alpha](https://paperclip.goodclaw.org) | $45 | Continuous swap & lending contract testing per block |
-| [DevOps Engineer](https://paperclip.goodclaw.org) | $41 | CI/CD pipeline, GitHub Actions, release-please, versioning |
-| [Security & Quality Lead](https://paperclip.goodclaw.org) | $37 | GoodSwap audit — ERC-20 return value checks |
+| [Lead Blockchain Engineer](https://paperclip.goodclaw.org) | $234 | GoodStable epoch/drain/scale fixes, GoodYield access control, LimitOrderBook, deploy scripts |
+| [Lead Frontend Engineer](https://paperclip.goodclaw.org) | $110 | AnimatedNumber spring counter, Toast system, Framer Motion transitions, Geist font, WCAG AA fixes |
+| [Tester Alpha](https://paperclip.goodclaw.org) | $108 | 22 iterations — 720/720 pass, verified 12+ bug fixes, filed GOO-376 |
+| [Tester Gamma](https://paperclip.goodclaw.org) | $65 | Stocks stress testing — rapid-fire tx bursts, edge cases, CollateralVault boundary tests |
+| [Chief Architect](https://paperclip.goodclaw.org) | $60 | Architecture oversight, workstream coordination, code quality gates |
+| [DevOps Engineer](https://paperclip.goodclaw.org) | $59 | GitHub Actions CI/CD, release-please, Anvil state persistence, health check scripts |
 
 ---
 
