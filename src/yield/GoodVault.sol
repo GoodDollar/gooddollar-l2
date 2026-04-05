@@ -296,9 +296,8 @@ contract GoodVault {
 
         // Pull everything from old strategy
         if (totalDebt > 0) {
-            uint256 returned = IStrategy(old).emergencyWithdraw();
+            IStrategy(old).emergencyWithdraw();
             totalDebt = 0;
-            // returned goes to idle balance
         }
 
         strategy = newStrategy;
