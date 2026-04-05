@@ -28,6 +28,10 @@ interface IStrategy {
     function paused() external view returns (bool);
 }
 
+interface IStrategyWithGains {
+    function sweepGains(address token, address to) external;
+}
+
 interface IUBIFeeSplitter {
     function splitFeeToken(uint256 totalFee, address dAppRecipient, address token) external;
 }
@@ -379,7 +383,7 @@ contract GoodVault {
         depositCap = _cap;
     }
 
-    /// @notice Recover any non-asset token stranded in this vault (e.g. liquidation gains forwarded by strategy).
+    /// @notice Recover any non-asset token stranded in this vault.
     function sweepToken(address token, address to) external onlyAdmin {
         if (token == address(asset)) revert CannotSweepAsset();
         uint256 bal = IERC20(token).balanceOf(address(this));
@@ -387,6 +391,12 @@ contract GoodVault {
             if (!IERC20(token).transfer(to, bal)) revert TransferFailed();
             emit TokenSwept(token, to, bal);
         }
+    }
+
+    /// @notice Recover any non-asset token stranded in the strategy (e.g. WETH liquidation gains).
+    ///         Calls strategy.sweepGains(); strategy must implement IStrategyWithGains.
+    function sweepStrategyToken(address token, address to) external onlyAdmin {
+        IStrategyWithGains(strategy).sweepGains(token, to);
     }
 
     function setKeeper(address keeper, bool enabled) external onlyAdmin {

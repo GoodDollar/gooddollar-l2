@@ -639,4 +639,36 @@ contract StablecoinStrategyTest is Test {
         assertEq(returned, 0);
         assertTrue(strategy.paused());
     }
+
+    // ─── sweepGains ──────────────────────────────────────────────────────────
+
+    function test_sweepGains_recoversGainToken() public {
+        // Simulate WETH gains accumulated in strategy after harvest
+        gainToken.mint(address(strategy), 3 ether);
+
+        address recipient = address(0xBEEF);
+        vm.prank(vault);
+        strategy.sweepGains(address(gainToken), recipient);
+
+        assertEq(gainToken.balanceOf(recipient), 3 ether);
+        assertEq(gainToken.balanceOf(address(strategy)), 0);
+    }
+
+    function test_sweepGains_noopOnZeroBalance() public {
+        // Should not revert when there is nothing to sweep
+        vm.prank(vault);
+        strategy.sweepGains(address(gainToken), address(0xBEEF));
+        assertEq(gainToken.balanceOf(address(0xBEEF)), 0);
+    }
+
+    function test_sweepGains_revertsForAsset() public {
+        vm.prank(vault);
+        vm.expectRevert(StablecoinStrategy.CannotSweepAsset.selector);
+        strategy.sweepGains(address(gUSD), address(0xBEEF));
+    }
+
+    function test_sweepGains_revertsNonVault() public {
+        vm.expectRevert(StablecoinStrategy.NotVault.selector);
+        strategy.sweepGains(address(gainToken), address(0xBEEF));
+    }
 }

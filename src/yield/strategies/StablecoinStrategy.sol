@@ -41,6 +41,7 @@ contract StablecoinStrategy {
     error NotVault();
     error IsPaused();
     error TransferFailed();
+    error CannotSweepAsset();
 
     modifier onlyVault() {
         if (msg.sender != vault) revert NotVault();
@@ -106,8 +107,7 @@ contract StablecoinStrategy {
         uint256 currentBal = stabilityPool.deposits(address(this));
 
         // Claim collateral gains (e.g. WETH from liquidations) and accumulate in strategy.
-        // Gains are NOT forwarded to the vault; admin recovers them via a dedicated sweep path.
-        // See GoodVault.sweepToken() for stranded-token recovery.
+        // Gains are NOT forwarded to the vault; admin recovers them via GoodVault.sweepStrategyToken().
         if (gainToken != address(0)) {
             stabilityPool.claimGains();
             uint256 gained = IERC20(gainToken).balanceOf(address(this));
@@ -126,6 +126,16 @@ contract StablecoinStrategy {
         }
 
         emit Harvested(profit, loss);
+    }
+
+    /// @notice Recover any non-asset token stranded in this strategy (e.g. WETH liquidation gains).
+    ///         Only callable by the vault, which gates it via onlyAdmin in GoodVault.sweepStrategyToken().
+    function sweepGains(address token, address to) external onlyVault {
+        if (token == asset) revert CannotSweepAsset();
+        uint256 bal = IERC20(token).balanceOf(address(this));
+        if (bal > 0) {
+            if (!IERC20(token).transfer(to, bal)) revert TransferFailed();
+        }
     }
 
     function emergencyWithdraw() external onlyVault returns (uint256) {

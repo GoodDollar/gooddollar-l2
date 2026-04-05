@@ -108,6 +108,11 @@ contract MockStrategy {
     function setGrowth(uint256 amount) external {
         simulatedGrowth = amount;
     }
+
+    function sweepGains(address token, address to) external {
+        uint256 bal = MockERC20(token).balanceOf(address(this));
+        if (bal > 0) MockERC20(token).transfer(to, bal);
+    }
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -491,6 +496,25 @@ contract GoodYieldTest is Test {
         vm.prank(alice);
         vm.expectRevert(GoodVault.NotAdmin.selector);
         vault.sweepToken(address(stranded), alice);
+    }
+
+    // ─── sweepStrategyToken ───
+
+    function test_sweepStrategyToken_forwardsToStrategy() public {
+        MockERC20 gainToken = new MockERC20("WETH", "WETH");
+        gainToken.mint(address(strategy), 4 ether);
+
+        vault.sweepStrategyToken(address(gainToken), address(this));
+
+        assertEq(gainToken.balanceOf(address(this)), 4 ether);
+        assertEq(gainToken.balanceOf(address(strategy)), 0);
+    }
+
+    function test_sweepStrategyToken_revertsNonAdmin() public {
+        MockERC20 gainToken = new MockERC20("WETH", "WETH");
+        vm.prank(alice);
+        vm.expectRevert(GoodVault.NotAdmin.selector);
+        vault.sweepStrategyToken(address(gainToken), alice);
     }
 
     // ─── ERC-20 ───
