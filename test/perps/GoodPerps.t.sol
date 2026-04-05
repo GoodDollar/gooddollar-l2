@@ -712,6 +712,27 @@ contract GoodPerpsTest is Test {
         assertEq(vault.pendingAdmin(), address(0));
     }
 
+    // GOO-450: openPosition must approve feeSplitter before calling splitFee(),
+    // otherwise GDT.transferFrom reverts with "Insufficient allowance".
+    // Fix: PerpEngine calls GDT.approve(feeSplitter, fee) after vault.flushFee().
+    function test_engine_openPosition_feeRoutedToSplitter() public {
+        vm.prank(alice);
+        vault.deposit(100_000e18);
+
+        uint256 splitterBefore = feeSplitter.totalReceived();
+
+        vm.prank(alice);
+        engine.openPosition(btcMarketId, 100_000e18, true, 10_000e18);
+
+        // fee = 100_000e18 * 10 / 10000 = 100e18
+        uint256 expectedFee = 100e18;
+        assertEq(
+            feeSplitter.totalReceived() - splitterBefore,
+            expectedFee,
+            "GOO-450: fee must reach feeSplitter (approve was missing)"
+        );
+    }
+
     // ============ Helpers ============
 
     function _getPosition(address trader, uint256 marketId)
