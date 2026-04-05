@@ -122,11 +122,17 @@ check_contract() {
 log "Checking deployed contracts..."
 echo ""
 
-check_contract "GoodDollarToken"  "RedeployGoodDollarToken.s.sol"  "GoodDollarToken"
-check_contract "UBIFeeSplitter"   "RedeployUBIAndLiFi.s.sol"       "UBIFeeSplitter"
-check_contract "UBIFeeHook"       "RedeployUBIFeeHook.s.sol"       "UBIFeeHook"
-check_contract "GoodLendPool"     "DeployGoodLend.s.sol"           "GoodLendPool"
-check_contract "AgentRegistry"    "DeployAgentRegistry.s.sol"      "AgentRegistry"
+check_contract "GoodDollarToken"     "RedeployGoodDollarToken.s.sol"  "GoodDollarToken"
+check_contract "UBIFeeSplitter"      "RedeployUBIAndLiFi.s.sol"       "UBIFeeSplitter"
+check_contract "UBIFeeHook"          "RedeployUBIFeeHook.s.sol"       "UBIFeeHook"
+check_contract "GoodLendPool"        "DeployGoodLend.s.sol"           "GoodLendPool"
+check_contract "AgentRegistry"       "DeployAgentRegistry.s.sol"      "AgentRegistry"
+check_contract "PerpPriceOracle"     "DeployPerps.s.sol"              "PerpPriceOracle"
+check_contract "FundingRate"         "DeployPerps.s.sol"              "FundingRate"
+check_contract "MarginVault"         "DeployPerps.s.sol"              "MarginVault"
+check_contract "PerpEngine"          "DeployPerps.s.sol"              "PerpEngine"
+check_contract "SyntheticAssetFact"  "DeployGoodStocks.s.sol"         "SyntheticAssetFactory"
+check_contract "ValidatorStaking"    "DeployValidatorStaking.s.sol"   "ValidatorStaking"
 
 echo ""
 echo "───────────────────────────────────────────"
@@ -160,6 +166,9 @@ SCRIPTS=(
   "script/DeployGoodLend.s.sol"
   "script/DeployGovernance.s.sol"
   "script/WireUBIFeeSplitter.s.sol"
+  "script/DeployPerps.s.sol"
+  "script/DeployGoodStocks.s.sol"
+  "script/DeployValidatorStaking.s.sol"
 )
 
 cd "$SCRIPT_DIR"
