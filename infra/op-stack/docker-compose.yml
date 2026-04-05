@@ -37,6 +37,7 @@ services:
       - --gas-limit=30000000
       - --mnemonic=test test test test test test test test test test test junk
       - --dump-state=/data/state.json
+      - --state-interval=60
     volumes:
       - l1-anvil-data:/data
     ports:

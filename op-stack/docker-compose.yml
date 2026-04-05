@@ -25,6 +25,8 @@ services:
       - "10000"
       - "--dump-state"
       - "/data/state.json"
+      - "--state-interval"
+      - "60"
     volumes:
       - l1-anvil-data:/data
     ports:
