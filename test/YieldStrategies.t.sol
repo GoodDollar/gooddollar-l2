@@ -176,6 +176,33 @@ contract MockStabilityPool {
     }
 }
 
+/// @dev Stability pool that always returns 1 wei less than requested (simulates rounding/fees).
+contract MockStabilityPoolSlippage {
+    MockToken public asset;
+    mapping(address => uint256) private _depositorBal;
+
+    constructor(address _asset) {
+        asset = MockToken(_asset);
+    }
+
+    function deposit(uint256 amount) external {
+        asset.transferFrom(msg.sender, address(this), amount);
+        _depositorBal[msg.sender] += amount;
+    }
+
+    function withdraw(uint256 amount) external {
+        require(_depositorBal[msg.sender] >= amount, "insufficient");
+        _depositorBal[msg.sender] -= amount;
+        asset.mint(msg.sender, amount - 1); // 1 wei slippage
+    }
+
+    function deposits(address depositor) external view returns (uint256) {
+        return _depositorBal[depositor];
+    }
+
+    function claimGains() external returns (uint256) { return 0; }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // LendingStrategy Tests
 // ═══════════════════════════════════════════════════════════════════════════
@@ -459,6 +486,29 @@ contract StablecoinStrategyTest is Test {
         uint256 withdrawn = strategy.withdraw(500 ether);
 
         assertEq(withdrawn, 200 ether);
+    }
+
+    function test_withdrawUsesActualBalanceAfterPoolRounding() public {
+        // Deploy with a slippage pool that returns 1 wei less than requested.
+        MockStabilityPoolSlippage slippyPool = new MockStabilityPoolSlippage(address(gUSD));
+        StablecoinStrategy slippyStrategy = new StablecoinStrategy(
+            address(gUSD),
+            address(slippyPool),
+            address(0),
+            vault
+        );
+        gUSD.mint(vault, 200 ether);
+        vm.prank(vault);
+        gUSD.approve(address(slippyStrategy), type(uint256).max);
+
+        vm.prank(vault);
+        slippyStrategy.deposit(200 ether);
+
+        // Pool returns 1 wei less — pre-fix code would revert; post-fix transfers actual.
+        vm.prank(vault);
+        uint256 actual = slippyStrategy.withdraw(100 ether);
+        assertEq(actual, 100 ether - 1);
+        assertEq(slippyStrategy.totalDeposited(), 200 ether - (100 ether - 1));
     }
 
     function test_withdrawOnlyVault() public {

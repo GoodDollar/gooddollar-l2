@@ -88,16 +88,18 @@ contract StablecoinStrategy {
         if (amount > bal) amount = bal;
         stabilityPool.withdraw(amount);
 
-        // Transfer back to vault
-        if (!IERC20(asset).transfer(vault, amount)) revert TransferFailed();
+        // Use actual balance in case pool returned less than requested (rounding/fees).
+        uint256 actual = IERC20(asset).balanceOf(address(this));
+        if (actual == 0) return 0;
+        if (!IERC20(asset).transfer(vault, actual)) revert TransferFailed();
 
-        if (amount > totalDeposited) {
+        if (actual > totalDeposited) {
             totalDeposited = 0;
         } else {
-            totalDeposited -= amount;
+            totalDeposited -= actual;
         }
-        emit Withdrawn(amount);
-        return amount;
+        emit Withdrawn(actual);
+        return actual;
     }
 
     function harvest() external onlyVault returns (uint256 profit, uint256 loss) {
@@ -128,11 +130,16 @@ contract StablecoinStrategy {
     function emergencyWithdraw() external onlyVault returns (uint256) {
         paused = true;
         uint256 bal = stabilityPool.deposits(address(this));
+        uint256 actual = 0;
         if (bal > 0) {
             stabilityPool.withdraw(bal);
-            if (!IERC20(asset).transfer(vault, bal)) revert TransferFailed();
+            // Use actual balance in case pool returned less than requested.
+            actual = IERC20(asset).balanceOf(address(this));
+            if (actual > 0) {
+                if (!IERC20(asset).transfer(vault, actual)) revert TransferFailed();
+            }
         }
         totalDeposited = 0;
-        return bal;
+        return actual;
     }
 }
