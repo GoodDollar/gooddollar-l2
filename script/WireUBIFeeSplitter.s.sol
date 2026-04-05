@@ -56,7 +56,7 @@ contract WireUBIFeeSplitter is Script {
     address constant POOL_WETH_USDC  = 0xAA292E8611aDF267e563f334Ee42320aC96D0463;
 
     // UBIClaimV2 (addresses.json — current devnet)
-    address constant UBI_CLAIM_V2    = 0x809d550fca64d94bd9f66e60752a544199cfac3d;
+    address constant UBI_CLAIM_V2    = 0x809d550fca64d94Bd9F66E60752A544199cfAC3D;
 
     // Current canonical GDT — override via GOOD_DOLLAR_TOKEN env var after a redeploy
     address constant GDT_DEFAULT     = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
