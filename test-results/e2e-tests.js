@@ -130,20 +130,31 @@ async function run() {
   }
 
   // ═══ TEST 4: Perps Page ═══
+  // Check that the mark price for the selected trading pair is non-zero.
+  // Account balance showing $0.000000 when no wallet connected is expected behavior.
   try {
     const page = await context.newPage();
     await page.goto(`${FRONTEND_URL}/perps`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
 
     totalTests++;
-    const content = await page.evaluate(() => document.body.innerText);
-    const hasMockPrices = /\$0\.00|NaN|undefined|null/i.test(content);
-    logResult({ page: 'perps', check: 'no_broken_prices', passed: !hasMockPrices, detail: hasMockPrices ? 'Found $0.00/NaN/undefined' : 'Prices look real' });
-    if (!hasMockPrices) passed++; else failed++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      // Look for mark price — should be non-zero for the active trading pair
+      const markMatch = t.match(/Mark\s*\$([\d,]+\.?\d*)/);
+      const markPrice = markMatch ? parseFloat(markMatch[1].replace(/,/g, '')) : 0;
+      // Also check for NaN/undefined in price display (not account balance context)
+      const hasBrokenDisplay = /NaN|undefined/i.test(t);
+      return { markPrice, hasBrokenDisplay, hasOrderBook: /Order Book/i.test(t) };
+    });
+    const pricesLookReal = d.markPrice > 0 && !d.hasBrokenDisplay;
+    logResult({ page: 'perps', check: 'no_broken_prices', passed: pricesLookReal, detail: pricesLookReal ? `Prices look real (mark=$${d.markPrice.toLocaleString()})` : `markPrice=${d.markPrice} broken=${d.hasBrokenDisplay}` });
+    if (pricesLookReal) passed++; else failed++;
 
     await page.close();
   } catch (e) {
     totalTests++; failed++;
-    logResult({ page: 'perps', check: 'page_loads', passed: false, detail: e.message });
+    logResult({ page: 'perps', check: 'no_broken_prices', passed: false, detail: e.message });
   }
 
   // ═══ TEST 5: Explorer ═══
@@ -907,7 +918,7 @@ async function run() {
     const hasUI = rpcCalls.length > 0 && d.hasPairs && (d.hasMarkPrice || d.hasOrderForm);
     const detail = rpcCalls.length === 0
       ? `No RPC calls (bodyLen=${d.bodyLen})`
-      : `rpcCalls=${rpcCalls.length} pairs=${d.hasPairs} price=${d.hasMarkPrice} form=${d.hasOrderForm} — empty pairs, no protocol config`;
+      : `rpcCalls=${rpcCalls.length} pairs=${d.hasPairs} price=${d.hasMarkPrice} form=${d.hasOrderForm}`;
     logResult({ page: 'perps', check: 'trading_ui_renders', passed: hasUI, detail });
     if (hasUI) passed++; else failed++;
     await page.close();

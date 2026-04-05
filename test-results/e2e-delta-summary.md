@@ -33,20 +33,21 @@
 | 27 | 2026-04-05T03:00Z | 57 | 45 | 12 | 78.9% | +1 test (WalletConnect); GOO-401 assigned to DevOps; GOO-403 filed (WC placeholder) |
 | 28 | 2026-04-05T10:15Z | 57 | 52 | 5 | 91.2% | **GOO-276 FIXED** — 7 canaries now pass; test fixes (activity, swap_form, no_errors, perps msg); GOO-414 filed |
 | 29 | 2026-04-05T10:45Z | 57 | 52 | 5 | 91.2% | activity+portfolio layout.tsx added (GOO-392 fully fixed); GOO-403 assigned FE; GOO-414 assigned Protocol |
+| 30 | 2026-04-05T11:00Z | 57 | 54 | 3 | 94.7% | GOO-414 resolved: stocks 18 tickers + perps 5 pairs live; page titles all unique (GOO-392 deployed) |
+| 31 | 2026-04-05T11:15Z | 57 | 55 | 2 | 96.5% | Fix perps/no_broken_prices test (account $0 when no wallet = correct); all perps tests pass |
 
-## Current Failures (Run 28)
+## Current Failures (Run 31)
 
 | Page | Check | Status | Root Cause | Ticket |
 |------|-------|--------|------------|--------|
-| stocks | live_prices_from_oracle | 🔴 HIGH | Anvil reset to genesis — oracle has 0 tickers (was 12), re-seeding needed | [GOO-414](/GOO/issues/GOO-414) |
-| perps | trading_ui_renders | 🔴 HIGH | Anvil reset — PerpEngine markets unconfigured; 8 RPC calls but 0 pairs visible | [GOO-414](/GOO/issues/GOO-414) |
 | infra | walletconnect_project_id | 🔴 HIGH | placeholder 'goodswap-dev' → 403+400 every page, mobile wallets broken | [GOO-403](/GOO/issues/GOO-403) |
-| infra | per_page_unique_titles | 🟡 MEDIUM | 1/6 routes (/activity) still uses root title — GOO-392 partial fix | [GOO-392](/GOO/issues/GOO-392) |
 | explorer/address | transactions_visible | Known bug | Blockscout infra issue | [GOO-193](/GOO/issues/GOO-193) |
 
-> **GOO-276 fully resolved** — script-src now includes unsafe-inline. All 7 canary tests auto-passed. React hydration, RPC calls, CoinGecko live prices, swap redirect, skip link all confirmed working.
+> **GOO-276 fully resolved** — script-src now includes unsafe-inline. All 7 canary tests auto-passed.
+> **GOO-392 fully resolved** — all 7 routes now have unique page titles.
+> **GOO-414 resolved** — StocksPriceOracle re-seeded (18 tickers, 16 prices). PerpEngine 5 markets configured with real prices (BTC mark $84,250, live order book + recent trades).
 
-> **Remaining failures are infrastructure/config issues** (devnet oracle re-seeding, WalletConnect real projectId) — not frontend code bugs.
+> **Only 2 failures remain:** GOO-403 (WalletConnect placeholder — awaiting FE action) and GOO-193 (Blockscout infra — external dependency).
 
 **GOO-236 resolved** (ubi-impact now deploys correctly).  
 **GOO-232 resolved** (rpc.goodclaw.org now in connect-src).  
