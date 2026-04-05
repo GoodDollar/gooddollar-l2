@@ -186,6 +186,48 @@ export function useDelegateVotes() {
   return { delegate, hash, isPending, isConfirming, isSuccess }
 }
 
+// ── GoodDAO Params Hooks ──────────────────────────────────────────────────────
+
+export function useVotingDelay() {
+  return useReadContract({
+    address: CONTRACTS.GoodDAO,
+    abi: GoodDAOABI,
+    functionName: 'VOTING_DELAY',
+  })
+}
+
+export function useVotingPeriod() {
+  return useReadContract({
+    address: CONTRACTS.GoodDAO,
+    abi: GoodDAOABI,
+    functionName: 'VOTING_PERIOD',
+  })
+}
+
+export function useTimelockDelay() {
+  return useReadContract({
+    address: CONTRACTS.GoodDAO,
+    abi: GoodDAOABI,
+    functionName: 'TIMELOCK_DELAY',
+  })
+}
+
+export function useProposalThresholdBps() {
+  return useReadContract({
+    address: CONTRACTS.GoodDAO,
+    abi: GoodDAOABI,
+    functionName: 'PROPOSAL_THRESHOLD_BPS',
+  })
+}
+
+export function useQuorumBps() {
+  return useReadContract({
+    address: CONTRACTS.GoodDAO,
+    abi: GoodDAOABI,
+    functionName: 'QUORUM_BPS',
+  })
+}
+
 // ── GoodDAO Read Hooks ────────────────────────────────────────────────────────
 
 export function useProposalCount() {

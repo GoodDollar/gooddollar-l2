@@ -52,8 +52,76 @@ export const MarginVaultABI = [
     { inputs: [{ name: 'amount', type: 'uint256' }], name: 'withdraw', outputs: [], stateMutability: 'nonpayable', type: 'function' },
     { inputs: [{ name: 'user', type: 'address' }], name: 'balances', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
 ];
+export const UBIRevenueTrackerABI = [
+    { inputs: [], name: 'getDashboardData', outputs: [
+            { name: '_totalFees', type: 'uint256' }, { name: '_totalUBI', type: 'uint256' },
+            { name: '_totalTx', type: 'uint256' }, { name: '_protocolCount', type: 'uint256' },
+            { name: '_activeProtocols', type: 'uint256' }, { name: '_splitterFees', type: 'uint256' },
+            { name: '_splitterUBI', type: 'uint256' }, { name: '_snapshotCount', type: 'uint256' },
+        ], stateMutability: 'view', type: 'function' },
+    { inputs: [], name: 'getAllProtocols', outputs: [{ name: 'result', type: 'tuple[]', components: [
+                    { name: 'name', type: 'string' }, { name: 'category', type: 'string' },
+                    { name: 'feeSource', type: 'address' }, { name: 'totalFees', type: 'uint256' },
+                    { name: 'ubiContribution', type: 'uint256' }, { name: 'txCount', type: 'uint256' },
+                    { name: 'lastUpdateBlock', type: 'uint256' }, { name: 'active', type: 'bool' },
+                ] }], stateMutability: 'view', type: 'function' },
+    { inputs: [{ name: 'count', type: 'uint256' }], name: 'getSnapshots', outputs: [{ name: 'result', type: 'tuple[]', components: [
+                    { name: 'timestamp', type: 'uint256' }, { name: 'totalUBI', type: 'uint256' },
+                    { name: 'totalFees', type: 'uint256' }, { name: 'protocolCount', type: 'uint256' },
+                ] }], stateMutability: 'view', type: 'function' },
+    { inputs: [{ name: 'id', type: 'uint256' }], name: 'getProtocol', outputs: [{ name: '', type: 'tuple', components: [
+                    { name: 'name', type: 'string' }, { name: 'category', type: 'string' },
+                    { name: 'feeSource', type: 'address' }, { name: 'totalFees', type: 'uint256' },
+                    { name: 'ubiContribution', type: 'uint256' }, { name: 'txCount', type: 'uint256' },
+                    { name: 'lastUpdateBlock', type: 'uint256' }, { name: 'active', type: 'bool' },
+                ] }], stateMutability: 'view', type: 'function' },
+    { inputs: [], name: 'totalUBITracked', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+    { inputs: [], name: 'totalFeesTracked', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+    { inputs: [], name: 'totalTxTracked', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+    { inputs: [], name: 'protocolCount', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+];
 export const UBIFeeHookABI = [
     { inputs: [{ name: 'amount', type: 'uint256' }], name: 'calculateUBIFee', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
     { inputs: [], name: 'totalSwapsProcessed', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
     { inputs: [{ name: 'token', type: 'address' }], name: 'totalUBIFees', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+];
+export const VaultFactoryABI = [
+    { type: 'function', name: 'allVaults', inputs: [{ name: '', type: 'uint256' }], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+    { type: 'function', name: 'vaultCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalTVL', inputs: [], outputs: [{ name: 'tvl', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalUBIFunded', inputs: [], outputs: [{ name: 'total', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'isVault', inputs: [{ name: '', type: 'address' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+    { type: 'function', name: 'getVaultsByAsset', inputs: [{ name: '_asset', type: 'address' }], outputs: [{ name: '', type: 'address[]' }], stateMutability: 'view' },
+];
+export const GoodVaultABI = [
+    { type: 'function', name: 'name', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'view' },
+    { type: 'function', name: 'symbol', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'view' },
+    { type: 'function', name: 'asset', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalAssets', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalSupply', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'balanceOf', inputs: [{ name: '', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'convertToShares', inputs: [{ name: 'assets', type: 'uint256' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'convertToAssets', inputs: [{ name: 'shares', type: 'uint256' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'deposit', inputs: [{ name: 'assets', type: 'uint256' }, { name: 'receiver', type: 'address' }], outputs: [{ name: 'shares', type: 'uint256' }], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'withdraw', inputs: [{ name: 'assets', type: 'uint256' }, { name: 'receiver', type: 'address' }, { name: 'owner', type: 'address' }], outputs: [{ name: 'shares', type: 'uint256' }], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'redeem', inputs: [{ name: 'shares', type: 'uint256' }, { name: 'receiver', type: 'address' }, { name: 'owner', type: 'address' }], outputs: [{ name: 'assets', type: 'uint256' }], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'harvest', inputs: [], outputs: [{ name: 'profit', type: 'uint256' }, { name: 'loss', type: 'uint256' }], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'depositCap', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalDebt', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalGainSinceInception', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalUBIFunded', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'paused', inputs: [], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+    { type: 'function', name: 'strategy', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+    { type: 'function', name: 'performanceFeeBPS', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'managementFeeBPS', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+];
+// ─── Agent Registry ABI ──────────────────────────────────────────────────────
+export const AgentRegistryABI = [
+    { type: 'function', name: 'getDashboardStats', inputs: [], outputs: [{ name: '_totalAgents', type: 'uint256' }, { name: '_totalTrades', type: 'uint256' }, { name: '_totalVolume', type: 'uint256' }, { name: '_totalUBI', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'getTopAgents', inputs: [{ name: 'count', type: 'uint256' }], outputs: [{ name: 'topAddrs', type: 'address[]' }, { name: 'topNames', type: 'string[]' }, { name: 'topUBI', type: 'uint256[]' }, { name: 'topVolume', type: 'uint256[]' }, { name: 'topTrades', type: 'uint256[]' }], stateMutability: 'view' },
+    { type: 'function', name: 'getAgentInfo', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: 'profile', type: 'tuple', components: [{ name: 'name', type: 'string' }, { name: 'avatarURI', type: 'string' }, { name: 'strategy', type: 'string' }, { name: 'owner', type: 'address' }, { name: 'registeredAt', type: 'uint256' }, { name: 'active', type: 'bool' }] }, { name: 'agentStats', type: 'tuple', components: [{ name: 'totalTrades', type: 'uint256' }, { name: 'totalVolume', type: 'uint256' }, { name: 'totalFeesGenerated', type: 'uint256' }, { name: 'ubiContribution', type: 'uint256' }, { name: 'totalPnL', type: 'uint256' }, { name: 'pnlPositive', type: 'bool' }, { name: 'lastActiveAt', type: 'uint256' }] }], stateMutability: 'view' },
+    { type: 'function', name: 'getAgentProtocolStats', inputs: [{ name: 'agent', type: 'address' }, { name: 'protocol', type: 'string' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'trades', type: 'uint256' }, { name: 'volume', type: 'uint256' }, { name: 'fees', type: 'uint256' }] }], stateMutability: 'view' },
+    { type: 'function', name: 'getAgentCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'registerAgent', inputs: [{ name: 'agent', type: 'address' }, { name: 'name', type: 'string' }, { name: 'avatarURI', type: 'string' }, { name: 'strategy', type: 'string' }], outputs: [], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'recordActivity', inputs: [{ name: 'agent', type: 'address' }, { name: 'protocol', type: 'string' }, { name: 'volume', type: 'uint256' }, { name: 'fees', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
 ];

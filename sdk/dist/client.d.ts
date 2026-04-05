@@ -47,6 +47,7 @@ export declare class GoodDollarSDK {
     readonly lend: LendModule;
     readonly stocks: StocksModule;
     readonly ubi: UBIModule;
+    readonly yield: YieldModule;
     constructor(config?: GoodDollarSDKConfig);
     /** Get the agent's address */
     get address(): Address;
@@ -141,5 +142,70 @@ declare class UBIModule {
     constructor(sdk: GoodDollarSDK);
     getTotalFees(token: Address): Promise<bigint>;
     getTotalSwaps(): Promise<bigint>;
+    /**
+     * Get aggregate dashboard data from UBIRevenueTracker.
+     * Returns total fees, UBI funded, tx count, protocol counts, splitter stats.
+     */
+    getDashboard(): Promise<{
+        totalFees: bigint;
+        totalUBI: bigint;
+        totalTx: bigint;
+        protocolCount: bigint;
+        activeProtocols: bigint;
+        splitterFees: bigint;
+        splitterUBI: bigint;
+        snapshotCount: bigint;
+    }>;
+    /**
+     * Get per-protocol fee breakdown from UBIRevenueTracker.
+     */
+    getProtocolBreakdown(): Promise<Array<{
+        name: string;
+        category: string;
+        feeSource: string;
+        totalFees: bigint;
+        ubiContribution: bigint;
+        txCount: bigint;
+        lastUpdateBlock: bigint;
+        active: boolean;
+    }>>;
+}
+declare class YieldModule {
+    private sdk;
+    constructor(sdk: GoodDollarSDK);
+    /** Get the number of vaults deployed via VaultFactory */
+    getVaultCount(): Promise<bigint>;
+    /** Get vault address by index */
+    getVaultAddress(index: bigint): Promise<Address>;
+    /** Get total TVL across all vaults */
+    getTotalTVL(): Promise<bigint>;
+    /** Get total UBI funded by yield vaults */
+    getTotalUBIFunded(): Promise<bigint>;
+    /** Read vault details */
+    getVaultInfo(vault: Address): Promise<{
+        name: any;
+        symbol: any;
+        asset: any;
+        totalAssets: any;
+        totalSupply: any;
+        depositCap: any;
+        totalDebt: any;
+        paused: any;
+        strategy: any;
+        perfFee: any;
+        mgmtFee: any;
+        totalGain: any;
+        totalUBI: any;
+    }>;
+    /** Deposit assets into a vault. Requires prior ERC-20 approval. */
+    deposit(vault: Address, assets: bigint): Promise<`0x${string}`>;
+    /** Withdraw assets from a vault */
+    withdraw(vault: Address, assets: bigint): Promise<`0x${string}`>;
+    /** Redeem shares from a vault */
+    redeem(vault: Address, shares: bigint): Promise<`0x${string}`>;
+    /** Trigger harvest (compounds yield, sends UBI fees) */
+    harvest(vault: Address): Promise<`0x${string}`>;
+    /** Get all vault addresses */
+    getAllVaults(): Promise<Address[]>;
 }
 export {};

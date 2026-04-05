@@ -1,7 +1,7 @@
 import { createPublicClient, createWalletClient, http, } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { ADDRESSES, CHAIN_CONFIG } from './addresses';
-import { ERC20ABI, PerpEngineABI, MarketFactoryABI, GoodLendPoolABI, CollateralVaultABI, SyntheticAssetFactoryABI, MarginVaultABI, UBIFeeHookABI, } from './abis';
+import { ERC20ABI, PerpEngineABI, MarketFactoryABI, GoodLendPoolABI, CollateralVaultABI, SyntheticAssetFactoryABI, MarginVaultABI, UBIFeeHookABI, UBIRevenueTrackerABI, VaultFactoryABI, GoodVaultABI, } from './abis';
 /** GoodDollar L2 chain definition for viem */
 export const gooddollarL2 = {
     id: CHAIN_CONFIG.id,
@@ -35,6 +35,7 @@ export class GoodDollarSDK {
     lend;
     stocks;
     ubi;
+    yield;
     constructor(config = {}) {
         const rpcUrl = config.rpcUrl ?? CHAIN_CONFIG.rpcUrl;
         const transport = http(rpcUrl);
@@ -61,6 +62,7 @@ export class GoodDollarSDK {
         this.lend = new LendModule(this);
         this.stocks = new StocksModule(this);
         this.ubi = new UBIModule(this);
+        this.yield = new YieldModule(this);
     }
     /** Get the agent's address */
     get address() {
@@ -399,5 +401,152 @@ class UBIModule {
             abi: UBIFeeHookABI,
             functionName: 'totalSwapsProcessed',
         });
+    }
+    /**
+     * Get aggregate dashboard data from UBIRevenueTracker.
+     * Returns total fees, UBI funded, tx count, protocol counts, splitter stats.
+     */
+    async getDashboard() {
+        const result = await this.sdk.publicClient.readContract({
+            address: ADDRESSES.UBIRevenueTracker,
+            abi: UBIRevenueTrackerABI,
+            functionName: 'getDashboardData',
+        });
+        const [totalFees, totalUBI, totalTx, protocolCount, activeProtocols, splitterFees, splitterUBI, snapshotCount] = result;
+        return { totalFees, totalUBI, totalTx, protocolCount, activeProtocols, splitterFees, splitterUBI, snapshotCount };
+    }
+    /**
+     * Get per-protocol fee breakdown from UBIRevenueTracker.
+     */
+    async getProtocolBreakdown() {
+        const result = await this.sdk.publicClient.readContract({
+            address: ADDRESSES.UBIRevenueTracker,
+            abi: UBIRevenueTrackerABI,
+            functionName: 'getAllProtocols',
+        });
+        return result.map((p) => ({
+            name: p.name,
+            category: p.category,
+            feeSource: p.feeSource,
+            totalFees: p.totalFees,
+            ubiContribution: p.ubiContribution,
+            txCount: p.txCount,
+            lastUpdateBlock: p.lastUpdateBlock,
+            active: p.active,
+        }));
+    }
+}
+class YieldModule {
+    sdk;
+    constructor(sdk) {
+        this.sdk = sdk;
+    }
+    /** Get the number of vaults deployed via VaultFactory */
+    async getVaultCount() {
+        return this.sdk.publicClient.readContract({
+            address: ADDRESSES.VaultFactory,
+            abi: VaultFactoryABI,
+            functionName: 'vaultCount',
+        });
+    }
+    /** Get vault address by index */
+    async getVaultAddress(index) {
+        return this.sdk.publicClient.readContract({
+            address: ADDRESSES.VaultFactory,
+            abi: VaultFactoryABI,
+            functionName: 'allVaults',
+            args: [index],
+        });
+    }
+    /** Get total TVL across all vaults */
+    async getTotalTVL() {
+        return this.sdk.publicClient.readContract({
+            address: ADDRESSES.VaultFactory,
+            abi: VaultFactoryABI,
+            functionName: 'totalTVL',
+        });
+    }
+    /** Get total UBI funded by yield vaults */
+    async getTotalUBIFunded() {
+        return this.sdk.publicClient.readContract({
+            address: ADDRESSES.VaultFactory,
+            abi: VaultFactoryABI,
+            functionName: 'totalUBIFunded',
+        });
+    }
+    /** Read vault details */
+    async getVaultInfo(vault) {
+        const [name, symbol, asset, totalAssets, totalSupply, depositCap, totalDebt, paused, strategy, perfFee, mgmtFee, totalGain, totalUBI] = await Promise.all([
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'name' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'symbol' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'asset' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'totalAssets' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'totalSupply' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'depositCap' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'totalDebt' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'paused' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'strategy' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'performanceFeeBPS' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'managementFeeBPS' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'totalGainSinceInception' }),
+            this.sdk.publicClient.readContract({ address: vault, abi: GoodVaultABI, functionName: 'totalUBIFunded' }),
+        ]);
+        return { name, symbol, asset, totalAssets, totalSupply, depositCap, totalDebt, paused, strategy, perfFee, mgmtFee, totalGain, totalUBI };
+    }
+    /** Deposit assets into a vault. Requires prior ERC-20 approval. */
+    async deposit(vault, assets) {
+        const account = this.sdk.walletClient.account;
+        const { request } = await this.sdk.publicClient.simulateContract({
+            account,
+            address: vault,
+            abi: GoodVaultABI,
+            functionName: 'deposit',
+            args: [assets, account.address],
+        });
+        return this.sdk.walletClient.writeContract(request);
+    }
+    /** Withdraw assets from a vault */
+    async withdraw(vault, assets) {
+        const account = this.sdk.walletClient.account;
+        const { request } = await this.sdk.publicClient.simulateContract({
+            account,
+            address: vault,
+            abi: GoodVaultABI,
+            functionName: 'withdraw',
+            args: [assets, account.address, account.address],
+        });
+        return this.sdk.walletClient.writeContract(request);
+    }
+    /** Redeem shares from a vault */
+    async redeem(vault, shares) {
+        const account = this.sdk.walletClient.account;
+        const { request } = await this.sdk.publicClient.simulateContract({
+            account,
+            address: vault,
+            abi: GoodVaultABI,
+            functionName: 'redeem',
+            args: [shares, account.address, account.address],
+        });
+        return this.sdk.walletClient.writeContract(request);
+    }
+    /** Trigger harvest (compounds yield, sends UBI fees) */
+    async harvest(vault) {
+        const account = this.sdk.walletClient.account;
+        const { request } = await this.sdk.publicClient.simulateContract({
+            account,
+            address: vault,
+            abi: GoodVaultABI,
+            functionName: 'harvest',
+        });
+        return this.sdk.walletClient.writeContract(request);
+    }
+    /** Get all vault addresses */
+    async getAllVaults() {
+        const count = await this.getVaultCount();
+        const vaults = [];
+        for (let i = 0n; i < count; i++) {
+            vaults.push(await this.getVaultAddress(i));
+        }
+        return vaults;
     }
 }

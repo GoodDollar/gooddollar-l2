@@ -18,9 +18,9 @@ export const ADDRESSES = {
   PriceOracle: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
   PerpEngine: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
 
-  // Prediction Markets
-  ConditionalTokens: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
-  MarketFactory: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318',
+  // Prediction Markets — redeployed 2026-04-05 (GOO-403 fix: wrong constructor args)
+  ConditionalTokens: '0x332De1995E0d7e340255833B95AE33F2fe844287',
+  MarketFactory: '0xD28F3246f047Efd4059B24FA1fa587eD9fa3e77F',
 
   // Stocks / Synthetics — redeployed 2026-04-05 (GOO-414)
   StocksPriceOracle: '0x20d7B364E8Ed1F4260b5B90C41c2deC3C1F6D367',

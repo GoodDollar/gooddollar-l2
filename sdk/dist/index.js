@@ -26,5 +26,5 @@
  */
 export { GoodDollarSDK, gooddollarL2 } from './client';
 export { ADDRESSES, CHAIN_CONFIG } from './addresses';
-export { ERC20ABI, PerpEngineABI, MarketFactoryABI, GoodLendPoolABI, CollateralVaultABI, SyntheticAssetFactoryABI, MarginVaultABI, UBIFeeHookABI, } from './abis';
+export { ERC20ABI, PerpEngineABI, MarketFactoryABI, GoodLendPoolABI, CollateralVaultABI, SyntheticAssetFactoryABI, MarginVaultABI, UBIFeeHookABI, UBIRevenueTrackerABI, VaultFactoryABI, GoodVaultABI, } from './abis';
 export { AgentSwarm, ManagedAgent, SignalBus, PortfolioAggregator, Strategies, } from './orchestration';

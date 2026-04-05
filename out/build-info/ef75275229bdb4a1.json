@@ -1,1 +1,0 @@
-{"id":"ef75275229bdb4a1","source_id_to_path":{"0":"lib/forge-std/src/interfaces/IERC20.sol","1":"src/yield/GoodVault.sol","2":"src/yield/VaultFactory.sol","3":"src/yield/strategies/LendingStrategy.sol"},"language":"Solidity"}

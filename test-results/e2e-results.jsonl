@@ -1753,3 +1753,1097 @@
 {"timestamp":"2026-04-05T10:17:52.461Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
 {"timestamp":"2026-04-05T10:17:55.743Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
 {"timestamp":"2026-04-05T10:17:56.834Z","page":"infra","check":"per_page_unique_titles","passed":false,"detail":"2/7 routes use root title (GOO-392): /activity, /portfolio"}
+{"timestamp":"2026-04-05T12:00:46.004Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T12:00:46.008Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T12:00:46.035Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T12:00:47.455Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T12:00:47.455Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T12:00:48.710Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T12:00:50.020Z","page":"perps","check":"no_broken_prices","passed":false,"detail":"Found $0.00/NaN/undefined"}
+{"timestamp":"2026-04-05T12:00:52.041Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T12:00:52.044Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T12:00:55.786Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:00:55.787Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T12:00:56.765Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T12:00:57.696Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T12:00:57.699Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T12:00:58.948Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T12:00:58.960Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T12:01:00.109Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:01:00.128Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T12:01:03.443Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2041"}
+{"timestamp":"2026-04-05T12:01:04.569Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T12:01:05.987Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T12:01:08.771Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T12:01:09.997Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T12:01:11.273Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T12:01:12.533Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T12:01:13.423Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T12:01:14.337Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T12:01:15.590Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T12:01:16.886Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T12:01:18.122Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T12:01:19.031Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T12:01:20.270Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T12:01:25.533Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T12:01:26.463Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T12:01:27.717Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T12:01:28.956Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T12:01:30.208Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T12:01:31.153Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T12:01:32.493Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T12:01:33.705Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T12:01:34.933Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T12:01:36.215Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T12:01:41.462Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T12:01:46.414Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T12:01:50.580Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T12:01:54.880Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true — empty pairs, no protocol config"}
+{"timestamp":"2026-04-05T12:01:56.251Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T12:01:58.542Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T12:02:00.774Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T12:02:02.057Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T12:02:02.434Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T12:02:04.410Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T12:02:06.656Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T12:02:12.911Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T12:02:13.306Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T12:02:16.474Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T12:02:17.800Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T12:03:43.081Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T12:03:43.085Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T12:03:43.106Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T12:03:44.402Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T12:03:44.402Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T12:03:45.637Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T12:03:48.994Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T12:03:50.965Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T12:03:50.976Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T12:03:54.661Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:03:54.662Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T12:03:55.716Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T12:03:56.676Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T12:03:56.679Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T12:03:57.946Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T12:03:57.948Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T12:03:59.076Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:03:59.100Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T12:04:02.432Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2040"}
+{"timestamp":"2026-04-05T12:04:03.558Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T12:04:04.910Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T12:04:07.688Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T12:04:08.920Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T12:04:10.144Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T12:04:11.416Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T12:04:12.346Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T12:04:13.246Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T12:04:14.499Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T12:04:15.799Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T12:04:17.011Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T12:04:17.950Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T12:04:19.177Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T12:04:24.451Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T12:04:25.392Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T12:04:26.642Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T12:04:27.870Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T12:04:29.120Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T12:04:30.077Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T12:04:31.391Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T12:04:32.640Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T12:04:33.878Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T12:04:35.134Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T12:04:40.421Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T12:04:45.336Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T12:04:49.486Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T12:04:53.762Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T12:04:54.965Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T12:04:57.264Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T12:04:59.511Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T12:05:00.889Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T12:05:01.327Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T12:05:03.274Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T12:05:05.520Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T12:05:11.779Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T12:05:12.237Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T12:05:15.400Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T12:05:16.365Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T12:06:27.748Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T12:06:27.752Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T12:06:27.781Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T12:06:29.077Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T12:06:29.077Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T12:06:30.323Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T12:06:33.642Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T12:06:35.659Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T12:06:35.661Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T12:06:39.382Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:06:39.385Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T12:06:40.347Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T12:06:41.268Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T12:06:41.271Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T12:06:42.533Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T12:06:42.536Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T12:06:43.662Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:06:43.686Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T12:06:46.983Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2044"}
+{"timestamp":"2026-04-05T12:06:48.120Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T12:06:49.349Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T12:06:52.110Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T12:06:53.352Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T12:06:54.622Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T12:06:55.924Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T12:06:56.893Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T12:06:57.831Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T12:06:59.082Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T12:07:00.410Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T12:07:01.662Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T12:07:02.603Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T12:07:03.833Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T12:07:09.125Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T12:07:10.141Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T12:07:11.395Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T12:07:12.631Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T12:07:13.875Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T12:07:14.812Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T12:07:16.150Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T12:07:17.357Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T12:07:18.602Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T12:07:19.915Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T12:07:25.227Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T12:07:30.187Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T12:07:34.265Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T12:07:38.600Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T12:07:39.965Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T12:07:42.266Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T12:07:44.513Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T12:07:45.733Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T12:07:46.014Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T12:07:47.983Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T12:07:50.246Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T12:07:56.507Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T12:07:56.903Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T12:08:00.054Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T12:08:01.304Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T12:08:05.583Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T12:08:09.846Z","page":"stocks","check":"oracle_prices_live","passed":false,"detail":"tickers=0 prices=16 nonZero=true"}
+{"timestamp":"2026-04-05T12:08:41.295Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T12:08:41.298Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T12:08:41.323Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T12:08:42.620Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T12:08:42.620Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T12:08:43.854Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T12:08:47.180Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T12:08:49.174Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T12:08:49.176Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T12:08:51.891Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:08:51.892Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T12:08:52.884Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T12:08:53.794Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T12:08:53.797Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T12:08:55.116Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T12:08:55.120Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T12:08:56.252Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:08:56.277Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T12:08:59.602Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2043"}
+{"timestamp":"2026-04-05T12:09:00.733Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T12:09:02.063Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T12:09:04.922Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T12:09:06.193Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T12:09:07.481Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T12:09:08.789Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T12:09:09.733Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T12:09:10.748Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T12:09:12.027Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T12:09:13.366Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T12:09:14.644Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T12:09:15.597Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T12:09:16.853Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T12:09:22.165Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T12:09:23.116Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T12:09:24.345Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T12:09:25.583Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T12:09:26.829Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T12:09:27.731Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T12:09:29.048Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T12:09:30.266Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T12:09:31.533Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T12:09:32.856Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T12:09:38.118Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T12:09:43.094Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T12:09:47.248Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T12:09:51.563Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T12:09:52.926Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T12:09:55.226Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T12:09:57.449Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T12:09:58.753Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T12:09:59.107Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T12:10:01.074Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T12:10:03.354Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $2,040)"}
+{"timestamp":"2026-04-05T12:10:09.633Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T12:10:10.093Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T12:10:13.213Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T12:10:14.415Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T12:10:18.725Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T12:10:23.011Z","page":"stocks","check":"oracle_prices_live","passed":true,"detail":"18 tickers, 16 prices"}
+{"timestamp":"2026-04-05T12:11:32.849Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T12:11:32.852Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T12:11:32.879Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T12:11:34.199Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T12:11:34.199Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T12:11:35.498Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T12:11:38.815Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T12:11:40.833Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T12:11:40.835Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T12:11:43.559Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:11:43.561Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T12:11:44.522Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T12:11:45.471Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T12:11:45.473Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T12:11:46.755Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T12:11:46.764Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T12:11:47.902Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:11:47.927Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T12:11:51.233Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2043"}
+{"timestamp":"2026-04-05T12:11:52.383Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T12:11:53.613Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T12:11:56.379Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T12:11:57.610Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T12:11:58.856Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T12:12:00.131Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T12:12:01.078Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T12:12:02.026Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T12:12:03.284Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T12:12:04.553Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T12:12:05.779Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T12:12:06.726Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T12:12:07.930Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T12:12:13.200Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T12:12:14.140Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T12:12:15.409Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T12:12:16.638Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T12:12:17.899Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T12:12:18.919Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T12:12:20.245Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T12:12:21.473Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T12:12:22.704Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T12:12:23.975Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T12:12:29.252Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T12:12:34.229Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T12:12:38.413Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T12:12:42.732Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T12:12:44.085Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T12:12:46.363Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T12:12:48.577Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T12:12:49.950Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T12:12:50.406Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T12:12:52.371Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T12:12:54.630Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T12:13:00.906Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T12:13:01.375Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T12:13:04.524Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T12:13:05.629Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T12:13:09.913Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T12:13:14.181Z","page":"stocks","check":"oracle_prices_live","passed":true,"detail":"18 tickers, 16 prices"}
+{"timestamp":"2026-04-05T12:13:17.457Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T12:14:30.309Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T12:14:30.313Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T12:14:30.338Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T12:14:31.623Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T12:14:31.623Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T12:14:32.890Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T12:14:36.233Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T12:14:38.233Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T12:14:38.239Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T12:14:41.954Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:14:41.956Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T12:14:42.934Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T12:14:43.878Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T12:14:43.880Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T12:14:45.122Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T12:14:45.129Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T12:14:46.261Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T12:14:46.285Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T12:14:49.617Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2041"}
+{"timestamp":"2026-04-05T12:14:50.801Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T12:14:52.026Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T12:14:54.781Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T12:14:56.013Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T12:14:57.241Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T12:14:58.522Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T12:14:59.436Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T12:15:00.378Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T12:15:01.629Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T12:15:02.928Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T12:15:04.161Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T12:15:05.101Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T12:15:06.376Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T12:15:11.655Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T12:15:12.553Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T12:15:13.833Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T12:15:15.076Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T12:15:16.311Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T12:15:17.234Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T12:15:18.525Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T12:15:19.754Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T12:15:21.008Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T12:15:22.301Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T12:15:27.600Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T12:15:32.540Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T12:15:36.678Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T12:15:40.971Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T12:15:42.213Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T12:15:44.483Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T12:15:46.707Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T12:15:47.958Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T12:15:48.398Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T12:15:50.362Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T12:15:52.637Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T12:15:58.902Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T12:15:59.363Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T12:16:02.551Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T12:16:03.827Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T12:16:08.126Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T12:16:12.401Z","page":"stocks","check":"oracle_prices_live","passed":true,"detail":"18 tickers, 16 prices"}
+{"timestamp":"2026-04-05T12:16:15.689Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T12:16:18.950Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T12:16:21.851Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T14:00:41.996Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T14:00:42.002Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T14:00:42.035Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T14:00:43.474Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T14:00:43.474Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T14:00:44.716Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T14:00:48.016Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T14:00:50.093Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T14:00:50.097Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T14:00:52.850Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T14:00:52.852Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T14:00:53.810Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T14:00:54.766Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T14:00:54.768Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T14:00:56.040Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T14:00:56.043Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T14:00:57.205Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T14:00:57.224Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T14:01:00.538Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2042"}
+{"timestamp":"2026-04-05T14:01:01.675Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T14:01:03.068Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T14:01:05.837Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T14:01:07.067Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T14:01:08.305Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T14:01:09.598Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T14:01:10.518Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T14:01:11.443Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T14:01:12.668Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T14:01:13.983Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T14:01:15.226Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T14:01:16.148Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T14:01:17.355Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T14:01:22.608Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T14:01:23.544Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T14:01:24.832Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T14:01:26.079Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T14:01:27.342Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T14:01:28.334Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T14:01:29.636Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T14:01:30.866Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T14:01:32.113Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T14:01:33.378Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T14:01:38.634Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T14:01:43.638Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T14:01:47.772Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T14:01:52.107Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T14:01:53.340Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T14:01:55.615Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T14:01:57.833Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T14:01:59.227Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T14:01:59.553Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T14:02:01.513Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T14:02:03.780Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T14:02:10.076Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T14:02:10.389Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T14:02:13.532Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T14:02:14.644Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T14:02:18.930Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T14:02:23.219Z","page":"stocks","check":"oracle_prices_live","passed":true,"detail":"18 tickers, 16 prices"}
+{"timestamp":"2026-04-05T14:02:26.529Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T14:02:29.775Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T14:02:32.737Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T14:05:58.853Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T14:05:58.856Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T14:05:58.882Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T14:06:00.204Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T14:06:00.204Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T14:06:01.441Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T14:06:04.765Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T14:06:06.778Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T14:06:06.781Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T14:06:09.488Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T14:06:09.490Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T14:06:10.474Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T14:06:11.412Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T14:06:11.415Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T14:06:12.704Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T14:06:12.706Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T14:06:13.830Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T14:06:13.856Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T14:06:17.153Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2042"}
+{"timestamp":"2026-04-05T14:06:18.240Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T14:06:19.666Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T14:06:22.440Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T14:06:23.678Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T14:06:24.930Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T14:06:26.187Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T14:06:27.105Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T14:06:28.047Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T14:06:29.266Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T14:06:30.539Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T14:06:31.917Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T14:06:32.884Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T14:06:34.094Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T14:06:39.350Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T14:06:40.298Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T14:06:41.541Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T14:06:42.763Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T14:06:44.002Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T14:06:44.955Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T14:06:46.296Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T14:06:47.541Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T14:06:48.819Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T14:06:50.075Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T14:06:55.344Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T14:07:00.337Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T14:07:04.468Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T14:07:08.749Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T14:07:09.984Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T14:07:12.254Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T14:07:14.485Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T14:07:15.682Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T14:07:15.983Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T14:07:17.968Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T14:07:20.252Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T14:07:26.513Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T14:07:26.901Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T14:07:30.057Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T14:07:31.177Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T14:07:35.505Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T14:07:39.761Z","page":"stocks","check":"oracle_prices_live","passed":true,"detail":"18 tickers, 16 prices"}
+{"timestamp":"2026-04-05T14:07:43.148Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T14:07:46.404Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T14:07:49.364Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T14:07:52.622Z","page":"stocks","check":"disclaimer_updated_goo445","passed":false,"detail":"Old disclaimer still deployed (GOO-445 fix pending CI redeploy)"}
+{"timestamp":"2026-04-05T14:07:55.866Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T14:07:59.121Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T14:08:02.379Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T16:00:40.167Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T16:00:40.170Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T16:00:40.194Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T16:00:41.533Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T16:00:41.533Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T16:00:42.758Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T16:00:46.065Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T16:00:48.072Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T16:00:48.075Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T16:00:51.851Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T16:00:51.853Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T16:00:52.898Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T16:00:53.824Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T16:00:53.826Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T16:00:55.091Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T16:00:55.094Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T16:00:56.245Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T16:00:56.266Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T16:00:59.624Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2041"}
+{"timestamp":"2026-04-05T16:01:00.769Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T16:01:02.199Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T16:01:04.972Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T16:01:06.191Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T16:01:07.439Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T16:01:08.722Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T16:01:09.683Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T16:01:10.585Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T16:01:11.833Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T16:01:13.116Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T16:01:14.363Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T16:01:15.292Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T16:01:16.511Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T16:01:21.792Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T16:01:22.674Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T16:01:23.921Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T16:01:25.167Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T16:01:26.418Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T16:01:27.322Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T16:01:28.642Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T16:01:29.879Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T16:01:31.125Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T16:01:32.382Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T16:01:37.706Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T16:01:42.651Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T16:01:46.790Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T16:01:51.141Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T16:01:52.520Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T16:01:54.818Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T16:01:57.032Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T16:01:58.234Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T16:01:58.505Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T16:02:00.477Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T16:02:02.786Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T16:02:09.027Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T16:02:09.313Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T16:02:12.477Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T16:02:13.652Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T16:02:17.952Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T16:02:22.229Z","page":"stocks","check":"oracle_prices_live","passed":true,"detail":"18 tickers, 16 prices"}
+{"timestamp":"2026-04-05T16:02:25.525Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T16:02:28.767Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T16:02:31.745Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T16:02:35.029Z","page":"stocks","check":"disclaimer_updated_goo445","passed":false,"detail":"Old disclaimer still deployed (GOO-445 fix pending CI redeploy)"}
+{"timestamp":"2026-04-05T16:02:38.290Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T16:02:41.548Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T16:02:44.819Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T16:03:33.658Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T16:03:33.662Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T16:03:33.689Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T16:03:35.016Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T16:03:35.017Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T16:03:36.272Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T16:03:39.585Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T16:03:41.597Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T16:03:41.600Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T16:03:44.298Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T16:03:44.299Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T16:03:45.260Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T16:03:46.231Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T16:03:46.233Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T16:03:47.485Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T16:03:47.489Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T16:03:48.623Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T16:03:48.645Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T16:03:52.004Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2041"}
+{"timestamp":"2026-04-05T16:03:53.125Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T16:03:54.472Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T16:03:57.255Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T16:03:58.480Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T16:03:59.707Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T16:04:00.980Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T16:04:01.959Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T16:04:02.900Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T16:04:04.184Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T16:04:05.567Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T16:04:06.827Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T16:04:07.804Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T16:04:09.047Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T16:04:14.381Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T16:04:15.336Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T16:04:16.601Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T16:04:17.869Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T16:04:19.162Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T16:04:20.097Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T16:04:21.424Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T16:04:22.639Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T16:04:23.895Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T16:04:25.222Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T16:04:30.499Z","page":"stocks","check":"live_prices_from_oracle","passed":true,"detail":"18 tickers, 16 prices ($218.27, $3.34, $388.45)"}
+{"timestamp":"2026-04-05T16:04:35.450Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T16:04:39.610Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T16:04:43.893Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T16:04:45.269Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T16:04:47.567Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T16:04:49.794Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T16:04:51.080Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T16:04:51.527Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T16:04:53.439Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T16:04:55.701Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T16:05:01.957Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T16:05:02.443Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T16:05:05.591Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T16:05:06.701Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T16:05:10.976Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T16:05:15.266Z","page":"stocks","check":"oracle_prices_live","passed":true,"detail":"18 tickers, 16 prices"}
+{"timestamp":"2026-04-05T16:05:18.582Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T16:05:21.821Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T16:05:24.779Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T16:05:28.047Z","page":"stocks","check":"disclaimer_updated_goo445","passed":false,"detail":"Old disclaimer still deployed (GOO-445 fix pending CI redeploy)"}
+{"timestamp":"2026-04-05T16:05:31.297Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T16:05:34.552Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T16:05:37.872Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T16:05:41.025Z","page":"infra","check":"no_vercel_analytics_404","passed":false,"detail":"4 Vercel 404(s) (GOO-472 fix pending deploy): 404 script.js, fail script.js, 404 script.js, fail script.js"}
+{"timestamp":"2026-04-05T16:07:57.985Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T16:07:57.989Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T16:07:58.010Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T16:07:59.335Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T16:07:59.335Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T16:08:00.599Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T16:08:03.934Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T16:08:05.912Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T16:08:05.914Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T16:08:08.620Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T16:08:08.622Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T16:08:09.617Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T16:08:10.551Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T16:08:10.553Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T16:08:11.796Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T16:08:11.798Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T16:08:12.956Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T16:08:12.983Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T16:08:16.268Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2042"}
+{"timestamp":"2026-04-05T16:08:17.410Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T16:08:18.633Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T16:08:21.389Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T16:08:22.624Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T16:08:23.855Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T16:08:25.122Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T16:08:26.064Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T16:08:26.992Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T16:08:28.152Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T16:08:29.488Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T16:08:30.699Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T16:08:31.622Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T16:08:32.842Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T16:08:38.106Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T16:08:39.042Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T16:08:40.288Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T16:08:41.510Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T16:08:42.747Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T16:08:43.723Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T16:08:45.072Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T16:08:46.302Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T16:08:47.562Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T16:08:48.820Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (626 chars)"}
+{"timestamp":"2026-04-05T16:08:54.122Z","page":"stocks","check":"live_prices_from_oracle","passed":false,"detail":"48 RPC calls but ALL return 0 — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T16:08:59.081Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T16:09:03.221Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T16:09:07.543Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T16:09:08.871Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T16:09:11.142Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T16:09:13.370Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T16:09:14.591Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T16:09:14.997Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T16:09:16.985Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T16:09:19.245Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $2,055.4)"}
+{"timestamp":"2026-04-05T16:09:25.507Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T16:09:25.803Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T16:09:28.936Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T16:09:30.069Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T16:09:34.378Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T16:09:39.640Z","page":"stocks","check":"oracle_rpc_nonzero","passed":false,"detail":"All RPC responses zero — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T16:09:42.956Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T16:09:46.182Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T16:09:49.114Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T16:09:52.386Z","page":"stocks","check":"disclaimer_updated_goo445","passed":false,"detail":"Old disclaimer still deployed (GOO-445 fix pending CI redeploy)"}
+{"timestamp":"2026-04-05T16:09:55.650Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T16:09:58.888Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T16:10:02.150Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T16:10:05.300Z","page":"infra","check":"no_vercel_analytics_404","passed":false,"detail":"4 Vercel 404(s) (GOO-472 fix pending deploy): 404 script.js, fail script.js, 404 script.js, fail script.js"}
+{"timestamp":"2026-04-05T18:00:37.918Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T18:00:37.923Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T18:00:37.949Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T18:00:39.253Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T18:00:39.254Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T18:00:40.473Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T18:00:43.831Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T18:00:45.809Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T18:00:45.812Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T18:00:48.556Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T18:00:48.558Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T18:00:49.508Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T18:00:50.433Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T18:00:50.435Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T18:00:51.701Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T18:00:51.704Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T18:00:52.857Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T18:00:52.877Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T18:00:56.197Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2043"}
+{"timestamp":"2026-04-05T18:00:57.326Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T18:00:58.770Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T18:01:01.565Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T18:01:02.791Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T18:01:04.022Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T18:01:05.317Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T18:01:06.288Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T18:01:07.216Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T18:01:08.456Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T18:01:09.743Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T18:01:10.963Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T18:01:11.893Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T18:01:13.129Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T18:01:18.381Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T18:01:19.275Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T18:01:20.534Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T18:01:21.772Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T18:01:23.017Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T18:01:24.012Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T18:01:25.308Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T18:01:26.536Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T18:01:27.810Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T18:01:29.083Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T18:01:34.366Z","page":"stocks","check":"live_prices_from_oracle","passed":false,"detail":"48 RPC calls but ALL return 0 — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T18:01:39.304Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T18:01:43.452Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T18:01:47.767Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T18:01:49.061Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T18:01:51.320Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T18:01:53.543Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T18:01:54.735Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T18:01:55.332Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T18:01:57.268Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T18:01:59.523Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T18:02:05.788Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T18:02:06.095Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T18:02:09.194Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T18:02:10.493Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T18:02:14.779Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T18:02:20.048Z","page":"stocks","check":"oracle_rpc_nonzero","passed":false,"detail":"All RPC responses zero — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T18:02:23.350Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T18:02:26.571Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T18:02:29.488Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T18:02:32.756Z","page":"stocks","check":"disclaimer_updated_goo445","passed":false,"detail":"Old disclaimer still deployed (GOO-445 fix pending CI redeploy)"}
+{"timestamp":"2026-04-05T18:02:35.985Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T18:02:39.239Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T18:02:42.488Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T18:02:45.612Z","page":"infra","check":"no_vercel_analytics_404","passed":false,"detail":"4 Vercel 404(s) (GOO-472 fix pending deploy): 404 script.js, fail script.js, 404 script.js, fail script.js"}
+{"timestamp":"2026-04-05T18:04:20.548Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T18:04:20.552Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T18:04:20.581Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T18:04:21.926Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T18:04:21.926Z","page":"stocks","check":"has_content","passed":true,"detail":"1240 chars"}
+{"timestamp":"2026-04-05T18:04:23.165Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T18:04:26.484Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T18:04:28.435Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T18:04:28.438Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T18:04:31.144Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T18:04:31.146Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T18:04:32.124Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T18:04:33.061Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T18:04:33.063Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T18:04:34.332Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T18:04:34.336Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T18:04:35.422Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T18:04:35.443Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T18:04:38.805Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2042"}
+{"timestamp":"2026-04-05T18:04:39.942Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T18:04:41.333Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T18:04:44.099Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T18:04:45.336Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T18:04:46.571Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T18:04:47.823Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T18:04:48.763Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T18:04:49.653Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T18:04:50.872Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T18:04:52.150Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T18:04:53.365Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T18:04:54.286Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T18:04:55.516Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T18:05:00.821Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T18:05:01.765Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T18:05:03.026Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T18:05:04.276Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T18:05:05.523Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T18:05:06.454Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T18:05:07.751Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T18:05:08.976Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T18:05:10.236Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T18:05:11.547Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T18:05:16.824Z","page":"stocks","check":"live_prices_from_oracle","passed":false,"detail":"48 RPC calls but ALL return 0 — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T18:05:21.773Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T18:05:25.919Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T18:05:30.248Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T18:05:31.492Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T18:05:33.760Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T18:05:35.985Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T18:05:37.186Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T18:05:37.570Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T18:05:39.532Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T18:05:41.819Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T18:05:48.083Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T18:05:48.400Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T18:05:51.618Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T18:05:52.675Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T18:05:56.954Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T18:06:02.240Z","page":"stocks","check":"oracle_rpc_nonzero","passed":false,"detail":"All RPC responses zero — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T18:06:05.589Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T18:06:08.813Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T18:06:11.765Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T18:06:15.063Z","page":"stocks","check":"disclaimer_updated_goo445","passed":false,"detail":"Old disclaimer still deployed (GOO-445 fix pending CI redeploy)"}
+{"timestamp":"2026-04-05T18:06:18.321Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T18:06:21.546Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T18:06:24.803Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T18:06:27.964Z","page":"infra","check":"no_vercel_analytics_404","passed":false,"detail":"4 Vercel 404(s) (GOO-472 fix pending deploy): 404 script.js, fail script.js, 404 script.js, fail script.js"}
+{"timestamp":"2026-04-05T18:11:37.858Z","page":"home","check":"page_loads","passed":false,"detail":"Empty title"}
+{"timestamp":"2026-04-05T18:11:37.862Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T18:11:37.879Z","page":"home","check":"swap_ui_present","passed":false,"detail":"Missing"}
+{"timestamp":"2026-04-05T18:11:38.521Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T18:11:38.521Z","page":"stocks","check":"has_content","passed":false,"detail":"0 chars"}
+{"timestamp":"2026-04-05T18:11:39.154Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T18:11:41.754Z","page":"perps","check":"no_broken_prices","passed":false,"detail":"markPrice=0 broken=false"}
+{"timestamp":"2026-04-05T18:11:43.751Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T18:11:43.753Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T18:11:46.444Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T18:11:46.446Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T18:11:47.629Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T18:11:48.684Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T18:11:48.687Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T18:11:49.986Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T18:11:49.988Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T18:11:51.142Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T18:11:51.170Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T18:11:54.478Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2043"}
+{"timestamp":"2026-04-05T18:11:55.657Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T18:11:56.873Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T18:11:59.612Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T18:12:00.830Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T18:12:02.158Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T18:12:03.447Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T18:12:04.370Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T18:12:05.316Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T18:12:06.530Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T18:12:07.896Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T18:12:09.121Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T18:12:10.037Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T18:12:11.266Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T18:12:16.545Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T18:12:17.452Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T18:12:18.782Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T18:12:20.037Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T18:12:21.291Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T18:12:22.241Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T18:12:23.819Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T18:12:25.028Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T18:12:26.273Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T18:12:27.570Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T18:12:32.878Z","page":"stocks","check":"live_prices_from_oracle","passed":false,"detail":"48 RPC calls but ALL return 0 — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T18:12:37.839Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T18:12:42.036Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T18:12:46.397Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T18:12:47.711Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T18:12:49.962Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T18:12:52.214Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T18:12:53.424Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T18:12:53.759Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T18:12:55.742Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T18:12:58.002Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T18:13:04.287Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T18:13:04.650Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T18:13:07.782Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T18:13:08.741Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T18:13:13.065Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T18:13:18.348Z","page":"stocks","check":"oracle_rpc_nonzero","passed":false,"detail":"All RPC responses zero — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T18:13:21.656Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T18:13:24.884Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T18:13:27.833Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T18:13:31.141Z","page":"stocks","check":"disclaimer_updated_goo445","passed":true,"detail":"Oracle copy live"}
+{"timestamp":"2026-04-05T18:13:34.355Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T18:13:37.666Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T18:13:40.908Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T18:13:44.118Z","page":"infra","check":"no_vercel_analytics_404","passed":true,"detail":"No Vercel script 404s"}
+{"timestamp":"2026-04-05T18:13:48.107Z","page":"bridge","check":"token_selector_has_expected_tokens","passed":true,"detail":"6/6 tokens found (ETH, USDC, USDT, DAI, WETH, WBTC); native bridge: true"}
+{"timestamp":"2026-04-05T18:13:52.403Z","page":"lend","check":"mock_data_disclaimer_visible","passed":true,"detail":"Devnet/mock disclaimer visible + lend content present"}
+{"timestamp":"2026-04-05T20:01:22.974Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T20:01:22.977Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T20:01:22.998Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T20:01:24.357Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T20:01:24.358Z","page":"stocks","check":"has_content","passed":true,"detail":"1224 chars"}
+{"timestamp":"2026-04-05T20:01:25.645Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T20:01:28.959Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T20:01:30.964Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T20:01:30.969Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T20:01:34.959Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T20:01:34.961Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T20:01:35.926Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T20:01:36.871Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T20:01:36.887Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T20:01:38.174Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T20:01:38.176Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T20:01:39.321Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T20:01:39.341Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T20:01:42.663Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2040"}
+{"timestamp":"2026-04-05T20:01:43.884Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T20:01:45.121Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T20:01:47.883Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T20:01:49.099Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T20:01:50.324Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T20:01:51.590Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T20:01:52.570Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T20:01:53.505Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T20:01:54.759Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T20:01:56.079Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T20:01:57.315Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T20:01:58.226Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T20:01:59.426Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T20:02:04.702Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T20:02:05.632Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T20:02:06.886Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T20:02:08.103Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T20:02:09.370Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T20:02:10.302Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T20:02:11.600Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T20:02:12.838Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T20:02:14.134Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T20:02:15.408Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T20:02:20.709Z","page":"stocks","check":"live_prices_from_oracle","passed":false,"detail":"48 RPC calls but ALL return 0 — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T20:02:25.667Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T20:02:29.814Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T20:02:34.112Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T20:02:35.348Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T20:02:37.612Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T20:02:39.850Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T20:02:41.110Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T20:02:41.439Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T20:02:43.386Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T20:02:45.714Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T20:02:52.015Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T20:02:52.333Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T20:02:55.472Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T20:02:56.432Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T20:03:00.737Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T20:03:06.025Z","page":"stocks","check":"oracle_rpc_nonzero","passed":false,"detail":"All RPC responses zero — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T20:03:09.350Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T20:03:12.590Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T20:03:15.533Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T20:03:18.819Z","page":"stocks","check":"disclaimer_updated_goo445","passed":true,"detail":"Oracle copy live"}
+{"timestamp":"2026-04-05T20:03:22.037Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T20:03:25.249Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T20:03:28.494Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T20:03:31.634Z","page":"infra","check":"no_vercel_analytics_404","passed":true,"detail":"No Vercel script 404s"}
+{"timestamp":"2026-04-05T20:03:35.576Z","page":"bridge","check":"token_selector_has_expected_tokens","passed":true,"detail":"6/6 tokens found (ETH, USDC, USDT, DAI, WETH, WBTC); native bridge: true"}
+{"timestamp":"2026-04-05T20:03:39.814Z","page":"lend","check":"mock_data_disclaimer_visible","passed":true,"detail":"Devnet/mock disclaimer visible + lend content present"}
+{"timestamp":"2026-04-05T20:05:30.349Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T20:05:30.352Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T20:05:30.376Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T20:05:31.694Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T20:05:31.694Z","page":"stocks","check":"has_content","passed":true,"detail":"1224 chars"}
+{"timestamp":"2026-04-05T20:05:32.951Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T20:05:36.238Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T20:05:38.200Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T20:05:38.203Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T20:05:40.909Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T20:05:40.913Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T20:05:41.865Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T20:05:42.820Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T20:05:42.825Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T20:05:44.157Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T20:05:44.160Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T20:05:45.247Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T20:05:45.268Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T20:05:48.563Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2039"}
+{"timestamp":"2026-04-05T20:05:49.727Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T20:05:51.021Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T20:05:53.843Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T20:05:55.108Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T20:05:56.360Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T20:05:57.695Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T20:05:58.610Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T20:05:59.569Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T20:06:00.833Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T20:06:02.134Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T20:06:03.400Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T20:06:04.351Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T20:06:05.637Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T20:06:10.987Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T20:06:11.927Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T20:06:13.201Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T20:06:14.421Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T20:06:15.677Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T20:06:16.606Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T20:06:17.977Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T20:06:19.200Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T20:06:20.452Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T20:06:21.725Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T20:06:27.006Z","page":"stocks","check":"live_prices_from_oracle","passed":false,"detail":"48 RPC calls but ALL return 0 — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T20:06:31.961Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T20:06:36.094Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T20:06:40.431Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T20:06:41.667Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T20:06:43.909Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T20:06:46.177Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T20:06:47.411Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T20:06:47.693Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T20:06:49.702Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T20:06:51.950Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T20:06:58.195Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T20:06:58.515Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T20:07:01.624Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T20:07:02.542Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T20:07:06.846Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T20:07:12.118Z","page":"stocks","check":"oracle_rpc_nonzero","passed":false,"detail":"All RPC responses zero — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T20:07:15.483Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T20:07:18.721Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T20:07:21.615Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T20:07:24.877Z","page":"stocks","check":"disclaimer_updated_goo445","passed":true,"detail":"Oracle copy live"}
+{"timestamp":"2026-04-05T20:07:28.137Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T20:07:31.402Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T20:07:34.649Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T20:07:37.718Z","page":"infra","check":"no_vercel_analytics_404","passed":true,"detail":"No Vercel script 404s"}
+{"timestamp":"2026-04-05T20:07:41.680Z","page":"bridge","check":"token_selector_has_expected_tokens","passed":true,"detail":"6/6 tokens found (ETH, USDC, USDT, DAI, WETH, WBTC); native bridge: true"}
+{"timestamp":"2026-04-05T20:07:45.893Z","page":"lend","check":"mock_data_disclaimer_visible","passed":true,"detail":"Devnet/mock disclaimer visible + lend content present"}
+{"timestamp":"2026-04-05T20:07:50.933Z","page":"governance","check":"params_read_from_chain","passed":false,"detail":"0 RPC calls — governance params hardcoded in frontend, never read from GoodDAO contract (GOO-476)"}
+{"timestamp":"2026-04-05T20:07:55.288Z","page":"home","check":"page_loads","passed":true,"detail":"GoodDollar — DeFi That Funds UBI"}
+{"timestamp":"2026-04-05T20:07:55.290Z","page":"home","check":"no_errors","passed":true}
+{"timestamp":"2026-04-05T20:07:55.309Z","page":"home","check":"swap_ui_present","passed":true,"detail":"Found"}
+{"timestamp":"2026-04-05T20:07:56.705Z","page":"stocks","check":"no_mock_data","passed":true}
+{"timestamp":"2026-04-05T20:07:56.705Z","page":"stocks","check":"has_content","passed":true,"detail":"1224 chars"}
+{"timestamp":"2026-04-05T20:07:57.961Z","page":"predict","check":"has_market_data","passed":true,"detail":"Markets visible"}
+{"timestamp":"2026-04-05T20:08:01.366Z","page":"perps","check":"no_broken_prices","passed":true,"detail":"Prices look real (mark=$84,250)"}
+{"timestamp":"2026-04-05T20:08:03.352Z","page":"explorer","check":"page_loads","passed":true,"detail":"GoodDollar L2 blockchain explorer - View GoodDollar L2 stats | Blockscout"}
+{"timestamp":"2026-04-05T20:08:03.354Z","page":"explorer","check":"shows_blocks","passed":true}
+{"timestamp":"2026-04-05T20:08:07.095Z","page":"explorer/address","check":"no_error_banner","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T20:08:07.096Z","page":"explorer/address","check":"transactions_visible","passed":false,"detail":"Only address hash (GOO-193/194 pending)"}
+{"timestamp":"2026-04-05T20:08:08.058Z","page":"mobile","check":"no_horizontal_scroll","passed":true}
+{"timestamp":"2026-04-05T20:08:08.998Z","page":"bridge","check":"page_loads","passed":true,"detail":"Bridge | GoodDollar"}
+{"timestamp":"2026-04-05T20:08:09.004Z","page":"bridge","check":"has_bridge_content","passed":true,"detail":"Bridge UI visible"}
+{"timestamp":"2026-04-05T20:08:10.294Z","page":"pool","check":"page_loads","passed":true,"detail":"Liquidity Pools | GoodDollar"}
+{"timestamp":"2026-04-05T20:08:10.299Z","page":"pool","check":"has_pool_content","passed":true,"detail":"Pool UI visible"}
+{"timestamp":"2026-04-05T20:08:11.441Z","page":"no_wallet","check":"no_runtime_errors","passed":true,"detail":"Clean"}
+{"timestamp":"2026-04-05T20:08:11.455Z","page":"no_wallet","check":"connect_wallet_present","passed":true,"detail":"Button found"}
+{"timestamp":"2026-04-05T20:08:14.732Z","page":"perps_content","check":"ui_renders","passed":true,"detail":"bodyLen=2043"}
+{"timestamp":"2026-04-05T20:08:15.884Z","page":"nav","check":"nav_links_present","passed":true,"detail":"Found: /stocks,/predict,/perps,/bridge"}
+{"timestamp":"2026-04-05T20:08:17.135Z","page":"infra","check":"js_and_css_load","passed":true,"detail":"JS+CSS OK"}
+{"timestamp":"2026-04-05T20:08:19.894Z","page":"explore","check":"token_list_loads","passed":true,"detail":"Prices visible"}
+{"timestamp":"2026-04-05T20:08:21.105Z","page":"lend","check":"page_loads_with_content","passed":true,"detail":"Has disclaimer"}
+{"timestamp":"2026-04-05T20:08:22.367Z","page":"stable","check":"page_loads_with_content","passed":true,"detail":"Stable UI visible"}
+{"timestamp":"2026-04-05T20:08:23.649Z","page":"stocks","check":"empty_oracle_graceful","passed":true,"detail":"Empty state handled"}
+{"timestamp":"2026-04-05T20:08:24.601Z","page":"activity","check":"page_loads_with_content","passed":true,"detail":"UI visible (384 chars)"}
+{"timestamp":"2026-04-05T20:08:25.519Z","page":"governance","check":"page_loads_with_content","passed":true,"detail":"UI visible (665 chars)"}
+{"timestamp":"2026-04-05T20:08:26.754Z","page":"ubi-impact","check":"page_loads_with_content","passed":true,"detail":"UI visible (755 chars)"}
+{"timestamp":"2026-04-05T20:08:28.035Z","page":"portfolio","check":"page_loads_with_content","passed":true,"detail":"UI visible (484 chars)"}
+{"timestamp":"2026-04-05T20:08:29.275Z","page":"agents","check":"leaderboard_loads","passed":true,"detail":"UI visible (721 chars)"}
+{"timestamp":"2026-04-05T20:08:30.190Z","page":"agents/register","check":"register_form_loads","passed":true,"detail":"Form visible (929 chars)"}
+{"timestamp":"2026-04-05T20:08:31.414Z","page":"yield","check":"page_loads_with_content","passed":true,"detail":"UI visible (606 chars)"}
+{"timestamp":"2026-04-05T20:08:36.687Z","page":"infra","check":"csp_hydration_and_rpc","passed":true,"detail":"OK: 48 RPC calls, 0 violations"}
+{"timestamp":"2026-04-05T20:08:37.608Z","page":"perps/leaderboard","check":"page_loads","passed":true,"detail":"UI visible (449 chars)"}
+{"timestamp":"2026-04-05T20:08:38.852Z","page":"perps/portfolio","check":"page_loads","passed":true,"detail":"UI visible (480 chars)"}
+{"timestamp":"2026-04-05T20:08:40.086Z","page":"governance/analytics","check":"page_loads","passed":true,"detail":"UI visible (1111 chars)"}
+{"timestamp":"2026-04-05T20:08:41.347Z","page":"stocks/portfolio","check":"page_loads","passed":true,"detail":"UI visible (446 chars)"}
+{"timestamp":"2026-04-05T20:08:42.274Z","page":"predict/create","check":"page_loads","passed":true,"detail":"UI visible (517 chars)"}
+{"timestamp":"2026-04-05T20:08:43.603Z","page":"stocks/AAPL","check":"detail_page_loads","passed":true,"detail":"UI visible (857 chars)"}
+{"timestamp":"2026-04-05T20:08:44.838Z","page":"predict/portfolio","check":"page_loads","passed":true,"detail":"UI visible (491 chars)"}
+{"timestamp":"2026-04-05T20:08:46.055Z","page":"agents/[address]","check":"detail_page_loads","passed":true,"detail":"UI visible (291 chars)"}
+{"timestamp":"2026-04-05T20:08:47.348Z","page":"explore/ETH","check":"token_detail_loads","passed":true,"detail":"UI visible (628 chars)"}
+{"timestamp":"2026-04-05T20:08:52.600Z","page":"stocks","check":"live_prices_from_oracle","passed":false,"detail":"48 RPC calls but ALL return 0 — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T20:08:57.512Z","page":"activity","check":"live_block_data","passed":true,"detail":"rpcCalls=1 Block #0 bodyLen=384"}
+{"timestamp":"2026-04-05T20:09:01.691Z","page":"home","check":"swap_form_renders","passed":true,"detail":"tokens=3 amountInput=true"}
+{"timestamp":"2026-04-05T20:09:05.985Z","page":"perps","check":"trading_ui_renders","passed":true,"detail":"rpcCalls=48 pairs=true price=true form=true"}
+{"timestamp":"2026-04-05T20:09:07.252Z","page":"infra","check":"not_found_page","passed":true,"detail":"404 page renders with correct copy"}
+{"timestamp":"2026-04-05T20:09:09.509Z","page":"swap","check":"redirects_to_home","passed":true,"detail":"Redirected → https://goodswap.goodclaw.org/"}
+{"timestamp":"2026-04-05T20:09:11.715Z","page":"lend","check":"market_table_with_apys","passed":true,"detail":"10 APY values, markets present (1.85%, 3.20%)"}
+{"timestamp":"2026-04-05T20:09:12.982Z","page":"test-dashboard","check":"page_loads","passed":true,"detail":"On-chain QA dashboard visible (577 chars)"}
+{"timestamp":"2026-04-05T20:09:13.305Z","page":"infra","check":"meta_tags_present","passed":true,"detail":"og:title=\"GoodDollar — DeFi That Funds UBI\""}
+{"timestamp":"2026-04-05T20:09:15.218Z","page":"bridge","check":"chain_list_renders","passed":true,"detail":"7 chains: ETH, ARB, OP, MATIC, BASE, BNB, AVAX"}
+{"timestamp":"2026-04-05T20:09:17.471Z","page":"explore","check":"token_count_and_prices","passed":true,"detail":"17 tokens, 22 non-zero prices ($2.4, $0.0102, $3,012.45)"}
+{"timestamp":"2026-04-05T20:09:23.737Z","page":"explore","check":"live_prices_from_coingecko","passed":true,"detail":"CoinGecko called — live prices active"}
+{"timestamp":"2026-04-05T20:09:24.090Z","page":"infra","check":"a11y_skip_link","passed":true,"detail":"Skip link + main#main-content present (WCAG 2.4.1 ✓)"}
+{"timestamp":"2026-04-05T20:09:27.274Z","page":"infra","check":"walletconnect_project_id","passed":false,"detail":"2 WC errors (GOO-403): 403 v1/config, 400 pulse.walletconnect.org/e"}
+{"timestamp":"2026-04-05T20:09:28.189Z","page":"infra","check":"per_page_unique_titles","passed":true,"detail":"All routes have unique titles"}
+{"timestamp":"2026-04-05T20:09:32.506Z","page":"perps","check":"live_order_book_and_trades","passed":true,"detail":"5 pairs, orderBook=true, 20 trade timestamps"}
+{"timestamp":"2026-04-05T20:09:37.781Z","page":"stocks","check":"oracle_rpc_nonzero","passed":false,"detail":"All RPC responses zero — oracle not seeded (GOO-451)"}
+{"timestamp":"2026-04-05T20:09:41.147Z","page":"stocks/AAPL","check":"detail_with_stats","passed":true,"detail":"Price=$218.27 stats=✓ tradeForm=✓"}
+{"timestamp":"2026-04-05T20:09:44.335Z","page":"predict","check":"active_markets_with_probs","passed":true,"detail":"7 markets, probs=✓, shares=✓, 12 categories"}
+{"timestamp":"2026-04-05T20:09:47.281Z","page":"governance","check":"protocol_parameters","passed":true,"detail":"Params visible (7 numeric values), veG$ voting=✓"}
+{"timestamp":"2026-04-05T20:09:50.558Z","page":"stocks","check":"disclaimer_updated_goo445","passed":true,"detail":"Oracle copy live"}
+{"timestamp":"2026-04-05T20:09:53.764Z","page":"ubi-impact","check":"live_contract_addresses","passed":true,"detail":"Contract addresses + chain ID 42069 visible"}
+{"timestamp":"2026-04-05T20:09:57.000Z","page":"stable","check":"vault_types_and_ratios","passed":true,"detail":"WETH+G$ vaults, 150/200% ratios, gUSD visible"}
+{"timestamp":"2026-04-05T20:10:00.282Z","page":"pool","check":"liquidity_pairs_visible","passed":true,"detail":"3 pairs: G$/WETH, G$/USDC, WETH/USDC"}
+{"timestamp":"2026-04-05T20:10:03.375Z","page":"infra","check":"no_vercel_analytics_404","passed":true,"detail":"No Vercel script 404s"}
+{"timestamp":"2026-04-05T20:10:07.310Z","page":"bridge","check":"token_selector_has_expected_tokens","passed":true,"detail":"6/6 tokens found (ETH, USDC, USDT, DAI, WETH, WBTC); native bridge: true"}
+{"timestamp":"2026-04-05T20:10:11.531Z","page":"lend","check":"mock_data_disclaimer_visible","passed":true,"detail":"Devnet/mock disclaimer visible + lend content present"}
+{"timestamp":"2026-04-05T20:10:16.469Z","page":"governance","check":"params_read_from_chain","passed":false,"detail":"0 RPC calls — governance params hardcoded in frontend, never read from GoodDAO contract (GOO-476)"}

@@ -15,14 +15,25 @@ export const ADDRESSES = {
     MarginVault: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707',
     PriceOracle: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
     PerpEngine: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
-    // Prediction Markets
-    ConditionalTokens: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
-    MarketFactory: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318',
-    // Stocks / Synthetics
-    CollateralVault: '0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e',
-    SyntheticAssetFactory: '0x610178dA211FEf7D417bC0e6FeD39F05609AD788',
+    // Prediction Markets — redeployed 2026-04-05 (GOO-403 fix: wrong constructor args)
+    ConditionalTokens: '0x332De1995E0d7e340255833B95AE33F2fe844287',
+    MarketFactory: '0xD28F3246f047Efd4059B24FA1fa587eD9fa3e77F',
+    // Stocks / Synthetics — redeployed 2026-04-05 (GOO-414)
+    StocksPriceOracle: '0x20d7B364E8Ed1F4260b5B90C41c2deC3C1F6D367',
+    CollateralVault: '0xCa57C1d3c2c35E667745448Fef8407dd25487ff8',
+    SyntheticAssetFactory: '0x2d13826359803522cCe7a4Cfa2c1b582303DD0B4',
     // Lending
     GoodLendPool: '0x322813Fd9A801c5507C9de605D63ceA4f2Ce6C44',
+    // UBI Analytics
+    UBIRevenueTracker: '0x1D3EDBa836caB11C26A186873abf0fFeB8bbaE63',
+    // Yield Vaults
+    VaultFactory: '0x0b27a79cb9C0B38eE06Ca3d94DAA68e0Ed17F953',
+    // GoodYield Initial Vaults (GOO-242)
+    ETHLendingVault: '0xa6AB86f760ae5D6fbF06056a7887b816610A4668',
+    GUSDStabilityVault: '0x6BdBEc8Be23eB0F4A1aeF4B4dDf85bdfF0BdbF97',
+    GDLendingVault: '0xAD438cEf9a586FcCF01a521bce9465e500a4259E',
+    // Agent Registry (GOO-243)
+    AgentRegistry: '0xA9d0Fb5837f9c42c874e16da96094b14Af0e2784',
 };
 /** Chain configuration */
 export const CHAIN_CONFIG = {

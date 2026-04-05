@@ -26,6 +26,11 @@ import {
   useCastVote,
   useQueueProposal,
   useExecuteProposal,
+  useVotingDelay,
+  useVotingPeriod,
+  useTimelockDelay,
+  useProposalThresholdBps,
+  useQuorumBps,
   proposalStateName,
   proposalStateColor,
   proposalStateBg,
@@ -379,6 +384,42 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
+// ── Governance Params ─────────────────────────────────────────────────────────
+
+function GovernanceParams() {
+  const { data: votingDelay } = useVotingDelay()
+  const { data: votingPeriod } = useVotingPeriod()
+  const { data: timelockDelay } = useTimelockDelay()
+  const { data: thresholdBps } = useProposalThresholdBps()
+  const { data: quorumBps } = useQuorumBps()
+
+  function fmtSecs(val: bigint | undefined): string {
+    if (val === undefined) return '…'
+    const s = Number(val)
+    if (s === 0) return '0s'
+    return formatDuration(s)
+  }
+
+  function fmtBps(val: bigint | undefined): string {
+    if (val === undefined) return '…'
+    return (Number(val) / 100).toFixed(2).replace(/\.?0+$/, '') + '% of veG$'
+  }
+
+  return (
+    <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5">
+      <h3 className="text-sm font-semibold text-gray-400 mb-3">Governance Parameters</h3>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+        <div><span className="text-gray-500">Proposal Threshold:</span> <span className="text-white">{fmtBps(thresholdBps as bigint | undefined)}</span></div>
+        <div><span className="text-gray-500">Quorum:</span> <span className="text-white">{fmtBps(quorumBps as bigint | undefined)}</span></div>
+        <div><span className="text-gray-500">Voting Period:</span> <span className="text-white">{fmtSecs(votingPeriod as bigint | undefined)}</span></div>
+        <div><span className="text-gray-500">Voting Delay:</span> <span className="text-white">{fmtSecs(votingDelay as bigint | undefined)}</span></div>
+        <div><span className="text-gray-500">Timelock:</span> <span className="text-white">{fmtSecs(timelockDelay as bigint | undefined)}</span></div>
+        <div><span className="text-gray-500">Early Unlock Penalty:</span> <span className="text-white">30% (⅓ → UBI)</span></div>
+      </div>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function GovernancePage() {
@@ -413,17 +454,7 @@ export default function GovernancePage() {
       )}
 
       {/* Governance Info */}
-      <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5">
-        <h3 className="text-sm font-semibold text-gray-400 mb-3">Governance Parameters</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-          <div><span className="text-gray-500">Proposal Threshold:</span> <span className="text-white">1% of veG$</span></div>
-          <div><span className="text-gray-500">Quorum:</span> <span className="text-white">10% of veG$</span></div>
-          <div><span className="text-gray-500">Voting Period:</span> <span className="text-white">3 days</span></div>
-          <div><span className="text-gray-500">Voting Delay:</span> <span className="text-white">1 day</span></div>
-          <div><span className="text-gray-500">Timelock:</span> <span className="text-white">1 day</span></div>
-          <div><span className="text-gray-500">Early Unlock Penalty:</span> <span className="text-white">30% (⅓ → UBI)</span></div>
-        </div>
-      </div>
+      <GovernanceParams />
     </div>
   )
 }
