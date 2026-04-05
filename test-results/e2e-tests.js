@@ -1099,7 +1099,7 @@ async function run() {
   // WCAG 2.4.2 and SEO require unique, descriptive titles per page.
   try {
     const page = await context.newPage();
-    const routesToCheck = ['/stocks', '/lend', '/perps', '/stable', '/governance', '/activity'];
+    const routesToCheck = ['/stocks', '/lend', '/perps', '/stable', '/governance', '/activity', '/portfolio'];
     const rootTitle = 'GoodDollar \u2014 DeFi That Funds UBI';
     const sameAsRoot = [];
     for (const route of routesToCheck) {
@@ -1109,7 +1109,7 @@ async function run() {
     }
     totalTests++;
     const ok = sameAsRoot.length === 0;
-    logResult({ page: 'infra', check: 'per_page_unique_titles', passed: ok, detail: ok ? 'All routes have unique titles' : `${sameAsRoot.length}/6 routes use root title (GOO-392): ${sameAsRoot.join(', ')}` });
+    logResult({ page: 'infra', check: 'per_page_unique_titles', passed: ok, detail: ok ? 'All routes have unique titles' : `${sameAsRoot.length}/${routesToCheck.length} routes use root title (GOO-392): ${sameAsRoot.join(', ')}` });
     if (ok) passed++; else failed++;
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'infra', check: 'per_page_unique_titles', passed: false, detail: e.message }); }
