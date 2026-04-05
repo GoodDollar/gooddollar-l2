@@ -16,6 +16,8 @@ interface IUBIClaimV2 {
 interface IUBIFeeSplitter {
     function setGoodDollar(address _goodDollar) external;
     function goodDollar() external view returns (address);
+    function setUBIClaimContract(address _ubiClaimContract) external;
+    function setUBIRecipient(address _ubiRecipient) external;
 }
 
 /**
@@ -45,16 +47,16 @@ interface IUBIFeeSplitter {
  *     --rpc-url http://localhost:8545 --broadcast
  */
 contract WireUBIFeeSplitter is Script {
-    // New UBIFeeSplitter (from RedeployUBIAndLiFi run 2026-04-04)
-    address constant NEW_FEE_SPLITTER = 0xC0BF43A4Ca27e0976195E6661b099742f10507e5;
+    // New UBIFeeSplitter — GOO-402 fix (2026-04-05, FixUBIFeeSplitterGDT deployment)
+    address constant NEW_FEE_SPLITTER = 0x3abBB0D6ad848d64c8956edC9Bf6f18aC22E1485;
 
     // GoodPool instances (from CreateInitialPools deployment)
     address constant POOL_GD_WETH    = 0xA4899D35897033b927acFCf422bc745916139776;
     address constant POOL_GD_USDC    = 0xf953b3A269d80e3eB0F2947630Da976B896A8C5b;
     address constant POOL_WETH_USDC  = 0xAA292E8611aDF267e563f334Ee42320aC96D0463;
 
-    // UBIClaimV2 (from RedeployGoodDollarToken run 2026-04-04)
-    address constant UBI_CLAIM_V2    = 0x73C68f1f41e4890D06Ba3e71b9E9DfA555f1fb46;
+    // UBIClaimV2 (addresses.json — current devnet)
+    address constant UBI_CLAIM_V2    = 0x809d550fca64d94bd9f66e60752a544199cfac3d;
 
     // Current canonical GDT — override via GOOD_DOLLAR_TOKEN env var after a redeploy
     address constant GDT_DEFAULT     = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
@@ -87,11 +89,21 @@ contract WireUBIFeeSplitter is Script {
         IUBIClaimV2(UBI_CLAIM_V2).setFeeSplitter(NEW_FEE_SPLITTER);
         console.log("UBIClaimV2 feeSplitter:", IUBIClaimV2(UBI_CLAIM_V2).feeSplitter());
 
+        // 3. Authorize UBIClaimV2 to call releaseToUBI() (GOO-402).
+        //    Required: only ubiClaimContract can drain the splitter.
+        IUBIFeeSplitter(NEW_FEE_SPLITTER).setUBIClaimContract(UBI_CLAIM_V2);
+        console.log("UBIFeeSplitter.ubiClaimContract set to UBIClaimV2");
+
+        // 4. Set ubiRecipient so splitFeeToken() routes non-G$ UBI shares to UBIClaimV2.
+        IUBIFeeSplitter(NEW_FEE_SPLITTER).setUBIRecipient(UBI_CLAIM_V2);
+        console.log("UBIFeeSplitter.ubiRecipient set to UBIClaimV2");
+
         vm.stopBroadcast();
 
         console.log("--- Wiring complete ---");
         console.log("New UBIFeeSplitter:", NEW_FEE_SPLITTER);
         console.log("GoodDollar token:  ", gdToken);
         console.log("Wired to: SwapPoolGdWeth, SwapPoolGdUsdc, SwapPoolWethUsdc, UBIClaimV2");
+        console.log("UBIClaimV2 authorized as ubiClaimContract on splitter");
     }
 }
