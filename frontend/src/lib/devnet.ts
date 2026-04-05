@@ -39,8 +39,8 @@ export const CONTRACTS = {
   LiFiBridgeAggregator:  rawAddresses.contracts.LiFiBridgeAggregator as `0x${string}`,
   ValidatorStaking:      rawAddresses.contracts.ValidatorStaking as `0x${string}`,
   UBIFeeHook:            rawAddresses.contracts.UBIFeeHook as `0x${string}`,
-  MarketFactory:         '0xc7cDb7A2E5dDa1B7A0E792Fe1ef08ED20A6F56D4' as `0x${string}`,
-  ConditionalTokens:     '0x28f057Dc79e3Cb77B2bbF4358D7A690CFe21b2D5' as `0x${string}`,
+  MarketFactory:         rawAddresses.contracts.MarketFactory as `0x${string}`,
+  ConditionalTokens:     rawAddresses.contracts.ConditionalTokens as `0x${string}`,
   OptimisticResolver:    '0x30426D33a78afdb8788597D5BFaBdADc3Be95698' as `0x${string}`,
 
   // ── GoodLend — devnet (chain 42069), redeployed 2026-04-05 (GOO-388) ──────
