@@ -1035,7 +1035,27 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'explore', check: 'live_prices_from_coingecko', passed: false, detail: e.message }); }
 
-  // ═══ TEST 47: Per-page unique titles across key routes (GOO-392) ═══
+  // ═══ TEST 47: Accessibility — skip-to-content link present (GOO-323 / GOO-401) ═══
+  // layout.tsx has <a href="#main-content"> + <main id="main-content">.
+  // Both are absent from live DOM — deployment lag (77323c2 not deployed).
+  // Will pass once frontend deployment runs (GOO-401).
+  try {
+    const page = await context.newPage();
+    await page.goto(FRONTEND_URL, { waitUntil: 'load', timeout: 20000 });
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const skipLink = document.querySelector('a[href="#main-content"]');
+      const mainEl = document.querySelector('main#main-content');
+      const anySkip = Array.from(document.querySelectorAll('a')).some(a => a.innerText.toLowerCase().includes('skip'));
+      return { hasSkipLink: !!skipLink, hasMainId: !!mainEl, anySkip };
+    });
+    const ok = d.hasSkipLink && d.hasMainId;
+    logResult({ page: 'infra', check: 'a11y_skip_link', passed: ok, detail: ok ? 'Skip link + main#main-content present (WCAG 2.4.1 ✓)' : `Missing: ${!d.hasSkipLink ? 'skip link' : ''}${!d.hasMainId ? ' main#main-content' : ''} — GOO-323 undeployed (GOO-401)` });
+    if (ok) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'infra', check: 'a11y_skip_link', passed: false, detail: e.message }); }
+
+  // ═══ TEST 49: Per-page unique titles across key routes (GOO-392) ═══
   // All pages currently share root title "GoodDollar — DeFi That Funds UBI".
   // WCAG 2.4.2 and SEO require unique, descriptive titles per page.
   try {
