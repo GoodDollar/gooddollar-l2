@@ -1306,6 +1306,29 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'pool', check: 'liquidity_pairs_visible', passed: false, detail: e.message }); }
 
+  // ═══ TEST 67: No Vercel analytics 404 errors (GOO-472 deploy canary) ═══
+  // Fix in main: f3a477f guards <Analytics>/<SpeedInsights> behind process.env.VERCEL.
+  // Will auto-pass once CI redeploy (triggered by f3a477f at 14:11 UTC) lands.
+  try {
+    const page = await context.newPage();
+    const vercelErrors = [];
+    page.on('response', res => {
+      if (res.url().includes('/_vercel/') && (res.status() === 404 || res.status() === 0)) {
+        vercelErrors.push(res.status() + ' ' + res.url().split('/').pop());
+      }
+    });
+    page.on('requestfailed', req => {
+      if (req.url().includes('/_vercel/')) vercelErrors.push('fail ' + req.url().split('/').pop());
+    });
+    await page.goto(FRONTEND_URL, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    totalTests++;
+    const ok = vercelErrors.length === 0;
+    logResult({ page: 'infra', check: 'no_vercel_analytics_404', passed: ok, detail: ok ? 'No Vercel script 404s' : `${vercelErrors.length} Vercel 404(s) (GOO-472 fix pending deploy): ${vercelErrors.join(', ')}` });
+    if (ok) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'infra', check: 'no_vercel_analytics_404', passed: false, detail: e.message }); }
+
   await browser.close();
 
   // Summary
