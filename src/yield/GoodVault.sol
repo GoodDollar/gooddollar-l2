@@ -262,6 +262,7 @@ contract GoodVault {
                     // Route to UBI
                     if (!asset.approve(address(ubiFee), totalFees)) revert TransferFailed();
                     ubiFee.splitFeeToken(totalFees, address(this), address(asset));
+                    if (!asset.approve(address(ubiFee), 0)) revert TransferFailed();
                     totalUBIFunded += totalFees;
                 }
             }
@@ -349,6 +350,7 @@ contract GoodVault {
         if (idle > 0 && !paused) {
             if (!asset.approve(strategy, idle)) revert TransferFailed();
             IStrategy(strategy).deposit(idle);
+            if (!asset.approve(strategy, 0)) revert TransferFailed();
             totalDebt += idle;
         }
     }
