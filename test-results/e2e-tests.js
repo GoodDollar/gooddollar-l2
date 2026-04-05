@@ -982,7 +982,60 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'infra', check: 'meta_tags_present', passed: false, detail: e.message }); }
 
-  // ═══ TEST 43: Per-page unique titles across key routes (GOO-392) ═══
+  // ═══ TEST 43: Bridge shows multiple chains (Li.Fi integration) ═══
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/bridge`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(1000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const chains = (t.match(/\bETH\b|\bARB\b|\bOP\b|\bMATIC\b|\bBASE\b|\bBNB\b|\bAVAX\b/g) || []);
+      const uniqueChains = [...new Set(chains)];
+      return { chainCount: uniqueChains.length, chains: uniqueChains, hasLiFi: /li\.fi|lifi|Li\.Fi/i.test(t) };
+    });
+    const ok = d.chainCount >= 5;
+    logResult({ page: 'bridge', check: 'chain_list_renders', passed: ok, detail: ok ? `${d.chainCount} chains: ${d.chains.join(', ')}` : `Only ${d.chainCount} chains found: ${d.chains.join(', ')}` });
+    if (ok) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'bridge', check: 'chain_list_renders', passed: false, detail: e.message }); }
+
+  // ═══ TEST 44: Explore shows ≥10 tokens with prices ═══
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/explore`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(1000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const prices = (t.match(/\$[\d,]+(\.\d+)?/g) || []).filter(p => p !== '$0');
+      const tokens = (t.match(/\b(BTC|ETH|WETH|USDC|WBTC|LINK|UNI|AAVE|ARB|OP|MKR|COMP|SNX|CRV|LDO|DAI|USDT|G\$)/g) || []);
+      return { priceCount: prices.length, tokenCount: [...new Set(tokens)].length, samplePrices: prices.slice(0, 3) };
+    });
+    const ok = d.tokenCount >= 10 && d.priceCount >= 5;
+    logResult({ page: 'explore', check: 'token_count_and_prices', passed: ok, detail: ok ? `${d.tokenCount} tokens, ${d.priceCount} non-zero prices (${d.samplePrices.join(', ')})` : `tokens=${d.tokenCount} prices=${d.priceCount}` });
+    if (ok) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'explore', check: 'token_count_and_prices', passed: false, detail: e.message }); }
+
+  // ═══ TEST 45: Explore live prices from CoinGecko (BLOCKED: GOO-276) ═══
+  // usePriceFeeds is a React hook — GOO-276 blocks it. Users see FALLBACK_PRICES
+  // (e.g. ETH $3,012.45 — stale static constant) not live CoinGecko data.
+  // Will pass once unsafe-inline is in script-src and React hydrates.
+  try {
+    const page = await context.newPage();
+    const cgCalls = [];
+    page.on('request', req => { if (req.url().includes('coingecko')) cgCalls.push(1); });
+    await page.goto(`${FRONTEND_URL}/explore`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(5000);
+    totalTests++;
+    const isLive = cgCalls.length > 0;
+    logResult({ page: 'explore', check: 'live_prices_from_coingecko', passed: isLive, detail: isLive ? `CoinGecko called — live prices active` : `0 CoinGecko calls — showing stale FALLBACK_PRICES (ETH $3,012.45) — GOO-276` });
+    if (isLive) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'explore', check: 'live_prices_from_coingecko', passed: false, detail: e.message }); }
+
+  // ═══ TEST 47: Per-page unique titles across key routes (GOO-392) ═══
   // All pages currently share root title "GoodDollar — DeFi That Funds UBI".
   // WCAG 2.4.2 and SEO require unique, descriptive titles per page.
   try {

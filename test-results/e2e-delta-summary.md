@@ -28,8 +28,9 @@
 | 22 | 2026-04-04T15:30Z | 49 | 42 | 7 | 85.7% | +2 tests (perps trading UI canary, lend APY table); lend mock passes |
 | 23 | 2026-04-04T16:30Z | 51 | 43 | 8 | 84.3% | +2 tests (home swap form canary, test-dashboard); 6 GOO-276 canaries total |
 | 24 | 2026-04-05T00:00Z | 52 | 43 | 9 | 82.7% | +1 test (per-page titles); GOO-392 filed: 6/6 routes share root title |
+| 25 | 2026-04-05T01:00Z | 55 | 45 | 10 | 81.8% | +3 tests (bridge chains ✅, explore count ✅, CoinGecko canary); 7 GOO-276 canaries |
 
-## Current Failures (Run 24)
+## Current Failures (Run 25)
 
 | Page | Check | Status | Root Cause | Ticket |
 |------|-------|--------|------------|--------|
@@ -40,6 +41,7 @@
 | perps | trading_ui_renders | 🔴 CANARY | Pure client component — full trading UI invisible, bodyLen=202 | [GOO-276](/GOO/issues/GOO-276) |
 | swap | redirects_to_home | 🔴 CANARY | RSC redirect payload blocked by GOO-276 CSP | [GOO-276](/GOO/issues/GOO-276) |
 | infra | meta_tags_present | 🟡 MEDIUM | og:title missing from layout.tsx metadata export | [GOO-357](/GOO/issues/GOO-357) |
+| explore | live_prices_from_coingecko | 🔴 CANARY | 0 CoinGecko calls — showing stale FALLBACK_PRICES (ETH $3,012.45) | [GOO-276](/GOO/issues/GOO-276) |
 | infra | per_page_unique_titles | 🟡 MEDIUM | 6/6 routes share root title — WCAG 2.4.2 + SEO violation | [GOO-392](/GOO/issues/GOO-392) |
 | explorer/address | transactions_visible | Known bug | Blockscout infra issue | [GOO-193](/GOO/issues/GOO-193) |
 
