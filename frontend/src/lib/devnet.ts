@@ -75,23 +75,25 @@ export const CONTRACTS = {
   FundingRate:           '0xfd2cf3b56a73c75a7535ffe44ebabe7723c64719' as `0x${string}`,
   PerpPriceOracle:       '0xf5c4a909455c00b99a90d93b48736f3196db5621' as `0x${string}`,
 
-  // ── GoodStocks — redeployed with 12 synthetic stocks (chain 42069), 2026-04-05 (GOO-414)
+  // ── GoodStocks — vault re-fixed 2026-04-05 (GOO-473): CollateralVault redeployed with
+  //    correct GDT (0x36C02dA8…); sTokens redeployed via delist+relist pattern.
+  //    PriceOracle (0x20d7B364…) and SyntheticAssetFactory (0x2d13826…) reused.
   StocksPriceOracle:     '0x20d7B364E8Ed1F4260b5B90C41c2deC3C1F6D367' as `0x${string}`,
-  CollateralVault:       '0xCa57C1d3c2c35E667745448Fef8407dd25487ff8' as `0x${string}`,
+  CollateralVault:       '0xbFD3c8A956AFB7a9754C951D03C9aDdA7EC5d638' as `0x${string}`,
   SyntheticAssetFactory: '0x2d13826359803522cCe7a4Cfa2c1b582303DD0B4' as `0x${string}`,
   // Synthetic stock tokens (sToken ERC-20s)
-  sAAPL:                 '0x5CD50EA9490889cd9bF0Be5E4B7d14d10BafcA2B' as `0x${string}`,
-  sTSLA:                 '0x65703FC15C25bf6CC2d6B8c17B50020F14F0DE01' as `0x${string}`,
-  sNVDA:                 '0xF31b86A295a6006c81c795d00f123FeB5Afdf472' as `0x${string}`,
-  sMSFT:                 '0x99F3D3F8feE4e5aCA92927c5E8D0495b8d008480' as `0x${string}`,
-  sAMZN:                 '0x66e356591Fcf2A44D85Fb48a0DcB89b4EaFeF39d' as `0x${string}`,
-  sGOOGL:                '0x525679c456C772EA5a44ac83696677b473fcb7EA' as `0x${string}`,
-  sMETA:                 '0x863dDb1Dd6D87CA97eCDee7A330890914C185e01' as `0x${string}`,
-  sJPM:                  '0x0e4cFDa4118D7B73619ccCe1f7E7d83bdAb6BA84' as `0x${string}`,
-  sV:                    '0xb30C073428D029Af183475F44BEAeD4bBfa0A039' as `0x${string}`,
-  sDIS:                  '0xB32580EbF3d5Ae6365B191D19233777A324DcC0f' as `0x${string}`,
-  sNFLX:                 '0xE86b8E2b0952B04885df6063df92484bc2006B0a' as `0x${string}`,
-  sAMD:                  '0xD327c8301A078DaA271dd357Ddd63A8432219308' as `0x${string}`,
+  sAAPL:                 '0xfD195EeC3ADB4D9484065dcde04D9F657a5F8c45' as `0x${string}`,
+  sTSLA:                 '0xAB8C68E77d2584437b8F2ceD454D33e6B7d1eF48' as `0x${string}`,
+  sNVDA:                 '0x60f83010b4a0509ea8c7a7993471e9a4B3C82dBc' as `0x${string}`,
+  sMSFT:                 '0xC15476cFC8559FD9528141aBea459A709d86b586' as `0x${string}`,
+  sAMZN:                 '0xB701cDEA95F11bad434eb5F4fAd1320ED3544394' as `0x${string}`,
+  sGOOGL:                '0xfC97F96F115d4411821BD64Be4C6Ad670F7c0818' as `0x${string}`,
+  sMETA:                 '0xa9859e16D4DE5e71649F5D28cd47Dddce2af40CB' as `0x${string}`,
+  sJPM:                  '0x9511722bF565DF7420AB739B8e49894c5471Fb28' as `0x${string}`,
+  sV:                    '0x6efeD18c2878F48179F9B52b251c7d4C834BBC0A' as `0x${string}`,
+  sDIS:                  '0x3FDc5a01c707Ef3B708Dcdab36014aF3e229E473' as `0x${string}`,
+  sNFLX:                 '0x3B156D26a707de6E792Af47D5890E11D124F8D6C' as `0x${string}`,
+  sAMD:                  '0x85eD4d86A147a281569Dac55DA64D74d9fF53409' as `0x${string}`,
 
   // ── Governance — redeployed 2026-04-04 (GOO-313, GOO-238) ──────────────────
   VoteEscrowedGD:        '0x0B7108B29ad73097cF7E549D542915348d885e5f' as `0x${string}`,
