@@ -320,18 +320,20 @@ contract GoodPerpsTest is Test {
         vm.prank(alice);
         vault.deposit(100_000e18);
 
+        // Capture balance before open so we can compare after full close cycle
+        uint256 balBeforeOpen = vault.balances(alice);
+
         vm.prank(alice);
         engine.openPosition(btcMarketId, 100_000e18, true, 10_000e18);
 
         // BTC drops from $50k to $45k (-10%)
         btcFeed.setPrice(int256(BTC_PRICE_U - BTC_PRICE_U / 10));
 
-        uint256 balBefore = vault.balances(alice);
         vm.prank(alice);
         engine.closePosition(btcMarketId);
 
-        // PnL = -10k loss. margin = 10k. Net = ~0 (wiped out)
-        assertLt(vault.balances(alice), balBefore);
+        // PnL = -10k loss = full margin wipe. Net vault balance < pre-open balance.
+        assertLt(vault.balances(alice), balBeforeOpen);
     }
 
     function test_engine_closeShort_withProfit() public {
@@ -406,9 +408,8 @@ contract GoodPerpsTest is Test {
     }
 
     function test_engine_liquidate_bonusNotDoubleDeducted() public {
-        // Regression test: bonus must be deducted exactly once from trader vault.
-        // Bug was: vault.transfer(bonus) + _closePosition(pnl - bonus) = 2x deduction.
-        // Fix: vault.transfer(bonus) + _closePosition(pnl) = 1x deduction.
+        // Regression test: bonus must come from returned margin, not double-deducted.
+        // Fix: _closePosition first (credits remaining margin), then vault.transfer(bonus).
         vm.prank(alice);
         vault.deposit(100_000e18);
 
@@ -489,6 +490,24 @@ contract GoodPerpsTest is Test {
 
         (,,,, , uint256 oi_long2,) = _getMarket(btcMarketId);
         assertEq(oi_long2, 0);
+    }
+
+    // GOO-459: margin must be locked (debited) at openPosition so users cannot
+    // withdraw their collateral while holding an open position.
+    function test_engine_marginLockedAtOpen() public {
+        vm.prank(alice);
+        vault.deposit(100_000e18);
+
+        vm.prank(alice);
+        engine.openPosition(btcMarketId, 100_000e18, true, 10_000e18);
+
+        // Vault balance should have decreased by at least the margin
+        assertLt(vault.balances(alice), 100_000e18 - 10_000e18 + 1);
+
+        // Cannot withdraw the full original deposit — margin is locked
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.withdraw(100_000e18);
     }
 
     // ============ Helpers ============

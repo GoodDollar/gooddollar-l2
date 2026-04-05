@@ -216,6 +216,9 @@ contract PerpEngine {
         uint256 markPrice = oracle.getPriceByKey(m.oracleKey);
         funding.applyFunding(marketId, markPrice, markPrice); // mark == index at open
 
+        // Lock margin in vault (prevents withdrawal while position is open)
+        vault.debit(msg.sender, margin);
+
         // Debit fee from vault and route to UBI fee splitter
         if (fee > 0) {
             vault.debit(msg.sender, fee);
@@ -281,17 +284,18 @@ contract PerpEngine {
             revert PositionHealthy(mRatio, MAINTENANCE_MARGIN_BPS);
         }
 
-        // Liquidator bonus
+        // Liquidator bonus (paid from remaining margin after close)
         uint256 bonus = remainingMargin > 0
             ? (uint256(remainingMargin) * LIQUIDATION_BONUS_BPS) / BPS
             : 0;
+
+        // Close position first — credits trader with any remaining margin.
+        // Bonus is then transferred from that credited balance to the liquidator.
+        _closePosition(trader, marketId, pnl, fundingPayment, exitPrice);
+
         if (bonus > 0) {
             vault.transfer(trader, msg.sender, bonus);
         }
-
-        // Pass original pnl — the bonus was already deducted via vault.transfer above.
-        // Passing pnl - bonus would double-count the deduction.
-        _closePosition(trader, marketId, pnl, fundingPayment, exitPrice);
 
         emit PositionLiquidated(msg.sender, trader, marketId, exitPrice);
     }
@@ -366,17 +370,16 @@ contract PerpEngine {
         int256 netPnL = pnl - fundingPayment;
 
         if (netPnL >= 0) {
-            // Profit: credit trader with margin + profit
+            // Profit: return locked margin + profit
             vault.credit(trader, pos.margin + uint256(netPnL));
         } else {
             uint256 loss = uint256(-netPnL);
             if (loss >= pos.margin) {
-                // Wipe out (insurance fund would cover remainder in production)
-                vault.debit(trader, pos.margin);
+                // Wipe out — margin was already debited at open; nothing to return
+                // (insurance fund would cover excess loss in production)
             } else {
-                vault.debit(trader, loss);
-                // Return remaining margin
-                // (margin is already in vault; just leave it credited)
+                // Return remaining margin after loss
+                vault.credit(trader, pos.margin - loss);
             }
         }
 
