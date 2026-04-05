@@ -69,8 +69,8 @@ export const CONTRACTS = {
   SwapWETH:              '0x7C8BaafA542c57fF9B2B90612bf8aB9E86e22C09' as `0x${string}`,
   SwapUSDC:              '0x0a17FabeA4633ce714F1Fa4a2dcA62C3bAc4758d' as `0x${string}`,
 
-  // ── GoodPerps — redeployed to devnet (chain 42069), 2026-04-05 (GOO-399) ──
-  PerpEngine:            '0x666d0c3da3dbc946d5128d06115bb4eed4595580' as `0x${string}`,
+  // ── GoodPerps — redeployed to devnet (chain 42069), 2026-04-05 (GOO-450 fix) ──
+  PerpEngine:            '0x021DBfF4A864Aa25c51F0ad2Cd73266Fde66199d' as `0x${string}`,
   MarginVault:           '0xb22c255250d74b0add1bfb936676d2a299bf48bd' as `0x${string}`,
   FundingRate:           '0xfd2cf3b56a73c75a7535ffe44ebabe7723c64719' as `0x${string}`,
   PerpPriceOracle:       '0xf5c4a909455c00b99a90d93b48736f3196db5621' as `0x${string}`,

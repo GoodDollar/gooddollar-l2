@@ -2,7 +2,7 @@ const BASE_ENV = {
   L2_RPC_URL: 'http://localhost:8545',
   OPERATOR_PRIVATE_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
   GDT_ADDRESS: '0x36C02dA8a0983159322a80FFE9F24b1acfF8B570',
-  UBI_FEE_SPLITTER: '0x976fcd02f7c4773dd89c309fbf55d5923b4c98a1',
+  UBI_FEE_SPLITTER: '0x3abBB0D6ad848d64c8956edC9Bf6f18aC22E1485',
   CHAIN_ID: '42069',
 };
 
@@ -61,7 +61,7 @@ module.exports = {
       script: 'liquidator/dist/index.js',
       cwd: __dirname,
       env: { ...BASE_ENV,
-        PERP_ENGINE: '0x666d0c3da3dbc946d5128d06115bb4eed4595580',
+        PERP_ENGINE: '0x021DBfF4A864Aa25c51F0ad2Cd73266Fde66199d', // GOO-450 fix 2026-04-05
         LEND_POOL: '0x49fd2be640db2910c2fab69bb8531ab6e76127ff',
         VAULT_MANAGER: '0xab7b4c595d3ce8c85e16da86630f2fc223b05057',
       },
@@ -78,7 +78,7 @@ module.exports = {
       cwd: __dirname,
       env: { ...BASE_ENV,
         UBI_REVENUE_TRACKER: '0x04f339ec4d75cf2833069e6e61b60ef56461cd7c',
-        UBI_FEE_SPLITTER: '0x976fcd02f7c4773dd89c309fbf55d5923b4c98a1',
+        UBI_FEE_SPLITTER: '0x3abBB0D6ad848d64c8956edC9Bf6f18aC22E1485',
       },
     },
     {
