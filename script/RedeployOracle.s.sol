@@ -40,19 +40,19 @@ contract RedeployOracle is Script {
         console.log("Existing PerpEngine markets:", existingCount);
 
         if (existingCount < 3) {
-            engine.createMarket(keccak256(abi.encodePacked("SOL")), 25);
+            engine.createMarket(keccak256(abi.encodePacked("SOL")), keccak256(abi.encodePacked("SOL")), 25);
             console.log("Added SOL market to engine");
         }
         if (existingCount < 4) {
-            engine.createMarket(keccak256(abi.encodePacked("BNB")), 25);
+            engine.createMarket(keccak256(abi.encodePacked("BNB")), keccak256(abi.encodePacked("BNB")), 25);
             console.log("Added BNB market to engine");
         }
         if (existingCount < 5) {
-            engine.createMarket(keccak256(abi.encodePacked("MATIC")), 20);
+            engine.createMarket(keccak256(abi.encodePacked("MATIC")), keccak256(abi.encodePacked("MATIC")), 20);
             console.log("Added MATIC market to engine");
         }
         if (existingCount < 6) {
-            engine.createMarket(keccak256(abi.encodePacked("ARB")), 20);
+            engine.createMarket(keccak256(abi.encodePacked("ARB")), keccak256(abi.encodePacked("ARB")), 20);
             console.log("Added ARB market to engine");
         }
 

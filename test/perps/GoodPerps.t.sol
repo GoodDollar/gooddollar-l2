@@ -56,6 +56,7 @@ contract GoodPerpsTest is Test {
     FundingRate public fundingRate;
     PerpEngine public engine;
     MockPerpFeed public btcFeed;
+    MockPerpFeed public btcIndexFeed;
     MockPerpFeeSplitter public feeSplitter;
 
     address public admin = address(0xAD);
@@ -68,18 +69,23 @@ contract GoodPerpsTest is Test {
     uint256 constant BTC_PRICE_U = 5_000_000_000_000;
 
     bytes32 public btcKey;
+    bytes32 public btcIndexKey;
     uint256 public btcMarketId;
 
     function setUp() public {
         // Deploy G$
         gd = new GoodDollarToken(admin, admin, INITIAL_SUPPLY);
 
-        // Deploy oracle with BTC feed
+        // Deploy oracle with BTC mark and index feeds
         oracle = new PriceOracle(admin);
         btcFeed = new MockPerpFeed(BTC_PRICE);
+        btcIndexFeed = new MockPerpFeed(BTC_PRICE); // starts at same price; diverged in specific tests
         vm.prank(admin);
         oracle.registerFeed("BTC", address(btcFeed));
+        vm.prank(admin);
+        oracle.registerFeed("BTC_INDEX", address(btcIndexFeed));
         btcKey = keccak256(abi.encodePacked("BTC"));
+        btcIndexKey = keccak256(abi.encodePacked("BTC_INDEX"));
 
         // Deploy fee splitter mock
         feeSplitter = new MockPerpFeeSplitter(address(gd));
@@ -101,9 +107,9 @@ contract GoodPerpsTest is Test {
         vm.prank(admin);
         fundingRate.setPerpEngine(address(engine));
 
-        // Create BTC-PERP market (50x max leverage)
+        // Create BTC-PERP market (50x max leverage); mark=btcKey, index=btcIndexKey
         vm.prank(admin);
-        btcMarketId = engine.createMarket(btcKey, 50);
+        btcMarketId = engine.createMarket(btcKey, btcIndexKey, 50);
 
         // Fund alice and bob
         vm.prank(admin);
@@ -481,14 +487,14 @@ contract GoodPerpsTest is Test {
         vm.prank(alice);
         engine.openPosition(btcMarketId, 200_000e18, true, 20_000e18);
 
-        (,,,, bool active, uint256 oi_long, uint256 oi_short) = _getMarket(btcMarketId);
+        (,,, bool active, uint256 oi_long, uint256 oi_short) = _getMarket(btcMarketId);
         assertEq(oi_long, 200_000e18);
         assertEq(oi_short, 0);
 
         vm.prank(alice);
         engine.closePosition(btcMarketId);
 
-        (,,,, , uint256 oi_long2,) = _getMarket(btcMarketId);
+        (,,, , uint256 oi_long2,) = _getMarket(btcMarketId);
         assertEq(oi_long2, 0);
     }
 
@@ -531,9 +537,7 @@ contract GoodPerpsTest is Test {
 
     // GOO-462: funding must be applied at closePosition so traders cannot evade funding
     // payments by closing when no new opens have triggered applyFunding.
-    // GOO-464: assert lastFundingTime advanced (not cumulativeFundingIndex — that stays 0
-    // because PerpEngine passes the same oracle price for both mark and index, giving
-    // diff=0, ratePaid=0; the design gap is tracked separately).
+    // GOO-465: assert cumulativeFundingIndex actually changes when mark != index.
     function test_engine_fundingAppliedAtClose() public {
         vm.prank(alice);
         vault.deposit(1_000_000e18);
@@ -541,7 +545,11 @@ contract GoodPerpsTest is Test {
         vm.prank(alice);
         engine.openPosition(btcMarketId, 100_000e18, true, 10_000e18);
 
-        uint256 fundingTimeBefore = fundingRate.lastFundingTime(btcMarketId);
+        int256 indexBefore = fundingRate.cumulativeFundingIndex(btcMarketId);
+
+        // Set mark > index: 1% premium — longs will pay funding at close
+        // btcFeed (mark) stays at BTC_PRICE; btcIndexFeed (index) is set 1% lower
+        btcIndexFeed.setPrice(int256(BTC_PRICE_U - BTC_PRICE_U / 100));
 
         // Warp past one funding interval
         vm.warp(block.timestamp + 25 hours);
@@ -550,9 +558,12 @@ contract GoodPerpsTest is Test {
         vm.prank(alice);
         engine.closePosition(btcMarketId);
 
-        // lastFundingTime must have advanced — proves applyFunding() was called at close
-        assertGt(fundingRate.lastFundingTime(btcMarketId), fundingTimeBefore,
-            "applyFunding must run at close — lastFundingTime must advance");
+        // cumulativeFundingIndex must have increased (mark > index → positive rate)
+        assertGt(
+            fundingRate.cumulativeFundingIndex(btcMarketId),
+            indexBefore,
+            "cumulativeFundingIndex must increase when mark > index"
+        );
     }
 
     // ============ Helpers ============
@@ -568,8 +579,8 @@ contract GoodPerpsTest is Test {
     function _getMarket(uint256 marketId)
         internal
         view
-        returns (bytes32 oracleKey, uint256 maxLev, uint256, uint256, bool active, uint256 oiLong, uint256 oiShort)
+        returns (bytes32 oracleKey, bytes32 indexOracleKey, uint256 maxLev, bool active, uint256 oiLong, uint256 oiShort)
     {
-        (oracleKey, maxLev, active, oiLong, oiShort) = engine.markets(marketId);
+        (oracleKey, indexOracleKey, maxLev, active, oiLong, oiShort) = engine.markets(marketId);
     }
 }

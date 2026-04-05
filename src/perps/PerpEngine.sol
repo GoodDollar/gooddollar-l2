@@ -47,7 +47,8 @@ contract PerpEngine {
     }
 
     struct Market {
-        bytes32 oracleKey;
+        bytes32 oracleKey;      // mark price feed (TWAP in production)
+        bytes32 indexOracleKey; // spot/Chainlink index price feed
         uint256 maxLeverage;    // e.g., 50 = 50x
         bool active;
         uint256 openInterestLong;
@@ -153,13 +154,15 @@ contract PerpEngine {
 
     /**
      * @notice Create a new perp market.
-     * @param oracleKey keccak256 of the ticker (e.g., keccak256("BTC"))
+     * @param oracleKey keccak256 of the mark price ticker (e.g., keccak256("BTC"))
+     * @param indexOracleKey keccak256 of the index price ticker (e.g., keccak256("BTC_INDEX"))
      * @param maxLeverage Maximum allowed leverage (e.g., 50)
      */
-    function createMarket(bytes32 oracleKey, uint256 maxLeverage) external onlyAdmin returns (uint256 marketId) {
+    function createMarket(bytes32 oracleKey, bytes32 indexOracleKey, uint256 maxLeverage) external onlyAdmin returns (uint256 marketId) {
         marketId = markets.length;
         markets.push(Market({
             oracleKey: oracleKey,
+            indexOracleKey: indexOracleKey,
             maxLeverage: maxLeverage,
             active: true,
             openInterestLong: 0,
@@ -214,7 +217,8 @@ contract PerpEngine {
 
         // Settle any pending funding first (no-op if interval not elapsed)
         uint256 markPrice = oracle.getPriceByKey(m.oracleKey);
-        funding.applyFunding(marketId, markPrice, markPrice); // mark == index at open
+        uint256 indexPriceAtOpen = oracle.getPriceByKey(m.indexOracleKey);
+        funding.applyFunding(marketId, markPrice, indexPriceAtOpen);
 
         // CEI: write all state before any external interaction (GOO-461)
         pos.isOpen = true;
@@ -254,8 +258,9 @@ contract PerpEngine {
         if (!pos.isOpen) revert NoOpenPosition();
 
         uint256 exitPrice = oracle.getPriceByKey(markets[marketId].oracleKey);
+        uint256 indexPriceAtClose = oracle.getPriceByKey(markets[marketId].indexOracleKey);
         // GOO-462: apply funding at close so the cumulative index is current
-        funding.applyFunding(marketId, exitPrice, exitPrice);
+        funding.applyFunding(marketId, exitPrice, indexPriceAtClose);
 
         (int256 pnl, int256 fundingPayment) = _settlePnL(msg.sender, marketId, exitPrice);
 
@@ -274,8 +279,9 @@ contract PerpEngine {
         if (!pos.isOpen) revert NoOpenPosition();
 
         uint256 exitPrice = oracle.getPriceByKey(markets[marketId].oracleKey);
+        uint256 indexPriceAtLiquidation = oracle.getPriceByKey(markets[marketId].indexOracleKey);
         // GOO-462: apply funding at liquidation so the cumulative index is current
-        funding.applyFunding(marketId, exitPrice, exitPrice);
+        funding.applyFunding(marketId, exitPrice, indexPriceAtLiquidation);
         (int256 pnl, int256 fundingPayment) = _settlePnL(trader, marketId, exitPrice);
 
         int256 totalPnL = pnl - fundingPayment;

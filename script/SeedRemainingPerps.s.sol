@@ -10,7 +10,7 @@ interface IPerpPriceOracle {
 }
 
 interface IPerpEngine {
-    function createMarket(bytes32 oracleKey, uint256 maxLeverage) external returns (uint256);
+    function createMarket(bytes32 oracleKey, bytes32 indexOracleKey, uint256 maxLeverage) external returns (uint256);
     function marketCount() external view returns (uint256);
 }
 
@@ -69,7 +69,7 @@ contract SeedRemainingPerps is Script {
             console.log("  Price set:", markets[i].markPrice);
 
             // Create in engine
-            uint256 marketId = engine.createMarket(key, markets[i].maxLeverage);
+            uint256 marketId = engine.createMarket(key, key, markets[i].maxLeverage);
             console.log("  Engine market created (id:", marketId, ")");
             added++;
         }

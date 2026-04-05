@@ -70,7 +70,7 @@ contract SeedPerpOracle is Script {
                 " index=", vm.toString(m.indexPrice)));
 
             // 3. Register market in PerpEngine
-            uint256 marketId = engine.createMarket(key, m.maxLeverage);
+            uint256 marketId = engine.createMarket(key, key, m.maxLeverage);
             console.log(string.concat("  PerpEngine market added (id=",
                 vm.toString(marketId), ", maxLeverage=", vm.toString(m.maxLeverage), "x)"));
         }

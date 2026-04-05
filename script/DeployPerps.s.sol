@@ -96,7 +96,7 @@ contract DeployPerps is Script {
 
             oracle.registerMarket(key);
             oracle.setManualPrice(key, m.markPrice, m.indexPrice);
-            uint256 marketId = engine.createMarket(key, m.maxLeverage);
+            uint256 marketId = engine.createMarket(key, key, m.maxLeverage);
             console.log(
                 string.concat(m.ticker, " market id=", vm.toString(marketId),
                     " leverage=", vm.toString(m.maxLeverage), "x")
