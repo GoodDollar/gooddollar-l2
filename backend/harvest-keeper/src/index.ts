@@ -25,7 +25,7 @@ async function main() {
   const config: HarvestKeeperConfig = {
     rpcUrl: process.env.RPC_URL || 'http://localhost:8545',
     privateKey: process.env.PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
-    factoryAddress: process.env.VAULT_FACTORY || '0x0b27a79cb9c0b38ee06ca3d94daa68e0ed17f953',
+    factoryAddress: process.env.VAULT_FACTORY || '0xe70f935c32da4db13e7876795f1e175465e6458e',
     minHarvestIntervalSeconds: parseInt(process.env.MIN_HARVEST_GAP || '3600'),
     minProfitThresholdBPS: 10,
     dryRun,

@@ -23,13 +23,13 @@ export const INITIAL_LOOKBACK = Number(process.env.INITIAL_LOOKBACK) || 1000;
 // ─── Contract Addresses ───────────────────────────────────────────────────────
 
 export const ADDRESSES = {
-  AgentRegistry:         '0xA9d0Fb5837f9c42c874e16da96094b14Af0e2784',
-  GoodSwapRouter:        '0xaC9fCBA56E42d5960f813B9D0387F3D3bC003338',
-  PerpEngine:            '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
-  GoodLendPool:          '0x322813fd9a801c5507c9de605d63cea4f2ce6c44',
-  MarketFactory:         '0xc7cDb7A2E5dDa1B7A0E792Fe1ef08ED20A6F56D4',
-  CollateralVault:       '0x56D13Eb21a625EdA8438F55DF2C31dC3632034f5', // stocks
-  VaultFactory:          '0x0b27a79cb9c0b38ee06ca3d94daa68e0ed17f953',
+  AgentRegistry:         process.env.AGENT_REGISTRY  || '0xf8e31cb472bc70500f08cd84917e5a1912ec8397',
+  GoodSwapRouter:        process.env.SWAP_ROUTER     || '0x975ab64f4901af5f0c96636dea0b9de3419d0c2f',
+  PerpEngine:            process.env.PERP_ENGINE     || '0x666d0c3da3dbc946d5128d06115bb4eed4595580',
+  GoodLendPool:          process.env.LEND_POOL       || '0x49fd2be640db2910c2fab69bb8531ab6e76127ff',
+  MarketFactory:         process.env.MARKET_FACTORY  || '0x74ef2B06A1D2035C33244A4a263FF00B84504865',
+  CollateralVault:       process.env.COLLATERAL_VAULT|| '0xca57c1d3c2c35e667745448fef8407dd25487ff8',
+  VaultFactory:          process.env.VAULT_FACTORY   || '0xe70f935c32da4db13e7876795f1e175465e6458e',
 } as const;
 
 // ─── Protocol Definitions ─────────────────────────────────────────────────────
