@@ -26,14 +26,16 @@
 | 20 | 2026-04-04T10:00Z | 44 | 40 | 4 | 90.9% | No change — GOO-276 still unfixed |
 | 21 | 2026-04-04T14:30Z | 47 | 41 | 6 | 87.2% | +3 tests (404 page, swap redirect, meta tags); GOO-357 filed |
 | 22 | 2026-04-04T15:30Z | 49 | 42 | 7 | 85.7% | +2 tests (perps trading UI canary, lend APY table); lend mock passes |
+| 23 | 2026-04-04T16:30Z | 51 | 43 | 8 | 84.3% | +2 tests (home swap form canary, test-dashboard); 6 GOO-276 canaries total |
 
-## Current Failures (Run 22)
+## Current Failures (Run 23)
 
 | Page | Check | Status | Root Cause | Ticket |
 |------|-------|--------|------------|--------|
 | infra | csp_hydration_and_rpc | 🚨 CRITICAL | 6 inline script CSP violations — script-src missing unsafe-inline | [GOO-276](/GOO/issues/GOO-276) |
 | stocks | live_prices_from_oracle | 🔴 CANARY | 0 RPC calls — will pass once GOO-276 fixed | [GOO-276](/GOO/issues/GOO-276) |
 | activity | live_block_data | 🔴 CANARY | Block #0 — will pass once GOO-276 fixed | [GOO-276](/GOO/issues/GOO-276) |
+| **home** | **swap_form_renders** | 🚨 **CRITICAL CANARY** | **Home page SwapCard blocked — zero functional UI on landing page** | [GOO-276](/GOO/issues/GOO-276) |
 | perps | trading_ui_renders | 🔴 CANARY | Pure client component — full trading UI invisible, bodyLen=202 | [GOO-276](/GOO/issues/GOO-276) |
 | swap | redirects_to_home | 🔴 CANARY | RSC redirect payload blocked by GOO-276 CSP | [GOO-276](/GOO/issues/GOO-276) |
 | infra | meta_tags_present | 🟡 MEDIUM | og:title missing from layout.tsx metadata export | [GOO-357](/GOO/issues/GOO-357) |

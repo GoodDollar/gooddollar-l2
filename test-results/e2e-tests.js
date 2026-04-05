@@ -849,7 +849,32 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'activity', check: 'live_block_data', passed: false, detail: e.message }); }
 
-  // ═══ TEST 36: Perps trading UI renders (BLOCKED: GOO-276) ═══
+  // ═══ TEST 36: Home page swap form renders token selectors (BLOCKED: GOO-276) ═══
+  // SwapCard is 'use client' with useState/useEffect. GOO-276 blocks hydration so
+  // the token selectors, amount inputs, and swap button never render. Users see
+  // only the marketing hero — the primary product action is invisible.
+  try {
+    const page = await context.newPage();
+    const rpcCalls = [];
+    page.on('request', req => { if (req.url().includes('rpc.goodclaw.org')) rpcCalls.push(1); });
+    await page.goto(FRONTEND_URL, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(3000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      // Token selector labels appear as e.g. "USDC", "G$" in dropdown triggers
+      const tokenPairs = (t.match(/\bUSDC\b|\bWETH\b|\bWBTC\b/g) || []).length;
+      const hasSwapButton = /\bSwap\b/.test(t) && !/^Swap$/.test(t.trim()); // "Swap" as action, not just nav link
+      const hasAmountInput = /You pay|You receive|From|To/i.test(t);
+      return { tokenPairs, hasSwapButton, hasAmountInput, bodyLen: t.trim().length };
+    });
+    const hasSwapForm = rpcCalls.length > 0 || (d.tokenPairs >= 1 && d.hasAmountInput);
+    logResult({ page: 'home', check: 'swap_form_renders', passed: hasSwapForm, detail: rpcCalls.length === 0 && d.tokenPairs === 0 ? `No RPC + no token labels — GOO-276 blocks SwapCard hydration` : `tokens=${d.tokenPairs} inputs=${d.hasAmountInput}` });
+    if (hasSwapForm) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'home', check: 'swap_form_renders', passed: false, detail: e.message }); }
+
+  // ═══ TEST 37: Perps trading UI renders (BLOCKED: GOO-276) ═══
   // The perps page is pure 'use client'. GOO-276 blocks React hydration, so the
   // entire trading UI (prices, chart, order form, pairs) is invisible.
   // Will auto-pass once unsafe-inline is in script-src.
@@ -924,7 +949,23 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'lend', check: 'market_table_with_apys', passed: false, detail: e.message }); }
 
-  // ═══ TEST 40: Homepage meta tags present (SEO / share previews) ═══
+  // ═══ TEST 40: Test dashboard public page loads (on-chain QA transparency) ═══
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/test-dashboard`, { waitUntil: 'load', timeout: 30000 });
+    await page.waitForTimeout(1000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return { hasHeading: /test coverage|Test Coverage/i.test(t), is404: /page not found/i.test(t), hasBroken: /TypeError|undefined is not/i.test(t), len: t.trim().length };
+    });
+    const ok = d.hasHeading && !d.is404 && !d.hasBroken;
+    logResult({ page: 'test-dashboard', check: 'page_loads', passed: ok, detail: ok ? `On-chain QA dashboard visible (${d.len} chars)` : d.is404 ? '404' : d.hasBroken ? 'JS error' : 'Missing heading' });
+    if (ok) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'test-dashboard', check: 'page_loads', passed: false, detail: e.message }); }
+
+  // ═══ TEST 42: Homepage meta tags present (SEO / share previews) ═══
   try {
     const page = await context.newPage();
     await page.goto(FRONTEND_URL, { waitUntil: 'load', timeout: 30000 });
