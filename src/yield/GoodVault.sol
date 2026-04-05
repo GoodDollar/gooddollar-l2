@@ -172,7 +172,7 @@ contract GoodVault {
     // ERC-4626 Mutative Functions
     // ═══════════════════════════════════════════════════
 
-    function deposit(uint256 assets, address receiver) external whenNotPaused returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver) external whenNotPaused nonReentrant returns (uint256 shares) {
         if (assets == 0) revert ZeroAssets();
         shares = convertToShares(assets);
         if (shares == 0) revert ZeroShares();
@@ -286,7 +286,7 @@ contract GoodVault {
     // Strategy Management
     // ═══════════════════════════════════════════════════
 
-    function migrateStrategy(address newStrategy) external onlyAdmin {
+    function migrateStrategy(address newStrategy) external onlyAdmin nonReentrant {
         if (IStrategy(newStrategy).asset() != address(asset)) revert StrategyAssetMismatch();
 
         address old = strategy;
@@ -304,7 +304,7 @@ contract GoodVault {
         emit StrategyMigrated(old, newStrategy);
     }
 
-    function emergencyShutdown() external onlyAdmin {
+    function emergencyShutdown() external onlyAdmin nonReentrant {
         paused = true;
         uint256 returned;
         if (totalDebt > 0) {
