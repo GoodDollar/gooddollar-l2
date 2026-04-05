@@ -23,6 +23,19 @@ L2OO_ADDR=$($FORGE create src/bridge/L2OutputOracle.sol:L2OutputOracle \
   --json 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['deployedTo'])" 2>/dev/null || echo "SKIP")
 echo "  L2OutputOracle: $L2OO_ADDR"
 
+# Set proposer to the dedicated proposer account (op-proposer uses PROPOSER_ADDR)
+PROPOSER_ADDR="${PROPOSER_ADDR:-0x70997970C51812dc3A010C7d01b50e0d17dc79C8}"
+CAST="${CAST:-/home/goodclaw/.foundry/bin/cast}"
+if [ "$L2OO_ADDR" != "SKIP" ]; then
+  echo "  Setting proposer to $PROPOSER_ADDR..."
+  $CAST send "$L2OO_ADDR" \
+    "setProposer(address)" "$PROPOSER_ADDR" \
+    --rpc-url "$L1_RPC" \
+    --private-key "$DEPLOYER_KEY" 2>/dev/null \
+    && echo "  Proposer set to $PROPOSER_ADDR" \
+    || echo "  Warning: setProposer call failed — proposer defaults to deployer"
+fi
+
 # Step 2: Deploy OptimismPortal (deposit/withdrawal entry point)
 echo "[2/4] Deploying OptimismPortal..."
 PORTAL_ADDR=$($FORGE create src/bridge/OptimismPortal.sol:OptimismPortal \

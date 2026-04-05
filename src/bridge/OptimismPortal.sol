@@ -61,16 +61,18 @@ contract OptimismPortal {
         address _to,
         uint256 _value,
         uint64 _gasLimit,
-        bool /*_isCreation*/,
+        bool _isCreation,
         bytes calldata _data
     ) external payable {
         require(!paused, "OptimismPortal: paused");
 
         uint256 nonce = depositNonce++;
+        // opaqueData layout (OP Stack spec): mint (32) + value (32) + gasLimit (8) + isCreation (1) + data
         bytes memory opaqueData = abi.encodePacked(
             msg.value,
             _value,
             _gasLimit,
+            _isCreation,
             _data
         );
 

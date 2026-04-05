@@ -80,6 +80,12 @@ contract L2OutputOracle {
         emit OutputProposed(_outputRoot, index, _l2BlockNumber, block.timestamp);
     }
 
+    /// @notice Update proposer address (current proposer only)
+    function setProposer(address _proposer) external {
+        require(msg.sender == proposer, "L2OutputOracle: only proposer");
+        proposer = _proposer;
+    }
+
     /// @notice Delete an invalid output (challenger only)
     function deleteL2Outputs(uint256 _l2OutputIndex) external {
         require(msg.sender == challenger, "L2OutputOracle: only challenger");
