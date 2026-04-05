@@ -240,6 +240,40 @@ contract GoodPerpsTest is Test {
         assertLt(shortFunding, 0); // Short receives
     }
 
+    // GOO-470: lastFundingTime must advance by FUNDING_INTERVAL (not to block.timestamp)
+    // so that N skipped intervals are each settled on successive applyFunding calls.
+    function test_fundingRate_multipleSkippedIntervals_settleInSuccessiveCalls() public {
+        uint256 interval = fundingRate.FUNDING_INTERVAL();
+        uint256 markPrice = BTC_PRICE_U + (BTC_PRICE_U / 1000); // 0.1% premium
+
+        // Warp 3 full intervals forward
+        vm.warp(block.timestamp + 3 * interval + 1);
+
+        // Call 1: settles interval 1, lastFundingTime advances by one interval
+        vm.prank(address(engine));
+        int256 rate1 = fundingRate.applyFunding(btcMarketId, markPrice, BTC_PRICE_U);
+        assertGt(rate1, 0);
+
+        // Call 2 immediately after: still eligible (2 more intervals remain)
+        vm.prank(address(engine));
+        int256 rate2 = fundingRate.applyFunding(btcMarketId, markPrice, BTC_PRICE_U);
+        assertGt(rate2, 0);
+
+        // Call 3: still eligible (1 more interval remains)
+        vm.prank(address(engine));
+        int256 rate3 = fundingRate.applyFunding(btcMarketId, markPrice, BTC_PRICE_U);
+        assertGt(rate3, 0);
+
+        // All 3 intervals settled — cumulative index is 3× the single-interval rate
+        int256 cumulative = fundingRate.cumulativeFundingIndex(btcMarketId);
+        assertEq(cumulative, rate1 + rate2 + rate3);
+
+        // Call 4: no more intervals elapsed, must return 0
+        vm.prank(address(engine));
+        int256 rate4 = fundingRate.applyFunding(btcMarketId, markPrice, BTC_PRICE_U);
+        assertEq(rate4, 0);
+    }
+
     // ============ PerpEngine Tests ============
 
     function test_engine_openLongPosition() public {
