@@ -217,3 +217,23 @@ curl -s "http://127.0.0.1:3102/api/companies/7e8ba4ed-e545-4394-ad98-c0c855409a4
 
 ### Contract Addresses (for all testers)
 See .autobuilder/addresses.env for latest deployed addresses.
+
+## MANDATE: All Tests Must Transact
+
+Every Gemma tester run MUST include `cast send` transactions. Read-only checks are NOT sufficient.
+
+### 7 Gemma Testers (every 30 min):
+| Tester | Transactions |
+|--------|-------------|
+| QA Core | ETH send, G$ transfer, G$ stake |
+| Swap | approve + swap via router |
+| Perps | deposit margin + open/close position |
+| Lend | supply + withdraw from pool |
+| Stocks | approve + trade synthetic |
+| Predict | create market + buy position |
+| Infra | health checks (reads OK here) |
+
+### Transaction tracking:
+- Explorer: https://explorer.goodclaw.org
+- Expected: 20+ new transactions per hour from testers
+- Chain should show growing tx count every 30 min
