@@ -237,6 +237,43 @@ contract UBIFeeSplitterTest is Test {
         assertEq(splitter.ubiClaimContract(), ubiClaim);
     }
 
+    function test_setGoodDollar_UpdatesAddress() public {
+        vm.startPrank(admin);
+        GoodDollarToken newToken = new GoodDollarToken(admin, oracle, 0);
+        splitter.setGoodDollar(address(newToken));
+        vm.stopPrank();
+        assertEq(address(splitter.goodDollar()), address(newToken));
+    }
+
+    function test_setGoodDollar_ZeroAddress_Reverts() public {
+        vm.prank(admin);
+        vm.expectRevert("zero address");
+        splitter.setGoodDollar(address(0));
+    }
+
+    function test_setGoodDollar_OnlyAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert("Not admin");
+        splitter.setGoodDollar(address(token));
+    }
+
+    function test_setGoodDollar_SplitFeeUsesNewToken() public {
+        vm.startPrank(admin);
+        GoodDollarToken newToken = new GoodDollarToken(admin, oracle, 0);
+        splitter.setGoodDollar(address(newToken));
+        newToken.setMinter(address(this), true);
+        vm.stopPrank();
+
+        // Mint new token to alice and verify splitFee works with updated address
+        newToken.mint(alice, 1000 ether);
+        vm.startPrank(alice);
+        newToken.approve(address(splitter), 1000 ether);
+        (uint256 ubiShare,,) = splitter.splitFee(1000 ether, dapp);
+        vm.stopPrank();
+
+        assertEq(ubiShare, (1000 ether * 3333) / 10000);
+    }
+
     // ─── ETH receive + withdrawETH ─────────────────────────────────────────────
 
     function test_receiveETH() public {

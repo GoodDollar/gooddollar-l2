@@ -16,7 +16,7 @@ interface IERC20Transfer {
 }
 
 contract UBIFeeSplitter {
-    IGoodDollarToken public immutable goodDollar;
+    IGoodDollarToken public goodDollar;
 
     // Fee split configuration (in basis points, 10000 = 100%)
     uint256 public ubiBPS = 3333;      // 33.33% to UBI pool
@@ -128,6 +128,13 @@ contract UBIFeeSplitter {
     function setUBIClaimContract(address _ubiClaimContract) external onlyAdmin {
         require(_ubiClaimContract != address(0), "zero address");
         ubiClaimContract = _ubiClaimContract;
+    }
+
+    /// @notice Update the GoodDollar token address. Required when GDT is redeployed
+    ///         (e.g. after devnet resets). Immutability prevented live updates — GOO-402.
+    function setGoodDollar(address _goodDollar) external onlyAdmin {
+        require(_goodDollar != address(0), "zero address");
+        goodDollar = IGoodDollarToken(_goodDollar);
     }
 
     /**
