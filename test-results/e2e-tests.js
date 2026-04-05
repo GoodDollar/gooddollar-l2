@@ -1125,6 +1125,49 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'infra', check: 'per_page_unique_titles', passed: false, detail: e.message }); }
 
+  // ═══ TEST 58: Perps live order book and recent trades ═══
+  // Verifies that real market data is flowing: 5 pairs, non-empty order book, recent trades.
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/perps`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(3000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const pairCount = (t.match(/\b(BTC|ETH|SOL|BNB|ARB)-USD\b/g) || []).length;
+      const hasOrderBook = /Order Book/.test(t);
+      const orderBookRows = (t.match(/\$[\d,]{5,}\.\d{2}\n[\d.]+\n/g) || []).length;
+      const hasRecentTrades = /Recent Trades/.test(t);
+      const tradeTimestamps = (t.match(/\d{2}:\d{2}:\d{2}/g) || []).length;
+      const hasFunding = /Funding/.test(t);
+      return { pairCount, hasOrderBook, orderBookRows, hasRecentTrades, tradeTimestamps, hasFunding };
+    });
+    const isLive = d.pairCount >= 3 && d.hasOrderBook && d.hasRecentTrades && d.tradeTimestamps >= 5;
+    logResult({ page: 'perps', check: 'live_order_book_and_trades', passed: isLive, detail: isLive ? `${d.pairCount} pairs, orderBook=${d.hasOrderBook}, ${d.tradeTimestamps} trade timestamps` : `pairs=${d.pairCount} ob=${d.hasOrderBook} trades=${d.tradeTimestamps}` });
+    if (isLive) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'perps', check: 'live_order_book_and_trades', passed: false, detail: e.message }); }
+
+  // ═══ TEST 59: Stocks page shows live oracle prices (GOO-414 re-seeding check) ═══
+  // After devnet oracle re-seeding, stocks should show real prices from on-chain oracle.
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/stocks`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(3000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const tickerCount = (t.match(/AAPL|TSLA|NVDA|MSFT|AMZN|GOOGL|META|JPM|NFLX|AMD/g) || []).length;
+      const priceCount = (t.match(/\$[\d,]+\.\d{2}/g) || []).length;
+      const hasNonZeroPrice = /\$[1-9][\d,]*\.\d{2}/.test(t);
+      return { tickerCount, priceCount, hasNonZeroPrice };
+    });
+    const hasLiveStockPrices = d.tickerCount >= 4 && d.priceCount >= 4 && d.hasNonZeroPrice;
+    logResult({ page: 'stocks', check: 'oracle_prices_live', passed: hasLiveStockPrices, detail: hasLiveStockPrices ? `${d.tickerCount} tickers, ${d.priceCount} prices` : `tickers=${d.tickerCount} prices=${d.priceCount} nonZero=${d.hasNonZeroPrice}` });
+    if (hasLiveStockPrices) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'stocks', check: 'oracle_prices_live', passed: false, detail: e.message }); }
+
   await browser.close();
 
   // Summary
