@@ -1168,6 +1168,27 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'stocks', check: 'oracle_prices_live', passed: false, detail: e.message }); }
 
+  // ═══ TEST 60: Stocks AAPL detail page has real key statistics ═══
+  // After oracle re-seeding, the detail page should render full statistics (P/E, EPS, 52W range).
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/stocks/AAPL`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const hasPrice = /\$[1-9][\d,]*\.\d{2}/.test(t);
+      const hasStats = /Market Cap|P\/E Ratio|52W High/i.test(t);
+      const hasTradeForm = /Buy|Sell|Amount/i.test(t);
+      const priceMatch = t.match(/\$(\d[\d,]*\.\d{2})/);
+      return { hasPrice, hasStats, hasTradeForm, price: priceMatch ? priceMatch[0] : null };
+    });
+    const isDetailed = d.hasPrice && d.hasStats && d.hasTradeForm;
+    logResult({ page: 'stocks/AAPL', check: 'detail_with_stats', passed: isDetailed, detail: isDetailed ? `Price=${d.price} stats=✓ tradeForm=✓` : `price=${d.hasPrice} stats=${d.hasStats} form=${d.hasTradeForm}` });
+    if (isDetailed) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'stocks/AAPL', check: 'detail_with_stats', passed: false, detail: e.message }); }
+
   await browser.close();
 
   // Summary
