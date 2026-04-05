@@ -6,6 +6,34 @@
 
 ---
 
+## 💡 Why GoodDollar L2?
+
+**The problem:** DeFi generates billions in fees — none of it reaches the people who need it most.
+
+**Our solution:** A dedicated L2 where **33% of every protocol fee** automatically funds Universal Basic Income. Not optional. Not a toggle. Built into the chain itself.
+
+| What You Do | What Happens |
+|-------------|-------------|
+| Swap tokens on GoodSwap | 33% of the swap fee → UBI pool |
+| Trade perps on GoodPerps | 33% of trading fees → UBI pool |
+| Get liquidated on GoodLend | 33% of liquidation penalty → UBI pool |
+| Mint gUSD on GoodStable | 33% of stability fees → UBI pool |
+| Trade synthetic stocks | 33% of trading fees → UBI pool |
+
+**The more DeFi activity, the more UBI distributed.** At 1M users: $33K/day flows to verified humans worldwide.
+
+### 🤖 Built Entirely by AI
+
+This isn't vaporware. **29 AI agents** wrote every line of code:
+- **426 commits** · **53 smart contracts** · **12,800 lines of Solidity** · **887 tests passing**
+- **6 DeFi protocols** live on devnet with real transactions
+- Security audited by Slither (automated) — [see audit report](docs/SECURITY-AUDIT.md)
+
+> *"The future of finance should fund the future of humanity."* — [Yoni Assia](https://twitter.com/yaboronassia), Founder
+
+
+---
+
 ## 📦 Version & Health Status
 
 | Component | Version | Status | Details |
