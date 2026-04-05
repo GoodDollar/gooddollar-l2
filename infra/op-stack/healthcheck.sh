@@ -24,9 +24,9 @@ echo "════════════════════════�
 echo ""
 
 # Chain connectivity
-check "L1 RPC (chain 900)" "cast chain-id --rpc-url http://localhost:8545"
+check "L1 RPC (chain 900)" "cast chain-id --rpc-url http://localhost:8546"
 check "L2 RPC (chain 42069)" "cast chain-id --rpc-url http://localhost:9545"
-check "L1 block number" "cast block-number --rpc-url http://localhost:8545"
+check "L1 block number" "cast block-number --rpc-url http://localhost:8546"
 check "L2 block number" "cast block-number --rpc-url http://localhost:9545"
 
 # L1 contracts
@@ -35,7 +35,7 @@ echo "L1 Contracts:"
 for contract in L2OO_ADDRESS PORTAL_ADDRESS SYSTEM_CONFIG_ADDRESS L1_BRIDGE_ADDRESS; do
   addr="${!contract:-}"
   if [ -n "$addr" ]; then
-    code=$(cast code "$addr" --rpc-url http://localhost:8545 2>/dev/null || echo "0x")
+    code=$(cast code "$addr" --rpc-url http://localhost:8546 2>/dev/null || echo "0x")
     if [ "$code" != "0x" ] && [ -n "$code" ]; then
       echo -e "  ${GREEN}✓${NC} $contract: $addr"
     else
@@ -62,7 +62,7 @@ done
 # Sequencer sync check
 echo ""
 echo "Sync Status:"
-L1_HEAD=$(cast block-number --rpc-url http://localhost:8545 2>/dev/null || echo "0")
+L1_HEAD=$(cast block-number --rpc-url http://localhost:8546 2>/dev/null || echo "0")
 L2_HEAD=$(cast block-number --rpc-url http://localhost:9545 2>/dev/null || echo "0")
 if [ "$L2_HEAD" != "0" ] && [ "$L1_HEAD" != "0" ]; then
   echo -e "  L1 head: $L1_HEAD"

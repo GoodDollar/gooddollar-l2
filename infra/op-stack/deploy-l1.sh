@@ -3,7 +3,7 @@
 # These contracts enable the L1↔L2 bridge and rollup verification
 set -euo pipefail
 
-L1_RPC="${L1_RPC:-http://localhost:8545}"
+L1_RPC="${L1_RPC:-http://localhost:8546}"
 DEPLOYER_KEY="${DEPLOYER_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
 FORGE="${FORGE:-/home/goodclaw/.foundry/bin/forge}"
 

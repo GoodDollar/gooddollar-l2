@@ -41,7 +41,7 @@ services:
     volumes:
       - l1-anvil-data:/data
     ports:
-      - "8545:8545"
+      - "8546:8545"
     healthcheck:
       test: ["CMD", "cast", "block-number", "--rpc-url", "http://localhost:8545"]
       interval: 5s
@@ -52,30 +52,36 @@ services:
   # ─── L2: Execution Engine ─────────────────────────
   op-geth:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101408.0
-    entrypoint: ["geth"]
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      - --datadir=/data
-      - --http
-      - --http.addr=0.0.0.0
-      - --http.port=9545
-      - --http.corsdomain=*
-      - --http.vhosts=*
-      - --http.api=web3,debug,eth,txpool,net,engine
-      - --ws
-      - --ws.addr=0.0.0.0
-      - --ws.port=9546
-      - --ws.origins=*
-      - --ws.api=debug,eth,txpool,net,engine
-      - --authrpc.addr=0.0.0.0
-      - --authrpc.port=9551
-      - --authrpc.jwtsecret=/config/jwt-secret.txt
-      - --authrpc.vhosts=*
-      - --networkid=42069
-      - --gcmode=archive
-      - --nodiscover
-      - --maxpeers=0
-      - --rollup.disabletxpoolgossip
-      - --rollup.sequencerhttp=http://localhost:9545
+      - |
+        if [ ! -d /data/geth ]; then
+          echo "Initializing op-geth genesis (hash scheme)..."
+          geth init --datadir=/data --state.scheme=hash /config/genesis.json
+        fi
+        exec geth \
+          --datadir=/data \
+          --http \
+          --http.addr=0.0.0.0 \
+          --http.port=9545 \
+          --http.corsdomain="*" \
+          --http.vhosts="*" \
+          --http.api=web3,debug,eth,txpool,net,engine \
+          --ws \
+          --ws.addr=0.0.0.0 \
+          --ws.port=9546 \
+          --ws.origins="*" \
+          --ws.api=debug,eth,txpool,net,engine \
+          --authrpc.addr=0.0.0.0 \
+          --authrpc.port=9551 \
+          --authrpc.jwtsecret=/config/jwt-secret.txt \
+          --authrpc.vhosts="*" \
+          --networkid=42069 \
+          --gcmode=archive \
+          --nodiscover \
+          --maxpeers=0 \
+          --rollup.disabletxpoolgossip \
+          --rollup.sequencerhttp=http://localhost:9545
     volumes:
       - op-geth-data:/data
       - ./jwt-secret.txt:/config/jwt-secret.txt:ro
@@ -104,6 +110,9 @@ services:
       - --sequencer.l1-confs=0
       - --verifier.l1-confs=0
       - --l1.trustrpc
+      - --l1.rpckind=basic
+      - --l1.beacon=http://l1-anvil:8545
+      - --l1.beacon.ignore=true
     volumes:
       - ./jwt-secret.txt:/config/jwt-secret.txt:ro
       - ./rollup.json:/config/rollup.json:ro
@@ -116,7 +125,7 @@ services:
 
   # ─── Batcher: Posts L2 txs to L1 ──────────────────
   op-batcher:
-    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:v1.10.2
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:v1.10.0
     entrypoint: ["op-batcher"]
     command:
       - --l1-eth-rpc=http://l1-anvil:8545
