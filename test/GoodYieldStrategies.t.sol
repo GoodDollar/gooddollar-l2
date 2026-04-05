@@ -409,7 +409,9 @@ contract StablecoinStrategyTest is Test {
         vm.prank(vault);
         strategy.harvest();
 
-        assertEq(weth.balanceOf(vault), vaultWETHBefore + 0.5 ether, "ETH gains should transfer to vault");
+        // ETH gains stay in strategy (not forwarded to vault); admin recovers via sweepGains().
+        assertEq(weth.balanceOf(address(strategy)), 0.5 ether, "ETH gains should stay in strategy");
+        assertEq(weth.balanceOf(vault), vaultWETHBefore, "Vault should not receive ETH gains during harvest");
     }
 
     function test_stable_harvest_withLoss() public {
