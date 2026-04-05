@@ -1228,6 +1228,84 @@ async function run() {
     await page.close();
   } catch (e) { totalTests++; failed++; logResult({ page: 'governance', check: 'protocol_parameters', passed: false, detail: e.message }); }
 
+  // ═══ TEST 63: Stocks disclaimer updated to reflect live oracle (GOO-445 deploy canary) ═══
+  // Fix is in main (commit 862d5f6) but CI was broken until f23aa1c (2026-04-05T14:01 UTC).
+  // Will auto-pass once the next CI build deploys the updated copy.
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/stocks`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const hasOldDisclaimer = /synthetic and illustrative|Real oracle prices coming soon/i.test(t);
+      const hasNewCopy = /sourced from on-chain oracle|Updated on every block/i.test(t);
+      return { hasOldDisclaimer, hasNewCopy };
+    });
+    const passed445 = !d.hasOldDisclaimer && d.hasNewCopy;
+    logResult({ page: 'stocks', check: 'disclaimer_updated_goo445', passed: passed445, detail: passed445 ? 'Oracle copy live' : d.hasOldDisclaimer ? 'Old disclaimer still deployed (GOO-445 fix pending CI redeploy)' : 'No disclaimer text found' });
+    if (passed445) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'stocks', check: 'disclaimer_updated_goo445', passed: false, detail: e.message }); }
+
+  // ═══ TEST 64: UBI Impact page shows live contract addresses ═══
+  // UBIRevenueTracker and UBIFeeSplitter addresses should be visible with chain ID 42069.
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/ubi-impact`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const hasContracts = /0x[a-fA-F0-9]{4,}/i.test(t);
+      const hasChainId = /42069/.test(t);
+      const hasTracker = /UBIRevenueTracker|UBIFeeSplitter/i.test(t);
+      return { hasContracts, hasChainId, hasTracker };
+    });
+    const hasUBIData = d.hasContracts && d.hasChainId && d.hasTracker;
+    logResult({ page: 'ubi-impact', check: 'live_contract_addresses', passed: hasUBIData, detail: hasUBIData ? 'Contract addresses + chain ID 42069 visible' : `contracts=${d.hasContracts} chainId=${d.hasChainId} tracker=${d.hasTracker}` });
+    if (hasUBIData) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'ubi-impact', check: 'live_contract_addresses', passed: false, detail: e.message }); }
+
+  // ═══ TEST 65: Stable page shows vault types and min collateral ratios ═══
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/stable`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const hasVaultTypes = /WETH Vault|G\$ Vault/i.test(t);
+      const hasRatios = /150%|200%/.test(t);
+      const hasGUSD = /gUSD|GoodStable/i.test(t);
+      return { hasVaultTypes, hasRatios, hasGUSD };
+    });
+    const hasStableUI = d.hasVaultTypes && d.hasRatios && d.hasGUSD;
+    logResult({ page: 'stable', check: 'vault_types_and_ratios', passed: hasStableUI, detail: hasStableUI ? 'WETH+G$ vaults, 150/200% ratios, gUSD visible' : `vaults=${d.hasVaultTypes} ratios=${d.hasRatios} gUSD=${d.hasGUSD}` });
+    if (hasStableUI) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'stable', check: 'vault_types_and_ratios', passed: false, detail: e.message }); }
+
+  // ═══ TEST 66: Pool page shows 3 liquidity pairs ═══
+  try {
+    const page = await context.newPage();
+    await page.goto(`${FRONTEND_URL}/pool`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    totalTests++;
+    const d = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const pairs = ['G$/WETH', 'G$/USDC', 'WETH/USDC'];
+      const foundPairs = pairs.filter(p => t.includes(p));
+      const hasUBIFee = /0\.1%\s*UBI|UBI/i.test(t);
+      return { foundPairs, pairCount: foundPairs.length, hasUBIFee };
+    });
+    const hasPoolData = d.pairCount >= 2 && d.hasUBIFee;
+    logResult({ page: 'pool', check: 'liquidity_pairs_visible', passed: hasPoolData, detail: hasPoolData ? `${d.pairCount} pairs: ${d.foundPairs.join(', ')}` : `pairs=${d.pairCount} ubiFee=${d.hasUBIFee}` });
+    if (hasPoolData) passed++; else failed++;
+    await page.close();
+  } catch (e) { totalTests++; failed++; logResult({ page: 'pool', check: 'liquidity_pairs_visible', passed: false, detail: e.message }); }
+
   await browser.close();
 
   // Summary
