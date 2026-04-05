@@ -50,10 +50,13 @@ contract AgentRegistry {
     address public pendingAdmin;
     uint256 public ubiBPS = 3333; // 33.33% of fees → UBI
 
-    /// @notice Hard cap on registered agents to bound getTopAgents gas usage
-    uint256 public maxAgents = 10_000;
+    /// @notice Hard cap on registered agents to bound getTopAgents gas usage.
+    ///         Keep low: getTopAgents is O(count × maxAgents) with cold SLOADs.
+    ///         At 30M block gas, safe bound is ~1000 agents × 50 leaderboard slots.
+    ///         For mainnet scale, replace selection sort with an incremental sorted list.
+    uint256 public maxAgents = 1_000;
     /// @notice Hard cap on leaderboard query size (outer × inner = count × n)
-    uint256 public constant MAX_LEADERBOARD_COUNT = 200;
+    uint256 public constant MAX_LEADERBOARD_COUNT = 50;
 
     // All registered agents
     address[] public agents;
