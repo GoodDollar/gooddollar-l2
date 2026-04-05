@@ -81,6 +81,16 @@ contract GoodVault {
     error InsufficientBalance();
     error InsufficientAllowance();
     error StrategyAssetMismatch();
+    error Reentrant();
+
+    bool private _locked;
+
+    modifier nonReentrant() {
+        if (_locked) revert Reentrant();
+        _locked = true;
+        _;
+        _locked = false;
+    }
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert NotAdmin();
@@ -177,7 +187,7 @@ contract GoodVault {
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
+    function withdraw(uint256 assets, address receiver, address owner) external nonReentrant returns (uint256 shares) {
         if (assets == 0) revert ZeroAssets();
         uint256 supply = totalSupply;
         uint256 ta = totalAssets() + 1;
@@ -199,7 +209,7 @@ contract GoodVault {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address owner) external nonReentrant returns (uint256 assets) {
         if (shares == 0) revert ZeroShares();
         assets = convertToAssets(shares);
         if (assets == 0) revert ZeroAssets();
@@ -224,7 +234,7 @@ contract GoodVault {
     // ═══════════════════════════════════════════════════
 
     /// @notice Harvest yield from strategy, take fees, compound remainder
-    function harvest() external returns (uint256 profit, uint256 loss) {
+    function harvest() external nonReentrant returns (uint256 profit, uint256 loss) {
         (profit, loss) = IStrategy(strategy).harvest();
 
         uint256 _ubiFee;
