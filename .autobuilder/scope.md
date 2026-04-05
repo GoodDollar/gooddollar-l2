@@ -192,3 +192,28 @@ memclaw write "Learned: [new technique or pattern]" --type fact
 - Synthetix V3: github.com/Synthetixio/synthetix-v3
 - GMX V2: github.com/gmx-io/gmx-synthetics
 - GNS/gTrade: github.com/GainsNetwork-org
+
+## Tester → Builder Feedback Loop
+
+### How it works:
+1. **7 Gemma testers** run every 30 min, test all protocols on-chain + frontend
+2. Testers write results to **MemClaw** (pass/fail with details)
+3. Testers file **Paperclip issues** (GOO-XXX) for each failure
+4. **Cursor dev agents** read MemClaw + Paperclip issues on heartbeat
+5. Dev agents **fix the issues**, commit, push
+6. Next tester run verifies the fix
+
+### For Dev Agents — Check Tester Results
+Every heartbeat, dev agents MUST:
+```bash
+# 1. Check MemClaw for recent test failures
+memclaw search "FAILED devnet" --limit 10
+
+# 2. Check Paperclip for open QA issues
+curl -s "http://127.0.0.1:3102/api/companies/7e8ba4ed-e545-4394-ad98-c0c855409a4e/issues?status=todo&limit=20" | python3 -c "import json,sys; [print(i['identifier'],i['title']) for i in json.load(sys.stdin) if 'Gemma QA' in i.get('title','')]"
+
+# 3. Pick the highest priority issue and fix it
+```
+
+### Contract Addresses (for all testers)
+See .autobuilder/addresses.env for latest deployed addresses.
