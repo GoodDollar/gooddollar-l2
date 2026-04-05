@@ -78,6 +78,7 @@ contract StablecoinStrategy {
         if (!IERC20(asset).transferFrom(vault, address(this), amount)) revert TransferFailed();
         if (!IERC20(asset).approve(address(stabilityPool), amount)) revert TransferFailed();
         stabilityPool.deposit(amount);
+        IERC20(asset).approve(address(stabilityPool), 0); // reset allowance after external call
         totalDeposited += amount;
         emit Deposited(amount);
     }

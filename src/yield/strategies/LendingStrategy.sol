@@ -83,6 +83,7 @@ contract LendingStrategy {
         if (!IERC20(asset).transferFrom(vault, address(this), amount)) revert TransferFailed();
         if (!IERC20(asset).approve(address(lendPool), amount)) revert TransferFailed();
         lendPool.supply(asset, amount, address(this));
+        IERC20(asset).approve(address(lendPool), 0); // reset allowance after external call
         totalDeposited += amount;
         emit Deposited(amount);
     }

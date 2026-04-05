@@ -109,7 +109,8 @@ contract GoodVault {
         address _ubiFee,
         string memory _name,
         string memory _symbol,
-        uint256 _depositCap
+        uint256 _depositCap,
+        address _admin
     ) {
         asset = IERC20(_asset);
         strategy = _strategy;
@@ -117,7 +118,7 @@ contract GoodVault {
         name = _name;
         symbol = _symbol;
         depositCap = _depositCap;
-        admin = msg.sender;
+        admin = _admin != address(0) ? _admin : msg.sender;
         lastReport = block.timestamp;
 
         if (IStrategy(_strategy).asset() != _asset) revert StrategyAssetMismatch();

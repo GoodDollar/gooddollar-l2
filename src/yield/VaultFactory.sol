@@ -64,7 +64,8 @@ contract VaultFactory {
             ubiFee,
             _name,
             _symbol,
-            _depositCap > 0 ? _depositCap : defaultDepositCap
+            _depositCap > 0 ? _depositCap : defaultDepositCap,
+            msg.sender
         ));
 
         allVaults.push(vault);

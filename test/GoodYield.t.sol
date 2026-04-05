@@ -133,7 +133,8 @@ contract GoodYieldTest is Test {
             address(ubiFee),
             "GoodVault ETH-Lending",
             "gvETH",
-            1000 ether
+            1000 ether,
+            address(this)
         );
 
         factory = new VaultFactory(address(ubiFee));
