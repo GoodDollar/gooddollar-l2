@@ -234,7 +234,7 @@ export default function StocksPage() {
       </div>
 
       <p className="text-xs text-gray-600 text-center mt-4">
-        Prices shown are synthetic and illustrative. Real oracle prices coming soon.
+        Prices sourced from on-chain oracle. Updated on every block.
       </p>
     </div>
   )
