@@ -13,16 +13,34 @@ interface IUBIClaimV2 {
     function feeSplitter() external view returns (address);
 }
 
+interface IUBIFeeSplitter {
+    function setGoodDollar(address _goodDollar) external;
+    function goodDollar() external view returns (address);
+}
+
 /**
  * @notice Wire new UBIFeeSplitter to all GoodPool instances and UBIClaimV2.
+ *         Also updates the splitter's internal GoodDollar token pointer so that
+ *         claimableBalance() and releaseToUBI() always read the live GDT.
  *
  * Run after RedeployUBIAndLiFi.s.sol to complete the migration.
+ * Re-run after any GoodDollarToken redeploy — pass GOOD_DOLLAR_TOKEN to update.
  *
  * GOO-243: deployed UBIFeeSplitter at 0xe7f172... was outdated (missing
  * claimableBalance/releaseToUBI). New splitter deployed by RedeployUBIAndLiFi:
  *   UBIFeeSplitter: 0xC0BF43A4Ca27e0976195E6661b099742f10507e5
  *
+ * GOO-402: splitter's goodDollar() pointer was stale — claimableBalance()=0 and
+ * releaseToUBI() reverted because the splitter was reading balance of the old GDT.
+ * Fix: call setGoodDollar() here so re-running this script is sufficient after any
+ * GDT redeploy.
+ *
  * Usage:
+ *   forge script script/WireUBIFeeSplitter.s.sol \
+ *     --rpc-url http://localhost:8545 --broadcast
+ *
+ *   # With updated GDT address after a redeploy:
+ *   GOOD_DOLLAR_TOKEN=0xNewGDTAddress \
  *   forge script script/WireUBIFeeSplitter.s.sol \
  *     --rpc-url http://localhost:8545 --broadcast
  */
@@ -38,13 +56,22 @@ contract WireUBIFeeSplitter is Script {
     // UBIClaimV2 (from RedeployGoodDollarToken run 2026-04-04)
     address constant UBI_CLAIM_V2    = 0x73C68f1f41e4890D06Ba3e71b9E9DfA555f1fb46;
 
+    // Current canonical GDT — override via GOOD_DOLLAR_TOKEN env var after a redeploy
+    address constant GDT_DEFAULT     = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
+
     function run() external {
         uint256 key = vm.envOr(
             "PRIVATE_KEY",
             uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
         );
+        address gdToken = vm.envOr("GOOD_DOLLAR_TOKEN", GDT_DEFAULT);
 
         vm.startBroadcast(key);
+
+        // 0. Update the splitter's internal GoodDollar pointer (GOO-402).
+        //    Idempotent: safe to re-run even if already correct.
+        IUBIFeeSplitter(NEW_FEE_SPLITTER).setGoodDollar(gdToken);
+        console.log("UBIFeeSplitter.goodDollar updated to:", IUBIFeeSplitter(NEW_FEE_SPLITTER).goodDollar());
 
         // 1. Update feeBeneficiary on all three GoodPool instances
         IGoodPool(POOL_GD_WETH).setFeeBeneficiary(NEW_FEE_SPLITTER);
@@ -64,6 +91,7 @@ contract WireUBIFeeSplitter is Script {
 
         console.log("--- Wiring complete ---");
         console.log("New UBIFeeSplitter:", NEW_FEE_SPLITTER);
+        console.log("GoodDollar token:  ", gdToken);
         console.log("Wired to: SwapPoolGdWeth, SwapPoolGdUsdc, SwapPoolWethUsdc, UBIClaimV2");
     }
 }
