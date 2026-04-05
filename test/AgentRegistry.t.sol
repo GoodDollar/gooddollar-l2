@@ -268,11 +268,15 @@ contract AgentRegistryTest is Test {
     }
 
     function test_transferAdmin_TwoStep() public {
+        vm.expectEmit(true, true, false, false);
+        emit AgentRegistry.AdminTransferInitiated(address(this), alice);
         registry.transferAdmin(alice);
         assertEq(registry.pendingAdmin(), alice);
         // Old admin still active until alice accepts
         registry.addReporter(address(0xABC));
         // Alice accepts
+        vm.expectEmit(true, true, false, false);
+        emit AgentRegistry.AdminTransferred(address(this), alice);
         vm.prank(alice);
         registry.acceptAdmin();
         assertEq(registry.admin(), alice);

@@ -91,6 +91,8 @@ contract AgentRegistry {
     );
     event ReporterAdded(address indexed reporter);
     event ReporterRemoved(address indexed reporter);
+    event AdminTransferInitiated(address indexed previousAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     // ============ Modifiers ============
 
@@ -344,13 +346,16 @@ contract AgentRegistry {
     function transferAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "AgentRegistry: zero admin");
         pendingAdmin = newAdmin;
+        emit AdminTransferInitiated(admin, newAdmin);
     }
 
     /// @notice Accept the pending admin transfer (must be called by pendingAdmin).
     function acceptAdmin() external {
         require(msg.sender == pendingAdmin, "AgentRegistry: not pending admin");
+        address previous = admin;
         admin = pendingAdmin;
         pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     /// @notice Update the UBI contribution percentage (in basis points).
