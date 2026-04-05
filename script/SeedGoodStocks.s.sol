@@ -11,8 +11,9 @@ import "../src/GoodDollarToken.sol";
 /**
  * @title SeedGoodStocks
  * @notice Seeds the GoodStocks system with initial positions.
- *         Deposits G$ collateral and mints the first 4 flagship synthetic stocks
- *         (sAAPL, sTSLA, sNVDA, sGOOG) so the frontend shows real positions.
+ *         Also (re-)sets manual oracle prices for all 12 stocks so that
+ *         prices survive devnet redeployments where the oracle bytecode is
+ *         fresh but `setManualPrice` was not called again.
  *
  * Usage:
  *   PRIVATE_KEY=0x... \
@@ -27,22 +28,48 @@ contract SeedGoodStocks is Script {
         uint256 shares;       // Synthetic shares to mint (18 decimals, 1e18 = 1 share)
     }
 
+    struct StockPrice {
+        string ticker;
+        uint256 price; // 8 decimals, Chainlink standard
+    }
+
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
         address gdToken = vm.envAddress("GOOD_DOLLAR_TOKEN");
         address vaultAddr = vm.envAddress("COLLATERAL_VAULT");
 
         CollateralVault vault = CollateralVault(vaultAddr);
+        PriceOracle oracle = vault.oracle();
         GoodDollarToken gd = GoodDollarToken(gdToken);
 
-        // Seed positions: deposit generous collateral, mint a few shares each
+        // ── 1. (Re-)set manual oracle prices for all 12 stocks ──────────────
+        StockPrice[] memory prices = new StockPrice[](12);
+        prices[0]  = StockPrice("AAPL",  178_72_000_000);
+        prices[1]  = StockPrice("TSLA",  248_50_000_000);
+        prices[2]  = StockPrice("NVDA",  875_30_000_000);
+        prices[3]  = StockPrice("MSFT",  415_60_000_000);
+        prices[4]  = StockPrice("AMZN",  182_15_000_000);
+        prices[5]  = StockPrice("GOOGL", 155_80_000_000);
+        prices[6]  = StockPrice("META",  503_25_000_000);
+        prices[7]  = StockPrice("JPM",   198_40_000_000);
+        prices[8]  = StockPrice("V",     279_90_000_000);
+        prices[9]  = StockPrice("DIS",   112_35_000_000);
+        prices[10] = StockPrice("NFLX",  628_90_000_000);
+        prices[11] = StockPrice("AMD",   164_80_000_000);
+
+        vm.startBroadcast(deployerKey);
+
+        for (uint256 i = 0; i < prices.length; i++) {
+            oracle.setManualPrice(prices[i].ticker, prices[i].price, true);
+            console.log("Oracle price set:", prices[i].ticker, prices[i].price);
+        }
+
+        // ── 2. Seed initial positions ────────────────────────────────────────
         SeedPosition[] memory positions = new SeedPosition[](4);
         positions[0] = SeedPosition("AAPL",  50_000e18, 10e18);  // 10 sAAPL
         positions[1] = SeedPosition("TSLA",  75_000e18, 10e18);  // 10 sTSLA
         positions[2] = SeedPosition("NVDA", 250_000e18, 10e18);  // 10 sNVDA
         positions[3] = SeedPosition("GOOGL", 50_000e18, 10e18);  // 10 sGOOGL
-
-        vm.startBroadcast(deployerKey);
 
         // Approve vault to spend G$
         gd.approve(vaultAddr, type(uint256).max);
@@ -63,6 +90,7 @@ contract SeedGoodStocks is Script {
 
         console.log("");
         console.log("=== GoodStocks Seeding Complete ===");
+        console.log("Oracle prices set: 12 stocks");
         console.log("Positions created: 4 (sAAPL, sTSLA, sNVDA, sGOOGL)");
     }
 }

@@ -616,6 +616,14 @@ contract GoodLendPool {
         admin = _admin;
     }
 
+    function setSupplyCap(address asset, uint256 newCap) external onlyAdmin {
+        reserves[asset].supplyCap = newCap;
+    }
+
+    function setBorrowCap(address asset, uint256 newCap) external onlyAdmin {
+        reserves[asset].borrowCap = newCap;
+    }
+
     // ============ Internal: State Update ============
 
     /**
