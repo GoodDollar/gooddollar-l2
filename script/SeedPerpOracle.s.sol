@@ -26,8 +26,8 @@ import "../src/perps/PerpEngine.sol";
 contract SeedPerpOracle is Script {
 
     // ─── Deployed addresses (devnet, chain 42069) ────────────────────────────
-    address constant PERP_PRICE_ORACLE = 0x0165878A594ca255338adfa4d48449f69242Eb8F;
-    address constant PERP_ENGINE       = 0xa513E6E4b8f2a923D98304ec87F64353C4D5C853;
+    address constant PERP_PRICE_ORACLE = 0xf5c4a909455C00B99A90d93b48736F3196DB5621;
+    address constant PERP_ENGINE       = 0x666D0c3da3dBc946D5128D06115bb4eed4595580;
 
     struct PerpMarket {
         string  ticker;
