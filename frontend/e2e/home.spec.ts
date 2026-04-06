@@ -11,8 +11,8 @@ test.describe('Home / Swap page', () => {
   })
 
   test('renders UBI stats in hero', async ({ page }) => {
-    await expect(page.getByText(/\$2\.4M/)).toBeVisible()
-    await expect(page.getByText(/640K\+/)).toBeVisible()
+    await expect(page.getByText(/\$2\.4M/).first()).toBeVisible()
+    await expect(page.getByText(/640K\+/).first()).toBeVisible()
   })
 
   test('renders swap card', async ({ page }) => {
@@ -62,7 +62,8 @@ test.describe('Home / Swap page', () => {
   })
 
   test('UBI Explainer section is present', async ({ page }) => {
-    await page.getByText(/ubi/i).first().waitFor({ state: 'visible', timeout: 10000 })
+    // Use full phrase to avoid matching hidden nav "UBI" link on mobile
+    await page.getByText(/universal basic income/i).first().waitFor({ state: 'visible', timeout: 10000 })
     await expect(page.getByText(/universal basic income/i).first()).toBeVisible()
   })
 

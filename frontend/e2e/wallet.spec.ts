@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Wallet connection', () => {
+  // Connect Wallet button lives in the desktop header; run at desktop viewport
+  test.use({ viewport: { width: 1280, height: 720 } })
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
   })

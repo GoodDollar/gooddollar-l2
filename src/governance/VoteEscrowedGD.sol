@@ -92,7 +92,7 @@ contract VoteEscrowedGD {
         locks[msg.sender] = Lock(uint128(amount), uint128(end));
         totalLocked += amount;
 
-        gd.transferFrom(msg.sender, address(this), amount);
+        require(gd.transferFrom(msg.sender, address(this), amount), "transferFrom failed");
 
         address delegate = delegates[msg.sender];
         if (delegate == address(0)) {
@@ -117,7 +117,7 @@ contract VoteEscrowedGD {
         totalLocked += addedAmount;
         uint256 newPower = votingPowerOf(msg.sender);
 
-        gd.transferFrom(msg.sender, address(this), addedAmount);
+        require(gd.transferFrom(msg.sender, address(this), addedAmount), "transferFrom failed");
 
         address delegate = delegates[msg.sender];
         _writeCheckpoint(_checkpoints[delegate], _add, newPower - oldPower);
@@ -161,7 +161,7 @@ contract VoteEscrowedGD {
         delete locks[msg.sender];
         totalLocked -= amount;
 
-        gd.transfer(msg.sender, amount);
+        require(gd.transfer(msg.sender, amount), "transfer failed");
         emit Withdrawn(msg.sender, amount);
     }
 
@@ -188,8 +188,8 @@ contract VoteEscrowedGD {
         delete locks[msg.sender];
         totalLocked -= amount;
 
-        gd.transfer(msg.sender, received);
-        if (toUBI > 0) gd.transfer(ubiTreasury, toUBI);
+        require(gd.transfer(msg.sender, received), "transfer failed");
+        if (toUBI > 0) require(gd.transfer(ubiTreasury, toUBI), "UBI transfer failed");
         // burned portion stays in contract (effectively burned from circulation)
 
         emit EarlyUnlocked(msg.sender, received, penalty, toUBI);

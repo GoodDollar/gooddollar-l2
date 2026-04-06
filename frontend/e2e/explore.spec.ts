@@ -48,7 +48,7 @@ test.describe('Explore page', () => {
   })
 
   test('category filter buttons are present', async ({ page }) => {
-    const allButton = page.getByRole('button', { name: 'All' })
+    const allButton = page.getByRole('button', { name: 'All', exact: true })
     await expect(allButton).toBeVisible()
   })
 
