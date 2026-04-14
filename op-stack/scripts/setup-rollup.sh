@@ -1,10 +1,13 @@
 #!/bin/bash
 
 # ============================================================
-# GoodDollar L2 — OP Stack Rollup Setup Script
+# GoodDollar L2 — OP Stack Rollup Setup Script (Sepolia)
 # ============================================================
 # Automates: L1 contract deployment → genesis generation →
 #            service configuration for all OP Stack components
+#
+# For local development, use Kurtosis instead:
+#   make kurtosis-up
 # ============================================================
 
 set -e
@@ -30,14 +33,7 @@ log_error()   { echo -e "${RED}[❌]${NC} $1"; }
 # ──────────────────────────────────────────────────────────
 # Configuration
 # ──────────────────────────────────────────────────────────
-L1_MODE=${L1_MODE:-local}
-# Local mode uses geth --dev (chain ID 1337) with bootstrap
-# Sepolia mode uses chain ID 11155111 with pre-deployed OPCM
-if [ "$L1_MODE" = "local" ]; then
-    L1_CHAIN_ID=${L1_CHAIN_ID:-1337}
-else
-    L1_CHAIN_ID=${L1_CHAIN_ID:-11155111}
-fi
+L1_CHAIN_ID=${L1_CHAIN_ID:-11155111}
 L2_CHAIN_ID_DECIMAL=${L2_CHAIN_ID:-42069}  # GoodDollar L2
 L2_CHAIN_ID=$(printf "0x%064x" "$L2_CHAIN_ID_DECIMAL")
 P2P_ADVERTISE_IP=${P2P_ADVERTISE_IP:-127.0.0.1}
@@ -70,45 +66,17 @@ validate_env() {
         exit 1
     fi
 
-    # Save any env vars passed from Makefile (they take priority over .env)
-    local SAVED_L1_RPC_URL="${L1_RPC_URL:-}"
-    local SAVED_L1_MODE="${L1_MODE:-}"
-    local SAVED_L1_CHAIN_ID="${L1_CHAIN_ID:-}"
-    local SAVED_L1_BEACON_URL="${L1_BEACON_URL:-}"
-
     set -a; source "$USER_ENV_FILE"; set +a
 
-    # Restore env vars that were explicitly passed (override .env)
-    [ -n "$SAVED_L1_RPC_URL" ] && L1_RPC_URL="$SAVED_L1_RPC_URL"
-    [ -n "$SAVED_L1_MODE" ] && L1_MODE="$SAVED_L1_MODE"
-    [ -n "$SAVED_L1_CHAIN_ID" ] && L1_CHAIN_ID="$SAVED_L1_CHAIN_ID"
-    [ -n "$SAVED_L1_BEACON_URL" ] || L1_BEACON_URL="$SAVED_L1_BEACON_URL"
-
-    # In local mode, we auto-generate a private key if not set
-    if [ "$L1_MODE" = "local" ]; then
-        if [ -z "$PRIVATE_KEY" ] || [ "$PRIVATE_KEY" = "YOUR_PRIVATE_KEY_WITHOUT_0X_PREFIX" ]; then
-            PRIVATE_KEY=$(openssl rand -hex 32)
-            log_info "Generated random deployer key for local mode"
-            # Write it back to .env so other steps can use it
-            sed -i "s|PRIVATE_KEY=.*|PRIVATE_KEY=\"$PRIVATE_KEY\"|" "$USER_ENV_FILE"
-        fi
-        for var in L1_RPC_URL PRIVATE_KEY L2_CHAIN_ID; do
-            if [ -z "${!var}" ]; then
-                log_error "$var is not set in .env"
-                exit 1
-            fi
-        done
-    else
-        for var in L1_RPC_URL L1_BEACON_URL PRIVATE_KEY L2_CHAIN_ID; do
-            if [ -z "${!var}" ]; then
-                log_error "$var is not set in .env"
-                exit 1
-            fi
-        done
-        if [ "$PRIVATE_KEY" = "YOUR_PRIVATE_KEY_WITHOUT_0X_PREFIX" ]; then
-            log_error "PRIVATE_KEY is still the placeholder. Edit .env with your real key."
+    for var in L1_RPC_URL L1_BEACON_URL PRIVATE_KEY L2_CHAIN_ID; do
+        if [ -z "${!var}" ]; then
+            log_error "$var is not set in .env"
             exit 1
         fi
+    done
+    if [ "$PRIVATE_KEY" = "YOUR_PRIVATE_KEY_WITHOUT_0X_PREFIX" ]; then
+        log_error "PRIVATE_KEY is still the placeholder. Edit .env with your real key."
+        exit 1
     fi
 
     log_success ".env validated"
@@ -279,14 +247,8 @@ setup_sequencer() {
     openssl rand -hex 32 > jwt.txt
     chmod 600 jwt.txt
 
-    # Docker services need Docker-internal L1 URL, not host URL
-    local DOCKER_L1_RPC="$L1_RPC_URL"
-    if [ "$L1_MODE" = "local" ]; then
-        DOCKER_L1_RPC="http://l1:8545"
-    fi
-
     cat > .env << EOF
-L1_RPC_URL=$DOCKER_L1_RPC
+L1_RPC_URL=$L1_RPC_URL
 L1_BEACON_URL=$L1_BEACON_URL
 PRIVATE_KEY=$PRIVATE_KEY
 P2P_ADVERTISE_IP=$P2P_ADVERTISE_IP
@@ -471,78 +433,6 @@ EOF
 }
 
 # ──────────────────────────────────────────────────────────
-# Bootstrap OPCM on local L1 (geth --dev)
-# Deploys Superchain + Implementations contracts locally
-# ──────────────────────────────────────────────────────────
-bootstrap_opcm() {
-    log_info "Bootstrapping OPCM on local L1 (geth --dev, chain 1337)..."
-
-    cd "$DEPLOYER_DIR"
-    mkdir -p .deployer
-
-    # Read admin address from generated addresses
-    ADMIN_ADDR=$(cat addresses/admin_address.txt)
-    CHALLENGER_ADDR=$(cat addresses/challenger_address.txt)
-
-    log_info "Deploying Superchain contracts..."
-    op-deployer bootstrap superchain \
-        --l1-rpc-url=http://localhost:8555 \
-        --private-key="$PRIVATE_KEY" \
-        --outfile="$DEPLOYER_DIR/bootstrap_superchain.json" \
-        --superchain-proxy-admin-owner="$ADMIN_ADDR" \
-        --protocol-versions-owner="$ADMIN_ADDR" \
-        --guardian="$ADMIN_ADDR"
-
-    log_success "Superchain contracts deployed"
-
-    # Extract addresses from superchain bootstrap
-    SUPERCHAIN_OUTPUT="$DEPLOYER_DIR/bootstrap_superchain.json"
-    PROXY_ADMIN=$(jq -r '.proxyAdminAddress' "$SUPERCHAIN_OUTPUT")
-    PV_PROXY=$(jq -r '.protocolVersionsProxyAddress' "$SUPERCHAIN_OUTPUT")
-    SC_PROXY=$(jq -r '.superchainConfigProxyAddress' "$SUPERCHAIN_OUTPUT")
-
-    log_info "Deploying Implementation contracts..."
-    op-deployer bootstrap implementations \
-        --l1-rpc-url=http://localhost:8555 \
-        --private-key="$PRIVATE_KEY" \
-        --outfile="$DEPLOYER_DIR/bootstrap_implementations.json" \
-        --protocol-versions-proxy="$PV_PROXY" \
-        --superchain-config-proxy="$SC_PROXY" \
-        --superchain-proxy-admin="$PROXY_ADMIN" \
-        --challenger="$CHALLENGER_ADDR" \
-        --upgrade-controller="$ADMIN_ADDR"
-
-    OPCM_ADDR=$(jq -r '.opcmAddress' "$DEPLOYER_DIR/bootstrap_implementations.json")
-    log_success "OPCM deployed at: $OPCM_ADDR"
-    log_success "Bootstrap complete"
-}
-
-# ──────────────────────────────────────────────────────────
-# Patch intent.toml with bootstrapped OPCM address
-# ──────────────────────────────────────────────────────────
-patch_intent_opcm() {
-    log_info "Patching intent.toml with local OPCM address..."
-
-    cd "$DEPLOYER_DIR"
-    OPCM_ADDR=$(jq -r '.opcmAddress' "$DEPLOYER_DIR/bootstrap_implementations.json")
-
-    if [ -z "$OPCM_ADDR" ] || [ "$OPCM_ADDR" = "null" ]; then
-        log_error "OPCM address not found in bootstrap output"
-        exit 1
-    fi
-
-    # Update opcmAddress in intent.toml
-    if grep -q 'opcmAddress' .deployer/intent.toml; then
-        sed -i "s|opcmAddress = .*|opcmAddress = \"$OPCM_ADDR\"|" .deployer/intent.toml
-    else
-        # Add opcmAddress after l1ChainID line
-        sed -i "/l1ChainID/a opcmAddress = \"$OPCM_ADDR\"" .deployer/intent.toml
-    fi
-
-    log_success "intent.toml patched with OPCM: $OPCM_ADDR"
-}
-
-# ──────────────────────────────────────────────────────────
 # Main
 # ──────────────────────────────────────────────────────────
 main() {
@@ -550,40 +440,9 @@ main() {
     echo "  ┌──────────────────────────────────────────┐"
     echo "  │  GoodDollar L2 — OP Stack Deployment     │"
     echo "  │  Chain ID: $L2_CHAIN_ID_DECIMAL                          │"
-    if [ "$L1_MODE" = "local" ]; then
-    echo "  │  L1: Local geth --dev (chain 1337)       │"
-    else
     echo "  │  L1: Sepolia ($L1_CHAIN_ID)                  │"
-    fi
     echo "  └──────────────────────────────────────────┘"
     echo ""
-
-    # If local mode, start Anvil L1 first
-    if [ "$L1_MODE" = "local" ]; then
-        # Check if L1 is already running
-        if curl -s -X POST -H "Content-Type: application/json" \
-            --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-            http://localhost:8555 >/dev/null 2>&1; then
-            log_success "Local L1 already running on :8555"
-        else
-            log_info "Starting local L1 (Anvil) on port 8555..."
-            cd "$ROLLUP_DIR"
-            docker compose --profile local up -d l1 || sudo docker compose --profile local up -d l1
-            # Wait for L1 to be ready
-            log_info "Waiting for local L1 to be ready..."
-            for i in $(seq 1 30); do
-                if curl -s -X POST -H "Content-Type: application/json" \
-                    --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-                    http://localhost:8555 >/dev/null 2>&1; then
-                    log_success "Local L1 is ready"
-                    break
-                fi
-                sleep 1
-            done
-        fi
-        # For setup script, use host-accessible URL
-        export L1_RPC_URL="http://localhost:8555"
-    fi
 
     # Clean start
     rm -rf "$DEPLOYER_DIR"
@@ -591,57 +450,8 @@ main() {
 
     validate_env
     check_prerequisites
-
-    # Fund deployer on local L1 (after validate_env generates the key)
-    if [ "$L1_MODE" = "local" ]; then
-        log_info "Funding deployer on local L1 from geth dev account..."
-        DEPLOYER_ADDR=$(cast wallet address "0x$PRIVATE_KEY" 2>/dev/null || echo "")
-        if [ -n "$DEPLOYER_ADDR" ]; then
-            # geth --dev prefunds account 0 with near-infinite ETH
-            DEV_ACCOUNT=$(curl -s -X POST -H "Content-Type: application/json" \
-                --data '{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1}' \
-                http://localhost:8555 | jq -r '.result[0]')
-            log_info "Dev account: $DEV_ACCOUNT"
-
-            # Send 10000 ETH from dev account (unlocked in dev mode)
-            # 0x21E19E0C9BAB2400000 = 10000 ETH in wei
-            TX_HASH=$(curl -s -X POST -H "Content-Type: application/json" \
-                --data "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\":[{\"from\":\"$DEV_ACCOUNT\",\"to\":\"$DEPLOYER_ADDR\",\"value\":\"0x21E19E0C9BAB2400000\"}],\"id\":1}" \
-                http://localhost:8555 | jq -r '.result')
-            log_info "Funding tx: $TX_HASH"
-
-            # Wait for tx to be mined
-            sleep 2
-
-            BALANCE=$(cast balance --rpc-url http://localhost:8555 "$DEPLOYER_ADDR" --ether 2>/dev/null)
-            log_info "Deployer balance: $BALANCE ETH"
-            if [ "$BALANCE" = "0.000000000000000000" ] || [ -z "$BALANCE" ]; then
-                log_error "Deployer has zero balance! Deployment will fail."
-                log_error "Please fund $DEPLOYER_ADDR with ETH on the local L1 (port 8555)"
-                exit 1
-            fi
-            log_success "Funded deployer $DEPLOYER_ADDR with 10000 ETH"
-        else
-            log_error "Could not derive deployer address from PRIVATE_KEY. Is 'cast' installed?"
-            log_error "Install Foundry: curl -L https://foundry.paradigm.xyz | bash && foundryup"
-            exit 1
-        fi
-    fi
-
     generate_addresses
-
-    # Bootstrap OPCM on local L1 (must happen before init/deploy)
-    if [ "$L1_MODE" = "local" ]; then
-        bootstrap_opcm
-    fi
-
     init_deployer
-
-    # Patch intent.toml with OPCM address for local mode
-    if [ "$L1_MODE" = "local" ]; then
-        patch_intent_opcm
-    fi
-
     update_intent
     deploy_contracts
     generate_config
@@ -673,7 +483,7 @@ print('Sanitized rollup.json')
         generate_challenger_prestate
     else
         log_warning "Go not installed — skipping challenger prestate generation"
-        log_warning "Challenger will run without prestate (OK for local testing)"
+        log_warning "Challenger will run without prestate (OK for testing)"
         mkdir -p "$CHALLENGER_DIR"
     fi
     setup_challenger
@@ -683,19 +493,15 @@ print('Sanitized rollup.json')
     log_success "GoodDollar L2 deployment complete!"
     echo ""
     echo "  Next steps:"
-    if [ "$L1_MODE" = "local" ]; then
-    echo "    1. make up-local              — Start all services (L1 already running)"
-    else
     echo "    1. make up                    — Start all services"
-    fi
     echo "    2. make status                — Check service health"
     echo "    3. make test-l2               — Verify L2 is working"
     echo "    4. make deploy-contracts      — Deploy GoodDollar contracts"
     echo ""
     echo "  Endpoints:"
-    echo "    L2 RPC:     http://localhost:8545"
-    echo "    L2 WS:      ws://localhost:8546"
-    echo "    op-node:    http://localhost:8547"
+    echo "    L2 RPC:     http://localhost:9545"
+    echo "    L2 WS:      ws://localhost:9546"
+    echo "    op-node:    http://localhost:9547"
     echo "    Metrics:    http://localhost:7300/metrics"
     echo ""
 }

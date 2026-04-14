@@ -4,7 +4,8 @@
 # Chain ID: 42069 | Chain Name: GoodDollar L2
 # ============================================================
 
-.PHONY: help init setup setup-local up up-local down logs status restart test-l1 test-l2 clean
+.PHONY: help init setup up down logs status restart test-l1 test-l2 clean \
+        kurtosis-up kurtosis-down kurtosis-status kurtosis-logs kurtosis-ports kurtosis-info
 
 # Default target
 help: ## Show this help message
@@ -12,8 +13,60 @@ help: ## Show this help message
 	@echo "  GoodDollar L2 — OP Stack Commands"
 	@echo "  Chain ID: 42069"
 	@echo ""
-	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo "  ── Kurtosis (Local Dev) ──"
+	@grep -E '^kurtosis-[a-zA-Z0-9_-]+:.*?## .*' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 	@echo ""
+	@echo "  ── Sepolia (Testnet) ──"
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*' $(MAKEFILE_LIST) | grep -v '^kurtosis-' | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+
+# ──────────────────────────────────────────────────────────
+# Kurtosis — Local OP Stack (recommended for development)
+# ──────────────────────────────────────────────────────────
+
+kurtosis-up: ## Start local OP Stack via Kurtosis (L1 + L2, everything included)
+	@echo "🚀 Starting GoodDollar L2 via Kurtosis..."
+	@echo "   This downloads OP Stack images and sets up L1 + L2 automatically."
+	@echo ""
+	kurtosis run github.com/ethpandaops/optimism-package --args-file kurtosis-params.yaml
+	@echo ""
+	@echo "🟢 GoodDollar L2 is running!"
+	@echo "   Run 'make kurtosis-info' to see RPC endpoints."
+
+kurtosis-down: ## Stop and remove the Kurtosis enclave
+	@echo "🔴 Stopping GoodDollar L2 Kurtosis enclave..."
+	kurtosis enclave rm -f optimism 2>/dev/null || echo "No enclave to remove"
+	@echo "✅ Enclave removed"
+
+kurtosis-status: ## Show Kurtosis enclave status
+	@echo ""
+	@echo "  GoodDollar L2 — Kurtosis Status"
+	@echo "  ─────────────────────────────────"
+	@kurtosis enclave inspect optimism 2>/dev/null || echo "  No 'optimism' enclave found. Run 'make kurtosis-up' first."
+	@echo ""
+
+kurtosis-logs: ## Show logs from Kurtosis services
+	@echo "Fetching logs from Kurtosis enclave..."
+	@echo "(Tip: use 'kurtosis service logs optimism <service-name>' for a specific service)"
+	@echo ""
+	@kurtosis enclave dump optimism /tmp/kurtosis-dump 2>/dev/null && \
+		echo "Logs dumped to /tmp/kurtosis-dump" || \
+		echo "No enclave found. Run 'make kurtosis-up' first."
+
+kurtosis-ports: ## Show port mappings for all Kurtosis services
+	@echo ""
+	@echo "  GoodDollar L2 — Kurtosis Port Mappings"
+	@echo "  ────────────────────────────────────────"
+	@kurtosis enclave inspect optimism 2>/dev/null | grep -E '(127\.0\.0\.1|0\.0\.0\.0):[0-9]+' || \
+		echo "  No 'optimism' enclave found. Run 'make kurtosis-up' first."
+	@echo ""
+
+kurtosis-info: ## Show L1/L2 RPC URLs and connection info
+	@./scripts/kurtosis-info.sh
+
+# ──────────────────────────────────────────────────────────
+# Sepolia — Testnet Deployment
+# ──────────────────────────────────────────────────────────
 
 init: ## Download op-deployer and create .env from template
 	@chmod +x scripts/*.sh
@@ -39,37 +92,12 @@ setup: ## Deploy L1 contracts to Sepolia and configure all rollup services
 		exit 1; \
 	fi
 	@echo "🚀 Setting up GoodDollar L2 (Chain ID: 42069) on Sepolia..."
-	L1_MODE=sepolia ./scripts/setup-rollup.sh
-
-setup-local: ## Deploy to local geth --dev L1 with OPCM bootstrap
-	@mkdir -p deployer
-	@if [ ! -f op-deployer ]; then \
-		echo "❌ op-deployer not found. Run 'make init' first."; \
-		exit 1; \
-	fi
-	@if [ ! -f .env ]; then \
-		echo "❌ .env file not found. Run 'make init' first."; \
-		exit 1; \
-	fi
-	@echo "🚀 Setting up GoodDollar L2 (Chain ID: 42069) on local geth --dev..."
-	L1_MODE=local L1_CHAIN_ID=1337 ./scripts/setup-rollup.sh
+	./scripts/setup-rollup.sh
 
 up: ## Start all OP Stack services (uses Sepolia L1)
 	docker compose up -d --wait
 	@echo ""
 	@echo "🟢 GoodDollar L2 is starting..."
-	@echo "   L2 RPC:  http://localhost:${L2_RPC_PORT:-9545}"
-	@echo "   L2 WS:   ws://localhost:9546"
-	@echo "   op-node: http://localhost:9547"
-	@echo ""
-	@sleep 5
-	@make test-l2
-
-up-local: ## Start all services with local geth --dev L1
-	docker compose --profile local up -d --wait
-	@echo ""
-	@echo "🟢 GoodDollar L2 is starting..."
-	@echo "   L1 RPC:  http://localhost:8555  (local geth --dev)"
 	@echo "   L2 RPC:  http://localhost:${L2_RPC_PORT:-9545}"
 	@echo "   L2 WS:   ws://localhost:9546"
 	@echo "   op-node: http://localhost:9547"

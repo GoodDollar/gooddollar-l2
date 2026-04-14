@@ -1,0 +1,28 @@
+# ============================================================
+# GoodDollar L2 — Kurtosis OP Stack Parameters
+# ============================================================
+# Used with: kurtosis run github.com/ethpandaops/optimism-package --args-file kurtosis-params.yaml
+# Docs: https://github.com/ethpandaops/optimism-package
+# ============================================================
+
+optimism_package:
+  chains:
+    - participants:
+        - el_type: op-geth
+          cl_type: op-node
+      network_params:
+        name: gooddollar-l2
+        network_id: "42069"
+        fund_dev_accounts: true
+      additional_preloaded_contracts:
+        # CREATE2 deterministic deployer (Nick's method)
+        # Required for deploying contracts at deterministic addresses
+        "0x4e59b44847b379578588920cA78FbF26c0B4956C":
+          balance: "0"
+          code: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3"
+          storage: {}
+          nonce: "0"
+
+ethereum_package:
+  network_params:
+    preset: minimal
