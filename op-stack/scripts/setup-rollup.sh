@@ -484,33 +484,29 @@ main() {
 
     # If local mode, start Anvil L1 first
     if [ "$L1_MODE" = "local" ]; then
-        log_info "Starting local L1 (Anvil) on port 8555..."
-        cd "$ROLLUP_DIR"
-        docker-compose --profile local up -d l1
-        # Wait for L1 to be ready
-        log_info "Waiting for local L1 to be ready..."
-        for i in $(seq 1 30); do
-            if curl -s -X POST -H "Content-Type: application/json" \
-                --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-                http://localhost:8555 >/dev/null 2>&1; then
-                log_success "Local L1 is ready"
-                break
-            fi
-            sleep 1
-        done
+        # Check if L1 is already running
+        if curl -s -X POST -H "Content-Type: application/json" \
+            --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+            http://localhost:8555 >/dev/null 2>&1; then
+            log_success "Local L1 already running on :8555"
+        else
+            log_info "Starting local L1 (Anvil) on port 8555..."
+            cd "$ROLLUP_DIR"
+            docker compose --profile local up -d l1 || sudo docker compose --profile local up -d l1
+            # Wait for L1 to be ready
+            log_info "Waiting for local L1 to be ready..."
+            for i in $(seq 1 30); do
+                if curl -s -X POST -H "Content-Type: application/json" \
+                    --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+                    http://localhost:8555 >/dev/null 2>&1; then
+                    log_success "Local L1 is ready"
+                    break
+                fi
+                sleep 1
+            done
+        fi
         # For setup script, use host-accessible URL
         export L1_RPC_URL="http://localhost:8555"
-        # Fund the deployer key on local L1
-        log_info "Funding deployer on local L1..."
-        DEPLOYER_ADDR=$(cast wallet address "0x$PRIVATE_KEY" 2>/dev/null || echo "")
-        if [ -n "$DEPLOYER_ADDR" ]; then
-            # Anvil account 0 private key (well-known)
-            ANVIL_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-            cast send --rpc-url http://localhost:8555 --private-key "$ANVIL_KEY" \
-                "$DEPLOYER_ADDR" --value 100ether >/dev/null 2>&1 && \
-                log_success "Funded deployer $DEPLOYER_ADDR with 100 ETH" || \
-                log_warning "Could not fund deployer — you may need to fund manually"
-        fi
     fi
 
     # Clean start
@@ -519,6 +515,22 @@ main() {
 
     validate_env
     check_prerequisites
+
+    # Fund deployer on local L1 (after validate_env generates the key)
+    if [ "$L1_MODE" = "local" ]; then
+        log_info "Funding deployer on local L1..."
+        DEPLOYER_ADDR=$(cast wallet address "0x$PRIVATE_KEY" 2>/dev/null || echo "")
+        if [ -n "$DEPLOYER_ADDR" ]; then
+            ANVIL_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+            cast send --rpc-url http://localhost:8555 --private-key "$ANVIL_KEY" \
+                "$DEPLOYER_ADDR" --value 1000ether 2>&1 && \
+                log_success "Funded deployer $DEPLOYER_ADDR with 1000 ETH" || \
+                log_warning "Could not fund deployer — you may need to fund manually"
+            BALANCE=$(cast balance --rpc-url http://localhost:8555 "$DEPLOYER_ADDR" --ether 2>/dev/null)
+            log_info "Deployer balance: $BALANCE ETH"
+        fi
+    fi
+
     generate_addresses
     init_deployer
     update_intent
@@ -527,7 +539,14 @@ main() {
     setup_sequencer
     setup_batcher
     setup_proposer
-    generate_challenger_prestate
+    # Prestate generation requires Go — skip if not available
+    if command -v go &>/dev/null; then
+        generate_challenger_prestate
+    else
+        log_warning "Go not installed — skipping challenger prestate generation"
+        log_warning "Challenger will run without prestate (OK for local testing)"
+        mkdir -p "$CHALLENGER_DIR"
+    fi
     setup_challenger
     setup_dispute_monitor
 

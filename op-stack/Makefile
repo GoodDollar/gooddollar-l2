@@ -55,7 +55,7 @@ setup: ## Deploy L1 contracts and configure all rollup services
 	@./scripts/setup-rollup.sh
 
 up: ## Start all OP Stack services (uses Sepolia L1)
-	docker-compose up -d --wait
+	docker compose up -d --wait
 	@echo ""
 	@echo "🟢 GoodDollar L2 is starting..."
 	@echo "   L2 RPC:  http://localhost:8545"
@@ -68,7 +68,7 @@ up: ## Start all OP Stack services (uses Sepolia L1)
 up-local: ## Start with local Anvil L1 (no Sepolia needed)
 	@echo "🟢 Starting local L1 (Anvil) + GoodDollar L2..."
 	L1_RPC_URL=http://l1:8545 L1_BEACON_URL= L1_CHAIN_ID=11155111 \
-	  docker-compose --profile local up -d --wait
+	  docker compose --profile local up -d --wait
 	@echo ""
 	@echo "🟢 GoodDollar L2 is starting..."
 	@echo "   L1 RPC:  http://localhost:8555  (local Anvil)"
@@ -80,28 +80,28 @@ up-local: ## Start with local Anvil L1 (no Sepolia needed)
 	@make test-l2
 
 down: ## Stop all services
-	docker-compose down
+	docker compose down
 	@echo "🔴 GoodDollar L2 stopped"
 
 logs: ## View logs from all services (follow mode)
-	docker-compose logs -f
+	docker compose logs -f
 
 logs-%: ## View logs from a specific service (e.g., make logs-op-geth)
-	docker-compose logs -f $*
+	docker compose logs -f $*
 
 status: ## Show status of all services
 	@echo ""
 	@echo "  GoodDollar L2 — Service Status"
 	@echo "  ─────────────────────────────────"
-	@docker-compose ps
+	@docker compose ps
 	@echo ""
 
 restart: ## Restart all services
-	docker-compose restart
+	docker compose restart
 	@echo "🔄 All services restarted"
 
 restart-%: ## Restart a specific service (e.g., make restart-batcher)
-	docker-compose restart $*
+	docker compose restart $*
 
 test-l1: ## Test L1 (Sepolia) connectivity
 	@echo "Testing L1 RPC connection..."
@@ -143,7 +143,7 @@ clean: ## Remove all containers, volumes, and generated configs
 	@echo "# cleanup" > proposer/.env 2>/dev/null || true
 	@echo "# cleanup" > challenger/.env 2>/dev/null || true
 	@echo "# cleanup" > dispute-mon/.env 2>/dev/null || true
-	docker-compose down -v --remove-orphans 2>/dev/null || true
+	docker compose down -v --remove-orphans 2>/dev/null || true
 	@echo "✅ Containers and volumes removed"
 	@echo "   Run 'make reset' to also remove generated configs"
 

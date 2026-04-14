@@ -20,12 +20,12 @@ services:
     command:
       - --host=0.0.0.0
       - --port=8545
-      - --chain-id=11155111
+      - --fork-url=${L1_FORK_URL:-https://ethereum-sepolia-rpc.publicnode.com}
       - --block-time=12
       - --accounts=10
       - --balance=10000
       - --gas-limit=30000000
-      - --steps-tracing
+      - --no-storage-caching
     healthcheck:
       test: ["CMD", "cast", "block-number", "--rpc-url", "http://localhost:8545"]
       interval: 5s
