@@ -66,7 +66,19 @@ validate_env() {
         exit 1
     fi
 
+    # Save any env vars passed from Makefile (they take priority over .env)
+    local SAVED_L1_RPC_URL="${L1_RPC_URL:-}"
+    local SAVED_L1_MODE="${L1_MODE:-}"
+    local SAVED_L1_CHAIN_ID="${L1_CHAIN_ID:-}"
+    local SAVED_L1_BEACON_URL="${L1_BEACON_URL:-}"
+
     set -a; source "$USER_ENV_FILE"; set +a
+
+    # Restore env vars that were explicitly passed (override .env)
+    [ -n "$SAVED_L1_RPC_URL" ] && L1_RPC_URL="$SAVED_L1_RPC_URL"
+    [ -n "$SAVED_L1_MODE" ] && L1_MODE="$SAVED_L1_MODE"
+    [ -n "$SAVED_L1_CHAIN_ID" ] && L1_CHAIN_ID="$SAVED_L1_CHAIN_ID"
+    [ -n "$SAVED_L1_BEACON_URL" ] || L1_BEACON_URL="$SAVED_L1_BEACON_URL"
 
     # In local mode, we auto-generate a private key if not set
     if [ "$L1_MODE" = "local" ]; then
@@ -263,8 +275,14 @@ setup_sequencer() {
     openssl rand -hex 32 > jwt.txt
     chmod 600 jwt.txt
 
+    # Docker services need Docker-internal L1 URL, not host URL
+    local DOCKER_L1_RPC="$L1_RPC_URL"
+    if [ "$L1_MODE" = "local" ]; then
+        DOCKER_L1_RPC="http://l1:8545"
+    fi
+
     cat > .env << EOF
-L1_RPC_URL=$L1_RPC_URL
+L1_RPC_URL=$DOCKER_L1_RPC
 L1_BEACON_URL=$L1_BEACON_URL
 PRIVATE_KEY=$PRIVATE_KEY
 P2P_ADVERTISE_IP=$P2P_ADVERTISE_IP
