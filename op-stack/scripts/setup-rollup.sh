@@ -30,7 +30,12 @@ log_error()   { echo -e "${RED}[❌]${NC} $1"; }
 # ──────────────────────────────────────────────────────────
 # Configuration
 # ──────────────────────────────────────────────────────────
-L1_CHAIN_ID=11155111  # Sepolia
+L1_MODE=${L1_MODE:-local}
+if [ "$L1_MODE" = "local" ]; then
+    L1_CHAIN_ID=${L1_CHAIN_ID:-900}  # Local Anvil
+else
+    L1_CHAIN_ID=${L1_CHAIN_ID:-11155111}  # Sepolia
+fi
 L2_CHAIN_ID_DECIMAL=${L2_CHAIN_ID:-42069}  # GoodDollar L2
 L2_CHAIN_ID=$(printf "0x%064x" "$L2_CHAIN_ID_DECIMAL")
 P2P_ADVERTISE_IP=${P2P_ADVERTISE_IP:-127.0.0.1}
@@ -65,16 +70,31 @@ validate_env() {
 
     set -a; source "$USER_ENV_FILE"; set +a
 
-    for var in L1_RPC_URL L1_BEACON_URL PRIVATE_KEY L2_CHAIN_ID; do
-        if [ -z "${!var}" ]; then
-            log_error "$var is not set in .env"
+    # In local mode, we auto-generate a private key if not set
+    if [ "$L1_MODE" = "local" ]; then
+        if [ -z "$PRIVATE_KEY" ] || [ "$PRIVATE_KEY" = "YOUR_PRIVATE_KEY_WITHOUT_0X_PREFIX" ]; then
+            PRIVATE_KEY=$(openssl rand -hex 32)
+            log_info "Generated random deployer key for local mode"
+            # Write it back to .env so other steps can use it
+            sed -i "s|PRIVATE_KEY=.*|PRIVATE_KEY=\"$PRIVATE_KEY\"|" "$USER_ENV_FILE"
+        fi
+        for var in L1_RPC_URL PRIVATE_KEY L2_CHAIN_ID; do
+            if [ -z "${!var}" ]; then
+                log_error "$var is not set in .env"
+                exit 1
+            fi
+        done
+    else
+        for var in L1_RPC_URL L1_BEACON_URL PRIVATE_KEY L2_CHAIN_ID; do
+            if [ -z "${!var}" ]; then
+                log_error "$var is not set in .env"
+                exit 1
+            fi
+        done
+        if [ "$PRIVATE_KEY" = "YOUR_PRIVATE_KEY_WITHOUT_0X_PREFIX" ]; then
+            log_error "PRIVATE_KEY is still the placeholder. Edit .env with your real key."
             exit 1
         fi
-    done
-
-    if [ "$PRIVATE_KEY" = "YOUR_PRIVATE_KEY_WITHOUT_0X_PREFIX" ]; then
-        log_error "PRIVATE_KEY is still the placeholder. Edit .env with your real key."
-        exit 1
     fi
 
     log_success ".env validated"
@@ -438,9 +458,44 @@ main() {
     echo "  ┌──────────────────────────────────────────┐"
     echo "  │  GoodDollar L2 — OP Stack Deployment     │"
     echo "  │  Chain ID: $L2_CHAIN_ID_DECIMAL                          │"
+    if [ "$L1_MODE" = "local" ]; then
+    echo "  │  L1: Local Anvil (chain $L1_CHAIN_ID)           │"
+    else
     echo "  │  L1: Sepolia ($L1_CHAIN_ID)                  │"
+    fi
     echo "  └──────────────────────────────────────────┘"
     echo ""
+
+    # If local mode, start Anvil L1 first
+    if [ "$L1_MODE" = "local" ]; then
+        log_info "Starting local L1 (Anvil) on port 8555..."
+        cd "$ROLLUP_DIR"
+        docker-compose --profile local up -d l1
+        # Wait for L1 to be ready
+        log_info "Waiting for local L1 to be ready..."
+        for i in $(seq 1 30); do
+            if curl -s -X POST -H "Content-Type: application/json" \
+                --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+                http://localhost:8555 >/dev/null 2>&1; then
+                log_success "Local L1 is ready"
+                break
+            fi
+            sleep 1
+        done
+        # For setup script, use host-accessible URL
+        export L1_RPC_URL="http://localhost:8555"
+        # Fund the deployer key on local L1
+        log_info "Funding deployer on local L1..."
+        DEPLOYER_ADDR=$(cast wallet address "0x$PRIVATE_KEY" 2>/dev/null || echo "")
+        if [ -n "$DEPLOYER_ADDR" ]; then
+            # Anvil account 0 private key (well-known)
+            ANVIL_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+            cast send --rpc-url http://localhost:8555 --private-key "$ANVIL_KEY" \
+                "$DEPLOYER_ADDR" --value 100ether >/dev/null 2>&1 && \
+                log_success "Funded deployer $DEPLOYER_ADDR with 100 ETH" || \
+                log_warning "Could not fund deployer — you may need to fund manually"
+        fi
+    fi
 
     # Clean start
     rm -rf "$DEPLOYER_DIR"
@@ -464,7 +519,11 @@ main() {
     log_success "GoodDollar L2 deployment complete!"
     echo ""
     echo "  Next steps:"
+    if [ "$L1_MODE" = "local" ]; then
+    echo "    1. make up-local              — Start all services (L1 already running)"
+    else
     echo "    1. make up                    — Start all services"
+    fi
     echo "    2. make status                — Check service health"
     echo "    3. make test-l2               — Verify L2 is working"
     echo "    4. make deploy-contracts      — Deploy GoodDollar contracts"

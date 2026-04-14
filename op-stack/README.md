@@ -1,6 +1,6 @@
 # GoodDollar L2 — OP Stack Deployment
 
-> Run GoodDollar L2 (Chain ID: 42069) as a real Optimism rollup on Sepolia.
+> Run GoodDollar L2 (Chain ID: 42069) as a real Optimism rollup — locally or on Sepolia.
 
 Based on the [official Optimism rollup example](https://github.com/ethereum-optimism/optimism/tree/develop/docs/public-docs/create-l2-rollup-example), customized for GoodDollar.
 
@@ -26,7 +26,7 @@ Based on the [official Optimism rollup example](https://github.com/ethereum-opti
 └────────────────────┬────────────────────────────────────┘
                      │
                      ▼
-            Sepolia L1 (11155111)
+    L1: Local Anvil (:8555) or Sepolia (11155111)
 ```
 
 ## What This Deploys
@@ -43,25 +43,51 @@ Based on the [official Optimism rollup example](https://github.com/ethereum-opti
 ## Prerequisites
 
 - **Docker** ≥ 24 + Docker Compose
+- **Foundry** (forge, cast, anvil) — `curl -L https://foundry.paradigm.xyz | bash && foundryup`
 - **jq** — JSON processing (`apt install jq`)
 - **git** — for prestate generation
-- **Sepolia ETH** — ≥2 ETH in your deployment wallet
-- **Sepolia RPC** — from [Alchemy](https://alchemy.com), [Infura](https://infura.io), or public endpoints
 
-## Quick Start
+**For Sepolia mode only:**
+- Sepolia ETH ≥ 2 ETH in your deployment wallet
+- Sepolia RPC from [Alchemy](https://alchemy.com), [Infura](https://infura.io), or public endpoints
+
+## Quick Start (Local — Recommended)
+
+No Sepolia ETH needed. Spins up a local Anvil chain as L1.
+
+```bash
+# 1. Initialize (downloads op-deployer + creates .env)
+make init
+
+# 2. Deploy L1 contracts and configure services (local Anvil L1)
+make setup-local
+
+# 3. Start everything (L1 + L2)
+make up-local
+
+# 4. Verify
+make status
+make test-l2
+```
+
+That's it. L1 runs on `:8555`, L2 runs on `:8545`.
+
+## Quick Start (Sepolia)
+
+For a real testnet deployment:
 
 ```bash
 # 1. Configure
 cp .example.env .env
-# Edit .env — set PRIVATE_KEY and optionally L1_RPC_URL
+# Edit .env: set L1_MODE="sepolia", PRIVATE_KEY, L1_RPC_URL
 
-# 2. Initialize (downloads op-deployer)
+# 2. Initialize
 make init
 
-# 3. Deploy L1 contracts and configure services
+# 3. Deploy L1 contracts to Sepolia
 make setup
 
-# 4. Start everything
+# 4. Start L2
 make up
 
 # 5. Verify
@@ -76,8 +102,10 @@ make test-l2
 |---------|-------------|
 | `make help` | Show all commands |
 | `make init` | Download op-deployer + create .env |
-| `make setup` | Deploy L1 contracts + configure services |
-| `make up` | Start all Docker services |
+| `make setup-local` | Setup with local Anvil L1 (no Sepolia needed) |
+| `make setup` | Deploy L1 contracts to Sepolia + configure services |
+| `make up-local` | Start all services with local L1 |
+| `make up` | Start all Docker services (Sepolia L1) |
 | `make down` | Stop all services |
 | `make logs` | Follow all service logs |
 | `make logs-op-geth` | Follow specific service logs |
@@ -111,6 +139,7 @@ OP Stack uses **ETH as the native gas token** by default. GoodDollar (G$) is dep
 
 | Port | Service | Protocol |
 |------|---------|----------|
+| 8555 | l1 (Anvil) | L1 HTTP RPC (local mode only) |
 | 8545 | op-geth | HTTP RPC |
 | 8546 | op-geth | WebSocket RPC |
 | 8551 | op-geth | Auth RPC (internal) |

@@ -28,6 +28,19 @@ init: ## Download op-deployer and create .env from template
 		echo ".env already exists, skipping copy"; \
 	fi
 
+setup-local: ## Setup with local Anvil L1 (no Sepolia needed)
+	@mkdir -p deployer
+	@if [ ! -f op-deployer ]; then \
+		echo "❌ op-deployer not found. Run 'make init' first."; \
+		exit 1; \
+	fi
+	@if [ ! -f .env ]; then \
+		cp .example.env .env; \
+	fi
+	@echo "🚀 Setting up GoodDollar L2 with LOCAL L1 (Anvil)..."
+	L1_MODE=local L1_RPC_URL=http://localhost:8555 L1_CHAIN_ID=900 L1_BEACON_URL= \
+	  ./scripts/setup-rollup.sh
+
 setup: ## Deploy L1 contracts and configure all rollup services
 	@mkdir -p deployer
 	@if [ ! -f op-deployer ]; then \
@@ -41,10 +54,24 @@ setup: ## Deploy L1 contracts and configure all rollup services
 	@echo "🚀 Setting up GoodDollar L2 (Chain ID: 42069)..."
 	@./scripts/setup-rollup.sh
 
-up: ## Start all OP Stack services
+up: ## Start all OP Stack services (uses Sepolia L1)
 	docker-compose up -d --wait
 	@echo ""
 	@echo "🟢 GoodDollar L2 is starting..."
+	@echo "   L2 RPC:  http://localhost:8545"
+	@echo "   L2 WS:   ws://localhost:8546"
+	@echo "   op-node: http://localhost:8547"
+	@echo ""
+	@sleep 5
+	@make test-l2
+
+up-local: ## Start with local Anvil L1 (no Sepolia needed)
+	@echo "🟢 Starting local L1 (Anvil) + GoodDollar L2..."
+	L1_RPC_URL=http://l1:8545 L1_BEACON_URL= L1_CHAIN_ID=900 \
+	  docker-compose --profile local up -d --wait
+	@echo ""
+	@echo "🟢 GoodDollar L2 is starting..."
+	@echo "   L1 RPC:  http://localhost:8555  (local Anvil)"
 	@echo "   L2 RPC:  http://localhost:8545"
 	@echo "   L2 WS:   ws://localhost:8546"
 	@echo "   op-node: http://localhost:8547"
