@@ -66,9 +66,14 @@ up: ## Start all OP Stack services (uses Sepolia L1)
 	@make test-l2
 
 up-local: ## Start with local Anvil L1 (no Sepolia needed)
-	@echo "🟢 Starting local L1 (Anvil) + GoodDollar L2..."
+	@echo "🟢 Starting GoodDollar L2 (keeping existing L1)..."
+	@# Start L1 only if not already running (--no-recreate keeps the existing fork state)
 	L1_RPC_URL=http://l1:8545 L1_BEACON_URL= L1_CHAIN_ID=11155111 \
-	  docker compose --profile local up -d --wait
+	  docker compose --profile local up -d --no-recreate l1
+	@sleep 3
+	@# Start L2 services (these can be recreated safely)
+	L1_RPC_URL=http://l1:8545 L1_BEACON_URL= L1_CHAIN_ID=11155111 \
+	  docker compose --profile local up -d op-geth op-node batcher proposer challenger dispute-mon
 	@echo ""
 	@echo "🟢 GoodDollar L2 is starting..."
 	@echo "   L1 RPC:  http://localhost:8555  (local Anvil)"
