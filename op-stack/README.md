@@ -1,125 +1,199 @@
-# GoodDollar L2 — OP Stack Devnet
+# GoodDollar L2 — OP Stack Deployment
 
-Local development environment for GoodDollar L2 using Docker Compose.
+> Run GoodDollar L2 (Chain ID: 42069) as a real Optimism rollup on Sepolia.
 
-## Prerequisites
-
-- [Docker](https://docs.docker.com/get-docker/) with Docker Compose
-- [Foundry](https://book.getfoundry.sh/getting-started/installation) (for `cast` CLI in smoke tests)
-
-## Quick Start
-
-```bash
-# 1. Start the devnet
-./start.sh
-
-# 2. Run smoke tests
-./smoke-test.sh
-
-# 3. Stop when done
-./stop.sh
-
-# Clean restart (removes all state)
-./start.sh --clean
-```
+Based on the [official Optimism rollup example](https://github.com/ethereum-optimism/optimism/tree/develop/docs/public-docs/create-l2-rollup-example), customized for GoodDollar.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    GoodDollar L2 Devnet                      │
-│                                                              │
-│  ┌──────────┐    ┌──────────┐    ┌───────────┐              │
-│  │ L1 Anvil │◄───│ op-node  │───►│  op-geth  │              │
-│  │ :8546    │    │ :9545    │    │  :8545    │              │
-│  └────┬─────┘    └──────────┘    └───────────┘              │
-│       │                                                      │
-│  ┌────┴─────┐    ┌───────────┐                              │
-│  │op-batcher│    │op-proposer│                              │
-│  │ :8548    │    │ :8560     │                              │
-│  └──────────┘    └───────────┘                              │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    GoodDollar L2                         │
+│                    Chain ID: 42069                       │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  op-geth (execution)  ◄──► op-node (consensus)          │
+│       :8545 RPC              :8547 RPC                  │
+│       :8546 WS               :9222 P2P                  │
+│       :8551 Auth                                        │
+│                                                         │
+│  op-batcher ──► L1          op-proposer ──► L1          │
+│  (tx data)                  (state roots)               │
+│                                                         │
+│  op-challenger              dispute-mon                 │
+│  (fraud proofs)             (metrics :7300)             │
+│                                                         │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+            Sepolia L1 (11155111)
 ```
 
-## Endpoints
+## What This Deploys
 
-| Service      | URL                     | Description                |
-|-------------|-------------------------|----------------------------|
-| L1 RPC      | http://localhost:8546   | Ethereum L1 (Anvil)        |
-| L2 RPC      | http://localhost:8545   | GoodDollar L2 (op-geth)    |
-| Rollup Node | http://localhost:9545   | OP Stack rollup node       |
-| Batcher     | http://localhost:8548   | Batch submitter            |
-| Proposer    | http://localhost:8560   | Output root proposer       |
+| Service | Image | Purpose |
+|---------|-------|---------|
+| **op-geth** | `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth` | Execution client — processes L2 transactions |
+| **op-node** | `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node` | Consensus client — manages rollup state |
+| **op-batcher** | `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher` | Publishes L2 transaction batches to L1 |
+| **op-proposer** | `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-proposer` | Submits state root proposals to L1 |
+| **op-challenger** | `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-challenger` | Monitors and challenges invalid proposals |
+| **dispute-mon** | `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-dispute-mon` | Dispute game monitoring + Prometheus metrics |
 
-## Chain Configuration
+## Prerequisites
 
-| Parameter     | Value                          |
-|--------------|--------------------------------|
-| Chain ID     | 42069                          |
-| Block Time   | 1 second                       |
-| Gas Token    | ETH (Phase 1)                  |
-| L1 Chain ID  | 31337 (local Anvil)            |
+- **Docker** ≥ 24 + Docker Compose
+- **jq** — JSON processing (`apt install jq`)
+- **git** — for prestate generation
+- **Sepolia ETH** — ≥2 ETH in your deployment wallet
+- **Sepolia RPC** — from [Alchemy](https://alchemy.com), [Infura](https://infura.io), or public endpoints
 
-## Pre-deployed Contracts
+## Quick Start
 
-| Contract          | Address                                      |
-|-------------------|----------------------------------------------|
-| GoodDollarToken   | `0x4200000000000000000000000000000000000100`  |
-| UBIFeeSplitter    | `0x4200000000000000000000000000000000000101`  |
-| ValidatorStaking  | `0x4200000000000000000000000000000000000102`  |
-| UBIFeeHook        | `0x4200000000000000000000000000000000000103`  |
+```bash
+# 1. Configure
+cp .example.env .env
+# Edit .env — set PRIVATE_KEY and optionally L1_RPC_URL
 
-## Default Accounts
+# 2. Initialize (downloads op-deployer)
+make init
 
-The devnet uses Anvil's default accounts (same private keys as Hardhat/Foundry):
+# 3. Deploy L1 contracts and configure services
+make setup
 
-| Account | Address | Role |
-|---------|---------|------|
-| #0 | `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` | Admin / Sequencer / Batcher / Proposer |
-| #1 | `0x70997970C51812dc3A010C7d01b50e0d17dc79C8` | Test user |
-| #2 | `0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC` | Test user |
+# 4. Start everything
+make up
 
-All test accounts are pre-funded with 10,000 ETH.
+# 5. Verify
+make status
+make test-l1
+make test-l2
+```
 
-## Files
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `make help` | Show all commands |
+| `make init` | Download op-deployer + create .env |
+| `make setup` | Deploy L1 contracts + configure services |
+| `make up` | Start all Docker services |
+| `make down` | Stop all services |
+| `make logs` | Follow all service logs |
+| `make logs-op-geth` | Follow specific service logs |
+| `make status` | Show service health |
+| `make test-l1` | Test Sepolia connectivity |
+| `make test-l2` | Test GoodDollar L2 connectivity |
+| `make restart` | Restart all services |
+| `make clean` | Remove containers + volumes |
+| `make reset` | Full reset (removes all deployment data) |
+| `make deploy-contracts` | Instructions to deploy GoodDollar contracts |
+
+## Deploying GoodDollar Contracts
+
+After the L2 is running, deploy the 53 GoodDollar contracts:
+
+```bash
+# From the gooddollar-l2 root directory (one level up)
+cd ..
+forge script script/Deploy.s.sol \
+  --rpc-url http://localhost:8545 \
+  --broadcast
+```
+
+The contracts in `/contracts/` include UBI distribution, governance, token mechanics, and more. They should be deployed **after** the L2 chain is operational.
+
+## Native Token Note
+
+OP Stack uses **ETH as the native gas token** by default. GoodDollar (G$) is deployed as an ERC-20 token on L2, not as the native gas token. Custom native gas token support is on the OP Stack roadmap — when available, G$ could potentially become the native token.
+
+## Ports
+
+| Port | Service | Protocol |
+|------|---------|----------|
+| 8545 | op-geth | HTTP RPC |
+| 8546 | op-geth | WebSocket RPC |
+| 8551 | op-geth | Auth RPC (internal) |
+| 8547 | op-node | HTTP RPC |
+| 9222 | op-node | P2P (TCP/UDP) |
+| 7300 | dispute-mon | Prometheus metrics |
+
+## P2P Networking
+
+By default, P2P is **disabled** for local development. For production:
+
+1. Remove `--p2p.disable` from `docker-compose.yml` (op-node command)
+2. Add P2P flags:
+   ```
+   --p2p.listen.ip=0.0.0.0
+   --p2p.listen.tcp=9222
+   --p2p.listen.udp=9222
+   --p2p.advertise.ip=${P2P_ADVERTISE_IP}
+   --p2p.advertise.tcp=9222
+   --p2p.advertise.udp=9222
+   --p2p.sequencer.key=${PRIVATE_KEY}
+   ```
+3. Set `P2P_ADVERTISE_IP` in `.env` to your public IP
+4. Open port 9222 (TCP + UDP) in your firewall
+
+## Directory Structure
 
 ```
 op-stack/
-├── docker-compose.yml     # Service orchestration
-├── genesis.json           # L2 genesis with pre-deployed contracts
-├── rollup.json            # OP Stack rollup configuration
-├── addresses.json         # All contract addresses
-├── chain.ts               # viem/wagmi chain definition
-├── jwt.txt                # Engine API JWT secret
-├── generate-genesis.sh    # Regenerate genesis from Foundry artifacts
-├── start.sh               # Start devnet
-├── stop.sh                # Stop devnet
-├── smoke-test.sh          # Verify devnet health
-└── README.md              # This file
-```
+├── .example.env              # Environment template
+├── .env                      # Your config (gitignored)
+├── docker-compose.yml        # Service orchestration
+├── Makefile                  # Automation commands
+├── README.md                 # This file
+└── scripts/
+    ├── setup-rollup.sh       # Full deployment automation
+    └── download-op-deployer.sh
 
-## Regenerating Genesis
-
-If you modify the Solidity contracts, regenerate the genesis:
-
-```bash
-cd ..
-forge build
-cd op-stack
-bash generate-genesis.sh genesis.json
+# Generated after `make setup`:
+├── deployer/                 # op-deployer artifacts
+│   ├── .deployer/            # genesis.json, rollup.json, state.json
+│   └── addresses/            # Generated wallet addresses
+├── sequencer/                # op-geth + op-node config
+│   ├── genesis.json
+│   ├── rollup.json
+│   └── jwt.txt
+├── batcher/                  # op-batcher config
+├── proposer/                 # op-proposer config
+├── challenger/               # op-challenger config + prestate
+└── dispute-mon/              # Dispute monitor config
 ```
 
 ## Troubleshooting
 
-**Services won't start:**
-```bash
-docker compose logs -f   # Check service logs
-```
-
-**Clean restart:**
-```bash
-./start.sh --clean       # Removes all volumes and state
-```
-
 **Port conflicts:**
-Ensure ports 8545, 8546, 8548, 8551, 8560, 9545 are available.
+```bash
+# Check what's using the ports
+lsof -i :8545 -i :8546 -i :8547 -i :8551 -i :9222
+```
+
+**Container issues:**
+```bash
+make logs              # Check all logs
+docker-compose logs -f op-node   # Check specific service
+make clean && make setup && make up   # Nuclear option
+```
+
+**Insufficient ETH:**
+Fund your deployment wallet with ≥2 Sepolia ETH from a [faucet](https://sepoliafaucet.com).
+
+**L1 connection timeouts:**
+Try a different RPC provider or use the public endpoints in `.example.env`.
+
+## Security Notes
+
+- **Never commit `.env`** to version control (it's in `.gitignore`)
+- Use HSMs for production private key management
+- Monitor gas costs on Sepolia
+- Back up `deployer/` directory after successful deployment
+
+## References
+
+- [OP Stack Documentation](https://docs.optimism.io/)
+- [Create L2 Rollup Tutorial](https://docs.optimism.io/chain-operators/tutorials/create-l2-rollup)
+- [Official Example](https://github.com/ethereum-optimism/optimism/tree/develop/docs/public-docs/create-l2-rollup-example)
+- [GoodDollar Protocol](https://www.gooddollar.org/)

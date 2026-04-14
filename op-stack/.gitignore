@@ -1,0 +1,17 @@
+# Environment (contains private keys)
+.env
+
+# op-deployer binary
+op-deployer
+
+# Generated deployment artifacts
+deployer/
+sequencer/
+batcher/
+proposer/
+challenger/
+dispute-mon/
+optimism/
+
+# Docker
+op_geth_data/
