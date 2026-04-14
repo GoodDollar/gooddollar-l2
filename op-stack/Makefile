@@ -58,9 +58,9 @@ up: ## Start all OP Stack services (uses Sepolia L1)
 	docker compose up -d --wait
 	@echo ""
 	@echo "🟢 GoodDollar L2 is starting..."
-	@echo "   L2 RPC:  http://localhost:8545"
-	@echo "   L2 WS:   ws://localhost:8546"
-	@echo "   op-node: http://localhost:8547"
+	@echo "   L2 RPC:  http://localhost:${L2_RPC_PORT:-9545}"
+	@echo "   L2 WS:   ws://localhost:9546"
+	@echo "   op-node: http://localhost:9547"
 	@echo ""
 	@sleep 5
 	@make test-l2
@@ -72,9 +72,9 @@ up-local: ## Start with local Anvil L1 (no Sepolia needed)
 	@echo ""
 	@echo "🟢 GoodDollar L2 is starting..."
 	@echo "   L1 RPC:  http://localhost:8555  (local Anvil)"
-	@echo "   L2 RPC:  http://localhost:8545"
-	@echo "   L2 WS:   ws://localhost:8546"
-	@echo "   op-node: http://localhost:8547"
+	@echo "   L2 RPC:  http://localhost:${L2_RPC_PORT:-9545}"
+	@echo "   L2 WS:   ws://localhost:9546"
+	@echo "   op-node: http://localhost:9547"
 	@echo ""
 	@sleep 5
 	@make test-l2
@@ -121,7 +121,7 @@ test-l2: ## Test L2 (GoodDollar) connectivity
 	@echo "Testing GoodDollar L2 RPC connection..."
 	@RESULT=$$(curl -s -X POST -H "Content-Type: application/json" \
 		--data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
-		http://localhost:8545 2>/dev/null | jq -r '.result' 2>/dev/null); \
+		http://localhost:${L2_RPC_PORT:-9545} 2>/dev/null | jq -r '.result' 2>/dev/null); \
 	if [ -n "$$RESULT" ] && [ "$$RESULT" != "null" ]; then \
 		CHAIN_DEC=$$(printf "%d" "$$RESULT" 2>/dev/null || echo "unknown"); \
 		echo "✅ L2 connection successful (chainId: $$CHAIN_DEC)"; \
@@ -130,7 +130,7 @@ test-l2: ## Test L2 (GoodDollar) connectivity
 	fi
 	@BLOCK=$$(curl -s -X POST -H "Content-Type: application/json" \
 		--data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-		http://localhost:8545 2>/dev/null | jq -r '.result' 2>/dev/null); \
+		http://localhost:${L2_RPC_PORT:-9545} 2>/dev/null | jq -r '.result' 2>/dev/null); \
 	if [ -n "$$BLOCK" ] && [ "$$BLOCK" != "null" ]; then \
 		BLOCK_DEC=$$(printf "%d" "$$BLOCK" 2>/dev/null || echo "unknown"); \
 		echo "   Latest block: $$BLOCK_DEC"; \
@@ -160,6 +160,6 @@ deploy-contracts: ## Deploy GoodDollar contracts to L2 (after chain is running)
 	@echo ""
 	@echo "   1. Make sure the L2 is running: make status"
 	@echo "   2. cd ../  (back to gooddollar-l2 root)"
-	@echo "   3. forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast"
+	@echo "   3. forge script script/Deploy.s.sol --rpc-url http://localhost:${L2_RPC_PORT:-9545} --broadcast"
 	@echo ""
 	@echo "   The 53 GoodDollar contracts in /contracts/ will be deployed to chain 42069"

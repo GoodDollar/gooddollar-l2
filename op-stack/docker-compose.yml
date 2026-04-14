@@ -37,7 +37,7 @@ services:
   # Execution Client — op-geth
   # ──────────────────────────────────────────────────────────
   op-geth:
-    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101511.1
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101702.1
     container_name: gooddollar-l2-geth
     volumes:
       - ./sequencer:/workspace
@@ -46,9 +46,9 @@ services:
     env_file:
       - .env
     ports:
-      - "8545:8545"   # HTTP RPC
-      - "8546:8546"   # WebSocket RPC
-      - "8551:8551"   # Auth RPC (op-node ↔ op-geth)
+      - "${L2_RPC_PORT:-9545}:8545"   # HTTP RPC
+      - "${L2_WS_PORT:-9546}:8546"    # WebSocket RPC
+      - "9551:8551"                     # Auth RPC (op-node ↔ op-geth)
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -75,7 +75,7 @@ services:
   # Consensus Client — op-node
   # ──────────────────────────────────────────────────────────
   op-node:
-    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.13.5
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.9.5
     container_name: gooddollar-l2-node
     volumes:
       - ./sequencer:/workspace
@@ -84,7 +84,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8547:8547"   # op-node RPC
+      - "9547:8547"   # op-node RPC
       - "9222:9222"   # P2P networking
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -125,7 +125,7 @@ services:
   # Publishes L2 transaction data to L1
   # ──────────────────────────────────────────────────────────
   batcher:
-    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:v1.14.0
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:v1.9.5
     container_name: gooddollar-l2-batcher
     volumes:
       - ./batcher:/workspace
@@ -155,7 +155,7 @@ services:
   # Submits state root proposals to L1
   # ──────────────────────────────────────────────────────────
   proposer:
-    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-proposer:v1.10.0
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-proposer:v1.9.5
     container_name: gooddollar-l2-proposer
     volumes:
       - ./proposer:/workspace
@@ -183,7 +183,7 @@ services:
   # Monitors for disputes and challenges invalid proposals
   # ──────────────────────────────────────────────────────────
   challenger:
-    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-challenger:v1.5.1
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-challenger:v1.9.0
     container_name: gooddollar-l2-challenger
     volumes:
       - ./challenger:/workspace
@@ -214,7 +214,7 @@ services:
   # Monitors dispute game health and metrics
   # ──────────────────────────────────────────────────────────
   dispute-mon:
-    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-dispute-mon:v1.4.2-rc.1
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-dispute-mon:v1.5.1
     container_name: gooddollar-l2-dispute-mon
     volumes:
       - ./dispute-mon:/workspace

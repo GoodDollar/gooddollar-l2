@@ -551,6 +551,26 @@ main() {
     update_intent
     deploy_contracts
     generate_config
+
+    # Strip fields from rollup.json that newer op-deployer adds but current op-node doesn't support
+    log_info "Sanitizing rollup.json for op-node compatibility..."
+    python3 -c "
+import json
+with open('$DEPLOYER_DIR/.deployer/rollup.json') as f:
+    d = json.load(f)
+# Remove hardfork times beyond what op-node v1.9.x supports
+for field in ['isthmus_time', 'jovian_time', 'chain_op_config']:
+    d.pop(field, None)
+# Remove new system_config fields
+if 'genesis' in d and 'system_config' in d['genesis']:
+    for field in ['minBaseFee', 'daFootprintGasScalar', 'operatorFeeParams', 'eip1559Params']:
+        d['genesis']['system_config'].pop(field, None)
+with open('$DEPLOYER_DIR/.deployer/rollup.json', 'w') as f:
+    json.dump(d, f, indent=2)
+print('Sanitized rollup.json')
+"
+    log_success "rollup.json sanitized"
+
     setup_sequencer
     setup_batcher
     setup_proposer
