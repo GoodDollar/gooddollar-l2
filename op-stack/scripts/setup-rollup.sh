@@ -521,13 +521,28 @@ main() {
         log_info "Funding deployer on local L1..."
         DEPLOYER_ADDR=$(cast wallet address "0x$PRIVATE_KEY" 2>/dev/null || echo "")
         if [ -n "$DEPLOYER_ADDR" ]; then
-            ANVIL_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-            cast send --rpc-url http://localhost:8555 --private-key "$ANVIL_KEY" \
-                "$DEPLOYER_ADDR" --value 1000ether 2>&1 && \
-                log_success "Funded deployer $DEPLOYER_ADDR with 1000 ETH" || \
-                log_warning "Could not fund deployer — you may need to fund manually"
+            # Use anvil_setBalance to directly set ETH balance (most reliable on forks)
+            # 0x3635C9ADC5DEA00000 = 1000 ETH in hex (wei)
+            cast rpc --rpc-url http://localhost:8555 anvil_setBalance "$DEPLOYER_ADDR" "0x3635C9ADC5DEA00000" 2>/dev/null && \
+                log_success "Set deployer $DEPLOYER_ADDR balance to 1000 ETH" || {
+                # Fallback: send from Anvil account 0
+                log_warning "anvil_setBalance failed, trying transfer..."
+                ANVIL_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+                cast send --rpc-url http://localhost:8555 --private-key "$ANVIL_KEY" \
+                    "$DEPLOYER_ADDR" --value 1000ether 2>&1 || \
+                    log_error "Could not fund deployer. Please fund $DEPLOYER_ADDR manually."
+            }
             BALANCE=$(cast balance --rpc-url http://localhost:8555 "$DEPLOYER_ADDR" --ether 2>/dev/null)
             log_info "Deployer balance: $BALANCE ETH"
+            if [ "$BALANCE" = "0.000000000000000000" ] || [ -z "$BALANCE" ]; then
+                log_error "Deployer has zero balance! Deployment will fail."
+                log_error "Please fund $DEPLOYER_ADDR with ETH on the local L1 (port 8555)"
+                exit 1
+            fi
+        else
+            log_error "Could not derive deployer address from PRIVATE_KEY. Is 'cast' installed?"
+            log_error "Install Foundry: curl -L https://foundry.paradigm.xyz | bash && foundryup"
+            exit 1
         fi
     fi
 
