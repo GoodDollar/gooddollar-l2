@@ -51,58 +51,24 @@ Based on the [official Optimism rollup example](https://github.com/ethereum-opti
 - Sepolia ETH ≥ 2 ETH in your deployment wallet
 - Sepolia RPC from [Alchemy](https://alchemy.com), [Infura](https://infura.io), or public endpoints
 
-## Quick Start (Local — Recommended)
+## Quick Start
 
-No Sepolia ETH needed. Forks Sepolia into a local Anvil chain as L1.
+Deploys L1 contracts to Sepolia, then runs the full L2 stack locally.
+
+**Requirements:** ~2 Sepolia ETH ([faucet](https://sepoliafaucet.com)) + a Sepolia RPC URL.
 
 ```bash
 # 1. Initialize (downloads op-deployer + creates .env)
 make init
 
-# 2. Start local L1 first (forks Sepolia)
-docker compose --profile local up -d l1
-sleep 5
+# 2. Edit .env — set your PRIVATE_KEY (fund with ≥2 Sepolia ETH)
+#    Optionally set a faster L1_RPC_URL (Alchemy/Infura)
+nano .env
 
-# 3. Deploy L1 contracts and configure services
-make setup-local
-
-# 4. Start the full L2 stack (DO NOT restart L1 between step 3 and 4!)
-make up-local
-
-# 5. Verify
-make status
-make test-l2
-```
-
-L1 runs on `:8555`, L2 RPC on `:9545`, WebSocket on `:9546`.
-
-> **⚠️ Important:** Do NOT restart the L1 container between `setup-local` and `up-local`.
-> The rollup config references a specific L1 block hash from the fork. If L1 restarts,
-> it forks from a different block and the hashes won't match.
->
-> If you need to start over: `docker compose --profile local down -v` and repeat from step 2.
-
-For faster fork speeds, set a private Sepolia RPC in `.env`:
-```bash
-L1_FORK_URL="https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
-```
-
-## Quick Start (Sepolia)
-
-For a real testnet deployment:
-
-```bash
-# 1. Configure
-cp .example.env .env
-# Edit .env: set L1_MODE="sepolia", PRIVATE_KEY, L1_RPC_URL
-
-# 2. Initialize
-make init
-
-# 3. Deploy L1 contracts to Sepolia
+# 3. Deploy L1 contracts and configure all services
 make setup
 
-# 4. Start L2
+# 4. Start the L2
 make up
 
 # 5. Verify
@@ -111,16 +77,20 @@ make test-l1
 make test-l2
 ```
 
+L2 RPC on `:9545`, WebSocket on `:9546`, op-node on `:9547`.
+
+> **Note:** Local Anvil-as-L1 is not supported. op-node verifies L1 block hashes
+> by recomputing them from headers, and Anvil's block encoding doesn't match
+> real Ethereum nodes. Use a real Sepolia RPC instead.
+
 ## Available Commands
 
 | Command | Description |
 |---------|-------------|
 | `make help` | Show all commands |
 | `make init` | Download op-deployer + create .env |
-| `make setup-local` | Setup with local Anvil L1 (no Sepolia needed) |
 | `make setup` | Deploy L1 contracts to Sepolia + configure services |
-| `make up-local` | Start all services with local L1 |
-| `make up` | Start all Docker services (Sepolia L1) |
+| `make up` | Start all L2 Docker services |
 | `make down` | Stop all services |
 | `make logs` | Follow all service logs |
 | `make logs-op-geth` | Follow specific service logs |

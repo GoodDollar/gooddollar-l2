@@ -10,28 +10,9 @@ services:
   # Local L1 — Anvil (for local-only testing, no Sepolia needed)
   # Start with: make up-local
   # ──────────────────────────────────────────────────────────
-  l1:
-    image: ghcr.io/foundry-rs/foundry:latest
-    container_name: gooddollar-l1-local
-    profiles: ["local"]
-    ports:
-      - "8555:8545"   # L1 RPC
-    entrypoint: ["anvil"]
-    command:
-      - --host=0.0.0.0
-      - --port=8545
-      - --fork-url=${L1_FORK_URL:-https://ethereum-sepolia-rpc.publicnode.com}
-      - --block-time=12
-      - --accounts=10
-      - --balance=10000
-      - --gas-limit=30000000
-      - --no-storage-caching
-    healthcheck:
-      test: ["CMD", "cast", "block-number", "--rpc-url", "http://localhost:8545"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 2s
+  # Local L1 is not used — op-deployer deploys directly to Sepolia (or any L1)
+  # The L1_RPC_URL in .env points to your L1 endpoint
+  # For local testing without Sepolia, see README troubleshooting
 
   # ──────────────────────────────────────────────────────────
   # Execution Client — op-geth
