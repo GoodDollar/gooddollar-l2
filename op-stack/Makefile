@@ -33,32 +33,51 @@ kurtosis-up: ## Start local OP Stack via Kurtosis (L1 + L2, everything included)
 	@echo "🟢 GoodDollar L2 is running!"
 	@echo "   Run 'make kurtosis-info' to see RPC endpoints."
 
+# Helper to find the running enclave name
+KURTOSIS_ENCLAVE = $(shell kurtosis enclave ls 2>/dev/null | grep -i RUNNING | awk '{print $$1}' | head -1)
+
 kurtosis-down: ## Stop and remove the Kurtosis enclave
 	@echo "🔴 Stopping GoodDollar L2 Kurtosis enclave..."
-	kurtosis enclave rm -f optimism 2>/dev/null || echo "No enclave to remove"
-	@echo "✅ Enclave removed"
+	@ENCLAVE=$$(kurtosis enclave ls 2>/dev/null | grep -i RUNNING | awk '{print $$1}' | head -1); \
+	if [ -n "$$ENCLAVE" ]; then \
+		kurtosis enclave rm -f "$$ENCLAVE"; \
+		echo "✅ Enclave '$$ENCLAVE' removed"; \
+	else \
+		echo "No running enclave to remove"; \
+	fi
 
 kurtosis-status: ## Show Kurtosis enclave status
 	@echo ""
 	@echo "  GoodDollar L2 — Kurtosis Status"
 	@echo "  ─────────────────────────────────"
-	@kurtosis enclave inspect optimism 2>/dev/null || echo "  No 'optimism' enclave found. Run 'make kurtosis-up' first."
+	@ENCLAVE=$$(kurtosis enclave ls 2>/dev/null | grep -i RUNNING | awk '{print $$1}' | head -1); \
+	if [ -n "$$ENCLAVE" ]; then \
+		kurtosis enclave inspect "$$ENCLAVE"; \
+	else \
+		echo "  No running enclave found. Run 'make kurtosis-up' first."; \
+	fi
 	@echo ""
 
 kurtosis-logs: ## Show logs from Kurtosis services
 	@echo "Fetching logs from Kurtosis enclave..."
-	@echo "(Tip: use 'kurtosis service logs optimism <service-name>' for a specific service)"
-	@echo ""
-	@kurtosis enclave dump optimism /tmp/kurtosis-dump 2>/dev/null && \
-		echo "Logs dumped to /tmp/kurtosis-dump" || \
-		echo "No enclave found. Run 'make kurtosis-up' first."
+	@ENCLAVE=$$(kurtosis enclave ls 2>/dev/null | grep -i RUNNING | awk '{print $$1}' | head -1); \
+	if [ -n "$$ENCLAVE" ]; then \
+		echo "(Tip: use 'kurtosis service logs $$ENCLAVE <service-name>' for a specific service)"; \
+		kurtosis enclave dump "$$ENCLAVE" /tmp/kurtosis-dump && echo "Logs dumped to /tmp/kurtosis-dump"; \
+	else \
+		echo "No running enclave found. Run 'make kurtosis-up' first."; \
+	fi
 
 kurtosis-ports: ## Show port mappings for all Kurtosis services
 	@echo ""
 	@echo "  GoodDollar L2 — Kurtosis Port Mappings"
 	@echo "  ────────────────────────────────────────"
-	@kurtosis enclave inspect optimism 2>/dev/null | grep -E '(127\.0\.0\.1|0\.0\.0\.0):[0-9]+' || \
-		echo "  No 'optimism' enclave found. Run 'make kurtosis-up' first."
+	@ENCLAVE=$$(kurtosis enclave ls 2>/dev/null | grep -i RUNNING | awk '{print $$1}' | head -1); \
+	if [ -n "$$ENCLAVE" ]; then \
+		kurtosis enclave inspect "$$ENCLAVE" | grep -E '(127\.0\.0\.1|0\.0\.0\.0):[0-9]+'; \
+	else \
+		echo "  No running enclave found. Run 'make kurtosis-up' first."; \
+	fi
 	@echo ""
 
 kurtosis-info: ## Show L1/L2 RPC URLs and connection info

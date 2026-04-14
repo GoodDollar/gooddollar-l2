@@ -16,8 +16,6 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-ENCLAVE_NAME="${1:-optimism}"
-
 # Check if kurtosis is available
 if ! command -v kurtosis &>/dev/null; then
     echo -e "${RED}Error: kurtosis CLI not found${NC}"
@@ -25,12 +23,30 @@ if ! command -v kurtosis &>/dev/null; then
     exit 1
 fi
 
+# Auto-detect enclave name if not provided
+if [ -n "$1" ]; then
+    ENCLAVE_NAME="$1"
+else
+    # Find the first running enclave (Kurtosis may name it differently)
+    ENCLAVE_NAME=$(kurtosis enclave ls 2>/dev/null | grep -i "RUNNING" | awk '{print $1}' | head -1)
+    if [ -z "$ENCLAVE_NAME" ]; then
+        echo -e "${RED}Error: No running Kurtosis enclave found${NC}"
+        echo ""
+        echo "Available enclaves:"
+        kurtosis enclave ls 2>/dev/null || echo "  (none)"
+        echo ""
+        echo "Start one with: make kurtosis-up"
+        exit 1
+    fi
+    echo -e "${BLUE}Auto-detected enclave:${NC} $ENCLAVE_NAME"
+fi
+
 # Check if the enclave exists
 if ! kurtosis enclave inspect "$ENCLAVE_NAME" &>/dev/null 2>&1; then
     echo -e "${RED}Error: Enclave '$ENCLAVE_NAME' not found${NC}"
     echo ""
     echo "Available enclaves:"
-    kurtosis enclave ls
+    kurtosis enclave ls 2>/dev/null
     exit 1
 fi
 
