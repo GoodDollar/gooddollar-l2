@@ -53,24 +53,39 @@ Based on the [official Optimism rollup example](https://github.com/ethereum-opti
 
 ## Quick Start (Local — Recommended)
 
-No Sepolia ETH needed. Spins up a local Anvil chain as L1.
+No Sepolia ETH needed. Forks Sepolia into a local Anvil chain as L1.
 
 ```bash
 # 1. Initialize (downloads op-deployer + creates .env)
 make init
 
-# 2. Deploy L1 contracts and configure services (local Anvil L1)
+# 2. Start local L1 first (forks Sepolia)
+docker compose --profile local up -d l1
+sleep 5
+
+# 3. Deploy L1 contracts and configure services
 make setup-local
 
-# 3. Start everything (L1 + L2)
+# 4. Start the full L2 stack (DO NOT restart L1 between step 3 and 4!)
 make up-local
 
-# 4. Verify
+# 5. Verify
 make status
 make test-l2
 ```
 
-That's it. L1 runs on `:8555`, L2 runs on `:8545`.
+L1 runs on `:8555`, L2 RPC on `:9545`, WebSocket on `:9546`.
+
+> **⚠️ Important:** Do NOT restart the L1 container between `setup-local` and `up-local`.
+> The rollup config references a specific L1 block hash from the fork. If L1 restarts,
+> it forks from a different block and the hashes won't match.
+>
+> If you need to start over: `docker compose --profile local down -v` and repeat from step 2.
+
+For faster fork speeds, set a private Sepolia RPC in `.env`:
+```bash
+L1_FORK_URL="https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
+```
 
 ## Quick Start (Sepolia)
 
@@ -125,7 +140,7 @@ After the L2 is running, deploy the 53 GoodDollar contracts:
 # From the gooddollar-l2 root directory (one level up)
 cd ..
 forge script script/Deploy.s.sol \
-  --rpc-url http://localhost:8545 \
+  --rpc-url http://localhost:9545 \
   --broadcast
 ```
 
@@ -140,10 +155,10 @@ OP Stack uses **ETH as the native gas token** by default. GoodDollar (G$) is dep
 | Port | Service | Protocol |
 |------|---------|----------|
 | 8555 | l1 (Anvil) | L1 HTTP RPC (local mode only) |
-| 8545 | op-geth | HTTP RPC |
-| 8546 | op-geth | WebSocket RPC |
-| 8551 | op-geth | Auth RPC (internal) |
-| 8547 | op-node | HTTP RPC |
+| 9545 | op-geth | L2 HTTP RPC |
+| 9546 | op-geth | L2 WebSocket RPC |
+| 9551 | op-geth | Auth RPC (internal) |
+| 9547 | op-node | op-node HTTP RPC |
 | 9222 | op-node | P2P (TCP/UDP) |
 | 7300 | dispute-mon | Prometheus metrics |
 
@@ -194,24 +209,44 @@ op-stack/
 
 ## Troubleshooting
 
-**Port conflicts:**
+**Block hash mismatch (`failed to verify block hash`):**
+The L1 was restarted between setup and startup. Each Anvil fork produces different block hashes.
 ```bash
-# Check what's using the ports
-lsof -i :8545 -i :8546 -i :8547 -i :8551 -i :9222
+docker compose --profile local down -v
+docker compose --profile local up -d l1
+sleep 5
+make setup-local
+make up-local
+```
+
+**`unsupported chainID` or `ReadSuperchainDeployment` error:**
+The local L1 needs to fork Sepolia (not run as an empty chain). Check `.env` has `L1_FORK_URL` set and the L1 container is using `--fork-url`.
+
+**`unknown field "minBaseFee"` (or similar rollup.json errors):**
+op-deployer v0.6.0 generates fields that op-node v1.9.5 doesn't understand. The setup script auto-strips these. If you see this, re-run `make setup-local`.
+
+**`Insufficient funds for gas`:**
+The deployer key wasn't funded. The setup script uses `anvil_setBalance` to set 1000 ETH. Make sure `cast` (Foundry) is installed: `curl -L https://foundry.paradigm.xyz | bash && foundryup`
+
+**Port conflicts (`port is already allocated`):**
+L2 uses ports 9545-9551 to avoid conflicts. Check:
+```bash
+lsof -i :9545 -i :9546 -i :9547 -i :8555
 ```
 
 **Container issues:**
 ```bash
-make logs              # Check all logs
-docker-compose logs -f op-node   # Check specific service
-make clean && make setup && make up   # Nuclear option
+make logs                           # Check all logs
+docker compose logs -f op-node      # Check specific service
+docker compose --profile local down -v && make setup-local && make up-local  # Full reset
 ```
 
-**Insufficient ETH:**
-Fund your deployment wallet with ≥2 Sepolia ETH from a [faucet](https://sepoliafaucet.com).
-
-**L1 connection timeouts:**
-Try a different RPC provider or use the public endpoints in `.example.env`.
+**Slow fork / timeouts:**
+Use a private Sepolia RPC for faster forking:
+```bash
+# In .env:
+L1_FORK_URL="https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
+```
 
 ## Security Notes
 
