@@ -38,7 +38,7 @@ setup-local: ## Setup with local Anvil L1 (no Sepolia needed)
 		cp .example.env .env; \
 	fi
 	@echo "🚀 Setting up GoodDollar L2 with LOCAL L1 (Anvil)..."
-	L1_MODE=local L1_RPC_URL=http://localhost:8555 L1_CHAIN_ID=900 L1_BEACON_URL= \
+	L1_MODE=local L1_RPC_URL=http://localhost:8555 L1_CHAIN_ID=11155111 L1_BEACON_URL= \
 	  ./scripts/setup-rollup.sh
 
 setup: ## Deploy L1 contracts and configure all rollup services
@@ -67,7 +67,7 @@ up: ## Start all OP Stack services (uses Sepolia L1)
 
 up-local: ## Start with local Anvil L1 (no Sepolia needed)
 	@echo "🟢 Starting local L1 (Anvil) + GoodDollar L2..."
-	L1_RPC_URL=http://l1:8545 L1_BEACON_URL= L1_CHAIN_ID=900 \
+	L1_RPC_URL=http://l1:8545 L1_BEACON_URL= L1_CHAIN_ID=11155111 \
 	  docker-compose --profile local up -d --wait
 	@echo ""
 	@echo "🟢 GoodDollar L2 is starting..."

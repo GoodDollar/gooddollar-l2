@@ -31,11 +31,9 @@ log_error()   { echo -e "${RED}[❌]${NC} $1"; }
 # Configuration
 # ──────────────────────────────────────────────────────────
 L1_MODE=${L1_MODE:-local}
-if [ "$L1_MODE" = "local" ]; then
-    L1_CHAIN_ID=${L1_CHAIN_ID:-900}  # Local Anvil
-else
-    L1_CHAIN_ID=${L1_CHAIN_ID:-11155111}  # Sepolia
-fi
+# Always use Sepolia chain ID — local Anvil mimics Sepolia so op-deployer
+# can find the OPCM impl address in its registry
+L1_CHAIN_ID=${L1_CHAIN_ID:-11155111}
 L2_CHAIN_ID_DECIMAL=${L2_CHAIN_ID:-42069}  # GoodDollar L2
 L2_CHAIN_ID=$(printf "0x%064x" "$L2_CHAIN_ID_DECIMAL")
 P2P_ADVERTISE_IP=${P2P_ADVERTISE_IP:-127.0.0.1}
@@ -459,7 +457,7 @@ main() {
     echo "  │  GoodDollar L2 — OP Stack Deployment     │"
     echo "  │  Chain ID: $L2_CHAIN_ID_DECIMAL                          │"
     if [ "$L1_MODE" = "local" ]; then
-    echo "  │  L1: Local Anvil (chain $L1_CHAIN_ID)           │"
+    echo "  │  L1: Local Anvil (mimics Sepolia)        │"
     else
     echo "  │  L1: Sepolia ($L1_CHAIN_ID)                  │"
     fi
