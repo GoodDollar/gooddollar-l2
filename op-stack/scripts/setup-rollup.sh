@@ -31,9 +31,13 @@ log_error()   { echo -e "${RED}[❌]${NC} $1"; }
 # Configuration
 # ──────────────────────────────────────────────────────────
 L1_MODE=${L1_MODE:-local}
-# Always use Sepolia chain ID — local Anvil mimics Sepolia so op-deployer
-# can find the OPCM impl address in its registry
-L1_CHAIN_ID=${L1_CHAIN_ID:-11155111}
+# Local mode uses geth --dev (chain ID 1337) with bootstrap
+# Sepolia mode uses chain ID 11155111 with pre-deployed OPCM
+if [ "$L1_MODE" = "local" ]; then
+    L1_CHAIN_ID=${L1_CHAIN_ID:-1337}
+else
+    L1_CHAIN_ID=${L1_CHAIN_ID:-11155111}
+fi
 L2_CHAIN_ID_DECIMAL=${L2_CHAIN_ID:-42069}  # GoodDollar L2
 L2_CHAIN_ID=$(printf "0x%064x" "$L2_CHAIN_ID_DECIMAL")
 P2P_ADVERTISE_IP=${P2P_ADVERTISE_IP:-127.0.0.1}
@@ -171,7 +175,7 @@ EOF
     rm -rf .deployer
 
     op-deployer init \
-        --l1-chain-id $L1_CHAIN_ID \
+        --l1-chain-id "$L1_CHAIN_ID" \
         --l2-chain-ids "$L2_CHAIN_ID_DECIMAL" \
         --workdir .deployer \
         --intent-type standard-overrides
@@ -467,6 +471,78 @@ EOF
 }
 
 # ──────────────────────────────────────────────────────────
+# Bootstrap OPCM on local L1 (geth --dev)
+# Deploys Superchain + Implementations contracts locally
+# ──────────────────────────────────────────────────────────
+bootstrap_opcm() {
+    log_info "Bootstrapping OPCM on local L1 (geth --dev, chain 1337)..."
+
+    cd "$DEPLOYER_DIR"
+    mkdir -p .deployer
+
+    # Read admin address from generated addresses
+    ADMIN_ADDR=$(cat addresses/admin_address.txt)
+    CHALLENGER_ADDR=$(cat addresses/challenger_address.txt)
+
+    log_info "Deploying Superchain contracts..."
+    op-deployer bootstrap superchain \
+        --l1-rpc-url=http://localhost:8555 \
+        --private-key="$PRIVATE_KEY" \
+        --outfile="$DEPLOYER_DIR/bootstrap_superchain.json" \
+        --superchain-proxy-admin-owner="$ADMIN_ADDR" \
+        --protocol-versions-owner="$ADMIN_ADDR" \
+        --guardian="$ADMIN_ADDR"
+
+    log_success "Superchain contracts deployed"
+
+    # Extract addresses from superchain bootstrap
+    SUPERCHAIN_OUTPUT="$DEPLOYER_DIR/bootstrap_superchain.json"
+    PROXY_ADMIN=$(jq -r '.proxyAdminAddress' "$SUPERCHAIN_OUTPUT")
+    PV_PROXY=$(jq -r '.protocolVersionsProxyAddress' "$SUPERCHAIN_OUTPUT")
+    SC_PROXY=$(jq -r '.superchainConfigProxyAddress' "$SUPERCHAIN_OUTPUT")
+
+    log_info "Deploying Implementation contracts..."
+    op-deployer bootstrap implementations \
+        --l1-rpc-url=http://localhost:8555 \
+        --private-key="$PRIVATE_KEY" \
+        --outfile="$DEPLOYER_DIR/bootstrap_implementations.json" \
+        --protocol-versions-proxy="$PV_PROXY" \
+        --superchain-config-proxy="$SC_PROXY" \
+        --superchain-proxy-admin="$PROXY_ADMIN" \
+        --challenger="$CHALLENGER_ADDR" \
+        --upgrade-controller="$ADMIN_ADDR"
+
+    OPCM_ADDR=$(jq -r '.opcmAddress' "$DEPLOYER_DIR/bootstrap_implementations.json")
+    log_success "OPCM deployed at: $OPCM_ADDR"
+    log_success "Bootstrap complete"
+}
+
+# ──────────────────────────────────────────────────────────
+# Patch intent.toml with bootstrapped OPCM address
+# ──────────────────────────────────────────────────────────
+patch_intent_opcm() {
+    log_info "Patching intent.toml with local OPCM address..."
+
+    cd "$DEPLOYER_DIR"
+    OPCM_ADDR=$(jq -r '.opcmAddress' "$DEPLOYER_DIR/bootstrap_implementations.json")
+
+    if [ -z "$OPCM_ADDR" ] || [ "$OPCM_ADDR" = "null" ]; then
+        log_error "OPCM address not found in bootstrap output"
+        exit 1
+    fi
+
+    # Update opcmAddress in intent.toml
+    if grep -q 'opcmAddress' .deployer/intent.toml; then
+        sed -i "s|opcmAddress = .*|opcmAddress = \"$OPCM_ADDR\"|" .deployer/intent.toml
+    else
+        # Add opcmAddress after l1ChainID line
+        sed -i "/l1ChainID/a opcmAddress = \"$OPCM_ADDR\"" .deployer/intent.toml
+    fi
+
+    log_success "intent.toml patched with OPCM: $OPCM_ADDR"
+}
+
+# ──────────────────────────────────────────────────────────
 # Main
 # ──────────────────────────────────────────────────────────
 main() {
@@ -475,7 +551,7 @@ main() {
     echo "  │  GoodDollar L2 — OP Stack Deployment     │"
     echo "  │  Chain ID: $L2_CHAIN_ID_DECIMAL                          │"
     if [ "$L1_MODE" = "local" ]; then
-    echo "  │  L1: Local Anvil (mimics Sepolia)        │"
+    echo "  │  L1: Local geth --dev (chain 1337)       │"
     else
     echo "  │  L1: Sepolia ($L1_CHAIN_ID)                  │"
     fi
@@ -518,20 +594,25 @@ main() {
 
     # Fund deployer on local L1 (after validate_env generates the key)
     if [ "$L1_MODE" = "local" ]; then
-        log_info "Funding deployer on local L1..."
+        log_info "Funding deployer on local L1 from geth dev account..."
         DEPLOYER_ADDR=$(cast wallet address "0x$PRIVATE_KEY" 2>/dev/null || echo "")
         if [ -n "$DEPLOYER_ADDR" ]; then
-            # Use anvil_setBalance to directly set ETH balance (most reliable on forks)
-            # 0x3635C9ADC5DEA00000 = 1000 ETH in hex (wei)
-            cast rpc --rpc-url http://localhost:8555 anvil_setBalance "$DEPLOYER_ADDR" "0x3635C9ADC5DEA00000" 2>/dev/null && \
-                log_success "Set deployer $DEPLOYER_ADDR balance to 1000 ETH" || {
-                # Fallback: send from Anvil account 0
-                log_warning "anvil_setBalance failed, trying transfer..."
-                ANVIL_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-                cast send --rpc-url http://localhost:8555 --private-key "$ANVIL_KEY" \
-                    "$DEPLOYER_ADDR" --value 1000ether 2>&1 || \
-                    log_error "Could not fund deployer. Please fund $DEPLOYER_ADDR manually."
-            }
+            # geth --dev prefunds account 0 with near-infinite ETH
+            DEV_ACCOUNT=$(curl -s -X POST -H "Content-Type: application/json" \
+                --data '{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1}' \
+                http://localhost:8555 | jq -r '.result[0]')
+            log_info "Dev account: $DEV_ACCOUNT"
+
+            # Send 10000 ETH from dev account (unlocked in dev mode)
+            # 0x21E19E0C9BAB2400000 = 10000 ETH in wei
+            TX_HASH=$(curl -s -X POST -H "Content-Type: application/json" \
+                --data "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\":[{\"from\":\"$DEV_ACCOUNT\",\"to\":\"$DEPLOYER_ADDR\",\"value\":\"0x21E19E0C9BAB2400000\"}],\"id\":1}" \
+                http://localhost:8555 | jq -r '.result')
+            log_info "Funding tx: $TX_HASH"
+
+            # Wait for tx to be mined
+            sleep 2
+
             BALANCE=$(cast balance --rpc-url http://localhost:8555 "$DEPLOYER_ADDR" --ether 2>/dev/null)
             log_info "Deployer balance: $BALANCE ETH"
             if [ "$BALANCE" = "0.000000000000000000" ] || [ -z "$BALANCE" ]; then
@@ -539,6 +620,7 @@ main() {
                 log_error "Please fund $DEPLOYER_ADDR with ETH on the local L1 (port 8555)"
                 exit 1
             fi
+            log_success "Funded deployer $DEPLOYER_ADDR with 10000 ETH"
         else
             log_error "Could not derive deployer address from PRIVATE_KEY. Is 'cast' installed?"
             log_error "Install Foundry: curl -L https://foundry.paradigm.xyz | bash && foundryup"
@@ -547,7 +629,19 @@ main() {
     fi
 
     generate_addresses
+
+    # Bootstrap OPCM on local L1 (must happen before init/deploy)
+    if [ "$L1_MODE" = "local" ]; then
+        bootstrap_opcm
+    fi
+
     init_deployer
+
+    # Patch intent.toml with OPCM address for local mode
+    if [ "$L1_MODE" = "local" ]; then
+        patch_intent_opcm
+    fi
+
     update_intent
     deploy_contracts
     generate_config

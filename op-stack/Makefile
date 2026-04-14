@@ -4,7 +4,7 @@
 # Chain ID: 42069 | Chain Name: GoodDollar L2
 # ============================================================
 
-.PHONY: help init setup up down logs status restart test-l1 test-l2 clean
+.PHONY: help init setup setup-local up up-local down logs status restart test-l1 test-l2 clean
 
 # Default target
 help: ## Show this help message
@@ -38,8 +38,21 @@ setup: ## Deploy L1 contracts to Sepolia and configure all rollup services
 		echo "❌ .env file not found. Run 'make init' first."; \
 		exit 1; \
 	fi
-	@echo "🚀 Setting up GoodDollar L2 (Chain ID: 42069)..."
-	@./scripts/setup-rollup.sh
+	@echo "🚀 Setting up GoodDollar L2 (Chain ID: 42069) on Sepolia..."
+	L1_MODE=sepolia ./scripts/setup-rollup.sh
+
+setup-local: ## Deploy to local geth --dev L1 with OPCM bootstrap
+	@mkdir -p deployer
+	@if [ ! -f op-deployer ]; then \
+		echo "❌ op-deployer not found. Run 'make init' first."; \
+		exit 1; \
+	fi
+	@if [ ! -f .env ]; then \
+		echo "❌ .env file not found. Run 'make init' first."; \
+		exit 1; \
+	fi
+	@echo "🚀 Setting up GoodDollar L2 (Chain ID: 42069) on local geth --dev..."
+	L1_MODE=local L1_CHAIN_ID=1337 ./scripts/setup-rollup.sh
 
 up: ## Start all OP Stack services (uses Sepolia L1)
 	docker compose up -d --wait
@@ -52,10 +65,11 @@ up: ## Start all OP Stack services (uses Sepolia L1)
 	@sleep 5
 	@make test-l2
 
-
+up-local: ## Start all services with local geth --dev L1
+	docker compose --profile local up -d --wait
 	@echo ""
 	@echo "🟢 GoodDollar L2 is starting..."
-	@echo "   L1 RPC:  http://localhost:8555  (local Anvil)"
+	@echo "   L1 RPC:  http://localhost:8555  (local geth --dev)"
 	@echo "   L2 RPC:  http://localhost:${L2_RPC_PORT:-9545}"
 	@echo "   L2 WS:   ws://localhost:9546"
 	@echo "   op-node: http://localhost:9547"

@@ -7,12 +7,34 @@
 
 services:
   # ──────────────────────────────────────────────────────────
-  # Local L1 — Anvil (for local-only testing, no Sepolia needed)
+  # Local L1 — geth --dev (for local-only testing, no Sepolia needed)
   # Start with: make up-local
   # ──────────────────────────────────────────────────────────
-  # Local L1 is not used — op-deployer deploys directly to Sepolia (or any L1)
-  # The L1_RPC_URL in .env points to your L1 endpoint
-  # For local testing without Sepolia, see README troubleshooting
+  l1:
+    image: ethereum/client-go:stable
+    container_name: gooddollar-l1-local
+    profiles: ["local"]
+    ports:
+      - "8555:8545"
+    volumes:
+      - l1_geth_data:/root/.ethereum
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        geth --dev \
+          --http --http.addr=0.0.0.0 --http.port=8545 \
+          --http.api=eth,net,web3,debug,txpool,admin,personal \
+          --http.vhosts=* --http.corsdomain=* \
+          --ws --ws.addr=0.0.0.0 --ws.port=8546 \
+          --ws.api=eth,net,web3,debug,txpool,admin \
+          --dev.period=12 \
+          --dev.gaslimit=30000000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8545 --post-data='{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}' --header='Content-Type: application/json' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   # ──────────────────────────────────────────────────────────
   # Execution Client — op-geth
@@ -222,3 +244,4 @@ services:
 
 volumes:
   op_geth_data:
+  l1_geth_data:

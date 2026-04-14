@@ -13,9 +13,9 @@ Based on the [official Optimism rollup example](https://github.com/ethereum-opti
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  op-geth (execution)  ◄──► op-node (consensus)          │
-│       :8545 RPC              :8547 RPC                  │
-│       :8546 WS               :9222 P2P                  │
-│       :8551 Auth                                        │
+│       :9545 RPC              :9547 RPC                  │
+│       :9546 WS               :9222 P2P                  │
+│       :9551 Auth                                        │
 │                                                         │
 │  op-batcher ──► L1          op-proposer ──► L1          │
 │  (tx data)                  (state roots)               │
@@ -26,13 +26,14 @@ Based on the [official Optimism rollup example](https://github.com/ethereum-opti
 └────────────────────┬────────────────────────────────────┘
                      │
                      ▼
-    L1: Local Anvil (:8555) or Sepolia (11155111)
+    L1: Local geth --dev (:8555) or Sepolia (11155111)
 ```
 
 ## What This Deploys
 
 | Service | Image | Purpose |
 |---------|-------|---------|
+| **l1** (local only) | `ethereum/client-go:stable` | Local L1 using `geth --dev` (chain 1337) |
 | **op-geth** | `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth` | Execution client — processes L2 transactions |
 | **op-node** | `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node` | Consensus client — manages rollup state |
 | **op-batcher** | `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher` | Publishes L2 transaction batches to L1 |
@@ -43,7 +44,7 @@ Based on the [official Optimism rollup example](https://github.com/ethereum-opti
 ## Prerequisites
 
 - **Docker** ≥ 24 + Docker Compose
-- **Foundry** (forge, cast, anvil) — `curl -L https://foundry.paradigm.xyz | bash && foundryup`
+- **Foundry** (forge, cast) — `curl -L https://foundry.paradigm.xyz | bash && foundryup`
 - **jq** — JSON processing (`apt install jq`)
 - **git** — for prestate generation
 
@@ -51,21 +52,53 @@ Based on the [official Optimism rollup example](https://github.com/ethereum-opti
 - Sepolia ETH ≥ 2 ETH in your deployment wallet
 - Sepolia RPC from [Alchemy](https://alchemy.com), [Infura](https://infura.io), or public endpoints
 
-## Quick Start
+## Quick Start — Local Mode (Recommended)
+
+Runs everything locally using `geth --dev` as L1. No testnet ETH needed.
+
+The setup script bootstraps the OPCM (OP Contract Manager) contracts on the local L1 before deploying the rollup — this is required because `geth --dev` is a fresh chain with no pre-deployed contracts.
+
+```bash
+# 1. Initialize (downloads op-deployer + creates .env)
+make init
+
+# 2. (Optional) Edit .env — defaults work for local mode
+#    L1_MODE is "local" by default
+nano .env
+
+# 3. Deploy OPCM bootstrap + L1 contracts on local geth --dev
+make setup-local
+
+# 4. Start the L2 (includes local L1)
+make up-local
+
+# 5. Verify
+make status
+make test-l2
+```
+
+### How Local Mode Works
+
+1. **Starts `geth --dev`** as a Docker container on port 8555 (chain ID 1337)
+2. **Funds the deployer** from geth's pre-funded dev account
+3. **Bootstraps OPCM** — runs `op-deployer bootstrap superchain` and `bootstrap implementations` to deploy the Superchain contracts that normally exist on Sepolia/mainnet
+4. **Deploys rollup contracts** via `op-deployer apply` using the bootstrapped OPCM
+5. **Generates configs** — genesis.json, rollup.json for the L2
+
+## Quick Start — Sepolia Mode
 
 Deploys L1 contracts to Sepolia, then runs the full L2 stack locally.
 
 **Requirements:** ~2 Sepolia ETH ([faucet](https://sepoliafaucet.com)) + a Sepolia RPC URL.
 
 ```bash
-# 1. Initialize (downloads op-deployer + creates .env)
+# 1. Initialize
 make init
 
-# 2. Edit .env — set your PRIVATE_KEY (fund with ≥2 Sepolia ETH)
-#    Optionally set a faster L1_RPC_URL (Alchemy/Infura)
+# 2. Edit .env — set L1_MODE="sepolia", PRIVATE_KEY, L1_RPC_URL, L1_BEACON_URL
 nano .env
 
-# 3. Deploy L1 contracts and configure all services
+# 3. Deploy L1 contracts to Sepolia
 make setup
 
 # 4. Start the L2
@@ -79,10 +112,6 @@ make test-l2
 
 L2 RPC on `:9545`, WebSocket on `:9546`, op-node on `:9547`.
 
-> **Note:** Local Anvil-as-L1 is not supported. op-node verifies L1 block hashes
-> by recomputing them from headers, and Anvil's block encoding doesn't match
-> real Ethereum nodes. Use a real Sepolia RPC instead.
-
 ## Available Commands
 
 | Command | Description |
@@ -90,12 +119,14 @@ L2 RPC on `:9545`, WebSocket on `:9546`, op-node on `:9547`.
 | `make help` | Show all commands |
 | `make init` | Download op-deployer + create .env |
 | `make setup` | Deploy L1 contracts to Sepolia + configure services |
-| `make up` | Start all L2 Docker services |
+| `make setup-local` | Deploy to local geth --dev with OPCM bootstrap |
+| `make up` | Start all L2 Docker services (Sepolia L1) |
+| `make up-local` | Start all services including local L1 |
 | `make down` | Stop all services |
 | `make logs` | Follow all service logs |
 | `make logs-op-geth` | Follow specific service logs |
 | `make status` | Show service health |
-| `make test-l1` | Test Sepolia connectivity |
+| `make test-l1` | Test L1 connectivity |
 | `make test-l2` | Test GoodDollar L2 connectivity |
 | `make restart` | Restart all services |
 | `make clean` | Remove containers + volumes |
@@ -124,7 +155,7 @@ OP Stack uses **ETH as the native gas token** by default. GoodDollar (G$) is dep
 
 | Port | Service | Protocol |
 |------|---------|----------|
-| 8555 | l1 (Anvil) | L1 HTTP RPC (local mode only) |
+| 8555 | l1 (geth --dev) | L1 HTTP RPC (local mode only) |
 | 9545 | op-geth | L2 HTTP RPC |
 | 9546 | op-geth | L2 WebSocket RPC |
 | 9551 | op-geth | Auth RPC (internal) |
@@ -163,10 +194,12 @@ op-stack/
     ├── setup-rollup.sh       # Full deployment automation
     └── download-op-deployer.sh
 
-# Generated after `make setup`:
+# Generated after `make setup` or `make setup-local`:
 ├── deployer/                 # op-deployer artifacts
 │   ├── .deployer/            # genesis.json, rollup.json, state.json
-│   └── addresses/            # Generated wallet addresses
+│   ├── addresses/            # Generated wallet addresses
+│   ├── bootstrap_superchain.json      # (local mode) Superchain bootstrap output
+│   └── bootstrap_implementations.json # (local mode) OPCM bootstrap output
 ├── sequencer/                # op-geth + op-node config
 │   ├── genesis.json
 │   ├── rollup.json
@@ -180,23 +213,16 @@ op-stack/
 ## Troubleshooting
 
 **Block hash mismatch (`failed to verify block hash`):**
-The L1 was restarted between setup and startup. Each Anvil fork produces different block hashes.
-```bash
-docker compose --profile local down -v
-docker compose --profile local up -d l1
-sleep 5
-make setup-local
-make up-local
-```
+If using local mode, make sure you're using `geth --dev` (not Anvil). Anvil's block header encoding doesn't match real Ethereum, causing op-node hash verification to fail. The local mode setup handles this automatically.
 
 **`unsupported chainID` or `ReadSuperchainDeployment` error:**
-The local L1 needs to fork Sepolia (not run as an empty chain). Check `.env` has `L1_FORK_URL` set and the L1 container is using `--fork-url`.
+In local mode, the OPCM is bootstrapped locally (not looked up from a registry). Make sure `make setup-local` completed successfully and check for bootstrap output files in `deployer/`.
 
 **`unknown field "minBaseFee"` (or similar rollup.json errors):**
-op-deployer v0.6.0 generates fields that op-node v1.9.5 doesn't understand. The setup script auto-strips these. If you see this, re-run `make setup-local`.
+op-deployer v0.6.0 generates fields that op-node v1.9.5 doesn't understand. The setup script auto-strips these. If you see this, re-run setup.
 
 **`Insufficient funds for gas`:**
-The deployer key wasn't funded. The setup script uses `anvil_setBalance` to set 1000 ETH. Make sure `cast` (Foundry) is installed: `curl -L https://foundry.paradigm.xyz | bash && foundryup`
+In local mode, the setup script funds the deployer from geth's dev account automatically. Make sure `cast` (Foundry) is installed: `curl -L https://foundry.paradigm.xyz | bash && foundryup`
 
 **Port conflicts (`port is already allocated`):**
 L2 uses ports 9545-9551 to avoid conflicts. Check:
@@ -206,16 +232,9 @@ lsof -i :9545 -i :9546 -i :9547 -i :8555
 
 **Container issues:**
 ```bash
-make logs                           # Check all logs
-docker compose logs -f op-node      # Check specific service
-docker compose --profile local down -v && make setup-local && make up-local  # Full reset
-```
-
-**Slow fork / timeouts:**
-Use a private Sepolia RPC for faster forking:
-```bash
-# In .env:
-L1_FORK_URL="https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
+make logs                    # Check all logs
+docker compose logs -f op-node   # Check specific service
+make clean && make setup-local && make up-local  # Full reset (local)
 ```
 
 ## Security Notes
