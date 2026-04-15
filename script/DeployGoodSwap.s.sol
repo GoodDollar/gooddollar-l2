@@ -149,25 +149,12 @@ contract DeployGoodSwap is Script {
         MockPoolManager poolManager = new MockPoolManager(deployer);
         console.log("MockPoolManager:", address(poolManager));
 
-        // 4. UBIFeeHook — deployed with CREATE2 so the address encodes the
-        //    afterSwap permission bit.  On devnet we try the salt search; if it
-        //    fails we fall back to a plain deployment.
-        UBIFeeHook hook;
-        bytes memory initCode = abi.encodePacked(
-            type(UBIFeeHook).creationCode,
-            abi.encode(address(poolManager), splitterAddr, UBI_FEE_BPS, deployer)
-        );
-        bytes32 initCodeHash = keccak256(initCode);
-
-        try this._mineHook(deployer, initCodeHash, initCode) returns (UBIFeeHook h) {
-            hook = h;
-            console.log("UBIFeeHook (CREATE2, correct flags):", address(hook));
-        } catch {
-            // Salt not found within MAX_ITERATIONS — deploy without address mining.
-            // This is acceptable on devnet; the PoolManager won't enforce flag bits.
-            hook = new UBIFeeHook(address(poolManager), splitterAddr, UBI_FEE_BPS, deployer);
-            console.log("UBIFeeHook (plain deploy, no flag mining):", address(hook));
-        }
+        // 4. UBIFeeHook — plain deploy on devnet.  On production, use CREATE2
+        //    salt mining so the address encodes the afterSwap permission bit.
+        //    (CREATE2 mining via `this._mineHook()` is blocked by newer Foundry
+        //    versions that disallow `address(this)` in scripts.)
+        UBIFeeHook hook = new UBIFeeHook(address(poolManager), splitterAddr, UBI_FEE_BPS, deployer);
+        console.log("UBIFeeHook:", address(hook));
 
         // Seed hook with G$ for fee forwarding on devnet
         if (gdToken.balanceOf(deployer) >= HOOK_SEED_G) {

@@ -26,24 +26,24 @@ interface IMintable {
 }
 
 contract DeployInitialVaults is Script {
-    // ─── Existing addresses (updated after devnet reset — GOO-363) ───
-    address constant VAULT_FACTORY   = 0xe70f935c32dA4dB13e7876795f1e175465e6458e;
-    address constant UBI_FEE         = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
-    address constant GOOD_LEND_POOL  = 0x49fd2BE640DB2910c2fAb69bB8531Ab6E76127ff;
-    address constant WETH            = 0xfbC22278A96299D91d41C453234d97b4F5Eb9B2d;
-    address constant USDC            = 0x2B0d36FACD61B71CC05ab8F3D2355ec3631C0dd5;
-    address constant GD_TOKEN        = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
-    address constant G_TOKEN_WETH    = 0xA4899D35897033b927acFCf422bc745916139776;
-    address constant G_TOKEN_USDC    = 0x4631BCAbD6dF18D94796344963cB60d44a4136b6;
-    address constant GUSD            = 0x5D42EBdBBa61412295D7b0302d6F50aC449Ddb4F;
-    address constant STABILITY_POOL  = 0xAD523115cd35a8d4E60B3C0953E0E0ac10418309;
-
-    // We need mock stability pool and gToken for G$
-    // For now, deploy simplified mock versions for the devnet demo
+    // ─── Addresses — read from env, fall back to previous devnet defaults ───
+    // On a fresh Kurtosis deploy, set these env vars from earlier deploy output.
+    // The kurtosis-deploy.sh script does this automatically.
 
     function run() external {
         uint256 pk = vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
         address deployer = vm.addr(pk);
+
+        address VAULT_FACTORY  = vm.envOr("VAULT_FACTORY",  address(0xe70f935c32dA4dB13e7876795f1e175465e6458e));
+        address UBI_FEE        = vm.envOr("UBI_FEE",        address(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512));
+        address GOOD_LEND_POOL = vm.envOr("GOOD_LEND_POOL", address(0x49fd2BE640DB2910c2fAb69bB8531Ab6E76127ff));
+        address WETH           = vm.envOr("WETH",           address(0xfbC22278A96299D91d41C453234d97b4F5Eb9B2d));
+        address USDC           = vm.envOr("USDC",           address(0x2B0d36FACD61B71CC05ab8F3D2355ec3631C0dd5));
+        address GD_TOKEN       = vm.envOr("GOOD_DOLLAR_TOKEN", address(0x36C02dA8a0983159322a80FFE9F24b1acfF8B570));
+        address G_TOKEN_WETH   = vm.envOr("G_TOKEN_WETH",   address(0xA4899D35897033b927acFCf422bc745916139776));
+        address G_TOKEN_USDC   = vm.envOr("G_TOKEN_USDC",   address(0x4631BCAbD6dF18D94796344963cB60d44a4136b6));
+        address GUSD           = vm.envOr("GUSD",           address(0x5D42EBdBBa61412295D7b0302d6F50aC449Ddb4F));
+        address STABILITY_POOL = vm.envOr("STABILITY_POOL", address(0xAD523115cd35a8d4E60B3C0953E0E0ac10418309));
 
         vm.startBroadcast(pk);
 

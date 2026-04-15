@@ -87,10 +87,15 @@ contract DeployGoodStocks is Script {
     function run() external {
         _seedStocks();
 
-        uint256 deployerKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerKey = vm.envOr(
+            "PRIVATE_KEY",
+            uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
+        );
         address deployer    = vm.addr(deployerKey);
-        address gdToken     = vm.envAddress("GOOD_DOLLAR_TOKEN");
-        address feeSplitter = vm.envAddress("UBI_FEE_SPLITTER");
+        address gdToken     = vm.envOr("GOOD_DOLLAR_TOKEN", address(0));
+        address feeSplitter = vm.envOr("UBI_FEE_SPLITTER",  address(0));
+        require(gdToken     != address(0), "Set GOOD_DOLLAR_TOKEN env var");
+        require(feeSplitter != address(0), "Set UBI_FEE_SPLITTER env var");
         bool useChainlink   = vm.envOr("USE_CHAINLINK_FEEDS", false);
 
         vm.startBroadcast(deployerKey);
