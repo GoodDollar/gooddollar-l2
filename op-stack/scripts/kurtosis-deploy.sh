@@ -138,8 +138,30 @@ fi
 CHAIN_DEC=$(printf "%d" "$CHAIN_ID" 2>/dev/null || echo "unknown")
 echo -e "${GREEN}L2 connected — Chain ID: $CHAIN_DEC${NC}"
 
-# Default private key: Anvil/Kurtosis dev account #0
+# Default private key: Anvil/Kurtosis dev account #0 (pre-funded with ETH)
 export PRIVATE_KEY="${PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
+DEV_ADDR="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+
+echo -e "${GREEN}Deployer:${NC}"
+echo -e "  ${BLUE}Address:${NC}     $DEV_ADDR"
+echo -e "  ${BLUE}Private Key:${NC} $PRIVATE_KEY"
+
+# Check deployer balance
+BAL_HEX=$(curl -s -X POST -H "Content-Type: application/json" \
+    --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["'"$DEV_ADDR"'","latest"],"id":1}' \
+    "$RPC_URL" 2>/dev/null | jq -r '.result' 2>/dev/null)
+if [ -n "$BAL_HEX" ] && [ "$BAL_HEX" != "null" ]; then
+    BAL_DEC=$(printf "%d" "$BAL_HEX" 2>/dev/null || echo "0")
+    BAL_ETH=$(echo "scale=4; $BAL_DEC / 1000000000000000000" | bc 2>/dev/null || echo "unknown")
+    echo -e "  ${BLUE}L2 Balance:${NC}  ${BAL_ETH} ETH"
+    if [ "$BAL_DEC" = "0" ]; then
+        echo -e "  ${RED}⚠️  Deployer has 0 ETH! Deployments will fail.${NC}"
+        echo -e "  ${YELLOW}Check that fund_dev_accounts: true is set in kurtosis-params.yaml${NC}"
+        exit 1
+    fi
+else
+    echo -e "  ${YELLOW}Could not check balance${NC}"
+fi
 
 # ── Deploy in dependency order ──
 # Phase 1: Core (no dependencies)

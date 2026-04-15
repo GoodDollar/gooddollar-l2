@@ -105,6 +105,38 @@ echo -e "${GREEN}Chain Config:${NC}"
 echo -e "  ${BLUE}Chain ID:${NC}   42069"
 echo -e "  ${BLUE}Chain Name:${NC} GoodDollar L2"
 
+# Pre-funded dev accounts (fund_dev_accounts: true in kurtosis-params.yaml)
+# These are the standard Hardhat/Anvil dev accounts, pre-loaded with ETH on both L1 and L2.
+DEV_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+DEV_ADDR="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+
+echo ""
+echo -e "${GREEN}Funded Dev Account:${NC}"
+echo -e "  ${BLUE}Address:${NC}     $DEV_ADDR"
+echo -e "  ${BLUE}Private Key:${NC} $DEV_KEY"
+
+# Check balance on L2 if RPC is available
+if [ -n "$L2_RPC" ]; then
+    BAL_HEX=$(curl -s -X POST -H "Content-Type: application/json" \
+        --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["'"$DEV_ADDR"'","latest"],"id":1}' \
+        "http://$L2_RPC" 2>/dev/null | jq -r '.result' 2>/dev/null)
+    if [ -n "$BAL_HEX" ] && [ "$BAL_HEX" != "null" ]; then
+        # Convert hex wei to ETH (integer division, good enough for display)
+        BAL_DEC=$(printf "%d" "$BAL_HEX" 2>/dev/null || echo "0")
+        BAL_ETH=$(echo "scale=4; $BAL_DEC / 1000000000000000000" | bc 2>/dev/null || echo "$BAL_DEC wei")
+        echo -e "  ${BLUE}L2 Balance:${NC}  ${BAL_ETH} ETH"
+    fi
+fi
+
+echo ""
+echo -e "${CYAN}Quick deploy:${NC}"
+echo "  export PRIVATE_KEY=$DEV_KEY"
+if [ -n "$L2_RPC" ]; then
+    echo "  forge script script/DeployGoodSwap.s.sol --rpc-url http://$L2_RPC --broadcast --legacy"
+else
+    echo "  forge script script/DeployGoodSwap.s.sol --rpc-url <L2_RPC> --broadcast --legacy"
+fi
+
 # Test L2 connection if we found the RPC
 if [ -n "$L2_RPC" ]; then
     echo ""
@@ -132,11 +164,6 @@ echo ""
 echo -e "${CYAN}Tip:${NC} For full details, run:"
 echo "  kurtosis enclave inspect $ENCLAVE_NAME"
 echo ""
-echo -e "${CYAN}Tip:${NC} To use with forge/cast:"
-if [ -n "$L2_RPC" ]; then
-    echo "  cast chain-id --rpc-url http://$L2_RPC"
-    echo "  forge script Deploy.s.sol --rpc-url http://$L2_RPC --broadcast"
-else
-    echo "  cast chain-id --rpc-url http://<L2_RPC_PORT>"
-fi
+echo -e "${CYAN}Tip:${NC} Deploy all contracts:"
+echo "  make kurtosis-deploy"
 echo ""
