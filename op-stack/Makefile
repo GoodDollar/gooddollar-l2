@@ -5,7 +5,8 @@
 # ============================================================
 
 .PHONY: help init setup up down logs status restart test-l1 test-l2 clean \
-        kurtosis-up kurtosis-down kurtosis-status kurtosis-logs kurtosis-ports kurtosis-info
+        kurtosis-up kurtosis-down kurtosis-status kurtosis-logs kurtosis-ports kurtosis-info \
+        kurtosis-deploy kurtosis-deploy-check
 
 # Default target
 help: ## Show this help message
@@ -82,6 +83,19 @@ kurtosis-ports: ## Show port mappings for all Kurtosis services
 
 kurtosis-info: ## Show L1/L2 RPC URLs and connection info
 	@./scripts/kurtosis-info.sh
+
+kurtosis-deploy: ## Deploy all GoodDollar contracts to the local Kurtosis L2
+	@./scripts/kurtosis-deploy.sh $(if $(ONLY),--only $(ONLY),)
+
+kurtosis-deploy-check: ## Verify deployed contracts on Kurtosis L2
+	@echo "🔍 Checking deployed contract state..."
+	@ENCLAVE=$$(kurtosis enclave ls 2>/dev/null | grep -i RUNNING | awk '{print $$1}' | head -1); \
+	L2_RPC=$$(kurtosis enclave inspect "$$ENCLAVE" 2>&1 | grep -A5 "op-el-1-op-geth" | grep "rpc: 8545/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1); \
+	if [ -n "$$L2_RPC" ]; then \
+		cd .. && forge script script/CheckDevnetState.s.sol --rpc-url "http://$$L2_RPC"; \
+	else \
+		echo "Could not detect L2 RPC. Is the enclave running?"; \
+	fi
 
 # ──────────────────────────────────────────────────────────
 # Sepolia — Testnet Deployment

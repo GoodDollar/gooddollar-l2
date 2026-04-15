@@ -61,21 +61,21 @@ echo ""
 INSPECT_OUTPUT=$(kurtosis enclave inspect "$ENCLAVE_NAME" 2>&1)
 
 # Extract L1 EL RPC (el-1-geth-lighthouse)
-L1_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "el-1-geth" | grep "rpc: 8545/tcp" | grep -oP '127\.0\.0\.1:\d+' | head -1)
+L1_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "el-1-geth" | grep "rpc: 8545/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 if [ -z "$L1_RPC" ]; then
-    L1_RPC=$(echo "$INSPECT_OUTPUT" | grep -A10 "el-1-geth" | grep -oP '127\.0\.0\.1:\d+' | head -1)
+    L1_RPC=$(echo "$INSPECT_OUTPUT" | grep -A10 "el-1-geth" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 fi
 
 # Extract L2 EL RPC (op-el-1-op-geth-op-node)
-L2_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "op-el-1-op-geth" | grep "rpc: 8545/tcp" | grep -oP '127\.0\.0\.1:\d+' | head -1)
+L2_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "op-el-1-op-geth" | grep "rpc: 8545/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 if [ -z "$L2_RPC" ]; then
-    L2_RPC=$(echo "$INSPECT_OUTPUT" | grep -A10 "op-el-1-op-geth" | grep -oP '127\.0\.0\.1:\d+' | head -1)
+    L2_RPC=$(echo "$INSPECT_OUTPUT" | grep -A10 "op-el-1-op-geth" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 fi
 
 # Extract op-node RPC
-OP_NODE_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "op-cl-1-op-node" | grep "http: 8547/tcp" | grep -oP '127\.0\.0\.1:\d+' | head -1)
+OP_NODE_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "op-cl-1-op-node" | grep "http: 8547/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 if [ -z "$OP_NODE_RPC" ]; then
-    OP_NODE_RPC=$(echo "$INSPECT_OUTPUT" | grep -A10 "op-cl-1-op-node" | grep -oP '127\.0\.0\.1:\d+' | head -1)
+    OP_NODE_RPC=$(echo "$INSPECT_OUTPUT" | grep -A10 "op-cl-1-op-node" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 fi
 
 echo -e "${GREEN}Endpoints:${NC}"
