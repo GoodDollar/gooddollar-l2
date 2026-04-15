@@ -60,22 +60,23 @@ echo ""
 # Get the full enclave inspection
 INSPECT_OUTPUT=$(kurtosis enclave inspect "$ENCLAVE_NAME" 2>&1)
 
-# Extract L1 EL RPC (el-1-geth-lighthouse)
-L1_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "el-1-geth" | grep "rpc: 8545/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
+# Extract L1 EL RPC — matches "el-1-geth" but NOT "op-el-*"
+L1_RPC=$(echo "$INSPECT_OUTPUT" | grep -E '^[0-9a-f]+ +el-' | grep -A2 "rpc: 8545/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 if [ -z "$L1_RPC" ]; then
-    L1_RPC=$(echo "$INSPECT_OUTPUT" | grep -A10 "el-1-geth" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
+    # Fallback: find the el-1-geth line and grab the rpc port from subsequent lines
+    L1_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "el-1-geth" | grep -v "op-el" | grep "rpc: 8545" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 fi
 
-# Extract L2 EL RPC (op-el-1-op-geth-op-node)
-L2_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "op-el-1-op-geth" | grep "rpc: 8545/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
+# Extract L2 EL RPC — matches "op-el-*-op-geth" (name includes chain ID, e.g. op-el-42069-node0-op-geth)
+L2_RPC=$(echo "$INSPECT_OUTPUT" | grep -A2 "op-el-.*op-geth" | grep "rpc: 8545" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 if [ -z "$L2_RPC" ]; then
-    L2_RPC=$(echo "$INSPECT_OUTPUT" | grep -A10 "op-el-1-op-geth" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
+    L2_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "op-el-" | grep "rpc: 8545" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 fi
 
-# Extract op-node RPC
-OP_NODE_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "op-cl-1-op-node" | grep "http: 8547/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
+# Extract op-node RPC — matches "op-cl-*-op-node" (e.g. op-cl-42069-node0-op-node)
+OP_NODE_RPC=$(echo "$INSPECT_OUTPUT" | grep -A2 "op-cl-.*op-node" | grep "rpc: 8547" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 if [ -z "$OP_NODE_RPC" ]; then
-    OP_NODE_RPC=$(echo "$INSPECT_OUTPUT" | grep -A10 "op-cl-1-op-node" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
+    OP_NODE_RPC=$(echo "$INSPECT_OUTPUT" | grep -A5 "op-cl-" | grep "rpc: 8547" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
 fi
 
 echo -e "${GREEN}Endpoints:${NC}"

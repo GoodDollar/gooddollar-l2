@@ -42,10 +42,10 @@ detect_l2_rpc() {
 
     INSPECT=$(kurtosis enclave inspect "$ENCLAVE" 2>&1)
 
-    # Try to find op-geth L2 RPC port
-    L2_RPC=$(echo "$INSPECT" | grep -A5 "op-el-1-op-geth" | grep "rpc: 8545/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
+    # Try to find op-geth L2 RPC port (name includes chain ID, e.g. op-el-42069-node0-op-geth)
+    L2_RPC=$(echo "$INSPECT" | grep -A2 "op-el-.*op-geth" | grep "rpc: 8545" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
     if [ -z "$L2_RPC" ]; then
-        L2_RPC=$(echo "$INSPECT" | grep -A10 "op-el-1-op-geth" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
+        L2_RPC=$(echo "$INSPECT" | grep -A5 "op-el-" | grep "rpc: 8545" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1)
     fi
 
     if [ -z "$L2_RPC" ]; then

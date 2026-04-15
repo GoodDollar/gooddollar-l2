@@ -90,7 +90,7 @@ kurtosis-deploy: ## Deploy all GoodDollar contracts to the local Kurtosis L2
 kurtosis-deploy-check: ## Verify deployed contracts on Kurtosis L2
 	@echo "🔍 Checking deployed contract state..."
 	@ENCLAVE=$$(kurtosis enclave ls 2>/dev/null | grep -i RUNNING | awk '{print $$1}' | head -1); \
-	L2_RPC=$$(kurtosis enclave inspect "$$ENCLAVE" 2>&1 | grep -A5 "op-el-1-op-geth" | grep "rpc: 8545/tcp" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1); \
+	L2_RPC=$$(kurtosis enclave inspect "$$ENCLAVE" 2>&1 | grep -A2 "op-el-.*op-geth" | grep "rpc: 8545" | grep -oE '127\.0\.0\.1:[0-9]+' | head -1); \
 	if [ -n "$$L2_RPC" ]; then \
 		cd .. && forge script script/CheckDevnetState.s.sol --rpc-url "http://$$L2_RPC"; \
 	else \
