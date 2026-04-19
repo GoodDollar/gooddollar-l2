@@ -412,10 +412,10 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.05%' : '0.02%'})</span><span className="text-white truncate ml-2">{formatLargeValue(fee)}</span></div>
           <div className="flex justify-between text-goodgreen/80"><span>→ UBI (33%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
           {tpPnl !== 0 && !tpInvalid && (
-            <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className="truncate ml-2"><PriceDisplay value={tpPnl} prefix="$" showSign size="xs" /></span></div>
+            <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className="truncate ml-2"><PriceDisplay value={tpPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>
           )}
           {slPnl !== 0 && !slInvalid && (
-            <div className="flex justify-between text-gray-400"><span>SL P&L</span><span className="truncate ml-2"><PriceDisplay value={slPnl} prefix="$" showSign size="xs" /></span></div>
+            <div className="flex justify-between text-gray-400"><span>SL P&L</span><span className="truncate ml-2"><PriceDisplay value={slPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>
           )}
         </div>
       )}
@@ -470,7 +470,7 @@ function AccountPanel() {
       <div className="flex justify-between">
         <span className="text-gray-400">Unrealized P&L</span>
         <span className="font-medium">
-          <PriceDisplay value={account.unrealizedPnl} prefix="$" showSign size="sm" />
+          <PriceDisplay value={account.unrealizedPnl} prefix="$" showSign size="sm" showContext contextLabel="open positions" />
         </span>
       </div>
       <div className="flex justify-between">

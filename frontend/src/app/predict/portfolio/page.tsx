@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { formatVolume } from '@/lib/predictData'
 import { useOnChainPredictPositions, useOnChainPredictSummary, useOnChainMarkets } from '@/lib/useOnChainPredict'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
+import { PriceDisplay } from '@/components/ui/price-display'
 
 type Tab = 'positions' | 'pending' | 'history'
 
@@ -47,8 +48,8 @@ export default function PredictPortfolioPage() {
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Unrealized P&L</div>
-          <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {summary.unrealizedPnl >= 0 ? '+' : ''}{formatVolume(Math.abs(summary.unrealizedPnl))}
+          <div className="text-lg sm:text-xl font-bold">
+            <PriceDisplay value={summary.unrealizedPnl} prefix="$" showSign size="lg" showContext contextLabel="all markets" />
           </div>
         </div>
       </div>
@@ -95,8 +96,8 @@ export default function PredictPortfolioPage() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className={`text-sm font-medium ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                        <div className="text-sm font-medium">
+                          <PriceDisplay value={pnl} prefix="$" decimals={2} showSign size="sm" />
                         </div>
                         <div className="text-xs text-gray-500">
                           {market ? `${Math.round(market.yesPrice * 100)}% YES` : ''}
@@ -153,8 +154,8 @@ export default function PredictPortfolioPage() {
                           <span className="text-gray-500">Outcome: {pos.outcome.toUpperCase()}</span>
                         </div>
                       </div>
-                      <div className={`text-sm font-medium ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                      <div className="text-sm font-medium">
+                        <PriceDisplay value={pnl} prefix="$" decimals={2} showSign size="sm" />
                       </div>
                     </div>
                   </div>

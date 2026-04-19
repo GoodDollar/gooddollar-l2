@@ -7,6 +7,7 @@ import { useOnChainPairs, useOnChainPositions, useOnChainAccountSummary } from '
 import { useTradeHistory, useFundingPayments } from '@/lib/usePerpsHistory'
 import { useClosePosition } from '@/lib/usePerps'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
+import { PriceDisplay } from '@/components/ui/price-display'
 
 type Tab = 'positions' | 'orders' | 'history' | 'funding'
 
@@ -26,8 +27,8 @@ function PositionRow({ pos, marketId }: { pos: OpenPosition; marketId: bigint })
       <td className="py-2.5 px-3 text-right text-sm text-gray-300">{pos.size}</td>
       <td className="py-2.5 px-3 text-right text-sm text-gray-300 hidden sm:table-cell">{formatPerpsPrice(pos.entryPrice)}</td>
       <td className="py-2.5 px-3 text-right text-sm text-gray-300">{formatPerpsPrice(pos.markPrice)}</td>
-      <td className={`py-2.5 px-3 text-right text-sm font-medium ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-        {pos.unrealizedPnl >= 0 ? '+' : ''}{formatPerpsPrice(pos.unrealizedPnl)}
+      <td className="py-2.5 px-3 text-right text-sm font-medium">
+        <PriceDisplay value={pos.unrealizedPnl} prefix="$" showSign size="sm" showContext contextLabel="unrealized" />
       </td>
       <td className="py-2.5 px-3 text-right text-sm text-yellow-400 hidden sm:table-cell">{formatPerpsPrice(pos.liquidationPrice)}</td>
       <td className="py-2.5 px-3 text-right">
@@ -83,8 +84,12 @@ function TradeRow({ trade }: { trade: TradeHistoryRecord }) {
       <td className="py-2.5 px-3 text-right text-sm text-gray-300">{trade.size}</td>
       <td className="py-2.5 px-3 text-right text-sm text-gray-300">{formatPerpsPrice(trade.price)}</td>
       <td className="py-2.5 px-3 text-right text-sm text-gray-400">${trade.fee.toFixed(2)}</td>
-      <td className={`py-2.5 px-3 text-right text-sm font-medium ${trade.pnl > 0 ? 'text-green-400' : trade.pnl < 0 ? 'text-red-400' : 'text-gray-500'}`}>
-        {trade.pnl !== 0 ? `${trade.pnl > 0 ? '+' : ''}${formatPerpsPrice(trade.pnl)}` : '—'}
+      <td className="py-2.5 px-3 text-right text-sm font-medium">
+        {trade.pnl !== 0 ? (
+          <PriceDisplay value={trade.pnl} prefix="$" showSign size="sm" />
+        ) : (
+          <span className="text-gray-500">—</span>
+        )}
       </td>
       <td className="py-2.5 px-3 text-right text-xs text-gray-500 hidden sm:table-cell">
         {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -98,8 +103,8 @@ function FundingRow({ payment }: { payment: FundingPayment }) {
   return (
     <tr className="border-b border-gray-700/10">
       <td className="py-2.5 px-3 text-sm text-white">{payment.pair}</td>
-      <td className={`py-2.5 px-3 text-right text-sm font-medium ${payment.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-        {payment.amount >= 0 ? '+' : ''}{formatPerpsPrice(payment.amount)}
+      <td className="py-2.5 px-3 text-right text-sm font-medium">
+        <PriceDisplay value={payment.amount} prefix="$" showSign size="sm" />
       </td>
       <td className="py-2.5 px-3 text-right text-sm text-gray-400">{(payment.rate * 100).toFixed(4)}%</td>
       <td className="py-2.5 px-3 text-right text-xs text-gray-500">
@@ -136,14 +141,14 @@ export default function PerpsPortfolioPage() {
         </div>
         <div className="bg-dark-100 rounded-xl border border-gray-700/20 p-3 sm:p-4">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5">Unrealized P&L</div>
-          <div className={`text-base sm:text-lg font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {totalPnl >= 0 ? '+' : ''}{formatPerpsPrice(totalPnl)}
+          <div className="text-base sm:text-lg font-bold">
+            <PriceDisplay value={totalPnl} prefix="$" showSign size="lg" showContext contextLabel="all positions" />
           </div>
         </div>
         <div className="bg-dark-100 rounded-xl border border-gray-700/20 p-3 sm:p-4">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5">Net Funding</div>
-          <div className={`text-base sm:text-lg font-bold ${totalFunding >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {totalFunding >= 0 ? '+' : ''}{formatPerpsPrice(totalFunding)}
+          <div className="text-base sm:text-lg font-bold">
+            <PriceDisplay value={totalFunding} prefix="$" showSign size="lg" showContext contextLabel="funding history" />
           </div>
         </div>
         <div className="bg-dark-100 rounded-xl border border-gray-700/20 p-3 sm:p-4">
