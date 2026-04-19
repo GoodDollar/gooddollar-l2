@@ -264,7 +264,7 @@ Key findings:
 
 **High Priority (Next Sprint)**:
 - [x] Add P&L sparklines to portfolio position rows — **Implemented in main portfolio page**
-- [ ] Implement progressive disclosure for complex trading forms
+- [x] Implement progressive disclosure for complex trading forms — **Completed in perps trading form**
 - [x] Add risk indicator dots to lending positions (liquidation risk) — **RiskIndicator component created**
 - [ ] Mobile gesture navigation between token pairs in Explore
 
