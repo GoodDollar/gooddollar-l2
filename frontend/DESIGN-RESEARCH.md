@@ -269,7 +269,7 @@ Key findings:
 - [x] Mobile gesture navigation between token pairs in Explore — **Implemented with swipe gestures and keyboard nav**
 
 **Medium Priority**:
-- [ ] Contextual "vs 24h ago" labels on price displays  
+- [x] Contextual "vs 24h ago" labels on price displays — **Enhanced PriceDisplay with temporal context**  
 - [ ] Inline calculator overlays for amount inputs
 - [ ] Smart form defaults based on user patterns
 - [ ] Anticipatory loading for likely user actions
