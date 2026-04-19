@@ -193,6 +193,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const [marginMode, setMarginMode] = useState<'cross' | 'isolated'>('cross')
   const [submitted, setSubmitted] = useState(false)
   const [showTpSl, setShowTpSl] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [tp, setTp] = useState('')
   const [sl, setSl] = useState('')
   const walletReady = useWalletReady()
@@ -280,18 +281,54 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
         ))}
       </div>
 
-      <div className="flex gap-1">
-        <button type="button" onClick={() => setMarginMode('cross')}
-          className={`flex-1 min-h-[44px] rounded text-xs font-medium transition-colors ${marginMode === 'cross' ? 'bg-dark-50 text-white' : 'text-gray-500'}`}>
-          Cross
-        </button>
-        <button type="button" onClick={() => setMarginMode('isolated')}
-          className={`flex-1 min-h-[44px] rounded text-xs font-medium transition-colors ${marginMode === 'isolated' ? 'bg-dark-50 text-white' : 'text-gray-500'}`}>
-          Isolated
-        </button>
-      </div>
-
       <LeverageSlider value={leverage} onChange={setLeverage} max={pair.maxLeverage} />
+
+      <div>
+        <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}
+          className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-1">
+          {showAdvanced ? '▾' : '▸'} Advanced Options
+          {marginMode === 'isolated' && !showAdvanced && (
+            <span className="text-[10px] text-gray-600 ml-1">Isolated</span>
+          )}
+        </button>
+        {showAdvanced && (
+          <div className="space-y-3 mt-2">
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Margin Mode</label>
+              <div className="flex gap-1">
+                <button type="button" onClick={() => setMarginMode('cross')}
+                  className={`flex-1 min-h-[44px] rounded text-xs font-medium transition-colors ${marginMode === 'cross' ? 'bg-dark-50 text-white' : 'text-gray-500'}`}>
+                  Cross
+                </button>
+                <button type="button" onClick={() => setMarginMode('isolated')}
+                  className={`flex-1 min-h-[44px] rounded text-xs font-medium transition-colors ${marginMode === 'isolated' ? 'bg-dark-50 text-white' : 'text-gray-500'}`}>
+                  Isolated
+                </button>
+              </div>
+            </div>
+            {effectivePrice > 0 && (
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Quick Size</label>
+                <div className="flex gap-1">
+                  {[0.25, 0.5, 0.75, 1].map(pct => {
+                    const maxSize = (account.availableMargin * leverage) / effectivePrice
+                    const targetSize = maxSize * pct
+                    const decimals = effectivePrice >= 10000 ? 4 : effectivePrice >= 100 ? 3 : effectivePrice >= 1 ? 2 : 0
+                    const rounded = parseFloat(targetSize.toFixed(decimals))
+                    const isActive = sizeNum > 0 && Math.abs(sizeNum - rounded) < 10 ** (-decimals) * 0.6
+                    return (
+                      <button key={pct} type="button" onClick={() => setSize(rounded.toString())}
+                        className={`flex-1 min-h-[44px] rounded text-xs font-medium transition-colors ${isActive ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-500 hover:text-gray-300 bg-dark-50/30'}`}>
+                        {pct * 100}%
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {orderType === 'stop-limit' && (
         <div>
@@ -322,23 +359,6 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
         <input type="text" inputMode="decimal" placeholder="0.00"
           value={size} onChange={e => setSize(sanitizeNumericInput(e.target.value))}
           className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${exceedsMargin ? 'border-yellow-500/50' : 'border-gray-700/30'}`} />
-        {effectivePrice > 0 && (
-          <div className="flex gap-1 mt-1.5">
-            {[0.25, 0.5, 0.75, 1].map(pct => {
-              const maxSize = (account.availableMargin * leverage) / effectivePrice
-              const targetSize = maxSize * pct
-              const decimals = effectivePrice >= 10000 ? 4 : effectivePrice >= 100 ? 3 : effectivePrice >= 1 ? 2 : 0
-              const rounded = parseFloat(targetSize.toFixed(decimals))
-              const isActive = sizeNum > 0 && Math.abs(sizeNum - rounded) < 10 ** (-decimals) * 0.6
-              return (
-                <button key={pct} type="button" onClick={() => setSize(rounded.toString())}
-                  className={`flex-1 min-h-[44px] rounded text-xs font-medium transition-colors ${isActive ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-500 hover:text-gray-300 bg-dark-50/30'}`}>
-                  {pct * 100}%
-                </button>
-              )
-            })}
-          </div>
-        )}
         {exceedsMargin && (
           <p className="text-yellow-400 text-[10px] mt-1">Exceeds available margin ({formatPerpsPrice(account.availableMargin)})</p>
         )}
