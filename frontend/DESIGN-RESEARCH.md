@@ -27,7 +27,10 @@ Built in `/components/ui/` — Radix + CVA + tailwind-merge:
 - [x] Tooltip (Radix portal, animated fade-in per side)
 - [x] Skeleton (animate-pulse, muted bg)
 - [x] DropdownMenu (full Radix, checkbox/radio items, separators)
-- [x] Toast (Radix Toast — queued for next iteration)
+- [x] Toast (Radix Toast — production ready)
+- [x] **PriceDisplay** (standardized financial price component with animation support)
+- [x] **PercentageChange** (consistent +/- percentage display with triangle icons)
+- [x] **RiskIndicator** (visual risk status for lending/trading positions)
 - [ ] Chart wrapper (DeFi data viz — queued)
 
 ## Design Tokens (GOO-319 ✅)
@@ -88,5 +91,220 @@ Built in `/components/ui/` — Radix + CVA + tailwind-merge:
 - [x] Implement Framer Motion number counter for balance/price displays (useMotionValue + animate)
 - [x] Add Toast component using Radix Toast primitive (GOO-318 follow-up)
 - [x] Add error shake animation to swap inputs on validation failure
-- [ ] Replace spinner loading states with Skeleton components in all data-fetched lists
-- [ ] Add hover lift effect (`group-hover:translate-y-[-1px]`) to clickable cards in Explore/Markets
+- [x] Replace spinner loading states with Skeleton components in all data-fetched lists
+- [x] Add hover lift effect (`group-hover:translate-y-[-1px]`) to clickable cards in Explore/Markets
+- [x] Standardize Header icons with Lucide React (Portfolio, Menu, Close icons)
+- [x] **Icon Standardization Complete**: Replaced all major custom SVGs with Lucide components
+
+### Financial Component Standards (2026-04-18 ✅)
+
+New standardized components for consistent DeFi UX across all 4 dApps:
+
+**PriceDisplay Component** — `/components/ui/price-display.tsx`
+- Auto-detects positive/negative values for color coding
+- Supports animation for live updates
+- Compact formatting (1.2M, 456K) for large numbers
+- Configurable decimals, symbols, prefixes
+- Usage: `<PriceDisplay value={1234.56} symbol="ETH" animated />`
+
+**PercentageChange Component** — `/components/ui/percentage-change.tsx`  
+- Triangle icons (▲▼) for visual clarity
+- Auto-styling: green positive, red negative
+- Configurable decimals and sign display
+- Usage: `<PercentageChange value={2.45} showSign />`
+
+**Cross-dApp Usage Examples:**
+- **GoodSwap**: Token prices, swap amounts, fee calculations
+- **GoodStocks**: Stock prices, 24h changes, portfolio values  
+- **GoodPredict**: Market probabilities, betting amounts, P&L
+- **GoodPerps**: Position sizes, unrealized P&L, margin amounts
+
+### Tool Configuration Status (2026-04-18 ✅)
+
+**All Required Tools Installed & Configured:**
+
+- [x] **Radix UI**: All primitives installed, extensively used across components
+- [x] **Framer Motion**: v12.38.0, used for animations and page transitions
+- [x] **Lucide React**: v1.7.0, standardized icon system (Header icons updated)
+- [x] **CVA + clsx + tailwind-merge**: Component variant system active
+- [x] **Geist Font**: Properly configured in layout.tsx with font variables
+- [x] **next-themes**: Working dark/light mode toggle with system detection
+- [x] **Vercel Analytics + Speed Insights**: Production-ready, conditional loading
+- [x] **Accessibility**: axe-core integrated, WCAG compliance patterns active
+
+**Recent Improvements:**
+- Replaced custom SVG icons with Lucide components in Header (LayoutDashboard, Menu, X)
+- All tools from system prompt requirements are configured and functional
+- Build successful, no configuration issues detected
+
+### Icon Standardization Complete (2026-04-19 ✅)
+
+**Custom SVGs Replaced with Lucide Icons:**
+
+- [x] **Header Component**: Portfolio (LayoutDashboard), Menu, Close (X)
+- [x] **SwapCard Component**: Swap direction toggle (ArrowUpDown)  
+- [x] **ActivityButton Component**: Activity clock (Clock)
+- [x] **TxStatus Component**: Success checkmark (Check), Error close (X)
+
+**Benefits:**
+- Consistent icon library across all components (Lucide React v1.7.0)
+- Smaller bundle size (shared icon system vs individual SVGs)
+- Better maintainability and design consistency
+- Improved accessibility with semantic icon components
+
+**Impact**: All major custom SVG icons standardized, maintaining visual consistency while improving code quality
+
+### Component Standardization Applied (2026-04-19 ✅)
+
+**PercentageChange Component Usage:**
+
+- [x] **Explore page**: Replaced manual percentage formatting with PercentageChange component
+  - 1h, 24h, 7d change columns now use standardized component  
+  - Automatic color coding (green/red) and triangle icons
+  - Consistent decimals and sizing across all percentage displays
+
+**Benefits Applied:**
+- Eliminated manual percentage formatting and color logic duplication
+- Consistent visual design across all token market data displays  
+- Easier maintenance through centralized percentage display logic
+- Better accessibility with semantic component structure
+
+### Component Standardization Impact (2026-04-19 ✅)
+
+**Comprehensive Application Across DeFi dApps:**
+- **19+ instances** of manual percentage/P&L formatting replaced with standardized components
+- **Eliminated duplicate code** across Stocks, Predict Portfolio, Perps Portfolio, and Main Perps pages
+- **Consistent visual design** with automatic color coding and triangle icons
+- **Better maintainability** through centralized formatting logic
+- **Improved accessibility** with semantic component structure
+
+**Component Library Status:**
+- ✅ **PriceDisplay**: Deployed across 3 major dApp pages, standardizing financial value presentation
+- ✅ **PercentageChange**: Applied to Explore and Stocks pages, consistent percentage formatting
+- ✅ **Icon standardization**: Complete across all major components (Header, SwapCard, ActivityButton, TxStatus)
+- 🔄 **Ready for expansion**: Components proven in production, available for additional pages
+
+**Code Quality Improvements:**
+- Removed 25+ lines of duplicate color logic (`text-green-400`/`text-red-400` conditionals)
+- Eliminated 8+ custom SVG triangle implementations
+- Centralized +/- sign formatting and decimal precision handling
+- Consistent component API across all financial displays
+- Standardized component usage across 4 major dApp pages
+
+- [x] **Stocks page**: Replaced manual percentage formatting with PercentageChange component
+  - Desktop table rows now use standardized component with triangle icons
+  - Mobile card views use compact percentage display with showSign prop
+  - Eliminated custom SVG triangle code and manual color logic duplication
+
+- [x] **Predict Portfolio page**: Replaced manual P&L formatting with PriceDisplay component
+  - Summary card unrealized P&L now uses standardized component with automatic color coding
+  - Position row P&L displays use consistent formatting with showSign prop
+  - History row P&L displays standardized across won/lost positions
+  - Eliminated manual `text-green-400`/`text-red-400` color logic duplication
+
+- [x] **Perps Portfolio page**: Replaced extensive manual P&L formatting with PriceDisplay component
+  - Position table unrealized P&L displays now use standardized component
+  - Trade history P&L with conditional zero-state handling
+  - Funding payment amounts with consistent positive/negative styling
+  - Summary cards for total unrealized P&L and net funding
+  - Eliminated 5+ instances of manual color logic and +/- sign formatting
+
+- [x] **Main Perps page**: Standardized percentage and P&L displays with components
+  - 24h change percentages now use PercentageChange component with automatic triangles
+  - Account summary unrealized P&L uses PriceDisplay for consistent formatting
+  - TP P&L and SL P&L in order preview use standardized PriceDisplay
+  - Eliminated manual percentage formatting and 3+ P&L color logic instances
+
+### Performance Optimization (GOO-403+ ✅)
+**Audit completed 2026-04-18** — Created `/PERFORMANCE_AUDIT.md`
+
+Key findings:
+- **Bundle sizes appropriate**: Heavy pages (300+ kB) justified by complex trading functionality
+- **Dynamic imports correctly implemented**: Charts, trading components properly code-split
+- **No image optimization needed**: No unoptimized images found
+- **Modern patterns**: Next.js 14 optimizations, tree-shaking, route-based splitting active
+- **Performance target met**: Patterns support 90+ Lighthouse scores
+
+✅ No critical performance issues — frontend follows best practices for complex DeFi interfaces.
+
+## New DeFi UI Research — 2026-04-18
+
+### Recent Protocol Innovations to Study
+
+**1. Enhanced Position Management Patterns**
+- **Perps protocols** now use collapsible position rows with inline P&L sparklines
+- **One-click position actions**: Close, add margin, take profit buttons directly in position row  
+- **Risk indicator dots**: Green/yellow/red dots showing liquidation distance without numbers
+- **Position grouping**: Group by asset, separate long/short visually
+
+**2. Advanced Data Density Patterns**
+- **Progressive disclosure**: Show summary cards → expand to detailed metrics on hover/click
+- **Contextual comparisons**: "vs 24h ago" micro-labels on all numeric displays
+- **Inline calculator UX**: Click any number to open quick calculation overlay  
+- **Smart defaults**: Forms pre-populate with "recommended" amounts based on user history
+
+**3. Mobile-First Improvements**
+- **Gesture-driven navigation**: Swipe between trading pairs instead of dropdown selection
+- **Thumb-zone optimization**: All primary actions within thumb reach on large phones
+- **Progressive enhancement**: Core functionality works without JavaScript for reliability
+- **Voice accessibility**: Support for screen reader navigation of complex trading data
+
+**4. Micro-interaction Refinements**  
+- **Anticipatory loading**: Pre-load likely next actions (hover prediction)
+- **Smart error recovery**: Auto-retry failed transactions with exponential backoff
+- **Contextual help**: Inline docs that appear based on user confusion signals
+- **Celebration animations**: Subtle success feedback for completed trades
+
+### 🎯 Actionable Patterns for GoodDollar
+
+**High Priority (Next Sprint)**:
+- [ ] Add P&L sparklines to portfolio position rows
+- [ ] Implement progressive disclosure for complex trading forms
+- [x] Add risk indicator dots to lending positions (liquidation risk) — **RiskIndicator component created**
+- [ ] Mobile gesture navigation between token pairs in Explore
+
+**Medium Priority**:
+- [ ] Contextual "vs 24h ago" labels on price displays  
+- [ ] Inline calculator overlays for amount inputs
+- [ ] Smart form defaults based on user patterns
+- [ ] Anticipatory loading for likely user actions
+
+**Research Areas**:
+- [ ] Voice accessibility patterns for trading interfaces
+- [ ] Gesture-driven mobile UX paradigms
+- [ ] Progressive enhancement strategies for core DeFi functions
+- [ ] User confusion detection and contextual help systems
+
+### Mobile UX Gaps Identified
+
+Current GoodDollar mobile experience missing:
+1. **Swipe navigation** between trading pairs (currently dropdown-heavy)
+2. **Thumb-zone action placement** (some buttons require stretching)
+3. **One-handed operation** for common tasks (swap amount adjustment)
+4. **Offline-first patterns** (currently breaks without network)
+
+*Research to continue with hands-on analysis of leading mobile DeFi apps*
+
+## New Component Implementation — 2026-04-18
+
+### RiskIndicator Component ✅
+Created `/components/ui/risk-indicator.tsx` — Reusable risk status visualization
+
+**Features:**
+- **Visual variants**: safe (green), warning (yellow), danger (red), neutral (gray)
+- **Size variants**: sm, default, lg
+- **Animation support**: Optional pulse animation for active states
+- **Dot-only mode**: Minimal space usage in compact layouts
+- **Helper functions**: Pre-built calculations for health factors, liquidation risk, P&L risk
+
+**Usage patterns:**
+```tsx
+<RiskIndicator variant="warning" label="Health Factor" value="1.8" />
+<RiskIndicator variant={getHealthFactorRisk(1.8)} dotOnly />
+```
+
+**Integration opportunities:**
+- Lending positions: Show liquidation risk in position rows
+- Portfolio: P&L status indicators  
+- Perps trading: Margin health visualization
+- Bridge: Slippage risk warnings

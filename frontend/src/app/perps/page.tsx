@@ -12,6 +12,8 @@ import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useOpenPosition } from '@/lib/usePerps'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { PercentageChange } from '@/components/ui/percentage-change'
+import { PriceDisplay } from '@/components/ui/price-display'
 
 function WalletGatedTradeButton({ hasSize, exceedsMargin, children }: { hasSize: boolean; exceedsMargin: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -130,8 +132,8 @@ function PairInfoBar({ pair }: { pair: PerpPair }) {
       </div>
       <div>
         <span className="text-gray-500">24h</span>
-        <span className={`font-medium ml-1.5 ${pair.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-          {pair.change24h >= 0 ? '+' : ''}{pair.change24h.toFixed(2)}%
+        <span className="font-medium ml-1.5">
+          <PercentageChange value={pair.change24h} decimals={2} showSign size="sm" />
         </span>
       </div>
       <div>
@@ -390,10 +392,10 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.05%' : '0.02%'})</span><span className="text-white truncate ml-2">{formatLargeValue(fee)}</span></div>
           <div className="flex justify-between text-goodgreen/80"><span>→ UBI (33%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
           {tpPnl !== 0 && !tpInvalid && (
-            <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className={`truncate ml-2 ${tpPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{tpPnl >= 0 ? '+' : ''}{formatPerpsPrice(tpPnl)}</span></div>
+            <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className="truncate ml-2"><PriceDisplay value={tpPnl} prefix="$" showSign size="xs" /></span></div>
           )}
           {slPnl !== 0 && !slInvalid && (
-            <div className="flex justify-between text-gray-400"><span>SL P&L</span><span className={`truncate ml-2 ${slPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{slPnl >= 0 ? '+' : ''}{formatPerpsPrice(slPnl)}</span></div>
+            <div className="flex justify-between text-gray-400"><span>SL P&L</span><span className="truncate ml-2"><PriceDisplay value={slPnl} prefix="$" showSign size="xs" /></span></div>
           )}
         </div>
       )}
@@ -447,8 +449,8 @@ function AccountPanel() {
       </div>
       <div className="flex justify-between">
         <span className="text-gray-400">Unrealized P&L</span>
-        <span className={`font-medium ${account.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-          {account.unrealizedPnl >= 0 ? '+' : ''}{formatPerpsPrice(account.unrealizedPnl)}
+        <span className="font-medium">
+          <PriceDisplay value={account.unrealizedPnl} prefix="$" showSign size="sm" />
         </span>
       </div>
       <div className="flex justify-between">
