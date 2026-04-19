@@ -59,10 +59,10 @@ function useAllProposals(count: number): ProposalSummary[] {
   const s9 = useProposalState(ids[8] ?? 0)
   const s10 = useProposalState(ids[9] ?? 0)
 
-  const proposals = [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10]
-  const states = [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10]
-
   return useMemo(() => {
+    const proposals = [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10]
+    const states = [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10]
+
     const result: ProposalSummary[] = []
     for (let i = 0; i < count && i < 10; i++) {
       const p = proposals[i]?.data as any
@@ -81,7 +81,7 @@ function useAllProposals(count: number): ProposalSummary[] {
       })
     }
     return result
-  }, [count, ...proposals.map(p => p.data), ...states.map(s => s.data)])
+  }, [count, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10])
 }
 
 // ── Stats Cards ───────────────────────────────────────────────────────────────
