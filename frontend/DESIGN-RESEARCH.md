@@ -270,7 +270,7 @@ Key findings:
 
 **Medium Priority**:
 - [x] Contextual "vs 24h ago" labels on price displays — **Enhanced PriceDisplay with temporal context**  
-- [ ] Inline calculator overlays for amount inputs
+- [x] Inline calculator overlays for amount inputs — **Calculator component integrated in perps trading form**
 - [ ] Smart form defaults based on user patterns
 - [ ] Anticipatory loading for likely user actions
 
