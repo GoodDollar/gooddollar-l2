@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 interface ErrorPageProps {
   error: Error & { digest?: string }
@@ -27,18 +28,14 @@ export default function ErrorPage({ reset }: ErrorPageProps) {
       </p>
 
       <div className="flex items-center gap-3">
-        <button
-          onClick={reset}
-          className="px-6 py-3 rounded-xl bg-goodgreen text-white font-semibold hover:bg-goodgreen-600 transition-colors active:scale-[0.98]"
-        >
+        <Button onClick={reset} size="lg">
           Try Again
-        </button>
-        <Link
-          href="/"
-          className="px-6 py-3 rounded-xl bg-dark-50 text-white font-semibold border border-gray-700/30 hover:border-gray-600 transition-colors"
-        >
-          Back to Swap
-        </Link>
+        </Button>
+        <Button asChild variant="secondary" size="lg">
+          <Link href="/">
+            Back to Swap
+          </Link>
+        </Button>
       </div>
     </div>
   )

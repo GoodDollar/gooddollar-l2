@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 interface PredictErrorProps {
   error: Error & { digest?: string }
@@ -25,19 +26,14 @@ export default function PredictError({ reset }: PredictErrorProps) {
       <p className="mb-8 max-w-xs text-sm text-gray-400">Unable to load prediction markets</p>
 
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={reset}
-          className="rounded-xl bg-goodgreen px-6 py-3 font-semibold text-white transition-colors hover:bg-goodgreen-600 active:scale-[0.98]"
-        >
+        <Button onClick={reset} size="lg">
           Try Again
-        </button>
-        <Link
-          href="/predict"
-          className="rounded-xl border border-gray-700/30 bg-dark-50 px-6 py-3 font-semibold text-white transition-colors hover:border-gray-600"
-        >
-          Prediction Markets
-        </Link>
+        </Button>
+        <Button asChild variant="secondary" size="lg">
+          <Link href="/predict">
+            Prediction Markets
+          </Link>
+        </Button>
       </div>
     </div>
   )
