@@ -266,7 +266,7 @@ Key findings:
 - [x] Add P&L sparklines to portfolio position rows — **Implemented in main portfolio page**
 - [x] Implement progressive disclosure for complex trading forms — **Completed in perps trading form**
 - [x] Add risk indicator dots to lending positions (liquidation risk) — **RiskIndicator component created**
-- [ ] Mobile gesture navigation between token pairs in Explore
+- [x] Mobile gesture navigation between token pairs in Explore — **Implemented with swipe gestures and keyboard nav**
 
 **Medium Priority**:
 - [ ] Contextual "vs 24h ago" labels on price displays  
