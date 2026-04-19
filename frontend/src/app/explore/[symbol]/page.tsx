@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatPrice, formatVolume, formatMarketCap } from '@/lib/marketData'
 import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
@@ -21,12 +21,89 @@ const PriceChart = dynamic(
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 
+// Hook for touch gestures on mobile
+function useSwipeNavigation(onSwipeLeft: () => void, onSwipeRight: () => void) {
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
+
+  const minSwipeDistance = 50
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(0) // Clear end state
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      onSwipeLeft()
+    } else if (isRightSwipe) {
+      onSwipeRight()
+    }
+  }
+
+  return { onTouchStart, onTouchMove, onTouchEnd }
+}
+
 export default function TokenDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const symbol = (params.symbol as string)?.toUpperCase()
   const { tokens } = useOnChainMarketData()
   const token = tokens.find(t => t.symbol.toUpperCase() === symbol)
   const [timeframe, setTimeframe] = useState<Timeframe>('1M')
+
+  // Find current token position and navigation
+  const tokenIndex = useMemo(() => {
+    return tokens.findIndex(t => t.symbol.toUpperCase() === symbol)
+  }, [tokens, symbol])
+
+  const prevToken = useMemo(() => {
+    return tokenIndex > 0 ? tokens[tokenIndex - 1] : null
+  }, [tokens, tokenIndex])
+
+  const nextToken = useMemo(() => {
+    return tokenIndex < tokens.length - 1 ? tokens[tokenIndex + 1] : null
+  }, [tokens, tokenIndex])
+
+  const navigateToToken = useCallback((targetSymbol: string) => {
+    router.push(`/explore/${targetSymbol}`)
+  }, [router])
+
+  const navigatePrev = useCallback(() => {
+    if (prevToken) navigateToToken(prevToken.symbol)
+  }, [prevToken, navigateToToken])
+
+  const navigateNext = useCallback(() => {
+    if (nextToken) navigateToToken(nextToken.symbol)
+  }, [nextToken, navigateToToken])
+
+  // Swipe gesture handlers
+  const swipeHandlers = useSwipeNavigation(navigateNext, navigatePrev)
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && prevToken) {
+        e.preventDefault()
+        navigatePrev()
+      } else if (e.key === 'ArrowRight' && nextToken) {
+        e.preventDefault()
+        navigateNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [prevToken, nextToken, navigatePrev, navigateNext])
 
   const chartData = useMemo(() => {
     if (!token) return []
@@ -46,21 +123,72 @@ export default function TokenDetailPage() {
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
-      <Link href="/explore" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-goodgreen transition-colors mb-4">
-        <span>←</span> Back to Explore
-      </Link>
+    <div className="w-full max-w-5xl mx-auto" {...swipeHandlers}>
+      <div className="flex items-center justify-between mb-4">
+        <Link href="/explore" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-goodgreen transition-colors">
+          <span>←</span> Back to Explore
+        </Link>
+
+        {/* Desktop and mobile navigation controls */}
+        <div className="flex items-center gap-2">
+          {/* Token position indicator */}
+          <div className="hidden sm:block text-xs text-gray-500">
+            {tokenIndex + 1} of {tokens.length}
+          </div>
+
+          {/* Navigation arrows */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={navigatePrev}
+              disabled={!prevToken}
+              className="p-2 rounded-lg bg-dark-100 border border-gray-700/30 text-gray-400 hover:text-white hover:bg-dark-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title={prevToken ? `Previous: ${prevToken.symbol}` : 'No previous token'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={navigateNext}
+              disabled={!nextToken}
+              className="p-2 rounded-lg bg-dark-100 border border-gray-700/30 text-gray-400 hover:text-white hover:bg-dark-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title={nextToken ? `Next: ${nextToken.symbol}` : 'No next token'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile swipe indicator */}
+      <div className="sm:hidden flex items-center justify-center gap-1 mb-4 text-[10px] text-gray-500">
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+        </svg>
+        <span>Swipe to navigate</span>
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+        </svg>
+      </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-4">
             <TokenIcon symbol={token.symbol} size={40} />
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-0.5">
                 <h1 className="text-2xl font-bold text-white">{token.name}</h1>
                 <span className="text-sm text-gray-400 bg-dark-50 px-2 py-0.5 rounded-md">{token.symbol}</span>
               </div>
-              <p className="text-xs text-gray-500">{token.category}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-gray-500">{token.category}</p>
+                {/* Mobile position indicator */}
+                <span className="text-xs text-gray-600 sm:hidden">
+                  • {tokenIndex + 1}/{tokens.length}
+                </span>
+              </div>
             </div>
           </div>
 
