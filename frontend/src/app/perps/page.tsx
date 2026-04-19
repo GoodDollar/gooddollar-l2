@@ -14,6 +14,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { PriceDisplay } from '@/components/ui/price-display'
+import { AmountInput } from '@/components/ui/amount-input'
 
 function WalletGatedTradeButton({ hasSize, exceedsMargin, children }: { hasSize: boolean; exceedsMargin: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -240,6 +241,10 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
 
   const exceedsMargin = sizeNum > 0 && marginRequired > account.availableMargin
 
+  // Calculate max size based on available margin
+  const maxSize = effectivePrice > 0 ? (account.availableMargin * leverage) / effectivePrice : 0
+  const notionalValue = sizeNum * effectivePrice
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (sizeNum <= 0 || exceedsMargin || !hasValidPrice || limitPriceInvalid || triggerPriceInvalid) return
@@ -356,12 +361,16 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
 
       <div>
         <label className="text-xs text-gray-400 mb-1 block">Size ({pair.baseAsset})</label>
-        <input type="text" inputMode="decimal" placeholder="0.00"
-          value={size} onChange={e => setSize(sanitizeNumericInput(e.target.value))}
-          className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${exceedsMargin ? 'border-yellow-500/50' : 'border-gray-700/30'}`} />
-        {exceedsMargin && (
-          <p className="text-yellow-400 text-[10px] mt-1">Exceeds available margin ({formatPerpsPrice(account.availableMargin)})</p>
-        )}
+        <AmountInput
+          value={size}
+          onChange={setSize}
+          maxValue={maxSize}
+          maxValueLabel="max size"
+          symbol={pair.baseAsset}
+          usdValue={notionalValue}
+          error={exceedsMargin ? `Exceeds available margin (${formatPerpsPrice(account.availableMargin)})` : false}
+          placeholder="0.00"
+        />
       </div>
 
       <div>
@@ -378,27 +387,25 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           <div className="space-y-2 mt-2">
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Take Profit</label>
-              <input type="text" inputMode="decimal"
+              <AmountInput
+                value={tp}
+                onChange={setTp}
+                symbol="USD"
+                showMaxButton={false}
+                error={tpInvalid && tp !== '' ? (side === 'long' ? 'TP must be above entry price' : 'TP must be below entry price') : false}
                 placeholder={side === 'long' ? `Above ${formatPerpsPrice(effectivePrice)}` : `Below ${formatPerpsPrice(effectivePrice)}`}
-                value={tp} onChange={e => setTp(sanitizeNumericInput(e.target.value))}
-                className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${tpInvalid ? 'border-red-500/50' : 'border-gray-700/30'}`} />
-              {tpInvalid && tp !== '' && (
-                <p className="text-red-400 text-[10px] mt-1">
-                  {side === 'long' ? 'TP must be above entry price' : 'TP must be below entry price'}
-                </p>
-              )}
+              />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Stop Loss</label>
-              <input type="text" inputMode="decimal"
+              <AmountInput
+                value={sl}
+                onChange={setSl}
+                symbol="USD"
+                showMaxButton={false}
+                error={slInvalid && sl !== '' ? (side === 'long' ? 'SL must be below entry price' : 'SL must be above entry price') : false}
                 placeholder={side === 'long' ? `Below ${formatPerpsPrice(effectivePrice)}` : `Above ${formatPerpsPrice(effectivePrice)}`}
-                value={sl} onChange={e => setSl(sanitizeNumericInput(e.target.value))}
-                className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${slInvalid ? 'border-red-500/50' : 'border-gray-700/30'}`} />
-              {slInvalid && sl !== '' && (
-                <p className="text-red-400 text-[10px] mt-1">
-                  {side === 'long' ? 'SL must be below entry price' : 'SL must be above entry price'}
-                </p>
-              )}
+              />
             </div>
           </div>
         )}
