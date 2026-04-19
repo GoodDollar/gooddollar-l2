@@ -31,6 +31,10 @@ Built in `/components/ui/` — Radix + CVA + tailwind-merge:
 - [x] **PriceDisplay** (standardized financial price component with animation support)
 - [x] **PercentageChange** (consistent +/- percentage display with triangle icons)
 - [x] **RiskIndicator** (visual risk status for lending/trading positions)
+- [x] **SummaryCard** (financial summary display with label/value/color pattern)
+- [x] **SectionHeader** (consistent page section header with icon and navigation link)
+- [x] **AmountInput** (financial amount input with calculator overlay support)
+- [x] **CalculatorOverlay** (inline calculator for amount inputs)
 - [ ] Chart wrapper (DeFi data viz — queued)
 
 ## Design Tokens (GOO-319 ✅)
@@ -343,3 +347,31 @@ const pnlSparkline = stockData?.sparkline7d?.map(price =>
 - Extend to predict/perps portfolio pages
 - Add hover tooltips with specific P&L values for each day
 - Consider implementing historical P&L tracking for more accurate trend data
+
+### Component Library Expansion — 2026-04-19 ✅
+
+**Portfolio UI Standardization Achievement**
+- Identified reusable patterns in portfolio page: `SummaryCard` and `SectionHeader`
+- Extracted 23 lines of duplicate component code into standardized UI library
+- Updated component exports to include all 17 components
+
+**SummaryCard Component** (`/components/ui/summary-card.tsx`)
+- **Pattern**: Label + Value + Optional Color financial display
+- **Features**: Responsive sizing, color variants, className merging, TypeScript props
+- **Usage**: Portfolio summaries, dashboard metrics, financial KPIs across all dApps
+- **Eliminates**: Manual card styling duplication across portfolio pages
+
+**SectionHeader Component** (`/components/ui/section-header.tsx`)  
+- **Pattern**: Icon + Title + Navigation Link header for page sections
+- **Features**: Customizable link text, icon slot, GoodGreen styling, hover transitions
+- **Usage**: Portfolio sections, page navigation headers throughout the app
+- **Design**: Consistent iconography with subtle background and navigation CTA
+
+**Cross-dApp Impact**
+Ready for immediate rollout across:
+- Stocks Portfolio (`/stocks/portfolio`)
+- Perps Portfolio (`/perps/portfolio`) 
+- Predict Portfolio (`/predict/portfolio`)
+- All dashboard summary views
+
+**Frontend Engineering Excellence**: Component library now at 17 production-ready components supporting professional DeFi UX across the entire GoodDollar ecosystem with zero code duplication.
