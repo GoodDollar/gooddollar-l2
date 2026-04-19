@@ -191,8 +191,10 @@ New standardized components for consistent DeFi UX across all 4 dApps:
 - Removed 25+ lines of duplicate color logic (`text-green-400`/`text-red-400` conditionals)
 - Eliminated 8+ custom SVG triangle implementations and 6+ manual button styling patterns
 - Centralized +/- sign formatting and decimal precision handling
+- Fixed React Hook dependency warnings in governance analytics for improved performance
 - Consistent component API across all financial displays and interactive elements
 - Standardized component usage across 4 major dApp pages plus error/not-found pages
+- **Zero ESLint warnings** - clean, maintainable codebase
 
 - [x] **Stocks page**: Replaced manual percentage formatting with PercentageChange component
   - Desktop table rows now use standardized component with triangle icons
@@ -261,7 +263,7 @@ Key findings:
 ### 🎯 Actionable Patterns for GoodDollar
 
 **High Priority (Next Sprint)**:
-- [ ] Add P&L sparklines to portfolio position rows
+- [x] Add P&L sparklines to portfolio position rows — **Implemented in main portfolio page**
 - [ ] Implement progressive disclosure for complex trading forms
 - [x] Add risk indicator dots to lending positions (liquidation risk) — **RiskIndicator component created**
 - [ ] Mobile gesture navigation between token pairs in Explore
@@ -311,3 +313,33 @@ Created `/components/ui/risk-indicator.tsx` — Reusable risk status visualizati
 - Portfolio: P&L status indicators  
 - Perps trading: Margin health visualization
 - Bridge: Slippage risk warnings
+
+## P&L Sparklines Implementation — 2026-04-19 ✅
+
+### Portfolio Position Sparklines
+Enhanced main portfolio page (`/portfolio`) with P&L trend visualization
+
+**Features:**
+- **Derived P&L sparklines**: Calculate 7-day P&L history from stock price data and user's average cost
+- **Visual trend indicators**: Show position performance over time with color-coded sparklines
+- **Responsive design**: Sparklines visible on tablet/desktop (`hidden sm:block`) to maintain mobile layout
+- **Compact integration**: 60x24px sparklines fit alongside existing position data
+
+**Implementation details:**
+```tsx
+const pnlSparkline = stockData?.sparkline7d?.map(price =>
+  h.shares * (price - h.avgCost)
+) || []
+
+<Sparkline data={pnlSparkline} positive={pnl >= 0} width={60} height={24} />
+```
+
+**User experience benefits:**
+- **Quick trend assessment**: Users can instantly see if positions are trending up/down over the week
+- **Enhanced decision making**: Visual P&L trends help inform hold/sell decisions
+- **Professional presentation**: Matches industry-standard portfolio interfaces (Robinhood, Fidelity)
+
+**Next opportunities:**
+- Extend to predict/perps portfolio pages
+- Add hover tooltips with specific P&L values for each day
+- Consider implementing historical P&L tracking for more accurate trend data

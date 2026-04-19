@@ -10,6 +10,8 @@ import { useOnChainHoldings } from '@/lib/useOnChainStocks'
 import { useOnChainPositions, useOnChainAccountSummary } from '@/lib/useOnChainPerps'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { PortfolioOnChain } from '@/components/PortfolioOnChain'
+import { Sparkline } from '@/components/Sparkline'
+import { getStockByTicker } from '@/lib/stockData'
 
 function SummaryCard({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
@@ -105,6 +107,13 @@ export default function PortfolioPage() {
               const stockName: string | null = null // on-chain doesn't store display names
               const value = h.shares * h.currentPrice
               const pnl = value - h.shares * h.avgCost
+
+              // Get stock data for sparkline - derive P&L sparkline from price history
+              const stockData = getStockByTicker(h.ticker)
+              const pnlSparkline = stockData?.sparkline7d?.map(price =>
+                h.shares * (price - h.avgCost)
+              ) || []
+
               return (
                 <Link key={h.ticker} href={`/stocks/${h.ticker}`} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
                   <div className="flex items-center gap-2.5">
@@ -116,10 +125,17 @@ export default function PortfolioPage() {
                       {stockName && <span className="text-xs text-gray-500 ml-1.5">{stockName}</span>}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm text-white">{formatStockPrice(value)}</div>
-                    <div className={`text-xs ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {pnl >= 0 ? '+' : ''}{formatStockPrice(pnl)}
+                  <div className="flex items-center gap-2">
+                    {pnlSparkline.length > 0 && (
+                      <div className="hidden sm:block">
+                        <Sparkline data={pnlSparkline} positive={pnl >= 0} width={60} height={24} />
+                      </div>
+                    )}
+                    <div className="text-right">
+                      <div className="text-sm text-white">{formatStockPrice(value)}</div>
+                      <div className={`text-xs ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {pnl >= 0 ? '+' : ''}{formatStockPrice(pnl)}
+                      </div>
                     </div>
                   </div>
                 </Link>
