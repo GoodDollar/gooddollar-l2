@@ -12,31 +12,8 @@ import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { PortfolioOnChain } from '@/components/PortfolioOnChain'
 import { Sparkline } from '@/components/Sparkline'
 import { getStockByTicker } from '@/lib/stockData'
+import { SummaryCard, SectionHeader } from '@/components/ui'
 
-function SummaryCard({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-      <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">{label}</div>
-      <div className={`text-lg sm:text-xl font-bold ${color ?? 'text-white'}`}>{value}</div>
-    </div>
-  )
-}
-
-function SectionHeader({ title, href, icon }: { title: string; href: string; icon: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between mb-3">
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-goodgreen/10 border border-goodgreen/15 flex items-center justify-center text-goodgreen">
-          {icon}
-        </div>
-        <h2 className="text-sm font-semibold text-white">{title}</h2>
-      </div>
-      <Link href={href} className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors">
-        View All →
-      </Link>
-    </div>
-  )
-}
 
 export default function PortfolioPage() {
   const { holdings: stockHoldings } = useOnChainHoldings()
