@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { ArrowUpDown, ChevronDown } from 'lucide-react'
 import { TokenSelector } from './TokenSelector'
 import { TOKENS, type Token } from '@/lib/tokens'
 import { UBIBreakdown } from './UBIBreakdown'
@@ -34,6 +35,7 @@ export function SwapCard() {
   const [inputToken, setInputToken] = useState<Token>(TOKENS[1])
   const [outputToken, setOutputToken] = useState<Token>(TOKENS[0])
   const [inputAmount, setInputAmount] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   // Live price feeds — falls back to static prices when CoinGecko is unreachable
   const { prices, isLive } = usePriceFeeds(TOKENS.map(t => t.symbol))
@@ -161,11 +163,27 @@ export function SwapCard() {
   return (
     <div id="swap-card" className="w-full max-w-[460px]">
       <div className="bg-dark-100 rounded-2xl border border-gray-700/30 shadow-xl overflow-hidden">
-        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Swap</h2>
-          <div className="flex items-center gap-2">
-            <FeeBreakdownBadge />
-            <SwapSettings />
+        <div className="px-5 pt-5 pb-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">Swap</h2>
+            <div className="flex items-center gap-2">
+              <FeeBreakdownBadge />
+              {showAdvanced && <SwapSettings />}
+            </div>
+          </div>
+
+          {/* Advanced Toggle */}
+          <div className="mt-3 flex justify-center">
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none rounded-lg"
+              aria-label={showAdvanced ? "Hide advanced settings" : "Show advanced settings"}
+            >
+              <span>Advanced</span>
+              <ChevronDown
+                className={`w-3 h-3 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}
+              />
+            </button>
           </div>
         </div>
 
@@ -212,15 +230,10 @@ export function SwapCard() {
             onClick={handleFlip}
             className="w-10 h-10 rounded-xl bg-dark-100 border border-gray-700/50 flex items-center justify-center hover:border-goodgreen/50 hover:text-goodgreen transition-colors text-gray-400 focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
           >
-            <svg
+            <ArrowUpDown
               className="w-5 h-5 transition-transform duration-200"
               style={{ transform: `rotate(${flipRotation}deg)` }}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-            </svg>
+            />
           </button>
         </div>
 
@@ -253,7 +266,7 @@ export function SwapCard() {
         </div>
 
         {/* Rate */}
-        {hasAmount && (
+        {hasAmount && showAdvanced && (
           <div className="mx-4 mt-3 px-4 py-2 text-xs text-gray-400 flex justify-between items-center">
             <span className="flex items-center gap-1.5">
               Rate
@@ -268,23 +281,31 @@ export function SwapCard() {
           </div>
         )}
 
-        {/* UBI */}
+        {/* UBI - Always show to emphasize mission */}
         <UBIBreakdown
           ubiFeeAmount={ubiFee}
           outputToken={outputToken}
           visible={hasAmount}
         />
 
-        {/* Swap Details */}
-        <SwapDetails
-          priceImpact={priceImpact}
-          minimumReceived={minimumReceived}
-          outputSymbol={outputToken.symbol}
-          networkFee="< $0.01"
-          visible={hasAmount}
-        />
+        {/* Advanced Swap Details */}
+        {showAdvanced && (
+          <>
+            <SwapDetails
+              priceImpact={priceImpact}
+              minimumReceived={minimumReceived}
+              outputSymbol={outputToken.symbol}
+              networkFee="< $0.01"
+              visible={hasAmount}
+            />
+            <PriceImpactWarning priceImpact={priceImpact} visible={hasAmount} />
+          </>
+        )}
 
-        <PriceImpactWarning priceImpact={priceImpact} visible={hasAmount} />
+        {/* Simple mode: Show only critical warnings */}
+        {!showAdvanced && (
+          <PriceImpactWarning priceImpact={priceImpact} visible={hasAmount && priceImpact > 5} />
+        )}
 
         {/* Swap button */}
         <div className="p-4 pt-3">

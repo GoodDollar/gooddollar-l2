@@ -83,6 +83,13 @@ export const UBIContribution: Story = {
 }
 
 export const MultipleCards: Story = {
+  args: {
+    label: 'Portfolio Example',
+    value: 'Multiple Cards',
+  },
+  parameters: {
+    layout: 'centered',
+  },
   render: () => (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-4xl">
       <SummaryCard label="Portfolio Value" value="$12,345.67" />
