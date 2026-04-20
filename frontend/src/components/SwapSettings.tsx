@@ -7,7 +7,15 @@ import { sanitizeNumericInput } from '@/lib/format'
 const PRESETS = [0.1, 0.5, 1.0]
 
 export function SwapSettings() {
-  const { slippage, deadline, setSlippage, setDeadline } = useSwapSettings()
+  const {
+    slippage,
+    deadline,
+    setSlippage,
+    setDeadline,
+    suggestion,
+    applySuggestion,
+    hasLearning
+  } = useSwapSettings()
   const [open, setOpen] = useState(false)
   const [customSlippage, setCustomSlippage] = useState('')
   const [showMaxWarning, setShowMaxWarning] = useState(false)
@@ -97,10 +105,26 @@ export function SwapSettings() {
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">%</span>
               </div>
             </div>
+
+            {/* Smart Suggestion */}
+            {suggestion && !showMaxWarning && (
+              <div className="mt-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-blue-300 flex-1">{suggestion}</p>
+                  <button
+                    onClick={applySuggestion}
+                    className="ml-2 px-2 py-1 text-xs text-blue-300 hover:text-white border border-blue-500/30 rounded hover:bg-blue-500/20 transition-colors focus-visible:ring-1 focus-visible:ring-blue-500/50 focus-visible:outline-none"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            )}
+
             {showMaxWarning && (
               <p className="text-xs text-orange-400 mt-1.5">Maximum slippage is 50%</p>
             )}
-            {!showMaxWarning && slippage > 5 && (
+            {!showMaxWarning && !suggestion && slippage > 5 && (
               <p className="text-xs text-yellow-400 mt-1.5">High slippage increases risk of front-running</p>
             )}
           </div>
