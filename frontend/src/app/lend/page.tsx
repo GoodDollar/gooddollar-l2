@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { InfoBanner } from '@/components/InfoBanner'
 import {
@@ -235,7 +236,6 @@ function Dashboard() {
 type ActionTab = 'supply' | 'withdraw' | 'borrow' | 'repay'
 
 function ActionPanel({ reserve, onClose }: { reserve: LendReserve; onClose: () => void }) {
-  const [tab, setTab] = useState<ActionTab>('supply')
   const [amount, setAmount] = useState('')
 
   const { address, isConnected } = useConnectedAccount()
@@ -256,11 +256,11 @@ function ActionPanel({ reserve, onClose }: { reserve: LendReserve; onClose: () =
   const maxSupply = reserveAddress ? tokenBalanceFloat : Infinity
   const maxBorrow = available * 0.9
 
-  const maxAmount = tab === 'supply' ? maxSupply
-    : tab === 'borrow' ? maxBorrow
+  const maxAmount = (currentTab: ActionTab) => currentTab === 'supply' ? maxSupply
+    : currentTab === 'borrow' ? maxBorrow
     : Infinity  // withdraw/repay: let contract validate
 
-  const isOverMax = maxAmount !== Infinity && parsedAmount > maxAmount
+  const isOverMax = (currentTab: ActionTab) => maxAmount(currentTab) !== Infinity && parsedAmount > maxAmount(currentTab)
   const hasAmount = parsedAmount > 0
 
   const isPending = phase === 'approving' || phase === 'pending'
@@ -273,22 +273,21 @@ function ActionPanel({ reserve, onClose }: { reserve: LendReserve; onClose: () =
     { id: 'repay', label: 'Repay' },
   ]
 
-  const apy = tab === 'supply' || tab === 'withdraw' ? reserve.supplyAPY : reserve.borrowAPY
-  const apyColor = tab === 'supply' ? 'text-goodgreen' : tab === 'borrow' ? 'text-red-400' : 'text-gray-400'
+  const getApy = (currentTab: ActionTab) => currentTab === 'supply' || currentTab === 'withdraw' ? reserve.supplyAPY : reserve.borrowAPY
+  const getApyColor = (currentTab: ActionTab) => currentTab === 'supply' ? 'text-goodgreen' : currentTab === 'borrow' ? 'text-red-400' : 'text-gray-400'
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, currentTab: ActionTab) => {
     e.preventDefault()
-    if (!hasAmount || isOverMax || isPending) return
+    if (!hasAmount || isOverMax(currentTab) || isPending) return
     if (!reserveAddress) return  // reserve not on devnet yet
 
     const amountBigInt = parseTokenAmount(amount, decimals)
-    await execute(tab, reserveAddress, amountBigInt)
+    await execute(currentTab, reserveAddress, amountBigInt)
     if (phase !== 'error') setAmount('')
   }
 
   // Reset tx state when tab changes
-  const handleTabChange = (t: ActionTab) => {
-    setTab(t)
+  const handleTabChange = () => {
     setAmount('')
     resetTx()
   }
@@ -314,18 +313,18 @@ function ActionPanel({ reserve, onClose }: { reserve: LendReserve; onClose: () =
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4">
-        {tabLabels.map(t => (
-          <button key={t.id} onClick={() => handleTabChange(t.id)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-              tab === t.id
-                ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20'
-                : 'text-gray-400 hover:text-white bg-dark-50/50'
-            }`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs defaultValue="supply" onValueChange={handleTabChange}>
+        <TabsList className="grid w-full grid-cols-4 gap-1 mb-4 p-0">
+          {tabLabels.map(t => (
+            <TabsTrigger
+              key={t.id}
+              value={t.id}
+              className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors data-[state=active]:bg-goodgreen/15 data-[state=active]:text-goodgreen data-[state=active]:border data-[state=active]:border-goodgreen/20 data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white data-[state=inactive]:bg-dark-50/50 data-[state=active]:shadow-none"
+            >
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
       {!isConnected ? (
         <div className="text-center py-6 space-y-3">

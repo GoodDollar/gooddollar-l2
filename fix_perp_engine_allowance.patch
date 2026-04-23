@@ -1,0 +1,20 @@
+--- a/src/perps/PerpEngine.sol
++++ b/src/perps/PerpEngine.sol
+@@ -257,7 +257,8 @@ contract PerpEngine {
+         if (fee > 0) {
+             vault.debit(msg.sender, fee);
+             vault.flushFee(address(this), fee);
+-            IMarginToken2(address(vault.collateral())).approve(feeSplitter, fee);
++            // Fixed: PerpEngine approves FeeSplitter to spend from PerpEngine's balance
++            IERC20(vault.collateral()).approve(feeSplitter, fee);
+             IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));
+         }
+     }
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.20;
+
++import "forge-std/interfaces/IERC20.sol";
+ import "./MarginVault.sol";
+ import "./FundingRate.sol";
+ import {IPriceOraclePerp} from "./PerpPriceOracle.sol";
