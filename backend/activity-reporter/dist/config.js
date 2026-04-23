@@ -21,7 +21,7 @@ exports.INITIAL_LOOKBACK = Number(process.env.INITIAL_LOOKBACK) || 1000;
 exports.ADDRESSES = {
     AgentRegistry: process.env.AGENT_REGISTRY || '0xf8e31cb472bc70500f08cd84917e5a1912ec8397',
     GoodSwapRouter: process.env.SWAP_ROUTER || '0x975ab64f4901af5f0c96636dea0b9de3419d0c2f',
-    PerpEngine: process.env.PERP_ENGINE || '0x666d0c3da3dbc946d5128d06115bb4eed4595580',
+    PerpEngine: process.env.PERP_ENGINE || '0x9be634797af98cb560db23260b5f7c6e98accacf',
     GoodLendPool: process.env.LEND_POOL || '0x49fd2be640db2910c2fab69bb8531ab6e76127ff',
     MarketFactory: process.env.MARKET_FACTORY || '0x74ef2B06A1D2035C33244A4a263FF00B84504865',
     CollateralVault: process.env.COLLATERAL_VAULT || '0xca57c1d3c2c35e667745448fef8407dd25487ff8',
