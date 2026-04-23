@@ -68,28 +68,6 @@ export function CalculatorOverlay({
     }
   }, [isOpen, onClose])
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!isOpen) return
-
-    if (e.key === 'Escape') {
-      onClose()
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      handleCalculate()
-    } else if (/[0-9+\-*/.=]/.test(e.key)) {
-      e.preventDefault()
-      handleButtonClick(e.key)
-    } else if (e.key === 'Backspace') {
-      e.preventDefault()
-      handleBackspace()
-    }
-  }, [isOpen, expression, onClose])
-
-  // Keyboard support
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
 
   const evaluateExpression = (expr: string): string => {
     try {
@@ -145,6 +123,29 @@ export function CalculatorOverlay({
     setResult(evaluated)
   }, [expression])
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isOpen) return
+
+    if (e.key === 'Escape') {
+      onClose()
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      handleCalculate()
+    } else if (/[0-9+\-*/.=]/.test(e.key)) {
+      e.preventDefault()
+      handleButtonClick(e.key)
+    } else if (e.key === 'Backspace') {
+      e.preventDefault()
+      handleBackspace()
+    }
+  }, [isOpen, onClose, handleCalculate, handleButtonClick, handleBackspace])
+
+  // Keyboard support
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
+
   const handleClear = () => {
     setExpression('')
     setResult('')
@@ -169,34 +170,46 @@ export function CalculatorOverlay({
     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
         ref={overlayRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calculator-title"
+        aria-describedby="calculator-description"
         className={cn(
           'bg-dark-100 rounded-2xl border border-gray-700/20 p-4 w-full max-w-sm shadow-2xl',
           className
         )}
       >
+        <div id="calculator-description" className="sr-only">
+          Interactive calculator for amount inputs with basic arithmetic operations, percentage calculations, and preset amounts
+        </div>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-white">Calculator</h3>
+          <h3 id="calculator-title" className="text-sm font-semibold text-white">Calculator</h3>
           <button
             onClick={onClose}
+            aria-label="Close calculator"
             className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/30 transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Display */}
-        <div className="bg-dark-50 rounded-xl p-3 mb-4">
-          <div className="text-xs text-gray-400 mb-1">Expression:</div>
-          <div className="text-white font-mono text-sm min-h-[20px]">
+        <div className="bg-dark-50 rounded-xl p-3 mb-4" role="region" aria-labelledby="calculator-display">
+          <div id="calculator-display" className="text-xs text-gray-400 mb-1">Expression:</div>
+          <div className="text-white font-mono text-sm min-h-[20px]" aria-label={`Current expression: ${expression || '0'}`}>
             {expression || '0'}
           </div>
           {result && result !== expression && (
             <>
               <div className="text-xs text-gray-400 mt-2 mb-1">Result:</div>
-              <div className="text-goodgreen font-mono text-sm">
+              <div
+                className="text-goodgreen font-mono text-sm"
+                aria-live="polite"
+                aria-label={`Calculation result: ${result}`}
+              >
                 = {result}
               </div>
             </>
@@ -214,6 +227,7 @@ export function CalculatorOverlay({
                   <button
                     key={percent}
                     onClick={() => handlePercentage(percent)}
+                    aria-label={`Use ${percent}% of ${maxValueLabel}`}
                     className="py-2 px-2 rounded-lg bg-gray-700/30 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-600/40 transition-colors"
                   >
                     {percent}%
@@ -231,6 +245,7 @@ export function CalculatorOverlay({
                 <button
                   key={amount}
                   onClick={() => handlePresetAmount(amount)}
+                  aria-label={`Use preset amount ${amount}`}
                   className="py-2 px-2 rounded-lg bg-gray-700/30 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-600/40 transition-colors"
                 >
                   {amount >= 1000 ? `${amount / 1000}K` : amount}
@@ -241,41 +256,57 @@ export function CalculatorOverlay({
         </div>
 
         {/* Calculator Grid */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          {CALCULATOR_BUTTONS.flat().map((btn, index) => (
-            <button
-              key={`${btn}-${index}`}
-              onClick={() => handleButtonClick(btn)}
-              className={cn(
-                'aspect-square rounded-lg font-medium transition-colors text-sm',
-                btn === '='
-                  ? 'bg-goodgreen text-white hover:bg-goodgreen/80'
-                  : ['+', '-', '*', '/'].includes(btn)
-                  ? 'bg-gray-600/40 text-gray-200 hover:text-white hover:bg-gray-500/50'
-                  : 'bg-gray-700/30 text-gray-300 hover:text-white hover:bg-gray-600/40'
-              )}
-            >
-              {btn}
-            </button>
-          ))}
+        <div className="grid grid-cols-4 gap-2 mb-4" role="grid" aria-labelledby="calculator-grid-label">
+          <div id="calculator-grid-label" className="sr-only">Calculator number pad and operations</div>
+          {CALCULATOR_BUTTONS.flat().map((btn, index) => {
+            let ariaLabel = ''
+            if (btn === '=') ariaLabel = 'Calculate result'
+            else if (btn === '+') ariaLabel = 'Add'
+            else if (btn === '-') ariaLabel = 'Subtract'
+            else if (btn === '*') ariaLabel = 'Multiply'
+            else if (btn === '/') ariaLabel = 'Divide'
+            else if (btn === '.') ariaLabel = 'Decimal point'
+            else ariaLabel = `Number ${btn}`
+
+            return (
+              <button
+                key={`${btn}-${index}`}
+                onClick={() => handleButtonClick(btn)}
+                aria-label={ariaLabel}
+                className={cn(
+                  'aspect-square rounded-lg font-medium transition-colors text-sm',
+                  btn === '='
+                    ? 'bg-goodgreen text-white hover:bg-goodgreen/80'
+                    : ['+', '-', '*', '/'].includes(btn)
+                    ? 'bg-gray-600/40 text-gray-200 hover:text-white hover:bg-gray-500/50'
+                    : 'bg-gray-700/30 text-gray-300 hover:text-white hover:bg-gray-600/40'
+                )}
+              >
+                {btn}
+              </button>
+            )
+          })}
         </div>
 
         {/* Action Buttons */}
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={handleClear}
+            aria-label="Clear all input"
             className="py-2 px-3 rounded-lg bg-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/30 hover:text-red-300 transition-colors"
           >
             Clear
           </button>
           <button
             onClick={handleBackspace}
+            aria-label="Delete last character"
             className="py-2 px-3 rounded-lg bg-gray-700/30 text-gray-300 text-xs font-medium hover:text-white hover:bg-gray-600/40 transition-colors"
           >
             ⌫
           </button>
           <button
             onClick={handleCalculate}
+            aria-label="Apply calculated result to input field"
             className="py-2 px-3 rounded-lg bg-goodgreen text-white text-xs font-medium hover:bg-goodgreen/80 transition-colors"
           >
             Apply

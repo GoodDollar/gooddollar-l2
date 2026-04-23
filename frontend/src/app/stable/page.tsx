@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { WalletButton } from '@/components/WalletButton'
 import { sanitizeNumericInput } from '@/lib/format'
 import {
@@ -114,50 +115,49 @@ function VaultPanel({ ilkKey, prices }: { ilkKey: IlkKey; prices: Record<string,
   const { balanceFloat: gusdBalance } = useGUSDBalance(address)
   const { execute, phase, error, reset } = useStableAction()
 
-  const [tab, setTab] = useState<StableActionKind>('deposit')
   const [amount, setAmount] = useState('')
 
   const busy = phase !== 'idle' && phase !== 'done' && phase !== 'error'
   const hasPosition = vault?.hasPosition ?? false
   const collateralUSD = (vault?.collateralFloat ?? 0) * price
 
-  const phaseLabel: Record<typeof phase, string> = {
+  const getPhaseLabel = (currentTab: StableActionKind): Record<typeof phase, string> => ({
     idle: (
-      tab === 'deposit'  ? 'Deposit' :
-      tab === 'withdraw' ? 'Withdraw' :
-      tab === 'mint'     ? 'Mint gUSD' :
-      tab === 'repay'    ? 'Repay gUSD' :
-      /* close */          'Close Vault'
+      currentTab === 'deposit'  ? 'Deposit' :
+      currentTab === 'withdraw' ? 'Withdraw' :
+      currentTab === 'mint'     ? 'Mint gUSD' :
+      currentTab === 'repay'    ? 'Repay gUSD' :
+      /* close */                 'Close Vault'
     ),
     approving:  'Approving…',
     submitting: 'Submitting…',
     confirming: 'Confirming…',
     done:       'Done!',
     error:      'Try Again',
-  }
+  })
 
   const maxDeposit  = collateralBalance
   const maxWithdraw = vault ? vault.collateralFloat : 0
   const maxMint     = vault ? maxMintable(vault.collateralFloat, price, liquidationRatio, vault.actualDebtFloat) : 0
   const maxRepay    = vault ? Math.min(vault.actualDebtFloat, gusdBalance) : 0
 
-  function handleMax() {
+  function handleMax(currentTab: StableActionKind) {
     const maxVal =
-      tab === 'deposit'  ? maxDeposit :
-      tab === 'withdraw' ? maxWithdraw :
-      tab === 'mint'     ? maxMint :
-      tab === 'repay'    ? maxRepay :
+      currentTab === 'deposit'  ? maxDeposit :
+      currentTab === 'withdraw' ? maxWithdraw :
+      currentTab === 'mint'     ? maxMint :
+      currentTab === 'repay'    ? maxRepay :
       0
     setAmount(fmt(maxVal, 6))
   }
 
-  function handleSubmit() {
-    if (tab === 'close') {
+  function handleSubmit(currentTab: StableActionKind) {
+    if (currentTab === 'close') {
       execute('close', ilkKey, '0', ilkMeta.tokenAddress, ilkMeta.decimals)
       return
     }
     if (!amount || !address) return
-    execute(tab, ilkKey, amount, ilkMeta.tokenAddress, ilkMeta.decimals)
+    execute(currentTab, ilkKey, amount, ilkMeta.tokenAddress, ilkMeta.decimals)
       .then(() => { if (phase === 'done') setAmount('') })
   }
 
@@ -213,90 +213,103 @@ function VaultPanel({ ilkKey, prices }: { ilkKey: IlkKey; prices: Record<string,
 
       {/* Action tabs */}
       <div className="p-4">
-        <div className="flex gap-0.5 mb-4 bg-dark-50/30 rounded-xl p-1 overflow-x-auto">
-          {ACTION_TABS.filter(t => t !== 'close' || hasPosition).map(t => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setAmount(''); reset() }}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize whitespace-nowrap px-1 ${
-                tab === t
-                  ? t === 'close' ? 'bg-red-500/20 text-red-400' : 'bg-goodgreen text-white'
-                  : t === 'close' ? 'text-red-400/60 hover:text-red-400' : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {t === 'mint' ? 'Mint' : t === 'repay' ? 'Repay' : t === 'deposit' ? 'Deposit' : t === 'withdraw' ? 'Withdraw' : 'Close'}
-            </button>
-          ))}
-        </div>
+        <Tabs defaultValue="deposit" onValueChange={() => { setAmount(''); reset() }}>
+          <TabsList className="grid w-full bg-dark-50/30 p-1 rounded-xl mb-4" style={{ gridTemplateColumns: `repeat(${ACTION_TABS.filter(t => t !== 'close' || hasPosition).length}, 1fr)` }}>
+            {ACTION_TABS.filter(t => t !== 'close' || hasPosition).map(t => (
+              <TabsTrigger
+                key={t}
+                value={t}
+                className={`py-1.5 rounded-lg text-xs font-medium transition-colors capitalize whitespace-nowrap px-1 ${
+                  t === 'close'
+                    ? 'data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400 data-[state=inactive]:text-red-400/60 data-[state=inactive]:hover:text-red-400'
+                    : 'data-[state=active]:bg-goodgreen data-[state=active]:text-white data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white'
+                } data-[state=active]:shadow-none`}
+              >
+                {t === 'mint' ? 'Mint' : t === 'repay' ? 'Repay' : t === 'deposit' ? 'Deposit' : t === 'withdraw' ? 'Withdraw' : 'Close'}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-        {/* Close vault panel */}
-        {tab === 'close' ? (
-          <div className="mb-3 p-3 rounded-xl bg-red-500/5 border border-red-500/20 text-xs text-gray-400 space-y-1">
-            <p className="font-medium text-red-400">Close Vault</p>
-            <p>Repays all outstanding debt ({fmt(vault?.actualDebtFloat ?? 0, 2)} gUSD) and returns your collateral ({fmt(vault?.collateralFloat ?? 0, 4)} {cfg.label}) in a single transaction.</p>
-            <p className="text-gray-500">Requires sufficient gUSD balance. Current balance: {fmt(gusdBalance, 2)} gUSD.</p>
-          </div>
-        ) : (
-          <>
-            {/* Amount input */}
-            <div className="relative mb-3">
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={amount}
-                onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
-                className="w-full bg-dark-50/50 border border-dark-50 rounded-xl px-4 py-3 pr-20 text-white text-base placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-goodgreen/40"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          {/* Tab Content */}
+          {ACTION_TABS.filter(t => t !== 'close' || hasPosition).map(currentTab => (
+            <TabsContent key={currentTab} value={currentTab} className="mt-0">
+              {currentTab === 'close' ? (
+                <div className="mb-3 p-3 rounded-xl bg-red-500/5 border border-red-500/20 text-xs text-gray-400 space-y-1">
+                  <p className="font-medium text-red-400">Close Vault</p>
+                  <p>Repays all outstanding debt ({fmt(vault?.actualDebtFloat ?? 0, 2)} gUSD) and returns your collateral ({fmt(vault?.collateralFloat ?? 0, 4)} {cfg.label}) in a single transaction.</p>
+                  <p className="text-gray-500">Requires sufficient gUSD balance. Current balance: {fmt(gusdBalance, 2)} gUSD.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Amount input */}
+                  <div className="relative mb-3">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={amount}
+                      onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
+                      className="w-full bg-dark-50/50 border border-dark-50 rounded-xl px-4 py-3 pr-20 text-white text-base placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-goodgreen/40"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                      <button
+                        onClick={() => handleMax(currentTab)}
+                        className="text-xs text-goodgreen hover:text-goodgreen/80 font-medium"
+                      >
+                        MAX
+                      </button>
+                      <span className="text-xs text-gray-400">
+                        {currentTab === 'mint' || currentTab === 'repay' ? 'gUSD' : cfg.label}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Helper text */}
+                  <div className="text-xs text-gray-500 mb-3">
+                    {currentTab === 'deposit'  && `Wallet: ${fmt(maxDeposit, 4)} ${cfg.label}`}
+                    {currentTab === 'withdraw' && `Max: ${fmt(maxWithdraw, 4)} ${cfg.label}`}
+                    {currentTab === 'mint'     && `Max safe: ${fmt(maxMint, 2)} gUSD`}
+                    {currentTab === 'repay'    && `Outstanding: ${fmt(maxRepay, 2)} gUSD`}
+                  </div>
+                </>
+              )}
+
+              {/* Submit */}
+              {address ? (
                 <button
-                  onClick={handleMax}
-                  className="text-xs text-goodgreen hover:text-goodgreen/80 font-medium"
+                  onClick={() => {
+                    if (phase === 'done' || phase === 'error') {
+                      reset()
+                    } else {
+                      handleSubmit(currentTab)
+                    }
+                  }}
+                  disabled={busy || (currentTab !== 'close' && !amount && phase === 'idle')}
+                  className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.99] ${
+                    phase === 'done'
+                      ? 'bg-goodgreen/20 text-goodgreen border border-goodgreen/30'
+                      : phase === 'error'
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      : currentTab === 'close'
+                      ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed'
+                      : 'bg-goodgreen text-white hover:bg-goodgreen/90 disabled:opacity-50 disabled:cursor-not-allowed'
+                  }`}
                 >
-                  MAX
+                  {getPhaseLabel(currentTab)[phase]}
                 </button>
-                <span className="text-xs text-gray-400">
-                  {tab === 'mint' || tab === 'repay' ? 'gUSD' : cfg.label}
-                </span>
-              </div>
-            </div>
+              ) : (
+                <div className="flex justify-center">
+                  <WalletButton />
+                </div>
+              )}
 
-            {/* Helper text */}
-            <div className="text-xs text-gray-500 mb-3">
-              {tab === 'deposit'  && `Wallet: ${fmt(maxDeposit, 4)} ${cfg.label}`}
-              {tab === 'withdraw' && `Max: ${fmt(maxWithdraw, 4)} ${cfg.label}`}
-              {tab === 'mint'     && `Max safe: ${fmt(maxMint, 2)} gUSD`}
-              {tab === 'repay'    && `Outstanding: ${fmt(maxRepay, 2)} gUSD`}
-            </div>
-          </>
-        )}
+              {error && (
+                <p className="mt-2 text-xs text-red-400 text-center">{error}</p>
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
 
-        {/* Submit */}
-        {address ? (
-          <button
-            onClick={phase === 'done' || phase === 'error' ? reset : handleSubmit}
-            disabled={busy || (tab !== 'close' && !amount && phase === 'idle')}
-            className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.99] ${
-              phase === 'done'
-                ? 'bg-goodgreen/20 text-goodgreen border border-goodgreen/30'
-                : phase === 'error'
-                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                : tab === 'close'
-                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed'
-                : 'bg-goodgreen text-white hover:bg-goodgreen/90 disabled:opacity-50 disabled:cursor-not-allowed'
-            }`}
-          >
-            {phaseLabel[phase]}
-          </button>
-        ) : (
-          <div className="flex justify-center">
-            <WalletButton />
-          </div>
-        )}
-
-        {error && (
-          <p className="mt-2 text-xs text-red-400 text-center">{error}</p>
-        )}
       </div>
     </div>
   )

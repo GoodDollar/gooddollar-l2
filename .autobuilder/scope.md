@@ -12,14 +12,18 @@ One chain where AI agents do everything in finance — and every transaction fun
 
 ### Phase 3: Test Everything, Fix Everything, Transact on Chain
 
-#### 3.1 Fix Critical Blockers (PRIORITY: CRITICAL)
-- [ ] Fix GOO-276: CSP inline script violations — blocks hydration + RPC calls on frontend
-- [ ] Fix GOO-403: WalletConnect placeholder text
-- [ ] Fix Predict contracts: MarketFactory.marketCount() returns empty on-chain
-- [ ] Fix RPC proxy: rpc.goodclaw.org returns 400 (Caddy config)
-- [ ] Fix GoodSwap frontend: connect to real on-chain pools, verify swap executes
+#### 3.1 Fix Critical Blockers (PRIORITY: CRITICAL) — **4/5 COMPLETE** ✅
+- [x] Fix GOO-276: CSP inline script violations — RESOLVED ✅ (React hydration + RPC functional)
+- [ ] Fix GOO-403: WalletConnect placeholder text — **PENDING** ⏳ ([GOO-1034](/GOO/issues/GOO-1034) manual registration)
+- [x] Fix Predict contracts: MarketFactory.marketCount() returns empty on-chain — RESOLVED ✅ (via GOO-214 + related fixes)
+- [x] Fix RPC proxy: rpc.goodclaw.org returns 400 (Caddy config) — RESOLVED ✅ (GOO-231/GOO-232 complete)
+- [x] Fix GoodSwap frontend: connect to real on-chain pools, verify swap executes — RESOLVED ✅ (GOO-64, GOO-27, GOO-474 complete)
 
-#### 3.2 Start All Backend Services (PRIORITY: HIGH)
+**STATUS UPDATE (2026-04-23)**: Phase 3.1 completion at 80% - final blocker requires CEO manual WalletConnect/Reown registration (15min task). All engineering teams ready for deployment upon projectId completion.
+
+#### 3.2 Start All Backend Services (PRIORITY: HIGH) — **READY TO BEGIN** 🚀
+**NEXT PHASE**: Ready to commence upon Phase 3.1 completion (WalletConnect resolution)
+
 - [ ] Start activity-reporter as PM2 service
 - [ ] Start bridge-keeper as PM2 service
 - [ ] Start harvest-keeper as PM2 service

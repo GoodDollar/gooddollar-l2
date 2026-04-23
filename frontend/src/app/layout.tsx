@@ -10,6 +10,8 @@ import { UBIBanner } from '@/components/UBIBanner'
 import { LandingFooter } from '@/components/LandingFooter'
 import { PageTransition } from '@/components/PageTransition'
 import { AxeDevTools } from '@/components/AxeDevTools'
+import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
+import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary'
 import { Toaster } from '@/components/ui/toast'
 
 export const metadata: Metadata = {
@@ -46,21 +48,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to main content
         </a>
-        <Providers>
-          <Header />
-          <UBIBanner />
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="flex-1 flex flex-col items-center px-4 pt-8 pb-12 outline-none"
-          >
-            <PageTransition>{children}</PageTransition>
-          </main>
-          <LandingFooter />
-          <Toaster />
-        </Providers>
+        <GlobalErrorBoundary>
+          <Providers>
+            <Header />
+            <UBIBanner />
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="flex-1 flex flex-col items-center px-4 pt-8 pb-12 outline-none"
+            >
+              <PageTransition>{children}</PageTransition>
+            </main>
+            <LandingFooter />
+            <Toaster />
+          </Providers>
+        </GlobalErrorBoundary>
         {process.env.VERCEL && <Analytics />}
         {process.env.VERCEL && <SpeedInsights />}
+        <ServiceWorkerRegistration />
         <AxeDevTools />
       </body>
     </html>

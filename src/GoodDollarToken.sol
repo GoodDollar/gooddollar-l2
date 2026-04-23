@@ -66,6 +66,12 @@ contract GoodDollarToken {
         _;
     }
     
+    /**
+     * @notice Initialize the GoodDollar token with admin and identity oracle.
+     * @param _admin Address with administrative privileges
+     * @param _identityOracle Address that can verify/unverify humans
+     * @param _initialSupply Initial token supply minted to the admin
+     */
     constructor(address _admin, address _identityOracle, uint256 _initialSupply) {
         admin = _admin;
         identityOracle = _identityOracle;
@@ -73,18 +79,37 @@ contract GoodDollarToken {
     }
     
     // ============ ERC20 Standard ============
-    
+
+    /**
+     * @notice Transfer tokens to another address.
+     * @param to Recipient address
+     * @param amount Token amount to transfer
+     * @return bool Always returns true on success
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         _transfer(msg.sender, to, amount);
         return true;
     }
-    
+
+    /**
+     * @notice Approve another address to spend tokens on your behalf.
+     * @param spender Address authorized to spend tokens
+     * @param amount Maximum amount the spender can transfer
+     * @return bool Always returns true on success
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         emit Approval(msg.sender, spender, amount);
         return true;
     }
-    
+
+    /**
+     * @notice Transfer tokens from one address to another using allowance.
+     * @param from Token owner address
+     * @param to Recipient address
+     * @param amount Token amount to transfer
+     * @return bool Always returns true on success
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         uint256 currentAllowance = allowance[from][msg.sender];
         if (currentAllowance != type(uint256).max) {
@@ -131,6 +156,7 @@ contract GoodDollarToken {
     
     /**
      * @notice Fund the UBI pool. Called by dApps sending their UBI fee share.
+     * @param amount Amount of G$ to transfer to the UBI pool
      */
     function fundUBIPool(uint256 amount) external {
         _transfer(msg.sender, address(this), amount);
@@ -140,6 +166,8 @@ contract GoodDollarToken {
     
     /**
      * @notice Calculate the UBI fee for a given amount (used by dApps).
+     * @param amount The base amount to calculate the fee on
+     * @return uint256 The UBI fee amount (10% of the input amount)
      */
     function calculateUBIFee(uint256 amount) external pure returns (uint256) {
         return (amount * UBI_FEE_BPS) / 10000;
@@ -147,6 +175,11 @@ contract GoodDollarToken {
     
     // ============ Identity ============
     
+    /**
+     * @notice Verify or unverify a human for UBI eligibility.
+     * @param human Address to update verification status
+     * @param status True to verify, false to unverify
+     */
     function verifyHuman(address human, bool status) external onlyIdentityOracle {
         if (status && !isVerifiedHuman[human]) {
             totalVerifiedHumans++;
@@ -156,8 +189,11 @@ contract GoodDollarToken {
         isVerifiedHuman[human] = status;
         emit HumanVerified(human, status);
     }
-    
-    // Batch verify (for migration from Celo)
+
+    /**
+     * @notice Batch verify multiple humans (for migration from Celo).
+     * @param humans Array of addresses to verify
+     */
     function batchVerifyHumans(address[] calldata humans) external onlyIdentityOracle {
         for (uint256 i = 0; i < humans.length; i++) {
             if (!isVerifiedHuman[humans[i]]) {
@@ -170,18 +206,35 @@ contract GoodDollarToken {
     
     // ============ Governance ============
     
+    /**
+     * @notice Update the daily UBI amount per verified human.
+     * @param amount New daily UBI amount in G$ (with 18 decimals)
+     */
     function setDailyUBIAmount(uint256 amount) external onlyAdmin {
         dailyUBIAmount = amount;
     }
-    
+
+    /**
+     * @notice Update the identity oracle address.
+     * @param _oracle New identity oracle address
+     */
     function setIdentityOracle(address _oracle) external onlyAdmin {
         identityOracle = _oracle;
     }
-    
+
+    /**
+     * @notice Transfer admin privileges to a new address.
+     * @param _admin New admin address
+     */
     function setAdmin(address _admin) external onlyAdmin {
         admin = _admin;
     }
 
+    /**
+     * @notice Authorize or deauthorize a minter contract.
+     * @param minter Address of the minter contract
+     * @param authorized True to authorize, false to deauthorize
+     */
     function setMinter(address minter, bool authorized) external onlyAdmin {
         require(minter != address(0), "Minter cannot be zero address");
         if (authorized) {
@@ -195,6 +248,8 @@ contract GoodDollarToken {
 
     /**
      * @notice Mint G$ tokens. Only callable by authorized minters (e.g. UBIClaimV2).
+     * @param to Address to receive the minted tokens
+     * @param amount Amount of tokens to mint
      */
     function mint(address to, uint256 amount) external onlyMinter {
         _mint(to, amount);

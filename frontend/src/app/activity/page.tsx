@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { DEVNET_RPC_URL, CONTRACTS as DEVNET_CONTRACTS } from '@/lib/devnet'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const RPC_URL = DEVNET_RPC_URL
 
@@ -208,8 +209,28 @@ export default function ActivityPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-2 border-goodgreen/30 border-t-goodgreen rounded-full animate-spin" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="rounded-2xl bg-dark-100/60 border border-gray-700/30 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Skeleton className="h-6 w-6 rounded-full" />
+                <div>
+                  <Skeleton className="h-4 w-20 mb-1" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Skeleton className="h-3 w-12 mb-1" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+                <div>
+                  <Skeleton className="h-3 w-16 mb-1" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <>

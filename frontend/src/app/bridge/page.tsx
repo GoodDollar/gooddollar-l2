@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   useLiFiRoute,
   LIFI_SUPPORTED_CHAINS,
@@ -116,9 +117,25 @@ function RouteSummary({
 }) {
   if (loading) {
     return (
-      <div className="bg-dark-50 border border-gray-700/30 rounded-xl p-4 flex items-center gap-3">
-        <div className="w-4 h-4 border-2 border-goodgreen/30 border-t-goodgreen rounded-full animate-spin flex-shrink-0" />
-        <span className="text-xs text-gray-400 animate-pulse">Finding best route…</span>
+      <div className="bg-dark-50 border border-gray-700/30 rounded-xl p-4 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="text-center">
+            <Skeleton className="h-3 w-8 mx-auto mb-1" />
+            <Skeleton className="h-3 w-12 mx-auto" />
+          </div>
+          <div className="text-center">
+            <Skeleton className="h-3 w-6 mx-auto mb-1" />
+            <Skeleton className="h-3 w-8 mx-auto" />
+          </div>
+          <div className="text-center">
+            <Skeleton className="h-3 w-10 mx-auto mb-1" />
+            <Skeleton className="h-3 w-16 mx-auto" />
+          </div>
+        </div>
       </div>
     )
   }

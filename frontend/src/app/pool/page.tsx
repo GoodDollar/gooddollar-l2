@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import {
@@ -305,7 +306,6 @@ function PoolManager({
   poolKey: PoolKey
   onClose: () => void
 }) {
-  const [tab, setTab] = useState<'add' | 'remove'>('add')
   const pool = POOL_LIST.find(p => p.key === poolKey)!
 
   return (
@@ -335,36 +335,30 @@ function PoolManager({
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-3 bg-dark-50">
-          <button
-            onClick={() => setTab('add')}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-              tab === 'add'
-                ? 'bg-goodgreen/20 text-goodgreen'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            Add Liquidity
-          </button>
-          <button
-            onClick={() => setTab('remove')}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-              tab === 'remove'
-                ? 'bg-red-500/20 text-red-400'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            Remove
-          </button>
-        </div>
+        <Tabs defaultValue="add">
+          <TabsList className="flex gap-1 p-3 bg-dark-50 w-full">
+            <TabsTrigger
+              value="add"
+              className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors data-[state=active]:bg-goodgreen/20 data-[state=active]:text-goodgreen data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white data-[state=active]:shadow-none"
+            >
+              Add Liquidity
+            </TabsTrigger>
+            <TabsTrigger
+              value="remove"
+              className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400 data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white data-[state=active]:shadow-none"
+            >
+              Remove
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="p-5">
-          {tab === 'add' ? (
+          <TabsContent value="add" className="p-5 mt-0">
             <AddLiquidityForm pool={pool} />
-          ) : (
+          </TabsContent>
+
+          <TabsContent value="remove" className="p-5 mt-0">
             <RemoveLiquidityForm pool={pool} />
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

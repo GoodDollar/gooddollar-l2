@@ -175,7 +175,7 @@ export function useSwapSettings() {
     } else {
       return `Consider ${recommended}% slippage for fewer failed trades (${confidence}% confidence)`
     }
-  }, [preferences.settings.slippage, preferences.suggestions])
+  }, [preferences])
 
   return {
     slippage: preferences.settings.slippage,

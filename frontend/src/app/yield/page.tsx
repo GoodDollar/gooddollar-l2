@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { InfoBanner } from '@/components/InfoBanner'
 import { sanitizeNumericInput } from '@/lib/format'
@@ -119,7 +120,6 @@ function VaultCard({
 // ─── Deposit/Withdraw Panel ───────────────────────────────────────────────────
 
 function VaultActionPanel({ vault }: { vault: VaultInfo }) {
-  const [tab, setTab] = useState<'deposit' | 'withdraw'>('deposit')
   const [amount, setAmount] = useState('')
   const { address: userAddress } = useAccount()
 
@@ -129,17 +129,17 @@ function VaultActionPanel({ vault }: { vault: VaultInfo }) {
   const action = useYieldAction()
 
   const parsedAmount = parseTokenAmount(amount || '0')
-  const needsApproval =
-    tab === 'deposit' &&
+  const walletBalance = (tokenBalance.data as bigint) ?? 0n
+
+  const needsApproval = (currentTab: 'deposit' | 'withdraw') =>
+    currentTab === 'deposit' &&
     parsedAmount > 0n &&
     ((allowance.data as bigint) ?? 0n) < parsedAmount
 
-  const walletBalance = (tokenBalance.data as bigint) ?? 0n
-
-  const handleAction = () => {
+  const handleAction = (currentTab: 'deposit' | 'withdraw') => {
     if (!parsedAmount || parsedAmount === 0n) return
-    if (tab === 'deposit') {
-      if (needsApproval) {
+    if (currentTab === 'deposit') {
+      if (needsApproval(currentTab)) {
         action.approve(vault.assetAddress, vault.address, parsedAmount)
       } else {
         action.deposit(vault.address, parsedAmount)
@@ -149,7 +149,7 @@ function VaultActionPanel({ vault }: { vault: VaultInfo }) {
     }
   }
 
-  const maxAmount = tab === 'deposit'
+  const maxAmount = (currentTab: 'deposit' | 'withdraw') => currentTab === 'deposit'
     ? formatTokenAmount(walletBalance)
     : position.formattedAssets
 
@@ -173,78 +173,77 @@ function VaultActionPanel({ vault }: { vault: VaultInfo }) {
       )}
 
       {/* Tab switch */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => { setTab('deposit'); setAmount('') }}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-            tab === 'deposit'
-              ? 'bg-goodgreen text-black'
-              : 'bg-white/10 text-gray-400 hover:text-white'
-          }`}
-        >
-          Deposit
-        </button>
-        <button
-          onClick={() => { setTab('withdraw'); setAmount('') }}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-            tab === 'withdraw'
-              ? 'bg-orange-500 text-black'
-              : 'bg-white/10 text-gray-400 hover:text-white'
-          }`}
-        >
-          Withdraw
-        </button>
-      </div>
+      <Tabs defaultValue="deposit" onValueChange={() => setAmount('')}>
+        <TabsList className="grid w-full grid-cols-2 bg-white/5 p-1 rounded-lg mb-4">
+          <TabsTrigger
+            value="deposit"
+            className="py-2 rounded-lg text-sm font-medium transition-all data-[state=active]:bg-goodgreen data-[state=active]:text-black data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white data-[state=active]:shadow-none"
+          >
+            Deposit
+          </TabsTrigger>
+          <TabsTrigger
+            value="withdraw"
+            className="py-2 rounded-lg text-sm font-medium transition-all data-[state=active]:bg-orange-500 data-[state=active]:text-black data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white data-[state=active]:shadow-none"
+          >
+            Withdraw
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Amount input */}
-      <div className="relative mb-3">
-        <input
-          type="text"
-          value={amount}
-          onChange={(e) => setAmount(sanitizeNumericInput(e.target.value))}
-          placeholder="0.0"
-          className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-lg focus:outline-none focus:border-goodgreen/50"
-        />
-        <button
-          onClick={() => setAmount(maxAmount)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-goodgreen hover:text-goodgreen/80"
-        >
-          MAX
-        </button>
-      </div>
+        {/* Tab Content */}
+        {['deposit', 'withdraw'].map(currentTab => (
+          <TabsContent key={currentTab} value={currentTab} className="mt-0">
+            {/* Amount input */}
+            <div className="relative mb-3">
+              <input
+                type="text"
+                value={amount}
+                onChange={(e) => setAmount(sanitizeNumericInput(e.target.value))}
+                placeholder="0.0"
+                className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-lg focus:outline-none focus:border-goodgreen/50"
+              />
+              <button
+                onClick={() => setAmount(maxAmount(currentTab as 'deposit' | 'withdraw'))}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-goodgreen hover:text-goodgreen/80"
+              >
+                MAX
+              </button>
+            </div>
 
-      <div className="flex justify-between text-xs text-gray-500 mb-4">
-        <span>
-          {tab === 'deposit' ? 'Wallet' : 'Deposited'}:{' '}
-          <span className="text-gray-300 font-mono">
-            {tab === 'deposit'
-              ? Number(formatTokenAmount(walletBalance)).toFixed(4)
-              : Number(position.formattedAssets).toFixed(4)
-            } {vault.assetSymbol}
-          </span>
-        </span>
-      </div>
+            <div className="flex justify-between text-xs text-gray-500 mb-4">
+              <span>
+                {currentTab === 'deposit' ? 'Wallet' : 'Deposited'}:{' '}
+                <span className="text-gray-300 font-mono">
+                  {currentTab === 'deposit'
+                    ? Number(formatTokenAmount(walletBalance)).toFixed(4)
+                    : Number(position.formattedAssets).toFixed(4)
+                  } {vault.assetSymbol}
+                </span>
+              </span>
+            </div>
 
-      {/* Action button */}
-      <button
-        onClick={handleAction}
-        disabled={!userAddress || parsedAmount === 0n || action.isPending}
-        className={`w-full py-3 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-          tab === 'deposit'
-            ? 'bg-goodgreen text-black hover:bg-goodgreen/90'
-            : 'bg-orange-500 text-black hover:bg-orange-400'
-        }`}
-      >
-        {action.isPending
-          ? 'Confirming…'
-          : !userAddress
-            ? 'Connect Wallet'
-            : needsApproval
-              ? `Approve ${vault.assetSymbol}`
-              : tab === 'deposit'
-                ? 'Deposit'
-                : 'Withdraw'}
-      </button>
+            {/* Action button */}
+            <button
+              onClick={() => handleAction(currentTab as 'deposit' | 'withdraw')}
+              disabled={!userAddress || parsedAmount === 0n || action.isPending}
+              className={`w-full py-3 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                currentTab === 'deposit'
+                  ? 'bg-goodgreen text-black hover:bg-goodgreen/90'
+                  : 'bg-orange-500 text-black hover:bg-orange-400'
+              }`}
+            >
+              {action.isPending
+                ? 'Confirming…'
+                : !userAddress
+                  ? 'Connect Wallet'
+                  : needsApproval(currentTab as 'deposit' | 'withdraw')
+                    ? `Approve ${vault.assetSymbol}`
+                    : currentTab === 'deposit'
+                      ? 'Deposit'
+                      : 'Withdraw'}
+            </button>
+          </TabsContent>
+        ))}
+      </Tabs>
 
       {action.isSuccess && (
         <p className="text-xs text-goodgreen mt-2 text-center">

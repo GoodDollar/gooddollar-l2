@@ -6,11 +6,9 @@ import { formatVolume } from '@/lib/predictData'
 import { useOnChainPredictPositions, useOnChainPredictSummary, useOnChainMarkets } from '@/lib/useOnChainPredict'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { PriceDisplay } from '@/components/ui/price-display'
-
-type Tab = 'positions' | 'pending' | 'history'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 export default function PredictPortfolioPage() {
-  const [tab, setTab] = useState<Tab>('positions')
   const { positions, resolved } = useOnChainPredictPositions()
   const summary = useOnChainPredictSummary()
   const { markets } = useOnChainMarkets()
@@ -54,24 +52,30 @@ export default function PredictPortfolioPage() {
         </div>
       </div>
 
-      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
-        <div className="flex border-b border-gray-700/20">
-          <button onClick={() => setTab('positions')}
-            className={`px-5 py-3 text-sm font-medium transition-colors ${tab === 'positions' ? 'text-white border-b-2 border-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+      <Tabs defaultValue="positions" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
+        <TabsList className="flex h-auto p-0 bg-transparent border-b border-gray-700/20 rounded-none w-full justify-start">
+          <TabsTrigger
+            value="positions"
+            className="px-5 py-3 text-sm font-medium transition-colors rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-goodgreen data-[state=active]:shadow-none text-gray-400 hover:text-white"
+          >
             Positions ({positions.length})
-          </button>
-          <button onClick={() => setTab('pending')}
-            className={`px-5 py-3 text-sm font-medium transition-colors ${tab === 'pending' ? 'text-white border-b-2 border-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+          </TabsTrigger>
+          <TabsTrigger
+            value="pending"
+            className="px-5 py-3 text-sm font-medium transition-colors rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-goodgreen data-[state=active]:shadow-none text-gray-400 hover:text-white"
+          >
             Pending ({pendingPositions.length})
-          </button>
-          <button onClick={() => setTab('history')}
-            className={`px-5 py-3 text-sm font-medium transition-colors ${tab === 'history' ? 'text-white border-b-2 border-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+          </TabsTrigger>
+          <TabsTrigger
+            value="history"
+            className="px-5 py-3 text-sm font-medium transition-colors rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-goodgreen data-[state=active]:shadow-none text-gray-400 hover:text-white"
+          >
             History ({resolved.length})
-          </button>
-        </div>
+          </TabsTrigger>
+        </TabsList>
 
-        {tab === 'positions' && (
-          positions.length === 0 ? (
+        <TabsContent value="positions" className="mt-0">
+          {positions.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm mb-1">No open positions</p>
               <p className="text-gray-600 text-xs mb-4">Start predicting to build your portfolio</p>
@@ -108,10 +112,11 @@ export default function PredictPortfolioPage() {
                 )
               })}
             </div>
-          )
-        )}
+          )}
+        </TabsContent>
 
-        {tab === 'pending' && (
+        <TabsContent value="pending" className="mt-0">
+          {
           pendingPositions.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">No markets pending resolution</p>
@@ -128,10 +133,11 @@ export default function PredictPortfolioPage() {
                 )
               })}
             </div>
-          )
-        )}
+          )}
+        </TabsContent>
 
-        {tab === 'history' && (
+        <TabsContent value="history" className="mt-0">
+          {
           resolved.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">No resolved positions</p>
@@ -162,9 +168,9 @@ export default function PredictPortfolioPage() {
                 )
               })}
             </div>
-          )
-        )}
-      </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
     </ConnectWalletEmptyState>
   )

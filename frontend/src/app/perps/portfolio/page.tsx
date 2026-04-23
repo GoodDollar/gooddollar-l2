@@ -8,8 +8,7 @@ import { useTradeHistory, useFundingPayments } from '@/lib/usePerpsHistory'
 import { useClosePosition } from '@/lib/usePerps'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { PriceDisplay } from '@/components/ui/price-display'
-
-type Tab = 'positions' | 'orders' | 'history' | 'funding'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 function PositionRow({ pos, marketId }: { pos: OpenPosition; marketId: bigint }) {
   const { closePosition, phase, error } = useClosePosition()
@@ -115,7 +114,6 @@ function FundingRow({ payment }: { payment: FundingPayment }) {
 }
 
 export default function PerpsPortfolioPage() {
-  const [tab, setTab] = useState<Tab>('positions')
   const { positions } = useOnChainPositions()
   const { pairs } = useOnChainPairs()
   const orders: PendingOrder[] = []  // limit orders not yet supported
@@ -157,22 +155,35 @@ export default function PerpsPortfolioPage() {
         </div>
       </div>
 
-      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
-        <div className="flex border-b border-gray-700/20 overflow-x-auto">
-          {([
-            { key: 'positions', label: `Positions (${positions.length})` },
-            { key: 'orders', label: `Orders (${orders.length})` },
-            { key: 'history', label: `Trades (${trades.length})` },
-            { key: 'funding', label: `Funding (${funding.length})` },
-          ] as const).map(({ key, label }) => (
-            <button key={key} onClick={() => setTab(key)}
-              className={`shrink-0 px-5 py-3 text-sm font-medium transition-colors ${tab === key ? 'text-white border-b-2 border-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-              {label}
-            </button>
-          ))}
-        </div>
+      <Tabs defaultValue="positions" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
+        <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto overflow-x-auto">
+          <TabsTrigger
+            value="positions"
+            className="px-5 py-3 text-sm font-medium transition-colors rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-goodgreen data-[state=active]:shadow-none text-gray-400 hover:text-white"
+          >
+            Positions ({positions.length})
+          </TabsTrigger>
+          <TabsTrigger
+            value="orders"
+            className="px-5 py-3 text-sm font-medium transition-colors rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-goodgreen data-[state=active]:shadow-none text-gray-400 hover:text-white"
+          >
+            Orders ({orders.length})
+          </TabsTrigger>
+          <TabsTrigger
+            value="history"
+            className="px-5 py-3 text-sm font-medium transition-colors rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-goodgreen data-[state=active]:shadow-none text-gray-400 hover:text-white"
+          >
+            Trades ({trades.length})
+          </TabsTrigger>
+          <TabsTrigger
+            value="funding"
+            className="px-5 py-3 text-sm font-medium transition-colors rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-goodgreen data-[state=active]:shadow-none text-gray-400 hover:text-white"
+          >
+            Funding ({funding.length})
+          </TabsTrigger>
+        </TabsList>
 
-        {tab === 'positions' && (
+        <TabsContent value="positions">
           positions.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm mb-1">No open positions</p>
@@ -205,9 +216,9 @@ export default function PerpsPortfolioPage() {
               </table>
             </div>
           )
-        )}
+        </TabsContent>
 
-        {tab === 'orders' && (
+        <TabsContent value="orders">
           orders.length === 0 ? (
             <div className="py-16 text-center"><p className="text-gray-400 text-sm">No pending orders</p></div>
           ) : (
@@ -229,9 +240,9 @@ export default function PerpsPortfolioPage() {
               </table>
             </div>
           )
-        )}
+        </TabsContent>
 
-        {tab === 'history' && (
+        <TabsContent value="history">
           trades.length === 0 ? (
             <div className="py-16 text-center"><p className="text-gray-400 text-sm">No trade history</p></div>
           ) : (
@@ -255,9 +266,9 @@ export default function PerpsPortfolioPage() {
               </table>
             </div>
           )
-        )}
+        </TabsContent>
 
-        {tab === 'funding' && (
+        <TabsContent value="funding">
           funding.length === 0 ? (
             <div className="py-16 text-center"><p className="text-gray-400 text-sm">No funding payments</p></div>
           ) : (
@@ -277,8 +288,8 @@ export default function PerpsPortfolioPage() {
               </table>
             </div>
           )
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
     </ConnectWalletEmptyState>
   )

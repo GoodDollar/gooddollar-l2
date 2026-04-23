@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { LayoutDashboard, Menu, X } from 'lucide-react'
 import { WalletButton } from './WalletButton'
 import { ActivityButton } from './ActivityButton'
 import { ThemeToggle } from './ThemeToggle'
@@ -52,7 +53,7 @@ export function Header() {
   }, [mobileMenuOpen])
 
   return (
-    <header className="w-full border-b border-dark-50/50 bg-dark-100/80 backdrop-blur-md">
+    <header className="w-full border-b border-dark-50/50 bg-dark-100/80 backdrop-blur-md relative z-50">
       <div className="max-w-5xl mx-auto flex items-center justify-between px-4 h-16">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-goodgreen flex items-center justify-center font-bold text-dark text-sm">
@@ -64,8 +65,18 @@ export function Header() {
         <nav className="hidden sm:flex items-center gap-6 text-sm text-gray-400">
           <Link href="/" className={isSwap ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Swap</Link>
           <Link href="/explore" className={isExplore ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Explore</Link>
-          <Link href="/pool" className={isPool ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Pool</Link>
-          <Link href="/bridge" className={isBridge ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Bridge</Link>
+          <Link href="/pool" className={`flex items-center gap-1.5 ${isPool ? 'text-white font-medium' : 'hover:text-white transition-colors'}`}>
+            Pool
+            <span data-testid="soon-badge" className="px-1.5 py-0.5 text-[10px] font-medium bg-orange-500/20 text-orange-400 rounded border border-orange-500/30">
+              Soon
+            </span>
+          </Link>
+          <Link href="/bridge" className={`flex items-center gap-1.5 ${isBridge ? 'text-white font-medium' : 'hover:text-white transition-colors'}`}>
+            Bridge
+            <span data-testid="soon-badge" className="px-1.5 py-0.5 text-[10px] font-medium bg-orange-500/20 text-orange-400 rounded border border-orange-500/30">
+              Soon
+            </span>
+          </Link>
           <Link href="/stocks" className={isStocks ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Stocks</Link>
           <Link href="/predict" className={isPredict ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Predict</Link>
           <Link href="/perps" className={isPerps ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Perps</Link>
@@ -90,9 +101,7 @@ export function Header() {
             aria-label="Portfolio"
             className={`p-2 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none ${isPortfolio ? 'text-white bg-dark-50' : 'text-gray-400 hover:text-white hover:bg-dark-50'}`}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
+            <LayoutDashboard className="w-5 h-5" />
           </Link>
           <ThemeToggle />
           <ActivityButton />
@@ -102,13 +111,9 @@ export function Header() {
             className="sm:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-50 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
           >
             {mobileMenuOpen ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-5 h-5" />
             ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              <Menu className="w-5 h-5" />
             )}
           </button>
           <WalletButton />
@@ -145,16 +150,22 @@ export function Header() {
             <Link
               href="/pool"
               onClick={() => setMobileMenuOpen(false)}
-              className={`px-3 py-2.5 rounded-lg ${isPool ? 'text-white font-medium bg-dark-50/50' : 'text-gray-400 hover:text-white'}`}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isPool ? 'text-white font-medium bg-dark-50/50' : 'text-gray-400 hover:text-white'}`}
             >
               Pool
+              <span data-testid="soon-badge" className="px-1.5 py-0.5 text-[10px] font-medium bg-orange-500/20 text-orange-400 rounded border border-orange-500/30">
+                Coming Soon
+              </span>
             </Link>
             <Link
               href="/bridge"
               onClick={() => setMobileMenuOpen(false)}
-              className={`px-3 py-2.5 rounded-lg ${isBridge ? 'text-white font-medium bg-dark-50/50' : 'text-gray-400 hover:text-white'}`}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isBridge ? 'text-white font-medium bg-dark-50/50' : 'text-gray-400 hover:text-white'}`}
             >
               Bridge
+              <span data-testid="soon-badge" className="px-1.5 py-0.5 text-[10px] font-medium bg-orange-500/20 text-orange-400 rounded border border-orange-500/30">
+                Coming Soon
+              </span>
             </Link>
             <Link
               href="/stocks"

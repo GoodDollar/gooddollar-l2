@@ -6,6 +6,7 @@ import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
+import { PercentageChange } from '@/components/ui/percentage-change'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -58,15 +59,8 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
       <td className="py-3 px-3 text-right text-white font-medium">
         {formatStockPrice(stock.price)}
       </td>
-      <td className={`py-3 px-3 text-right font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-        <span className="inline-flex items-center gap-0.5">
-          <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            {stock.change24h >= 0
-              ? <path d="M12 5l8 14H4L12 5z" />
-              : <path d="M12 19L4 5h16L12 19z" />}
-          </svg>
-          {Math.abs(stock.change24h).toFixed(2)}%
-        </span>
+      <td className="py-3 px-3 text-right font-medium">
+        <PercentageChange value={stock.change24h} decimals={2} size="sm" />
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">
         {formatLargeNumber(stock.volume24h)}
@@ -182,9 +176,9 @@ export default function StocksPage() {
               </div>
               <div className="text-right shrink-0">
                 <p className="text-white font-medium text-sm">{formatStockPrice(stock.price)}</p>
-                <p className={`text-xs font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
-                </p>
+                <div className="text-xs font-medium">
+                  <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
+                </div>
               </div>
             </div>
           ))

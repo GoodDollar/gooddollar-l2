@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
 
 const securityHeaders = [
   // Prevent clickjacking
@@ -81,6 +84,38 @@ const nextConfig = {
     ],
   },
   webpack: (config) => {
+    // Bundle optimization for better caching and performance
+    config.optimization.splitChunks = {
+      ...config.optimization.splitChunks,
+      cacheGroups: {
+        ...config.optimization.splitChunks.cacheGroups,
+        // Web3 vendor chunk for better caching
+        web3: {
+          name: 'web3-vendor',
+          chunks: 'all',
+          test: /[\\/]node_modules[\\/](@wagmi|viem|@rainbow-me|@walletconnect)/,
+          priority: 30,
+          reuseExistingChunk: true,
+        },
+        // UI vendor chunk
+        ui: {
+          name: 'ui-vendor',
+          chunks: 'all',
+          test: /[\\/]node_modules[\\/](@radix-ui|lucide-react|framer-motion)/,
+          priority: 25,
+          reuseExistingChunk: true,
+        },
+        // React vendor chunk
+        react: {
+          name: 'react-vendor',
+          chunks: 'all',
+          test: /[\\/]node_modules[\\/](react|react-dom|@tanstack\/react-query)/,
+          priority: 20,
+          reuseExistingChunk: true,
+        },
+      },
+    }
+
     config.resolve.fallback = {
       ...config.resolve.fallback,
       'porto/internal': false,
@@ -89,4 +124,4 @@ const nextConfig = {
     return config
   },
 }
-module.exports = nextConfig
+module.exports = withBundleAnalyzer(nextConfig)

@@ -1,0 +1,8 @@
+{
+  "title": "Register WalletConnect project for mobile wallet connections",
+  "description": "**Parent Issue**: [GOO-403](/GOO/issues/GOO-403) - WalletConnect projectId placeholder breaks mobile wallets\n\n**Required Actions**:\n1. Go to https://cloud.walletconnect.com  \n2. Register a new project for \"GoodDollar L2\"\n3. Copy the generated projectId \n4. Set `NEXT_PUBLIC_WC_PROJECT_ID=<projectId>` in production deployment environment (Vercel env vars)\n5. Verify mobile wallet QR connections work post-deployment\n\n**Context**: Critical for L2 launch readiness (per Chief Architect). Frontend code ready, only needs the env var set.\n\n**Verification**: E2E test `infra/walletconnect_project_id` will auto-pass once projectId is properly set.",
+  "status": "todo",
+  "priority": "high",
+  "parentId": "3e062baf-c65a-471f-bdfc-dd407efe7743",
+  "billingCode": "devops"
+}

@@ -1,5 +1,6 @@
 'use client'
 
+import { Check, X } from 'lucide-react'
 import { DEVNET_EXPLORER_URL } from '../lib/devnet'
 
 interface TxStatusProps {
@@ -33,9 +34,7 @@ export function TxStatus({ hash, isPending, isSuccess, isError, error, onClose }
         {isSuccess && (
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-goodgreen/20 flex items-center justify-center">
-              <svg className="w-8 h-8 text-goodgreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <Check className="w-8 h-8 text-goodgreen" />
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">Swap Successful!</h3>
             <p className="text-sm text-goodgreen mb-3">Your swap was completed and UBI was funded.</p>
@@ -55,9 +54,7 @@ export function TxStatus({ hash, isPending, isSuccess, isError, error, onClose }
         {isError && (
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
-              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-8 h-8 text-red-400" />
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">Transaction Failed</h3>
             <p className="text-sm text-red-400 mb-1">{error || 'Something went wrong'}</p>

@@ -10,7 +10,7 @@ RPC=http://localhost:8545
 KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 GDT=0x36c02da8a0983159322a80ffe9f24b1acff8b570
 UBI=0x976fcd02f7c4773dd89c309fbf55d5923b4c98a1
-PERP=0x666d0c3da3dbc946d5128d06115bb4eed4595580
+PERP=0x9be634797af98cb560db23260b5f7c6e98accacf
 MF=0xd28f3246f047efd4059b24fa1fa587ed9fa3e77f
 VS=0x103a3b128991781ee2c8db0454ca99d67b257923
 LEND=0x49fd2be640db2910c2fab69bb8531ab6e76127ff
@@ -34,7 +34,7 @@ cast send $SWAP 'swapExactTokensForETH(uint256,uint256,address[],address,uint256
 MARGIN=$(cast call $PERP 'marginVault()(address)' --rpc-url $RPC)
 cast send $GDT 'approve(address,uint256)' $MARGIN 10000000000000000000000 --rpc-url $RPC --private-key $KEY
 cast send $MARGIN 'deposit(uint256)' 1000000000000000000000 --rpc-url $RPC --private-key $KEY
-cast send $PERP 'openPosition(uint256,uint256,bool)' 0 100000000000000000000 true --rpc-url $RPC --private-key $KEY
+cast send $PERP 'openPosition(uint256,uint256,bool,uint256)' 0 100000000000000000000 true 10000000000000000000 --rpc-url $RPC --private-key $KEY
 cast send $PERP 'closePosition(uint256)' 0 --rpc-url $RPC --private-key $KEY
 ```
 

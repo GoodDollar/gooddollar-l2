@@ -70,6 +70,11 @@ contract ValidatorStaking {
         _;
     }
 
+    /**
+     * @notice Initialize the ValidatorStaking contract.
+     * @param _goodDollar Address of the GoodDollar token contract
+     * @param _admin Address with administrative privileges
+     */
     constructor(address _goodDollar, address _admin) {
         goodDollar = IGoodDollarToken(_goodDollar);
         admin = _admin;
@@ -79,6 +84,9 @@ contract ValidatorStaking {
 
     /**
      * @notice Stake G$ to become a validator.
+     * @param amount Amount of G$ to stake (must be >= MIN_STAKE)
+     * @param name Human-readable validator name
+     * @param endpoint RPC endpoint for this validator
      */
     function stake(uint256 amount, string calldata name, string calldata endpoint) external {
         if (amount < MIN_STAKE) revert BelowMinStake();
@@ -167,6 +175,8 @@ contract ValidatorStaking {
     /**
      * @notice Slash a validator. Applies to both staked AND unbonding amounts.
      *         Slashed G$ goes to UBI pool.
+     * @param validator Address of the validator to slash
+     * @param reason Description of the slashing reason
      */
     function slash(address validator, string calldata reason) external onlyAdmin {
         Validator storage v = validators[validator];
@@ -210,6 +220,8 @@ contract ValidatorStaking {
 
     /**
      * @notice Calculate pending rewards for a validator.
+     * @param validator Address of the validator
+     * @return uint256 Pending reward amount in G$
      */
     function pendingRewards(address validator) public view returns (uint256) {
         Validator storage v = validators[validator];
@@ -263,14 +275,28 @@ contract ValidatorStaking {
 
     // ============ View ============
 
+    /**
+     * @notice Get the number of currently active validators.
+     * @return uint256 Number of active validators
+     */
     function activeValidatorCount() external view returns (uint256) {
         return activeCount;
     }
 
+    /**
+     * @notice Get the total number of validators (active and inactive).
+     * @return uint256 Total number of validators
+     */
     function validatorCount() external view returns (uint256) {
         return validatorList.length;
     }
 
+    /**
+     * @notice Get unbonding request details for a validator.
+     * @param validator Address of the validator
+     * @return amount Amount being unbonded
+     * @return unbondAt Timestamp when unbonding completes
+     */
     function getUnbondingRequest(address validator)
         external
         view

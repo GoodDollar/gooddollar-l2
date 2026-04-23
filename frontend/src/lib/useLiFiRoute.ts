@@ -268,7 +268,7 @@ export function useLiFiRoute(params: LiFiQuoteRequest | null): UseLiFiRouteResul
       clearTimeout(timer)
       abortRef.current?.abort()
     }
-  }, [params?.fromChain, params?.toChain, params?.fromToken, params?.toToken, params?.fromAmount, params?.fromAddress, refreshKey])
+  }, [params, refreshKey])
 
   const toAmountFormatted = route
     ? formatTokenAmount(route.toAmount, route.toToken.decimals)

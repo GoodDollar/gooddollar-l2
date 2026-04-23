@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
@@ -9,8 +8,7 @@ import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
-
-type Tab = 'holdings' | 'history'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 function CollateralHealth({ ratio }: { ratio: number }) {
   const color = ratio >= 150 ? 'text-green-400' : ratio >= 120 ? 'text-yellow-400' : 'text-red-400'
@@ -87,7 +85,6 @@ function TradeRow({ trade }: { trade: TradeRecord }) {
 
 export default function StocksPortfolioPage() {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('holdings')
   const { address } = useAccount()
   const {
     holdings,
@@ -132,19 +129,23 @@ export default function StocksPortfolioPage() {
         </div>
       </div>
 
-      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
-        <div className="flex border-b border-gray-700/20">
-          <button onClick={() => setTab('holdings')}
-            className={`px-5 py-3 text-sm font-medium transition-colors ${tab === 'holdings' ? 'text-white border-b-2 border-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+      <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
+        <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">
+          <TabsTrigger
+            value="holdings"
+            className="px-5 py-3 text-sm font-medium transition-colors rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-goodgreen data-[state=active]:shadow-none text-gray-400 hover:text-white"
+          >
             Holdings ({holdings.length})
-          </button>
-          <button onClick={() => setTab('history')}
-            className={`px-5 py-3 text-sm font-medium transition-colors ${tab === 'history' ? 'text-white border-b-2 border-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+          </TabsTrigger>
+          <TabsTrigger
+            value="history"
+            className="px-5 py-3 text-sm font-medium transition-colors rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-goodgreen data-[state=active]:shadow-none text-gray-400 hover:text-white"
+          >
             History ({trades.length})
-          </button>
-        </div>
+          </TabsTrigger>
+        </TabsList>
 
-        {tab === 'holdings' && (
+        <TabsContent value="holdings">
           isLoading ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">Loading positions…</p>
@@ -179,9 +180,9 @@ export default function StocksPortfolioPage() {
               </table>
             </div>
           )
-        )}
+        </TabsContent>
 
-        {tab === 'history' && (
+        <TabsContent value="history">
           trades.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">No trade history</p>
@@ -205,8 +206,8 @@ export default function StocksPortfolioPage() {
               </table>
             </div>
           )
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
     </ConnectWalletEmptyState>
   )

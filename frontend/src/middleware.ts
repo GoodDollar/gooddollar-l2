@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import createMiddleware from 'next-intl/middleware'
+import { locales, defaultLocale } from './i18n/config'
 
 // ---------------------------------------------------------------------------
 // In-memory rate limiter for API routes
@@ -46,37 +48,59 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
   return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count, resetAt: entry.windowStart + RATE_LIMIT_WINDOW_MS }
 }
 
+//Create i18n middleware
+const intlMiddleware = createMiddleware({
+  locales,
+  defaultLocale,
+  localePrefix: 'as-needed', // Only add locale prefix when needed
+})
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Only apply rate limiting to API routes.
-  if (!pathname.startsWith('/api/')) {
+  // Apply rate limiting to API routes
+  if (pathname.startsWith('/api/')) {
+    const ip = getRealIp(req)
+    const { allowed, remaining, resetAt } = checkRateLimit(ip)
+
+    if (!allowed) {
+      return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)),
+          'X-RateLimit-Limit': String(RATE_LIMIT_MAX),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
+        },
+      })
+    }
+
+    const response = NextResponse.next()
+    response.headers.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX))
+    response.headers.set('X-RateLimit-Remaining', String(remaining))
+    response.headers.set('X-RateLimit-Reset', String(Math.ceil(resetAt / 1000)))
+    return response
+  }
+
+  // Skip i18n for static files and Next.js internals
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.includes('/sw.js') ||
+    pathname.includes('.')
+  ) {
     return NextResponse.next()
   }
 
-  const ip = getRealIp(req)
-  const { allowed, remaining, resetAt } = checkRateLimit(ip)
-
-  if (!allowed) {
-    return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
-      status: 429,
-      headers: {
-        'Content-Type': 'application/json',
-        'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)),
-        'X-RateLimit-Limit': String(RATE_LIMIT_MAX),
-        'X-RateLimit-Remaining': '0',
-        'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
-      },
-    })
-  }
-
-  const response = NextResponse.next()
-  response.headers.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX))
-  response.headers.set('X-RateLimit-Remaining', String(remaining))
-  response.headers.set('X-RateLimit-Reset', String(Math.ceil(resetAt / 1000)))
-  return response
+  // Apply i18n middleware for all other routes
+  return intlMiddleware(req)
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  // Match API routes for rate limiting and all other routes for i18n
+  matcher: [
+    '/api/:path*',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.).*)',
+  ],
 }

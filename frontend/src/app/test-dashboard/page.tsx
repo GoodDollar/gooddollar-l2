@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import Link from 'next/link'
 import {
   useTestResults,
@@ -221,7 +222,6 @@ function GasTrend({ results }: { results: TestResult[] }) {
 type Tab = 'overview' | 'log'
 
 export default function TestDashboardPage() {
-  const [tab, setTab] = useState<Tab>('overview')
   const [filterTester, setFilterTester] = useState<string>('')
 
   const { results, isLoading } = useTestResults(200)
@@ -268,21 +268,23 @@ export default function TestDashboardPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-dark-50 p-1 rounded-lg w-fit">
-        {(['overview', 'log'] as Tab[]).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              tab === t ? 'bg-dark-100 text-white' : 'text-gray-400 hover:text-white'
-            }`}
+      <Tabs defaultValue="overview">
+        <TabsList className="flex gap-1 mb-4 bg-dark-50 p-1 rounded-lg w-fit">
+          <TabsTrigger
+            value="overview"
+            className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors data-[state=active]:bg-dark-100 data-[state=active]:text-white data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white data-[state=active]:shadow-none"
           >
-            {t === 'overview' ? 'Coverage' : 'Activity Log'}
-          </button>
-        ))}
-      </div>
+            Coverage
+          </TabsTrigger>
+          <TabsTrigger
+            value="log"
+            className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors data-[state=active]:bg-dark-100 data-[state=active]:text-white data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white data-[state=active]:shadow-none"
+          >
+            Activity Log
+          </TabsTrigger>
+        </TabsList>
 
-      {tab === 'overview' && (
+        <TabsContent value="overview" className="mt-0">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
           {/* Left: Coverage + Gas trend */}
           <div className="flex flex-col gap-4">
@@ -331,9 +333,9 @@ export default function TestDashboardPage() {
             )}
           </div>
         </div>
-      )}
+        </TabsContent>
 
-      {tab === 'log' && (
+        <TabsContent value="log" className="mt-0">
         <div className="bg-dark-50 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3 gap-3">
             <h2 className="text-sm font-medium text-gray-300">Activity Log</h2>
@@ -355,7 +357,8 @@ export default function TestDashboardPage() {
             <ActivityLog results={displayResults} />
           )}
         </div>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

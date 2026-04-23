@@ -14,6 +14,7 @@ export function WalletButton() {
     <>
       <button
         onClick={handleClick}
+        aria-label="Connect Wallet"
         className="px-2.5 sm:px-4 py-2 rounded-xl bg-goodgreen/20 border border-goodgreen/40 text-goodgreen text-sm font-medium hover:bg-goodgreen/30 transition-colors whitespace-nowrap"
       >
         <span className="inline-flex items-center gap-1.5">
@@ -24,7 +25,11 @@ export function WalletButton() {
         </span>
       </button>
       {showToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2.5 rounded-xl bg-dark-50 border border-goodgreen/30 text-sm text-gray-200 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
+        <div
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2.5 rounded-xl bg-dark-50 border border-goodgreen/30 text-sm text-gray-200 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200"
+          role="status"
+          aria-live="polite"
+        >
           🚀 L2 testnet launching soon — wallet connect coming!
         </div>
       )}

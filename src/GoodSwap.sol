@@ -90,6 +90,12 @@ contract GoodSwap {
 
     // ─── Constructor ───────────────────────────────────────────────────────────
 
+    /**
+     * @notice Initialize a GoodSwap pair for two tokens.
+     * @param _token0 The first token in the pair
+     * @param _token1 The second token in the pair
+     * @dev Factory is set to msg.sender (the deploying contract)
+     */
     constructor(address _token0, address _token1) {
         factory = msg.sender;
         token0  = _token0;
@@ -98,6 +104,12 @@ contract GoodSwap {
 
     // ─── View ──────────────────────────────────────────────────────────────────
 
+    /**
+     * @notice Get the current token reserves and last update timestamp.
+     * @return reserve0 Current reserve amount of token0
+     * @return reserve1 Current reserve amount of token1
+     * @return blockTimestampLast Timestamp of the last reserve update
+     */
     function getReserves()
         public
         view
@@ -112,7 +124,8 @@ contract GoodSwap {
 
     /**
      * @notice Add liquidity and receive LP tokens.
-     * @param to  Address that receives the LP tokens.
+     * @param to Address that receives the LP tokens.
+     * @return liquidity Amount of LP tokens minted
      */
     function mint(address to) external lock returns (uint256 liquidity) {
         (uint112 r0, uint112 r1,) = getReserves();
@@ -142,7 +155,9 @@ contract GoodSwap {
 
     /**
      * @notice Remove liquidity and return underlying tokens.
-     * @param to  Address that receives the tokens.
+     * @param to Address that receives the tokens.
+     * @return amount0 Amount of token0 returned
+     * @return amount1 Amount of token1 returned
      */
     function burn(address to) external lock returns (uint256 amount0, uint256 amount1) {
         uint256 liquidity    = balanceOf[address(this)]; // LP tokens sent here first
@@ -201,6 +216,7 @@ contract GoodSwap {
 
     /**
      * @notice Force balances to match reserves (rescue mistakenly sent tokens).
+     * @param to Address that receives the excess tokens
      */
     function skim(address to) external lock {
         _safeTransfer(token0, to, IERC20Minimal(token0).balanceOf(address(this)) - _reserve0);
