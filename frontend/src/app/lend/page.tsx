@@ -328,7 +328,7 @@ function ActionPanel({ reserve, onClose }: { reserve: LendReserve; onClose: () =
 
       {!isConnected ? (
         <div className="text-center py-6 space-y-3">
-          <p className="text-gray-400 text-sm">Connect your wallet to {tab}.</p>
+          <p className="text-gray-400 text-sm">Connect your wallet to interact with lending markets.</p>
           <ConnectButton />
         </div>
       ) : !reserveAddress ? (
@@ -336,113 +336,121 @@ function ActionPanel({ reserve, onClose }: { reserve: LendReserve; onClose: () =
           <p className="text-gray-500 text-sm">This reserve is not yet deployed on devnet.</p>
         </div>
       ) : (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Amount input */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs text-gray-400">Amount</label>
-            {tab === 'supply' && tokenBalanceFloat > 0 && (
-              <button type="button" onClick={() => setAmount(tokenBalanceFloat.toString())}
-                className="text-[10px] text-goodgreen/70 hover:text-goodgreen transition-colors">
-                MAX {tokenBalanceFloat.toLocaleString(undefined, { maximumFractionDigits: 6 })}
-              </button>
-            )}
-          </div>
-          <div className="relative">
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={amount}
-              onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
-              disabled={isPending}
-              className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 pr-16 disabled:opacity-50 ${
-                isOverMax ? 'border-red-500/50' : 'border-gray-700/30'
-              }`}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">
-              {reserve.symbol}
-            </span>
-          </div>
-          {isOverMax && (
-            <p className="text-red-400 text-[10px] mt-1">Exceeds available amount</p>
-          )}
-          {parsedAmount > 0 && (
-            <p className="text-[10px] text-gray-500 mt-1">≈ {formatUSD(valueUSD)}</p>
-          )}
-        </div>
+        <>
+          {/* Tab Content */}
+          {tabLabels.map(({ id: currentTab, label }) => (
+            <TabsContent key={currentTab} value={currentTab} className="mt-0">
+              <form onSubmit={(e) => handleSubmit(e, currentTab)} className="space-y-4">
+                {/* Amount input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs text-gray-400">Amount</label>
+                    {currentTab === 'supply' && tokenBalanceFloat > 0 && (
+                      <button type="button" onClick={() => setAmount(tokenBalanceFloat.toString())}
+                        className="text-[10px] text-goodgreen/70 hover:text-goodgreen transition-colors">
+                        MAX {tokenBalanceFloat.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={amount}
+                      onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
+                      disabled={isPending}
+                      className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 pr-16 disabled:opacity-50 ${
+                        isOverMax(currentTab) ? 'border-red-500/50' : 'border-gray-700/30'
+                      }`}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">
+                      {reserve.symbol}
+                    </span>
+                  </div>
+                  {isOverMax(currentTab) && (
+                    <p className="text-red-400 text-[10px] mt-1">Exceeds available amount</p>
+                  )}
+                  {parsedAmount > 0 && (
+                    <p className="text-[10px] text-gray-500 mt-1">≈ {formatUSD(valueUSD)}</p>
+                  )}
+                </div>
 
-        {/* Info rows */}
-        <div className="space-y-2 text-xs">
-          <div className="flex justify-between">
-            <span className="text-gray-400">
-              {tab === 'supply' ? 'Supply APY' : tab === 'withdraw' ? 'Current APY' : tab === 'borrow' ? 'Borrow APY' : 'Borrow APY'}
-            </span>
-            <span className={apyColor}>{formatAPY(apy)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">
-              {tab === 'supply' ? 'You receive' : tab === 'withdraw' ? 'You burn' : tab === 'borrow' ? 'Debt token' : 'Debt repaid'}
-            </span>
-            <span className="text-gray-300">
-              {hasAmount
-                ? `${parsedAmount.toLocaleString()} g${reserve.symbol}`
-                : '—'}
-            </span>
-          </div>
-          {(tab === 'borrow' || tab === 'supply') && (
-            <div className="flex justify-between">
-              <span className="text-gray-400">Protocol fee → UBI</span>
-              <span className="text-goodgreen/70">
-                {hasAmount ? formatUSD(valueUSD * (reserve.reserveFactorBPS / 10_000) * 0.33) + '/yr' : '—'}
-              </span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-gray-400">LTV</span>
-            <span className="text-gray-300">{(reserve.ltvBPS / 100).toFixed(0)}%</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">Liquidation threshold</span>
-            <span className="text-gray-300">{(reserve.liquidationThresholdBPS / 100).toFixed(0)}%</span>
-          </div>
-        </div>
+                {/* Info rows */}
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">
+                      {currentTab === 'supply' ? 'Supply APY' : currentTab === 'withdraw' ? 'Current APY' : currentTab === 'borrow' ? 'Borrow APY' : 'Borrow APY'}
+                    </span>
+                    <span className={getApyColor(currentTab)}>{formatAPY(getApy(currentTab))}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">
+                      {currentTab === 'supply' ? 'You receive' : currentTab === 'withdraw' ? 'You burn' : currentTab === 'borrow' ? 'Debt token' : 'Debt repaid'}
+                    </span>
+                    <span className="text-gray-300">
+                      {hasAmount
+                        ? `${parsedAmount.toLocaleString()} g${reserve.symbol}`
+                        : '—'}
+                    </span>
+                  </div>
+                  {(currentTab === 'borrow' || currentTab === 'supply') && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Protocol fee → UBI</span>
+                      <span className="text-goodgreen/70">
+                        {hasAmount ? formatUSD(valueUSD * (reserve.reserveFactorBPS / 10_000) * 0.33) + '/yr' : '—'}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">LTV</span>
+                    <span className="text-gray-300">{(reserve.ltvBPS / 100).toFixed(0)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Liquidation threshold</span>
+                    <span className="text-gray-300">{(reserve.liquidationThresholdBPS / 100).toFixed(0)}%</span>
+                  </div>
+                </div>
 
-        {/* Tx status */}
-        {phase === 'approving' && (
-          <p className="text-xs text-yellow-400 text-center">Approving token spend… confirm in wallet</p>
-        )}
-        {phase === 'pending' && (
-          <p className="text-xs text-blue-400 text-center">Transaction pending… confirm in wallet</p>
-        )}
-        {isDone && (
-          <p className="text-xs text-goodgreen text-center">Transaction confirmed!</p>
-        )}
-        {phase === 'error' && txError && (
-          <p className="text-xs text-red-400 text-center">{txError}</p>
-        )}
+                {/* Tx status */}
+                {phase === 'approving' && (
+                  <p className="text-xs text-yellow-400 text-center">Approving token spend… confirm in wallet</p>
+                )}
+                {phase === 'pending' && (
+                  <p className="text-xs text-blue-400 text-center">Transaction pending… confirm in wallet</p>
+                )}
+                {isDone && (
+                  <p className="text-xs text-goodgreen text-center">Transaction confirmed!</p>
+                )}
+                {phase === 'error' && txError && (
+                  <p className="text-xs text-red-400 text-center">{txError}</p>
+                )}
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={!hasAmount || isOverMax || isPending}
-          className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-goodgreen hover:bg-goodgreen/90 text-dark"
-        >
-          {isPending
-            ? phase === 'approving' ? 'Approving…' : 'Confirming…'
-            : isDone
-            ? 'Done!'
-            : `${tab.charAt(0).toUpperCase() + tab.slice(1)} ${reserve.symbol}`}
-        </button>
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={!hasAmount || isOverMax(currentTab) || isPending}
+                  className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-goodgreen hover:bg-goodgreen/90 text-dark"
+                >
+                  {isPending
+                    ? phase === 'approving' ? 'Approving…' : 'Confirming…'
+                    : isDone
+                    ? 'Done!'
+                    : `${currentTab.charAt(0).toUpperCase() + currentTab.slice(1)} ${reserve.symbol}`}
+                </button>
 
-        <div className="flex items-center justify-center gap-1.5 text-[10px] text-goodgreen/60">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
-          <span>Protocol fees fund GoodDollar UBI</span>
-        </div>
-      </form>
+                <div className="flex items-center justify-center gap-1.5 text-[10px] text-goodgreen/60">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Protocol fees fund GoodDollar UBI</span>
+                </div>
+              </form>
+            </TabsContent>
+          ))}
+        </>
       )}
+      </Tabs>
     </div>
   )
 }
