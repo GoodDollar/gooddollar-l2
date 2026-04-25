@@ -2,7 +2,7 @@
 
 import { forwardRef, ReactNode, useState, useRef } from 'react'
 import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/cn'
 
 interface GestureButtonProps {
   children: ReactNode

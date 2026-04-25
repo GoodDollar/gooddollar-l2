@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, X, Loader2, Clock, AlertTriangle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/cn'
 
 export interface TransactionStep {
   id: string

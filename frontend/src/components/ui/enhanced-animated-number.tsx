@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSpring, useMotionValue, useTransform, motion, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/cn'
 
 interface EnhancedAnimatedNumberProps {
   value: number
@@ -44,19 +44,17 @@ export function EnhancedAnimatedNumber({
   const motionValue = useMotionValue(value)
   const prevValueRef = useRef(value)
   const config = animationConfigs[variant]
+  const [displayValue, setDisplayValue] = useState(() => {
+    if (formatter) {
+      return formatter(value)
+    }
+    return value.toFixed(decimals)
+  })
 
   // Create spring animation with custom config
   const spring = useSpring(motionValue, {
     ...config,
     restDelta: 0.01 // Smaller rest delta for smoother stopping
-  })
-
-  // Transform the motion value to formatted string
-  const display = useTransform(spring, (latest) => {
-    if (formatter) {
-      return formatter(latest)
-    }
-    return latest.toFixed(decimals)
   })
 
   // Detect value changes for highlight effect
@@ -67,6 +65,18 @@ export function EnhancedAnimatedNumber({
     motionValue.set(value)
     prevValueRef.current = value
   }, [value, motionValue])
+
+  useEffect(() => {
+    const unsubscribe = spring.on('change', (latest) => {
+      if (formatter) {
+        setDisplayValue(formatter(latest))
+      } else {
+        setDisplayValue(latest.toFixed(decimals))
+      }
+    })
+
+    return () => unsubscribe()
+  }, [spring, formatter, decimals])
 
   const changeColor = isPositiveChange
     ? 'text-green-400'
@@ -86,7 +96,7 @@ export function EnhancedAnimatedNumber({
         key={value} // Re-trigger animation on value change
       >
         {prefix}
-        {display}
+        {displayValue}
         {suffix}
       </motion.span>
     </AnimatePresence>
