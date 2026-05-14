@@ -31,7 +31,7 @@ interface IFeeSplitterPerp {
  */
 contract FixGOO531 is Script {
     // Known problematic addresses from issue description
-    address constant OLD_PERP_ENGINE = 0x666d0c3da3dbc946d5128d06115bb4eed4595580;
+    address constant OLD_PERP_ENGINE = 0x2e2ed0cfd3ad2f1d34481277b3204d807ca2f8c2;
     address constant FEE_SPLITTER = 0x976fcd02f7C4773dd89C309fBF55D5923B4c98a1;
     address constant GDT = 0x36c02da8a0983159322a80ffe9f24b1acff8b570;
     address constant MARGIN_VAULT = 0xb22c255250d74b0add1bfb936676d2a299bf48bd;

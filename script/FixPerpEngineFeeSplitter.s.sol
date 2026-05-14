@@ -16,7 +16,7 @@ import "forge-std/Script.sol";
  */
 contract FixPerpEngineFeeSplitter is Script {
     // Known addresses from GOO-563 reproduction
-    address constant PERP_ENGINE = 0x666d0c3da3dbc946d5128d06115bb4eed4595580;
+    address constant PERP_ENGINE = 0x2e2ed0cfd3ad2f1d34481277b3204d807ca2f8c2;
     address constant FEE_SPLITTER = 0x976fcd02f7C4773dd89C309fBF55D5923B4c98a1;
 
     function run() external {
@@ -65,7 +65,7 @@ contract FixPerpEngineFeeSplitter is Script {
  * @notice Test script to verify the fix works
  */
 contract TestPerpEngineAfterFix is Script {
-    address constant PERP_ENGINE = 0x666d0c3da3dbc946d5128d06115bb4eed4595580;
+    address constant PERP_ENGINE = 0x2e2ed0cfd3ad2f1d34481277b3204d807ca2f8c2;
 
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
