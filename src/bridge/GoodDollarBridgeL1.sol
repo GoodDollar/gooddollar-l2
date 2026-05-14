@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title GoodDollar Bridge L1
  * @notice Locks G$, ETH, and USDC on Ethereum L1 for bridging to GoodDollar L2.
@@ -20,7 +22,7 @@ interface IL1CrossDomainMessenger {
     function xDomainMessageSender() external view returns (address);
 }
 
-contract GoodDollarBridgeL1 {
+contract GoodDollarBridgeL1 is ReentrancyGuard {
     IL1CrossDomainMessenger public immutable messenger;
     address public l2Bridge;
     address public admin;
@@ -169,7 +171,7 @@ contract GoodDollarBridgeL1 {
     function finalizeGDollarWithdrawal(
         address to,
         uint256 amount
-    ) external onlyFromL2Bridge {
+    ) external onlyFromL2Bridge nonReentrant {
         require(amount <= totalGDollarLocked, "Withdrawal exceeds locked amount");
         totalGDollarLocked -= amount;
         bool success = goodDollar.transfer(to, amount);
@@ -182,7 +184,7 @@ contract GoodDollarBridgeL1 {
     function finalizeUSDCWithdrawal(
         address to,
         uint256 amount
-    ) external onlyFromL2Bridge {
+    ) external onlyFromL2Bridge nonReentrant {
         require(amount <= totalUSDCLocked, "Withdrawal exceeds locked amount");
         totalUSDCLocked -= amount;
         bool success = usdc.transfer(to, amount);
@@ -195,7 +197,7 @@ contract GoodDollarBridgeL1 {
     function finalizeETHWithdrawal(
         address to,
         uint256 amount
-    ) external onlyFromL2Bridge {
+    ) external onlyFromL2Bridge nonReentrant {
         if (address(this).balance < amount) revert InsufficientETH();
         require(amount <= totalETHLocked, "Withdrawal exceeds locked amount");
         totalETHLocked -= amount;

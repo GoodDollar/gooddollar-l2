@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./ConditionalTokens.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title MarketFactory
@@ -28,7 +29,7 @@ interface IUBIFeeSplitterPredict {
     function splitFee(uint256 totalFee, address dAppRecipient) external returns (uint256 ubiShare, uint256 protocolShare, uint256 dAppShare);
 }
 
-contract MarketFactory {
+contract MarketFactory is ReentrancyGuard {
     // ============ Types ============
 
     enum MarketStatus { Open, Closed, ResolvedYES, ResolvedNO, Voided }
@@ -205,7 +206,7 @@ contract MarketFactory {
      * @param marketId Market index
      * @param amount Number of winning tokens to redeem
      */
-    function redeem(uint256 marketId, uint256 amount) external {
+    function redeem(uint256 marketId, uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         Market storage m = markets[marketId];
 
