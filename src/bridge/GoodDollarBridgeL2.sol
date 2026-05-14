@@ -164,6 +164,7 @@ contract GoodDollarBridgeL2 {
         if (l2Token == address(0)) revert TokenNotMapped();
 
         IERC20Mintable(l2Token).burn(msg.sender, amount);
+        require(amount <= totalMinted[l1Token], "Burn exceeds minted amount");
         totalMinted[l1Token] -= amount;
 
         bytes memory message = abi.encodeCall(
@@ -183,6 +184,7 @@ contract GoodDollarBridgeL2 {
         if (l2Token == address(0)) revert TokenNotMapped();
 
         IERC20Mintable(l2Token).burn(msg.sender, amount);
+        require(amount <= totalMinted[l1Token], "Burn exceeds minted amount");
         totalMinted[l1Token] -= amount;
 
         bytes memory message = abi.encodeCall(
