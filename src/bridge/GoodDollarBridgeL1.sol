@@ -170,6 +170,7 @@ contract GoodDollarBridgeL1 {
         address to,
         uint256 amount
     ) external onlyFromL2Bridge {
+        require(amount <= totalGDollarLocked, "Withdrawal exceeds locked amount");
         totalGDollarLocked -= amount;
         bool success = goodDollar.transfer(to, amount);
         if (!success) revert TransferFailed();
@@ -182,6 +183,7 @@ contract GoodDollarBridgeL1 {
         address to,
         uint256 amount
     ) external onlyFromL2Bridge {
+        require(amount <= totalUSDCLocked, "Withdrawal exceeds locked amount");
         totalUSDCLocked -= amount;
         bool success = usdc.transfer(to, amount);
         if (!success) revert TransferFailed();
@@ -195,6 +197,7 @@ contract GoodDollarBridgeL1 {
         uint256 amount
     ) external onlyFromL2Bridge {
         if (address(this).balance < amount) revert InsufficientETH();
+        require(amount <= totalETHLocked, "Withdrawal exceeds locked amount");
         totalETHLocked -= amount;
 
         (bool success, ) = to.call{value: amount}("");
