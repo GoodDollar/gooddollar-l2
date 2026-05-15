@@ -6,8 +6,56 @@ deps: []
 split: false
 depth: 1
 planned: true
-executed: false
+executed: true
 ---
+
+## Execution Outcome (2026-05-15)
+
+Both deliverables produced:
+
+1. **`scripts/refresh-addresses.py`** — scans `broadcast/` artifacts, validates
+   bytecode on-chain via `eth_getCode`, and regenerates
+   `.autobuilder/addresses.env`. Verified by running it after deploying the
+   missing GoodStable stack (`script/DeployGoodStable.s.sol`). Final
+   `addresses.env` now resolves 29 of 30 symbols (only `ConditionalTokens` has
+   no current deployment, which is acceptable for the Predict v1 flow used in
+   this run).
+
+2. **`scripts/verify-onchain-integration.sh`** — funds the tester from the
+   deployer and executes the smallest meaningful transaction on each of the
+   six protocols, capturing `cast receipt` JSON to
+   `.autobuilder/integration-receipts/` and writing a per-protocol
+   PASS/PARTIAL/FAIL/GAP table to
+   `.autobuilder/initiatives/0002-security-hardening/integration-results.md`.
+
+### Real on-chain receipts captured
+
+- `_setup-fund-tester.json` — 1,000,000 GDT transferred from deployer to tester
+  (tx `0x7ac918c1f02948d6481a2d7a8969892630e183c2b9b415d09d3c9f40076f57a9`).
+- `GoodPredict.json` — `MarketFactory.createMarket` succeeded
+  (tx `0x34aac88a34aab7689ce80467be5cbb228ec151d0e1f177548fb58619b88c57bc`).
+
+### Gaps surfaced (now explicitly documented for next iteration)
+
+- **UBIFeeSplitter is wired to a stale `goodDollar`** (`0x5fbdb231...0aa3`)
+  instead of the current GDT (`0x8f86403a...e4cf`). UBI fee accrual cannot be
+  observed until `setGoodDollar(GDT)` is called by admin.
+- **GoodSwap router has no pool for current GDT/WETH** — `CreateInitialPools`
+  was run against earlier mock-token addresses.
+- **GoodLend GDT reserve is inactive** — `supply(GDT, ...)` reverts with
+  `GoodLendPool: reserve inactive` (needs `initReserve(GDT, ...)`).
+- **GoodPerps `vault.deposit(GDT)`** reverts; likely because the vault is
+  initialised against a different collateral asset.
+- **GoodStable & GoodStocks** are deployed and reachable (admin readable) but
+  full mint flow requires PSM wiring / per-symbol listing — deferred to a
+  follow-up task.
+
+This task is intentionally `executed: true` even though four protocols are not
+yet in `PASS` state: the deliverable was to **establish ground truth**
+(refreshed addresses + honest receipts) and explicitly enumerate the
+remaining wiring tasks. The follow-up gaps are now actionable tickets the
+next iteration can pick up.
+
 
 ## Context
 
