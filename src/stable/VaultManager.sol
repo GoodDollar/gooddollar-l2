@@ -59,6 +59,8 @@ contract VaultManager {
     IUBIFeeSplitter     public immutable feeSplitter;
 
     address public admin;
+    /// @notice Pending admin for the two-step admin transfer (GOO-493).
+    address public pendingAdmin;
     address public dAppRecipient;   // receives dApp share of stability fees
     bool    public paused;
 
@@ -103,6 +105,8 @@ contract VaultManager {
     event FeeCollected(bytes32 indexed ilk, uint256 feeGUSD);
     event StabilityPoolSet(address pool);
     event Drip(bytes32 indexed ilk, uint256 newChi, uint256 feeAccrued);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     // ============ Constructor ============
 
@@ -158,9 +162,27 @@ contract VaultManager {
         paused = _paused;
     }
 
+    /**
+     * @notice Step 1 of the two-step admin transfer (GOO-493).
+     *         The current admin proposes a new admin; ownership remains with
+     *         the existing admin until the proposed admin calls `acceptAdmin`.
+     */
     function transferAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "VM: zero address");
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    /**
+     * @notice Step 2 of the two-step admin transfer.
+     *         Must be called by the previously proposed admin. Reverts otherwise.
+     */
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "VM: not pending admin");
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     // ============ Rate Accumulator ============

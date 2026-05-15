@@ -35,6 +35,11 @@ contract StabilityPool {
     address public vaultManager;
     address public admin;
 
+    /// @notice Pending admin for the two-step ownership transfer (GOO-493).
+    ///         A typo in `transferAdmin` cannot brick the contract because the
+    ///         new admin must explicitly call `acceptAdmin` to take ownership.
+    address public pendingAdmin;
+
     /// @notice Total gUSD in pool
     uint256 public totalDeposits;
 
@@ -100,6 +105,8 @@ contract StabilityPool {
     event CollateralClaimed(address indexed user, bytes32 indexed ilk, uint256 amount);
     event CollateralTokenRegistered(bytes32 indexed ilk, address token);
     event VaultManagerSet(address indexed vm);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     // ============ Constructor ============
 
@@ -139,9 +146,31 @@ contract StabilityPool {
         emit CollateralTokenRegistered(ilk, token);
     }
 
+    /**
+     * @notice Step 1 of a two-step admin transfer.
+     *         The current admin proposes a new admin; ownership is NOT
+     *         transferred until the new admin calls `acceptAdmin`.
+     *         Pass the current admin's address (or any other) to overwrite a
+     *         previous proposal — there is no separate cancel function.
+     *         GOO-493.
+     */
     function transferAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "SP: zero address");
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    /**
+     * @notice Step 2 of the two-step admin transfer: the previously proposed
+     *         admin claims ownership. Reverts unless the caller matches
+     *         `pendingAdmin`. Clears `pendingAdmin` on success.
+     */
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "SP: not pending admin");
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     // ============ Core: Deposit / Withdraw ============

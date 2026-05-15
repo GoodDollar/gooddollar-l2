@@ -26,6 +26,8 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
     IL1CrossDomainMessenger public immutable messenger;
     address public l2Bridge;
     address public admin;
+    /// @notice Pending admin for the two-step admin transfer (GOO-493).
+    address public pendingAdmin;
 
     IBridgeToken public immutable goodDollar;
     IBridgeToken public immutable usdc;
@@ -36,6 +38,17 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
     uint256 public totalETHLocked;
 
     bool public paused;
+
+    /// @notice Gas limit forwarded to the L2 messenger for finalize* calls.
+    ///         Configurable so we can respond to OP Stack gas repricing without
+    ///         redeploying the bridge (GOO-1548 — no hardcoded gas limits).
+    ///         Bounded by `MIN_X_DOMAIN_GAS_LIMIT` and `MAX_X_DOMAIN_GAS_LIMIT`
+    ///         to prevent grief / unbounded gas consumption.
+    uint32 public xDomainGasLimit = 200_000;
+
+    /// @dev Sanity bounds for the cross-domain gas limit.
+    uint32 public constant MIN_X_DOMAIN_GAS_LIMIT = 50_000;
+    uint32 public constant MAX_X_DOMAIN_GAS_LIMIT = 2_000_000;
 
     event DepositInitiated(
         address indexed token,
@@ -52,6 +65,9 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
     );
     event ETHDepositInitiated(address indexed from, address indexed to, uint256 amount);
     event ETHWithdrawalFinalized(address indexed to, uint256 amount);
+    event XDomainGasLimitUpdated(uint32 oldLimit, uint32 newLimit);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     error ZeroAmount();
     error ZeroAddress();
@@ -62,6 +78,8 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
     error TransferFailed();
     error InsufficientETH();
     error PeerNotConfigured();
+    error GasLimitOutOfRange();
+    error NotPendingAdmin();
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert NotAdmin();
@@ -124,7 +142,7 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
             IGoodDollarBridgeL2.finalizeDeposit,
             (address(goodDollar), msg.sender, to, amount)
         );
-        messenger.sendMessage(l2Bridge, message, 200_000);
+        messenger.sendMessage(l2Bridge, message, xDomainGasLimit);
 
         bytes32 depositHash = keccak256(abi.encodePacked(address(goodDollar), msg.sender, to, amount, block.number));
         emit DepositInitiated(address(goodDollar), msg.sender, to, amount, depositHash);
@@ -144,7 +162,7 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
             IGoodDollarBridgeL2.finalizeDeposit,
             (address(usdc), msg.sender, to, amount)
         );
-        messenger.sendMessage(l2Bridge, message, 200_000);
+        messenger.sendMessage(l2Bridge, message, xDomainGasLimit);
 
         bytes32 depositHash = keccak256(abi.encodePacked(address(usdc), msg.sender, to, amount, block.number));
         emit DepositInitiated(address(usdc), msg.sender, to, amount, depositHash);
@@ -160,7 +178,7 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
             IGoodDollarBridgeL2.finalizeETHDeposit,
             (msg.sender, to, msg.value)
         );
-        messenger.sendMessage(l2Bridge, message, 200_000);
+        messenger.sendMessage(l2Bridge, message, xDomainGasLimit);
 
         emit ETHDepositInitiated(msg.sender, to, msg.value);
     }
@@ -214,9 +232,40 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
         paused = _paused;
     }
 
+    /**
+     * @notice Update the gas limit forwarded to the L2 messenger.
+     *         Bounded so a misconfigured admin cannot brick deposits or
+     *         set an unbounded gas value.
+     */
+    function setXDomainGasLimit(uint32 newLimit) external onlyAdmin {
+        if (newLimit < MIN_X_DOMAIN_GAS_LIMIT || newLimit > MAX_X_DOMAIN_GAS_LIMIT) {
+            revert GasLimitOutOfRange();
+        }
+        emit XDomainGasLimitUpdated(xDomainGasLimit, newLimit);
+        xDomainGasLimit = newLimit;
+    }
+
+    /**
+     * @notice Step 1 of a two-step admin transfer (GOO-493).
+     *         A typo or compromised key cannot brick admin because the
+     *         proposed admin must explicitly call `acceptAdmin`.
+     */
     function setAdmin(address newAdmin) external onlyAdmin {
         if (newAdmin == address(0)) revert ZeroAddress();
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    /**
+     * @notice Step 2 of the two-step admin transfer.
+     *         Must be called by the previously proposed admin.
+     */
+    function acceptAdmin() external {
+        if (msg.sender != pendingAdmin) revert NotPendingAdmin();
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     receive() external payable {}

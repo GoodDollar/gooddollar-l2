@@ -25,6 +25,8 @@ contract GoodDollarBridgeL2 {
     IL2CrossDomainMessenger public immutable messenger;
     address public l1Bridge;
     address public admin;
+    /// @notice Pending admin for the two-step admin transfer (GOO-493).
+    address public pendingAdmin;
 
     // Bridged token representations on L2
     mapping(address => address) public l1ToL2Token;
@@ -36,6 +38,15 @@ contract GoodDollarBridgeL2 {
     /// @notice Total ETH currently locked in this contract for pending L2->L1 withdrawals.
     ///         This ETH must NOT be used to fund finalizeETHDeposit payouts.
     uint256 public pendingETHWithdrawalTotal;
+
+    /// @notice Gas limit forwarded to the L1 messenger for finalize* calls.
+    ///         Configurable so we can respond to OP Stack gas repricing without
+    ///         redeploying the bridge (GOO-1548 — no hardcoded gas limits).
+    uint32 public xDomainGasLimit = 200_000;
+
+    /// @dev Sanity bounds for the cross-domain gas limit.
+    uint32 public constant MIN_X_DOMAIN_GAS_LIMIT = 50_000;
+    uint32 public constant MAX_X_DOMAIN_GAS_LIMIT = 2_000_000;
 
     event DepositFinalized(
         address indexed l1Token,
@@ -51,6 +62,9 @@ contract GoodDollarBridgeL2 {
     );
     event ETHDepositFinalized(address indexed to, uint256 amount);
     event ETHWithdrawalInitiated(address indexed from, address indexed to, uint256 amount);
+    event XDomainGasLimitUpdated(uint32 oldLimit, uint32 newLimit);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     error ZeroAmount();
     error ZeroAddress();
@@ -64,6 +78,8 @@ contract GoodDollarBridgeL2 {
     error PeerNotConfigured();
     error InsufficientFreeETH();
     error Reentrant();
+    error GasLimitOutOfRange();
+    error NotPendingAdmin();
 
     modifier nonReentrant() {
         if (_locked) revert Reentrant();
@@ -171,7 +187,7 @@ contract GoodDollarBridgeL2 {
             IGoodDollarBridgeL1.finalizeGDollarWithdrawal,
             (to, amount)
         );
-        messenger.sendMessage(l1Bridge, message, 200_000);
+        messenger.sendMessage(l1Bridge, message, xDomainGasLimit);
 
         emit WithdrawalInitiated(l1Token, msg.sender, to, amount);
     }
@@ -191,7 +207,7 @@ contract GoodDollarBridgeL2 {
             IGoodDollarBridgeL1.finalizeUSDCWithdrawal,
             (to, amount)
         );
-        messenger.sendMessage(l1Bridge, message, 200_000);
+        messenger.sendMessage(l1Bridge, message, xDomainGasLimit);
 
         emit WithdrawalInitiated(l1Token, msg.sender, to, amount);
     }
@@ -214,7 +230,7 @@ contract GoodDollarBridgeL2 {
             IGoodDollarBridgeL1.finalizeETHWithdrawal,
             (to, amount)
         );
-        messenger.sendMessage(l1Bridge, message, 200_000);
+        messenger.sendMessage(l1Bridge, message, xDomainGasLimit);
 
         emit ETHWithdrawalInitiated(msg.sender, to, amount);
     }
@@ -225,9 +241,36 @@ contract GoodDollarBridgeL2 {
         paused = _paused;
     }
 
+    /**
+     * @notice Update the gas limit forwarded to the L1 messenger.
+     *         Bounded so a misconfigured admin cannot brick withdrawals.
+     */
+    function setXDomainGasLimit(uint32 newLimit) external onlyAdmin {
+        if (newLimit < MIN_X_DOMAIN_GAS_LIMIT || newLimit > MAX_X_DOMAIN_GAS_LIMIT) {
+            revert GasLimitOutOfRange();
+        }
+        emit XDomainGasLimitUpdated(xDomainGasLimit, newLimit);
+        xDomainGasLimit = newLimit;
+    }
+
+    /**
+     * @notice Step 1 of a two-step admin transfer (GOO-493).
+     */
     function setAdmin(address newAdmin) external onlyAdmin {
         if (newAdmin == address(0)) revert ZeroAddress();
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    /**
+     * @notice Step 2 of the two-step admin transfer.
+     */
+    function acceptAdmin() external {
+        if (msg.sender != pendingAdmin) revert NotPendingAdmin();
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     receive() external payable {}

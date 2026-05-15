@@ -53,6 +53,8 @@ contract CollateralVault is ReentrancyGuard {
     PriceOracle public immutable oracle;
     address public immutable feeSplitter;
     address public admin;
+    /// @notice Pending admin for two-step admin transfer (GOO-493).
+    address public pendingAdmin;
 
     bool public paused;
 
@@ -85,10 +87,13 @@ contract CollateralVault is ReentrancyGuard {
         uint256 bonus
     );
     event AssetRegistered(bytes32 indexed key, string ticker, address syntheticAsset);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     // ============ Errors ============
 
     error NotAdmin();
+    error NotPendingAdmin();
     error ZeroAddress();
     error ZeroAmount();
     error DepositTooSmall(uint256 amount, uint256 minimum);
@@ -150,9 +155,28 @@ contract CollateralVault is ReentrancyGuard {
         paused = _paused;
     }
 
+    /**
+     * @notice Step 1 of the two-step admin transfer (GOO-493).
+     *         Sets a pending admin who must call `acceptAdmin` to complete the
+     *         transfer. Protects against accidentally transferring admin to
+     *         a wrong address.
+     */
     function setAdmin(address newAdmin) external onlyAdmin {
         if (newAdmin == address(0)) revert ZeroAddress();
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    /**
+     * @notice Step 2 of the two-step admin transfer.
+     *         Must be called by the previously proposed admin.
+     */
+    function acceptAdmin() external {
+        if (msg.sender != pendingAdmin) revert NotPendingAdmin();
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     // ============ User: Collateral Management ============

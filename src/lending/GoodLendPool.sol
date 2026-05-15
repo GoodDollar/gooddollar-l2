@@ -115,6 +115,8 @@ contract GoodLendPool {
 
     /// @notice Admin
     address public admin;
+    /// @notice Pending admin for two-step admin transfer (GOO-493).
+    address public pendingAdmin;
 
     /// @notice Reentrancy guard
     uint256 private _locked;
@@ -139,6 +141,8 @@ contract GoodLendPool {
     event ReserveUpdated(address indexed asset, uint256 liquidityIndex, uint256 borrowIndex);
     event SupplyCapUpdated(address indexed asset, uint256 oldCap, uint256 newCap);
     event BorrowCapUpdated(address indexed asset, uint256 oldCap, uint256 newCap);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     // ============ Modifiers ============
 
@@ -614,8 +618,27 @@ contract GoodLendPool {
         _updateRates(asset);
     }
 
+    /**
+     * @notice Step 1 of the two-step admin transfer (GOO-493).
+     *         A typo or compromised key cannot brick the contract because the
+     *         proposed admin must explicitly call `acceptAdmin`.
+     */
     function setAdmin(address _admin) external onlyAdmin {
-        admin = _admin;
+        require(_admin != address(0), "GoodLendPool: zero address");
+        pendingAdmin = _admin;
+        emit AdminTransferProposed(admin, _admin);
+    }
+
+    /**
+     * @notice Step 2 of the two-step admin transfer.
+     *         Must be called by the previously proposed admin.
+     */
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "GoodLendPool: not pending admin");
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     function setSupplyCap(address asset, uint256 newCap) external onlyAdmin {

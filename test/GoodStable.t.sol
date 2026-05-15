@@ -1085,6 +1085,12 @@ contract GoodStableTest is Test {
     function test_PSM_TransferAdmin() public {
         vm.prank(admin);
         psm.transferAdmin(alice);
+        // Two-step pattern: admin not yet rotated
+        assertEq(psm.admin(), admin);
+        assertEq(psm.pendingAdmin(), alice);
+
+        vm.prank(alice);
+        psm.acceptAdmin();
         assertEq(psm.admin(), alice);
     }
 
@@ -1540,5 +1546,161 @@ contract GoodStableTest is Test {
         vm.prank(alice);
         vm.expectRevert("Registry: not admin");
         registry.addIlk(bytes32("BAD"), address(0x1), 15e17, 13e16, 1e18, RAY);
+    }
+
+    // ============================================================
+    // Section 10: Two-Step Admin Transfer (GOO-493, Phase 1 task 0004)
+    //
+    // StabilityPool and VaultManager must use a propose/accept flow so a typo
+    // in `transferAdmin` cannot brick the contract. The previous admin stays
+    // in control until the *new* admin explicitly calls `acceptAdmin`.
+    // ============================================================
+
+    function test_StabilityPool_TwoStepAdmin_HappyPath() public {
+        // Initially admin == admin
+        assertEq(sp.admin(), admin, "initial admin");
+
+        // Step 1: current admin proposes a transfer
+        vm.prank(admin);
+        sp.transferAdmin(alice);
+
+        // Admin has NOT changed yet — only pendingAdmin is set
+        assertEq(sp.admin(), admin, "admin unchanged after propose");
+        assertEq(sp.pendingAdmin(), alice, "pendingAdmin set");
+
+        // Step 2: pendingAdmin accepts
+        vm.prank(alice);
+        sp.acceptAdmin();
+
+        assertEq(sp.admin(), alice, "admin rotated after accept");
+        assertEq(sp.pendingAdmin(), address(0), "pendingAdmin cleared");
+    }
+
+    function test_StabilityPool_TwoStepAdmin_OnlyAdminCanPropose() public {
+        vm.prank(alice);
+        vm.expectRevert("SP: not admin");
+        sp.transferAdmin(bob);
+    }
+
+    function test_StabilityPool_TwoStepAdmin_OnlyPendingCanAccept() public {
+        vm.prank(admin);
+        sp.transferAdmin(alice);
+
+        // Random caller cannot accept
+        vm.prank(bob);
+        vm.expectRevert("SP: not pending admin");
+        sp.acceptAdmin();
+
+        // Even the current admin cannot accept on behalf of pending
+        vm.prank(admin);
+        vm.expectRevert("SP: not pending admin");
+        sp.acceptAdmin();
+    }
+
+    function test_StabilityPool_TwoStepAdmin_CancelByProposingZero() public {
+        vm.prank(admin);
+        sp.transferAdmin(alice);
+        assertEq(sp.pendingAdmin(), alice);
+
+        // Current admin cancels by proposing themselves again (or another address)
+        vm.prank(admin);
+        sp.transferAdmin(bob);
+        assertEq(sp.pendingAdmin(), bob, "pending overwritten");
+
+        // Original alice can no longer accept
+        vm.prank(alice);
+        vm.expectRevert("SP: not pending admin");
+        sp.acceptAdmin();
+    }
+
+    function test_StabilityPool_TwoStepAdmin_ZeroAddressReverts() public {
+        vm.prank(admin);
+        vm.expectRevert("SP: zero address");
+        sp.transferAdmin(address(0));
+    }
+
+    function test_VaultManager_TwoStepAdmin_HappyPath() public {
+        assertEq(vault.admin(), admin, "initial admin");
+
+        vm.prank(admin);
+        vault.transferAdmin(alice);
+        assertEq(vault.admin(), admin, "admin unchanged after propose");
+        assertEq(vault.pendingAdmin(), alice, "pendingAdmin set");
+
+        vm.prank(alice);
+        vault.acceptAdmin();
+
+        assertEq(vault.admin(), alice, "admin rotated");
+        assertEq(vault.pendingAdmin(), address(0), "pendingAdmin cleared");
+    }
+
+    function test_VaultManager_TwoStepAdmin_OnlyPendingCanAccept() public {
+        vm.prank(admin);
+        vault.transferAdmin(alice);
+
+        vm.prank(bob);
+        vm.expectRevert("VM: not pending admin");
+        vault.acceptAdmin();
+    }
+
+    // ============ PegStabilityModule Two-Step Admin Transfer (GOO-493) ============
+
+    function test_PSM_TwoStepAdmin_HappyPath() public {
+        assertEq(psm.admin(), admin, "initial admin");
+
+        vm.prank(admin);
+        psm.transferAdmin(alice);
+
+        // Admin should NOT have changed yet
+        assertEq(psm.admin(), admin, "admin unchanged after propose");
+        assertEq(psm.pendingAdmin(), alice, "pendingAdmin set");
+
+        vm.prank(alice);
+        psm.acceptAdmin();
+
+        assertEq(psm.admin(), alice, "admin rotated");
+        assertEq(psm.pendingAdmin(), address(0), "pendingAdmin cleared");
+    }
+
+    function test_PSM_TwoStepAdmin_OnlyPendingCanAccept() public {
+        vm.prank(admin);
+        psm.transferAdmin(alice);
+
+        vm.prank(bob);
+        vm.expectRevert("PSM: not pending admin");
+        psm.acceptAdmin();
+    }
+
+    function test_PSM_TwoStepAdmin_OnlyAdminCanPropose() public {
+        vm.prank(bob);
+        vm.expectRevert("PSM: not admin");
+        psm.transferAdmin(alice);
+    }
+
+    function test_PSM_TwoStepAdmin_ZeroAddressReverts() public {
+        vm.prank(admin);
+        vm.expectRevert("PSM: zero address");
+        psm.transferAdmin(address(0));
+    }
+
+    function test_PSM_TwoStepAdmin_OverwritePending() public {
+        vm.prank(admin);
+        psm.transferAdmin(alice);
+        assertEq(psm.pendingAdmin(), alice);
+
+        // Admin can overwrite
+        vm.prank(admin);
+        psm.transferAdmin(bob);
+        assertEq(psm.pendingAdmin(), bob, "pending overwritten");
+
+        // Old pending can no longer accept
+        vm.prank(alice);
+        vm.expectRevert("PSM: not pending admin");
+        psm.acceptAdmin();
+
+        // New pending can
+        vm.prank(bob);
+        psm.acceptAdmin();
+        assertEq(psm.admin(), bob);
     }
 }

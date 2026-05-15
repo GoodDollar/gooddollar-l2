@@ -63,6 +63,8 @@ contract PegStabilityModule {
     IUBIFeeSplitter public immutable feeSplitter;
 
     address public admin;
+    /// @notice Pending admin for the two-step admin transfer (GOO-493).
+    address public pendingAdmin;
     uint256 public feeBPS;          // default 10 = 0.1%
     uint256 public swapCap;         // max USDC reserves; 0 = unlimited
     bool    public paused;
@@ -103,6 +105,7 @@ contract PegStabilityModule {
     event SwapCapUpdated(uint256 cap);
     event Paused(bool status);
     event AdminTransferred(address indexed oldAdmin, address indexed newAdmin);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed pendingAdmin);
 
     // ============ Constructor ============
 
@@ -183,10 +186,27 @@ contract PegStabilityModule {
         emit Paused(_paused);
     }
 
+    /**
+     * @notice Step 1 of a two-step admin transfer (GOO-493).
+     *         A typo or compromised key cannot brick the contract because the
+     *         proposed admin must explicitly call `acceptAdmin`.
+     */
     function transferAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "PSM: zero address");
-        emit AdminTransferred(admin, newAdmin);
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    /**
+     * @notice Step 2 of the two-step admin transfer.
+     *         Must be called by the previously proposed admin.
+     */
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "PSM: not pending admin");
+        address previous = admin;
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+        emit AdminTransferred(previous, admin);
     }
 
     /**

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @notice Minimal read interface for GoodPool (x*y=k AMM).

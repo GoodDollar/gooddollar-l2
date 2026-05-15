@@ -497,4 +497,66 @@ contract GoodLendTest is Test {
         vm.expectRevert("GoodLendPool: reserve inactive");
         pool.supply(address(usdc), 1e6);
     }
+
+    // ============ Two-Step Admin Transfer (GOO-493) ============
+
+    event AdminTransferProposed(address indexed currentAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
+
+    function test_setAdmin_proposesPendingAdmin() public {
+        address newAdmin = address(0xBEEF);
+
+        vm.expectEmit(true, true, true, true);
+        emit AdminTransferProposed(admin, newAdmin);
+        pool.setAdmin(newAdmin);
+
+        // admin should NOT change yet
+        assertEq(pool.admin(), admin, "admin changed before acceptance");
+        assertEq(pool.pendingAdmin(), newAdmin, "pendingAdmin not set");
+    }
+
+    function test_setAdmin_revertsForNonAdmin() public {
+        vm.prank(address(0xDEAD));
+        vm.expectRevert("GoodLendPool: not admin");
+        pool.setAdmin(address(0xBEEF));
+    }
+
+    function test_setAdmin_revertsZeroAddress() public {
+        vm.expectRevert("GoodLendPool: zero address");
+        pool.setAdmin(address(0));
+    }
+
+    function test_acceptAdmin_completesTransfer() public {
+        address newAdmin = address(0xBEEF);
+
+        pool.setAdmin(newAdmin);
+
+        vm.prank(newAdmin);
+        vm.expectEmit(true, true, true, true);
+        emit AdminTransferred(admin, newAdmin);
+        pool.acceptAdmin();
+
+        assertEq(pool.admin(), newAdmin, "admin not updated");
+        assertEq(pool.pendingAdmin(), address(0), "pendingAdmin not cleared");
+    }
+
+    function test_acceptAdmin_revertsForNonPending() public {
+        pool.setAdmin(address(0xBEEF));
+
+        vm.prank(address(0xDEAD));
+        vm.expectRevert("GoodLendPool: not pending admin");
+        pool.acceptAdmin();
+    }
+
+    function test_oldAdmin_losesPrivilegesAfterTransfer() public {
+        address newAdmin = address(0xBEEF);
+
+        pool.setAdmin(newAdmin);
+        vm.prank(newAdmin);
+        pool.acceptAdmin();
+
+        // Old admin (this test contract) loses admin privileges
+        vm.expectRevert("GoodLendPool: not admin");
+        pool.setReserveActive(address(usdc), false);
+    }
 }

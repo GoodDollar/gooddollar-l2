@@ -742,4 +742,275 @@ contract GoodDollarBridgeTest is Test {
         vm.expectRevert(GoodDollarBridgeL2.PeerNotConfigured.selector);
         freshL2.withdrawETH{value: 1 ether}(recipient, 1 ether);
     }
+
+    // ============ GOO-1548 — Configurable xDomainGasLimit ============
+
+    function test_l1Bridge_defaultXDomainGasLimit() public view {
+        assertEq(l1Bridge.xDomainGasLimit(), 200_000);
+    }
+
+    function test_l1Bridge_setXDomainGasLimit_updates() public {
+        vm.prank(admin);
+        l1Bridge.setXDomainGasLimit(500_000);
+        assertEq(l1Bridge.xDomainGasLimit(), 500_000);
+    }
+
+    function test_l1Bridge_setXDomainGasLimit_emitsEvent() public {
+        vm.expectEmit(false, false, false, true);
+        emit GoodDollarBridgeL1.XDomainGasLimitUpdated(200_000, 500_000);
+        vm.prank(admin);
+        l1Bridge.setXDomainGasLimit(500_000);
+    }
+
+    function test_l1Bridge_setXDomainGasLimit_revertsBelowMin() public {
+        vm.prank(admin);
+        vm.expectRevert(GoodDollarBridgeL1.GasLimitOutOfRange.selector);
+        l1Bridge.setXDomainGasLimit(49_999);
+    }
+
+    function test_l1Bridge_setXDomainGasLimit_revertsAboveMax() public {
+        vm.prank(admin);
+        vm.expectRevert(GoodDollarBridgeL1.GasLimitOutOfRange.selector);
+        l1Bridge.setXDomainGasLimit(2_000_001);
+    }
+
+    function test_l1Bridge_setXDomainGasLimit_revertsNotAdmin() public {
+        vm.prank(user);
+        vm.expectRevert(GoodDollarBridgeL1.NotAdmin.selector);
+        l1Bridge.setXDomainGasLimit(500_000);
+    }
+
+    function test_l1Bridge_depositGDollar_usesConfigurableGasLimit() public {
+        vm.prank(admin);
+        l1Bridge.setXDomainGasLimit(750_000);
+
+        vm.prank(user);
+        l1Bridge.depositGDollar(recipient, DEPOSIT_AMOUNT);
+
+        assertEq(l1Messenger.lastGasLimit(), 750_000);
+    }
+
+    function test_l1Bridge_depositETH_usesConfigurableGasLimit() public {
+        vm.prank(admin);
+        l1Bridge.setXDomainGasLimit(600_000);
+
+        vm.deal(user, 1 ether);
+        vm.prank(user);
+        l1Bridge.depositETH{value: 1 ether}(recipient);
+
+        assertEq(l1Messenger.lastGasLimit(), 600_000);
+    }
+
+    function test_l2Bridge_defaultXDomainGasLimit() public view {
+        assertEq(l2Bridge.xDomainGasLimit(), 200_000);
+    }
+
+    function test_l2Bridge_setXDomainGasLimit_updates() public {
+        vm.prank(admin);
+        l2Bridge.setXDomainGasLimit(900_000);
+        assertEq(l2Bridge.xDomainGasLimit(), 900_000);
+    }
+
+    function test_l2Bridge_setXDomainGasLimit_revertsOutOfRange() public {
+        vm.prank(admin);
+        vm.expectRevert(GoodDollarBridgeL2.GasLimitOutOfRange.selector);
+        l2Bridge.setXDomainGasLimit(49_999);
+    }
+
+    function test_l2Bridge_setXDomainGasLimit_revertsNotAdmin() public {
+        vm.prank(user);
+        vm.expectRevert(GoodDollarBridgeL2.NotAdmin.selector);
+        l2Bridge.setXDomainGasLimit(500_000);
+    }
+
+    function test_l2Bridge_withdrawGDollar_usesConfigurableGasLimit() public {
+        vm.prank(admin);
+        l2Bridge.setXDomainGasLimit(400_000);
+
+        // Mint some L2 tokens to user via finalize path
+        l2Messenger.setXDomainMessageSender(address(l1Bridge));
+        vm.prank(address(l2Messenger));
+        l2Bridge.finalizeDeposit(address(gd), user, user, 1000e18);
+
+        vm.prank(user);
+        l2Bridge.withdrawGDollar(address(gd), recipient, 100e18);
+
+        assertEq(l2Messenger.lastGasLimit(), 400_000);
+    }
+
+    // ============ GOO-493 — Two-Step Admin Transfer ============
+
+    function test_l1Bridge_setAdmin_setsPending() public {
+        address newAdmin = address(0xBABE);
+        vm.prank(admin);
+        l1Bridge.setAdmin(newAdmin);
+
+        // admin unchanged, pendingAdmin set
+        assertEq(l1Bridge.admin(), admin);
+        assertEq(l1Bridge.pendingAdmin(), newAdmin);
+    }
+
+    function test_l1Bridge_setAdmin_emitsProposedEvent() public {
+        address newAdmin = address(0xBABE);
+        vm.expectEmit(true, true, false, false);
+        emit GoodDollarBridgeL1.AdminTransferProposed(admin, newAdmin);
+        vm.prank(admin);
+        l1Bridge.setAdmin(newAdmin);
+    }
+
+    function test_l1Bridge_setAdmin_revertsZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert(GoodDollarBridgeL1.ZeroAddress.selector);
+        l1Bridge.setAdmin(address(0));
+    }
+
+    function test_l1Bridge_setAdmin_revertsNotAdmin() public {
+        vm.prank(user);
+        vm.expectRevert(GoodDollarBridgeL1.NotAdmin.selector);
+        l1Bridge.setAdmin(address(0xBABE));
+    }
+
+    function test_l1Bridge_acceptAdmin_transfersOwnership() public {
+        address newAdmin = address(0xBABE);
+        vm.prank(admin);
+        l1Bridge.setAdmin(newAdmin);
+
+        vm.prank(newAdmin);
+        l1Bridge.acceptAdmin();
+
+        assertEq(l1Bridge.admin(), newAdmin);
+        assertEq(l1Bridge.pendingAdmin(), address(0));
+    }
+
+    function test_l1Bridge_acceptAdmin_emitsTransferredEvent() public {
+        address newAdmin = address(0xBABE);
+        vm.prank(admin);
+        l1Bridge.setAdmin(newAdmin);
+
+        vm.expectEmit(true, true, false, false);
+        emit GoodDollarBridgeL1.AdminTransferred(admin, newAdmin);
+        vm.prank(newAdmin);
+        l1Bridge.acceptAdmin();
+    }
+
+    function test_l1Bridge_acceptAdmin_revertsIfNotPending() public {
+        address newAdmin = address(0xBABE);
+        vm.prank(admin);
+        l1Bridge.setAdmin(newAdmin);
+
+        // Random address cannot accept
+        vm.prank(user);
+        vm.expectRevert(GoodDollarBridgeL1.NotPendingAdmin.selector);
+        l1Bridge.acceptAdmin();
+    }
+
+    function test_l1Bridge_acceptAdmin_revertsIfNoPending() public {
+        // No setAdmin called — pendingAdmin is zero
+        vm.prank(user);
+        vm.expectRevert(GoodDollarBridgeL1.NotPendingAdmin.selector);
+        l1Bridge.acceptAdmin();
+    }
+
+    function test_l1Bridge_oldAdminLosesPrivilege_afterAccept() public {
+        address newAdmin = address(0xBABE);
+        vm.prank(admin);
+        l1Bridge.setAdmin(newAdmin);
+        vm.prank(newAdmin);
+        l1Bridge.acceptAdmin();
+
+        // Old admin can no longer pause
+        vm.prank(admin);
+        vm.expectRevert(GoodDollarBridgeL1.NotAdmin.selector);
+        l1Bridge.setPaused(true);
+
+        // New admin can
+        vm.prank(newAdmin);
+        l1Bridge.setPaused(true);
+        assertEq(l1Bridge.paused(), true);
+    }
+
+    function test_l2Bridge_setAdmin_setsPending() public {
+        address newAdmin = address(0xBABE);
+        vm.prank(admin);
+        l2Bridge.setAdmin(newAdmin);
+
+        assertEq(l2Bridge.admin(), admin);
+        assertEq(l2Bridge.pendingAdmin(), newAdmin);
+    }
+
+    function test_l2Bridge_setAdmin_revertsZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert(GoodDollarBridgeL2.ZeroAddress.selector);
+        l2Bridge.setAdmin(address(0));
+    }
+
+    function test_l2Bridge_setAdmin_revertsNotAdmin() public {
+        vm.prank(user);
+        vm.expectRevert(GoodDollarBridgeL2.NotAdmin.selector);
+        l2Bridge.setAdmin(address(0xBABE));
+    }
+
+    function test_l2Bridge_acceptAdmin_transfersOwnership() public {
+        address newAdmin = address(0xBABE);
+        vm.prank(admin);
+        l2Bridge.setAdmin(newAdmin);
+
+        vm.prank(newAdmin);
+        l2Bridge.acceptAdmin();
+
+        assertEq(l2Bridge.admin(), newAdmin);
+        assertEq(l2Bridge.pendingAdmin(), address(0));
+    }
+
+    function test_l2Bridge_acceptAdmin_revertsIfNotPending() public {
+        address newAdmin = address(0xBABE);
+        vm.prank(admin);
+        l2Bridge.setAdmin(newAdmin);
+
+        vm.prank(user);
+        vm.expectRevert(GoodDollarBridgeL2.NotPendingAdmin.selector);
+        l2Bridge.acceptAdmin();
+    }
+
+    function test_l2Bridge_oldAdminLosesPrivilege_afterAccept() public {
+        address newAdmin = address(0xBABE);
+        vm.prank(admin);
+        l2Bridge.setAdmin(newAdmin);
+        vm.prank(newAdmin);
+        l2Bridge.acceptAdmin();
+
+        // Old admin can no longer mapToken
+        vm.prank(admin);
+        vm.expectRevert(GoodDollarBridgeL2.NotAdmin.selector);
+        l2Bridge.mapToken(address(0x1), address(0x2));
+
+        // New admin can
+        vm.prank(newAdmin);
+        l2Bridge.mapToken(address(0x1), address(0x2));
+        assertEq(l2Bridge.l1ToL2Token(address(0x1)), address(0x2));
+    }
+
+    function test_l1Bridge_setAdmin_canBeOverwritten() public {
+        // Admin proposes one, then changes mind and proposes another.
+        address candidate1 = address(0x1111);
+        address candidate2 = address(0x2222);
+
+        vm.prank(admin);
+        l1Bridge.setAdmin(candidate1);
+        assertEq(l1Bridge.pendingAdmin(), candidate1);
+
+        vm.prank(admin);
+        l1Bridge.setAdmin(candidate2);
+        assertEq(l1Bridge.pendingAdmin(), candidate2);
+
+        // candidate1 can no longer accept
+        vm.prank(candidate1);
+        vm.expectRevert(GoodDollarBridgeL1.NotPendingAdmin.selector);
+        l1Bridge.acceptAdmin();
+
+        // candidate2 can
+        vm.prank(candidate2);
+        l1Bridge.acceptAdmin();
+        assertEq(l1Bridge.admin(), candidate2);
+    }
 }

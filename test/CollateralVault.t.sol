@@ -264,4 +264,100 @@ contract CollateralVaultTest is Test {
         vm.expectRevert();
         vault.liquidate(user, TICKER);
     }
+
+    // ============ Two-Step Admin Transfer (GOO-493) ============
+
+    event AdminTransferProposed(address indexed currentAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
+
+    function test_setAdmin_proposesPendingAdmin() public {
+        address newAdmin = address(0xBEEF);
+
+        vm.prank(admin);
+        vm.expectEmit(true, true, true, true);
+        emit AdminTransferProposed(admin, newAdmin);
+        vault.setAdmin(newAdmin);
+
+        // admin should NOT change yet
+        assertEq(vault.admin(), admin, "admin changed before acceptance");
+        assertEq(vault.pendingAdmin(), newAdmin, "pendingAdmin not set");
+    }
+
+    function test_setAdmin_revertsForNonAdmin() public {
+        vm.prank(address(0xDEAD));
+        vm.expectRevert(CollateralVault.NotAdmin.selector);
+        vault.setAdmin(address(0xBEEF));
+    }
+
+    function test_setAdmin_revertsZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert(CollateralVault.ZeroAddress.selector);
+        vault.setAdmin(address(0));
+    }
+
+    function test_acceptAdmin_completesTransfer() public {
+        address newAdmin = address(0xBEEF);
+
+        vm.prank(admin);
+        vault.setAdmin(newAdmin);
+
+        vm.prank(newAdmin);
+        vm.expectEmit(true, true, true, true);
+        emit AdminTransferred(admin, newAdmin);
+        vault.acceptAdmin();
+
+        assertEq(vault.admin(), newAdmin, "admin not updated");
+        assertEq(vault.pendingAdmin(), address(0), "pendingAdmin not cleared");
+    }
+
+    function test_acceptAdmin_revertsForNonPending() public {
+        vm.prank(admin);
+        vault.setAdmin(address(0xBEEF));
+
+        vm.prank(address(0xDEAD));
+        vm.expectRevert(CollateralVault.NotPendingAdmin.selector);
+        vault.acceptAdmin();
+    }
+
+    function test_setAdmin_canOverwritePending() public {
+        address first = address(0xBEEF);
+        address second = address(0xC0DE);
+
+        vm.prank(admin);
+        vault.setAdmin(first);
+
+        vm.prank(admin);
+        vault.setAdmin(second);
+
+        assertEq(vault.pendingAdmin(), second, "pendingAdmin not overwritten");
+
+        // First cannot accept anymore
+        vm.prank(first);
+        vm.expectRevert(CollateralVault.NotPendingAdmin.selector);
+        vault.acceptAdmin();
+
+        // Second can accept
+        vm.prank(second);
+        vault.acceptAdmin();
+        assertEq(vault.admin(), second, "admin not updated to second");
+    }
+
+    function test_oldAdmin_losesPrivilegesAfterTransfer() public {
+        address newAdmin = address(0xBEEF);
+
+        vm.prank(admin);
+        vault.setAdmin(newAdmin);
+        vm.prank(newAdmin);
+        vault.acceptAdmin();
+
+        // Old admin can no longer call onlyAdmin function
+        vm.prank(admin);
+        vm.expectRevert(CollateralVault.NotAdmin.selector);
+        vault.setPaused(true);
+
+        // New admin can
+        vm.prank(newAdmin);
+        vault.setPaused(true);
+        assertTrue(vault.paused(), "new admin cannot pause");
+    }
 }
