@@ -211,7 +211,9 @@ export default function MarketDetailPage() {
   const sideParam = searchParams.get('side')
   const initialSide = sideParam === 'yes' || sideParam === 'no' ? sideParam : undefined
 
-  const { market: onChainMarket, isLoading } = useOnChainMarket(BigInt(marketId || '0'))
+  const isValidId = /^\d+$/.test(marketId || '')
+  const parsedId = isValidId ? BigInt(marketId!) : BigInt(0)
+  const { market: onChainMarket, isLoading } = useOnChainMarket(parsedId)
 
   const market = useMemo(() => {
     if (!onChainMarket) return null
