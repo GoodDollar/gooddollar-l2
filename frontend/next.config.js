@@ -75,6 +75,22 @@ const nextConfig = {
     ]
   },
 
+  // Framework-level redirects emit a proper `Location` header at request time.
+  // Doing the same job via `redirect('/')` from a server component (the
+  // previous `src/app/swap/page.tsx`) got statically prerendered into
+  // `.next/server/app/swap.meta` as a 307 with NO `Location` header, which
+  // broke direct navigation to `/swap`. See:
+  //   .autobuilder/initiatives/0002-security-hardening/tasks/0034-fix-swap-page-broken-prerender-redirect.md
+  async redirects() {
+    return [
+      {
+        source: '/swap',
+        destination: '/',
+        permanent: false, // 307 — preserves prior semantics
+      },
+    ]
+  },
+
   experimental: {
     optimizePackageImports: [
       'viem',
