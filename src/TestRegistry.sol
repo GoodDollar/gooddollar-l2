@@ -130,7 +130,7 @@ contract TestRegistry {
         returns (TestResult[] memory matches, uint256[] memory ids)
     {
         uint256 len = _results.length;
-        uint256 matchCount;
+        uint256 matchCount = 0;
 
         // First pass: count matches.
         for (uint256 i = 0; i < len; ++i) {
@@ -140,7 +140,7 @@ contract TestRegistry {
         // Second pass: populate.
         matches = new TestResult[](matchCount);
         ids     = new uint256[](matchCount);
-        uint256 j;
+        uint256 j = 0;
         for (uint256 i = 0; i < len; ++i) {
             if (_results[i].tester == tester) {
                 matches[j] = _results[i];

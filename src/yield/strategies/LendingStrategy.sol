@@ -122,7 +122,7 @@ contract LendingStrategy {
     function emergencyWithdraw() external onlyVault returns (uint256) {
         paused = true;
         uint256 bal = IGoodLendToken(gToken).balanceOf(address(this));
-        uint256 withdrawn;
+        uint256 withdrawn = 0;
         if (bal > 0) {
             withdrawn = lendPool.withdraw(asset, bal, vault);
         }

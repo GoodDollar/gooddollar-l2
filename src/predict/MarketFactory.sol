@@ -219,7 +219,7 @@ contract MarketFactory is ReentrancyGuard {
         uint256 tokenId;
         uint256 payout;
         uint256 collateralDecrement;
-        uint256 fee;
+        uint256 fee = 0;
 
         if (isVoided) {
             // Redeem either YES or NO at 1:1 (both valid)

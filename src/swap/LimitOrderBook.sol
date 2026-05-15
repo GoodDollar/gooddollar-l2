@@ -290,12 +290,12 @@ contract LimitOrderBook {
      */
     function getActiveOrders(address user) external view returns (uint256[] memory activeIds) {
         uint256[] memory allIds = userOrders[user];
-        uint256 count;
+        uint256 count = 0;
         for (uint256 i = 0; i < allIds.length; i++) {
             if (orders[allIds[i]].status == OrderStatus.Active) count++;
         }
         activeIds = new uint256[](count);
-        uint256 j;
+        uint256 j = 0;
         for (uint256 i = 0; i < allIds.length; i++) {
             if (orders[allIds[i]].status == OrderStatus.Active) {
                 activeIds[j++] = allIds[i];

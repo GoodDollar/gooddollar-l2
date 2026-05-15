@@ -251,18 +251,10 @@ contract FastWithdrawalLP {
         uint256 ubiFee = (fee * UBI_FEE_SHARE) / 10000;
         uint256 lpFee = fee - ubiFee;
 
-        lpETHBalance[lp] -= amount;
-        totalETHLiquidity -= amount;
-
-        // Pay user
-        (bool ok, ) = to.call{value: netAmount}("");
-        if (!ok) revert TransferFailed();
-
-        // Pay UBI
-        if (ubiFee > 0) {
-            (ok, ) = ubiPool.call{value: ubiFee}("");
-            if (!ok) revert TransferFailed();
-        }
+        // Effects: apply ALL state changes before any external call (CEI).
+        // Net liquidity change for LP is -amount + lpFee.
+        lpETHBalance[lp] = lpETHBalance[lp] - amount + lpFee;
+        totalETHLiquidity = totalETHLiquidity - amount + lpFee;
 
         claims[withdrawalHash] = Claim({
             lp: lp,
@@ -271,8 +263,14 @@ contract FastWithdrawalLP {
             settled: false
         });
 
-        lpETHBalance[lp] += lpFee;
-        totalETHLiquidity += lpFee;
+        // Interactions: external calls last (function is also nonReentrant).
+        (bool ok, ) = to.call{value: netAmount}("");
+        if (!ok) revert TransferFailed();
+
+        if (ubiFee > 0) {
+            (ok, ) = ubiPool.call{value: ubiFee}("");
+            if (!ok) revert TransferFailed();
+        }
 
         emit FastClaimed(withdrawalHash, to, lp, address(0), amount, netAmount, fee);
     }

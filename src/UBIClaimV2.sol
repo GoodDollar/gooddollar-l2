@@ -147,7 +147,7 @@ contract UBIClaimV2 is ReentrancyGuard {
         require(users.length <= 1000, "Batch too large");
         uint256 epoch = currentEpoch();
         uint256 amount = goodDollar.dailyUBIAmount();
-        uint256 batchTotal;
+        uint256 batchTotal = 0;
 
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];

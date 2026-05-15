@@ -291,8 +291,8 @@ contract GoodVault {
     function harvest() external nonReentrant onlyKeeper returns (uint256 profit, uint256 loss) {
         (profit, loss) = IStrategy(strategy).harvest();
 
-        uint256 actualUBIFee;
-        uint256 actualMgmtFee;
+        uint256 actualUBIFee = 0;
+        uint256 actualMgmtFee = 0;
 
         if (profit > 0) {
             // Performance fee on profit → UBI
@@ -368,7 +368,7 @@ contract GoodVault {
 
     function emergencyShutdown() external onlyAdmin nonReentrant {
         paused = true;
-        uint256 returned;
+        uint256 returned = 0;
         if (totalDebt > 0) {
             returned = IStrategy(strategy).emergencyWithdraw();
             totalDebt = 0;
