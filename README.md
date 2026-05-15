@@ -25,7 +25,7 @@
 ### 🤖 Built Entirely by AI
 
 This isn't vaporware. **29 AI agents** wrote every line of code:
-- **619 commits** · **62 smart contracts** · **12,800 lines of Solidity** · **887 tests passing**
+- **620 commits** · **62 smart contracts** · **12,800 lines of Solidity** · **891 tests passing**
 - **6 DeFi protocols** live on devnet with real transactions
 - Security audited by Slither (automated) — [see audit report](docs/SECURITY-AUDIT.md)
 
@@ -38,7 +38,7 @@ This isn't vaporware. **29 AI agents** wrote every line of code:
 
 | Component | Version | Status | Details |
 |-----------|---------|--------|---------|
-| **GoodDollar L2** (root) | `0.2.0` | 🟢 Active | 619 commits, 62 contracts, 12.8K lines Solidity |
+| **GoodDollar L2** (root) | `0.2.0` | 🟢 Active | 620 commits, 62 contracts, 12.8K lines Solidity |
 | **Smart Contracts** | `0.2.0` | ✅ All passing | 837/837 Foundry tests pass, 0 failures |
 | **Devnet Chain** (Anvil) | — | ✅ Running | Block 62,438 · 2,276 txs · 199 addresses · Chain ID 42069 |
 | Frontend (GoodSwap) | `0.2.0` | ✅ Live | goodswap.goodclaw.org (HTTP 200) · 208 files · Next.js 14 |
@@ -83,8 +83,9 @@ tracked in `.autobuilder/initiatives/0002-security-hardening/`.
 |------------|------|-------------|
 | 2026-05-15 | 0025 | **Public RPC CORS contract** — Caddy now strips upstream `Access-Control-*` headers, sets canonical CORS once, and short-circuits `OPTIONS` preflights with `204`. Authoritative copy under `infra/caddy/`. New `scripts/check-rpc-cors.sh` smoke test (9 checks) is wired into `scripts/health-check.sh` so every deploy gates on CORS compliance. Fixes `TypeError: Failed to fetch` on `/activity`, `/governance`, `/ubi-impact`. |
 | 2026-05-15 | 0026 | **Frontend ↔ devnet address sync** — `scripts/refresh-addresses.py` now writes both `.autobuilder/addresses.env` and `op-stack/addresses.json` (idempotent — only bumps the `_comment` timestamp when actual addresses change). Frontend `frontend/src/lib/devnet.ts` audited end-to-end with `cast code`: every contract with a canonical entry in the JSON now sources its address from there (PerpEngine, MarginVault, FundingRate, PerpPriceOracle, GoodLendPool, gUSD, VaultManager, StabilityPool, PegStabilityModule, CollateralRegistry, CollateralVault, SyntheticAssetFactory, StocksPriceOracle, VoteEscrowedGD, GoodDAO, VaultFactory, AgentRegistry, UBIRevenueTracker, MockUSDC, MockWETH). Stale hardcoded addresses with no on-chain bytecode (sToken ERC-20s, GoodLend interest model/oracle, GoodSwap pool tokens, GoodStable mocks, GoodTimelock, OptimisticResolver) are tagged `// STALE — needs redeploy task` for surgical follow-up. Unblocks Explore, GoodLend, GoodPerps, GoodStocks, GoodStable dashboards. |
+| 2026-05-15 | 0027 | **`UBIRevenueTracker.feeSplitter` repaired on-chain** — canonical tracker `0xfd6f7a…` had its `feeSplitter` pointer wired to `0xC0BF…`, an address with no deployed bytecode after the chain re-snapshot. Every call to `getDashboardData()` reverted, blanking out `/ubi-impact`. Idempotent admin script `scripts/repair-ubi-revenue-tracker-feesplitter.sh` reads `.autobuilder/addresses.env`, verifies `tracker.admin() == DEPLOYER_KEY`, sends `setFeeSplitter(FEE_SPLITTER)` only when stale, then re-asserts the pointer and that `getDashboardData()` no longer reverts. `getDashboardData()` now returns live numbers (7 protocols registered, 410 txs tracked). Foundry regression tests added (`test_GetDashboardData_RevertsWhenSplitterHasNoCode`, `test_SetFeeSplitter_RepairsBrokenTracker`, plus admin/zero-address guards) so this exact failure mode is caught in CI before reaching devnet. |
 
-> *Updated: 2026-05-15 — task 0026 (frontend ↔ devnet address sync)*
+> *Updated: 2026-05-15 — task 0027 (UBIRevenueTracker.feeSplitter on-chain repair)*
 
 ---
 

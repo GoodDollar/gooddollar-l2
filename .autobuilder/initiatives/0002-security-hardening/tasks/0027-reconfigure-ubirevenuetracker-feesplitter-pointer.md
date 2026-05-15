@@ -6,7 +6,7 @@ deps: [gooddollar-l2-sync-frontend-addresses-with-live-devnet]
 split: false
 depth: 1
 planned: true
-executed: false
+executed: true
 priority: P0
 labels: [critical, on-chain, ubi-revenue-tracker, fee-splitter, blocks-frontend, production-readiness]
 ---

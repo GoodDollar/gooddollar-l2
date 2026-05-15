@@ -270,6 +270,69 @@ contract UBIRevenueTrackerTest is Test {
         vm.stopPrank();
     }
 
+    // ============ FeeSplitter pointer repair (regression for task 0027) ============
+
+    // If a tracker is wired to an address that has no code (e.g. an old
+    // deployment slot wiped by a chain re-snapshot), getDashboardData() must
+    // revert — that is the failure mode that bricked the /ubi-impact page on
+    // devnet. We assert the revert here so the "splitter has no code" case is
+    // caught in CI before it reaches the live chain.
+    function test_GetDashboardData_RevertsWhenSplitterHasNoCode() public {
+        address dead = makeAddr("dead-splitter"); // has no bytecode
+        vm.prank(admin);
+        UBIRevenueTracker brokenTracker = new UBIRevenueTracker(admin, dead);
+
+        vm.expectRevert();
+        brokenTracker.getDashboardData();
+    }
+
+    // The repair path: admin swaps in a real splitter and getDashboardData()
+    // immediately starts working. Mirrors what
+    // scripts/repair-ubi-revenue-tracker-feesplitter.sh does on devnet.
+    function test_SetFeeSplitter_RepairsBrokenTracker() public {
+        address dead = makeAddr("dead-splitter");
+        vm.prank(admin);
+        UBIRevenueTracker brokenTracker = new UBIRevenueTracker(admin, dead);
+
+        // Sanity: broken until repaired.
+        vm.expectRevert();
+        brokenTracker.getDashboardData();
+
+        // Repair via onlyAdmin setFeeSplitter — same call cast send issues.
+        vm.prank(admin);
+        brokenTracker.setFeeSplitter(address(splitter));
+
+        // Now the dashboard call must succeed and read through to the real
+        // splitter (which exposes totalFeesCollected / totalUBIFunded).
+        (
+            uint256 totalFees,
+            uint256 totalUBI,
+            ,, // protocol counts (zero — no protocols registered)
+            ,
+            uint256 splitterFees,
+            uint256 splitterUBI,
+            uint256 snapCount
+        ) = brokenTracker.getDashboardData();
+
+        assertEq(totalFees, 0);
+        assertEq(totalUBI, 0);
+        assertEq(splitterFees, 0);
+        assertEq(splitterUBI, 0);
+        assertEq(snapCount, 0);
+    }
+
+    function test_SetFeeSplitter_OnlyAdmin() public {
+        vm.prank(makeAddr("rando"));
+        vm.expectRevert("Not admin");
+        tracker.setFeeSplitter(makeAddr("anyone"));
+    }
+
+    function test_SetFeeSplitter_ZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert("zero address");
+        tracker.setFeeSplitter(address(0));
+    }
+
     // ============ Fuzz ============
 
     function testFuzz_ReportFees(uint128 fees, uint128 ubi, uint32 txs) public {
