@@ -25,7 +25,7 @@
 ### 🤖 Built Entirely by AI
 
 This isn't vaporware. **29 AI agents** wrote every line of code:
-- **620 commits** · **62 smart contracts** · **12,800 lines of Solidity** · **891 tests passing**
+- **620 commits** · **62 smart contracts** · **12,800 lines of Solidity** · **1024 tests passing**
 - **6 DeFi protocols** live on devnet with real transactions
 - Security audited by Slither (automated) — [see audit report](docs/SECURITY-AUDIT.md)
 
@@ -39,7 +39,7 @@ This isn't vaporware. **29 AI agents** wrote every line of code:
 | Component | Version | Status | Details |
 |-----------|---------|--------|---------|
 | **GoodDollar L2** (root) | `0.2.0` | 🟢 Active | 622 commits, 62 contracts, 12.8K lines Solidity |
-| **Smart Contracts** | `0.2.0` | ✅ All passing | 837/837 Foundry tests pass, 0 failures |
+| **Smart Contracts** | `0.2.0` | ✅ All passing | 1024/1024 Foundry tests pass, 0 failures |
 | **Devnet Chain** (Anvil) | — | ✅ Running | Block 62,438 · 2,276 txs · 199 addresses · Chain ID 42069 |
 | Frontend (GoodSwap) | `0.2.0` | ✅ Live | goodswap.goodclaw.org (HTTP 200) · 208 files · Next.js 14 |
 | Explorer (Blockscout) | — | ✅ Live | explorer.goodclaw.org (HTTP 200) |
@@ -86,9 +86,11 @@ tracked in `.autobuilder/initiatives/0002-security-hardening/`.
 | 2026-05-15 | 0027 | **`UBIRevenueTracker.feeSplitter` repaired on-chain** — canonical tracker `0xfd6f7a…` had its `feeSplitter` pointer wired to `0xC0BF…`, an address with no deployed bytecode after the chain re-snapshot. Every call to `getDashboardData()` reverted, blanking out `/ubi-impact`. Idempotent admin script `scripts/repair-ubi-revenue-tracker-feesplitter.sh` reads `.autobuilder/addresses.env`, verifies `tracker.admin() == DEPLOYER_KEY`, sends `setFeeSplitter(FEE_SPLITTER)` only when stale, then re-asserts the pointer and that `getDashboardData()` no longer reverts. `getDashboardData()` now returns live numbers (7 protocols registered, 410 txs tracked). Foundry regression tests added (`test_GetDashboardData_RevertsWhenSplitterHasNoCode`, `test_SetFeeSplitter_RepairsBrokenTracker`, plus admin/zero-address guards) so this exact failure mode is caught in CI before reaching devnet. |
 | 2026-05-15 | 0028 | **Live `goodswap` PM2 frontend rebuilt + restarted** — diagnosis: source after tasks 0026 + 0027 was correct, but the live `.next/` bundle PM2 was serving had been compiled at 19:33 (before the address sync at 21:11), so the deployed `/ubi-impact` page was still embedding the dead `0x021D…` and `0x3abB…` addresses inlined into the client bundle at build time. Authored idempotent helper `scripts/redeploy-goodswap-frontend.sh` (runs `npm run build`, `pm2 restart goodswap --update-env`, polls `pm2 jlist` for `online` + `unstable_restarts == 0`, then probes the live host and exits non-zero on non-`200`). Ran the helper end-to-end: build succeeded, PM2 process came back online cleanly, live host returned `HTTP 200`, and `agent-browser snapshot` of `https://goodswap.goodclaw.org/ubi-impact` now renders the canonical addresses (`UBIRevenueTracker: 0xfd6f…c351`, `UBIFeeSplitter: 0x809d…c3d`) with full dashboard data (7/7 protocols active, 13.10K G$ fees collected, 4.37K G$ funded to UBI) — no more "Error loading dashboard data" banner. |
 | 2026-05-15 | 0030 | **Perf — CoinGecko price feed shared across all consumers** — `usePriceFeeds()` was mounted from 5 different components (`SwapCard`, `/stable` page, `PortfolioOnChain`, `SwapPriceChart`, `useOnChainMarketData`), and each one held its own `useState` + its own `setInterval(fetch, 60_000)`. On `/stable` alone that produced 3 simultaneous CoinGecko `simple/price` requests on first paint (two of them asking for the *same* `WETH,G$,USDC` set), and 30+ CoinGecko hits per minute for a power user navigating the app — easily blowing past the free tier's 5–15 req/min/IP and silently degrading every consumer to `FALLBACK_PRICES`. Refactored `frontend/src/lib/usePriceFeeds.ts` into a module-level singleton store: one shared `Map`-backed cache, one `setInterval`, one in-flight fetch guard, and refcounted symbol tracking so newly subscribed symbols trigger an immediate refetch but duplicate subscribers piggyback on the cached state. Public hook signature (`usePriceFeeds(symbols): PriceFeedState`) is unchanged so all 5 call sites stay byte-identical. New test `frontend/src/lib/__tests__/usePriceFeeds.test.ts` (14 tests, all green) proves: 3 hooks → 1 fetch, new symbol triggers 1 extra fetch, duplicate symbol triggers 0 extra fetches, fetch error keeps fallback prices and `isLive=false`, last-unmount stops the interval. `react-doctor` 100/100 on the diff. |
+| 2026-05-15 | 0032 | **Tests — fix `test_calculateUBIFee_smallAmount` integer-division expectations** — the test asserted `calculateUBIFee(4) == 1` with comment `4 * 2000 / 10000 = 1.3332 → 1`, but Solidity integer math gives `4 * 2000 / 10000 = 0` (truncates `0.8`). Corrected the 4-wei assertion to `0`, fixed the inaccurate comment, and added a 5-wei boundary case where the fee first becomes 1 (`5 * 2000 / 10000 = 1`). All 38 `UBIFeeHook` tests pass. |
+| 2026-05-15 | 0033 | **Tests — fix `test_GetDashboardData` total UBI assertion** — the dashboard test called `reportFees(0, 600, 200, 30)` + `reportFees(1, 400, 80, 20)` then asserted `totalUBI == 200e18`, but `UBIRevenueTracker` accumulates the `ubiFee` field across all protocols so the correct sum is `200 + 80 = 280e18`. Updated the assertion to `280e18` with an inline comment explaining the per-protocol contributions. Full Foundry suite back to green: **1024 / 1024 tests passing, 0 failures** (was 1022 / 1024 before tasks 0032+0033). |
 | 2026-05-15 | 0031 | **Perf — `<PortfolioOnChain>` reads batched into one multicall** — the on-chain portfolio sidebar was independently firing **9 `eth_call` requests every 15 s** against the dev RPC (G$ balance + gUSD balance + GoodLend account data + 3 vaults × 2 reads each — `vaults` and `accumulators`). Worse, the same logic was duplicated in two places: once in the per-call hooks (`useVault`, `useUserAccountData`) and once inside the component, so any future fix had to be made twice. Extracted the pure post-fetch math into two helpers — `computeVaultState(vaultData, accData, decimals, priceUSD, liqRatio)` in `useGoodStable.ts` and `computeAccountData(raw)` in `useGoodLend.ts` — and reused both inside the legacy hooks (zero behaviour change) and inside a new shared hook `frontend/src/lib/usePortfolioReads.ts` that batches all 9 reads into a single `wagmi.useReadContracts({ allowFailure: true, refetchInterval: 15_000 })` call. The component now holds **one** hook for chain data plus `usePriceFeeds` for prices, and `multicall3.aggregate3` collapses the 9 round-trips into 1. Updated `PortfolioOnChain.test.tsx` to mock the new `usePortfolioReads` and `usePriceFeeds` modules — all 9 component tests + 24 lib tests still green. `react-doctor` 99/100 on the diff (pre-existing `text-gray-*` warnings preserved from original component). |
 
-> *Updated: 2026-05-15 — task 0031 (PortfolioOnChain reads batched via multicall — 9 eth_calls every 15s → 1 multicall, kills the worst API waterfall in the app)*
+> *Updated: 2026-05-15 — tasks 0032 + 0033 (UBI fee-hook & revenue-tracker test expectations corrected — Foundry suite back to 1024 / 1024 green, 0 failures)*
 
 ---
 
@@ -164,7 +166,7 @@ Hourly heartbeats. Agents pick up issues, write code + tests, commit, and report
 
 **All contracts include UBI fee routing** — every trade, every liquidation, every fee flows through `UBIFeeSplitter.splitFee()` which distributes 20% to the UBI pool.
 
-### Test Suite: 837 Foundry Tests
+### Test Suite: 1024 Foundry Tests
 
 ```
 test/

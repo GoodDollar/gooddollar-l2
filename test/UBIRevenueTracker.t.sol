@@ -185,7 +185,7 @@ contract UBIRevenueTrackerTest is Test {
         ) = tracker.getDashboardData();
 
         assertEq(totalFees, 1000e18);
-        assertEq(totalUBI, 200e18);
+        assertEq(totalUBI, 280e18); // 200e18 (protocol 0) + 80e18 (protocol 1)
         assertEq(totalTx, 50);
         assertEq(pCount, 2);
         assertEq(activeP, 2);
