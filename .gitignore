@@ -11,6 +11,7 @@ playwright-report/
 .autobuilder/PRODUCTION_READY.md
 node_modules/
 *.py
+!scripts/*.py
 __pycache__/
 research/aave-v3/aave-v3-core
 .autobuilder/journal.jsonl
