@@ -1,8 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, act } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 let mockMarketId = '1'
+let mockMarketCount: bigint = BigInt(2)
+let mockOnChainMarket: { market: unknown; isLoading: boolean; isError?: boolean } = {
+  market: null,
+  isLoading: false,
+}
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ marketId: mockMarketId }),
@@ -10,7 +15,9 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/lib/useMarkets', () => ({
-  useOnChainMarket: () => ({ market: null, isLoading: false }),
+  useOnChainMarket: () => mockOnChainMarket,
+  useMarketCount: () => ({ count: mockMarketCount, isLoading: false }),
+  useAllOnChainMarkets: () => ({ markets: [], isLoading: false }),
 }))
 
 vi.mock('@rainbow-me/rainbowkit', () => ({
@@ -39,6 +46,11 @@ vi.mock('next/dynamic', () => ({
 }))
 
 import MarketDetailPage from '../[marketId]/page'
+
+beforeEach(() => {
+  mockMarketCount = BigInt(2)
+  mockOnChainMarket = { market: null, isLoading: false }
+})
 
 describe('MarketDetailPage — BigInt crash guard', () => {
   it('does not crash when marketId is a non-numeric string', () => {
@@ -73,4 +85,57 @@ describe('MarketDetailPage — BigInt crash guard', () => {
     expect(link).toBeTruthy()
     expect(link.closest('a')?.getAttribute('href')).toBe('/predict')
   })
+})
+
+describe('MarketDetailPage — out-of-range / stuck-loading guards', () => {
+  it('renders Market Not Found immediately when id >= marketCount (no spinner)', () => {
+    mockMarketId = '9999999999'
+    mockMarketCount = BigInt(2)
+    // Even if the on-chain hook were stuck loading, the out-of-range gate
+    // should fire MarketNotFound before we ever render the spinner.
+    mockOnChainMarket = { market: null, isLoading: true, isError: false }
+    render(<TestWrapper><MarketDetailPage /></TestWrapper>)
+    expect(screen.getByText('Market Not Found')).toBeTruthy()
+    expect(screen.queryByLabelText('Loading market data')).toBeNull()
+  })
+
+  it('renders Market Not Found exactly at the boundary (id == marketCount)', () => {
+    mockMarketId = '2'
+    mockMarketCount = BigInt(2)
+    mockOnChainMarket = { market: null, isLoading: true, isError: false }
+    render(<TestWrapper><MarketDetailPage /></TestWrapper>)
+    expect(screen.getByText('Market Not Found')).toBeTruthy()
+  })
+
+  it('falls back to Market Not Found when fetch stays loading past the timeout', () => {
+    vi.useFakeTimers()
+    try {
+      mockMarketId = '0'
+      mockMarketCount = BigInt(2)
+      mockOnChainMarket = { market: null, isLoading: true, isError: false }
+      render(<TestWrapper><MarketDetailPage /></TestWrapper>)
+      // Initially we should be in the loading state, not MarketNotFound.
+      expect(screen.queryByText('Market Not Found')).toBeNull()
+      // Advance past the 5s timeout — even if the hook is still "loading",
+      // the mount-only timer should fire MarketNotFound.
+      act(() => {
+        vi.advanceTimersByTime(6_000)
+      })
+      expect(screen.getByText('Market Not Found')).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('renders Market Not Found when isError is true even while id is in range', () => {
+    mockMarketId = '0'
+    mockMarketCount = BigInt(2)
+    mockOnChainMarket = { market: null, isLoading: false, isError: true }
+    render(<TestWrapper><MarketDetailPage /></TestWrapper>)
+    expect(screen.getByText('Market Not Found')).toBeTruthy()
+  })
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })

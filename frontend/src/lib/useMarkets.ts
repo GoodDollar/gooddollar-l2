@@ -45,17 +45,27 @@ export function useMarketCount(): { count: bigint; isLoading: boolean } {
 
 // ─── Single market ────────────────────────────────────────────────────────────
 
-export function useOnChainMarket(marketId: bigint): {
+export function useOnChainMarket(
+  marketId: bigint,
+  options?: { enabled?: boolean }
+): {
   market: OnChainMarket | null
   isLoading: boolean
   isError: boolean
 } {
+  // When the caller knows the id is out of range (e.g. /predict/9999),
+  // pass enabled:false so wagmi doesn't fire — and doesn't retry — a call
+  // that will revert with array-out-of-bounds. retry:false also caps the
+  // retry storm that previously kept isLoading=true forever and reset any
+  // page-level loading-timeout effect.
+  const enabled = options?.enabled ?? true
+
   const result = useReadContract({
     address: CONTRACTS.MarketFactory,
     abi: MarketFactoryABI,
     functionName: 'getMarket',
     args: [marketId],
-    query: { refetchInterval: 15_000 },
+    query: { enabled, retry: false, refetchInterval: 15_000 },
   })
 
   const probResult = useReadContract({
@@ -63,8 +73,14 @@ export function useOnChainMarket(marketId: bigint): {
     abi: MarketFactoryABI,
     functionName: 'impliedProbabilityYES',
     args: [marketId],
-    query: { refetchInterval: 15_000 },
+    query: { enabled, retry: false, refetchInterval: 15_000 },
   })
+
+  // Caller asked us not to fetch — surface as "not found" so the page
+  // can render MarketNotFound immediately instead of spinning forever.
+  if (!enabled) {
+    return { market: null, isLoading: false, isError: true }
+  }
 
   if (!result.data) {
     return { market: null, isLoading: result.isLoading, isError: result.isError }

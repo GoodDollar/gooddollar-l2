@@ -266,18 +266,28 @@ export default function MarketDetailPage() {
 
   const isValidId = /^\d+$/.test(marketId || '')
   const parsedId = isValidId ? BigInt(marketId!) : BigInt(0)
-  const { market: onChainMarket, isLoading, isError } = useOnChainMarket(parsedId)
 
+  // Read marketCount so we can refuse to even fire getMarket(id) for
+  // out-of-range ids (which revert with array-OOB). Without this, wagmi's
+  // retry loop keeps isLoading=true forever and the page never falls back
+  // to MarketNotFound. See task 0014 in 0002-security-hardening.
+  const { count: marketCount, isLoading: isCountLoading } = useMarketCount()
+  const isOutOfRange = isValidId && marketCount > BigInt(0) && parsedId >= marketCount
+  const fetchEnabled = isValidId && !isOutOfRange
+
+  const { market: onChainMarket, isLoading, isError } = useOnChainMarket(
+    parsedId,
+    { enabled: fetchEnabled }
+  )
+
+  // Mount-only timer — must NOT depend on isLoading, otherwise wagmi
+  // retry cycles that briefly flip isLoading false→true would reset it
+  // and the page would spin forever on a broken RPC/invalid id.
   const [isTimedOut, setIsTimedOut] = useState(false)
-
   useEffect(() => {
-    if (!isLoading) {
-      setIsTimedOut(false)
-      return
-    }
     const timer = setTimeout(() => setIsTimedOut(true), LOADING_TIMEOUT_MS)
     return () => clearTimeout(timer)
-  }, [isLoading])
+  }, [])
 
   const market = useMemo(() => {
     if (!onChainMarket) return null
@@ -289,11 +299,11 @@ export default function MarketDetailPage() {
     return generateProbabilityHistory(market.yesPrice, 90)
   }, [market])
 
-  if (!isValidId || isError || isTimedOut) {
+  if (!isValidId || isOutOfRange || isError || (isTimedOut && !market)) {
     return <MarketNotFound />
   }
 
-  if (isLoading) {
+  if (isCountLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]" role="status" aria-label="Loading market data">
         <div className="w-8 h-8 border-2 border-goodgreen/30 border-t-goodgreen rounded-full animate-spin" />
