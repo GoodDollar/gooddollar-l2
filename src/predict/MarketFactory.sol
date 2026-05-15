@@ -137,7 +137,7 @@ contract MarketFactory is ReentrancyGuard {
      * @param isYES True for YES tokens, false for NO tokens
      * @param amount Number of outcome tokens to buy (1e18 = 1 token = 1 G$)
      */
-    function buy(uint256 marketId, bool isYES, uint256 amount) external {
+    function buy(uint256 marketId, bool isYES, uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         Market storage m = markets[marketId];
         if (m.status != MarketStatus.Open) revert MarketNotOpen();

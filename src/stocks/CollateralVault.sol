@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./SyntheticAsset.sol";
 import "./PriceOracle.sol";
 
@@ -29,7 +30,7 @@ interface IUBIFeeSplitter {
     function splitFee(uint256 totalFee, address dAppRecipient) external returns (uint256 ubiShare, uint256 protocolShare, uint256 dAppShare);
 }
 
-contract CollateralVault {
+contract CollateralVault is ReentrancyGuard {
     // ============ Constants ============
 
     /// @notice Minimum collateral ratio to open a position (150%)
@@ -165,7 +166,7 @@ contract CollateralVault {
     ///      (e.g. passing 500_000_000 for "500 USDC" when vault expects 18-decimal GDT).
     uint256 public constant MIN_DEPOSIT = 1e15;
 
-    function depositCollateral(string calldata ticker, uint256 amount) external whenNotPaused {
+    function depositCollateral(string calldata ticker, uint256 amount) external whenNotPaused nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (amount < MIN_DEPOSIT) revert DepositTooSmall(amount, MIN_DEPOSIT);
         bytes32 key = _key(ticker);
@@ -198,7 +199,7 @@ contract CollateralVault {
         string calldata ticker,
         uint256 collateralAmount,
         uint256 syntheticAmount
-    ) external whenNotPaused {
+    ) external whenNotPaused nonReentrant {
         bytes32 key = _key(ticker);
         if (collateralAmount > 0) {
             _depositCollateral(key, collateralAmount);
@@ -211,7 +212,7 @@ contract CollateralVault {
      * @param ticker Stock ticker
      * @param amount G$ amount to withdraw
      */
-    function withdrawCollateral(string calldata ticker, uint256 amount) external whenNotPaused {
+    function withdrawCollateral(string calldata ticker, uint256 amount) external whenNotPaused nonReentrant {
         if (amount == 0) revert ZeroAmount();
         bytes32 key = _key(ticker);
 
@@ -249,7 +250,7 @@ contract CollateralVault {
      * @param ticker Stock ticker
      * @param syntheticAmount Amount of synthetic tokens to mint (1e18 = 1 share)
      */
-    function mint(string calldata ticker, uint256 syntheticAmount) external whenNotPaused {
+    function mint(string calldata ticker, uint256 syntheticAmount) external whenNotPaused nonReentrant {
         _mint(_key(ticker), syntheticAmount);
     }
 
@@ -303,7 +304,7 @@ contract CollateralVault {
      * @param ticker Stock ticker
      * @param syntheticAmount Amount of synthetic tokens to burn
      */
-    function burn(string calldata ticker, uint256 syntheticAmount) external whenNotPaused {
+    function burn(string calldata ticker, uint256 syntheticAmount) external whenNotPaused nonReentrant {
         if (syntheticAmount == 0) revert ZeroAmount();
         bytes32 key = _key(ticker);
         address syntheticAsset = syntheticAssets[key];

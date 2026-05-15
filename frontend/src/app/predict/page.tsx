@@ -132,17 +132,32 @@ function MarketCard({ market }: { market: PredictionMarket }) {
       className={`bg-dark-100 rounded-2xl border border-gray-700/20 p-5 hover:border-goodgreen/30 hover:-translate-y-[1px] transition-all group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/40 ${isExpired ? 'opacity-60' : ''}`}
     >
       <div className="flex items-start justify-between mb-3">
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen/80 border border-goodgreen/15">
-          {market.category}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen/80 border border-goodgreen/15">
+            {market.category}
+          </span>
+          {!isExpired && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/15">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+              </span>
+              Live
+            </span>
+          )}
+        </div>
         <span className={`text-xs font-medium ${timeLabelClass}`}>{timeLabel}</span>
       </div>
 
-      <div className="flex items-start gap-3 mb-3 min-h-[2.75rem]">
+      <div className="flex items-start gap-3 mb-1.5 min-h-[2.75rem]">
         <MarketIcon category={market.category} />
         <h3 className="text-sm font-semibold text-white leading-snug group-hover:text-goodgreen/90 transition-colors line-clamp-2">
           {market.question}
         </h3>
+      </div>
+
+      <div className="mb-3 pl-12">
+        <span className="text-xs font-bold text-white/80">{formatVolume(market.volume)} Vol.</span>
       </div>
 
       <div className="mb-3">
@@ -180,8 +195,8 @@ function MarketCard({ market }: { market: PredictionMarket }) {
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700/15">
-        <span>Vol: {formatVolume(market.volume)}</span>
         <span>{formatVolume(market.liquidity)} liquidity</span>
+        <span>{market.totalShares.toLocaleString(undefined, { maximumFractionDigits: 0 })} shares</span>
       </div>
     </div>
   )
@@ -235,6 +250,13 @@ function FeaturedMarket({ markets }: { markets: PredictionMarket[] }) {
         <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen/80 border border-goodgreen/15 ml-1">
           {featured.category}
         </span>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/15 ml-1">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+          </span>
+          Live
+        </span>
         <span className="text-xs text-gray-500 ml-auto">{timeLabel}</span>
       </div>
 
@@ -247,9 +269,10 @@ function FeaturedMarket({ markets }: { markets: PredictionMarket[] }) {
             </h2>
           </div>
 
-          <div className="flex items-baseline gap-2 mb-2">
+          <div className="flex items-baseline gap-3 mb-2">
             <span className="text-3xl font-bold text-green-400">{yesPct}%</span>
             <span className="text-sm text-gray-500">chance</span>
+            <span className="text-sm font-bold text-white/80 ml-auto">{formatVolume(featured.volume)} Vol.</span>
           </div>
 
           <ProbabilityBar yesPrice={featured.yesPrice} />
@@ -274,8 +297,8 @@ function FeaturedMarket({ markets }: { markets: PredictionMarket[] }) {
           </div>
 
           <div className="flex items-center gap-4 text-xs text-gray-500 mt-3">
-            <span>Vol: {formatVolume(featured.volume)}</span>
             <span>{formatVolume(featured.liquidity)} liquidity</span>
+            <span>{featured.totalShares.toLocaleString(undefined, { maximumFractionDigits: 0 })} shares</span>
           </div>
         </div>
 
