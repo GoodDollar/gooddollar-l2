@@ -26,8 +26,8 @@ contract PerpUBIFeeSplitterTest is Test {
     uint256 constant LIQUIDATION_BONUS = 50 ether; // 50 G$
     uint256 constant FUNDING_FEE = 5 ether; // 5 G$
 
-    // Expected fee splits (33.33% UBI, 16.67% protocol, 50% dApp)
-    uint256 constant EXPECTED_UBI_BPS = 3333;
+    // Expected fee splits (20% UBI, 16.67% protocol, 50% dApp)
+    uint256 constant EXPECTED_UBI_BPS = 2000;
     uint256 constant EXPECTED_PROTOCOL_BPS = 1667;
 
     function setUp() public {
@@ -62,7 +62,7 @@ contract PerpUBIFeeSplitterTest is Test {
 
         vm.stopPrank();
 
-        // Verify correct fee distribution (33.33% / 16.67% / 50%)
+        // Verify correct fee distribution (20% / 16.67% / 50%)
         uint256 expectedUBI = (TRADE_FEE * EXPECTED_UBI_BPS) / 10000;
         uint256 expectedProtocol = (TRADE_FEE * EXPECTED_PROTOCOL_BPS) / 10000;
         uint256 expectedDApp = TRADE_FEE - expectedUBI - expectedProtocol;
@@ -225,7 +225,7 @@ contract PerpUBIFeeSplitterTest is Test {
         uint256 expectedTotalUBI = ubiFromTrading + ubiFromFunding + ubiFromLiquidations;
         assertEq(totalUBI, expectedTotalUBI, "Total UBI calculation incorrect");
 
-        // Each should be 33.33% of respective fees
+        // Each should be 20% of respective fees
         assertEq(ubiFromTrading, (TRADE_FEE * EXPECTED_UBI_BPS) / 10000, "Trading UBI incorrect");
         assertEq(ubiFromFunding, (FUNDING_FEE * EXPECTED_UBI_BPS) / 10000, "Funding UBI incorrect");
         assertEq(ubiFromLiquidations, (LIQUIDATION_BONUS * EXPECTED_UBI_BPS) / 10000, "Liquidation UBI incorrect");
@@ -389,14 +389,14 @@ contract PerpUBIFeeSplitterTest is Test {
         vm.startPrank(perpEngine);
         goodDollar.approve(address(splitter), 100 ether);
 
-        // Generate activity: 100 G$ in fees should produce 33.33 G$ UBI
+        // Generate activity: 100 G$ in fees should produce 20 G$ UBI
         splitter.splitTradingFee(100 ether, perpEngine, trader1, 0, 1000 ether);
 
         vm.stopPrank();
 
         uint256 impactRate = splitter.getDerivativesSocialImpactRate();
 
-        // Should be 3333 (33.33 UBI per 100 volume = 3333 per 10000 units)
+        // Should be 2000 (20 UBI per 100 volume = 2000 per 10000 units)
         assertEq(impactRate, EXPECTED_UBI_BPS, "Impact rate calculation incorrect");
     }
 

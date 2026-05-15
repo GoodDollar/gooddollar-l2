@@ -75,7 +75,7 @@ contract UBIFeeHook {
     /// @notice The UBI pool that receives fee share
     address public ubiPool;
 
-    /// @notice Fee percentage routed to UBI in basis points (3333 = 33.33%)
+    /// @notice Fee percentage routed to UBI in basis points (2000 = 20%)
     uint256 public ubiFeeShareBPS;
 
     /// @notice Admin who can adjust parameters
@@ -134,7 +134,7 @@ contract UBIFeeHook {
     /**
      * @param _poolManager Address of the Uniswap V4 PoolManager
      * @param _ubiPool Address of the UBI pool to receive fees
-     * @param _ubiFeeShareBPS Fee share in basis points (e.g., 3333 for 33.33%)
+     * @param _ubiFeeShareBPS Fee share in basis points (e.g., 2000 for 20%)
      * @param _admin Admin address
      */
     constructor(

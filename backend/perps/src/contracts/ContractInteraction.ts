@@ -4,7 +4,7 @@
  * Handles all interactions with GoodDollar L2 smart contracts:
  * - GoodPerps.sol: Position management and settlement
  * - MarginVault.sol: Margin deposits/withdrawals
- * - UBIFeeSplitter.sol: Fee routing (33% to UBI)
+ * - UBIFeeSplitter.sol: Fee routing (20% to UBI)
  * - InsuranceFund.sol: Liquidation backstop
  */
 

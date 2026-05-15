@@ -1,6 +1,6 @@
 # GoodDollar L2: Growth and Partnerships Strategy (Q3/Q4 Focus)
 
-**Objective:** Transition GoodDollar L2 from a functional UBI mechanism to the dominant, trusted, and essential infrastructure layer for Web3 financial inclusion, solidifying the 33% fee-to-UBI model as a core value proposition.
+**Objective:** Transition GoodDollar L2 from a functional UBI mechanism to the dominant, trusted, and essential infrastructure layer for Web3 financial inclusion, solidifying the 20% fee-to-UBI model as a core value proposition.
 
 **Core Thesis:** Our growth narrative must pivot from "A UBI-focused L2" to **"The Proven Infrastructure for Decentralized Economic Resilience."**
 
@@ -15,7 +15,7 @@ Partnerships must be categorized by their ability to drive **Liquidity Inflow**,
 | **1. Major Global Remittance Platforms (e.g., WorldRemit integration)** | **Utility/Adoption** | **Rationale:** Direct pipeline to unbanked/underbanked populations globally. **Metric:** Target 10% of new cross-border transactions utilizing GoodDollar rails. |
 | **2. Layer 2 Scaling Solutions (e.g., Polygon zkEVM, Arbitrum)** | **Technical/Liquidity** | **Rationale:** Co-marketing and interoperability proofs. Position GoodDollar as the *destination* for UBI-aligned DeFi yield farming across multiple L2s. **Metric:** Quarterly liquidity depth increase (>20% QoQ). |
 | **3. SocialFi Platforms (e.g., Lens Protocol, Farcaster)** | **User Acquisition** | **Rationale:** Integrate UBI access/staking rewards directly into social reputation/governance. **Metric:** 5% of new socialFi users accessing DeFi via GoodDollar. |
-| **4. ESG/Impact Investment Vehicles (e.g., Temasek, large DAOs)** | **Credibility/Capital** | **Rationale:** Attract institutional capital and legitimacy by proving measurable social impact (the 33% metric). **Metric:** Securing a strategic advisory or initial investment round. |
+| **4. ESG/Impact Investment Vehicles (e.g., Temasek, large DAOs)** | **Credibility/Capital** | **Rationale:** Attract institutional capital and legitimacy by proving measurable social impact (the 20% metric). **Metric:** Securing a strategic advisory or initial investment round. |
 | **5. Decentralized Identity (DID) Protocols (e.g., SpruceID)** | **User Onboarding** | **Rationale:** Solve the KYC/KYB problem for global users. Allow seamless, privacy-preserving onboarding for UBI claims. **Metric:** Reduction in onboarding friction time by 40%. |
 | **6. Gaming/Metaverse Platforms (e.g., Decentraland, Sandbox)** | **Utility/Engagement** | **Rationale:** Build use-cases where UBI tokens are required for in-world asset purchasing or participation. **Metric:** Establishing 3 active game integrations within 6 months. |
 | **7. Stablecoin Issuers (e.g., MakerDAO, Aave)** | **Liquidity/Depth** | **Rationale:** Deepening the underlying collateral pools. Co-develop yield products that explicitly tie yield generation to UBI distribution. **Metric:** Increasing Total Value Locked (TVL) by X% through new yield pools. |

@@ -15,7 +15,7 @@ executed: true
 - Contract addresses available in .autobuilder/addresses.env
 - 6 protocols to test: GoodSwap, GoodPerps, GoodLend, GoodStable, GoodStocks, GoodPredict
 - Each protocol needs: approve → execute → verify receipt → check UBI fee
-- UBI fee verification: check UBI pool balance before/after, verify 33% of fees routed
+- UBI fee verification: check UBI pool balance before/after, verify 20% of fees routed
 - Use `cast send` for transactions, `cast call` for reads
 - Tester key available in .env/addresses.env
 
@@ -36,7 +36,7 @@ graph LR
 6 protocol transactions + UBI verification script. Mostly using cast commands. Estimated: 2-3 days.
 
 ## Goal
-Execute real on-chain transactions across all 6 protocols on Anvil devnet and verify UBI 33% fee routing works end-to-end.
+Execute real on-chain transactions across all 6 protocols on Anvil devnet and verify UBI 20% fee routing works end-to-end.
 
 ## Scope
 
@@ -52,7 +52,7 @@ Execute real on-chain transactions across all 6 protocols on Anvil devnet and ve
 For each protocol:
 1. Record UBI pool balance before transaction
 2. Execute protocol transaction
-3. Check that 33% of fees arrived in UBI pool
+3. Check that 20% of fees arrived in UBI pool
 4. Write assertion script that validates the exact fee split
 
 ### Contract Addresses:
@@ -69,5 +69,5 @@ From `.autobuilder/addresses.env`:
 
 ## Acceptance Criteria
 - Transaction receipts prove all 6 protocols execute on-chain
-- UBI fee routing verified: 33% of fees from each protocol reach UBI pool
+- UBI fee routing verified: 20% of fees from each protocol reach UBI pool
 - Test script is repeatable and can be run for regression testing

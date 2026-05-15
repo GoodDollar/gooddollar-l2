@@ -26,7 +26,7 @@ This content package is designed to establish GoodDollar L2 as a cutting-edge, t
 ### **III. The Learning Curve: Where AI Excels and Where Humans Remain Essential (Approx. 150 words)**
 *   **The Success Metrics:** Highlight the rigorous testing process: **837 tests passing** proves robustness. Mention the existing adoption: **640K users** prove utility *before* launch.
 *   **The Key Insight (The 'Learning'):** AI excels at pattern recognition, boilerplate generation, and exhaustive testing. It accelerates the *process*.
-*   **The Human Edge:** Where do we still need experts? Protocol design philosophy, ethical governance, and defining the *vision* (e.g., the commitment to **33% fees to UBI**—a social layer AI can't fully dictate).
+*   **The Human Edge:** Where do we still need experts? Protocol design philosophy, ethical governance, and defining the *vision* (e.g., the commitment to **20% fees to UBI**—a social layer AI can't fully dictate).
 *   **The Result:** AI is the ultimate co-pilot, not the ultimate architect.
 
 ### **IV. Conclusion: The Future of Autonomous Development (Approx. 100 words)**
@@ -50,7 +50,7 @@ The numbers speak for themselves: 🚀 426 commits. 📄 53 smart contracts. �
 But it’s not just tech flexing. GoodDollar L2 is designed with utility baked in. We’ve integrated **6 major DeFi protocols** to ensure immediate, real-world value for our community. 🌐
 
 **Tweet 4/7 (The Mission):**
-Our goal goes beyond yield. A core part of the L2 structure directs **33% of all fees to UBI**. Building decentralized finance *with* a societal conscience. 💖
+Our goal goes beyond yield. A core part of the L2 structure directs **20% of all fees to UBI**. Building decentralized finance *with* a societal conscience. 💖
 
 **Tweet 5/7 (Credibility):**
 Built on the foundation of experience. GoodDollar L2 is spearheaded by Yoni Assia (eToro founder), bringing institutional FinTech rigor to the bleeding edge of crypto. 🤝
@@ -80,7 +80,7 @@ The era of autonomous infrastructure is here. See the proof. Dive into the docum
 > 🌟 **FROM eToro to the Frontier!** 🌟 A massive shoutout to Yoni Assia for leading the charge. Combining world-class FinTech expertise with bleeding-edge AI development means GoodDollar L2 isn't just theoretical—it's battle-tested for the real world. To our **640K users**: Thank you for believing in the vision! ✨
 
 **Milestone 5: Mainnet Readiness / Launch Announcement (High Energy/CTA)**
-> 🚀 **WE ARE GOING LIVE: GoodDollar L2 Mainnet Launch Imminent!** 🚀 The autonomous development pipeline has hit peak efficiency. The vision—a robust, multi-protocol L2 with 33% fees dedicated to UBI—is ready for the world. Get your wallets ready. The future of decentralized finance starts NOW. 🔗 [Link to Bridge/Docs]
+> 🚀 **WE ARE GOING LIVE: GoodDollar L2 Mainnet Launch Imminent!** 🚀 The autonomous development pipeline has hit peak efficiency. The vision—a robust, multi-protocol L2 with 20% fees dedicated to UBI—is ready for the world. Get your wallets ready. The future of decentralized finance starts NOW. 🔗 [Link to Bridge/Docs]
 
 ***
 
@@ -107,7 +107,7 @@ The era of autonomous infrastructure is here. See the proof. Dive into the docum
 
 2.  **The Real-World Value Proposition (Why Should They Care?):**
     *   **Traction:** We aren't theoretical. We already boast **640K active users** on the network, validating the utility.
-    *   **Social Impact:** Our model incorporates a mandatory **33% fee allocation to UBI**, proving that advanced DeFi can be built with a direct, positive societal mission.
+    *   **Social Impact:** Our model incorporates a mandatory **20% fee allocation to UBI**, proving that advanced DeFi can be built with a direct, positive societal mission.
     *   **Leadership Edge:** The project is guided by industry veterans, including **Yoni Assia (eToro founder)**, blending institutional finance rigor with decentralized innovation.
 
 ### **The "Why Now?" Closer (The Conclusion)**

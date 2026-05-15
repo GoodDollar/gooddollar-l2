@@ -60,7 +60,7 @@ export const CONTRACTS = {
   // ── GoodSwap — re-seeded to devnet (chain 42069), 2026-05-15 (Task 0011) ──
   // Previous router/pools (GOO-395, 2026-04-05) had empty bytecode after a
   // chain re-snapshot. ReseedGoodSwapPools.s.sol deployed a fresh router and
-  // three new pools wired to UBIFeeSplitter for 33.33% fee routing.
+  // three new pools wired to UBIFeeSplitter for 20% fee routing.
   PoolManager:           '0xC9a43158891282A2B1475592D5719c001986Aaec' as `0x${string}`,
   GoodSwapRouter:        '0x975cDd867aCB99f0195be09C269E2440aa1b1FA8' as `0x${string}`,
   // GoodSwap Liquidity Pools

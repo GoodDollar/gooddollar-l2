@@ -39,7 +39,7 @@ I confirmed live on-chain (current iteration) that:
 3. A dry-run `cast call --from <admin> setGoodDollar(<current GDT>)`
    returns `0x` (i.e. would not revert if sent as a transaction).
 
-This is the simplest blocker on Acceptance Criterion #4 (UBI 33% fee
+This is the simplest blocker on Acceptance Criterion #4 (UBI 20% fee
 routing verified end-to-end) of the initiative, and it's pure config —
 no Solidity or new deploys.
 
@@ -159,7 +159,7 @@ This new script will follow the same pattern.
 ┌──────────────────────────────────────────────┐
 │ Future swap/perps txs → UBIFeeHook →         │
 │   FEE_SPLITTER (now correctly wired) →       │
-│   IERC20(GDT).transferFrom for 33% UBI fee   │
+│   IERC20(GDT).transferFrom for 20% UBI fee   │
 └──────────────────────────────────────────────┘
 ```
 

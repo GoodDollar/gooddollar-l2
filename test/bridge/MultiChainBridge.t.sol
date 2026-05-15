@@ -187,7 +187,7 @@ contract MultiChainBridgeTest is Test {
 
         // Check fee deduction: 0.05% of 10 ether = 0.005 ether
         uint256 fee = (amount * 5) / 10_000;
-        uint256 ubiShare = (fee * 3333) / 10_000;
+        uint256 ubiShare = (fee * 2000) / 10_000;
         uint256 netAmount = amount - fee;
 
         // LiFi received net amount
@@ -279,7 +279,7 @@ contract MultiChainBridgeTest is Test {
         vm.stopPrank();
 
         uint256 fee = (amount * 5) / 10_000;            // 0.05 ether
-        uint256 ubiShare = (fee * 3333) / 10_000;       // ~0.01666 ether
+        uint256 ubiShare = (fee * 2000) / 10_000;       // ~0.01666 ether
         assertEq(token.balanceOf(ubiPool), ubiShare);
     }
 
@@ -288,7 +288,7 @@ contract MultiChainBridgeTest is Test {
         bridge.bridgeETH{value: 100 ether}(42161, bob, 90 ether, block.timestamp + 3600, false);
 
         uint256 fee = (100 ether * 5) / 10_000;
-        uint256 ubiShare = (fee * 3333) / 10_000;
+        uint256 ubiShare = (fee * 2000) / 10_000;
         assertEq(ubiPool.balance, ubiShare);
     }
 

@@ -6,7 +6,7 @@
  *   2. StableLiquidator — monitors GoodStable CDP vaults
  *
  * Both scan for undercollateralized positions and execute liquidations
- * on every polling cycle. 33% of all protocol fees (including liquidation
+ * on every polling cycle. 20% of all protocol fees (including liquidation
  * penalties) flow to the UBI pool.
  *
  * Usage:

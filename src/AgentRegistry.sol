@@ -13,7 +13,7 @@ pragma solidity ^0.8.20;
  *         Supports agent profiles (name, avatar URI, strategy description) so
  *         the frontend can render a rich leaderboard.
  *
- *         33% of every fee on GoodDollar L2 funds UBI. This contract tracks
+ *         20% of every fee on GoodDollar L2 funds UBI. This contract tracks
  *         how much each agent has *indirectly* contributed to UBI through fees.
  */
 contract AgentRegistry {
@@ -32,7 +32,7 @@ contract AgentRegistry {
         uint256 totalTrades;       // number of trades across all protocols
         uint256 totalVolume;       // cumulative volume in wei
         uint256 totalFeesGenerated; // fees paid (some portion → UBI)
-        uint256 ubiContribution;   // estimated UBI contribution (fees * 33.33%)
+        uint256 ubiContribution;   // estimated UBI contribution (fees * 20%)
         uint256 totalPnL;          // net P&L (can be negative, stored as int via offset)
         bool pnlPositive;          // true if P&L >= 0
         uint256 lastActiveAt;      // last trade timestamp
@@ -48,7 +48,7 @@ contract AgentRegistry {
 
     address public admin;
     address public pendingAdmin;
-    uint256 public ubiBPS = 3333; // 33.33% of fees → UBI
+    uint256 public ubiBPS = 2000; // 20% of fees → UBI
 
     /// @notice Hard cap on registered agents to bound getTopAgents gas usage.
     ///         Keep low: getTopAgents is O(count × maxAgents) with cold SLOADs.

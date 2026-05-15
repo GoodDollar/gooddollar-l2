@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  *   votingPower = lockedAmount * timeRemaining / MAX_LOCK
  *
  * Locks range from 1 week to 4 years. Users can extend locks or increase amount.
- * 33% of early-unlock penalties flow to UBI pool.
+ * 20% of early-unlock penalties flow to UBI pool.
  */
 contract VoteEscrowedGD is ReentrancyGuard {
     // --- Types ---
@@ -28,7 +28,7 @@ contract VoteEscrowedGD is ReentrancyGuard {
     uint256 public constant MAX_LOCK = 4 * 365 days;  // 4 years
     uint256 public constant MIN_LOCK = 7 days;         // 1 week
     uint256 public constant EARLY_UNLOCK_PENALTY_BPS = 3000; // 30%
-    uint256 public constant UBI_PENALTY_SHARE_BPS    = 3333; // 33% of penalty → UBI
+    uint256 public constant UBI_PENALTY_SHARE_BPS    = 2000; // 20% of penalty → UBI
 
     // --- State ---
     IERC20  public immutable gd;
@@ -166,7 +166,7 @@ contract VoteEscrowedGD is ReentrancyGuard {
         emit Withdrawn(msg.sender, amount);
     }
 
-    /// @notice Early unlock with penalty (30%). 33% of penalty goes to UBI.
+    /// @notice Early unlock with penalty (30%). 20% of penalty goes to UBI.
     function earlyUnlock() external nonReentrant {
         Lock storage l = locks[msg.sender];
         if (l.amount == 0) revert NoLock();

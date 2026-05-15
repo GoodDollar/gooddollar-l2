@@ -16,14 +16,14 @@ describe('computeDelta', () => {
       protocolId: 99,
       name: 'TestProtocol',
       totalFees: 1000n * 10n ** 18n,
-      ubiPortion: 330n * 10n ** 18n,
+      ubiPortion: 200n * 10n ** 18n,
       txCount: 50n,
     };
 
     const delta = computeDelta(report);
     expect(delta).not.toBeNull();
     expect(delta!.fees).toBe(1000n * 10n ** 18n);
-    expect(delta!.ubi).toBe(330n * 10n ** 18n);
+    expect(delta!.ubi).toBe(200n * 10n ** 18n);
     expect(delta!.txs).toBe(50n);
   });
 
@@ -48,7 +48,7 @@ describe('computeDelta', () => {
       protocolId: 0,
       name: 'GoodSwap',
       totalFees: 1500n,
-      ubiPortion: 495n,
+      ubiPortion: 300n,
       txCount: 15n,
     };
 
@@ -56,7 +56,7 @@ describe('computeDelta', () => {
     expect(delta).not.toBeNull();
     expect(delta!.fees).toBe(500n); // 1500 - 1000
     expect(delta!.txs).toBe(5n);   // 15 - 10
-    expect(delta!.ubi).toBe(165n);  // 500 * 33 / 100
+    expect(delta!.ubi).toBe(100n);  // 500 * 20 / 100
   });
 
   it('returns null when no change since last report', () => {
@@ -66,7 +66,7 @@ describe('computeDelta', () => {
       protocolId: 1,
       name: 'GoodPerps',
       totalFees: 500n,
-      ubiPortion: 165n,
+      ubiPortion: 100n,
       txCount: 20n,
     };
 
@@ -81,7 +81,7 @@ describe('computeDelta', () => {
       protocolId: 2,
       name: 'GoodPredict',
       totalFees: 800n, // decreased (should not happen but handle gracefully)
-      ubiPortion: 264n,
+      ubiPortion: 160n,
       txCount: 50n,
     };
 
@@ -93,13 +93,13 @@ describe('computeDelta', () => {
 // ─── calcUBI Tests ───────────────────────────────────────────────────────────
 
 describe('calcUBI', () => {
-  it('33% of 10000 G$ = 3300 G$', () => {
+  it('20% of 10000 G$ = 2000 G$', () => {
     const fees = 10000n * 10n ** 18n;
-    expect(calcUBI(fees)).toBe(3300n * 10n ** 18n);
+    expect(calcUBI(fees)).toBe(2000n * 10n ** 18n);
   });
 
-  it('33% rounds down for non-divisible amounts', () => {
-    expect(calcUBI(100n)).toBe(33n);
+  it('20% rounds down for non-divisible amounts', () => {
+    expect(calcUBI(100n)).toBe(20n);
   });
 
   it('handles zero fees', () => {
@@ -107,12 +107,12 @@ describe('calcUBI', () => {
   });
 
   it('handles 1 wei', () => {
-    expect(calcUBI(1n)).toBe(0n); // floor(0.33)
+    expect(calcUBI(1n)).toBe(0n); // floor(0.2)
   });
 
   it('handles large numbers', () => {
     const oneBillion = 1_000_000_000n * 10n ** 18n;
-    expect(calcUBI(oneBillion)).toBe(330_000_000n * 10n ** 18n);
+    expect(calcUBI(oneBillion)).toBe(200_000_000n * 10n ** 18n);
   });
 });
 

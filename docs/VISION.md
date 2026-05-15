@@ -70,13 +70,13 @@ Every protocol on the chain pays into the UBI pool:
 
 | Source | % to UBI Pool |
 |--------|--------------|
-| Swap fees | 33% |
-| Perp trading fees | 33% |
-| Prediction market fees | 33% |
-| Lending interest spread | 33% |
-| Stablecoin stability fees | 33% |
-| Stock trading fees | 33% |
-| Bridge fees | 33% |
+| Swap fees | 20% |
+| Perp trading fees | 20% |
+| Prediction market fees | 20% |
+| Lending interest spread | 20% |
+| Stablecoin stability fees | 20% |
+| Stock trading fees | 20% |
+| Bridge fees | 20% |
 | Liquidation surplus | 100% |
 | Validator slashing | 100% |
 

@@ -26,7 +26,7 @@ Build an OP Stack L2 chain optimized for UBI distribution. Core contracts are im
 
 ### First dApp: GoodSwap
 - [ ] Uniswap V4 contracts forked and deployed on L2
-- [ ] UBI fee hook: 33% of swap fees → UBI pool
+- [ ] UBI fee hook: 20% of swap fees → UBI pool
 - [ ] Swap UI deployed at goodswap.goodclaw.org
 - [ ] G$/ETH and G$/USDC pools seeded
 

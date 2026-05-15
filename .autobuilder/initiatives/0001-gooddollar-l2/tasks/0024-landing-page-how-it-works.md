@@ -31,7 +31,7 @@ Add a below-the-fold section after the swap card with:
 
 1. **"How It Works" — 3 steps** (icon + short text each):
    - Step 1: "Swap tokens" — Use GoodSwap like any DEX
-   - Step 2: "Fees fund UBI" — 33% of every swap fee goes to the UBI pool
+   - Step 2: "Fees fund UBI" — 20% of every swap fee goes to the UBI pool
    - Step 3: "People receive income" — Verified humans worldwide get daily payouts
 
 2. **Key stats row** (mock data for now):

@@ -20,7 +20,7 @@ Build the `/perps` page — the core perpetual futures trading terminal with a T
 - Pair selector dropdown: BTC-USD, ETH-USD, G$-USD, SOL-USD, LINK-USD
 - Market order form: Long/Short toggle, size input, leverage slider (1x-50x), margin required display
 - Account summary: balance, equity, unrealized P&L, margin used, available margin
-- UBI fee display: "0.05% taker fee → 33% funds UBI"
+- UBI fee display: "0.05% taker fee → 20% funds UBI"
 
 ## Architecture
 
@@ -61,7 +61,7 @@ graph TD
 - [ ] Market order form: Long (green) / Short (red) toggle
 - [ ] Leverage slider from 1x to 50x with visual indicator
 - [ ] Order form shows: size, margin required, estimated liquidation price, fees
-- [ ] UBI fee badge: "0.05% taker → 33% funds UBI"
+- [ ] UBI fee badge: "0.05% taker → 20% funds UBI"
 - [ ] Account summary: balance, equity, margin used, available margin
 - [ ] Pair info bar: mark price, 24h change %, 24h volume, funding rate countdown
 - [ ] "Perps" appears in Header navigation (desktop + mobile)

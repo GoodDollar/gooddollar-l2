@@ -62,36 +62,36 @@ contract UBIRevenueTrackerTest is Test {
     function test_ReportFees() public {
         vm.startPrank(admin);
         tracker.registerProtocol("GoodSwap", "swap", swapAddr);
-        tracker.reportFees(0, 1000e18, 333e18, 50);
+        tracker.reportFees(0, 1000e18, 200e18, 50);
         vm.stopPrank();
 
         UBIRevenueTracker.ProtocolStats memory p = tracker.getProtocol(0);
         assertEq(p.totalFees, 1000e18);
-        assertEq(p.ubiContribution, 333e18);
+        assertEq(p.ubiContribution, 200e18);
         assertEq(p.txCount, 50);
 
         assertEq(tracker.totalFeesTracked(), 1000e18);
-        assertEq(tracker.totalUBITracked(), 333e18);
+        assertEq(tracker.totalUBITracked(), 200e18);
         assertEq(tracker.totalTxTracked(), 50);
     }
 
     function test_ReportFees_Cumulative() public {
         vm.startPrank(admin);
         tracker.registerProtocol("GoodSwap", "swap", swapAddr);
-        tracker.reportFees(0, 500e18, 166e18, 10);
-        tracker.reportFees(0, 500e18, 167e18, 10);
+        tracker.reportFees(0, 500e18, 100e18, 10);
+        tracker.reportFees(0, 500e18, 100e18, 10);
         vm.stopPrank();
 
         UBIRevenueTracker.ProtocolStats memory p = tracker.getProtocol(0);
         assertEq(p.totalFees, 1000e18);
-        assertEq(p.ubiContribution, 333e18);
+        assertEq(p.ubiContribution, 200e18);
         assertEq(p.txCount, 20);
     }
 
     function test_ReportFees_InvalidProtocol() public {
         vm.prank(admin);
         vm.expectRevert("Invalid protocol");
-        tracker.reportFees(99, 100e18, 33e18, 1);
+        tracker.reportFees(99, 100e18, 20e18, 1);
     }
 
     function test_ReportFees_InactiveProtocol() public {
@@ -100,7 +100,7 @@ contract UBIRevenueTrackerTest is Test {
         tracker.setProtocolActive(0, false);
 
         vm.expectRevert("Protocol inactive");
-        tracker.reportFees(0, 100e18, 33e18, 1);
+        tracker.reportFees(0, 100e18, 20e18, 1);
         vm.stopPrank();
     }
 
@@ -110,7 +110,7 @@ contract UBIRevenueTrackerTest is Test {
 
         vm.prank(makeAddr("rando"));
         vm.expectRevert("Not admin");
-        tracker.reportFees(0, 100e18, 33e18, 1);
+        tracker.reportFees(0, 100e18, 20e18, 1);
     }
 
     // ============ Snapshots ============
@@ -118,14 +118,14 @@ contract UBIRevenueTrackerTest is Test {
     function test_TakeSnapshot() public {
         vm.startPrank(admin);
         tracker.registerProtocol("GoodSwap", "swap", swapAddr);
-        tracker.reportFees(0, 1000e18, 333e18, 50);
+        tracker.reportFees(0, 1000e18, 200e18, 50);
         tracker.takeSnapshot();
         vm.stopPrank();
 
         assertEq(tracker.snapshotCount(), 1);
         UBIRevenueTracker.Snapshot[] memory snaps = tracker.getSnapshots(10);
         assertEq(snaps.length, 1);
-        assertEq(snaps[0].totalUBI, 333e18);
+        assertEq(snaps[0].totalUBI, 200e18);
         assertEq(snaps[0].totalFees, 1000e18);
         assertEq(snaps[0].protocolCount, 1);
     }
@@ -134,24 +134,24 @@ contract UBIRevenueTrackerTest is Test {
         vm.startPrank(admin);
         tracker.registerProtocol("GoodSwap", "swap", swapAddr);
 
-        tracker.reportFees(0, 500e18, 166e18, 10);
+        tracker.reportFees(0, 500e18, 100e18, 10);
         tracker.takeSnapshot();
 
-        tracker.reportFees(0, 500e18, 167e18, 10);
+        tracker.reportFees(0, 500e18, 100e18, 10);
         tracker.takeSnapshot();
         vm.stopPrank();
 
         UBIRevenueTracker.Snapshot[] memory snaps = tracker.getSnapshots(10);
         assertEq(snaps.length, 2);
-        assertEq(snaps[0].totalUBI, 166e18);
-        assertEq(snaps[1].totalUBI, 333e18);
+        assertEq(snaps[0].totalUBI, 100e18);
+        assertEq(snaps[1].totalUBI, 200e18);
     }
 
     function test_GetSnapshots_LimitedCount() public {
         vm.startPrank(admin);
         tracker.registerProtocol("GoodSwap", "swap", swapAddr);
         for (uint256 i = 0; i < 5; i++) {
-            tracker.reportFees(0, 100e18, 33e18, 1);
+            tracker.reportFees(0, 100e18, 20e18, 1);
             tracker.takeSnapshot();
         }
         vm.stopPrank();
@@ -170,7 +170,7 @@ contract UBIRevenueTrackerTest is Test {
         tracker.registerProtocol("GoodSwap", "swap", swapAddr);
         tracker.registerProtocol("GoodPerps", "perps", perpAddr);
         tracker.reportFees(0, 600e18, 200e18, 30);
-        tracker.reportFees(1, 400e18, 133e18, 20);
+        tracker.reportFees(1, 400e18, 80e18, 20);
         tracker.takeSnapshot();
         vm.stopPrank();
 
@@ -185,7 +185,7 @@ contract UBIRevenueTrackerTest is Test {
         ) = tracker.getDashboardData();
 
         assertEq(totalFees, 1000e18);
-        assertEq(totalUBI, 333e18);
+        assertEq(totalUBI, 200e18);
         assertEq(totalTx, 50);
         assertEq(pCount, 2);
         assertEq(activeP, 2);
@@ -254,18 +254,18 @@ contract UBIRevenueTrackerTest is Test {
         tracker.registerProtocol("GoodSwap", "swap", swapAddr);
 
         vm.expectEmit(true, false, false, true);
-        emit UBIRevenueTracker.StatsUpdated(0, 100e18, 33e18, 5);
-        tracker.reportFees(0, 100e18, 33e18, 5);
+        emit UBIRevenueTracker.StatsUpdated(0, 100e18, 20e18, 5);
+        tracker.reportFees(0, 100e18, 20e18, 5);
         vm.stopPrank();
     }
 
     function test_EmitsDailySnapshot() public {
         vm.startPrank(admin);
         tracker.registerProtocol("GoodSwap", "swap", swapAddr);
-        tracker.reportFees(0, 100e18, 33e18, 5);
+        tracker.reportFees(0, 100e18, 20e18, 5);
 
         vm.expectEmit(true, false, false, true);
-        emit UBIRevenueTracker.DailySnapshot(0, 33e18, 100e18);
+        emit UBIRevenueTracker.DailySnapshot(0, 20e18, 100e18);
         tracker.takeSnapshot();
         vm.stopPrank();
     }

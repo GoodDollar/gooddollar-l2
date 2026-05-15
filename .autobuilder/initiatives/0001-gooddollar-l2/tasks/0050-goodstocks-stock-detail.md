@@ -19,7 +19,7 @@ Build the `/stocks/[ticker]` page — an individual stock detail view with a pri
 - Order form: market buy/sell with quantity input, limit orders with price + quantity
 - Mock execution — orders display a success toast but don't actually transact
 - Stock info: company name, sector, market cap, 24h volume, 52-week high/low
-- UBI fee display: show "0.1% fee → 33% funds UBI" badge
+- UBI fee display: show "0.1% fee → 20% funds UBI" badge
 - Back navigation to /stocks
 
 ## Architecture
@@ -57,7 +57,7 @@ graph TD
 - [ ] Price chart shows mock OHLC candlestick data using TradingView Lightweight Charts
 - [ ] Timeframe selector (1D, 1W, 1M, 3M, 1Y) switches chart data
 - [ ] Order form with Market/Limit tabs and Buy/Sell toggle
-- [ ] Order form shows estimated cost, shares, and UBI fee (0.1% → 33% to UBI)
+- [ ] Order form shows estimated cost, shares, and UBI fee (0.1% → 20% to UBI)
 - [ ] Stock info panel shows: name, sector, price, 24h change, volume, market cap
 - [ ] Mock position summary section (shows placeholder when no position)
 - [ ] Responsive layout: chart above, info + order form below on mobile

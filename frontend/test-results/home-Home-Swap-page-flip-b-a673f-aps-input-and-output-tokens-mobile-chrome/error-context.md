@@ -153,7 +153,7 @@ Call log:
               - generic [ref=e140]: "2"
               - img [ref=e142]
               - heading "Fees Fund UBI" [level=3] [ref=e144]
-              - paragraph [ref=e145]: 33% of every trading fee goes directly to the GoodDollar UBI pool — automatically.
+              - paragraph [ref=e145]: 20% of every trading fee goes directly to the GoodDollar UBI pool — automatically.
             - generic [ref=e146]:
               - generic [ref=e147]: "3"
               - img [ref=e149]
@@ -171,7 +171,7 @@ Call log:
             - generic [ref=e166]:
               - generic [ref=e167]:
                 - img [ref=e169]
-                - generic [ref=e171]: 33% Fee
+                - generic [ref=e171]: 20% Fee
               - img [ref=e172]
             - generic [ref=e174]:
               - generic [ref=e175]:
@@ -220,12 +220,12 @@ Call log:
                 - generic [ref=e229]: GoodLend
               - paragraph [ref=e230]: Supply and borrow assets. Earn interest while funding UBI.
               - generic [ref=e231]: Lend Now →
-            - link "GoodStable Mint gUSD stablecoin by locking collateral. 33% of fees fund UBI. Open Vault →" [ref=e232] [cursor=pointer]:
+            - link "GoodStable Mint gUSD stablecoin by locking collateral. 20% of fees fund UBI. Open Vault →" [ref=e232] [cursor=pointer]:
               - /url: /stable
               - generic [ref=e233]:
                 - img [ref=e235]
                 - generic [ref=e237]: GoodStable
-              - paragraph [ref=e238]: Mint gUSD stablecoin by locking collateral. 33% of fees fund UBI.
+              - paragraph [ref=e238]: Mint gUSD stablecoin by locking collateral. 20% of fees fund UBI.
               - generic [ref=e239]: Open Vault →
         - button "Start Trading →" [ref=e241] [cursor=pointer]:
           - text: Start Trading

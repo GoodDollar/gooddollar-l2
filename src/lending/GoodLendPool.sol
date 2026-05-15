@@ -6,14 +6,14 @@ import "forge-std/interfaces/IERC20.sol";
 /**
  * @title GoodLendPool
  * @notice Core lending pool for GoodLend — an Aave V3-inspired lending protocol
- *         where 33% of protocol revenue funds GoodDollar UBI.
+ *         where 20% of protocol revenue funds GoodDollar UBI.
  *
  * Features:
  *   - Supply / Withdraw (earn interest via gTokens)
  *   - Borrow / Repay (variable rate debt)
  *   - Liquidation (health factor < 1.0)
  *   - Flash Loans (0.09% fee)
- *   - UBI Fee Routing (33% of reserve factor → UBI pool)
+ *   - UBI Fee Routing (20% of reserve factor → UBI pool)
  *
  * Architecture:
  *   - Per asset: GoodLendToken (gToken) + DebtToken + InterestRateModel

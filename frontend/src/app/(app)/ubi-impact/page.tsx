@@ -105,7 +105,7 @@ function FeeFlowViz({ protocols, totalFees, totalUBI }: {
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
       <h2 className="text-lg font-semibold text-white mb-4">💧 Fee → UBI Flow</h2>
       <p className="text-sm text-zinc-400 mb-6">
-        Every protocol fee is split: 33% funds Universal Basic Income for verified humans worldwide.
+        Every protocol fee is split: 20% funds Universal Basic Income for verified humans worldwide.
       </p>
 
       <div className="space-y-3">
@@ -249,7 +249,7 @@ export default function UBIImpactPage() {
       <InfoBanner
         storageKey="ubi-impact-info"
         title="UBI Fee Routing"
-        description="GoodDollar L2 routes 33% of all protocol fees to the UBI pool. This dashboard tracks every protocol's contribution in real-time, directly from the UBIRevenueTracker contract."
+        description="GoodDollar L2 routes 20% of all protocol fees to the UBI pool. This dashboard tracks every protocol's contribution in real-time, directly from the UBIRevenueTracker contract."
       />
 
       {/* Hero Stats */}

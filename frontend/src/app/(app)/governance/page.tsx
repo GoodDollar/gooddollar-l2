@@ -430,7 +430,7 @@ export default function GovernancePage() {
       <div className="flex items-center justify-between">
         <InfoBanner
           title="GoodDAO Governance"
-          description="Lock G$ → get veG$ → vote on protocol changes. Longer locks = more voting power (Curve-style). 33% of all protocol fees fund UBI."
+          description="Lock G$ → get veG$ → vote on protocol changes. Longer locks = more voting power (Curve-style). 20% of all protocol fees fund UBI."
           storageKey="governance-info-banner"
         />
         <Link

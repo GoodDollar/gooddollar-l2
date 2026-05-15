@@ -21,14 +21,14 @@ As a first-time user looking at the swap card, I want to immediately understand 
 
 ## How It Was Found
 
-Visual inspection of the swap card at localhost:3100. The "0.3% fee" badge in the header area has no context. Only after entering an amount does the green UBI breakdown appear below, explaining "33.33% of the swap fee goes directly to the GoodDollar UBI pool." First-time users who haven't entered an amount never see this.
+Visual inspection of the swap card at localhost:3100. The "0.3% fee" badge in the header area has no context. Only after entering an amount does the green UBI breakdown appear below, explaining "20% of the swap fee goes directly to the GoodDollar UBI pool." First-time users who haven't entered an amount never see this.
 
 ## Proposed UX
 
 1. **Replace "0.3% fee" badge** with a more descriptive badge like "0.1% funds UBI" (using the green accent color) with a subtle heart or globe icon. This communicates value immediately.
 
 2. **Add a tooltip/popover on the badge** that shows the full fee breakdown:
-   - 33% → UBI Pool (funding daily income for verified humans)
+   - 20% → UBI Pool (funding daily income for verified humans)
    - 17% → Protocol (maintaining GoodSwap)
    - 50% → Liquidity providers
 
@@ -65,13 +65,13 @@ Replace the generic "0.3% fee" badge in the swap card header with a UBI-framed b
 ### Research Notes
 
 - The fee badge is in `SwapCard.tsx` line 123: `<span className="text-xs text-gray-400 bg-dark-50 px-2.5 py-1 rounded-lg">0.3% fee</span>`
-- The token economics from scope: 33% → UBI pool, 17% → protocol, 50% → dApp/LPs
+- The token economics from scope: 20% → UBI pool, 17% → protocol, 50% → dApp/LPs
 - Need a popover that works on both hover (desktop) and tap (mobile)
 - Escape key and click-outside dismiss patterns already exist in the codebase (Header.tsx mobile menu)
 
 ### Assumptions
 
-- Fee split percentages are fixed (33/17/50) and hardcoded is fine
+- Fee split percentages are fixed (20/17/63) and hardcoded is fine
 - Popover can be a simple absolute-positioned div (no library needed)
 
 ### Architecture Diagram
@@ -81,7 +81,7 @@ graph TD
     A[SwapCard.tsx] --> B[FeeBreakdownBadge - NEW]
     B --> C[Badge trigger - green styled]
     B --> D[Popover panel]
-    D --> E[3 rows: UBI 33%, Protocol 17%, LPs 50%]
+    D --> E[3 rows: UBI 20%, Protocol 17%, LPs 50%]
 ```
 
 ### Size Estimation

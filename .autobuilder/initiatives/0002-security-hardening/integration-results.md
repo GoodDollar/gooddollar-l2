@@ -7,7 +7,7 @@
 - Redeployed `MarginVault` + `PerpEngine` against current GDT (task 0012).
 - Result: **GoodSwap, GoodPerps, GoodPredict all PASS** with real on-chain receipts.
   - GoodSwap: real swap (1 GDT → WETH) executed; UBI splitter `claimableBalance` increased
-    by `999900000000000` wei (= **33.33% of the 0.003 GDT pool fee** — see UBI section below).
+    by `999900000000000` wei (= **20% of the 0.003 GDT pool fee** — see UBI section below).
   - GoodPerps: `vault.deposit(10 GDT)` PASS in this run; `openPosition` + `closePosition`
     receipts produced under task 0012 (`GoodPerps-openPosition.json`,
     `GoodPerps-closePosition.json`) and retained in `.autobuilder/integration-receipts/`.

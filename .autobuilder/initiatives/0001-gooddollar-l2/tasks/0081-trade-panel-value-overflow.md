@@ -15,7 +15,7 @@ When users enter very large position sizes in the Perps trade panel or the Stock
 - Notional: `$6,012,579,999,999,941,000.00` (overflows the sidebar)
 - Margin: `$601,257,999,999,994,100.00`
 - Fee: `$300628999999970.50` (raw `.toFixed(2)`, no commas or abbreviation)
-- UBI (33%): `$99207569999990.25`
+- UBI (20%): `$99207569999990.25`
 
 Similarly on Stock Detail (`/stocks/MSFT`), entering a huge dollar amount shows:
 - Est. Shares: `24061597690.0842 MSFT` (overflows)

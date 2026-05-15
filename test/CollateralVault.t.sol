@@ -50,7 +50,7 @@ contract MockFeeSplitter {
     function splitFee(uint256 totalFee, address dAppRecipient) external returns (uint256, uint256, uint256) {
         lastFee = totalFee;
         lastDApp = dAppRecipient;
-        return (totalFee * 33 / 100, totalFee * 17 / 100, totalFee * 50 / 100);
+        return (totalFee * 20 / 100, totalFee * 17 / 100, totalFee * 63 / 100);
     }
 }
 

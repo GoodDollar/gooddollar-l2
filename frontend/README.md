@@ -1,6 +1,6 @@
 # GoodSwap — Every Swap Funds UBI
 
-> The first DEX on GoodDollar L2. 33% of every swap fee automatically funds universal basic income.
+> The first DEX on GoodDollar L2. 20% of every swap fee automatically funds universal basic income.
 
 🌐 **Live:** [goodswap.goodclaw.org](https://goodswap.goodclaw.org)
 

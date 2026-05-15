@@ -80,7 +80,7 @@ contract CrossProtocolIntegration is Test {
         router.registerPool(address(gdUsdcPool));
 
         // 4. UBI fee hook
-        hook = new UBIFeeHook(address(router), address(gd), 3333, admin);
+        hook = new UBIFeeHook(address(router), address(gd), 2000, admin);
 
         // 5. Seed pool liquidity
         vm.startPrank(admin);
@@ -170,10 +170,10 @@ contract CrossProtocolIntegration is Test {
     // =========================================================================
 
     function test_ubiFeeCalculation_accuracy() public view {
-        assertEq(hook.calculateUBIFee(10_000e18), 3_333e18, "33.33% of 10k");
+        assertEq(hook.calculateUBIFee(10_000e18), 2_000e18, "20% of 10k");
         assertEq(hook.calculateUBIFee(0), 0, "Zero = zero");
         assertEq(hook.calculateUBIFee(1), 0, "1 wei rounds to 0");
-        assertEq(hook.calculateUBIFee(10_000), 3333, "10000 wei = 3333");
+        assertEq(hook.calculateUBIFee(10_000), 2000, "10000 wei = 2000");
     }
 
     // =========================================================================
@@ -270,8 +270,8 @@ contract CrossProtocolIntegration is Test {
         splitter.splitFee(feeAmount, admin);
         vm.stopPrank();
 
-        uint256 expectedUBI = (feeAmount * 3333) / 10_000;
-        assertEq(gd.ubiPool() - ubiPoolBefore, expectedUBI, "UBI pool got 33.33%");
+        uint256 expectedUBI = (feeAmount * 2000) / 10_000;
+        assertEq(gd.ubiPool() - ubiPoolBefore, expectedUBI, "UBI pool got 20%");
 
         uint256 expectedTreasury = (feeAmount * 1667) / 10_000;
         assertEq(gd.balanceOf(treasury) - treasuryBefore, expectedTreasury, "Treasury got 16.67%");

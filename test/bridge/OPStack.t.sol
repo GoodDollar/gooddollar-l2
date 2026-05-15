@@ -138,7 +138,7 @@ contract SystemConfigTest is Test {
         assertEq(config.overhead(), 188);
         assertEq(config.scalar(), 684000);
         assertEq(config.gasLimit(), 30_000_000);
-        assertEq(config.ubiFeeBps(), 3300);
+        assertEq(config.ubiFeeBps(), 2000);
     }
 
     function test_setGasConfig() public {

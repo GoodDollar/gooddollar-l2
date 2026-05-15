@@ -44,7 +44,7 @@ Create the Next.js project scaffold for GoodSwap and build all visual UI compone
 - Tailwind CSS for responsive utility-first styling
 - Use shadcn/ui or Radix primitives for accessible dropdowns and dialogs
 - Mock exchange rates: 1 ETH = 100,000 G$, 1 USDC = 100 G$
-- UBI fee = 33.33% of swap fee (0.3% of trade), so UBI contribution per swap = amount × 0.003 × 0.3333
+- UBI fee = 20% of swap fee (0.3% of trade), so UBI contribution per swap = amount × 0.003 × 0.2
 
 ## Architecture
 

@@ -398,7 +398,7 @@ function ActionPanel({ reserve, onClose }: { reserve: LendReserve; onClose: () =
                     <div className="flex justify-between">
                       <span className="text-gray-400">Protocol fee → UBI</span>
                       <span className="text-goodgreen/70">
-                        {hasAmount ? formatUSD(valueUSD * (reserve.reserveFactorBPS / 10_000) * 0.33) + '/yr' : '—'}
+                        {hasAmount ? formatUSD(valueUSD * (reserve.reserveFactorBPS / 10_000) * 0.2) + '/yr' : '—'}
                       </span>
                     </div>
                   )}
@@ -610,7 +610,7 @@ export default function LendPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">GoodLend</h1>
-            <p className="text-xs text-gray-400">Supply &amp; borrow assets. 33% of interest funds UBI.</p>
+            <p className="text-xs text-gray-400">Supply &amp; borrow assets. 20% of interest funds UBI.</p>
           </div>
         </div>
 
@@ -683,7 +683,7 @@ export default function LendPage() {
                 <p className="text-base font-bold text-goodgreen">
                   {formatUSD(
                     reserves.reduce((s, r) =>
-                      s + r.totalBorrowed * r.price * r.borrowAPY * (r.reserveFactorBPS / 10_000) * 0.33,
+                      s + r.totalBorrowed * r.price * r.borrowAPY * (r.reserveFactorBPS / 10_000) * 0.2,
                       0
                     )
                   )}
@@ -720,8 +720,8 @@ export default function LendPage() {
                   <span className="text-white">{(selectedReserve.reserveFactorBPS / 100).toFixed(0)}%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">→ UBI (33% of factor)</span>
-                  <span className="text-goodgreen">{((selectedReserve.reserveFactorBPS / 100) * 0.33).toFixed(1)}%</span>
+                  <span className="text-gray-400">→ UBI (20% of factor)</span>
+                  <span className="text-goodgreen">{((selectedReserve.reserveFactorBPS / 100) * 0.2).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">gToken</span>

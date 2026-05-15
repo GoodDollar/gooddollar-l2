@@ -89,15 +89,15 @@ export function computeDelta(report: FeeReport): { fees: bigint; ubi: bigint; tx
 
   if (feesDelta === 0n && txsDelta === 0n) return null;
 
-  const ubiDelta = (feesDelta * 33n) / 100n;
+  const ubiDelta = (feesDelta * 20n) / 100n;
   return { fees: feesDelta, ubi: ubiDelta, txs: txsDelta };
 }
 
 /**
- * Calculate UBI portion of fees (33%).
+ * Calculate UBI portion of fees (20%).
  */
 export function calcUBI(fees: bigint): bigint {
-  return (fees * 33n) / 100n;
+  return (fees * 20n) / 100n;
 }
 
 /**

@@ -18,7 +18,7 @@ GoodPredict is a binary outcome prediction market on GoodDollar L2. Users bet on
 2. Anyone buys YES or NO tokens at 1 G$ each (1:1 collateral backing)
 3. After the deadline, a designated resolver calls `resolve(YES/NO)`
 4. Winners redeem their outcome tokens for a pro-rata share of the total collateral pot, minus 1% fee
-5. 1% fee → UBI fee splitter (33% → UBI pool)
+5. 1% fee → UBI fee splitter (20% → UBI pool)
 
 **Price discovery:** Implied probability = YES tokens / (YES + NO tokens). Moves continuously as trades happen.
 

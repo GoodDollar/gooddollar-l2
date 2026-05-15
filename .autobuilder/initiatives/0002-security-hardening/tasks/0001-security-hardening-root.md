@@ -60,7 +60,7 @@ Fix ALL security vulnerabilities, start all backend services, and verify every p
 1. Zero Slither HIGH findings (currently 30)
 2. All 10 backend services running and healthy via PM2
 3. Real on-chain transactions executed across all 6 protocols
-4. UBI 33% fee routing verified end-to-end
+4. UBI 20% fee routing verified end-to-end
 5. All Foundry tests passing (currently 837+)
 
 ## Scope
@@ -172,7 +172,7 @@ cast send $MF "createMarket(string,uint256)" "Will BTC hit 100K?" 1735689600 --p
 
 ### 5. Verify UBI Fee Routing (P0)
 
-After each protocol transaction, verify that 33% of fees went to the UBI pool:
+After each protocol transaction, verify that 20% of fees went to the UBI pool:
 
 ```bash
 # Check UBI pool balance before and after transactions
@@ -185,7 +185,7 @@ UBI_AFTER=$(cast call $UBI "accumulatedFees()" --rpc-url http://localhost:8545)
 Write a test script that:
 1. Records UBI pool balance
 2. Executes a swap
-3. Checks that exactly 33% of the swap fee arrived in UBI pool
+3. Checks that exactly 20% of the swap fee arrived in UBI pool
 4. Repeat for each protocol
 
 ### 6. Contract Addresses

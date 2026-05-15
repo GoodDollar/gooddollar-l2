@@ -30,7 +30,7 @@ The Good Chain — one chain where every transaction funds UBI for humans. See d
 - [ ] Execute real swaps on GoodSwap (GOO-504, GOO-339)
 - [ ] Open/close positions on GoodPerps
 - [ ] Full cross-protocol flow: swap → lend → borrow → trade perps
-- [ ] Verify UBI fee routing: every protocol sends 33% to UBI pool
+- [ ] Verify UBI fee routing: every protocol sends 20% to UBI pool
 - [ ] Stress test: 100+ transactions across all protocols
 
 ## Phase 2: OP Stack Migration (Weeks 4-8)

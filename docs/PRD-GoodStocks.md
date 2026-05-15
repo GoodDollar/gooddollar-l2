@@ -18,7 +18,7 @@ GoodStocks is a synthetic equity platform on GoodDollar L2. Users can trade frac
 2. User mints synthetic shares (e.g., sAAPL = 1 Apple share)
 3. Chainlink oracles keep prices pegged to real-world equity prices
 4. User burns synthetic shares to recover collateral
-5. 0.3% fee on mint/burn → UBI fee splitter (33% → UBI pool)
+5. 0.3% fee on mint/burn → UBI fee splitter (20% → UBI pool)
 
 ---
 
@@ -69,7 +69,7 @@ GoodStocks is a synthetic equity platform on GoodDollar L2. Users can trade frac
 | Burn fee | 0.3% of position value | UBIFeeSplitter |
 | Liquidation remainder | ~90% of seized collateral | UBIFeeSplitter |
 
-UBIFeeSplitter splits: 33% → UBI pool, 17% → protocol treasury, 50% → dApp.
+UBIFeeSplitter splits: 20% → UBI pool, 17% → protocol treasury, 50% → dApp.
 
 ---
 

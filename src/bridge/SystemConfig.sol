@@ -48,7 +48,7 @@ contract SystemConfig {
         overhead = 188;
         scalar = 684000;
         gasLimit = 30_000_000;
-        ubiFeeBps = 3300; // 33% — the GoodDollar way
+        ubiFeeBps = 2000; // 20% — the GoodDollar way
         batcherHash = msg.sender;
         unsafeBlockSigner = msg.sender;
         resourceConfig = ResourceConfig({

@@ -37,7 +37,7 @@ contract PredictUBIFeeSplitter is IUBIFeeSplitterPredict, IUBIFeeSplitterResolve
     IGoodDollarToken public goodDollar;
 
     // Fee split configuration (in basis points, 10000 = 100%)
-    uint256 public ubiBPS = 3333;      // 33.33% to UBI pool
+    uint256 public ubiBPS = 2000;      // 20% to UBI pool
     uint256 public protocolBPS = 1667; // 16.67% to protocol treasury
     // Remaining 50% goes back to the dApp (prediction market contracts)
 

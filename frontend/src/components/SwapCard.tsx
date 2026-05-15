@@ -28,7 +28,7 @@ function getLiveRate(prices: Record<string, number>, from: string, to: string): 
 }
 
 const SWAP_FEE_BPS = 30
-const UBI_FEE_BPS = 3333
+const UBI_FEE_BPS = 2000
 
 export function SwapCard() {
   const { slippage } = useSwapSettings()

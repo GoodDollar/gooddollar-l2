@@ -11,14 +11,14 @@ executed: true
 
 ## Overview
 
-Fork Uniswap V4 core contracts and implement a custom hook that routes 33% of swap fees to the GoodDollar UBI pool. This is the first dApp on the GoodDollar L2 — GoodSwap — where every trade automatically funds universal basic income.
+Fork Uniswap V4 core contracts and implement a custom hook that routes 20% of swap fees to the GoodDollar UBI pool. This is the first dApp on the GoodDollar L2 — GoodSwap — where every trade automatically funds universal basic income.
 
 The hook intercepts swap fees via Uniswap V4's `afterSwap` callback, calculates the UBI share, and transfers it to the UBI fee splitter contract.
 
 ## Acceptance Criteria
 
 - [ ] UBIFeeHook.sol implements Uniswap V4 `afterSwap` hook
-- [ ] 33% of swap fees are routed to UBI pool via UBIFeeSplitter
+- [ ] 20% of swap fees are routed to UBI pool via UBIFeeSplitter
 - [ ] Hook is configurable: fee percentage can be adjusted by admin
 - [ ] Comprehensive test suite covering:
   - Fee calculation accuracy
@@ -42,7 +42,7 @@ The hook intercepts swap fees via Uniswap V4's `afterSwap` callback, calculates 
 - Uniswap V4 uses a hook system where contracts implementing specific callbacks (beforeSwap, afterSwap, etc.) are invoked by the PoolManager during swap execution
 - The hook address must encode its permissions in the address bits (V4 convention), but for dev/testing with minimal interfaces, we bypass this
 - Using minimal interfaces (IPoolManager, PoolKey, SwapParams, BalanceDelta) avoids pulling in the full V4 monorepo dependency
-- Fee calculation uses basis points (BPS) for precision — 3333 BPS = 33.33%
+- Fee calculation uses basis points (BPS) for precision — 2000 BPS = 20%
 - The afterSwap hook reads the BalanceDelta to determine output token and amount, then transfers the UBI share
 
 ## Assumptions
@@ -58,7 +58,7 @@ graph TD
     A[User Swap] --> B[PoolManager.swap]
     B --> C[UBIFeeHook.afterSwap]
     C --> D{Calculate UBI Fee}
-    D --> E[33% → UBI Pool]
+    D --> E[20% → UBI Pool]
     D --> F[67% → User Output]
     E --> G[UBIFeeSplitter/GoodDollarToken.fundUBIPool]
     

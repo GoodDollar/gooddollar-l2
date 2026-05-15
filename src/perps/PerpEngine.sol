@@ -338,14 +338,14 @@ contract PerpEngine is ReentrancyGuard {
             address goodDollarToken = IFeeSplitterPerp(feeSplitter).goodDollar();
             IMarginToken2 token = IMarginToken2(goodDollarToken);
 
-            // Approve and split liquidation bonus (33% UBI, 16.67% protocol, 50% liquidator)
+            // Approve and split liquidation bonus (20% UBI, 16.67% protocol, 50% liquidator)
             require(token.approve(feeSplitter, 0), "PerpEngine: approve reset failed");
             require(token.approve(feeSplitter, bonus), "PerpEngine: approve bonus failed");
 
             IFeeSplitterPerp(feeSplitter).splitFee(bonus, msg.sender);
 
             // Note: The liquidator receives ~50% instead of 100% of the bonus,
-            // with 33% going to UBI pool and 16.67% to protocol treasury
+            // with 20% going to UBI pool and 16.67% to protocol treasury
         }
 
         emit PositionLiquidated(msg.sender, trader, marketId, exitPrice);

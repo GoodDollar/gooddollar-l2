@@ -57,7 +57,7 @@ report, and explicitly fold swap-oracle health into the report.
    - One row per protocol (GoodSwap, GoodPerps, GoodLend, GoodStable,
      GoodStocks, GoodPredict) showing: action attempted, tx hash,
      status (✅ / ❌ / skipped), gas used, fees paid, UBI fee routed
-     (Δ UBI pool balance vs. expected 33%).
+     (Δ UBI pool balance vs. expected 20%).
    - One row for `UBIFeeSplitter.accumulatedFees()` before/after.
    - One row for `swap-oracle` PM2 health (status, restart counter
      delta over 60 s, last successful price-push timestamp per token).

@@ -17,7 +17,7 @@ pragma solidity ^0.8.20;
  *  - Each withdrawal hash can only be claimed once.
  *  - LP deposits are ring-fenced per LP address; one LP's insolvency doesn't
  *    affect another.
- *  - 33% of fast-withdrawal fees route to the UBI pool (GoodDollar principle).
+ *  - 20% of fast-withdrawal fees route to the UBI pool (GoodDollar principle).
  */
 
 interface IERC20 {
@@ -35,8 +35,8 @@ contract FastWithdrawalLP {
     /// @notice Fee in basis points (default 10 = 0.1%)
     uint256 public feeBps;
 
-    /// @notice Fraction of fee sent to UBI pool (3333 = 33.33%)
-    uint256 public constant UBI_FEE_SHARE = 3333; // out of 10000
+    /// @notice Fraction of fee sent to UBI pool (2000 = 20%)
+    uint256 public constant UBI_FEE_SHARE = 2000; // out of 10000
 
     /// @notice LP liquidity per (lp, token)
     mapping(address => mapping(address => uint256)) public lpBalance;

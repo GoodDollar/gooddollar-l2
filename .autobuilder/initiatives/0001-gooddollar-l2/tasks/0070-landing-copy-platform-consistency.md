@@ -14,7 +14,7 @@ executed: true
 The landing page hero was updated to "Trade. Predict. Invest. Fund UBI." and now includes a UBI explainer and platform showcase. However, several remaining text elements are still swap-centric and don't match the broader positioning:
 
 1. **How It Works step 1** says "Swap Tokens" — should cover all platform activities, not just swapping.
-2. **How It Works step 2** says "33% of every **swap** fee" — should say "trading fee" or "platform fee" since stocks, perps, and predict also generate fees that fund UBI.
+2. **How It Works step 2** says "20% of every **swap** fee" — should say "trading fee" or "platform fee" since stocks, perps, and predict also generate fees that fund UBI.
 3. **How It Works step 1 description** says "Trade any token on GoodDollar just like you would on any decentralized exchange" — implies it's just a DEX.
 4. **"Start Swapping" CTA button** after the platform showcase still says "Start Swapping" — but the user may want to trade stocks, perps, or predict. Should say "Get Started" or "Start Trading".
 5. **Platform Showcase GoodSwap card** has CTA text "Explore Pools" linking to `/explore` — but `/explore` shows a token list, not liquidity pools. The CTA text is misleading.
@@ -30,7 +30,7 @@ Fresh-eyes review: Read the full landing page top to bottom. The hero and platfo
 ## Proposed UX
 
 1. **How It Works step 1**: Change title from "Swap Tokens" to "Trade Any Asset" and description to "Swap tokens, trade stocks, predict events, or trade perpetual futures — all on one platform."
-2. **How It Works step 2**: Change "33% of every swap fee" to "33% of every trading fee"
+2. **How It Works step 2**: Change "20% of every swap fee" to "20% of every trading fee"
 3. **Start Swapping CTA**: Change text from "Start Swapping" to "Start Trading" (keep scroll-to-swap behavior)
 4. **GoodSwap card CTA**: Change "Explore Pools" to "Explore Tokens" since it links to the token list page
 

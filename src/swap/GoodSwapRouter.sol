@@ -25,7 +25,7 @@ interface IGoodPool {
  *         looks up the registered GoodPool for the given token pair, executes
  *         the swap, and forwards output tokens to `to`.
  *
- *         Fee architecture: GoodPool collects 0.3% on input and routes 33.33%
+ *         Fee architecture: GoodPool collects 0.3% on input and routes 20%
  *         of that fee to the UBIFeeSplitter automatically (no router action
  *         needed). The router only handles routing and slippage enforcement.
  *

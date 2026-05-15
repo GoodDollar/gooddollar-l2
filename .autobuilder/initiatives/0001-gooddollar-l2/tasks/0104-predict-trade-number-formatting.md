@@ -16,7 +16,7 @@ When entering large amounts in the Predict market detail trade panel (e.g., $99,
 - Est. Shares: `20833333331.3` (no commas, no abbreviation)
 - Potential Payout: `$208333333331.25` (no commas, no abbreviation)
 - Fee (1%): `$999999999.99` (no commas)
-- UBI Pool (33%): `$330000000.00` (no commas)
+- UBI Pool (20%): `$330000000.00` (no commas)
 
 These raw numbers are nearly impossible to read at a glance. By comparison, the Perps trading panel formats large values with abbreviations like "$60.1T", "$6.01T", "$30.1B" which is much more readable.
 
@@ -85,7 +85,7 @@ graph TD
    - Est. Shares
    - Potential Payout
    - Fee (1%)
-   - UBI Pool (33%)
+   - UBI Pool (20%)
 
 ## Verification
 

@@ -99,8 +99,8 @@ contract OPStackMigrationTest is Test {
     }
 
     function test_systemConfigUBIFeeRouting() public {
-        // Verify SystemConfig UBI fee is set to 33% by default
-        assertEq(config.ubiFeeBps(), 3300, "Default UBI fee should be 33%");
+        // Verify SystemConfig UBI fee is set to 20% by default
+        assertEq(config.ubiFeeBps(), 2000, "Default UBI fee should be 20%");
 
         // Admin can adjust
         config.setUBIFee(5000);

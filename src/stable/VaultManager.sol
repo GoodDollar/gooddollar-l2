@@ -10,7 +10,7 @@ pragma solidity ^0.8.20;
  *   - Stability fees accrue per second via a per-ilk rate accumulator (chi, RAY-scaled)
  *   - drip(ilk) must be called before any state-changing vault operation
  *   - Liquidation routes to StabilityPool first; any remainder goes to liquidator
- *   - 33% of stability fees go to UBI via UBIFeeSplitter.splitFee()
+ *   - 20% of stability fees go to UBI via UBIFeeSplitter.splitFee()
  *
  * Math:
  *   WAD = 1e18, RAY = 1e27

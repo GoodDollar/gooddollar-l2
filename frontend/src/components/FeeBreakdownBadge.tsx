@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 
 const feeRows = [
-  { label: 'UBI Pool', pct: '33%', color: 'text-goodgreen' },
+  { label: 'UBI Pool', pct: '20%', color: 'text-goodgreen' },
   { label: 'Protocol', pct: '17%', color: 'text-gray-300' },
   { label: 'Liquidity Providers', pct: '50%', color: 'text-gray-300' },
 ]

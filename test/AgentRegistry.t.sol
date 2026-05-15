@@ -96,13 +96,13 @@ contract AgentRegistryTest is Test {
         assertEq(s.totalTrades, 1);
         assertEq(s.totalVolume, 10 ether);
         assertEq(s.totalFeesGenerated, 0.03 ether);
-        // 33.33% of 0.03 ether = 0.009999 ether
-        assertEq(s.ubiContribution, (0.03 ether * 3333) / 10000);
+        // 20% of 0.03 ether = 0.009999 ether
+        assertEq(s.ubiContribution, (0.03 ether * 2000) / 10000);
 
         // Global stats
         assertEq(registry.totalTrades(), 1);
         assertEq(registry.totalVolume(), 10 ether);
-        assertEq(registry.totalUBIGenerated(), (0.03 ether * 3333) / 10000);
+        assertEq(registry.totalUBIGenerated(), (0.03 ether * 2000) / 10000);
     }
 
     function test_autoRegisterUnknownAgent() public {
@@ -232,7 +232,7 @@ contract AgentRegistryTest is Test {
         assertEq(a, 1);
         assertEq(t, 2);
         assertEq(v, 30 ether);
-        assertEq(u, (0.09 ether * 3333) / 10000);
+        assertEq(u, (0.09 ether * 2000) / 10000);
     }
 
     // ============ Admin ============

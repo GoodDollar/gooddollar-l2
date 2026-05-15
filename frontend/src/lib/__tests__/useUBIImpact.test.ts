@@ -97,9 +97,9 @@ describe('Protocol fee share calculation', () => {
     expect(share).toBe(50)
   })
 
-  it('calculates 33% UBI share', () => {
-    const share = calcFeeShare(330n, 1000n)
-    expect(share).toBe(33)
+  it('calculates 20% UBI share', () => {
+    const share = calcFeeShare(200n, 1000n)
+    expect(share).toBe(20)
   })
 
   it('returns 0 for zero total', () => {
@@ -120,19 +120,19 @@ describe('UBI percentage calculation', () => {
     return totalFees > 0n ? Number((totalUBI * 10000n) / totalFees) / 100 : 0
   }
 
-  it('calculates ~33% for standard UBI split', () => {
-    // 33 UBI from 100 fees
-    const pct = calcUBIPct(33n, 100n)
-    expect(pct).toBe(33)
+  it('calculates 20% for standard UBI split', () => {
+    // 20 UBI from 100 fees
+    const pct = calcUBIPct(20n, 100n)
+    expect(pct).toBe(20)
   })
 
   it('returns 0 when no fees', () => {
     expect(calcUBIPct(0n, 0n)).toBe(0)
   })
 
-  it('handles exact third', () => {
-    // 333 out of 1000 = 33.3%
-    const pct = calcUBIPct(333n, 1000n)
-    expect(pct).toBe(33.3)
+  it('handles exact 20% split', () => {
+    // 200 out of 1000 = 20%
+    const pct = calcUBIPct(200n, 1000n)
+    expect(pct).toBe(20)
   })
 })

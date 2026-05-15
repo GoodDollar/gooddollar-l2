@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  *           2. Li.Fi aggregator for cross-chain (Arbitrum, Optimism, Polygon, Base, etc.)
  *           3. FastWithdrawalLP for instant L2→L1 withdrawals
  *
- *         33% of routing fees → UBI pool (GoodDollar principle).
+ *         20% of routing fees → UBI pool (GoodDollar principle).
  *
  * @dev The contract acts as a unified entry point. Users call bridgeTokens()
  *      with a destination chain ID, and the router picks the optimal path:
@@ -76,8 +76,8 @@ contract MultiChainBridge is ReentrancyGuard {
     /// @notice Routing fee in basis points (default 5 = 0.05%)
     uint256 public routingFeeBps;
 
-    /// @notice UBI share of routing fee (3333 = 33.33%)
-    uint256 public constant UBI_FEE_SHARE = 3333;
+    /// @notice UBI share of routing fee (2000 = 20%)
+    uint256 public constant UBI_FEE_SHARE = 2000;
 
     ILiFiBridgeAggregator public lifiAggregator;
     IGoodDollarBridgeL2 public nativeBridge;

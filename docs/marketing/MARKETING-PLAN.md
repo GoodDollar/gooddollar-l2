@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-GoodDollar L2 is positioned to disrupt traditional DeFi by embedding a verifiable, mandatory social impact mechanism (33% UBI contribution) into its core protocol fee structure. Our marketing strategy shifts the narrative from mere yield generation to **Impact Yield Generation**.
+GoodDollar L2 is positioned to disrupt traditional DeFi by embedding a verifiable, mandatory social impact mechanism (20% UBI contribution) into its core protocol fee structure. Our marketing strategy shifts the narrative from mere yield generation to **Impact Yield Generation**.
 
 Over the next 90 days, we will execute a three-phased launch: **Awareness (Pre-Launch)** $\rightarrow$ **Validation (Testnet)** $\rightarrow$ **Adoption (Mainnet)**.
 
@@ -26,7 +26,7 @@ Over the next 90 days, we will execute a three-phased launch: **Awareness (Pre-L
 **Positioning Statement:** GoodDollar L2 is the first OP Stack L2 that guarantees a measurable, mandatory contribution to Universal Basic Income (UBI) with every transaction. We are bridging the gap between speculative finance and tangible social good.
 
 **Key Pillars of Trust:**
-1.  **Mandate:** 33% of ALL protocol fees $\rightarrow$ UBI Pool (Non-negotiable).
+1.  **Mandate:** 20% of ALL protocol fees $\rightarrow$ UBI Pool (Non-negotiable).
 2.  **Technology:** OP Stack L2, built robustly by 29 AI Agents (426 commits, 53 contracts).
 3.  **Credibility:** Founded by Yoni Assia (eToro founder, 2018).
 4.  **Traction:** 640K+ existing GoodDollar user base.
@@ -53,7 +53,7 @@ These pillars ensure content is diverse, addressing education, technology, and m
 
 1.  **The UBI Mechanism (Mission Focus):**
     *   *Goal:* Establish the social mandate.
-    *   *Example:* Infographics showing "Transaction $\rightarrow$ GoodDollar L2 $\rightarrow$ 33% UBI Pool $\rightarrow$ Real-World Impact."
+    *   *Example:* Infographics showing "Transaction $\rightarrow$ GoodDollar L2 $\rightarrow$ 20% UBI Pool $\rightarrow$ Real-World Impact."
 2.  **DeFi Deep Dives (Product Focus):**
     *   *Goal:* Drive engagement across the 6 protocols.
     *   *Example:* "GoodPerps vs. Traditional Futures: A Risk Analysis." (Targeting Segment B)
@@ -118,7 +118,7 @@ These pillars ensure content is diverse, addressing education, technology, and m
 | **W2** | Wed, Oct 10 | Mission | Podcast | Guest Interview: Economist discussing global wealth disparity. | PR/Media | Download the podcast and share. |
 | **W2** | Fri, Oct 12 | Tech | X | Short video explaining OP Stack L2 benefits (Chain ID 42069). | Dev Team | Retweet to educate peers. |
 | **W3** | Mon, Oct 15 | Product | Medium | Guide: "Understanding GoodPerps: Hedging Your Crypto Bets." | Content Writer | Bookmark this guide for later. |
-| **W3** | Wed, Oct 17 | Mission | X | Infographic: Visualizing the 33% Fee Split. | Marketing | Tag 3 friends who care about social impact. |
+| **W3** | Wed, Oct 17 | Mission | X | Infographic: Visualizing the 20% Fee Split. | Marketing | Tag 3 friends who care about social impact. |
 | **W3** | Fri, Oct 19 | Tech | GitHub | Release: Detailed technical breakdown of the GoodStable (gUSD) mechanism. | Dev Team | Fork the repo or star the project. |
 | **W4** | Mon, Oct 22 | Product | Discord | "Protocol Showcase Day": Live walkthrough of GoodPredict. | Core Team | Submit your first prediction market trade. |
 | **W4** | Wed, Oct 24 | Thought Lead | Medium | Founder Essay: "The Necessity of Purpose in Decentralization." | Yoni Assia | Comment with your biggest crypto challenge. |
@@ -158,7 +158,7 @@ These pillars ensure content is diverse, addressing education, technology, and m
 
 **(Tone: Urgent, Mission-Driven, Credible)**
 
-1.  Tired of DeFi where profit ignores people? 💔 GoodDollar L2 changes the rules. 33% of every transaction funds UBI. Finance with a purpose. \#UBI \#DeFi
+1.  Tired of DeFi where profit ignores people? 💔 GoodDollar L2 changes the rules. 20% of every transaction funds UBI. Finance with a purpose. \#UBI \#DeFi
 2.  We didn't just build an L2; we built a social contract. GoodDollar L2 on OP Stack. Every $ spent = tangible impact. 💡 [Link]
 3.  The math is simple: Your gas fee $\rightarrow$ GoodDollar L2 $\rightarrow$ UBI Pool. Transparency like never before. See the flow: [Link]
 4.  Founder Insight: Why the next wave of DeFi *must* solve systemic inequality. Join the conversation on GoodDollar L2. 🗣️ \#Web3

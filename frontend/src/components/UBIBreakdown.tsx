@@ -26,7 +26,7 @@ export function UBIBreakdown({ ubiFeeAmount, outputToken, visible }: UBIBreakdow
             {formatted} {outputToken.symbol} funds UBI
           </p>
           <p className="text-xs text-goodgreen/60 mt-0.5">
-            33.33% of the swap fee goes directly to the GoodDollar UBI pool
+            20% of the swap fee goes directly to the GoodDollar UBI pool
           </p>
         </div>
       </div>

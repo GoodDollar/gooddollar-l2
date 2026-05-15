@@ -10,17 +10,17 @@
 
 **The problem:** DeFi generates billions in fees — none of it reaches the people who need it most.
 
-**Our solution:** A dedicated L2 where **33% of every protocol fee** automatically funds Universal Basic Income. Not optional. Not a toggle. Built into the chain itself.
+**Our solution:** A dedicated L2 where **20% of every protocol fee** automatically funds Universal Basic Income. Not optional. Not a toggle. Built into the chain itself.
 
 | What You Do | What Happens |
 |-------------|-------------|
-| Swap tokens on GoodSwap | 33% of the swap fee → UBI pool |
-| Trade perps on GoodPerps | 33% of trading fees → UBI pool |
-| Get liquidated on GoodLend | 33% of liquidation penalty → UBI pool |
-| Mint gUSD on GoodStable | 33% of stability fees → UBI pool |
-| Trade synthetic stocks | 33% of trading fees → UBI pool |
+| Swap tokens on GoodSwap | 20% of the swap fee → UBI pool |
+| Trade perps on GoodPerps | 20% of trading fees → UBI pool |
+| Get liquidated on GoodLend | 20% of liquidation penalty → UBI pool |
+| Mint gUSD on GoodStable | 20% of stability fees → UBI pool |
+| Trade synthetic stocks | 20% of trading fees → UBI pool |
 
-**The more DeFi activity, the more UBI distributed.** At 1M users: $33K/day flows to verified humans worldwide.
+**The more DeFi activity, the more UBI distributed.** At 1M users: $20K/day flows to verified humans worldwide.
 
 ### 🤖 Built Entirely by AI
 
@@ -122,9 +122,9 @@ Hourly heartbeats. Agents pick up issues, write code + tests, commit, and report
 | Contract | Description | Tests |
 |----------|-------------|-------|
 | `GoodDollarToken.sol` | G$ ERC-20 with daily UBI claims, identity-gated minting | ✅ |
-| `UBIFeeSplitter.sol` | Universal fee router: 33% UBI / 17% protocol / 50% dApp | ✅ |
+| `UBIFeeSplitter.sol` | Universal fee router: 20% UBI / 17% protocol / 50% dApp | ✅ |
 | `ValidatorStaking.sol` | Stake 1M G$ to validate, 5% APR, slashing → UBI pool | ✅ |
-| `UBIFeeHook.sol` | Uniswap V4 `afterSwap` hook — 33% of every swap fee → UBI | ✅ |
+| `UBIFeeHook.sol` | Uniswap V4 `afterSwap` hook — 20% of every swap fee → UBI | ✅ |
 | `GoodDollarBridgeL1.sol` | L1 bridge: deposit G$, ETH, USDC with peer-configured guard | ✅ |
 | `GoodDollarBridgeL2.sol` | L2 bridge: withdraw G$, ETH, USDC with peer-configured guard | ✅ |
 
@@ -149,7 +149,7 @@ Hourly heartbeats. Agents pick up issues, write code + tests, commit, and report
 | `MarginVault.sol` | Isolated margin accounts with flush-to-splitter |
 | `FundingRate.sol` | Time-weighted funding rate calculation |
 
-**All contracts include UBI fee routing** — every trade, every liquidation, every fee flows through `UBIFeeSplitter.splitFee()` which distributes 33% to the UBI pool.
+**All contracts include UBI fee routing** — every trade, every liquidation, every fee flows through `UBIFeeSplitter.splitFee()` which distributes 20% to the UBI pool.
 
 ### Test Suite: 837 Foundry Tests
 
@@ -231,7 +231,7 @@ GoodDollar L2 (OP Stack)
 │
 ├── src/                          # Solidity contracts (Foundry)
 │   ├── GoodDollarToken.sol       # G$ token with UBI claims
-│   ├── UBIFeeSplitter.sol        # 33/17/50 fee routing
+│   ├── UBIFeeSplitter.sol        # 20/17/63 fee routing
 │   ├── ValidatorStaking.sol      # Proof-of-stake with UBI slashing
 │   ├── hooks/
 │   │   └── UBIFeeHook.sol        # Uniswap V4 afterSwap hook
@@ -281,7 +281,7 @@ GoodDollar L2 (OP Stack)
 
 | Flow | Split |
 |------|-------|
-| Every dApp fee → UBI pool | **33%** |
+| Every dApp fee → UBI pool | **20%** |
 | Every dApp fee → Protocol treasury | 17% |
 | Every dApp fee → dApp developer | 50% |
 | Validator staking minimum | 1M G$ |
@@ -291,9 +291,9 @@ GoodDollar L2 (OP Stack)
 **At scale:**
 | Users | Daily Fee Pool | UBI Multiplier |
 |-------|---------------|----------------|
-| 1M | $33,000/day | 1.11x (self-sustaining ✓) |
+| 1M | $20,000/day | 1.11x (self-sustaining ✓) |
 | 100M | $3.3M/day | Significant supplemental income |
-| 1B | $33.7M/day | $0.033/day base + pool share |
+| 1B | $20.2M/day | $0.020/day base + pool share |
 
 ---
 

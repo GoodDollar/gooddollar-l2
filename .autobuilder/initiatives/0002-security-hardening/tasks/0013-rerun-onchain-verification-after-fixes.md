@@ -18,7 +18,7 @@ the source of truth for the initiative reflects the new state. The
 acceptance criteria of this initiative include:
 
 > 3. Real on-chain transactions executed across all 6 protocols
-> 4. UBI 33% fee routing verified end-to-end
+> 4. UBI 20% fee routing verified end-to-end
 
 This task is the final assertion that the work in 0010-0012 actually
 moved the needle, and produces the receipts the initiative DoD
@@ -33,7 +33,7 @@ requires.
    - **UBI Fee Splitter**: GoodDollar binding == current GDT
      (`0x8f86…`).
    - **GoodSwap**: PASS — real swap executed; tx hash recorded; UBI
-     fees increased by ≥ 33% of swap fee.
+     fees increased by ≥ 20% of swap fee.
    - **GoodPerps**: PASS — deposit + openPosition succeeded; tx
      hashes recorded.
    - **GoodPredict**: PASS (already passing — re-confirm).

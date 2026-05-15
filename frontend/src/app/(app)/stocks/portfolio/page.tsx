@@ -127,7 +127,7 @@ export default function StocksPortfolioPage() {
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
           <div className="text-lg sm:text-xl font-bold text-goodgreen">
-            {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.33)}
+            {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
             <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
           </div>
         </div>
@@ -146,7 +146,7 @@ export default function StocksPortfolioPage() {
           className="h-fit"
         />
         <PartnershipIntegrationCard
-          userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.33}
+          userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2}
           compact={false}
           className="h-fit"
         />

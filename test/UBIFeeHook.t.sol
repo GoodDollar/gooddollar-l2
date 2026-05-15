@@ -19,7 +19,7 @@ contract UBIFeeHookTest is Test {
     address public identityOracle = address(0x5555);
     address public token1Addr = address(0x6666);
 
-    uint256 constant DEFAULT_UBI_FEE_BPS = 3333; // 33.33%
+    uint256 constant DEFAULT_UBI_FEE_BPS = 2000; // 20%
     uint256 constant INITIAL_SUPPLY = 1_000_000e18;
 
     function setUp() public {
@@ -76,8 +76,8 @@ contract UBIFeeHookTest is Test {
         uint256 amount = 1000e18;
         uint256 expected = (amount * DEFAULT_UBI_FEE_BPS) / 10000;
         assertEq(hook.calculateUBIFee(amount), expected);
-        // 33.33% of 1000 = 333.3
-        assertEq(hook.calculateUBIFee(amount), 333_300000000000000000);
+        // 20% of 1000 = 200
+        assertEq(hook.calculateUBIFee(amount), 200_000000000000000000);
     }
 
     function test_calculateUBIFee_zeroAmount() public view {
@@ -87,9 +87,9 @@ contract UBIFeeHookTest is Test {
     function test_calculateUBIFee_smallAmount() public view {
         // 1 wei → fee = 0 (rounds down)
         assertEq(hook.calculateUBIFee(1), 0);
-        // 3 wei → fee = 0 (3 * 3333 / 10000 = 0.9999 → 0)
+        // 3 wei → fee = 0 (3 * 2000 / 10000 = 0.9999 → 0)
         assertEq(hook.calculateUBIFee(3), 0);
-        // 4 wei → fee = 1 (4 * 3333 / 10000 = 1.3332 → 1)
+        // 4 wei → fee = 1 (4 * 2000 / 10000 = 1.3332 → 1)
         assertEq(hook.calculateUBIFee(4), 1);
     }
 

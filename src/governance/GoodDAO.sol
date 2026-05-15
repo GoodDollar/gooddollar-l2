@@ -14,7 +14,7 @@ import "./VoteEscrowedGD.sol";
  *   - Quorum: 10% of total voting power
  *   - Voting period: 3 days
  *   - Timelock: 1 day delay before execution
- *   - UBI-specific: 33% of slashed proposal deposits → UBI pool
+ *   - UBI-specific: 20% of slashed proposal deposits → UBI pool
  */
 contract GoodDAO is ReentrancyGuard {
     // --- Types ---

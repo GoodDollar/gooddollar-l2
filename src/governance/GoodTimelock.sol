@@ -13,7 +13,7 @@ pragma solidity ^0.8.20;
  *   - Role-based: proposers can queue, executors can execute, admin manages roles
  *   - Grace period: queued txs expire after 14 days
  *   - Batch execution: multiple calls in a single operation
- *   - 33% of any ETH swept from failed txs → UBI treasury
+ *   - 20% of any ETH swept from failed txs → UBI treasury
  */
 contract GoodTimelock {
     // --- Constants ---

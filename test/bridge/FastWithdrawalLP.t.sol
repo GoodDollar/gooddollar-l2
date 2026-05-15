@@ -156,7 +156,7 @@ contract FastWithdrawalLPTest is Test {
         uint256 amount = 10_000e18;
 
         uint256 fee = (amount * FEE_BPS) / 10000; // 10e18
-        uint256 ubiFee = (fee * 3333) / 10000;     // ~3.333e18
+        uint256 ubiFee = (fee * 2000) / 10000;     // ~3.333e18
         uint256 netAmount = amount - fee;           // 9990e18
 
         uint256 userBefore = token.balanceOf(user);
@@ -206,7 +206,7 @@ contract FastWithdrawalLPTest is Test {
         bytes32 hash = keccak256("eth-withdrawal-1");
         uint256 amount = 10 ether;
         uint256 fee = (amount * FEE_BPS) / 10000;
-        uint256 ubiFee = (fee * 3333) / 10000;
+        uint256 ubiFee = (fee * 2000) / 10000;
         uint256 netAmount = amount - fee;
 
         uint256 userBefore = user.balance;

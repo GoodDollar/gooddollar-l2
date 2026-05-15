@@ -525,7 +525,7 @@ export default function GovernanceAnalyticsPage() {
           <div><span className="text-gray-500">Timelock:</span> <span className="text-white">1 day</span></div>
           <div><span className="text-gray-500">Max Lock:</span> <span className="text-white">4 years</span></div>
           <div><span className="text-gray-500">Early Unlock Penalty:</span> <span className="text-white">30%</span></div>
-          <div><span className="text-gray-500">Penalty → UBI:</span> <span className="text-white">33%</span></div>
+          <div><span className="text-gray-500">Penalty → UBI:</span> <span className="text-white">20%</span></div>
           <div><span className="text-gray-500">Execution Window:</span> <span className="text-white">7 days</span></div>
         </div>
       </div>

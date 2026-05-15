@@ -47,7 +47,7 @@ Only after the pools are in place can swap fees actually flow through
 the (now-fixed in task 0010) `UBIFeeSplitter` to the UBI claim
 contract — which is required by the initiative's Acceptance Criterion #3
 ("Real on-chain transactions executed across all 6 protocols") and #4
-("UBI 33% fee routing verified end-to-end").
+("UBI 20% fee routing verified end-to-end").
 
 ## Acceptance Criteria
 
@@ -67,7 +67,7 @@ contract — which is required by the initiative's Acceptance Criterion #3
    `.autobuilder/integration-receipts/GoodSwap.json` (`status: 0x1`).
 6. After the swap, the `UBIFeeSplitter`'s `claimableBalance` (or
    equivalent accumulator) is strictly greater than before, proving
-   33% fee routing is wired end-to-end.
+   20% fee routing is wired end-to-end.
 7. New pool addresses are written into `.autobuilder/addresses.env`
    under new keys (e.g. `POOL_GDT_WETH`, `POOL_GDT_USDC`).
 8. `integration-results.md` is appended with a "## 2026-05-15 — GoodSwap
@@ -161,7 +161,7 @@ Updated approach for this task:
    the new router and capture the receipt to
    `.autobuilder/integration-receipts/GoodSwap.json`.
 5. Verify `UBIFeeSplitter` balance grew by approximately
-   `1e18 * 0.003 * 0.3333` GDT after the swap.
+   `1e18 * 0.003 * 0.2` GDT after the swap.
 6. Append the `integration-results.md` GoodSwap section with the new
    addresses, tx hashes, and UBI delta.
 7. Run `forge test` to confirm no regression.
@@ -266,7 +266,7 @@ Confirmed live (this iteration):
                  ▼
 ┌──────────────────────────────────┐
 │ Pool collects 0.3% fee →          │
-│ 33.33% routed to UBIFeeSplitter   │
+│ 20% routed to UBIFeeSplitter   │
 │ (FEE_SPLITTER, fixed by task 0010)│
 └──────────────────────────────────┘
 ```

@@ -12,7 +12,7 @@ Fix ALL security vulnerabilities, start all backend services, and verify every p
 1. Zero Slither HIGH findings (currently 30)
 2. All 10 backend services running and healthy via PM2
 3. Real on-chain transactions executed across all 6 protocols
-4. UBI 33% fee routing verified end-to-end
+4. UBI 20% fee routing verified end-to-end
 5. All Foundry tests passing (currently 837+)
 
 ## Scope
@@ -124,7 +124,7 @@ cast send $MF "createMarket(string,uint256)" "Will BTC hit 100K?" 1735689600 --p
 
 ### 5. Verify UBI Fee Routing (P0)
 
-After each protocol transaction, verify that 33% of fees went to the UBI pool:
+After each protocol transaction, verify that 20% of fees went to the UBI pool:
 
 ```bash
 # Check UBI pool balance before and after transactions
@@ -137,7 +137,7 @@ UBI_AFTER=$(cast call $UBI "accumulatedFees()" --rpc-url http://localhost:8545)
 Write a test script that:
 1. Records UBI pool balance
 2. Executes a swap
-3. Checks that exactly 33% of the swap fee arrived in UBI pool
+3. Checks that exactly 20% of the swap fee arrived in UBI pool
 4. Repeat for each protocol
 
 ### 6. Contract Addresses
@@ -155,6 +155,17 @@ Use addresses from `.autobuilder/addresses.env`:
 - GoodSwap: 0x922D6956C99E12DFeB3224DEA977D0939758A1Fe
 - RPC: http://localhost:8545
 - Tester key: from .autobuilder/addresses.env
+
+## README Updates (MANDATORY)
+
+After EVERY task execution, update README.md:
+- Update commit count, contract count, test count in the stats section
+- Update component status table if any service status changed
+- Remove fixed issues from Known Issues table
+- Add security improvements to a new "Security Hardening" section
+- Update the `Updated:` date
+
+The README must always reflect the current state of the project.
 
 ## Non-Goals
 - No new UI features

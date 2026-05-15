@@ -27,7 +27,7 @@ describe('FeeBreakdownBadge', () => {
     const user = userEvent.setup()
     render(<FeeBreakdownBadge />)
     await user.click(screen.getByRole('button'))
-    expect(screen.getByText('33%')).toBeInTheDocument()
+    expect(screen.getByText('20%')).toBeInTheDocument()
     expect(screen.getByText('17%')).toBeInTheDocument()
     expect(screen.getByText('50%')).toBeInTheDocument()
   })

@@ -86,7 +86,7 @@ contract MockFeeSplitter {
     {
         // Pull tokens from caller
         IERC20Like(token).transferFrom(msg.sender, address(this), totalFee);
-        ubiShare      = (totalFee * 3333) / 10000;
+        ubiShare      = (totalFee * 2000) / 10000;
         protocolShare = (totalFee * 1667) / 10000;
         dAppShare     = totalFee - ubiShare - protocolShare;
         ubiReceived   += ubiShare;
@@ -99,7 +99,7 @@ contract MockFeeSplitter {
         returns (uint256 ubiShare, uint256 protocolShare, uint256 dAppShare)
     {
         IERC20Like(_token).transferFrom(msg.sender, address(this), totalFee);
-        ubiShare      = (totalFee * 3333) / 10000;
+        ubiShare      = (totalFee * 2000) / 10000;
         protocolShare = (totalFee * 1667) / 10000;
         dAppShare     = totalFee - ubiShare - protocolShare;
         ubiReceived   += ubiShare;
@@ -1458,7 +1458,7 @@ contract GoodStableTest is Test {
         uint256 ubiAfter  = feeSplitter.ubiReceived();
 
         assertGt(ubiAfter, ubiBefore, "UBI portion of stability fee sent");
-        // Verify it's ~33% of total fee (within rounding)
+        // Verify it's ~20% of total fee (within rounding)
         uint256 totalFee = feeSplitter.totalReceived();
         // Just check ubi > 0, exact ratio depends on mock
         assertGt(ubiAfter, 0, "UBI is non-zero");

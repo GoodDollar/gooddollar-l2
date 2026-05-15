@@ -67,7 +67,7 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
   const effectivePrice = orderType === 'limit' && parsedLimitPrice > 0 ? parsedLimitPrice : (orderType === 'limit' ? 0 : stock.price)
   const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
   const fee = amount ? parseFloat(amount) * 0.001 : 0
-  const ubiFee = fee * 0.33
+  const ubiFee = fee * 0.2
   const hasAmount = !!amount && parseFloat(amount) > 0
 
   const actionPhase = side === 'buy' ? mintPhase : redeemPhase
@@ -153,7 +153,7 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
             <span className="text-white truncate ml-2">{formatLargeNumber(fee)}</span>
           </div>
           <div className="flex justify-between text-goodgreen/80">
-            <span>→ UBI Pool (33%)</span>
+            <span>→ UBI Pool (20%)</span>
             <span className="truncate ml-2">{formatLargeNumber(ubiFee)}</span>
           </div>
         </div>
@@ -182,7 +182,7 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
 
       <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-goodgreen/60">
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-        <span>0.1% fee → 33% funds UBI</span>
+        <span>0.1% fee → 20% funds UBI</span>
       </div>
     </form>
   )

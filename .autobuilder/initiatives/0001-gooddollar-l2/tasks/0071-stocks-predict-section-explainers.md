@@ -31,7 +31,7 @@ Fresh-eyes review: Navigated to the Stocks page. Saw familiar tickers (MSFT, AAP
 Add a dismissible "info banner" at the top of the Stocks and Predict section pages (below the section header, above the content):
 
 **Stocks info banner:**
-> **How Tokenized Stocks Work** — Synthetic stock tokens track real equity prices via Chainlink oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 33% of fees to UBI. [Dismiss]
+> **How Tokenized Stocks Work** — Synthetic stock tokens track real equity prices via Chainlink oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 20% of fees to UBI. [Dismiss]
 
 **Predict info banner:**
 > **How Prediction Markets Work** — Buy YES or NO shares on any event. If you're right, each share pays $1. If wrong, you lose your stake. Share prices (5¢–95¢) reflect the crowd's probability estimate. [Dismiss]

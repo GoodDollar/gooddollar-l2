@@ -191,7 +191,7 @@ interface FeeReport {
   protocolId: number;
   name: string;
   totalFees: bigint;    // Cumulative fees from contracts
-  ubiPortion: bigint;   // 33% of fees → UBI
+  ubiPortion: bigint;   // 20% of fees → UBI
   txCount: bigint;       // Cumulative transaction count
 }
 
@@ -238,8 +238,8 @@ async function collectProtocolFees(
     }
   }
 
-  // UBI portion = 33% of fees (matching the 33% fee routing in UBIFeeSplitter)
-  const ubiPortion = (totalFees * 33n) / 100n;
+  // UBI portion = 20% of fees (matching the 20% fee routing in UBIFeeSplitter)
+  const ubiPortion = (totalFees * 20n) / 100n;
 
   return {
     protocolId: protocol.id,
@@ -269,7 +269,7 @@ function computeDelta(report: FeeReport): { fees: bigint; ubi: bigint; txs: bigi
   // Nothing new to report
   if (feesDelta === 0n && txsDelta === 0n) return null;
 
-  const ubiDelta = (feesDelta * 33n) / 100n;
+  const ubiDelta = (feesDelta * 20n) / 100n;
   return { fees: feesDelta, ubi: ubiDelta, txs: txsDelta };
 }
 

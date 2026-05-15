@@ -10,7 +10,7 @@ import "../src/interfaces/IGoodDollarToken.sol";
  * @notice Comprehensive tests for stablecoin protocol UBI fee routing.
  *
  * Test Coverage:
- * ✅ Core fee splitting (33.33% UBI / 16.67% protocol / 50% dApp)
+ * ✅ Core fee splitting (20% UBI / 16.67% protocol / 50% dApp)
  * ✅ Enhanced stability fee tracking by collateral type (ilk)
  * ✅ Enhanced minting fee tracking by user and direction
  * ✅ Liquidation penalty and governance fee tracking
@@ -41,9 +41,9 @@ contract StableUBIFeeSplitterTest is Test {
     // Test constants
     uint256 public constant INITIAL_SUPPLY = 1_000_000e18;
     uint256 public constant TEST_FEE = 1000e18; // 1000 G$ fee
-    uint256 public constant EXPECTED_UBI = 333.3e18; // 33.33%
+    uint256 public constant EXPECTED_UBI = 200e18; // 20%
     uint256 public constant EXPECTED_PROTOCOL = 166.7e18; // 16.67%
-    uint256 public constant EXPECTED_DAPP = 500e18; // 50%
+    uint256 public constant EXPECTED_DAPP = 633.3e18; // 50%
 
     event FeeSplit(
         address indexed source,
@@ -420,8 +420,8 @@ contract StableUBIFeeSplitterTest is Test {
 
         uint256 impactRate = splitter.getStablecoinSocialImpactRate();
 
-        // Should be 3333 (33.33% * 10000 for readability)
-        assertEq(impactRate, 3333);
+        // Should be 2000 (20% * 10000 for readability)
+        assertEq(impactRate, 2000);
     }
 
     function test_getIlkBreakdown() public {
@@ -629,7 +629,7 @@ contract StableUBIFeeSplitterTest is Test {
 
         // 4. Verify social impact metrics
         uint256 impactRate = splitter.getStablecoinSocialImpactRate();
-        assertEq(impactRate, 3333); // 33.33%
+        assertEq(impactRate, 2000); // 20%
 
         // 5. Verify monthly progress tracking
         (uint256 estimated, uint256 target, uint256 progress) = splitter.getMonthlyUBIEstimate();

@@ -11,7 +11,7 @@ import "./PriceOracle.sol";
  *         synthetic stock tokens at a minimum 150% collateral ratio.
  *
  *         Fee model: 0.3% of the USD value of each mint/burn is charged in G$
- *         and forwarded to the UBI fee splitter (33% -> UBI pool).
+ *         and forwarded to the UBI fee splitter (20% -> UBI pool).
  *
  *         Liquidation: anyone can liquidate a position whose collateral ratio
  *         falls below LIQUIDATION_RATIO (120%). The liquidator provides the

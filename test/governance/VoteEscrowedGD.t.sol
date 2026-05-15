@@ -160,7 +160,7 @@ contract VoteEscrowedGDTest is Test {
         veGD.earlyUnlock();
 
         uint256 penalty = (LOCK_AMT * 3000) / 10000; // 30%
-        uint256 toUBI = (penalty * 3333) / 10000;     // ~33% of penalty
+        uint256 toUBI = (penalty * 2000) / 10000;     // ~20% of penalty
         uint256 received = LOCK_AMT - penalty;
 
         assertEq(gd.balanceOf(alice), aliceBefore + received);

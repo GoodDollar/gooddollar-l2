@@ -20,7 +20,7 @@ Build the `/predict/[marketId]` page — an individual prediction market view wi
 - Trade panel: select YES or NO, enter amount, see shares received and avg price
 - Market info: question, resolution criteria, end date, resolution source, creator
 - Volume stats: total volume, 24h volume, liquidity
-- UBI fee: 1% on winnings → 33% to UBI pool
+- UBI fee: 1% on winnings → 20% to UBI pool
 
 ## Architecture
 
@@ -56,7 +56,7 @@ graph TD
 - [ ] `/predict/[marketId]` renders for valid market IDs, 404 for invalid
 - [ ] Probability chart shows mock data over time as area chart (green fill)
 - [ ] Trade panel: select YES or NO outcome, enter dollar amount, see estimated shares and cost
-- [ ] UBI fee display: "1% fee on winnings → 33% funds UBI"
+- [ ] UBI fee display: "1% fee on winnings → 20% funds UBI"
 - [ ] Market info panel: question, resolution criteria, end date, resolution source
 - [ ] Volume stats: total volume, 24h volume, total shares traded
 - [ ] Current probability displayed prominently (e.g. "YES 67%")

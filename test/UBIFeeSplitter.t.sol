@@ -46,8 +46,8 @@ contract UBIFeeSplitterTest is Test {
             splitter.splitFee(1000 ether, dapp);
         vm.stopPrank();
 
-        // ubiBPS=3333 → 333.3 G$, protocolBPS=1667 → 166.7 G$, dApp=~500 G$
-        assertEq(ubiShare, (1000 ether * 3333) / 10000);
+        // ubiBPS=2000 → 200 G$, protocolBPS=1667 → 166.7 G$, dApp=~633.3 G$
+        assertEq(ubiShare, (1000 ether * 2000) / 10000);
         assertEq(protocolShare, (1000 ether * 1667) / 10000);
         assertEq(dAppShare, 1000 ether - ubiShare - protocolShare);
         assertEq(token.balanceOf(dapp), dAppShare);
@@ -95,7 +95,7 @@ contract UBIFeeSplitterTest is Test {
             splitter.splitFeeToken(1000 ether, dapp, address(gUSD));
         vm.stopPrank();
 
-        assertEq(ubiShare, (1000 ether * 3333) / 10000);
+        assertEq(ubiShare, (1000 ether * 2000) / 10000);
         assertEq(protocolShare, (1000 ether * 1667) / 10000);
         assertEq(dAppShare, 1000 ether - ubiShare - protocolShare);
         assertEq(gUSD.balanceOf(ubiRecip), ubiShare);
@@ -271,7 +271,7 @@ contract UBIFeeSplitterTest is Test {
         (uint256 ubiShare,,) = splitter.splitFee(1000 ether, dapp);
         vm.stopPrank();
 
-        assertEq(ubiShare, (1000 ether * 3333) / 10000);
+        assertEq(ubiShare, (1000 ether * 2000) / 10000);
     }
 
     // ─── ETH receive + withdrawETH ─────────────────────────────────────────────
