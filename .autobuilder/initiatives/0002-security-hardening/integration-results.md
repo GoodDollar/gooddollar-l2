@@ -65,3 +65,50 @@ Raw cast-receipt JSON saved under `.autobuilder/integration-receipts/`:
   (re-running prints `already correct, no tx sent`)
 - Definition-of-Done item #4 (UBI 33% fee routing) is now unblocked at the
   splitter level; remaining work is observable fee accrual (task 0013).
+
+## 2026-05-15 — GoodSwap re-seeded with fresh router & 33% UBI verified (Task 0011)
+
+Original router and pools (broadcast logs from GOO-395 era) had `code_len=3`
+(empty) on the current Anvil snapshot, so the "register pools against existing
+router" plan was infeasible. `script/ReseedGoodSwapPools.s.sol` deployed a
+fresh router and three pools with modest liquidity, and a real swap proves
+end-to-end UBI fee routing.
+
+New addresses (also written to `.autobuilder/addresses.env` and
+`frontend/src/lib/devnet.ts`):
+
+- GoodSwapRouter: `0x975cDd867aCB99f0195be09C269E2440aa1b1FA8`
+- Pool GDT/WETH:  `0xd6096fbEd8bCc461d06b0C468C8b1cF7d45dC92d`
+- Pool GDT/USDC:  `0x0aD6371dd7E9923d9968D63Eb8B9858c700abD9d`
+- Pool WETH/USDC: `0xAA5c5496e2586F81d8d2d0B970eB85aB088639c2`
+
+Each pool has `feeBeneficiary = 0x809d550fca64d94Bd9F66E60752A544199cfAC3D`
+(UBIFeeSplitter), so 33.33% of the 0.3% swap fee flows to UBI on every swap.
+
+Seed liquidity (sized to deployer balance — 999M GDT / 950 WETH / 900k USDC):
+
+| Pool       | reserveA          | reserveB          |
+|------------|-------------------|-------------------|
+| GDT/WETH   | 500,000 GDT       | 500 WETH          |
+| GDT/USDC   | 500,000 GDT       | 500,000 USDC      |
+| WETH/USDC  | 100 WETH          | 300,000 USDC      |
+
+End-to-end verification swap (1 GDT → WETH from tester wallet via new router):
+
+- Approve tx: `0x134e8ae9f22574fdadebd43a9a14de3bd47abd5cd3f97901494f2abcfb69250e`
+- Swap tx:    `0xab78d7908d923c59aee7dabd3e9d4dbbb06b9d7ca4b23a266028045139438a84`
+  - Tester GDT: `1,000,000` → `999,999` (–1 GDT)
+  - Tester WETH: `0` → `996,998,011,985,964` wei (≈0.000997 WETH)
+  - UBIFeeSplitter GDT balance: `0` → `999,900,000,000,000` wei
+    = 1e18 × 0.003 × 0.3333 ✅ (matches expected 33.33% of 0.3% fee)
+- Receipt: `.autobuilder/integration-receipts/GoodSwap.json`
+
+Per-protocol status table update:
+
+- GoodSwap: **GAP → PASS** (real on-chain swap + verified UBI fee accrual)
+
+Frontend impact: `frontend/src/lib/devnet.ts` `GoodSwapRouter` constant and
+`SwapPoolGdWeth` / `SwapPoolGdUsdc` / `SwapPoolWethUsdc` rebound to new
+addresses. Without this update the `/swap` page would call into empty
+bytecode. This is the only frontend change in this initiative — justified
+because the alternative is a permanently broken swap UI.

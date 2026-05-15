@@ -57,13 +57,16 @@ export const CONTRACTS = {
   debtUSDC:              '0x86a2ee8faf9a840f7a2c64ca3d51209f9a02081d' as `0x${string}`,
   debtWETH:              '0xf953b3a269d80e3eb0f2947630da976b896a8c5b' as `0x${string}`,
 
-  // ── GoodSwap — redeployed to devnet (chain 42069), 2026-04-05 (GOO-395) ──
+  // ── GoodSwap — re-seeded to devnet (chain 42069), 2026-05-15 (Task 0011) ──
+  // Previous router/pools (GOO-395, 2026-04-05) had empty bytecode after a
+  // chain re-snapshot. ReseedGoodSwapPools.s.sol deployed a fresh router and
+  // three new pools wired to UBIFeeSplitter for 33.33% fee routing.
   PoolManager:           '0xC9a43158891282A2B1475592D5719c001986Aaec' as `0x${string}`,
-  GoodSwapRouter:        '0x975Ab64F4901Af5f0C96636deA0b9de3419D0c2F' as `0x${string}`,
+  GoodSwapRouter:        '0x975cDd867aCB99f0195be09C269E2440aa1b1FA8' as `0x${string}`,
   // GoodSwap Liquidity Pools
-  SwapPoolGdWeth:        '0xeAd789bd8Ce8b9E94F5D0FCa99F8787c7e758817' as `0x${string}`,
-  SwapPoolGdUsdc:        '0x95775fD3Afb1F4072794CA4ddA27F2444BCf8Ac3' as `0x${string}`,
-  SwapPoolWethUsdc:      '0xd9fEc8238711935D6c8d79Bef2B9546ef23FC046' as `0x${string}`,
+  SwapPoolGdWeth:        '0xd6096fbEd8bCc461d06b0C468C8b1cF7d45dC92d' as `0x${string}`,
+  SwapPoolGdUsdc:        '0x0aD6371dd7E9923d9968D63Eb8B9858c700abD9d' as `0x${string}`,
+  SwapPoolWethUsdc:      '0xAA5c5496e2586F81d8d2d0B970eB85aB088639c2' as `0x${string}`,
   // GoodSwap pool tokens (devnet mocks)
   SwapGD:                '0x547382C0D1b23f707918D3c83A77317B71Aa8470' as `0x${string}`,
   SwapWETH:              '0x7C8BaafA542c57fF9B2B90612bf8aB9E86e22C09' as `0x${string}`,
