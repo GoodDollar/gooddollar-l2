@@ -201,9 +201,12 @@ contract L1StandardBridgeTest is Test {
     }
 
     function test_finalizeETHWithdrawal() public {
+        address portalAddr = address(0xA07A1);
+        bridge.initialize(portalAddr);
         vm.deal(address(bridge), 10 ether);
         address payable recipient = payable(address(0xCAFE));
 
+        vm.prank(portalAddr);
         bridge.finalizeETHWithdrawal(address(0xBEEF), recipient, 1 ether, bytes(""));
         assertEq(recipient.balance, 1 ether);
     }
