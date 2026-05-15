@@ -21,6 +21,21 @@ const PriceChart = dynamic(
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 
+// Next.js `useParams()` returns raw URL segments. A symbol like `G$` is
+// percent-encoded in the URL as `G%24`, so we must decode before looking it
+// up against the on-chain token list. Malformed input (lone `%`) makes
+// `decodeURIComponent` throw `URIError`; in that case fall back to the raw
+// value so the page renders the friendly "Token Not Found" state instead of
+// crashing with an unhandled error.
+function decodeSymbolParam(raw: string | undefined): string {
+  if (!raw) return ''
+  try {
+    return decodeURIComponent(raw).toUpperCase()
+  } catch {
+    return raw.toUpperCase()
+  }
+}
+
 // Hook for touch gestures on mobile
 function useSwipeNavigation(onSwipeLeft: () => void, onSwipeRight: () => void) {
   const [touchStart, setTouchStart] = useState(0)
@@ -56,7 +71,7 @@ function useSwipeNavigation(onSwipeLeft: () => void, onSwipeRight: () => void) {
 export default function TokenDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const symbol = (params.symbol as string)?.toUpperCase()
+  const symbol = decodeSymbolParam(params.symbol as string | undefined)
   const { tokens } = useOnChainMarketData()
   const token = tokens.find(t => t.symbol.toUpperCase() === symbol)
   const [timeframe, setTimeframe] = useState<Timeframe>('1M')
