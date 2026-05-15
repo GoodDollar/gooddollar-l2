@@ -58,6 +58,53 @@ export interface VaultState {
   hasPosition: boolean    // true when vault has collateral or debt
 }
 
+/**
+ * Pure post-fetch math for a vault. Extracted so a single batched
+ * `useReadContracts` (e.g. in <PortfolioOnChain>) can reuse the exact
+ * same formula without re-implementing it. `useVault()` below also
+ * delegates here, so per-row callers and batched callers cannot drift.
+ *
+ * `vaultData` shape: `[collateral, normalizedDebt]` from
+ *   VaultManager.vaults(ilk, owner).
+ * `accData` shape:   `[chi, lastDrip, totalNormalizedDebt]` from
+ *   VaultManager.accumulators(ilk). May be undefined; falls back to RAY.
+ */
+export function computeVaultState(
+  vaultData: readonly [bigint, bigint] | undefined,
+  accData: readonly [bigint, bigint, bigint] | undefined,
+  collateralDecimals: number,
+  collateralPriceUSD: number,
+  liquidationRatio: number,
+): VaultState | null {
+  if (!vaultData) return null
+
+  const [collateral, normalizedDebt] = vaultData
+  const chi = accData ? accData[0] : RAY
+  const effectiveChi = chi === BigInt(0) ? RAY : chi
+
+  const actualDebt = normalizedDebt === BigInt(0) ? BigInt(0) : (normalizedDebt * effectiveChi) / RAY
+
+  const collateralFloat = Number(formatUnits(collateral, collateralDecimals))
+  const actualDebtFloat = Number(formatUnits(actualDebt, 18))
+
+  const collateralValueUSD = collateralFloat * collateralPriceUSD
+  const healthFactor = actualDebtFloat === 0
+    ? Infinity
+    : collateralValueUSD / (actualDebtFloat * liquidationRatio)
+
+  return {
+    collateral,
+    normalizedDebt,
+    actualDebt,
+    chi: effectiveChi,
+    collateralFloat,
+    actualDebtFloat,
+    healthFactor,
+    isHealthy: healthFactor >= 1,
+    hasPosition: collateral > BigInt(0) || normalizedDebt > BigInt(0),
+  }
+}
+
 export function useVault(
   ilk: `0x${string}` | undefined,
   owner: `0x${string}` | undefined,
@@ -81,38 +128,19 @@ export function useVault(
     query: { enabled: !!ilk, refetchInterval: 15_000 },
   })
 
-  if (!vaultResult.data) {
+  const data = computeVaultState(
+    vaultResult.data as readonly [bigint, bigint] | undefined,
+    accResult.data as readonly [bigint, bigint, bigint] | undefined,
+    collateralDecimals,
+    collateralPriceUSD,
+    liquidationRatio,
+  )
+
+  if (!data) {
     return { data: null, isLoading: vaultResult.isLoading || accResult.isLoading }
   }
 
-  const [collateral, normalizedDebt] = vaultResult.data
-  const chi = accResult.data ? accResult.data[0] : RAY
-  const effectiveChi = chi === BigInt(0) ? RAY : chi
-
-  const actualDebt = normalizedDebt === BigInt(0) ? BigInt(0) : (normalizedDebt * effectiveChi) / RAY
-
-  const collateralFloat = Number(formatUnits(collateral, collateralDecimals))
-  const actualDebtFloat = Number(formatUnits(actualDebt, 18))
-
-  const collateralValueUSD = collateralFloat * collateralPriceUSD
-  const healthFactor = actualDebtFloat === 0
-    ? Infinity
-    : collateralValueUSD / (actualDebtFloat * liquidationRatio)
-
-  return {
-    data: {
-      collateral,
-      normalizedDebt,
-      actualDebt,
-      chi: effectiveChi,
-      collateralFloat,
-      actualDebtFloat,
-      healthFactor,
-      isHealthy: healthFactor >= 1,
-      hasPosition: collateral > BigInt(0) || normalizedDebt > BigInt(0),
-    } satisfies VaultState,
-    isLoading: false,
-  }
+  return { data, isLoading: false }
 }
 
 // ─── Read: collateral config ──────────────────────────────────────────────────

@@ -3,28 +3,35 @@
 /**
  * PortfolioOnChain — shows live on-chain positions when wallet is connected to chain 42069.
  *
- * Reads from:
+ * Reads from (all batched into ONE multicall via `usePortfolioReads`):
  *   - GoodDollarToken.balanceOf  (G$ balance)
- *   - useGUSDBalance             (gUSD balance from GoodStable)
- *   - useUserAccountData         (GoodLend aggregate: collateral, debt, health factor)
- *   - useVault × 3               (GoodStable CDP vaults: ETH, G$, USDC)
+ *   - gUSD.balanceOf             (gUSD balance from GoodStable)
+ *   - GoodLendPool.getUserAccountData (collateral, debt, health factor)
+ *   - VaultManager × 3 ilks      (ETH, G$, USDC CDP vaults — vaults + accumulators)
+ *
+ * Before this refactor the panel held 6 separate `useReadContract`s totalling
+ * 9 `eth_call`s every 15s tick. Now it's exactly one `multicall3.aggregate3`.
  */
 
 import { useAccount } from 'wagmi'
-import { useReadContract } from 'wagmi'
-import { formatUnits } from 'viem'
-import { GoodDollarTokenABI, ERC20ABI } from '@/lib/abi'
-import { CONTRACTS } from '@/lib/chain'
-import { useGUSDBalance, useVault, ILKS, ILK_ETH, ILK_GD, ILK_USDC } from '@/lib/useGoodStable'
-import { useUserAccountData } from '@/lib/useGoodLend'
-import { usePriceFeeds, getPrice } from '@/lib/usePriceFeeds'
+import { ILK_ETH, ILK_GD, ILK_USDC, type VaultState } from '@/lib/useGoodStable'
+import { type OnChainAccountData } from '@/lib/useGoodLend'
+import { usePriceFeeds } from '@/lib/usePriceFeeds'
+import { usePortfolioReads, type PortfolioReads } from '@/lib/usePortfolioReads'
 import Link from 'next/link'
 
 const CHAIN_ID = 42069
-const ILKS_META = [
-  { key: ILK_ETH,  label: 'WETH', decimals: 18, minRatio: 150, tokenAddress: CONTRACTS.StableMockWETH },
-  { key: ILK_GD,   label: 'G$',   decimals: 18, minRatio: 200, tokenAddress: CONTRACTS.StableMockGD },
-  { key: ILK_USDC, label: 'USDC', decimals: 6,  minRatio: 101, tokenAddress: CONTRACTS.StableMockUSDC },
+
+interface IlkMeta {
+  key: `0x${string}`
+  label: string
+  vaultKey: 'ethVault' | 'gdVault' | 'usdcVault'
+}
+
+const ILKS_META: readonly IlkMeta[] = [
+  { key: ILK_ETH,  label: 'WETH', vaultKey: 'ethVault' },
+  { key: ILK_GD,   label: 'G$',   vaultKey: 'gdVault' },
+  { key: ILK_USDC, label: 'USDC', vaultKey: 'usdcVault' },
 ] as const
 
 function fmtN(n: number, dp = 4) {
@@ -43,18 +50,7 @@ function hfColor(hf: number) {
 
 // ─── G$ + gUSD balances row ───────────────────────────────────────────────────
 
-function TokenBalances({ address }: { address: `0x${string}` }) {
-  const gdResult = useReadContract({
-    address: CONTRACTS.GoodDollarToken,
-    abi: GoodDollarTokenABI,
-    functionName: 'balanceOf',
-    args: [address],
-    query: { refetchInterval: 15_000 },
-  })
-  const gdBalance = gdResult.data ? Number(formatUnits(gdResult.data, 18)) : 0
-
-  const { balanceFloat: gusdBalance } = useGUSDBalance(address)
-
+function TokenBalances({ gdBalance, gusdBalance }: { gdBalance: number; gusdBalance: number }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
       <div className="bg-dark-50/30 rounded-xl px-4 py-3 flex items-center justify-between">
@@ -77,9 +73,7 @@ function TokenBalances({ address }: { address: `0x${string}` }) {
 
 // ─── GoodLend position ────────────────────────────────────────────────────────
 
-function LendPosition({ address }: { address: `0x${string}` }) {
-  const { data, isLoading } = useUserAccountData(address)
-
+function LendPosition({ data, isLoading }: { data: OnChainAccountData | null; isLoading: boolean }) {
   const hasPosition = data && (data.totalCollateralFloat > 0 || data.totalDebtFloat > 0)
 
   return (
@@ -116,13 +110,8 @@ function LendPosition({ address }: { address: `0x${string}` }) {
 
 // ─── GoodStable vault positions ───────────────────────────────────────────────
 
-function StableVaultRow({ ilkMeta, address, prices }: { ilkMeta: typeof ILKS_META[number]; address: `0x${string}`; prices: Record<string, number> }) {
-  const price = getPrice(prices, ilkMeta.label)
-  const { data, isLoading } = useVault(
-    ilkMeta.key, address, ilkMeta.decimals, price, ilkMeta.minRatio / 100,
-  )
-
-  const hasPosition = data && (data.collateralFloat > 0 || data.actualDebtFloat > 0)
+function StableVaultRow({ ilkMeta, vault, isLoading }: { ilkMeta: IlkMeta; vault: VaultState | null; isLoading: boolean }) {
+  const hasPosition = vault && (vault.collateralFloat > 0 || vault.actualDebtFloat > 0)
   if (!hasPosition && !isLoading) return null
 
   return (
@@ -136,16 +125,16 @@ function StableVaultRow({ ilkMeta, address, prices }: { ilkMeta: typeof ILKS_MET
       <div className="flex items-center gap-4 text-right">
         <div>
           <div className="text-[10px] text-gray-500">Collateral</div>
-          <div className="text-xs text-white">{isLoading ? '…' : `${fmtN(data?.collateralFloat ?? 0, 3)} ${ilkMeta.label}`}</div>
+          <div className="text-xs text-white">{isLoading ? '…' : `${fmtN(vault?.collateralFloat ?? 0, 3)} ${ilkMeta.label}`}</div>
         </div>
         <div>
           <div className="text-[10px] text-gray-500">Debt</div>
-          <div className="text-xs text-white">{isLoading ? '…' : `${fmtN(data?.actualDebtFloat ?? 0, 2)} gUSD`}</div>
+          <div className="text-xs text-white">{isLoading ? '…' : `${fmtN(vault?.actualDebtFloat ?? 0, 2)} gUSD`}</div>
         </div>
         <div>
           <div className="text-[10px] text-gray-500">Health</div>
-          <div className={`text-xs font-medium ${hfColor(data?.healthFactor ?? Infinity)}`}>
-            {isLoading ? '…' : isFinite(data?.healthFactor ?? Infinity) ? (data?.healthFactor ?? 0).toFixed(2) : '∞'}
+          <div className={`text-xs font-medium ${hfColor(vault?.healthFactor ?? Infinity)}`}>
+            {isLoading ? '…' : isFinite(vault?.healthFactor ?? Infinity) ? (vault?.healthFactor ?? 0).toFixed(2) : '∞'}
           </div>
         </div>
       </div>
@@ -153,7 +142,7 @@ function StableVaultRow({ ilkMeta, address, prices }: { ilkMeta: typeof ILKS_MET
   )
 }
 
-function StablePositions({ address, prices }: { address: `0x${string}`; prices: Record<string, number> }) {
+function StablePositions({ reads }: { reads: PortfolioReads }) {
   return (
     <div className="mb-3">
       <div className="flex items-center justify-between mb-2">
@@ -162,7 +151,12 @@ function StablePositions({ address, prices }: { address: `0x${string}`; prices: 
       </div>
       <div className="space-y-0.5">
         {ILKS_META.map(ilk => (
-          <StableVaultRow key={ilk.key} ilkMeta={ilk} address={address} prices={prices} />
+          <StableVaultRow
+            key={ilk.key}
+            ilkMeta={ilk}
+            vault={reads[ilk.vaultKey]}
+            isLoading={reads.isLoading}
+          />
         ))}
       </div>
     </div>
@@ -174,6 +168,7 @@ function StablePositions({ address, prices }: { address: `0x${string}`; prices: 
 export function PortfolioOnChain() {
   const { address, chainId } = useAccount()
   const { prices } = usePriceFeeds(['WETH', 'G$', 'USDC'])
+  const reads = usePortfolioReads(address, prices)
 
   if (!address || chainId !== CHAIN_ID) return null
 
@@ -185,9 +180,9 @@ export function PortfolioOnChain() {
         <span className="text-xs text-gray-500">· devnet chain 42069</span>
       </div>
 
-      <TokenBalances address={address} />
-      <LendPosition address={address} />
-      <StablePositions address={address} prices={prices} />
+      <TokenBalances gdBalance={reads.gdBalance} gusdBalance={reads.gusdBalance} />
+      <LendPosition data={reads.lend} isLoading={reads.isLoading} />
+      <StablePositions reads={reads} />
     </div>
   )
 }

@@ -81,6 +81,39 @@ export interface OnChainAccountData {
   isAtRisk: boolean
 }
 
+/**
+ * Pure post-fetch math for `GoodLendPool.getUserAccountData`. Extracted
+ * so a single batched `useReadContracts` (e.g. <PortfolioOnChain>) can
+ * reuse the exact same conversions without re-implementing them.
+ * `useUserAccountData()` below also delegates here so per-row callers
+ * and batched callers cannot drift.
+ *
+ * `raw` shape: `[healthFactor, totalCollateralUSD, totalDebtUSD]`
+ *   where healthFactor is RAY-scaled (or `maxUint256` for "no debt"),
+ *   collateral and debt are 1e8-scaled USD values.
+ */
+export function computeAccountData(
+  raw: readonly [bigint, bigint, bigint] | undefined,
+): OnChainAccountData | null {
+  if (!raw) return null
+  const [healthFactor, totalCollateralUSD, totalDebtUSD] = raw
+
+  const healthFactorFloat = healthFactor === maxUint256 ? Infinity : Number(healthFactor) / Number(RAY)
+  const totalCollateralFloat = Number(totalCollateralUSD) / 1e8
+  const totalDebtFloat = Number(totalDebtUSD) / 1e8
+
+  return {
+    healthFactor,
+    totalCollateralUSD,
+    totalDebtUSD,
+    healthFactorFloat,
+    totalCollateralFloat,
+    totalDebtFloat,
+    isHealthy: healthFactorFloat >= 1.0,
+    isAtRisk: healthFactorFloat < 1.2,
+  }
+}
+
 export function useUserAccountData(userAddress: `0x${string}` | undefined): {
   data: OnChainAccountData | null
   isLoading: boolean
@@ -93,25 +126,8 @@ export function useUserAccountData(userAddress: `0x${string}` | undefined): {
     query: { enabled: !!userAddress, refetchInterval: 15_000 },
   })
 
-  if (!result.data) return { data: null, isLoading: result.isLoading }
-
-  const [healthFactor, totalCollateralUSD, totalDebtUSD] = result.data
-
-  const healthFactorFloat = healthFactor === maxUint256 ? Infinity : Number(healthFactor) / Number(RAY)
-  const totalCollateralFloat = Number(totalCollateralUSD) / 1e8
-  const totalDebtFloat = Number(totalDebtUSD) / 1e8
-
   return {
-    data: {
-      healthFactor,
-      totalCollateralUSD,
-      totalDebtUSD,
-      healthFactorFloat,
-      totalCollateralFloat,
-      totalDebtFloat,
-      isHealthy: healthFactorFloat >= 1.0,
-      isAtRisk: healthFactorFloat < 1.2,
-    },
+    data: computeAccountData(result.data as readonly [bigint, bigint, bigint] | undefined),
     isLoading: result.isLoading,
   }
 }

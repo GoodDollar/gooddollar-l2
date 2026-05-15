@@ -5,25 +5,34 @@ import { render, screen } from '@testing-library/react'
 
 vi.mock('wagmi', () => ({
   useAccount: vi.fn(),
+  // The component no longer calls these directly, but `usePortfolioReads`
+  // (which we mock below) and other lib code may pull them in transitively.
   useReadContract: vi.fn().mockReturnValue({ data: undefined, isLoading: false }),
+  useReadContracts: vi.fn().mockReturnValue({ data: undefined, isLoading: false, isError: false }),
 }))
 
-vi.mock('@/lib/useGoodStable', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/useGoodStable')>()
-  return {
-    ...actual,
-    useGUSDBalance: vi.fn().mockReturnValue({ balance: BigInt(0), balanceFloat: 0, isLoading: false }),
-    useVault: vi.fn().mockReturnValue({ data: null, isLoading: false }),
-  }
-})
+// Stub the batched reads hook so the test does not exercise wagmi internals.
+vi.mock('@/lib/usePortfolioReads', () => ({
+  usePortfolioReads: vi.fn().mockReturnValue({
+    gdBalance: 0,
+    gusdBalance: 0,
+    lend: null,
+    ethVault: null,
+    gdVault: null,
+    usdcVault: null,
+    isLoading: false,
+    isError: false,
+  }),
+}))
 
-vi.mock('@/lib/useGoodLend', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/useGoodLend')>()
-  return {
-    ...actual,
-    useUserAccountData: vi.fn().mockReturnValue({ data: null, isLoading: false }),
-  }
-})
+// usePriceFeeds is a thin wrapper around the singleton CoinGecko cache.
+vi.mock('@/lib/usePriceFeeds', () => ({
+  usePriceFeeds: vi.fn().mockReturnValue({
+    prices: { WETH: 0, 'G$': 0, USDC: 0 },
+    isLoading: false,
+  }),
+  getPrice: (prices: Record<string, number>, sym: string) => prices[sym] ?? 0,
+}))
 
 vi.mock('next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode; href: string }) => (
