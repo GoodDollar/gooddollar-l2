@@ -30,16 +30,26 @@ export interface OnChainMarket {
 
 // ─── Market count ─────────────────────────────────────────────────────────────
 
-export function useMarketCount(): { count: bigint; isLoading: boolean } {
+export function useMarketCount(): {
+  count: bigint
+  isLoading: boolean
+  isError: boolean
+} {
+  // retry:false matches useOnChainMarket so a dead RPC (anvil down, wrong
+  // network, MarketFactory redeployed) settles in a single round-trip
+  // instead of pinning isLoading=true through wagmi's default retry storm
+  // — which previously made the detail page spin forever even after the
+  // 5s timeout in task 0014.
   const result = useReadContract({
     address: CONTRACTS.MarketFactory,
     abi: MarketFactoryABI,
     functionName: 'marketCount',
-    query: { refetchInterval: 30_000 },
+    query: { retry: false, refetchInterval: 30_000 },
   })
   return {
     count: (result.data as bigint | undefined) ?? BigInt(0),
     isLoading: result.isLoading,
+    isError: result.isError,
   }
 }
 

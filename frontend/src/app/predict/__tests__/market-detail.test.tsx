@@ -4,6 +4,8 @@ import { TestWrapper } from '@/test-utils/wrapper'
 
 let mockMarketId = '1'
 let mockMarketCount: bigint = BigInt(2)
+let mockCountLoading = false
+let mockCountError = false
 let mockOnChainMarket: { market: unknown; isLoading: boolean; isError?: boolean } = {
   market: null,
   isLoading: false,
@@ -16,7 +18,11 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/useMarkets', () => ({
   useOnChainMarket: () => mockOnChainMarket,
-  useMarketCount: () => ({ count: mockMarketCount, isLoading: false }),
+  useMarketCount: () => ({
+    count: mockMarketCount,
+    isLoading: mockCountLoading,
+    isError: mockCountError,
+  }),
   useAllOnChainMarkets: () => ({ markets: [], isLoading: false }),
 }))
 
@@ -49,6 +55,8 @@ import MarketDetailPage from '../[marketId]/page'
 
 beforeEach(() => {
   mockMarketCount = BigInt(2)
+  mockCountLoading = false
+  mockCountError = false
   mockOnChainMarket = { market: null, isLoading: false }
 })
 
@@ -133,6 +141,21 @@ describe('MarketDetailPage — out-of-range / stuck-loading guards', () => {
     mockOnChainMarket = { market: null, isLoading: false, isError: true }
     render(<TestWrapper><MarketDetailPage /></TestWrapper>)
     expect(screen.getByText('Market Not Found')).toBeTruthy()
+  })
+
+  // Regression test for task 0018: a failed marketCount() read (anvil down,
+  // MarketFactory reverted) must short-circuit to MarketNotFound immediately
+  // rather than spinning until the 5s mount timer fires.
+  it('renders Market Not Found immediately when useMarketCount errors (RPC down)', () => {
+    mockMarketId = '0'
+    mockMarketCount = BigInt(0)
+    mockCountError = true
+    // Even if the per-market hook is still "loading", the count error gate
+    // should fire MarketNotFound first.
+    mockOnChainMarket = { market: null, isLoading: true, isError: false }
+    render(<TestWrapper><MarketDetailPage /></TestWrapper>)
+    expect(screen.getByText('Market Not Found')).toBeTruthy()
+    expect(screen.queryByLabelText('Loading market data')).toBeNull()
   })
 })
 

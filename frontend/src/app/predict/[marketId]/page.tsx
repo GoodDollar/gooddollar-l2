@@ -271,9 +271,19 @@ export default function MarketDetailPage() {
   // out-of-range ids (which revert with array-OOB). Without this, wagmi's
   // retry loop keeps isLoading=true forever and the page never falls back
   // to MarketNotFound. See task 0014 in 0002-security-hardening.
-  const { count: marketCount, isLoading: isCountLoading } = useMarketCount()
+  //
+  // isCountError lets us short-circuit to MarketNotFound the moment the
+  // count read fails (RPC down, MarketFactory reverts, wrong network)
+  // instead of waiting for the 5s mount timeout to fire — and prevents
+  // useOnChainMarket from firing against a broken RPC at all. See
+  // task 0018 in 0002-security-hardening.
+  const {
+    count: marketCount,
+    isLoading: isCountLoading,
+    isError: isCountError,
+  } = useMarketCount()
   const isOutOfRange = isValidId && marketCount > BigInt(0) && parsedId >= marketCount
-  const fetchEnabled = isValidId && !isOutOfRange
+  const fetchEnabled = isValidId && !isOutOfRange && !isCountError
 
   const { market: onChainMarket, isLoading, isError } = useOnChainMarket(
     parsedId,
@@ -299,7 +309,7 @@ export default function MarketDetailPage() {
     return generateProbabilityHistory(market.yesPrice, 90)
   }, [market])
 
-  if (!isValidId || isOutOfRange || isError || (isTimedOut && !market)) {
+  if (!isValidId || isOutOfRange || isCountError || isError || (isTimedOut && !market)) {
     return <MarketNotFound />
   }
 
