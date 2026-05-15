@@ -12,6 +12,8 @@
     "test:e2e:headed": "playwright test --headed",
     "analyze": "ANALYZE=true npm run build",
     "check:landing-bundle": "node scripts/check-landing-bundle.mjs",
+    "check:no-edge-middleware": "node scripts/check-middleware-absent.mjs",
+    "check:perf": "npm run check:no-edge-middleware && npm run check:landing-bundle",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
