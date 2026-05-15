@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
-"""Regenerate .autobuilder/addresses.env from broadcast/ artifacts + on-chain bytecode.
+"""Regenerate .autobuilder/addresses.env AND op-stack/addresses.json from
+broadcast/ artifacts + on-chain bytecode.
 
 Walks every broadcast/*.s.sol/<chain_id>/run-latest.json, keeps the most-recent
 deployment per contract name (by run timestamp), verifies the address has
-bytecode via eth_getCode, then writes a fresh addresses.env using the
-contract->symbol map below.
+bytecode via eth_getCode, then writes:
+
+  1. `.autobuilder/addresses.env` — the canonical env-var truth used by
+     deploy/test scripts.
+  2. `op-stack/addresses.json` — the frontend's view of the same data
+     (`frontend/src/lib/devnet.ts` imports this file via Next's JSON loader).
+
+Both files are derived from the same SYMBOL_MAP so they cannot drift.
 
 Exits non-zero if a required symbol cannot be resolved to a live address.
 
@@ -173,6 +180,114 @@ def main() -> int:
     out_path.write_text("\n".join(lines))
     print(f"[refresh-addresses] wrote {len(resolved)} symbols to {out_path}", file=sys.stderr)
     print(f"[refresh-addresses] required symbols resolved: {REQUIRED}", file=sys.stderr)
+
+    # ── Mirror the same data into op-stack/addresses.json so the frontend's
+    #    `rawAddresses.contracts.*` view stays in sync with addresses.env.
+    json_path = REPO_ROOT / "op-stack" / "addresses.json"
+    rc = update_op_stack_addresses(json_path, resolved, args.rpc, int(args.chain_id), now)
+    if rc != 0:
+        return rc
+    return 0
+
+
+# Reverse map: env-var symbol -> contract name as it appears in
+# op-stack/addresses.json (== same key as in SYMBOL_MAP). Built once at module
+# load. Only symbols in SYMBOL_MAP are mirrored into the JSON; addresses.env-
+# only entries (e.g. POOL_*, STABLE_WETH, G_GDT) are intentionally excluded.
+_SYMBOL_TO_CONTRACT_NAME: dict[str, str] = {sym: cn for cn, sym in SYMBOL_MAP.items()}
+
+
+def update_op_stack_addresses(
+    json_path: Path,
+    resolved: dict[str, str],
+    rpc: str,
+    chain_id: int,
+    now: str,
+) -> int:
+    """Sync resolved addresses into op-stack/addresses.json.
+
+    Rules:
+      * Existing keys in `contracts` are overwritten when we have a fresh
+        resolved value for them.
+      * Keys present in the JSON but absent from SYMBOL_MAP / resolved (e.g.
+        `FastWithdrawalLP`, `CollateralVault_WRONG_GDT`, `OptimisticResolver`)
+        are preserved verbatim.
+      * Resolved symbols that map to a contract name not yet in the JSON are
+        added (so e.g. `UBIRevenueTracker`, `CollateralRegistry`,
+        `UBIClaimV2` get a JSON entry once they exist on-chain).
+      * Top-level metadata (`chain_id`, `chain_name`, `rpc_url`,
+        `explorer_url`, `admin`, `sequencer`, `batcher`, `proposer`) is
+        preserved.
+      * The `_comment` is rewritten with the new sync timestamp + source.
+      * Output is idempotent: a second run against the same chain produces
+        a byte-identical file.
+    """
+    if not json_path.exists():
+        print(
+            f"[refresh-addresses] WARN: {json_path} missing — skipping JSON sync",
+            file=sys.stderr,
+        )
+        return 0
+
+    try:
+        data = json.loads(json_path.read_text())
+    except Exception as exc:
+        print(f"[refresh-addresses] FATAL: cannot parse {json_path}: {exc}", file=sys.stderr)
+        return 3
+
+    contracts = data.get("contracts")
+    if not isinstance(contracts, dict):
+        print(
+            f"[refresh-addresses] FATAL: {json_path} has no `contracts` object",
+            file=sys.stderr,
+        )
+        return 3
+
+    # 1. Overwrite existing keys for which we have a fresh resolution.
+    overwritten = 0
+    added = 0
+    for sym, addr in resolved.items():
+        cn = _SYMBOL_TO_CONTRACT_NAME.get(sym)
+        if not cn:
+            continue
+        # Use checksummed-style comparison via lowercase to detect changes.
+        prev = contracts.get(cn)
+        if prev is None:
+            contracts[cn] = addr
+            added += 1
+        elif (prev or "").lower() != addr.lower():
+            contracts[cn] = addr
+            overwritten += 1
+        else:
+            # already matches — leave the existing casing untouched so the
+            # file stays byte-identical run-to-run.
+            pass
+
+    # 2. Refresh metadata. Preserve user-set values for chain_name, rpc_url,
+    #    explorer_url, etc. Only refresh `_comment` when something actually
+    #    changed — otherwise the file would diff on every run purely due to
+    #    the embedded timestamp, which is hostile to git history.
+    if added or overwritten:
+        data["_comment"] = (
+            f"GoodDollar L2 contract addresses — synced {now} from "
+            f"scripts/refresh-addresses.py (chain_id={chain_id}, rpc={rpc}). "
+            f"DO NOT hand-edit; re-run the script after every redeploy."
+        )
+    data["chain_id"] = data.get("chain_id", chain_id)
+    data["contracts"] = contracts
+
+    # Preserve insertion order; keep the original `_comment` -> top-level keys
+    # ordering. Output with 4-space indent + trailing newline so the file
+    # matches existing style and stays diff-friendly.
+    text = json.dumps(data, indent=4, ensure_ascii=True) + "\n"
+    json_path.write_text(text)
+
+    print(
+        f"[refresh-addresses] op-stack/addresses.json: "
+        f"{added} added, {overwritten} updated, "
+        f"{len(contracts)} total contract keys",
+        file=sys.stderr,
+    )
     return 0
 
 
