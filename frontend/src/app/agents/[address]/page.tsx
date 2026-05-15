@@ -1,8 +1,16 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAgentDetail, type Protocol } from '@/lib/useAgentDetail'
+
+/**
+ * Hard ceiling on how long we are willing to show the loading spinner
+ * before assuming the on-chain data is permanently unreachable (RPC down,
+ * wrong network, etc.) and rendering the not-found UI instead.
+ */
+const LOADING_TIMEOUT_MS = 5_000
 
 const PROTOCOL_META: Record<Protocol, { icon: string; label: string; color: string }> = {
   swap:    { icon: '🔄', label: 'Swaps',      color: 'from-blue-500/30 to-cyan-500/30' },
@@ -62,12 +70,47 @@ export default function AgentDetailPage() {
   const params = useParams()
   const address = params?.address as string | undefined
 
-  const { profile, stats, protocolBreakdown, isLoading } = useAgentDetail(address)
+  const { profile, stats, protocolBreakdown, isLoading, isValidAddr } =
+    useAgentDetail(address)
+
+  // Mount-only timer: if we are still loading after LOADING_TIMEOUT_MS we
+  // give up and render the not-found UI rather than spinning forever. This
+  // matches the predict-detail page's behaviour and keeps the page recoverable
+  // when wagmi never settles (RPC down, never-registered address, etc.).
+  const [isTimedOut, setIsTimedOut] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setIsTimedOut(true), LOADING_TIMEOUT_MS)
+    return () => clearTimeout(t)
+  }, [])
+
+  const showNotFound = !isValidAddr || isTimedOut || (!isLoading && (!profile || !stats))
+
+  if (showNotFound) {
+    return (
+      <div className="w-full max-w-4xl mx-auto px-4 py-12 text-center">
+        <div className="text-4xl mb-4">🚫</div>
+        <h2 className="text-xl font-bold text-white mb-2">Agent Not Found</h2>
+        <p className="text-gray-400 text-sm mb-4">
+          No registered agent at{' '}
+          <code className="text-xs bg-dark-100 px-1.5 py-0.5 rounded break-all">
+            {address || '(missing address)'}
+          </code>
+        </p>
+        <Link href="/agents" className="text-goodgreen hover:underline text-sm">
+          ← Back to Leaderboard
+        </Link>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-4xl mx-auto px-4 py-12 text-center">
-        <div className="animate-pulse text-4xl mb-4">🤖</div>
+      <div
+        className="w-full max-w-4xl mx-auto px-4 py-12 text-center"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="animate-pulse text-4xl mb-4" aria-hidden="true">🤖</div>
         <div className="text-gray-400">Loading agent data…</div>
       </div>
     )
@@ -80,7 +123,9 @@ export default function AgentDetailPage() {
         <h2 className="text-xl font-bold text-white mb-2">Agent Not Found</h2>
         <p className="text-gray-400 text-sm mb-4">
           No registered agent at{' '}
-          <code className="text-xs bg-dark-100 px-1.5 py-0.5 rounded">{address}</code>
+          <code className="text-xs bg-dark-100 px-1.5 py-0.5 rounded break-all">
+            {address}
+          </code>
         </p>
         <Link href="/agents" className="text-goodgreen hover:underline text-sm">
           ← Back to Leaderboard

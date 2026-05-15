@@ -1,10 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
 import AgentDetailPage from '../agents/[address]/page'
 
-// Mock next/navigation
+// Mock next/navigation — the address is per-test mutable so we can cover
+// invalid-input cases (non-hex, wrong length, empty, etc.). Default to a
+// well-formed 0x-prefixed 20-byte hex address so the happy-path tests
+// don't accidentally trip the invalid-address guard.
+const VALID_ADDR = '0x' + 'a'.repeat(40)
+let mockAddress: string | undefined = VALID_ADDR
 vi.mock('next/navigation', () => ({
-  useParams: vi.fn().mockReturnValue({ address: '0x1002aabbccdd' }),
+  useParams: () => ({ address: mockAddress }),
 }))
 
 // Mock next/link
@@ -54,6 +59,7 @@ vi.mock('@/lib/useAgentDetail', () => ({
     stats: null,
     protocolBreakdown: [],
     isLoading: false,
+    isValidAddr: true,
     allProtocols: ['swap', 'perps', 'predict', 'lend', 'stable', 'stocks', 'yield'],
   }),
 }))
@@ -64,11 +70,16 @@ const mockUseAgentDetail = useAgentDetail as unknown as ReturnType<typeof vi.fn>
 describe('AgentDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAddress = VALID_ADDR
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('shows loading state', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: null, stats: null, protocolBreakdown: [], isLoading: true, allProtocols: [],
+      profile: null, stats: null, protocolBreakdown: [], isLoading: true, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('Loading agent data…')).toBeDefined()
@@ -76,7 +87,7 @@ describe('AgentDetailPage', () => {
 
   it('shows not found for unregistered agent', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: null, stats: null, protocolBreakdown: [], isLoading: false, allProtocols: [],
+      profile: null, stats: null, protocolBreakdown: [], isLoading: false, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('Agent Not Found')).toBeDefined()
@@ -84,7 +95,7 @@ describe('AgentDetailPage', () => {
 
   it('renders agent profile header', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, allProtocols: [],
+      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('DeltaNeutral')).toBeDefined()
@@ -94,7 +105,7 @@ describe('AgentDetailPage', () => {
 
   it('renders stats grid', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, allProtocols: [],
+      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('42')).toBeDefined()
@@ -103,7 +114,7 @@ describe('AgentDetailPage', () => {
 
   it('renders UBI breakdown section', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, allProtocols: [],
+      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('Fee & UBI Breakdown')).toBeDefined()
@@ -112,7 +123,7 @@ describe('AgentDetailPage', () => {
 
   it('renders protocol breakdown cards', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: MOCK_BREAKDOWN, isLoading: false, allProtocols: [],
+      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: MOCK_BREAKDOWN, isLoading: false, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('Perpetuals')).toBeDefined()
@@ -122,7 +133,7 @@ describe('AgentDetailPage', () => {
 
   it('shows empty state when no protocol activity', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, allProtocols: [],
+      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('No protocol activity recorded yet')).toBeDefined()
@@ -130,7 +141,7 @@ describe('AgentDetailPage', () => {
 
   it('renders P&L with correct sign', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, allProtocols: [],
+      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('+3.5 ETH')).toBeDefined()
@@ -143,6 +154,7 @@ describe('AgentDetailPage', () => {
       stats: { ...MOCK_STATS, pnlPositive: false },
       protocolBreakdown: [],
       isLoading: false,
+      isValidAddr: true,
       allProtocols: [],
     })
     render(<AgentDetailPage />)
@@ -152,7 +164,7 @@ describe('AgentDetailPage', () => {
 
   it('has back link to leaderboard', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, allProtocols: [],
+      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     const backLink = screen.getByText('← Leaderboard')
@@ -161,7 +173,7 @@ describe('AgentDetailPage', () => {
 
   it('renders explorer link', () => {
     mockUseAgentDetail.mockReturnValue({
-      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, allProtocols: [],
+      profile: MOCK_PROFILE, stats: MOCK_STATS, protocolBreakdown: [], isLoading: false, isValidAddr: true, allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('View on Explorer →')).toBeDefined()
@@ -173,9 +185,97 @@ describe('AgentDetailPage', () => {
       stats: MOCK_STATS,
       protocolBreakdown: [],
       isLoading: false,
+      isValidAddr: true,
       allProtocols: [],
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('Inactive')).toBeDefined()
+  })
+
+  // ─── Invalid-address & stuck-loading guards (task 0017) ────────────────────
+
+  it('renders Agent Not Found immediately for a non-hex address (no spinner)', () => {
+    mockAddress = 'nonexistent'
+    mockUseAgentDetail.mockReturnValue({
+      profile: null,
+      stats: null,
+      protocolBreakdown: [],
+      isLoading: false,
+      isValidAddr: false,
+      allProtocols: [],
+    })
+    render(<AgentDetailPage />)
+    expect(screen.getByText('Agent Not Found')).toBeDefined()
+    expect(screen.queryByText('Loading agent data…')).toBeNull()
+  })
+
+  it('renders Agent Not Found immediately for an address with wrong length', () => {
+    mockAddress = '0x1002aabbccdd' // 14 hex chars, not 40
+    mockUseAgentDetail.mockReturnValue({
+      profile: null,
+      stats: null,
+      protocolBreakdown: [],
+      isLoading: false,
+      isValidAddr: false,
+      allProtocols: [],
+    })
+    render(<AgentDetailPage />)
+    expect(screen.getByText('Agent Not Found')).toBeDefined()
+  })
+
+  it('renders Agent Not Found for an empty address param', () => {
+    mockAddress = ''
+    mockUseAgentDetail.mockReturnValue({
+      profile: null,
+      stats: null,
+      protocolBreakdown: [],
+      isLoading: false,
+      isValidAddr: false,
+      allProtocols: [],
+    })
+    render(<AgentDetailPage />)
+    expect(screen.getByText('Agent Not Found')).toBeDefined()
+  })
+
+  it('falls back to Agent Not Found when fetch stays loading past the timeout', () => {
+    vi.useFakeTimers()
+    try {
+      mockAddress = '0x' + 'a'.repeat(40)
+      mockUseAgentDetail.mockReturnValue({
+        profile: null,
+        stats: null,
+        protocolBreakdown: [],
+        isLoading: true,
+        isValidAddr: true,
+        allProtocols: [],
+      })
+      render(<AgentDetailPage />)
+      // Initially we should be in the loading state, not the not-found state.
+      expect(screen.queryByText('Agent Not Found')).toBeNull()
+      expect(screen.getByText('Loading agent data…')).toBeDefined()
+      // After the 5s mount-only timer the page must drop the spinner and
+      // render the not-found UI even if the hook is still "loading".
+      act(() => {
+        vi.advanceTimersByTime(6_000)
+      })
+      expect(screen.getByText('Agent Not Found')).toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('still shows spinner while loading is active and timeout has not fired', () => {
+    mockAddress = '0x' + 'b'.repeat(40)
+    mockUseAgentDetail.mockReturnValue({
+      profile: null,
+      stats: null,
+      protocolBreakdown: [],
+      isLoading: true,
+      isValidAddr: true,
+      allProtocols: [],
+    })
+    render(<AgentDetailPage />)
+    expect(screen.getByText('Loading agent data…')).toBeDefined()
+    expect(screen.queryByText('Agent Not Found')).toBeNull()
   })
 })

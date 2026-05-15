@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useReadContract, useReadContracts } from 'wagmi'
-import { formatEther, type Address } from 'viem'
+import { formatEther, isAddress, type Address } from 'viem'
 import { AgentRegistryABI } from './AgentRegistryABI'
 import { CONTRACTS } from './chain'
 
@@ -10,6 +10,17 @@ const REGISTRY = CONTRACTS.AgentRegistry
 
 const PROTOCOLS = ['swap', 'perps', 'predict', 'lend', 'stable', 'stocks', 'yield'] as const
 export type Protocol = (typeof PROTOCOLS)[number]
+
+/**
+ * Returns true iff the given string is a syntactically valid 0x-prefixed
+ * 20-byte hex address (case-insensitive). Guards against feeding garbage
+ * like `nonexistent`, `0x1002aabbccdd`, or `undefined` into wagmi, which
+ * otherwise pins the page to a loading spinner because the underlying RPC
+ * call rejects silently and `isLoading` never settles.
+ */
+function isValidAgentAddress(addr: string | undefined): addr is Address {
+  return typeof addr === 'string' && isAddress(addr)
+}
 
 export interface AgentProfile {
   name: string
@@ -43,15 +54,18 @@ export interface ProtocolBreakdown {
 }
 
 export function useAgentDetail(address: string | undefined) {
-  const agentAddr = address as Address | undefined
+  const isValidAddr = isValidAgentAddress(address)
+  const agentAddr = isValidAddr ? (address as Address) : undefined
 
-  // Fetch profile + stats
+  // Fetch profile + stats. `enabled` guards against invalid addresses, and
+  // `retry: false` prevents the hook from getting stuck in a retry storm
+  // when the RPC is down or the address simply isn't registered.
   const { data: infoData, isLoading: infoLoading } = useReadContract({
     address: REGISTRY,
     abi: AgentRegistryABI,
     functionName: 'getAgentInfo',
     args: agentAddr ? [agentAddr] : undefined,
-    query: { enabled: !!agentAddr },
+    query: { enabled: !!agentAddr, retry: false },
   })
 
   // Fetch per-protocol breakdown (7 calls)
@@ -67,7 +81,7 @@ export function useAgentDetail(address: string | undefined) {
 
   const { data: protocolData, isLoading: protocolLoading } = useReadContracts({
     contracts: protocolCalls,
-    query: { enabled: protocolCalls.length > 0 },
+    query: { enabled: protocolCalls.length > 0, retry: false },
   })
 
   const profile = useMemo<AgentProfile | null>(() => {
@@ -119,11 +133,16 @@ export function useAgentDetail(address: string | undefined) {
     }).filter(p => p.trades > 0)
   }, [protocolData])
 
+  // For invalid addresses we short-circuit to a settled, not-found-ish
+  // state immediately — no spinner, no waiting on wagmi.
+  const isLoading = isValidAddr ? infoLoading || protocolLoading : false
+
   return {
     profile,
     stats,
     protocolBreakdown,
-    isLoading: infoLoading || protocolLoading,
+    isLoading,
+    isValidAddr,
     allProtocols: PROTOCOLS,
   }
 }
