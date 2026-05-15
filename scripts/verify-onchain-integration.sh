@@ -244,12 +244,28 @@ fi
 echo
 
 # ── 5. GoodStocks ────────────────────────────────────────────────────────────
-echo "[5/6] GoodStocks — checking factory state"
-stocks_admin=$(cast call "$STOCKS" "admin()(address)" --rpc-url "$RPC" 2>/dev/null || echo "?")
-if [[ -n "$stocks_admin" && "$stocks_admin" != "?" ]]; then
-  record_result "GoodStocks" "PARTIAL" "SyntheticAssetFactory live at $STOCKS, admin=$stocks_admin. Mint flow requires per-symbol setup (mintSynthetic interface differs from spec); deferred."
+# Mint path: SyntheticAssetFactory only lists assets; the actual mint entry
+# point is CollateralVault.depositCollateral + CollateralVault.mint, since
+# SyntheticAsset.mint is gated by msg.sender == minter (set to the vault at
+# list time). See task 0024 for the full diagnosis.
+echo "[5/6] GoodStocks — depositCollateral + mint(AAPL) via CollateralVault"
+saapl=$(cast call "$STOCKS" "getAsset(string)(address)" "AAPL" --rpc-url "$RPC" 2>/dev/null || echo "")
+if [[ -z "$saapl" || "$saapl" == "0x0000000000000000000000000000000000000000" ]]; then
+  record_result "GoodStocks" "GAP" "AAPL not listed on SyntheticAssetFactory at $STOCKS"
 else
-  record_result "GoodStocks" "GAP" "Cannot read SyntheticAssetFactory.admin()"
+  # 0.01 sAAPL @ $178.72 with 150% min CR + 30bps fee → ~2.68 G$ collateral
+  # required, + ~0.005 G$ fee. Deposit 10 G$ for comfortable headroom.
+  send_tx "GoodStocks" "approve GDT to CollateralVault" "$GDT" \
+          "approve(address,uint256)" "$COLLATERAL_VAULT" 100000000000000000000 >/dev/null
+  hash_dep=$(send_tx "GoodStocks" "vault.depositCollateral(AAPL, 10 G\$)" "$COLLATERAL_VAULT" \
+                "depositCollateral(string,uint256)" "AAPL" 10000000000000000000)
+  hash_mint=$(send_tx "GoodStocks" "vault.mint(AAPL, 0.01 sAAPL)" "$COLLATERAL_VAULT" \
+                 "mint(string,uint256)" "AAPL" 10000000000000000)
+  if [[ -n "$hash_mint" ]] && capture_receipt "$hash_mint" "GoodStocks"; then
+    record_result "GoodStocks" "PASS" "depositCollateral + mint via CollateralVault; mint tx $hash_mint, sAAPL at $saapl"
+  else
+    record_result "GoodStocks" "FAIL" "mint reverted (deposit tx $hash_dep, mint tx $hash_mint)"
+  fi
 fi
 echo
 

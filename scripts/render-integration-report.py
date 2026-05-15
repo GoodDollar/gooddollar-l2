@@ -112,9 +112,9 @@ PROTOCOL_ROWS: List[Tuple[str, Optional[str], str, str]] = [
     ),
     (
         "GoodStocks",
-        None,
-        "mintSynthetic(\"sAAPL\", 1)",
-        "no receipt — per-symbol listing must be deployed before mint; deferred to next iteration",
+        "GoodStocks.json",
+        "CollateralVault.depositCollateral + mint(AAPL, 0.01 sAAPL)",
+        "Real mint via CollateralVault.depositCollateral + mint (task 0024); SyntheticAsset.mint is vault-gated, factory only lists assets",
     ),
     (
         "GoodPredict",
