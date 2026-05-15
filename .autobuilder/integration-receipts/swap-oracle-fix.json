@@ -1,0 +1,62 @@
+{
+  "task": "0015-stabilize-swap-oracle-pushprice-reverts",
+  "timestamp_unix": 1778867032,
+  "rpc": "http://localhost:8545",
+  "oracle": "0x19ceccd6942ad38562ee10bafd44776ceb67e923",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "root_cause": "SwapPriceOracle had only the legacy default-deploy token addresses registered; redeployed GDT/WETH/USDC produced TokenNotRegistered (0xddef98d7) reverts on every batch and individual updatePrice call.",
+  "fix": "Path A — re-register the three live token addresses with admin (deployer) key.",
+  "registrations": [
+    {"token": "GDT (G$)", "address": "0x8f86403a4de0bb5791fa46b8e795c547942fe4cf", "symbol": "G$", "decimals": 18, "max_age_seconds": 300, "tx_hash": "0xd9534c9749779d9928e2aa33accd40fb2160e2486dfe51eec0f545a32d6aba15", "block": "0x142ba", "status": "0x1"},
+    {"token": "WETH",      "address": "0xcd8a1c3ba11cf5ecfa6267617243239504a98d90", "symbol": "WETH", "decimals": 18, "max_age_seconds": 300, "tx_hash": "0xc9a52ae052cefbb6ffb7216b5c5942748b550d2c6b2db8c3bd1c2840f0eab30e", "block": "0x142bb", "status": "0x1"},
+    {"token": "USDC",      "address": "0xb7278a61aa25c888815afc32ad3cc52ff24fe575", "symbol": "USDC", "decimals": 6,  "max_age_seconds": 600, "tx_hash": "0x02e79014665934c8193579adfcd2e976dc6f7eddd18c92261372b0d4d4f8a6e7", "block": "0x142bc", "status": "0x1"}
+  ],
+  "pre_fix_log_window_lines": 500,
+  "pre_fix_individual_failed": 91,
+  "pre_fix_batch_failed": 30,
+  "pre_fix_batch_succeeded": 0,
+  "post_fix": {
+    "verified_at_unix": 1778867290,
+    "verified_at_utc": "2026-05-15T17:48:10Z",
+    "pm2_status": "online",
+    "pm2_pid": 1917755,
+    "pm2_uptime_seconds_since_restart": 303,
+    "pm2_unstable_restarts_since_restart": 0,
+    "pm2_error_log_bytes": 0,
+    "post_fix_call_exception_count_since_restart": 0,
+    "first_recovery_batch_tx_hash": "0x9604a3170c5bfe0862fcee4bcf62b3b4865ca8f311da5c211f7c2ffa6b0f0064",
+    "first_recovery_batch_gas_used": 239686,
+    "first_recovery_batch_log_unix_ms": 1778867043427,
+    "first_recovery_batch_log_line": "{\"level\":30,\"time\":1778867043427,\"name\":\"swap-oracle\",\"updated\":\"G$=$0.00011307, WETH=$2227.2, USDC=$0.999824\",\"txHash\":\"0x9604a3170c5bfe0862fcee4bcf62b3b4865ca8f311da5c211f7c2ffa6b0f0064\",\"gasUsed\":\"239686\",\"msg\":\"Updated 3 prices on-chain\"}",
+    "on_chain_prices": [
+      {"token": "G$",   "address": "0x8f86403a4de0bb5791fa46b8e795c547942fe4cf", "price_raw": 11307,        "price_human_usd": 0.00011307, "publish_time_unix": 1778867040},
+      {"token": "WETH", "address": "0xcd8a1c3ba11cf5ecfa6267617243239504a98d90", "price_raw": 222720000000, "price_human_usd": 2227.20,    "publish_time_unix": 1778867040},
+      {"token": "USDC", "address": "0xb7278a61aa25c888815afc32ad3cc52ff24fe575", "price_raw": 99982400,     "price_human_usd": 0.999824,   "publish_time_unix": 1778867040}
+    ],
+    "subsequent_tick_behavior": "Default DEVIATION_THRESHOLD_BPS=10 (0.1%) suppresses on-chain writes when CoinGecko price hasn't moved more than 0.1% between ticks; suppression is logged at debug-level (default pino is info), so absence of further info-level lines is the expected healthy steady-state. Confirmed by zero error log growth and zero CALL_EXCEPTION matches in process output since PM2 restart at 17:43:58.",
+    "positive_control_manual_update": {
+      "purpose": "Independent admin call to updatePrice(G$) proving the registration/access-control path is healthy beyond the keeper's own batch.",
+      "executed_at_unix": 1778867510,
+      "executed_at_utc": "2026-05-15T17:51:50Z",
+      "signer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "function": "updatePrice(address,uint256)",
+      "args": ["0x8f86403a4de0bb5791fa46b8e795c547942fe4cf", "11400"],
+      "tx_hash": "0xf67354a315be300db94c089b02c1a15bb108e316584ee38f3ef49d76d0cca8e1",
+      "block_number": 82869,
+      "gas_used": 65359,
+      "status": "success",
+      "post_call_on_chain": {
+        "token": "G$",
+        "price_raw": 11400,
+        "publish_time_unix": 1778867510
+      }
+    },
+    "token_configs_on_chain": [
+      {"token": "G$",   "address": "0x8f86403a4de0bb5791fa46b8e795c547942fe4cf", "symbol": "G$",   "decimals": 18, "max_age_seconds": 300, "active": true},
+      {"token": "WETH", "address": "0xcd8a1c3ba11cf5ecfa6267617243239504a98d90", "symbol": "WETH", "decimals": 18, "max_age_seconds": 300, "active": true},
+      {"token": "USDC", "address": "0xb7278a61aa25c888815afc32ad3cc52ff24fe575", "symbol": "USDC", "decimals": 6,  "max_age_seconds": 600, "active": true}
+    ],
+    "registered_token_count_after_fix": 7,
+    "verification_method_note": "Used cast call tokenConfigs(address)(string,uint8,uint256,bool) — the contract exposes tokenConfigs (not tokenInfo). Earlier 'isActive(address)' / 'tokenInfo(address)' reverts in interim debugging were due to those signatures not existing on the deployed contract; the correct getter is tokenConfigs."
+  }
+}
