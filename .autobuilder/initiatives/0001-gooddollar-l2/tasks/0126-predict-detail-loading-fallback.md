@@ -5,7 +5,7 @@ parent: gooddollar-l2
 deps: []
 split: false
 planned: true
-executed: false
+executed: true
 ---
 
 # Predict — Add Loading Timeout Fallback and Accessible Spinner on Market Detail Page
