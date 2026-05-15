@@ -213,7 +213,7 @@ contract PegStabilityModule {
      * @notice Withdraw USDC reserves to a recipient (e.g., for yield strategy).
      *         Cannot withdraw below the amount needed to back outstanding gUSD.
      */
-    function withdrawReserves(address to, uint256 usdcAmount) external onlyAdmin {
+    function withdrawReserves(address to, uint256 usdcAmount) external onlyAdmin nonReentrant {
         require(to != address(0), "PSM: zero address");
         require(usdcAmount <= totalUSDCReserves, "PSM: exceeds reserves");
         // Enforce minimum backing: remaining reserves must cover outstanding PSM-backed gUSD.

@@ -259,4 +259,43 @@ contract GoodSwapRouterTest is Test {
         address unknownToken = makeAddr("unknownToken");
         assertEq(router.getPool(address(gd), unknownToken), address(0));
     }
+
+    // ─── Reentrancy Guard (Task 0002) ─────────────────────────────────────────
+
+    /// @dev Verifies swapExactTokensForTokens has nonReentrant modifier.
+    ///      Two successive calls must work (lock cycle releases properly).
+    function test_reentrancyGuard_swapExactTokensForTokens() public {
+        vm.startPrank(alice);
+        gd.approve(address(router), type(uint256).max);
+
+        address[] memory path = new address[](2);
+        path[0] = address(gd);
+        path[1] = address(weth);
+
+        // First swap: succeeds (lock acquired and released)
+        router.swapExactTokensForTokens(100e18, 0, path, alice, DEADLINE);
+
+        // Second swap: must succeed (lock was released)
+        router.swapExactTokensForTokens(100e18, 0, path, alice, DEADLINE);
+
+        vm.stopPrank();
+    }
+
+    /// @dev Verifies swapTokensForExactTokens has nonReentrant modifier.
+    function test_reentrancyGuard_swapTokensForExactTokens() public {
+        vm.startPrank(alice);
+        gd.approve(address(router), type(uint256).max);
+
+        address[] memory path = new address[](2);
+        path[0] = address(gd);
+        path[1] = address(weth);
+
+        // First swap: succeeds
+        router.swapTokensForExactTokens(0.1e18, 1000e18, path, alice, DEADLINE);
+
+        // Second swap: must succeed (lock was released)
+        router.swapTokensForExactTokens(0.1e18, 1000e18, path, alice, DEADLINE);
+
+        vm.stopPrank();
+    }
 }

@@ -32,7 +32,7 @@ interface IGoodPool {
  * @dev Only direct (single-hop) swaps are supported. Multi-hop paths with
  *      more than 2 tokens are not implemented.
  */
-contract GoodSwapRouter {
+contract GoodSwapRouter is ReentrancyGuard {
     // ─── State ────────────────────────────────────────────────────────────────
 
     address public owner;
@@ -178,7 +178,7 @@ contract GoodSwapRouter {
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external ensure(deadline) returns (uint256 amountOut) {
+    ) external ensure(deadline) nonReentrant returns (uint256 amountOut) {
         if (path.length != 2) revert InvalidPath();
         address tokenIn  = path[0];
         address tokenOut = path[1];
@@ -219,7 +219,7 @@ contract GoodSwapRouter {
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external ensure(deadline) returns (uint256 amountIn) {
+    ) external ensure(deadline) nonReentrant returns (uint256 amountIn) {
         if (path.length != 2) revert InvalidPath();
         address tokenIn  = path[0];
         address tokenOut = path[1];

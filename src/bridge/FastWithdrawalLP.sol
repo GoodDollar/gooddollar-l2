@@ -135,7 +135,7 @@ contract FastWithdrawalLP {
     }
 
     /// @notice Deposit ETH liquidity.
-    function depositETHLiquidity() external payable {
+    function depositETHLiquidity() external payable nonReentrant {
         if (msg.value == 0) revert ZeroAmount();
 
         lpETHBalance[msg.sender] += msg.value;

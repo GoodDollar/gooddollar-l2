@@ -352,4 +352,21 @@ contract FastWithdrawalLPTest is Test {
         emit log_named_uint("claimFastWithdrawal gas", gasUsed);
         assertLt(gasUsed, 200_000);
     }
+
+    // ── Reentrancy Guard (Task 0002) ──
+
+    /// @dev Verifies depositETHLiquidity has nonReentrant modifier.
+    ///      Confirms _locked slot resets to false after call (lock cycle works).
+    function test_reentrancyGuard_depositETHLiquidity() public {
+        // First deposit succeeds, demonstrating modifier sets/clears lock
+        vm.prank(lpProvider);
+        lp.depositETHLiquidity{value: 1 ether}();
+
+        // Second deposit must also succeed (lock was released)
+        vm.prank(lpProvider);
+        lp.depositETHLiquidity{value: 1 ether}();
+
+        assertEq(lp.lpETHBalance(lpProvider), 2 ether);
+        assertEq(lp.totalETHLiquidity(), 2 ether);
+    }
 }

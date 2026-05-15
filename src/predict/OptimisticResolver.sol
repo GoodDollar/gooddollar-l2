@@ -80,6 +80,9 @@ contract OptimisticResolver {
     // Track if resolution was requested for a market
     mapping(uint256 => bool) public resolutionRequested;
 
+    // Reentrancy guard
+    uint256 private _locked;
+
     // ============ Events ============
 
     event ResolutionProposed(
@@ -127,6 +130,7 @@ contract OptimisticResolver {
     error TransferFailed();
     error NotResolutionRequested(uint256 marketId);
     error CannotDisputeOwnProposal();
+    error Reentrant();
 
     // ============ Modifiers ============
 
@@ -138,6 +142,13 @@ contract OptimisticResolver {
     modifier onlyMarketFactoryOrAdmin() {
         if (msg.sender != address(marketFactory) && msg.sender != admin) revert NotMarketFactory();
         _;
+    }
+
+    modifier nonReentrant() {
+        if (_locked != 0) revert Reentrant();
+        _locked = 1;
+        _;
+        _locked = 0;
     }
 
     // ============ Constructor ============
@@ -197,7 +208,7 @@ contract OptimisticResolver {
      * @param marketId The market to resolve
      * @param yesWon true if proposing YES outcome, false for NO
      */
-    function proposeResolution(uint256 marketId, bool yesWon) external {
+    function proposeResolution(uint256 marketId, bool yesWon) external nonReentrant {
         if (!resolutionRequested[marketId]) revert NotResolutionRequested(marketId);
         if (resolutions[marketId].status != ResolutionStatus.None) {
             revert AlreadyProposed(marketId);
@@ -236,7 +247,7 @@ contract OptimisticResolver {
      *         Caller must approve bondAmount of G$ beforehand.
      * @param marketId The market whose resolution to dispute
      */
-    function disputeResolution(uint256 marketId) external {
+    function disputeResolution(uint256 marketId) external nonReentrant {
         Resolution storage r = resolutions[marketId];
         if (r.status != ResolutionStatus.Proposed) revert NotProposed(marketId);
         if (r.isDisputed) revert AlreadyDisputed(marketId);
@@ -263,7 +274,7 @@ contract OptimisticResolver {
      * @notice Finalize an undisputed resolution after the dispute window.
      *         Anyone can call this — it's permissionless.
      */
-    function finalizeResolution(uint256 marketId) external {
+    function finalizeResolution(uint256 marketId) external nonReentrant {
         Resolution storage r = resolutions[marketId];
         if (r.status != ResolutionStatus.Proposed) revert NotProposed(marketId);
         if (r.isDisputed) revert AlreadyDisputed(marketId);
@@ -293,7 +304,7 @@ contract OptimisticResolver {
      * @param marketId The disputed market
      * @param yesWon The admin's final decision
      */
-    function adminResolveDispute(uint256 marketId, bool yesWon) external onlyAdmin {
+    function adminResolveDispute(uint256 marketId, bool yesWon) external onlyAdmin nonReentrant {
         Resolution storage r = resolutions[marketId];
         if (r.status != ResolutionStatus.Disputed) revert NotProposed(marketId);
 
@@ -334,7 +345,7 @@ contract OptimisticResolver {
     /**
      * @notice Emergency admin resolution without dispute flow (for edge cases)
      */
-    function emergencyResolve(uint256 marketId, bool yesWon) external onlyAdmin {
+    function emergencyResolve(uint256 marketId, bool yesWon) external onlyAdmin nonReentrant {
         Resolution storage r = resolutions[marketId];
         if (r.status == ResolutionStatus.Finalized) revert AlreadyFinalized(marketId);
 
