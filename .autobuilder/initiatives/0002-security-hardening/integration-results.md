@@ -51,3 +51,17 @@ Raw cast-receipt JSON saved under `.autobuilder/integration-receipts/`:
 3. **Initialize GoodLend GDT reserve** so `supply(GDT, ...)` does not revert.
 4. **Wire GoodStable PSM** to current GDT/gUSD and seed initial collateral.
 5. **Add per-symbol GoodStocks listing** before attempting `mintSynthetic`.
+
+## 2026-05-15 — UBIFeeSplitter rebound to current GDT (Task 0010)
+
+- Splitter:    `0x809d550fca64d94Bd9F66E60752A544199cfAC3D`
+- admin:       `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` (Anvil deployer)
+- goodDollar BEFORE: `0x5fbdb2315678afecb367f032d93f642f64180aa3` (DEAD)
+- goodDollar AFTER:  `0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf` (current GDT)
+- Tx: `0x69f62cc8cfcc338a262a21fc94dffe5c960d6b41b60e5a344b593da8c40c7141`
+  block `0x13c6c`, gasUsed `0x786a`, status `0x1`
+- Receipt: `.autobuilder/integration-receipts/_fix-ubifeesplitter-gdt.json`
+- Idempotent script: `script/RebindUBIFeeSplitterGoodDollar.s.sol`
+  (re-running prints `already correct, no tx sent`)
+- Definition-of-Done item #4 (UBI 33% fee routing) is now unblocked at the
+  splitter level; remaining work is observable fee accrual (task 0013).
