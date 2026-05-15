@@ -1,0 +1,26 @@
+{
+  "protocol": "GoodPerps",
+  "status": "PASS",
+  "vault": "0x82bbaa3b0982d88741b275ae1752db85cafe3c65",
+  "perp": "0x084815d1330ecc3ef94193a19ec222c0c73dff2d",
+  "perp_oracle": "0xa4d0806d597146df93796a38435abb2a3cb96677",
+  "funding_rate": "0xae246e208ea35b3f23de72b697d47044fc594d5f",
+  "collateral_token": "0x8f86403a4de0bb5791fa46b8e795c547942fe4cf",
+  "fee_splitter": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+  "tester": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "transactions": {
+    "approve_vault": "deposit-included",
+    "deposit_open_combined": "0x285f4281b2ef7b7c91ebb2985c484b86338bc0b17d0b8b5b993b58c6d38ea465",
+    "close_position": "0x53206b812ecfb40fc4033a9a7c02d8565d3487d66a9d29ea5ee7bdd17798c568"
+  },
+  "verification": {
+    "deposit_amount_gdt": "10",
+    "position_size_gdt": "100",
+    "leverage_x": 20,
+    "trade_fee_gdt_per_open": "0.1",
+    "ubi_fee_pct_bps": 3333,
+    "ubi_funded_actual_gdt": "0.03333",
+    "vault_balance_after_close_gdt": "9.9"
+  },
+  "ubi_fee_routing_verified": true
+}
