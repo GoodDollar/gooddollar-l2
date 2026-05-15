@@ -331,7 +331,8 @@ contract PerpEngine is ReentrancyGuard {
 
         if (bonus > 0) {
             // Route liquidation bonus through UBI fee splitter for systematic social impact
-            vault.transfer(trader, address(this), bonus);
+            vault.debit(trader, bonus);
+            vault.flushFee(address(this), bonus);
 
             // Get goodDollar token for fee splitter interaction
             address goodDollarToken = IFeeSplitterPerp(feeSplitter).goodDollar();
@@ -341,7 +342,7 @@ contract PerpEngine is ReentrancyGuard {
             token.approve(feeSplitter, 0);
             token.approve(feeSplitter, bonus);
 
-            (, , uint256 liquidatorShare) = IFeeSplitterPerp(feeSplitter).splitFee(bonus, msg.sender);
+            IFeeSplitterPerp(feeSplitter).splitFee(bonus, msg.sender);
 
             // Note: The liquidator receives ~50% instead of 100% of the bonus,
             // with 33% going to UBI pool and 16.67% to protocol treasury

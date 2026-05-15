@@ -42,10 +42,18 @@ contract MockPerpFeeSplitter {
         token = GoodDollarToken(_token);
     }
 
-    function splitFee(uint256 totalFee, address) external returns (uint256, uint256, uint256) {
+    function goodDollar() external view returns (address) {
+        return address(token);
+    }
+
+    function splitFee(uint256 totalFee, address to) external returns (uint256, uint256, uint256) {
         token.transferFrom(msg.sender, address(this), totalFee);
         totalReceived += totalFee;
-        return (totalFee / 3, totalFee / 6, totalFee / 2);
+        uint256 ubiShare = totalFee / 3;
+        uint256 protocolShare = totalFee / 6;
+        uint256 liquidatorShare = totalFee / 2;
+        token.transfer(to, liquidatorShare);
+        return (ubiShare, protocolShare, liquidatorShare);
     }
 }
 
@@ -462,13 +470,13 @@ contract GoodPerpsTest is Test {
         // Price drops 9% → margin ratio ~1% < 2% maintenance
         btcFeed.setPrice(int256(BTC_PRICE_U - (BTC_PRICE_U * 9 / 100)));
 
-        uint256 bobBefore = vault.balances(bob);
+        uint256 bobTokenBefore = gd.balanceOf(bob);
 
         vm.prank(bob);
         engine.liquidate(alice, btcMarketId);
 
-        // Bob should have received liquidation bonus
-        assertGt(vault.balances(bob), bobBefore);
+        // Bob should have received liquidator share (50% of bonus) as tokens via fee splitter
+        assertGt(gd.balanceOf(bob), bobTokenBefore);
 
         // Alice position should be closed
         (bool isOpen,,,,,,) = _getPosition(alice, btcMarketId);
@@ -477,12 +485,12 @@ contract GoodPerpsTest is Test {
 
     function test_engine_liquidate_bonusNotDoubleDeducted() public {
         // Regression test: bonus must come from returned margin, not double-deducted.
-        // Fix: _closePosition first (credits remaining margin), then vault.transfer(bonus).
+        // Fix: _closePosition first (credits remaining margin), then vault.debit(bonus).
         vm.prank(alice);
         vault.deposit(100_000e18);
 
         uint256 aliceVaultBefore = vault.balances(alice);
-        uint256 bobVaultBefore = vault.balances(bob);
+        uint256 bobTokenBefore = gd.balanceOf(bob);
 
         vm.prank(alice);
         engine.openPosition(btcMarketId, 100_000e18, true, 10_000e18); // 10x long
@@ -500,15 +508,16 @@ contract GoodPerpsTest is Test {
         engine.liquidate(alice, btcMarketId);
 
         uint256 aliceVaultAfter = vault.balances(alice);
-        uint256 bobGained = vault.balances(bob) - bobVaultBefore;
+        uint256 bobTokenGained = gd.balanceOf(bob) - bobTokenBefore;
 
         // Alice should have lost: fee + |pnl| + bonus (no double-counting)
         // Expected: aliceAfterFee - 9000e18 - 50e18 = 90_850e18
         uint256 expectedAlice = aliceAfterFee - 9_000e18 - 50e18;
         assertEq(aliceVaultAfter, expectedAlice, "alice lost more than fee+pnl+bonus");
 
-        // Bob should have received exactly the bonus
-        assertEq(bobGained, 50e18, "bob did not receive correct bonus");
+        // Bob receives liquidator share (50% of bonus) as tokens from fee splitter
+        uint256 expectedBobGain = 50e18 / 2; // 50% of bonus goes to liquidator
+        assertEq(bobTokenGained, expectedBobGain, "bob did not receive correct liquidator share");
     }
 
     function test_engine_liquidate_healthyPosition_reverts() public {
