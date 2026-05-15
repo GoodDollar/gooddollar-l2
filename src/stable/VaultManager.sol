@@ -618,6 +618,10 @@ contract VaultManager {
         if (x == 0) {
             return n == 0 ? base : 0;
         }
+        // SECURITY: `n % 2` is the standard exponentiation-by-squaring parity check on the
+        // exponent (loop control), not a source of randomness. There is no PRNG here. False
+        // positive for weak-prng.
+        // slither-disable-next-line weak-prng
         z = n % 2 != 0 ? x : base;
         uint256 half = base / 2;
         for (n /= 2; n != 0; n /= 2) {
@@ -626,6 +630,8 @@ contract VaultManager {
             uint256 xxRound = xx + half;
             require(xxRound >= xx, "rpow/overflow");
             x = xxRound / base;
+            // SECURITY: Same exponentiation-by-squaring parity check on the exponent. Not a PRNG.
+            // slither-disable-next-line weak-prng
             if (n % 2 != 0) {
                 uint256 zx = z * x;
                 require(x == 0 || zx / x == z, "rpow/overflow");

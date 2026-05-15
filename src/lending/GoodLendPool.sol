@@ -295,6 +295,10 @@ contract GoodLendPool {
         IGoodLendToken(reserve.gToken).burn(msg.sender, amount, reserve.liquidityIndex);
 
         // Transfer underlying from gToken contract to recipient
+        // SECURITY: `reserve.gToken` is the GoodLend gToken set by the owner in `initReserve`; it is
+        // NOT an arbitrary user-supplied address. The gToken pre-approves the pool to move underlying
+        // on its behalf. This is the canonical Aave-style withdraw flow. False positive.
+        // slither-disable-next-line arbitrary-send-erc20
         if (!IERC20(asset).transferFrom(reserve.gToken, to, amount)) revert TransferFailed();
 
         // Check health factor after withdrawal
@@ -332,6 +336,10 @@ contract GoodLendPool {
         IDebtToken(reserve.debtToken).mint(msg.sender, amount, reserve.variableBorrowIndex);
 
         // Transfer underlying from gToken contract to borrower
+        // SECURITY: `reserve.gToken` is owner-configured protocol state from `initReserve`, not a
+        // user-supplied address. The gToken explicitly approves the pool to disburse underlying as
+        // loans. Borrower identity is `msg.sender`. False positive for arbitrary-send-erc20.
+        // slither-disable-next-line arbitrary-send-erc20
         if (!IERC20(asset).transferFrom(reserve.gToken, msg.sender, amount)) revert TransferFailed();
 
         // Check health factor
@@ -424,6 +432,10 @@ contract GoodLendPool {
         IGoodLendToken(collateralReserve.gToken).burn(user, collateralToSeize, collateralReserve.liquidityIndex);
 
         // Send underlying to liquidator
+        // SECURITY: `collateralReserve.gToken` is owner-configured reserve state, not user input;
+        // the liquidator (`msg.sender`) has already burned the seized gTokens above and is entitled
+        // to the underlying. Canonical Aave-style liquidation flow. False positive.
+        // slither-disable-next-line arbitrary-send-erc20
         if (!IERC20(collateralAsset).transferFrom(collateralReserve.gToken, msg.sender, collateralToSeize)) revert TransferFailed();
 
         _updateRates(collateralAsset);
@@ -476,6 +488,10 @@ contract GoodLendPool {
         uint256 premium = (amount * FLASH_LOAN_PREMIUM_BPS) / BPS;
 
         // Transfer to receiver
+        // SECURITY: `reserve.gToken` is owner-configured protocol state, not user input. The pool is
+        // pre-approved by the gToken to disburse underlying for flash loans. Repayment is enforced
+        // below on line 500. False positive for arbitrary-send-erc20.
+        // slither-disable-next-line arbitrary-send-erc20
         if (!IERC20(asset).transferFrom(reserve.gToken, receiver, amount)) revert TransferFailed();
 
         // Callback
@@ -485,6 +501,10 @@ contract GoodLendPool {
         );
 
         // Pull back amount + premium
+        // SECURITY: `receiver` is the same address that just received the loan and executed its
+        // callback; pulling back principal + premium to `reserve.gToken` (owner-configured) is the
+        // intended repayment path. The destination is trusted protocol state. False positive.
+        // slither-disable-next-line arbitrary-send-erc20
         if (!IERC20(asset).transferFrom(receiver, reserve.gToken, amount + premium)) revert TransferFailed();
 
         // Accrue premium: split between suppliers and treasury

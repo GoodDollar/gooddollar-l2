@@ -187,6 +187,11 @@ contract GoodTimelock {
 
         // Execute all calls
         for (uint256 i = 0; i < targets.length; i++) {
+            // SECURITY: This is the canonical OpenZeppelin TimelockController pattern. Targets and
+            // values are part of an operation hash that was queued by a proposer role and unlocked
+            // only after the timelock delay elapsed. Sending ETH to governance-approved targets is
+            // the intended behavior. False positive for arbitrary-send-eth.
+            // slither-disable-next-line arbitrary-send-eth
             (bool success,) = targets[i].call{value: values[i]}(calldatas[i]);
             if (!success) revert ExecutionFailed(i);
         }
@@ -221,6 +226,10 @@ contract GoodTimelock {
 
         timestamps[id] = 1;
 
+        // SECURITY: Single-call timelock execution. `target` and `value` are bound into the queued
+        // operation hash by a proposer role and only callable after the timelock delay. Standard
+        // OpenZeppelin TimelockController behavior. False positive for arbitrary-send-eth.
+        // slither-disable-next-line arbitrary-send-eth
         (bool success,) = target.call{value: value}(data);
         if (!success) revert ExecutionFailed(0);
 

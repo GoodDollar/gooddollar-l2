@@ -80,6 +80,10 @@ contract LendingStrategy {
     /// @notice Deposit into GoodLend
     function deposit(uint256 amount) external onlyVault {
         if (paused) revert IsPaused();
+        // SECURITY: `vault` is set by owner in constructor/initializer and gated by `onlyVault` modifier above;
+        // it is NOT an arbitrary caller-supplied address. This `transferFrom` only moves funds from the trusted
+        // vault that just authorized this call into the strategy. False positive for arbitrary-send-erc20.
+        // slither-disable-next-line arbitrary-send-erc20
         if (!IERC20(asset).transferFrom(vault, address(this), amount)) revert TransferFailed();
         if (!IERC20(asset).approve(address(lendPool), amount)) revert TransferFailed();
         lendPool.supply(asset, amount, address(this));

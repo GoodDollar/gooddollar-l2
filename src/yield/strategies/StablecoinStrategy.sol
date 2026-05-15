@@ -76,6 +76,10 @@ contract StablecoinStrategy {
 
     function deposit(uint256 amount) external onlyVault {
         if (paused) revert IsPaused();
+        // SECURITY: `vault` is owner-configured and the call is gated by the `onlyVault` modifier; the
+        // source address is trusted protocol state, not user input. Pulling assets from the authorized
+        // vault into this strategy is the intended behavior. False positive for arbitrary-send-erc20.
+        // slither-disable-next-line arbitrary-send-erc20
         if (!IERC20(asset).transferFrom(vault, address(this), amount)) revert TransferFailed();
         if (!IERC20(asset).approve(address(stabilityPool), amount)) revert TransferFailed();
         stabilityPool.deposit(amount);
