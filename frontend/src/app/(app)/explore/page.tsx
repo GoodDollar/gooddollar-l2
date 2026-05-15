@@ -173,12 +173,18 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
                 </div>
               </div>
             ))}
-            {stats.trending.length < 3 && Array.from({ length: 3 - stats.trending.length }).map((_, i) => (
-              <div key={`t-e-${i}`} className="flex items-center text-xs text-gray-700 italic py-0.5">
-                <span className="w-3 mr-1.5">{stats.trending.length + i + 1}</span>
-                No more data
+            {stats.trending.length === 0 ? (
+              <div className="text-xs text-gray-500 italic py-2 text-center">
+                No trending data yet
               </div>
-            ))}
+            ) : (
+              stats.trending.length < 3 && Array.from({ length: 3 - stats.trending.length }).map((_, i) => (
+                <div key={`t-e-${i}`} className="flex items-center text-xs text-gray-700 italic py-0.5" aria-hidden="true">
+                  <span className="w-3 mr-1.5">{stats.trending.length + i + 1}</span>
+                  <span className="text-gray-600">{'\u00A0'}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )
@@ -207,12 +213,18 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
                 </div>
               </div>
             ))}
-            {stats.gainers.length < 3 && Array.from({ length: 3 - stats.gainers.length }).map((_, i) => (
-              <div key={`g-e-${i}`} className="flex items-center text-xs text-gray-700 italic py-0.5">
-                <span className="w-3 mr-1.5">{stats.gainers.length + i + 1}</span>
-                No more gainers today
+            {stats.gainers.length === 0 ? (
+              <div className="text-xs text-gray-500 italic py-2 text-center">
+                No gainers today
               </div>
-            ))}
+            ) : (
+              stats.gainers.length < 3 && Array.from({ length: 3 - stats.gainers.length }).map((_, i) => (
+                <div key={`g-e-${i}`} className="flex items-center text-xs text-gray-700 italic py-0.5" aria-hidden="true">
+                  <span className="w-3 mr-1.5">{stats.gainers.length + i + 1}</span>
+                  <span className="text-gray-600">{'\u00A0'}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )
