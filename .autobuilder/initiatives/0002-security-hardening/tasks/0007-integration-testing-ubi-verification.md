@@ -6,7 +6,7 @@ deps: [fix-reentrancy-guards, fix-unsafe-erc20-transfers, fix-access-control-bal
 split: null
 depth: 1
 planned: true
-executed: false
+executed: true
 ---
 
 ## Planning Notes
