@@ -98,7 +98,7 @@ contract ValidatorStaking is ReentrancyGuard {
     function stake(uint256 amount, string calldata name, string calldata endpoint) external virtual nonReentrant {
         if (amount < _minStake()) revert BelowMinStake();
 
-        goodDollar.transferFrom(msg.sender, address(this), amount);
+        require(goodDollar.transferFrom(msg.sender, address(this), amount), "transferFrom failed");
 
         Validator storage v = validators[msg.sender];
         if (!v.isActive) {

@@ -83,7 +83,7 @@ contract UBIFeeSplitter is ReentrancyGuard {
         dAppShare = totalFee - ubiShare - protocolShare;
         
         // Transfer from sender
-        goodDollar.transferFrom(msg.sender, address(this), totalFee);
+        require(goodDollar.transferFrom(msg.sender, address(this), totalFee), "transferFrom failed");
         
         // Route to destinations
         goodDollar.fundUBIPool(ubiShare);

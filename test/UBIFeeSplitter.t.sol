@@ -305,6 +305,37 @@ contract UBIFeeSplitterTest is Test {
         vm.expectRevert("Not admin");
         splitter.withdrawETH();
     }
+
+    // ─── Checked-transferFrom regression (security hardening) ─────────────────
+
+    /// @notice If the underlying token's transferFrom returns false without reverting,
+    /// splitFee MUST revert with "transferFrom failed" (no silent failure that mints fee credits).
+    /// @dev This guards against weird tokens like Tether/Bnb-style or fee-on-transfer variants.
+    function test_splitFee_RevertsWhenTransferFromReturnsFalse() public {
+        // Deploy a malicious token that silently returns false from transferFrom
+        FailingGoodDollar bad = new FailingGoodDollar();
+
+        vm.prank(admin);
+        splitter.setGoodDollar(address(bad));
+
+        vm.prank(alice);
+        vm.expectRevert("transferFrom failed");
+        splitter.splitFee(100 ether, dapp);
+    }
+}
+
+/// @dev Mock IGoodDollarToken whose transferFrom silently returns false.
+/// Used to assert UBIFeeSplitter checks the return value (defense in depth).
+contract FailingGoodDollar {
+    function mint(address, uint256) external {}
+    function isVerifiedHuman(address) external pure returns (bool) { return false; }
+    function dailyUBIAmount() external pure returns (uint256) { return 0; }
+    function fundUBIPool(uint256) external {}
+    function ubiPool() external pure returns (uint256) { return 0; }
+    function totalVerifiedHumans() external pure returns (uint256) { return 0; }
+    function balanceOf(address) external pure returns (uint256) { return 0; }
+    function transfer(address, uint256) external pure returns (bool) { return true; }
+    function transferFrom(address, address, uint256) external pure returns (bool) { return false; }
 }
 
 /// @dev Minimal ERC-20 mock for non-G$ token fee tests.

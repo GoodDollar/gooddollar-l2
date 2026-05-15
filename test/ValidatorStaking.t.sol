@@ -501,4 +501,27 @@ contract ValidatorStakingTest is Test {
         }
         // If still non-zero (rounding keeps 1 wei), list may retain 1 entry — acceptable
     }
+
+    // ─── Checked-transferFrom regression (security hardening) ─────────────────
+
+    /// @notice If the underlying token's transferFrom returns false without reverting,
+    /// stake() MUST revert with "transferFrom failed". Prevents silent stake credit
+    /// when token misbehaves (e.g., return-false-on-failure tokens).
+    function test_stake_RevertsWhenTransferFromReturnsFalse() public {
+        FailingGoodDollarStake bad = new FailingGoodDollarStake();
+        ValidatorStaking badStaking = new ValidatorStaking(address(bad), admin);
+
+        vm.prank(alice);
+        vm.expectRevert("transferFrom failed");
+        badStaking.stake(MIN_STAKE, "Alice", "url");
+    }
+}
+
+/// @dev Mock IGoodDollarToken whose transferFrom silently returns false.
+contract FailingGoodDollarStake {
+    function mint(address, uint256) external {}
+    function fundUBIPool(uint256) external {}
+    function balanceOf(address) external pure returns (uint256) { return 0; }
+    function transfer(address, uint256) external pure returns (bool) { return true; }
+    function transferFrom(address, address, uint256) external pure returns (bool) { return false; }
 }

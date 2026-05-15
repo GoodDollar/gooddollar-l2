@@ -84,7 +84,7 @@ contract ValidatorStakingDevnet {
     function stake(uint256 amount, string calldata name, string calldata endpoint) external {
         if (amount < MIN_STAKE) revert BelowMinStake();
 
-        goodDollar.transferFrom(msg.sender, address(this), amount);
+        require(goodDollar.transferFrom(msg.sender, address(this), amount), "transferFrom failed");
 
         Validator storage v = validators[msg.sender];
         if (!v.isActive) {
