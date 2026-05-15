@@ -9,6 +9,7 @@ import { TOKENS, type Token } from '@/lib/tokens'
 import { UBIBreakdown } from './UBIBreakdown'
 import { SwapSettings } from './SwapSettings'
 import { SwapDetails } from './SwapDetails'
+import { SwapRoute } from './SwapRoute'
 import { PriceImpactWarning } from './PriceImpactWarning'
 import { FeeBreakdownBadge } from './FeeBreakdownBadge'
 import { formatAmount, compactAmount, sanitizeNumericInput, formatUsdValue } from '@/lib/format'
@@ -299,6 +300,7 @@ export function SwapCard() {
               visible={hasAmount}
             />
             <PriceImpactWarning priceImpact={priceImpact} visible={hasAmount} />
+            {hasAmount && <SwapRoute inputToken={inputToken} outputToken={outputToken} />}
           </>
         )}
 
