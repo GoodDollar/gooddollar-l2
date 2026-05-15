@@ -6,6 +6,7 @@ export interface Token {
   decimals: number
   popular?: boolean
   category: TokenCategory
+  icon?: string
 }
 
 export const TOKEN_CATEGORIES: TokenCategory[] = ['DeFi', 'Stablecoins', 'Layer 2', 'Infrastructure', 'GoodDollar']
