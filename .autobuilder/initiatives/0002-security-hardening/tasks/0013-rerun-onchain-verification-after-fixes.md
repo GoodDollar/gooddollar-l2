@@ -6,7 +6,7 @@ deps: [fix-ubifeesplitter-good-dollar-binding, reseed-goodswap-pools, redeploy-g
 split: false
 depth: 1
 planned: true
-executed: false
+executed: true
 ---
 
 ## Context
