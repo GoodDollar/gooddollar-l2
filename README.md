@@ -25,7 +25,7 @@
 ### 🤖 Built Entirely by AI
 
 This isn't vaporware. **29 AI agents** wrote every line of code:
-- **426 commits** · **53 smart contracts** · **12,800 lines of Solidity** · **887 tests passing**
+- **618 commits** · **62 smart contracts** · **12,800 lines of Solidity** · **887 tests passing**
 - **6 DeFi protocols** live on devnet with real transactions
 - Security audited by Slither (automated) — [see audit report](docs/SECURITY-AUDIT.md)
 
@@ -38,13 +38,13 @@ This isn't vaporware. **29 AI agents** wrote every line of code:
 
 | Component | Version | Status | Details |
 |-----------|---------|--------|---------|
-| **GoodDollar L2** (root) | `0.2.0` | 🟢 Active | 426 commits, 53 contracts, 12.8K lines Solidity |
+| **GoodDollar L2** (root) | `0.2.0` | 🟢 Active | 618 commits, 62 contracts, 12.8K lines Solidity |
 | **Smart Contracts** | `0.2.0` | ✅ All passing | 837/837 Foundry tests pass, 0 failures |
 | **Devnet Chain** (Anvil) | — | ✅ Running | Block 62,438 · 2,276 txs · 199 addresses · Chain ID 42069 |
 | Frontend (GoodSwap) | `0.2.0` | ✅ Live | goodswap.goodclaw.org (HTTP 200) · 208 files · Next.js 14 |
 | Explorer (Blockscout) | — | ✅ Live | explorer.goodclaw.org (HTTP 200) |
 | Landing Page | — | ✅ Live | goodclaw.org (HTTP 200) |
-| RPC Endpoint | — | ⚠️ Degraded | rpc.goodclaw.org returns 400 (local :8545 works fine) |
+| RPC Endpoint | — | ✅ Live | rpc.goodclaw.org · CORS contract verified by `scripts/check-rpc-cors.sh` (9/9 checks) |
 | SDK | `0.2.0` | ✅ Built | @gooddollar/agent-sdk |
 | Backend — Perps | `0.2.0` | ✅ Running (PM2) | Port 8082 · BTC/ETH/SOL markets · WebSocket + REST |
 | Backend — Predict | `0.2.0` | ⚠️ Paper-trading | Port 3040 · On-chain contract init fails — paper mode fallback |
@@ -72,10 +72,18 @@ This isn't vaporware. **29 AI agents** wrote every line of code:
 | GOO-276 | 🚨 Critical | CSP violations — 6 inline scripts blocked, breaks hydration + RPC |
 | GOO-403 | 🟡 Medium | WalletConnect button shows placeholder text |
 | Predict contracts | 🟡 Medium | MarketFactory.marketCount() returns empty — paper-trading fallback |
-| RPC proxy | 🟡 Medium | rpc.goodclaw.org returns 400 (Caddy config, local RPC works) |
 | 10 backends | ℹ️ Info | Code written but never started as services |
 
-> *Updated: 2026-04-05 — honest status audit*
+## 🛡️ Security Hardening
+
+Initiative `0002-security-hardening` — Phase 1 production-readiness work
+tracked in `.autobuilder/initiatives/0002-security-hardening/`.
+
+| Date       | Task | Improvement |
+|------------|------|-------------|
+| 2026-05-15 | 0025 | **Public RPC CORS contract** — Caddy now strips upstream `Access-Control-*` headers, sets canonical CORS once, and short-circuits `OPTIONS` preflights with `204`. Authoritative copy under `infra/caddy/`. New `scripts/check-rpc-cors.sh` smoke test (9 checks) is wired into `scripts/health-check.sh` so every deploy gates on CORS compliance. Fixes `TypeError: Failed to fetch` on `/activity`, `/governance`, `/ubi-impact`. |
+
+> *Updated: 2026-05-15 — task 0025 (Caddy RPC CORS contract)*
 
 ---
 

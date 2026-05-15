@@ -1,0 +1,133 @@
+# Authoritative copy of /etc/caddy/Caddyfile for the goodclaw.org host.
+#
+# This file is the source of truth tracked in git. The live file on the
+# host (/etc/caddy/Caddyfile) MUST match this file exactly. Any change
+# here is applied to the host with:
+#
+#   sudo install -m 0644 infra/caddy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# See infra/caddy/README.md for the full deployment workflow and the
+# CORS smoke test (scripts/check-rpc-cors.sh).
+{
+	http_port 8082
+	auto_https disable_redirects
+}
+
+explorer.goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+
+	@empty_type query type=
+	uri @empty_type query -type
+
+	@empty_method query method=
+	uri @empty_method query -method
+
+	@pipe_filter query filter=to|from
+	uri @pipe_filter query -filter
+
+	reverse_proxy localhost:3200
+}
+
+goodswap.goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+	reverse_proxy localhost:3100
+}
+
+paperclip.goodclaw.org {
+	tls /etc/letsencrypt/live/paperclip.goodclaw.org/fullchain.pem /etc/letsencrypt/live/paperclip.goodclaw.org/privkey.pem
+
+	# Redirect root and /dashboard to company dashboard
+	@root_exact path /
+	redir @root_exact /GOO/ temporary
+
+	@dashboard path /dashboard /dashboard/*
+	redir @dashboard /GOO/ temporary
+
+	@prism path /prism /prism/ /prism/*
+	redir @prism /GOO/ temporary
+
+	handle {
+		reverse_proxy localhost:3102
+	}
+}
+
+# JSON-RPC endpoint for the GoodDollar L2 devnet.
+#
+# Browsers in production hit this from goodswap.goodclaw.org, so CORS
+# must be exactly right. Anvil (and op-node) emit their own
+# Access-Control-Allow-* headers, which combined with Caddy's
+# `header` directives produced duplicate headers and broke
+# `fetch` from the browser ("TypeError: Failed to fetch").
+#
+# Fix:
+#   1. Strip any CORS headers coming back from the upstream
+#      (`header_down -...`) so we have a clean slate.
+#   2. Set canonical CORS headers from Caddy ONCE.
+#   3. Short-circuit OPTIONS preflight with a 204.
+rpc.goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+
+	reverse_proxy localhost:8545 {
+		header_down -Access-Control-Allow-Origin
+		header_down -Access-Control-Allow-Methods
+		header_down -Access-Control-Allow-Headers
+		header_down -Access-Control-Max-Age
+		header_down -Access-Control-Allow-Credentials
+	}
+
+	header Access-Control-Allow-Origin "*"
+	header Access-Control-Allow-Methods "POST, GET, OPTIONS"
+	header Access-Control-Allow-Headers "Content-Type"
+	header Access-Control-Max-Age "86400"
+
+	@options method OPTIONS
+	respond @options 204
+}
+
+audit.goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+	reverse_proxy localhost:8888
+}
+
+wallet.goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+	reverse_proxy localhost:3010
+}
+
+goodagent.goodclaw.org {
+	@tori path /tori /tori/*
+	reverse_proxy @tori 127.0.0.1:3109
+
+	reverse_proxy 127.0.0.1:3099
+}
+
+goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+	root * /home/goodclaw/goodclaw-landing
+	file_server
+}
+
+api.goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+	header Content-Type application/json
+	respond `{"status":"ok","service":"GoodDollar L2 API","chainId":42069,"rpc":"https://rpc.goodclaw.org","revivedAt":"2026-05-13T19:59:00Z"}` 200
+}
+
+status.goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+	root * /home/goodclaw/goodclaw-status
+	file_server
+}
+
+docs.goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+	root * /home/goodclaw/goodclaw-docs
+	file_server
+}
+
+www.goodclaw.org {
+	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+	root * /home/goodclaw/goodclaw-landing
+	file_server
+}

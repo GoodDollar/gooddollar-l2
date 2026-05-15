@@ -52,6 +52,35 @@ fi
 
 echo ""
 
+# ── 1b. Public RPC CORS contract ─────────────────────────────────
+# Browsers in production fetch the JSON-RPC over HTTPS via Caddy at
+# rpc.goodclaw.org. A misconfigured CORS preflight (e.g. duplicate
+# Access-Control-Allow-Origin headers) silently breaks data loading
+# on every page of goodswap.goodclaw.org. We check it explicitly so
+# this regression cannot ship undetected.
+echo "── Public RPC CORS ──"
+
+CORS_SCRIPT="$(dirname "$0")/check-rpc-cors.sh"
+if [ -x "$CORS_SCRIPT" ]; then
+  # Run quietly; show output only on failure to keep this dashboard tight.
+  CORS_OUT=$("$CORS_SCRIPT" 2>&1) || CORS_RC=$?
+  CORS_RC=${CORS_RC:-0}
+  if [ "$CORS_RC" -eq 0 ]; then
+    CORS_PASSED=$(echo "$CORS_OUT" | grep -c '✓' || true)
+    pass "rpc.goodclaw.org CORS contract OK ($CORS_PASSED checks passed)"
+  else
+    fail "rpc.goodclaw.org CORS contract FAILED — see details below"
+    echo "$CORS_OUT" | sed 's/^/    /'
+  fi
+  unset CORS_RC CORS_OUT CORS_PASSED
+elif [ -f "$CORS_SCRIPT" ]; then
+  warn "CORS smoke test exists but is not executable: $CORS_SCRIPT"
+else
+  warn "CORS smoke test not found at $CORS_SCRIPT"
+fi
+
+echo ""
+
 # ── 2. Chain Health ──────────────────────────────────────────────
 echo "── Chain Health ──"
 
