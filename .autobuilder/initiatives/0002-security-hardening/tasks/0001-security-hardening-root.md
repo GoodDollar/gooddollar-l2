@@ -3,11 +3,48 @@ id: security-hardening-root
 title: "Phase 1: Security Hardening & Production Readiness"
 parent: gooddollar-l2
 deps: []
-split: null
+split: true
 depth: 0
-planned: false
+planned: true
 executed: false
 ---
+
+## Planning Notes
+
+### Research
+- 57 smart contracts in src/, ~30 with `.transfer()`/`.transferFrom()` calls
+- ~18 contracts already import ReentrancyGuard, but several critical ones don't (StabilityPool, PegStabilityModule, GoodLendPool, GoodSwapRouter, GoodVault, VaultManager, FastWithdrawalLP, GoodDollarBridgeL2, LimitOrderBook, OptimisticResolver)
+- StabilityPool has custom nonReentrant but no OpenZeppelin ReentrancyGuard import
+- 10 backend services in backend/ — each needs npm install + PM2 config
+- ecosystem.config.js already exists but needs proper restart policies
+
+### Architecture Diagram
+
+```mermaid
+graph TD
+    A[Root: Security Hardening] --> B[0002: Reentrancy Guards]
+    A --> C[0003: SafeERC20 Transfers]
+    A --> D[0004: Access Control + Balance Checks]
+    A --> E[0005: Slither MEDIUM Fixes]
+    A --> F[0006: Backend Services Startup]
+    A --> G[0007: Integration Testing + UBI Verification]
+    B --> E
+    C --> E
+    D --> E
+    E --> G
+    F --> G
+```
+
+### One-Week Decision: NO — splitting into 6 child tasks
+
+### Split Rationale
+The root task spans 5 independent workstreams touching ~30 contracts, 10 backend services, and 6 protocol integration tests. Estimated effort: 3-4 weeks. Splitting into focused tasks allows parallel progress and clear completion checkpoints:
+1. Reentrancy guards (P0) — ~12 contracts
+2. SafeERC20 transfers (P0) — ~20 contracts
+3. Access control + balance checks (P0) — ~15 contracts
+4. Slither MEDIUM fixes (P1) — 148 findings
+5. Backend services startup (P0) — 10 services
+6. Integration testing + UBI verification (P0) — 6 protocols
 
 ---
 title: "Phase 1: Security Hardening & Production Readiness"
