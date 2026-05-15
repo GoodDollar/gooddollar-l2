@@ -82,11 +82,15 @@ contract SyntheticAssetFactory {
         // push the stack close to the 16-slot EVM limit).
         asset = _clone(implementation);
         string memory syntheticSymbol = string(abi.encodePacked("s", ticker));
-        SyntheticAsset(asset).initialize(assetName, syntheticSymbol, vault);
 
+        // Effects before external initialize call (CEI). The freshly cloned
+        // SyntheticAsset is a known contract type with no constructor logic,
+        // but ordering state writes first satisfies static-analysis tools.
         assets[key] = asset;
         listedKeys.push(key);
         keyToTicker[key] = ticker;
+
+        SyntheticAsset(asset).initialize(assetName, syntheticSymbol, vault);
 
         emit AssetListed(ticker, asset, vault);
     }

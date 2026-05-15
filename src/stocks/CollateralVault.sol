@@ -301,7 +301,7 @@ contract CollateralVault is ReentrancyGuard {
         if (fee > 0) {
             bool ok = goodDollar.transferFrom(msg.sender, address(this), fee);
             if (!ok) revert TransferFailed();
-            goodDollar.approve(feeSplitter, fee);
+            if (!goodDollar.approve(feeSplitter, fee)) revert TransferFailed();
             IUBIFeeSplitter(feeSplitter).splitFee(fee, address(this));
         }
 
@@ -361,7 +361,7 @@ contract CollateralVault is ReentrancyGuard {
         SyntheticAsset(syntheticAsset).burn(msg.sender, syntheticAmount);
 
         if (fee > 0) {
-            goodDollar.approve(feeSplitter, fee);
+            if (!goodDollar.approve(feeSplitter, fee)) revert TransferFailed();
             IUBIFeeSplitter(feeSplitter).splitFee(fee, address(this));
         }
 
@@ -414,7 +414,7 @@ contract CollateralVault is ReentrancyGuard {
 
         // Remaining collateral goes to feeSplitter (funds UBI)
         if (remainingCollateral > 0) {
-            goodDollar.approve(feeSplitter, remainingCollateral);
+            if (!goodDollar.approve(feeSplitter, remainingCollateral)) revert TransferFailed();
             IUBIFeeSplitter(feeSplitter).splitFee(remainingCollateral, address(this));
         }
 

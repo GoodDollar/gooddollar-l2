@@ -267,8 +267,8 @@ contract PerpEngine is ReentrancyGuard {
 
             // USDT-style approve: reset to 0 first, then set actual amount
             // This prevents "Insufficient allowance" when previous approval exists
-            token.approve(feeSplitter, 0);
-            token.approve(feeSplitter, fee);
+            require(token.approve(feeSplitter, 0), "PerpEngine: approve reset failed");
+            require(token.approve(feeSplitter, fee), "PerpEngine: approve fee failed");
 
             IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));
         }
@@ -339,8 +339,8 @@ contract PerpEngine is ReentrancyGuard {
             IMarginToken2 token = IMarginToken2(goodDollarToken);
 
             // Approve and split liquidation bonus (33% UBI, 16.67% protocol, 50% liquidator)
-            token.approve(feeSplitter, 0);
-            token.approve(feeSplitter, bonus);
+            require(token.approve(feeSplitter, 0), "PerpEngine: approve reset failed");
+            require(token.approve(feeSplitter, bonus), "PerpEngine: approve bonus failed");
 
             IFeeSplitterPerp(feeSplitter).splitFee(bonus, msg.sender);
 

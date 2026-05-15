@@ -268,7 +268,7 @@ contract PegStabilityModule {
         // Mint fee gUSD and route through UBIFeeSplitter
         if (fee > 0) {
             gusd.mint(address(this), fee);
-            gusd.approve(address(feeSplitter), fee);
+            require(gusd.approve(address(feeSplitter), fee), "PSM: approve failed");
 
             // Try enhanced minting fee tracking if supported (StableUBIFeeSplitter)
             try this._callMintingFeeTracking(fee, address(this), address(gusd), msg.sender, "USDC-to-gUSD") {
@@ -317,7 +317,7 @@ contract PegStabilityModule {
 
         // Route fee through UBIFeeSplitter
         if (fee > 0) {
-            gusd.approve(address(feeSplitter), fee);
+            require(gusd.approve(address(feeSplitter), fee), "PSM: approve failed");
 
             // Try enhanced minting fee tracking if supported (StableUBIFeeSplitter)
             try this._callMintingFeeTracking(fee, address(this), address(gusd), msg.sender, "gUSD-to-USDC") {

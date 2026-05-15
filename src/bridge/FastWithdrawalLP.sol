@@ -201,22 +201,11 @@ contract FastWithdrawalLP {
         uint256 ubiFee = (fee * UBI_FEE_SHARE) / 10000;
         uint256 lpFee = fee - ubiFee;
 
-        // Deduct from LP balance (gross amount — LP gets fee back on settlement)
-        lpBalance[lp][token] -= amount;
-        totalLiquidity[token] -= amount;
+        // Effects: apply ALL state changes before any external call (CEI).
+        // Net liquidity change for LP is -amount + lpFee (LP fee credited immediately).
+        lpBalance[lp][token] = lpBalance[lp][token] - amount + lpFee;
+        totalLiquidity[token] = totalLiquidity[token] - amount + lpFee;
 
-        // Pay user net amount
-        bool ok = IERC20(token).transfer(to, netAmount);
-        if (!ok) revert TransferFailed();
-
-        // Pay UBI fee
-        if (ubiFee > 0) {
-            ok = IERC20(token).transfer(ubiPool, ubiFee);
-            if (!ok) revert TransferFailed();
-        }
-
-        // LP fee stays in contract, credited back on settlement
-        // Store claim for settlement
         claims[withdrawalHash] = Claim({
             lp: lp,
             token: token,
@@ -224,9 +213,14 @@ contract FastWithdrawalLP {
             settled: false
         });
 
-        // Credit LP fee immediately (they earned it)
-        lpBalance[lp][token] += lpFee;
-        totalLiquidity[token] += lpFee;
+        // Interactions: external calls last (function is also nonReentrant).
+        bool ok = IERC20(token).transfer(to, netAmount);
+        if (!ok) revert TransferFailed();
+
+        if (ubiFee > 0) {
+            ok = IERC20(token).transfer(ubiPool, ubiFee);
+            if (!ok) revert TransferFailed();
+        }
 
         emit FastClaimed(withdrawalHash, to, lp, token, amount, netAmount, fee);
     }

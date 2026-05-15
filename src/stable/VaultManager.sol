@@ -235,7 +235,7 @@ contract VaultManager {
         // Use splitFeeToken (not splitFee) because stability fees are in gUSD,
         // not G$. splitFee would revert — it pulls G$ via transferFrom.
         gusd.mint(address(this), feeWAD);
-        gusd.approve(address(feeSplitter), feeWAD);
+        require(gusd.approve(address(feeSplitter), feeWAD), "VM: approve failed");
 
         // Try enhanced stability fee tracking if supported (StableUBIFeeSplitter)
         // Falls back to standard splitFeeToken if method doesn't exist
@@ -547,7 +547,7 @@ contract VaultManager {
         }
 
         if (spColl > 0 && spDebt > 0) {
-            IERC20(colToken).approve(address(stabilityPool), spColl);
+            require(IERC20(colToken).approve(address(stabilityPool), spColl), "VM: approve failed");
             stabilityPool.offset(spDebt, ilk, spColl);
         }
     }

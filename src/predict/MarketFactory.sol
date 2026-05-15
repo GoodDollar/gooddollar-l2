@@ -251,7 +251,7 @@ contract MarketFactory is ReentrancyGuard {
         m.collateral -= collateralDecrement;
 
         if (fee > 0) {
-            goodDollar.approve(feeSplitter, fee);
+            require(goodDollar.approve(feeSplitter, fee), "MF: approve failed");
             IUBIFeeSplitterPredict(feeSplitter).splitFee(fee, address(this));
         }
 

@@ -51,7 +51,10 @@ contract GoodLendToken {
         name = _name;
         symbol = _symbol;
         // Allow the pool to pull underlying out of this gToken for borrows and withdrawals.
-        IERC20(_underlying).approve(_pool, type(uint256).max);
+        require(
+            IERC20(_underlying).approve(_pool, type(uint256).max),
+            "GoodLendToken: approve pool failed"
+        );
     }
 
     // ============ Read Functions ============

@@ -510,7 +510,7 @@ contract GoodLendPool {
      * @notice Mint accrued protocol revenue to treasury as gTokens.
      * @param assets Array of reserve assets to mint for.
      */
-    function mintToTreasury(address[] calldata assets) external {
+    function mintToTreasury(address[] calldata assets) external nonReentrant {
         for (uint256 i = 0; i < assets.length; i++) {
             _updateState(assets[i]);
             ReserveData storage reserve = reserves[assets[i]];

@@ -257,7 +257,9 @@ contract MultiChainBridge is ReentrancyGuard {
         if (destChainId == L1_CHAIN_ID && !useFastWithdrawal) {
             // Native OP Stack withdrawal
             routeType = RouteType.NativeBridge;
-            IERC20(token).approve(address(nativeBridge), netAmount);
+            if (!IERC20(token).approve(address(nativeBridge), netAmount)) {
+                revert TransferFailed();
+            }
             nativeBridge.initiateWithdrawal(token, receiver, netAmount);
         } else if (destChainId == L1_CHAIN_ID && useFastWithdrawal) {
             // Fast withdrawal via LP
@@ -270,7 +272,9 @@ contract MultiChainBridge is ReentrancyGuard {
             address destToken = tokenMappings[token][destChainId];
             if (destToken == address(0)) revert NoTokenMapping(token, destChainId);
 
-            IERC20(token).approve(address(lifiAggregator), netAmount);
+            if (!IERC20(token).approve(address(lifiAggregator), netAmount)) {
+                revert TransferFailed();
+            }
             lifiAggregator.initiateSwap(
                 token,
                 netAmount,
