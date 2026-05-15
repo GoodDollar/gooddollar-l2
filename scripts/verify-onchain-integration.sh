@@ -170,12 +170,76 @@ fi
 echo
 
 # ── 4. GoodStable ────────────────────────────────────────────────────────────
-echo "[4/6] GoodStable — reading PSM state (write path requires collateral approval flow)"
-stable_admin=$(cast call "$STABLE" "admin()(address)" --rpc-url "$RPC" 2>/dev/null || echo "?")
-if [[ -n "$stable_admin" && "$stable_admin" != "?" ]]; then
-  record_result "GoodStable" "PARTIAL" "StabilityPool live at $STABLE, gUSD at $GUSD, admin=$stable_admin. Full mint flow requires collateral routing through PSM ($PSM); deferred to next iteration."
+# Full vault flow:
+#   1. Mint MockWETH (STABLE_WETH) to tester via its public mint().
+#   2. Approve VaultManager to pull collateral.
+#   3. depositCollateral(ETH_ILK, 5 WETH).
+#   4. mintGUSD(ETH_ILK, 100 gUSD) — well below LTV (5 WETH @ $1 mock price needs ratio check).
+#
+# Notes on parameters:
+#   - ilk = bytes32("ETH") padded right with zeros = 0x4554480000…
+#   - Registry config (verified live): token=STABLE_WETH, liqRatio=1.5e18, debtCeiling=1M gUSD, active=true.
+#   - MockWETH oracle price on SimplePriceOracle is set by DeployGoodStable to $2000 (2000e8),
+#     so 5 WETH = $10,000 collateral; minting 100 gUSD keeps health factor far above 1.
+echo "[4/6] GoodStable — full deposit + mint flow via VaultManager"
+ETH_ILK=0x4554480000000000000000000000000000000000000000000000000000000000
+
+if [[ -z "${STABLE_WETH:-}" || -z "${VAULT_MANAGER:-}" ]]; then
+  record_result "GoodStable" "GAP" "STABLE_WETH or VAULT_MANAGER missing from addresses.env — re-run scripts/refresh-addresses.py and DeployGoodStable"
 else
-  record_result "GoodStable" "GAP" "Cannot read StabilityPool.admin()"
+  # Verify ilk is configured (defensive — getConfig reverts if not registered).
+  ilk_cfg=$(cast call "$COLLATERAL_REGISTRY" "getConfig(bytes32)((address,uint256,uint256,uint256,bool))" "$ETH_ILK" --rpc-url "$RPC" 2>/dev/null || echo "")
+  if [[ -z "$ilk_cfg" ]]; then
+    record_result "GoodStable" "GAP" "CollateralRegistry has no ETH ilk configured. Re-run DeployGoodStable."
+  else
+    # NOTE: VaultManager touches several cold storage slots on first deposit
+    # (drip, stabilityFee splitter, accumulators). eth_estimateGas systematically
+    # underestimates this by ~21k gas, causing legitimate txs to OOG-revert with
+    # status=0x0. We pass an explicit --gas-limit for the VaultManager calls.
+    cast_send_with_gas() {
+      local to="$1" sig="$2" gas="$3"; shift 3
+      cast send "$to" "$sig" "$@" \
+        --private-key "$TESTER_KEY" --rpc-url "$RPC" --gas-limit "$gas" --json 2>&1
+    }
+    # 1. Mint 10 MockWETH directly to tester (MockWETH18 has a public mint()).
+    hash_mint=$(send_tx "GoodStable" "MockWETH.mint(tester, 10 WETH)" "$STABLE_WETH" \
+                  "mint(address,uint256)" "$TESTER_WALLET" 10000000000000000000)
+    # 2. Approve VaultManager to pull WETH.
+    send_tx "GoodStable" "approve WETH to VaultManager" "$STABLE_WETH" \
+            "approve(address,uint256)" "$VAULT_MANAGER" 10000000000000000000 >/dev/null
+    # 3. depositCollateral(ETH, 5 WETH) with explicit gas.
+    out_dep=$(cast_send_with_gas "$VAULT_MANAGER" "depositCollateral(bytes32,uint256)" 400000 "$ETH_ILK" 5000000000000000000)
+    hash_dep=$(echo "$out_dep" | python3 -c "import json,sys
+try:
+    d=json.loads(sys.stdin.read())
+    print(d.get('transactionHash','') if d.get('status') in ('0x1',1) else '')
+except Exception:
+    print('')" 2>/dev/null || echo "")
+    if [[ -z "$hash_dep" ]]; then
+      echo "[GoodStable] vault.depositCollateral(ETH, 5 WETH) — FAILED: $(echo "$out_dep" | tail -1 | head -c 200)" >&2
+    fi
+    # 4. mintGUSD(ETH, 100 gUSD) with explicit gas.
+    out_mint=$(cast_send_with_gas "$VAULT_MANAGER" "mintGUSD(bytes32,uint256)" 500000 "$ETH_ILK" 100000000000000000000)
+    hash_mint_gusd=$(echo "$out_mint" | python3 -c "import json,sys
+try:
+    d=json.loads(sys.stdin.read())
+    print(d.get('transactionHash','') if d.get('status') in ('0x1',1) else '')
+except Exception:
+    print('')" 2>/dev/null || echo "")
+    if [[ -z "$hash_mint_gusd" ]]; then
+      echo "[GoodStable] vault.mintGUSD(ETH, 100 gUSD) — FAILED: $(echo "$out_mint" | tail -1 | head -c 200)" >&2
+    fi
+
+    # Receipt of interest is the mintGUSD tx (final step that proves the full path).
+    if [[ -n "$hash_mint_gusd" ]] && capture_receipt "$hash_mint_gusd" "GoodStable"; then
+      record_result "GoodStable" "PASS" "mintGUSD tx $hash_mint_gusd (deposit tx $hash_dep)"
+    elif [[ -n "$hash_dep" ]] && capture_receipt "$hash_dep" "GoodStable"; then
+      # Deposit landed but mint failed — still proves the vault path is live.
+      record_result "GoodStable" "PARTIAL" "depositCollateral tx $hash_dep landed; mintGUSD reverted (likely health-factor / oracle price)"
+    else
+      record_result "GoodStable" "FAIL" "depositCollateral reverted (mint tx $hash_mint)"
+    fi
+  fi
 fi
 echo
 

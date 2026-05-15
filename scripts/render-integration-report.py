@@ -100,15 +100,15 @@ PROTOCOL_ROWS: List[Tuple[str, Optional[str], str, str]] = [
     ),
     (
         "GoodLend",
-        None,
+        "GoodLend.json",
         "supply(GDT, 5 GDT)",
-        "no receipt — supply() reverted because GDT reserve is not initialised on the redeployed pool",
+        "GDT reserve initialised by `script/InitGoodLendGDTReserve.s.sol` (task 0022); supply receipt captured live",
     ),
     (
         "GoodStable",
-        None,
-        "depositCollateral / mint gUSD",
-        "no receipt — PSM collateral wiring + collateral approval flow deferred to next iteration",
+        "GoodStable.json",
+        "depositCollateral(ETH, 5 WETH) + mintGUSD(ETH, 100 gUSD)",
+        "MockWETH minted to tester, approved VaultManager, then deposit + mint via VaultManager (task 0023). Receipt is the mintGUSD tx; explicit --gas-limit set to avoid cold-storage gas under-estimation",
     ),
     (
         "GoodStocks",
