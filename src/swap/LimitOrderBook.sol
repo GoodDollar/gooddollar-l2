@@ -136,7 +136,7 @@ contract LimitOrderBook {
         uint256 amountIn,
         uint256 targetPrice,
         uint256 expiry
-    ) external returns (uint256 orderId) {
+    ) external nonReentrant returns (uint256 orderId) {
         if (amountIn == 0) revert ZeroAmount();
         if (tokenIn == address(0) || tokenOut == address(0)) revert ZeroAddress();
         if (targetPrice == 0) revert ZeroPriceNotAllowed();
@@ -166,7 +166,7 @@ contract LimitOrderBook {
     /**
      * @notice Cancel an active order. Refunds escrowed tokens.
      */
-    function cancelOrder(uint256 orderId) external {
+    function cancelOrder(uint256 orderId) external nonReentrant {
         Order storage order = orders[orderId];
         if (order.owner != msg.sender) revert NotOrderOwner();
         if (order.status != OrderStatus.Active) revert OrderNotActive();

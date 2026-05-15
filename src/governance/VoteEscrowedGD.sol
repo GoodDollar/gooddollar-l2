@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/interfaces/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title VoteEscrowedGD (veG$)
@@ -13,7 +14,7 @@ import "forge-std/interfaces/IERC20.sol";
  * Locks range from 1 week to 4 years. Users can extend locks or increase amount.
  * 33% of early-unlock penalties flow to UBI pool.
  */
-contract VoteEscrowedGD {
+contract VoteEscrowedGD is ReentrancyGuard {
     // --- Types ---
     struct Lock {
         uint128 amount;      // G$ locked
@@ -82,7 +83,7 @@ contract VoteEscrowedGD {
     /// @notice Lock G$ for voting power
     /// @param amount G$ to lock
     /// @param duration Lock duration in seconds
-    function lock(uint256 amount, uint256 duration) external {
+    function lock(uint256 amount, uint256 duration) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (duration < MIN_LOCK) revert LockTooShort();
         if (duration > MAX_LOCK) revert LockTooLong();
@@ -106,7 +107,7 @@ contract VoteEscrowedGD {
     }
 
     /// @notice Increase locked amount (keeps same unlock time)
-    function increaseLock(uint256 addedAmount) external {
+    function increaseLock(uint256 addedAmount) external nonReentrant {
         if (addedAmount == 0) revert ZeroAmount();
         Lock storage l = locks[msg.sender];
         if (l.amount == 0) revert NoLock();
@@ -147,7 +148,7 @@ contract VoteEscrowedGD {
     }
 
     /// @notice Withdraw after lock expires
-    function withdraw() external {
+    function withdraw() external nonReentrant {
         Lock storage l = locks[msg.sender];
         if (l.amount == 0) revert NoLock();
         if (block.timestamp < l.end) revert LockNotExpired();
@@ -166,7 +167,7 @@ contract VoteEscrowedGD {
     }
 
     /// @notice Early unlock with penalty (30%). 33% of penalty goes to UBI.
-    function earlyUnlock() external {
+    function earlyUnlock() external nonReentrant {
         Lock storage l = locks[msg.sender];
         if (l.amount == 0) revert NoLock();
         if (block.timestamp >= l.end) revert LockExpired(); // just use withdraw()

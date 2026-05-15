@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title MarginVault
  * @notice Holds G$ margin collateral for GoodPerps perpetual futures.
@@ -13,7 +15,7 @@ interface IMarginToken {
     function approve(address spender, uint256 amount) external returns (bool);
 }
 
-contract MarginVault {
+contract MarginVault is ReentrancyGuard {
     // ============ State ============
 
     IMarginToken public immutable collateral;
@@ -87,7 +89,7 @@ contract MarginVault {
 
     // ============ User ============
 
-    function deposit(uint256 amount) external {
+    function deposit(uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         bool ok = collateral.transferFrom(msg.sender, address(this), amount);
         if (!ok) revert TransferFailed();
@@ -96,7 +98,7 @@ contract MarginVault {
         emit Deposited(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount) external {
+    function withdraw(uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (balances[msg.sender] < amount) revert InsufficientBalance(balances[msg.sender], amount);
         balances[msg.sender] -= amount;
@@ -134,7 +136,7 @@ contract MarginVault {
     ///         Called by PerpEngine to forward collected trade fees to the UBI
     ///         fee splitter. Tokens were previously debited from user balances
     ///         via debit() and are now unaccounted-for in totalDeposited.
-    function flushFee(address to, uint256 amount) external onlyEngine {
+    function flushFee(address to, uint256 amount) external onlyEngine nonReentrant {
         if (to == address(0)) revert ZeroAddress();
         bool ok = collateral.transfer(to, amount);
         if (!ok) revert TransferFailed();

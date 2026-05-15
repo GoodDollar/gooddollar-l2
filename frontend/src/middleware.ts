@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import createMiddleware from 'next-intl/middleware'
-import { locales, defaultLocale } from './i18n/config'
+
 
 // ---------------------------------------------------------------------------
 // In-memory rate limiter for API routes
@@ -48,13 +47,6 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
   return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count, resetAt: entry.windowStart + RATE_LIMIT_WINDOW_MS }
 }
 
-//Create i18n middleware
-const intlMiddleware = createMiddleware({
-  locales,
-  defaultLocale,
-  localePrefix: 'as-needed', // Only add locale prefix when needed
-})
-
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
@@ -93,8 +85,10 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // Apply i18n middleware for all other routes
-  return intlMiddleware(req)
+  // The app routes are not nested under /[locale], so applying next-intl's
+  // locale middleware rewrites valid routes to locale-prefixed paths that do
+  // not exist and makes production return 404. Keep public pages unmodified.
+  return NextResponse.next()
 }
 
 export const config = {

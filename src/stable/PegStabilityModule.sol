@@ -26,6 +26,20 @@ import "./interfaces/IGoodStable.sol";
 /// @dev Alias for readability — IgUSD has all needed methods
 interface IgUSDMinter is IgUSD {}
 
+/**
+ * @notice Enhanced UBIFeeSplitter interface for better minting fee tracking.
+ *         Only implemented by StableUBIFeeSplitter, not the standard UBIFeeSplitter.
+ */
+interface IStableUBIFeeSplitterEnhanced {
+    function splitMintingFee(
+        uint256 totalFee,
+        address dAppRecipient,
+        address token,
+        address user,
+        string calldata direction
+    ) external returns (uint256 ubiShare, uint256 protocolShare, uint256 dAppShare);
+}
+
 interface IUSDC {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
     function transfer(address to, uint256 amount) external returns (bool);
@@ -108,6 +122,35 @@ contract PegStabilityModule {
         feeSplitter  = IUBIFeeSplitter(_feeSplitter);
         admin        = _admin;
         feeBPS       = 10; // 0.1%
+    }
+
+    /**
+     * @notice Helper function to call enhanced minting fee tracking.
+     *         Attempts to use StableUBIFeeSplitter.splitMintingFee() if available.
+     * @dev This is called via try/catch to maintain compatibility with standard UBIFeeSplitter.
+     */
+    function _callMintingFeeTracking(
+        uint256 fee,
+        address dAppRecipient,
+        address token,
+        address user,
+        string calldata direction
+    ) external {
+        require(msg.sender == address(this), "PSM: only self");
+
+        // Attempt enhanced tracking call (only works with StableUBIFeeSplitter)
+        try IStableUBIFeeSplitterEnhanced(address(feeSplitter)).splitMintingFee(
+            fee,
+            dAppRecipient,
+            token,
+            user,
+            direction
+        ) returns (uint256, uint256, uint256) {
+            // Enhanced tracking succeeded
+        } catch {
+            // This will revert, causing the try/catch in swap functions to use fallback
+            revert("Enhanced tracking not supported");
+        }
     }
 
     // ============ Modifiers ============
@@ -206,7 +249,14 @@ contract PegStabilityModule {
         if (fee > 0) {
             gusd.mint(address(this), fee);
             gusd.approve(address(feeSplitter), fee);
-            feeSplitter.splitFeeToken(fee, address(this), address(gusd));
+
+            // Try enhanced minting fee tracking if supported (StableUBIFeeSplitter)
+            try this._callMintingFeeTracking(fee, address(this), address(gusd), msg.sender, "USDC-to-gUSD") {
+                // Enhanced tracking succeeded
+            } catch {
+                // Fallback to standard method for backward compatibility
+                feeSplitter.splitFeeToken(fee, address(this), address(gusd));
+            }
             totalFeesCollected += fee;
         }
 
@@ -248,7 +298,14 @@ contract PegStabilityModule {
         // Route fee through UBIFeeSplitter
         if (fee > 0) {
             gusd.approve(address(feeSplitter), fee);
-            feeSplitter.splitFeeToken(fee, address(this), address(gusd));
+
+            // Try enhanced minting fee tracking if supported (StableUBIFeeSplitter)
+            try this._callMintingFeeTracking(fee, address(this), address(gusd), msg.sender, "gUSD-to-USDC") {
+                // Enhanced tracking succeeded
+            } catch {
+                // Fallback to standard method for backward compatibility
+                feeSplitter.splitFeeToken(fee, address(this), address(gusd));
+            }
             totalFeesCollected += fee;
         }
 

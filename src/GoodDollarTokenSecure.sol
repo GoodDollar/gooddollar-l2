@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/interfaces/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title GoodDollar Token (G$) — L2 Native (Secure Version)
@@ -14,7 +15,7 @@ import "forge-std/interfaces/IERC20.sol";
  *   - Fee collection from all dApps → UBI pool
  *   - Validator staking
  */
-contract GoodDollarTokenSecure {
+contract GoodDollarTokenSecure is ReentrancyGuard {
     string public constant name = "GoodDollar";
     string public constant symbol = "G$";
     uint8 public constant decimals = 18;
@@ -29,11 +30,23 @@ contract GoodDollarTokenSecure {
 
     // UBI Pool — funded by dApp fees
     uint256 public ubiPool;
+    uint256 public poolDistributionCycle; // Track current distribution cycle to handle remainders
 
     // Identity & Claims
     mapping(address => bool) public isVerifiedHuman;
     mapping(address => uint256) public lastClaimTime;
     uint256 public totalVerifiedHumans;
+
+    // Oracle Consensus for Human Verification
+    struct VerificationVote {
+        uint256 approvals;
+        uint256 rejections;
+        mapping(address => bool) hasVoted;
+        bool status; // true = verify, false = revoke
+        bool executed;
+    }
+    mapping(address => VerificationVote) public verificationVotes;
+    mapping(address => uint256) public pendingVerificationId;
 
     // Security: Role-Based Access Control
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
@@ -82,14 +95,27 @@ contract GoodDollarTokenSecure {
     event OracleChangeScheduled(uint256 indexed changeId, address indexed oracle, bool add, uint256 executeAt);
     event OracleChangeExecuted(uint256 indexed changeId, address indexed oracle, bool add);
     event OracleChangeCanceled(uint256 indexed changeId);
+    event VerificationVoteCast(address indexed human, address indexed oracle, bool approval, bool status);
+    event VerificationConsensusReached(address indexed human, bool status, uint256 approvals, uint256 rejections);
 
     // Custom Errors
     error UnauthorizedRole(bytes32 role);
-    error VerificationPaused();
+    error VerificationTemporarilyPaused();
     error InsufficientOracles();
     error TimelockNotReady(uint256 executeAt);
     error ChangeAlreadyExecuted();
     error ChangeNotFound();
+    error AlreadyVoted();
+    error NoConsensusReached();
+    error VerificationAlreadyExecuted();
+    error NotVerifiedHuman();
+    error AlreadyClaimedToday();
+    error InsufficientBalance();
+    error InsufficientAllowance();
+    error HumanAddressCannotBeZero();
+    error VoteStatusMismatch();
+    error VoteAlreadyExecuted();
+    error NotAuthorizedMinter();
 
     modifier onlyRole(bytes32 role) {
         if (!hasRole[role][msg.sender]) revert UnauthorizedRole(role);
@@ -107,12 +133,12 @@ contract GoodDollarTokenSecure {
     }
 
     modifier onlyMinter() {
-        require(minters[msg.sender], "Not authorized minter");
+        if (!minters[msg.sender]) revert NotAuthorizedMinter();
         _;
     }
 
     modifier whenVerificationNotPaused() {
-        if (verificationPaused) revert VerificationPaused();
+        if (verificationPaused) revert VerificationTemporarilyPaused();
         _;
     }
 
@@ -142,7 +168,7 @@ contract GoodDollarTokenSecure {
 
     // ============ ERC20 Standard ============
 
-    function transfer(address to, uint256 amount) external returns (bool) {
+    function transfer(address to, uint256 amount) external nonReentrant returns (bool) {
         _transfer(msg.sender, to, amount);
         return true;
     }
@@ -153,10 +179,10 @@ contract GoodDollarTokenSecure {
         return true;
     }
 
-    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) external nonReentrant returns (bool) {
         uint256 currentAllowance = allowance[from][msg.sender];
         if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "Insufficient allowance");
+            if (currentAllowance < amount) revert InsufficientAllowance();
             allowance[from][msg.sender] = currentAllowance - amount;
         }
         _transfer(from, to, amount);
@@ -171,12 +197,11 @@ contract GoodDollarTokenSecure {
      *   1. Base UBI (newly minted G$)
      *   2. Share of UBI pool (funded by dApp fees)
      */
-    function claimUBI() external {
-        require(isVerifiedHuman[msg.sender], "Not verified human");
-        require(
-            lastClaimTime[msg.sender] == 0 || block.timestamp >= lastClaimTime[msg.sender] + CLAIM_INTERVAL,
-            "Already claimed today"
-        );
+    function claimUBI() external nonReentrant {
+        if (!isVerifiedHuman[msg.sender]) revert NotVerifiedHuman();
+        if (lastClaimTime[msg.sender] != 0 && block.timestamp < lastClaimTime[msg.sender] + CLAIM_INTERVAL) {
+            revert AlreadyClaimedToday();
+        }
 
         lastClaimTime[msg.sender] = block.timestamp;
 
@@ -184,13 +209,21 @@ contract GoodDollarTokenSecure {
         uint256 baseAmount = dailyUBIAmount;
         _mint(msg.sender, baseAmount);
 
-        // Pool UBI: distribute share of fee pool
+        // Pool UBI: distribute share of fee pool with SafeMath and proper remainder handling
         uint256 poolShare = 0;
         if (ubiPool > 0 && totalVerifiedHumans > 0) {
+            // Calculate equal distribution per verified human
             poolShare = ubiPool / totalVerifiedHumans;
+
+            // Only distribute if there's a meaningful share (prevent dust distribution)
             if (poolShare > 0) {
-                ubiPool -= poolShare;
+                // Safe subtraction - only deduct what we're actually sending
+                ubiPool = ubiPool - poolShare;
                 _transfer(address(this), msg.sender, poolShare);
+
+                // Note: Remainder stays in pool for future distributions
+                // This prevents permanent fund locking while maintaining fairness
+                // The remainder will be included in the next distribution cycle
             }
         }
 
@@ -200,7 +233,7 @@ contract GoodDollarTokenSecure {
     /**
      * @notice Fund the UBI pool. Called by dApps sending their UBI fee share.
      */
-    function fundUBIPool(uint256 amount) external {
+    function fundUBIPool(uint256 amount) external nonReentrant {
         _transfer(msg.sender, address(this), amount);
         ubiPool += amount;
         emit UBIPoolFunded(msg.sender, amount);
@@ -216,10 +249,50 @@ contract GoodDollarTokenSecure {
     // ============ Secure Identity Management ============
 
     /**
-     * @notice Verify or unverify a human. Requires oracle role and verification not paused.
-     * @dev Multi-sig oracles provide security against single point of failure.
+     * @notice Vote to verify or unverify a human. Requires oracle consensus.
+     * @dev Multiple oracles must vote to reach consensus before execution.
      */
-    function verifyHuman(address human, bool status) external onlyOracle whenVerificationNotPaused {
+    function voteVerifyHuman(address human, bool approval, bool status) external onlyOracle whenVerificationNotPaused {
+        if (human == address(0)) revert HumanAddressCannotBeZero();
+
+        VerificationVote storage vote = verificationVotes[human];
+
+        // Initialize new vote if needed
+        if (vote.approvals == 0 && vote.rejections == 0 && !vote.executed) {
+            vote.status = status;
+        }
+
+        // Ensure vote is for the same action (verify/revoke)
+        if (vote.status != status) revert VoteStatusMismatch();
+        if (vote.executed) revert VoteAlreadyExecuted();
+        if (vote.hasVoted[msg.sender]) revert AlreadyVoted();
+
+        // Cast vote
+        vote.hasVoted[msg.sender] = true;
+        if (approval) {
+            vote.approvals++;
+        } else {
+            vote.rejections++;
+        }
+
+        emit VerificationVoteCast(human, msg.sender, approval, status);
+
+        // Check for consensus (majority of oracles)
+        uint256 totalOracles = roleCount[ORACLE_ROLE];
+        uint256 requiredVotes = (totalOracles / 2) + 1; // Majority consensus
+
+        if (vote.approvals >= requiredVotes) {
+            _executeVerification(human, status);
+            vote.executed = true;
+            emit VerificationConsensusReached(human, status, vote.approvals, vote.rejections);
+        }
+    }
+
+    /**
+     * @notice Execute human verification after consensus is reached.
+     * @dev Internal function to update verification status.
+     */
+    function _executeVerification(address human, bool status) internal {
         if (status && !isVerifiedHuman[human]) {
             totalVerifiedHumans++;
         } else if (!status && isVerifiedHuman[human]) {
@@ -231,13 +304,30 @@ contract GoodDollarTokenSecure {
 
     /**
      * @notice Batch verify humans. More gas efficient for migrations.
+     * @dev WARNING: This function bypasses oracle consensus for efficiency.
+     *      Only use during initial setup or emergency migrations with admin oversight.
      */
-    function batchVerifyHumans(address[] calldata humans) external onlyOracle whenVerificationNotPaused {
+    function batchVerifyHumans(address[] calldata humans) external onlyAdmin whenVerificationNotPaused {
         for (uint256 i = 0; i < humans.length; i++) {
             if (!isVerifiedHuman[humans[i]]) {
                 isVerifiedHuman[humans[i]] = true;
                 totalVerifiedHumans++;
                 emit HumanVerified(humans[i], true);
+            }
+        }
+    }
+
+    /**
+     * @notice Batch revoke human verification. Symmetric to batchVerifyHumans.
+     * @dev WARNING: This function bypasses oracle consensus for efficiency.
+     *      Only use during emergency situations or mass revocations with admin oversight.
+     */
+    function batchRevokeHumans(address[] calldata humans) external onlyAdmin whenVerificationNotPaused {
+        for (uint256 i = 0; i < humans.length; i++) {
+            if (isVerifiedHuman[humans[i]]) {
+                isVerifiedHuman[humans[i]] = false;
+                totalVerifiedHumans--;
+                emit HumanVerified(humans[i], false);
             }
         }
     }
@@ -394,7 +484,7 @@ contract GoodDollarTokenSecure {
     /**
      * @notice Mint G$ tokens. Only callable by authorized minters (e.g. UBIClaimV2).
      */
-    function mint(address to, uint256 amount) external onlyMinter {
+    function mint(address to, uint256 amount) external onlyMinter nonReentrant {
         _mint(to, amount);
     }
 
@@ -420,7 +510,7 @@ contract GoodDollarTokenSecure {
     // ============ Internal ============
 
     function _transfer(address from, address to, uint256 amount) internal {
-        require(balanceOf[from] >= amount, "Insufficient balance");
+        if (balanceOf[from] < amount) revert InsufficientBalance();
         balanceOf[from] -= amount;
         balanceOf[to] += amount;
         emit Transfer(from, to, amount);

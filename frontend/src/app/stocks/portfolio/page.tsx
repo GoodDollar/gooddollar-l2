@@ -9,6 +9,8 @@ import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { UBIContributionCard } from '@/components/UBIContributionCard'
+import { PartnershipIntegrationCard } from '@/components/PartnershipIntegrationCard'
 
 function CollateralHealth({ ratio }: { ratio: number }) {
   const color = ratio >= 150 ? 'text-green-400' : ratio >= 120 ? 'text-yellow-400' : 'text-red-400'
@@ -109,7 +111,8 @@ export default function StocksPortfolioPage() {
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+      {/* Portfolio Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Value</div>
           <div className="text-lg sm:text-xl font-bold text-white">{formatLargeNumber(summary.totalValue)}</div>
@@ -122,11 +125,31 @@ export default function StocksPortfolioPage() {
           </div>
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+          <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
+          <div className="text-lg sm:text-xl font-bold text-goodgreen">
+            {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.33)}
+            <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
+          </div>
+        </div>
+        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <CollateralHealth ratio={summary.healthRatio} />
           <div className="hidden sm:block mt-2 text-xs text-gray-500">
             {formatStockPrice(summary.totalCollateral)} / {formatStockPrice(summary.totalRequired)} required
           </div>
         </div>
+      </div>
+
+      {/* UBI Impact Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <UBIContributionCard
+          platform="stocks"
+          className="h-fit"
+        />
+        <PartnershipIntegrationCard
+          userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.33}
+          compact={false}
+          className="h-fit"
+        />
       </div>
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
@@ -146,7 +169,7 @@ export default function StocksPortfolioPage() {
         </TabsList>
 
         <TabsContent value="holdings">
-          isLoading ? (
+          {isLoading ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">Loading positions…</p>
             </div>
@@ -179,11 +202,11 @@ export default function StocksPortfolioPage() {
                 </tbody>
               </table>
             </div>
-          )
+          )}
         </TabsContent>
 
         <TabsContent value="history">
-          trades.length === 0 ? (
+          {trades.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">No trade history</p>
             </div>
@@ -205,7 +228,7 @@ export default function StocksPortfolioPage() {
                 </tbody>
               </table>
             </div>
-          )
+          )}
         </TabsContent>
       </Tabs>
     </div>

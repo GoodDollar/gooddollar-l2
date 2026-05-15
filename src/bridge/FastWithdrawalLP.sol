@@ -121,7 +121,7 @@ contract FastWithdrawalLP {
     // ─── LP Liquidity Management ──────────────────────────────────────────────
 
     /// @notice Deposit ERC20 liquidity to serve fast withdrawals.
-    function depositLiquidity(address token, uint256 amount) external {
+    function depositLiquidity(address token, uint256 amount) external nonReentrant {
         if (token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
 

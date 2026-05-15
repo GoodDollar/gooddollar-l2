@@ -21,9 +21,9 @@ interface ISwapERC20 {
 }
 
 contract TestSwap is Script {
-    address constant ROUTER    = 0x975Ab64F4901Af5f0C96636deA0b9de3419D0c2F;
-    address constant SWAP_GD   = 0x547382C0D1b23f707918D3c83A77317B71Aa8470;
-    address constant SWAP_WETH = 0x7C8BaafA542c57fF9B2B90612bf8aB9E86e22C09;
+    address constant ROUTER    = 0x922D6956C99E12DFeB3224DEA977D0939758A1Fe; // GoodSwapRouter deployed
+    address constant SWAP_GD   = 0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00; // G$ token from pools
+    address constant SWAP_WETH = 0x809d550fca64d94Bd9F66E60752A544199cfAC3D; // WETH token from pools
 
     function run() external {
         uint256 key = vm.envOr(

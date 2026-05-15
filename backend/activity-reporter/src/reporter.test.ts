@@ -37,7 +37,7 @@ describe('Config', () => {
 
   test('AgentRegistry address is set', () => {
     expect(ADDRESSES.AgentRegistry).toBe(
-      '0xA9d0Fb5837f9c42c874e16da96094b14Af0e2784',
+      '0x8a791620dd6260079bf849dc5567adc3f2fdc318',
     );
   });
 

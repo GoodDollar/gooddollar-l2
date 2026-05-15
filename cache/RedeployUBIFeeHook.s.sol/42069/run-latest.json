@@ -1,7 +1,7 @@
 {
   "transactions": [
     {
-      "rpc": "https://rpc.goodclaw.org"
+      "rpc": "http://localhost:8545"
     }
   ]
 }

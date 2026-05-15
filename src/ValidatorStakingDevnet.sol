@@ -299,6 +299,14 @@ contract ValidatorStakingDevnet {
     }
 
     /**
+     * @notice Get the minimum stake requirement
+     * @return uint256 Minimum stake amount in G$ (10K for devnet)
+     */
+    function minStake() external pure returns (uint256) {
+        return MIN_STAKE;
+    }
+
+    /**
      * @notice Check if an amount meets the minimum stake requirement
      * @param amount Amount to check
      * @return bool True if amount >= MIN_STAKE

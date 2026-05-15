@@ -110,7 +110,7 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
 
     // ============ Deposits (L1 → L2) ============
 
-    function depositGDollar(address to, uint256 amount) external whenNotPaused peerConfigured {
+    function depositGDollar(address to, uint256 amount) external whenNotPaused peerConfigured nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (to == address(0)) revert ZeroAddress();
 
@@ -130,7 +130,7 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
         emit DepositInitiated(address(goodDollar), msg.sender, to, amount, depositHash);
     }
 
-    function depositUSDC(address to, uint256 amount) external whenNotPaused peerConfigured {
+    function depositUSDC(address to, uint256 amount) external whenNotPaused peerConfigured nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (to == address(0)) revert ZeroAddress();
 
@@ -150,7 +150,7 @@ contract GoodDollarBridgeL1 is ReentrancyGuard {
         emit DepositInitiated(address(usdc), msg.sender, to, amount, depositHash);
     }
 
-    function depositETH(address to) external payable whenNotPaused peerConfigured {
+    function depositETH(address to) external payable whenNotPaused peerConfigured nonReentrant {
         if (msg.value == 0) revert ZeroAmount();
         if (to == address(0)) revert ZeroAddress();
 

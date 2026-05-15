@@ -124,7 +124,7 @@ contract GoodDollarBridgeL2 {
         address, /* from */
         address to,
         uint256 amount
-    ) external onlyFromL1Bridge {
+    ) external onlyFromL1Bridge nonReentrant {
         address l2Token = l1ToL2Token[l1Token];
         if (l2Token == address(0)) revert TokenNotMapped();
 
@@ -156,7 +156,7 @@ contract GoodDollarBridgeL2 {
     // ============ Withdrawals (L2 -> L1) ============
     // User initiates on L2, finalized on L1 after 7-day challenge
 
-    function withdrawGDollar(address l1Token, address to, uint256 amount) external whenNotPaused peerConfigured {
+    function withdrawGDollar(address l1Token, address to, uint256 amount) external whenNotPaused peerConfigured nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (to == address(0)) revert ZeroAddress();
 
@@ -176,7 +176,7 @@ contract GoodDollarBridgeL2 {
         emit WithdrawalInitiated(l1Token, msg.sender, to, amount);
     }
 
-    function withdrawUSDC(address l1Token, address to, uint256 amount) external whenNotPaused peerConfigured {
+    function withdrawUSDC(address l1Token, address to, uint256 amount) external whenNotPaused peerConfigured nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (to == address(0)) revert ZeroAddress();
 

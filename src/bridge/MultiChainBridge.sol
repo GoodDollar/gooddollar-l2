@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title MultiChainBridge
  * @notice Unified multi-chain bridge router for GoodDollar L2.
@@ -59,7 +61,7 @@ interface IFastWithdrawalLP {
     ) external;
 }
 
-contract MultiChainBridge {
+contract MultiChainBridge is ReentrancyGuard {
     // ─── Constants ────────────────────────────────────────────────────────────
 
     uint256 public constant L1_CHAIN_ID = 1;          // Ethereum mainnet
@@ -310,7 +312,7 @@ contract MultiChainBridge {
         uint256 minOutput,
         uint256 deadline,
         bool useFastWithdrawal
-    ) external payable returns (uint256 requestId) {
+    ) external payable nonReentrant returns (uint256 requestId) {
         if (msg.value == 0) revert ZeroAmount();
         if (receiver == address(0)) revert ZeroAddress();
         if (destChainId == L2_CHAIN_ID) revert AlreadyOnL2();
@@ -415,7 +417,7 @@ contract MultiChainBridge {
     }
 
     /// @notice Admin can withdraw accumulated protocol fees
-    function withdrawProtocolFees(address token, uint256 amount, address to) external onlyAdmin {
+    function withdrawProtocolFees(address token, uint256 amount, address to) external onlyAdmin nonReentrant {
         if (token == address(0)) {
             (bool sent,) = to.call{value: amount}("");
             require(sent, "ETH withdraw failed");

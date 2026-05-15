@@ -23,13 +23,13 @@ export const INITIAL_LOOKBACK = Number(process.env.INITIAL_LOOKBACK) || 1000;
 // ─── Contract Addresses ───────────────────────────────────────────────────────
 
 export const ADDRESSES = {
-  AgentRegistry:         process.env.AGENT_REGISTRY  || '0xf8e31cb472bc70500f08cd84917e5a1912ec8397',
-  GoodSwapRouter:        process.env.SWAP_ROUTER     || '0x975ab64f4901af5f0c96636dea0b9de3419d0c2f',
-  PerpEngine:            process.env.PERP_ENGINE     || '0x9be634797af98cb560db23260b5f7c6e98accacf',
-  GoodLendPool:          process.env.LEND_POOL       || '0x49fd2be640db2910c2fab69bb8531ab6e76127ff',
-  MarketFactory:         process.env.MARKET_FACTORY  || '0x74ef2B06A1D2035C33244A4a263FF00B84504865',
-  CollateralVault:       process.env.COLLATERAL_VAULT|| '0xca57c1d3c2c35e667745448fef8407dd25487ff8',
-  VaultFactory:          process.env.VAULT_FACTORY   || '0xe70f935c32da4db13e7876795f1e175465e6458e',
+  AgentRegistry:         process.env.AGENT_REGISTRY  || '0x8a791620dd6260079bf849dc5567adc3f2fdc318',
+  GoodSwapRouter:        process.env.SWAP_ROUTER     || '0x922d6956c99e12dfeb3224dea977d0939758a1fe',
+  PerpEngine:            process.env.PERP_ENGINE     || '0x172076e0166d1f9cc711c77adf8488051744980c',
+  GoodLendPool:          process.env.LEND_POOL       || '0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc',
+  MarketFactory:         process.env.MARKET_FACTORY  || '0x02df3a3f960393f5b349e40a599feda91a7cc1a7',
+  CollateralVault:       process.env.COLLATERAL_VAULT|| '0x276c216d241856199a83bf27b2286659e5b877d3',
+  VaultFactory:          process.env.VAULT_FACTORY   || '0x66f625b8c4c635af8b74ece2d7ed0d58b4af3c3d',
 } as const;
 
 // ─── Protocol Definitions ─────────────────────────────────────────────────────

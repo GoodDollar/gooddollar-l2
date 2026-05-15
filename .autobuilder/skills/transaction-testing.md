@@ -10,9 +10,9 @@ RPC=http://localhost:8545
 KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 GDT=0x36c02da8a0983159322a80ffe9f24b1acff8b570
 UBI=0x976fcd02f7c4773dd89c309fbf55d5923b4c98a1
-PERP=0x9be634797af98cb560db23260b5f7c6e98accacf
+PERP=0x2e2ed0cfd3ad2f1d34481277b3204d807ca2f8c2
 MF=0xd28f3246f047efd4059b24fa1fa587ed9fa3e77f
-VS=0x103a3b128991781ee2c8db0454ca99d67b257923
+VS=0x103a3b128991781ee2c8db0454ca99d67b257923  # TODO: Update to ValidatorStakingDevnet address when deployed (10K GDT minimum)
 LEND=0x49fd2be640db2910c2fab69bb8531ab6e76127ff
 STABLE=0x5d42ebdbba61412295d7b0302d6f50ac449ddb4f
 STOCKS=0x2d13826359803522cce7a4cfa2c1b582303dd0b4
@@ -23,9 +23,13 @@ SWAP=0x975ab64f4901af5f0c96636dea0b9de3419d0c2f
 
 ### GoodSwap (Swap Tester)
 ```bash
-# Approve + swap
-cast send $GDT 'approve(address,uint256)' $SWAP 1000000000000000000000 --rpc-url $RPC --private-key $KEY
-cast send $SWAP 'swapExactTokensForETH(uint256,uint256,address[],address,uint256)' 100000000000000000 0 "[$GDT,0x0000000000000000000000000000000000000000]" $WALLET 99999999999 --rpc-url $RPC --private-key $KEY
+# Mint test tokens for swapping  
+SWAP_GD=0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00
+SWAP_WETH=0x809d550fca64d94Bd9F66E60752A544199cfAC3D
+cast send $SWAP_GD 'mint(address,uint256)' $WALLET 3000000000000000000000 --rpc-url $RPC --private-key $KEY
+# Approve + swap: GD -> WETH
+cast send $SWAP_GD 'approve(address,uint256)' $SWAP 3000000000000000000000 --rpc-url $RPC --private-key $KEY
+cast send $SWAP 'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)' 1000000000000000000000 0 "[$SWAP_GD,$SWAP_WETH]" $WALLET 99999999999 --rpc-url $RPC --private-key $KEY
 ```
 
 ### GoodPerps (Perps Tester)

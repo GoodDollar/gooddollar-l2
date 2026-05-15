@@ -109,13 +109,13 @@ check_contract() {
   addr=$(latest_addr "$script" "$contractName")
   if [ -z "$addr" ]; then
     warn "$name — no broadcast artifact found (first deploy?)"
-    ((MISSING++))
+    ((++MISSING))
   elif has_code "$addr"; then
     ok "$name at $addr"
-    ((FOUND++))
+    ((++FOUND))
   else
     err "$name — $addr has no bytecode (devnet was reset)"
-    ((MISSING++))
+    ((++MISSING))
   fi
 }
 
@@ -165,7 +165,7 @@ SCRIPTS=(
   "script/DeployAgentRegistry.s.sol"
   "script/DeployGoodLend.s.sol"
   "script/DeployGovernance.s.sol"
-  "script/WireUBIFeeSplitter.s.sol"
+  # WireUBIFeeSplitter has stale hard-coded pool/splitter addresses on reset devnet; skip during auto-revive.
   "script/DeployPerps.s.sol"
   "script/DeployGoodStocks.s.sol"
   "script/DeployValidatorStaking.s.sol"
@@ -189,8 +189,32 @@ print('')
 " 2>/dev/null || echo ""
 }
 
+main_contract_for_script() {
+  case "$1" in
+    "RedeployGoodDollarToken") echo "GoodDollarToken" ;;
+    "RedeployUBIAndLiFi") echo "UBIFeeSplitter" ;;
+    "RedeployUBIFeeHook") echo "UBIFeeHook" ;;
+    "DeployAgentRegistry") echo "AgentRegistry" ;;
+    "DeployGoodLend") echo "GoodLendPool" ;;
+    "DeployGovernance") echo "TimelockController" ;;
+    "WireUBIFeeSplitter") echo "" ;;
+    "DeployPerps") echo "PerpEngine" ;;
+    "DeployGoodStocks") echo "SyntheticAssetFactory" ;;
+    "DeployValidatorStaking") echo "ValidatorStaking" ;;
+    *) echo "$1" ;;
+  esac
+}
+
 for script in "${SCRIPTS[@]}"; do
   name=$(basename "$script" .s.sol)
+  main_contract=$(main_contract_for_script "$name")
+  if [ -n "$main_contract" ]; then
+    existing_addr=$(addr_from_broadcast "${script#script/}" "$main_contract")
+    if has_code "$existing_addr"; then
+      ok "$name already live at $existing_addr — skipping"
+      continue
+    fi
+  fi
 
   # DeployGoodStocks requires GOOD_DOLLAR_TOKEN and UBI_FEE_SPLITTER.
   # Derive them from sibling broadcast artifacts so the vault is always
@@ -213,6 +237,7 @@ for script in "${SCRIPTS[@]}"; do
   if [ -f "$script" ]; then
     log "Deploying $name ..."
     $FORGE script "$script" \
+      --tc "$name" \
       --rpc-url "$RPC" \
       --private-key "$DEPLOYER_KEY" \
       --broadcast \

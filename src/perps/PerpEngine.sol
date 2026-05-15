@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MarginVault.sol";
 import "./FundingRate.sol";
 import {IPriceOraclePerp} from "./PerpPriceOracle.sol";
@@ -26,6 +27,7 @@ interface IFeeSplitterPerp {
     function splitFee(uint256 totalFee, address dAppRecipient)
         external
         returns (uint256, uint256, uint256);
+    function goodDollar() external view returns (address);
 }
 
 interface IMarginToken2 {
@@ -33,7 +35,7 @@ interface IMarginToken2 {
     function approve(address spender, uint256 amount) external returns (bool);
 }
 
-contract PerpEngine {
+contract PerpEngine is ReentrancyGuard {
     // ============ Types ============
 
     struct Position {
@@ -208,7 +210,7 @@ contract PerpEngine {
         uint256 size,
         bool isLong,
         uint256 margin
-    ) external whenNotPaused {
+    ) external whenNotPaused nonReentrant {
         if (size == 0 || margin == 0) revert ZeroAmount();
         Market storage m = markets[marketId];
         if (!m.active) revert MarketNotActive();
@@ -257,7 +259,17 @@ contract PerpEngine {
         if (fee > 0) {
             vault.debit(msg.sender, fee);
             vault.flushFee(address(this), fee);
-            IMarginToken2(address(vault.collateral())).approve(feeSplitter, fee);
+
+            // CRITICAL FIX: Approve the correct token (goodDollar) that FeeSplitter will transferFrom
+            // Previous bug: approved vault.collateral() but FeeSplitter uses goodDollar.transferFrom()
+            address goodDollarToken = IFeeSplitterPerp(feeSplitter).goodDollar();
+            IMarginToken2 token = IMarginToken2(goodDollarToken);
+
+            // USDT-style approve: reset to 0 first, then set actual amount
+            // This prevents "Insufficient allowance" when previous approval exists
+            token.approve(feeSplitter, 0);
+            token.approve(feeSplitter, fee);
+
             IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));
         }
     }
@@ -266,7 +278,7 @@ contract PerpEngine {
      * @notice Close an open position and settle PnL + funding.
      * @param marketId Market index
      */
-    function closePosition(uint256 marketId) external whenNotPaused {
+    function closePosition(uint256 marketId) external whenNotPaused nonReentrant {
         Position storage pos = positions[msg.sender][marketId];
         if (!pos.isOpen) revert NoOpenPosition();
 
@@ -287,7 +299,7 @@ contract PerpEngine {
      * @param trader Address of the trader to liquidate
      * @param marketId Market index
      */
-    function liquidate(address trader, uint256 marketId) external whenNotPaused {
+    function liquidate(address trader, uint256 marketId) external whenNotPaused nonReentrant {
         Position storage pos = positions[trader][marketId];
         if (!pos.isOpen) revert NoOpenPosition();
 
@@ -318,7 +330,21 @@ contract PerpEngine {
         _closePosition(trader, marketId, pnl, fundingPayment, exitPrice);
 
         if (bonus > 0) {
-            vault.transfer(trader, msg.sender, bonus);
+            // Route liquidation bonus through UBI fee splitter for systematic social impact
+            vault.transfer(trader, address(this), bonus);
+
+            // Get goodDollar token for fee splitter interaction
+            address goodDollarToken = IFeeSplitterPerp(feeSplitter).goodDollar();
+            IMarginToken2 token = IMarginToken2(goodDollarToken);
+
+            // Approve and split liquidation bonus (33% UBI, 16.67% protocol, 50% liquidator)
+            token.approve(feeSplitter, 0);
+            token.approve(feeSplitter, bonus);
+
+            (, , uint256 liquidatorShare) = IFeeSplitterPerp(feeSplitter).splitFee(bonus, msg.sender);
+
+            // Note: The liquidator receives ~50% instead of 100% of the bonus,
+            // with 33% going to UBI pool and 16.67% to protocol treasury
         }
 
         emit PositionLiquidated(msg.sender, trader, marketId, exitPrice);

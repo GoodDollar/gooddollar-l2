@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title UBI Fee Splitter
  * @notice Every dApp on GoodDollar L2 routes fees through this contract.
@@ -15,7 +17,7 @@ interface IERC20Transfer {
     function transfer(address to, uint256 amount) external returns (bool);
 }
 
-contract UBIFeeSplitter {
+contract UBIFeeSplitter is ReentrancyGuard {
     IGoodDollarToken public goodDollar;
 
     // Fee split configuration (in basis points, 10000 = 100%)
@@ -71,7 +73,7 @@ contract UBIFeeSplitter {
      * @return protocolShare Amount sent to protocol treasury  
      * @return dAppShare Amount sent to dApp
      */
-    function splitFee(uint256 totalFee, address dAppRecipient) external returns (
+    function splitFee(uint256 totalFee, address dAppRecipient) external nonReentrant returns (
         uint256 ubiShare,
         uint256 protocolShare,
         uint256 dAppShare
@@ -153,7 +155,7 @@ contract UBIFeeSplitter {
         uint256 totalFee,
         address dAppRecipient,
         address token
-    ) external returns (uint256 ubiShare, uint256 protocolShare, uint256 dAppShare) {
+    ) external nonReentrant returns (uint256 ubiShare, uint256 protocolShare, uint256 dAppShare) {
         require(totalFee > 0, "Zero fee");
         require(ubiRecipient != address(0), "ubiRecipient not set");
 
@@ -179,7 +181,7 @@ contract UBIFeeSplitter {
      * @param recipient Where to send the G$ (typically UBIClaimV2 itself).
      * @param amount    Amount to transfer. Must be ≤ claimableBalance().
      */
-    function releaseToUBI(address recipient, uint256 amount) external {
+    function releaseToUBI(address recipient, uint256 amount) external nonReentrant {
         require(msg.sender == ubiClaimContract, "Not UBIClaim");
         require(amount <= goodDollar.balanceOf(address(this)), "insufficient balance");
         require(goodDollar.transfer(recipient, amount), "transfer failed");

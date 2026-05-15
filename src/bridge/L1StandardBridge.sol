@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title L1StandardBridge
  * @notice Bridges ETH and ERC20 tokens between L1 and L2.
@@ -11,7 +13,7 @@ interface IERC20Minimal {
     function transfer(address to, uint256 amount) external returns (bool);
 }
 
-contract L1StandardBridge {
+contract L1StandardBridge is ReentrancyGuard {
 
     /// @notice Portal address for deposit transactions
     address public portal;
@@ -36,6 +38,11 @@ contract L1StandardBridge {
     event ERC20BridgeInitiated(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes extraData);
     event ERC20BridgeFinalized(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes extraData);
 
+    modifier onlyPortal() {
+        require(msg.sender == portal, "only portal");
+        _;
+    }
+
     constructor() {
         owner = msg.sender;
         ubiTreasury = msg.sender;
@@ -48,7 +55,7 @@ contract L1StandardBridge {
     }
 
     /// @notice Bridge ETH from L1 to L2
-    function bridgeETH(uint32 /*_minGasLimit*/, bytes calldata _extraData) external payable {
+    function bridgeETH(uint32 /*_minGasLimit*/, bytes calldata _extraData) external payable nonReentrant {
         require(msg.value > 0, "must send ETH");
 
         uint256 fee = (msg.value * ubiFee) / 10000;
@@ -64,7 +71,7 @@ contract L1StandardBridge {
     }
 
     /// @notice Bridge ETH to specific address on L2
-    function bridgeETHTo(address _to, uint32 /*_minGasLimit*/, bytes calldata _extraData) external payable {
+    function bridgeETHTo(address _to, uint32 /*_minGasLimit*/, bytes calldata _extraData) external payable nonReentrant {
         require(msg.value > 0, "must send ETH");
 
         uint256 fee = (msg.value * ubiFee) / 10000;
@@ -85,7 +92,7 @@ contract L1StandardBridge {
         uint256 _amount,
         uint32 /*_minGasLimit*/,
         bytes calldata _extraData
-    ) external {
+    ) external nonReentrant {
         require(IERC20Minimal(_l1Token).transferFrom(msg.sender, address(this), _amount), "transfer failed");
         deposits[_l1Token][msg.sender] += _amount;
 
@@ -98,7 +105,7 @@ contract L1StandardBridge {
         address payable _to,
         uint256 _amount,
         bytes calldata _extraData
-    ) external {
+    ) external onlyPortal nonReentrant {
         // In production, only callable by portal after proof verification
         (bool ok,) = _to.call{value: _amount}("");
         require(ok, "ETH transfer failed");
@@ -114,7 +121,8 @@ contract L1StandardBridge {
         address _to,
         uint256 _amount,
         bytes calldata _extraData
-    ) external {
+    ) external onlyPortal nonReentrant {
+        require(_amount <= deposits[_l1Token][_from], "insufficient deposits");
         deposits[_l1Token][_from] -= _amount;
         require(IERC20Minimal(_l1Token).transfer(_to, _amount), "transfer failed");
 

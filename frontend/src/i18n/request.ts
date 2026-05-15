@@ -1,16 +1,19 @@
 // next-intl configuration for request-based internationalization
 
-import { notFound } from 'next/navigation'
 import { getRequestConfig } from 'next-intl/server'
-import { locales, type Locale } from './config'
+import { defaultLocale, locales, type Locale } from './config'
 
 export default getRequestConfig(async ({ locale }) => {
-  // Validate that the incoming locale parameter is valid
-  if (!locales.includes(locale as Locale)) notFound()
+  // Pages are not nested under /[locale], so locale may be undefined on the root
+  // route. Fall back to English instead of throwing notFound(), which made the
+  // whole app return HTTP 404 in production.
+  const effectiveLocale: Locale = locales.includes(locale as Locale)
+    ? (locale as Locale)
+    : defaultLocale
 
   return {
-    locale: locale as string,
-    messages: (await import(`../messages/${locale}.json`)).default,
+    locale: effectiveLocale,
+    messages: (await import(`../messages/${effectiveLocale}.json`)).default,
     timeZone: 'UTC', // Use UTC for crypto/trading timestamps
     formats: {
       dateTime: {

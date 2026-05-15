@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title Validator Staking
  * @notice Validators stake G$ to participate in sequencing.
@@ -20,7 +22,7 @@ interface IGoodDollarToken {
     function balanceOf(address) external view returns (uint256);
 }
 
-contract ValidatorStaking {
+contract ValidatorStaking is ReentrancyGuard {
     IGoodDollarToken public immutable goodDollar;
 
     uint256 public constant MIN_STAKE = 1_000_000e18; // 1M G$ minimum
@@ -88,7 +90,7 @@ contract ValidatorStaking {
      * @param name Human-readable validator name
      * @param endpoint RPC endpoint for this validator
      */
-    function stake(uint256 amount, string calldata name, string calldata endpoint) external {
+    function stake(uint256 amount, string calldata name, string calldata endpoint) external nonReentrant {
         if (amount < MIN_STAKE) revert BelowMinStake();
 
         goodDollar.transferFrom(msg.sender, address(this), amount);
@@ -151,7 +153,7 @@ contract ValidatorStaking {
     /**
      * @notice Complete unstaking after the 7-day period.
      */
-    function completeUnstake() external {
+    function completeUnstake() external nonReentrant {
         Validator storage v = validators[msg.sender];
         if (v.unbonding.amount == 0) revert NoUnbondingRequest();
         if (block.timestamp < v.unbonding.unbondAt) {
@@ -178,7 +180,7 @@ contract ValidatorStaking {
      * @param validator Address of the validator to slash
      * @param reason Description of the slashing reason
      */
-    function slash(address validator, string calldata reason) external onlyAdmin {
+    function slash(address validator, string calldata reason) external onlyAdmin nonReentrant {
         Validator storage v = validators[validator];
         require(v.isActive || v.unbonding.amount > 0, "Not active or unbonding");
 
@@ -239,7 +241,7 @@ contract ValidatorStaking {
      *      Rewards become claimable only when additional G$ (from protocol fees or
      *      inflation) has been deposited above the staked amount.
      */
-    function claimRewards() external {
+    function claimRewards() external nonReentrant {
         Validator storage v = validators[msg.sender];
         require(v.isActive, "Not a validator");
         uint256 rewards = pendingRewards(msg.sender);

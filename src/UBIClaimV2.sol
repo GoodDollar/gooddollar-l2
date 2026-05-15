@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title UBIClaimV2
  * @notice Standalone UBI claim contract for GoodDollar L2.
@@ -22,7 +24,7 @@ interface IUBIFeeSplitter {
     function releaseToUBI(address recipient, uint256 amount) external;
 }
 
-contract UBIClaimV2 {
+contract UBIClaimV2 is ReentrancyGuard {
     // ============ Constants ============
 
     uint256 public constant EPOCH_DURATION = 24 hours;
@@ -114,7 +116,7 @@ contract UBIClaimV2 {
      * @notice Self-claim UBI for the caller. Caller pays gas.
      *         Reverts if self-claiming is disabled (relayer-only mode).
      */
-    function claim() external {
+    function claim() external nonReentrant {
         if (!selfClaimEnabled) revert SelfClaimDisabled();
         _claim(msg.sender);
     }
@@ -123,7 +125,7 @@ contract UBIClaimV2 {
      * @notice Relay a claim on behalf of a single user. Gas paid by relayer.
      * @param user The verified human to claim for.
      */
-    function claimFor(address user) external onlyRelayer {
+    function claimFor(address user) external onlyRelayer nonReentrant {
         _claim(user);
     }
 
@@ -139,6 +141,7 @@ contract UBIClaimV2 {
     function batchClaim(address[] calldata users)
         external
         onlyRelayer
+        nonReentrant
         returns (uint256 claimed)
     {
         require(users.length <= 1000, "Batch too large");
@@ -203,7 +206,7 @@ contract UBIClaimV2 {
      *         Anyone can call this — it only moves funds that feeSplitter already holds.
      *         No-op if feeSplitter is not set or has no claimable balance.
      */
-    function supplementPool() external {
+    function supplementPool() external nonReentrant {
         if (address(feeSplitter) == address(0)) return;
         uint256 available = feeSplitter.claimableBalance();
         if (available == 0) return;

@@ -16,9 +16,9 @@ import "../src/swap/GoodSwapRouter.sol";
  */
 contract RegisterSwapRouter is Script {
     // Live devnet pool addresses (from CreateInitialPools broadcast)
-    address constant POOL_GD_WETH   = 0xA4899D35897033b927acFCf422bc745916139776;
-    address constant POOL_GD_USDC   = 0xf953b3A269d80e3eB0F2947630Da976B896A8C5b;
-    address constant POOL_WETH_USDC = 0xAA292E8611aDF267e563f334Ee42320aC96D0463;
+    address constant POOL_GD_WETH   = 0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575;
+    address constant POOL_GD_USDC   = 0xCD8a1C3ba11CF5ECfa6267617243239504a98d90;
+    address constant POOL_WETH_USDC = 0x82e01223d51Eb87e16A03E24687EDF0F294da6f1;
 
     function run() external {
         uint256 deployerKey = vm.envOr(

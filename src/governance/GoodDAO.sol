@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./VoteEscrowedGD.sol";
 
 /**
@@ -15,7 +16,7 @@ import "./VoteEscrowedGD.sol";
  *   - Timelock: 1 day delay before execution
  *   - UBI-specific: 33% of slashed proposal deposits → UBI pool
  */
-contract GoodDAO {
+contract GoodDAO is ReentrancyGuard {
     // --- Types ---
     enum ProposalState { Pending, Active, Canceled, Defeated, Succeeded, Queued, Executed, Expired }
     enum VoteType { Against, For, Abstain }
@@ -99,7 +100,7 @@ contract GoodDAO {
         uint256[] memory values,
         bytes[]   memory calldatas,
         string    memory description
-    ) external returns (uint256) {
+    ) external nonReentrant returns (uint256) {
         uint256 totalPower = veGD.totalVotingPower();
         uint256 proposerPower = veGD.getVotes(msg.sender);
 
@@ -129,7 +130,7 @@ contract GoodDAO {
     }
 
     /// @notice Cast vote on a proposal
-    function castVote(uint256 proposalId, VoteType support) external returns (uint256) {
+    function castVote(uint256 proposalId, VoteType support) external nonReentrant returns (uint256) {
         Proposal storage p = proposals[proposalId];
         if (block.timestamp < p.startTime || block.timestamp > p.endTime) revert ProposalNotActive();
 
@@ -156,7 +157,7 @@ contract GoodDAO {
     }
 
     /// @notice Queue a succeeded proposal for execution
-    function queue(uint256 proposalId) external {
+    function queue(uint256 proposalId) external nonReentrant {
         if (state(proposalId) != ProposalState.Succeeded) revert ProposalNotSucceeded();
 
         Proposal storage p = proposals[proposalId];
@@ -166,7 +167,7 @@ contract GoodDAO {
     }
 
     /// @notice Execute a queued proposal after timelock
-    function execute(uint256 proposalId) external {
+    function execute(uint256 proposalId) external nonReentrant {
         if (state(proposalId) != ProposalState.Queued) revert ProposalNotQueued();
 
         Proposal storage p = proposals[proposalId];
@@ -184,7 +185,7 @@ contract GoodDAO {
     }
 
     /// @notice Cancel a proposal (proposer or guardian)
-    function cancel(uint256 proposalId) external {
+    function cancel(uint256 proposalId) external nonReentrant {
         Proposal storage p = proposals[proposalId];
         if (p.executed || p.canceled) revert ProposalAlreadyFinalized();
         if (msg.sender != p.proposer && msg.sender != guardian) revert NotProposer();

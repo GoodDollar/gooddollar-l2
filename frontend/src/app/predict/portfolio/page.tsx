@@ -7,6 +7,9 @@ import { useOnChainPredictPositions, useOnChainPredictSummary, useOnChainMarkets
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { PriceDisplay } from '@/components/ui/price-display'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { UBIContributionCard } from '@/components/UBIContributionCard'
+import { PartnershipIntegrationCard } from '@/components/PartnershipIntegrationCard'
+import { ExpertValidationBadge } from '@/components/ExpertValidationBadge'
 
 export default function PredictPortfolioPage() {
   const { positions, resolved } = useOnChainPredictPositions()
@@ -35,7 +38,8 @@ export default function PredictPortfolioPage() {
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Predictions Portfolio</h1>
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+      {/* Portfolio Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Invested</div>
           <div className="text-lg sm:text-xl font-bold text-white">{formatVolume(summary.totalInvested)}</div>
@@ -50,6 +54,26 @@ export default function PredictPortfolioPage() {
             <PriceDisplay value={summary.unrealizedPnl} prefix="$" showSign size="lg" showContext contextLabel="all markets" />
           </div>
         </div>
+        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+          <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
+          <div className="text-lg sm:text-xl font-bold text-goodgreen">
+            <PriceDisplay value={summary.totalInvested * 0.01 * 0.33} prefix="$" showContext contextLabel="via fees" />
+          </div>
+        </div>
+      </div>
+
+      {/* UBI Impact Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <UBIContributionCard
+          platform="predict"
+          showExpertValidation={true}
+          className="h-fit"
+        />
+        <PartnershipIntegrationCard
+          userUBIContribution={summary.totalInvested * 0.01 * 0.33}
+          compact={false}
+          className="h-fit"
+        />
       </div>
 
       <Tabs defaultValue="positions" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
@@ -97,6 +121,11 @@ export default function PredictPortfolioPage() {
                             {pos.side.toUpperCase()}
                           </span>
                           <span className="text-gray-500">{pos.shares.toFixed(1)} shares @ {(pos.avgPrice * 100).toFixed(0)}¢</span>
+                          <ExpertValidationBadge
+                            marketId={pos.marketId}
+                            showDetails={false}
+                            className="ml-1"
+                          />
                         </div>
                       </div>
                       <div className="text-right shrink-0">

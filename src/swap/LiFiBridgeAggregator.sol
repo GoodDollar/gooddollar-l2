@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title LiFiBridgeAggregator
  * @notice Cross-chain swap aggregator for GoodSwap. Accepts user swap requests,
@@ -26,7 +28,7 @@ interface IERC20 {
     function approve(address spender, uint256 amount) external returns (bool);
 }
 
-contract LiFiBridgeAggregator {
+contract LiFiBridgeAggregator is ReentrancyGuard {
 
     // ============ Types ============
 
@@ -180,7 +182,7 @@ contract LiFiBridgeAggregator {
         address destReceiver,
         uint256 minDestAmount,
         uint256 deadline
-    ) external returns (uint256 swapId) {
+    ) external nonReentrant returns (uint256 swapId) {
         if (srcAmount == 0) revert ZeroAmount();
         if (!supportedChains[destChainId]) revert UnsupportedChain(destChainId);
         if (!whitelistedTokens[srcToken]) revert TokenNotWhitelisted(srcToken);
@@ -232,7 +234,7 @@ contract LiFiBridgeAggregator {
         address destReceiver,
         uint256 minDestAmount,
         uint256 deadline
-    ) external payable returns (uint256 swapId) {
+    ) external payable nonReentrant returns (uint256 swapId) {
         if (msg.value == 0) revert ZeroAmount();
         if (!supportedChains[destChainId]) revert UnsupportedChain(destChainId);
         if (block.timestamp > deadline) revert DeadlinePassed();

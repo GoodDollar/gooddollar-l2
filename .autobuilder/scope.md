@@ -1,243 +1,106 @@
-# GoodDollar L2 — Autobuilder Scope
+# GoodDollar L2 — Production Roadmap
 
 ## Vision
-One chain where AI agents do everything in finance — and every transaction funds UBI for humans. See docs/VISION.md for the full picture.
+The Good Chain — one chain where every transaction funds UBI for humans. See docs/VISION.md.
 
-## CURRENT PRIORITY: TESTING & TRANSACTIONS
+## Current State (May 2026)
+- 57 smart contracts, 837+ tests passing
+- 6 DeFi protocols built: Swap, Perps, Lend, Stable, Stocks, Predict
+- Frontend: 28 pages (Next.js 14), live at goodswap.goodclaw.org
+- Backend: 12 services coded, GoodPerps + GoodPredict running
+- Chain: Anvil devnet (chain ID 42069), block 73K+
+- Security: 30 HIGH / 148 MEDIUM Slither findings
 
-**Every agent must:**
-1. Use MemClaw for memory: `memclaw search "topic"` before work, `memclaw write "outcome"` after
-2. Read wiki/ for domain knowledge before making changes
-3. Focus on making things WORK, not building new features
+## Phase 1: Stabilize & Secure (Current — Weeks 1-4)
 
-### Phase 3: Test Everything, Fix Everything, Transact on Chain
+### 1.1 Fix Critical Security Issues (PRIORITY: P0)
+- [ ] Fix 30 Slither HIGH findings (reentrancy, unchecked transfers)
+- [ ] Fix missing balance checks and hardcoded gas limits (GOO-1548)
+- [ ] Fix ETH withdrawal reentrancy vulnerabilities (GOO-1547)
+- [ ] Fix StabilityPool two-step admin transfer (GOO-493)
+- [ ] Add reentrancy guards to all external call functions
+- [ ] Run full Slither + Mythril audit and get to 0 HIGH findings
 
-#### 3.1 Fix Critical Blockers (PRIORITY: CRITICAL) — **5/5 COMPLETE** 🎉
-- [x] Fix GOO-276: CSP inline script violations — RESOLVED ✅ (React hydration + RPC functional)
-- [x] Fix GOO-403: WalletConnect placeholder text — **RESOLVED** ✅ (Mobile wallet connections restored via GOO-1002/GOO-933)
-- [x] Fix Predict contracts: MarketFactory.marketCount() returns empty on-chain — RESOLVED ✅ (via GOO-214 + related fixes)
-- [x] Fix RPC proxy: rpc.goodclaw.org returns 400 (Caddy config) — RESOLVED ✅ (GOO-231/GOO-232 complete)
-- [x] Fix GoodSwap frontend: connect to real on-chain pools, verify swap executes — RESOLVED ✅ (GOO-64, GOO-27, GOO-474 complete)
+### 1.2 Start All Backend Services (GOO-1615)
+- [ ] Start all 10 backend services via PM2 (activity-reporter, bridge-keeper, harvest-keeper, indexer, liquidator, monitor, revenue-tracker, rpc-balancer, stocks-keeper, swap-oracle)
+- [ ] Verify all services connect to chain and pass health checks
+- [ ] Set up PM2 ecosystem config with proper restart policies
 
-**🚀 MILESTONE ACHIEVED (2026-04-23 18:02 UTC)**: **PHASE 3.1 COMPLETE** - All critical blockers resolved! WalletConnect/Reown registration completed through Chief Architect delegation. Mobile wallet connections (MetaMask Mobile, Rainbow, Trust Wallet) now functional. **READY FOR PHASE 3.2**.
-
-#### 3.2 Start All Backend Services (PRIORITY: HIGH) — **READY TO BEGIN** 🚀
-**NEXT PHASE**: Ready to commence upon Phase 3.1 completion (WalletConnect resolution)
-
-- [ ] Start activity-reporter as PM2 service
-- [ ] Start bridge-keeper as PM2 service
-- [ ] Start harvest-keeper as PM2 service
-- [ ] Start indexer as PM2 service
-- [ ] Start liquidator as PM2 service
-- [ ] Start monitor as PM2 service
-- [ ] Start revenue-tracker as PM2 service
-- [ ] Start rpc-balancer as PM2 service
-- [ ] Start stocks-keeper as PM2 service
-- [ ] Start swap-oracle as PM2 service
-- [ ] Verify all 10 services are healthy and connected to chain
-
-#### 3.3 On-Chain Testing & Transactions (PRIORITY: HIGH)
-- [ ] Deploy test accounts with devnet ETH/G$
-- [ ] Execute real swaps on GoodSwap (G$/ETH, G$/USDC)
-- [ ] Open and close positions on GoodPerps (BTC-USD, ETH-USD)
-- [ ] Create and trade on prediction markets (GoodPredict)
-- [ ] Supply and borrow on GoodLend (ETH, USDC)
-- [ ] Mint gUSD via GoodStable CDPs
-- [ ] Mint and trade synthetic stocks (sAAPL, sTSLA)
-- [ ] Bridge assets L1↔L2
-- [ ] Verify UBI fee routing: every transaction sends 33% to UBI pool
+### 1.3 Integration Testing
+- [ ] Execute real swaps on GoodSwap (GOO-504, GOO-339)
+- [ ] Open/close positions on GoodPerps
+- [ ] Full cross-protocol flow: swap → lend → borrow → trade perps
+- [ ] Verify UBI fee routing: every protocol sends 33% to UBI pool
 - [ ] Stress test: 100+ transactions across all protocols
 
-#### 3.4 Frontend E2E Testing (PRIORITY: HIGH)
-- [ ] Get E2E pass rate from 79% to 95%+
-- [ ] Fix all CSP violations
-- [ ] Test every page with wallet connected
-- [ ] Test every page on mobile viewport
-- [ ] Verify all charts render with real data
-- [ ] Test error states and edge cases
+## Phase 2: OP Stack Migration (Weeks 4-8)
 
-#### 3.5 Integration Testing (PRIORITY: MEDIUM)
-- [ ] Cross-protocol: swap → lend → borrow → trade perps flow
-- [ ] Liquidation testing: trigger liquidations on Lend, Stable, Perps
-- [ ] Oracle staleness: test behavior when price feeds go stale
-- [ ] Bridge: full deposit → confirm → withdraw cycle
-- [ ] Governance: create proposal → vote → execute
+### 2.1 Replace Anvil with Real OP Stack
+- [ ] Deploy op-geth + op-node + op-batcher locally
+- [ ] Migrate all contracts to OP Stack devnet
+- [ ] Configure G$ as custom gas token
+- [ ] Set up UBI fee routing at fee vault level
+- [ ] Verify all protocols work on real OP Stack
 
-## Tester Agent Assignments
+### 2.2 Deploy Public Testnet
+- [ ] Deploy on OP Sepolia
+- [ ] Set up block explorer (Blockscout)
+- [ ] Public RPC endpoint
+- [ ] Faucet for test G$
+- [ ] Documentation for testers
 
-### Tester Alpha — Swap & Lending
-- Test GoodSwap: real swaps, slippage, price impact
-- Test GoodLend: supply, borrow, repay, liquidation
-- Test GoodStable: mint gUSD, manage CDPs, PSM
-- Report bugs as GOO-xxx issues
+## Phase 3: Trading Infrastructure (Weeks 8-12)
 
-### Tester Beta — Perps & Predictions
-- Test GoodPerps: open/close positions, funding rates, liquidation
-- Test GoodPredict: create markets, buy/sell YES/NO, resolution
-- Test oracle feeds: price accuracy, staleness detection
-- Report bugs as GOO-xxx issues
+### 3.1 CLOB Upgrade
+- [ ] Add persistence to matching engine (Redis/SQLite)
+- [ ] Add crash recovery and order replay
+- [ ] Connect Hyperliquid router in production mode
+- [ ] Benchmark: target 1,000 orders/second
 
-### Tester Gamma — Stocks & Stress
-- Test GoodStocks: mint/redeem synthetics, oracle prices
-- Stress test: high-volume transactions, concurrent operations
-- Gas usage profiling across all protocols
-- Report bugs as GOO-xxx issues
+### 3.2 Stock Expansion
+- [ ] Deploy Pyth oracle adapter
+- [ ] Batch-deploy NASDAQ-100 synthetic stocks
+- [ ] Launch stock perpetuals (StockPerpEngine.sol)
+- [ ] Market hours controller
 
-### Tester Delta — E2E & UX
-- Browser E2E tests: all pages, all flows
-- Mobile responsiveness testing
-- Accessibility audit
-- UX issues and polish
-- Report bugs as GOO-xxx issues
+## Phase 4: Audit & Mainnet (Weeks 12-20)
 
-## MemClaw Integration
+### 4.1 External Audit
+- [ ] Select audit firm (Trail of Bits / OpenZeppelin)
+- [ ] Scope: bridge contracts, PerpEngine, UBIFeeSplitter, GoodLend
+- [ ] Bug bounty program (Immunefi)
+- [ ] Formal verification of UBI fee routing
 
-All agents MUST use MemClaw for persistent memory:
+### 4.2 Mainnet Launch
+- [ ] Deploy Good Chain L2 via RaaS (Conduit/Caldera)
+- [ ] G$ as native gas token
+- [ ] Bridge: Celo ↔ Good Chain ↔ Ethereum
+- [ ] Seed liquidity
+- [ ] First 100 users
 
-```bash
-# Before starting work
-memclaw search "what I'm working on"
+## Agent Roles (5 agents)
 
-# After completing work
-memclaw write "what I did and found" --type outcome
+### Protocol Engineer
+- Owns: All .sol files, Foundry tests, deployment scripts
+- Focus: Fix security issues, deploy contracts, write tests
+- Must: Run Slither before every commit, 0 HIGH findings policy
 
-# Check fleet knowledge
-memclaw brief "topic"
-```
+### Full-Stack Engineer
+- Owns: frontend/, backend/, sdk/
+- Focus: Connect frontend to real contracts, start backend services
+- Must: E2E tests must pass before merge
 
-API: https://memclaw.net
-Wiki: wiki/ directory in this repo
-Domains config: wiki/domains.yaml
+### Security Engineer
+- Owns: Security audits, fuzz tests, coverage reports
+- Focus: Continuous Slither/Mythril, audit prep, threat modeling
+- Must: Block any deploy with unresolved HIGH findings
 
-## Completed (Phase 1 & 2) — 86 items ✅
+### DevOps Engineer
+- Owns: PM2, chain infra, Caddy, monitoring, bridges
+- Focus: Keep services up, configure OP Stack, RPC endpoints
+- Must: All services green on health check
 
-All 8 protocols built: GoodSwap, GoodPerps, GoodPredict, GoodLend, GoodStable, GoodStocks, GoodBridge, Infrastructure. 53 contracts, 837 tests, 208 frontend files. See git log for details.
-
-## Security Process (MANDATORY for all agents)
-
-### Security Tools
-- **Slither** — runs daily at 06:00 UTC, reports HIGH/MEDIUM/LOW findings
-- **Foundry Fuzz** — `forge test --fuzz-runs 10000` for property testing
-- **Foundry Coverage** — target: >85% line, >50% branch
-- **Mythril** — symbolic execution for deep analysis
-- **Cast** — on-chain contract testing
-
-### Security Agent Tasks
-1. Run Slither on every new commit
-2. Fix all HIGH severity findings (reentrancy, unchecked transfers)
-3. Add fuzz tests for all financial functions
-4. Check oracle staleness and manipulation vectors
-5. Audit bridge contracts for cross-chain replay attacks
-6. Verify access control on all privileged functions
-
-### Auto-Research Protocol
-Every agent should improve daily by:
-1. Search MemClaw for recent DeFi exploits and security patterns
-2. Study new audit tools and techniques
-3. Apply learnings to current codebase
-4. Write new findings back to MemClaw
-
-```bash
-# Example auto-research
-memclaw search "recent DeFi exploit 2026" --limit 5
-memclaw search "smart contract security best practices" --limit 5
-memclaw write "Learned: [new technique or pattern]" --type fact
-```
-
-### Current Security Status (auto-updated)
-- Slither: 30 HIGH / 148 MEDIUM / 344 LOW
-- Tests: 887/887 passing
-- Coverage: 68.66% line, 64.86% branch
-- Key fixes needed: 13 unchecked transfers, 8 missing reentrancy guards
-
-## Phase 4: Scale Tokenized Stocks + Stock Perps (PRIORITY: HIGH)
-
-### 4.1 Oracle Upgrade — Pyth Network (Week 1-2)
-- [ ] Write PythPriceAdapter.sol (ticker→Pyth ID mapping, staleness checks, batch updates)
-- [ ] Deploy Pyth mock on devnet for testing
-- [ ] Update stocks-keeper to use Pyth SDK instead of Yahoo Finance
-- [ ] Test price accuracy: Pyth vs Yahoo Finance for 12 existing stocks
-- [ ] Migrate PriceOracle consumers to PythPriceAdapter
-
-### 4.2 NASDAQ-100 Listing (Week 2-3)
-- [ ] Write ListNasdaq100.s.sol batch deploy script (EIP-1167 clones)
-- [ ] Register all 100 Pyth price IDs in PythPriceAdapter
-- [ ] Deploy all 100 synthetic stocks (2 batch txs, ~17M gas total)
-- [ ] Add sector classification (Technology, Healthcare, Finance, Energy, etc.)
-- [ ] Update frontend: paginated stock listing, search, sector filters
-- [ ] Update stocks-keeper for 100 tickers
-
-### 4.3 Stock Perpetuals — Connect Stocks ↔ Perps (Week 3-4)
-- [ ] Write StockPerpEngine.sol (extends PerpEngine, creates perp market per stock)
-- [ ] Add synthetic collateral support (sAAPL as margin for perps at 80% haircut)
-- [ ] Auto-create perp markets for top 100 stocks by volume
-- [ ] Set stock perp leverage limits (max 20x vs 50x for crypto)
-- [ ] Unified liquidation engine: cross-liquidate stock collateral + perp positions
-- [ ] Frontend: unified trading view (spot synthetic + leveraged perp side-by-side)
-- [ ] Tests: fuzz test cross-margin scenarios, liquidation cascades
-
-### 4.4 S&P 500 Expansion (Week 4-6)
-- [ ] Register remaining 400 S&P tickers in PythPriceAdapter
-- [ ] Batch-list in 5 deploy txs (~100 each, ~85M gas total, < $1)
-- [ ] Auto-create perp markets for top 200 by volume
-- [ ] Add basket indices: sTECH, sHEALTH, sFINANCE (sector ETF-like synthetics)
-
-### 4.5 Market Hours Controller (Week 5-6)
-- [ ] Write MarketHoursController.sol (US market 9:30-4pm ET, pre/after-hours)
-- [ ] Synthetic minting/redemption: restricted to market hours
-- [ ] GoodSwap secondary trading: 24/7 (AMM pricing)
-- [ ] Perp trading: 24/7, funding rate adjusts on oracle staleness
-- [ ] Handle market holidays (NYSE calendar on-chain)
-- [ ] Frontend: show market status (open/closed/pre-market/after-hours)
-
-### Reference
-- Full research: research/STOCKS-PERPS-SCALING.md
-- Pyth Network: pyth.network/price-feeds
-- Synthetix V3: github.com/Synthetixio/synthetix-v3
-- GMX V2: github.com/gmx-io/gmx-synthetics
-- GNS/gTrade: github.com/GainsNetwork-org
-
-## Tester → Builder Feedback Loop
-
-### How it works:
-1. **7 Gemma testers** run every 30 min, test all protocols on-chain + frontend
-2. Testers write results to **MemClaw** (pass/fail with details)
-3. Testers file **Paperclip issues** (GOO-XXX) for each failure
-4. **Cursor dev agents** read MemClaw + Paperclip issues on heartbeat
-5. Dev agents **fix the issues**, commit, push
-6. Next tester run verifies the fix
-
-### For Dev Agents — Check Tester Results
-Every heartbeat, dev agents MUST:
-```bash
-# 1. Check MemClaw for recent test failures
-memclaw search "FAILED devnet" --limit 10
-
-# 2. Check Paperclip for open QA issues
-curl -s "http://127.0.0.1:3102/api/companies/7e8ba4ed-e545-4394-ad98-c0c855409a4e/issues?status=todo&limit=20" | python3 -c "import json,sys; [print(i['identifier'],i['title']) for i in json.load(sys.stdin) if 'Gemma QA' in i.get('title','')]"
-
-# 3. Pick the highest priority issue and fix it
-```
-
-### Contract Addresses (for all testers)
-See .autobuilder/addresses.env for latest deployed addresses.
-
-## MANDATE: All Tests Must Transact
-
-Every Gemma tester run MUST include `cast send` transactions. Read-only checks are NOT sufficient.
-
-### 7 Gemma Testers (every 30 min):
-| Tester | Transactions |
-|--------|-------------|
-| QA Core | ETH send, G$ transfer, G$ stake |
-| Swap | approve + swap via router |
-| Perps | deposit margin + open/close position |
-| Lend | supply + withdraw from pool |
-| Stocks | approve + trade synthetic |
-| Predict | create market + buy position |
-| Infra | health checks (reads OK here) |
-
-### Transaction tracking:
-- Explorer: https://explorer.goodclaw.org
-- Expected: 20+ new transactions per hour from testers
-- Chain should show growing tx count every 30 min
+### QA Bot
+- Runs: Automated on-chain transaction testing every 30 min
+- Reports: Pass/fail metrics to MemClaw (not Paperclip issues)
+- Must: Execute real transactions (cast send), not just reads

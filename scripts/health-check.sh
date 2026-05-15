@@ -14,8 +14,8 @@ FAILURES=0
 WARNINGS=0
 
 pass() { echo -e "${GREEN}✓${NC} $1"; }
-warn() { echo -e "${YELLOW}⚠${NC} $1"; ((WARNINGS++)); }
-fail() { echo -e "${RED}✗${NC} $1"; ((FAILURES++)); }
+warn() { echo -e "${YELLOW}⚠${NC} $1"; WARNINGS=$((WARNINGS + 1)); }
+fail() { echo -e "${RED}✗${NC} $1"; FAILURES=$((FAILURES + 1)); }
 
 echo "═══════════════════════════════════════════"
 echo " GoodDollar L2 Health Check"

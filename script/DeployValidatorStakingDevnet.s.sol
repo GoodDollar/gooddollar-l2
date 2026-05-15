@@ -18,10 +18,10 @@ interface IERC20 {
  */
 contract DeployValidatorStakingDevnet is Script {
     // From addresses.env
-    address constant GDT = 0x36c02da8a0983159322a80ffe9f24b1acff8b570;
+    address constant GDT = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
 
     // Current problematic contract
-    address constant OLD_VS = 0x103a3b128991781ee2c8db0454ca99d67b257923;
+    address constant OLD_VS = 0x103A3b128991781EE2c8db0454cA99d67b257923;
 
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
@@ -37,9 +37,9 @@ contract DeployValidatorStakingDevnet is Script {
         console.log("Deployer GDT balance:", balance / 1e18, "GDT");
 
         if (balance < 10_000e18) {
-            console.log("⚠️  WARNING: Deployer has less than 10k GDT for testing");
+            console.log("WARNING: Deployer has less than 10k GDT for testing");
         } else {
-            console.log("✓ Deployer has sufficient GDT for testing");
+            console.log("SUCCESS: Deployer has sufficient GDT for testing");
         }
 
         vm.startBroadcast(deployerKey);
@@ -47,7 +47,7 @@ contract DeployValidatorStakingDevnet is Script {
         // Deploy the devnet-friendly ValidatorStaking
         ValidatorStakingDevnet newStaking = new ValidatorStakingDevnet(GDT, deployer);
 
-        console.log("\n✅ SUCCESS: ValidatorStakingDevnet deployed!");
+        console.log("\nSUCCESS: SUCCESS: ValidatorStakingDevnet deployed!");
         console.log("New contract address:", address(newStaking));
         console.log("MIN_STAKE:", newStaking.MIN_STAKE() / 1e18, "GDT");
         console.log("UNBONDING_PERIOD:", newStaking.UNBONDING_PERIOD() / 1 days, "days");
@@ -63,22 +63,22 @@ contract DeployValidatorStakingDevnet is Script {
 
             // Approve the contract to spend GDT
             IERC20(GDT).approve(address(newStaking), 15_000e18);
-            console.log("✓ Approved contract for 15k GDT");
+            console.log("SUCCESS: Approved contract for 15k GDT");
 
             // Attempt to stake 15k GDT
             try newStaking.stake(15_000e18, "DevValidator", "http://localhost:8545") {
-                console.log("✅ SUCCESS: Staked 15k GDT!");
+                console.log("SUCCESS: SUCCESS: Staked 15k GDT!");
                 console.log("Validator is now active");
 
                 // Check validator status
-                (uint256 staked,,,bool isActive,string memory name,) = newStaking.validators(deployer);
+                (uint256 staked,,,bool isActive,string memory name,,) = newStaking.validators(deployer);
                 console.log("Staked amount:", staked / 1e18, "GDT");
                 console.log("Is active:", isActive);
                 console.log("Validator name:", name);
             } catch Error(string memory reason) {
-                console.log("✗ Staking failed:", reason);
+                console.log("ERROR: Staking failed:", reason);
             } catch {
-                console.log("✗ Staking failed with unknown error");
+                console.log("ERROR: Staking failed with unknown error");
             }
         } else {
             console.log("\n=== Staking Test Skipped ===");
@@ -89,13 +89,13 @@ contract DeployValidatorStakingDevnet is Script {
         vm.stopBroadcast();
 
         console.log("\n=== GOO-547 Fix Summary ===");
-        console.log("✅ Problem solved: MIN_STAKE reduced from 1M to 10k GDT");
-        console.log("✅ Users with 10k+ GDT can now stake successfully");
-        console.log("✅ Contract deployed and tested");
+        console.log("SUCCESS: Problem solved: MIN_STAKE reduced from 1M to 10k GDT");
+        console.log("SUCCESS: Users with 10k+ GDT can now stake successfully");
+        console.log("SUCCESS: Contract deployed and tested");
 
         console.log("\n=== Next Steps ===");
         console.log("1. Update addresses.env with new contract:");
-        console.log("   VS=" + Strings.toHexString(address(newStaking)));
+        console.log("   VS=", address(newStaking));
         console.log();
         console.log("2. Test staking with sufficient amounts:");
         console.log("   Minimum: 10,000 GDT");
@@ -103,6 +103,6 @@ contract DeployValidatorStakingDevnet is Script {
         console.log();
         console.log("3. Update transaction-testing.md template if needed");
 
-        console.log("\n✅ GOO-547 RESOLVED: ValidatorStaking minimum stake issue fixed");
+        console.log("\nSUCCESS: GOO-547 RESOLVED: ValidatorStaking minimum stake issue fixed");
     }
 }

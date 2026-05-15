@@ -24,7 +24,7 @@ describe('Config', () => {
         expect(config_1.REPORTER_KEY).toMatch(/^0x[a-f0-9]{64}$/);
     });
     test('AgentRegistry address is set', () => {
-        expect(config_1.ADDRESSES.AgentRegistry).toBe('0xA9d0Fb5837f9c42c874e16da96094b14Af0e2784');
+        expect(config_1.ADDRESSES.AgentRegistry).toBe('0x8a791620dd6260079bf849dc5567adc3f2fdc318');
     });
     test('all protocol addresses are non-empty', () => {
         for (const [key, addr] of Object.entries(config_1.ADDRESSES)) {

@@ -25,6 +25,12 @@ pragma solidity ^0.8.20;
 
 import "./interfaces/IGoodStable.sol";
 
+/**
+ * @notice Enhanced UBIFeeSplitter interface for better stability fee tracking.
+ *         Only implemented by StableUBIFeeSplitter, not the standard UBIFeeSplitter.
+ */
+import "../interfaces/IStableUBIFeeSplitterEnhanced.sol";
+
 contract VaultManager {
     // ============ Constants ============
 
@@ -208,12 +214,48 @@ contract VaultManager {
         // not G$. splitFee would revert — it pulls G$ via transferFrom.
         gusd.mint(address(this), feeWAD);
         gusd.approve(address(feeSplitter), feeWAD);
-        feeSplitter.splitFeeToken(feeWAD, dAppRecipient, address(gusd));
+
+        // Try enhanced stability fee tracking if supported (StableUBIFeeSplitter)
+        // Falls back to standard splitFeeToken if method doesn't exist
+        try this._callStabilityFeeTracking(feeWAD, dAppRecipient, address(gusd), ilk) {
+            // Enhanced tracking succeeded
+        } catch {
+            // Fallback to standard method for backward compatibility
+            feeSplitter.splitFeeToken(feeWAD, dAppRecipient, address(gusd));
+        }
 
         ilkDebt[ilk] += feeWAD;
 
         emit FeeCollected(ilk, feeWAD);
         emit Drip(ilk, newChi, feeWAD);
+    }
+
+    /**
+     * @notice Helper function to call enhanced stability fee tracking.
+     *         Attempts to use StableUBIFeeSplitter.splitStabilityFee() if available.
+     * @dev This is called via try/catch to maintain compatibility with standard UBIFeeSplitter.
+     */
+    function _callStabilityFeeTracking(
+        uint256 feeWAD,
+        address _dAppRecipient,
+        address token,
+        bytes32 ilk
+    ) external {
+        require(msg.sender == address(this), "VM: only self");
+
+        // Attempt enhanced tracking call (only works with StableUBIFeeSplitter)
+        // If feeSplitter is standard UBIFeeSplitter, this will revert and fallback to splitFeeToken
+        try IStableUBIFeeSplitterEnhanced(address(feeSplitter)).splitStabilityFee(
+            feeWAD,
+            _dAppRecipient,
+            token,
+            ilk
+        ) returns (uint256, uint256, uint256) {
+            // Enhanced tracking succeeded
+        } catch {
+            // This will revert, causing the try/catch in drip() to use fallback
+            revert("Enhanced tracking not supported");
+        }
     }
 
     // ============ Vault Lifecycle ============
@@ -511,8 +553,8 @@ contract VaultManager {
         uint256 debtTimesRatio = actualDebt * cfg.liquidationRatio / WAD;
         if (debtTimesRatio == 0) return true;
 
-        uint256 healthFactor = (collValueWAD * WAD) / debtTimesRatio;
-        return healthFactor >= WAD;
+        uint256 vaultHealthFactor = (collValueWAD * WAD) / debtTimesRatio;
+        return vaultHealthFactor >= WAD;
     }
 
     /**
