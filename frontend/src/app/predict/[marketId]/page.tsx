@@ -6,7 +6,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import Link from 'next/link'
 import { formatVolume, getMarketStatus, getDaysLeftLabel, type MarketCategory, type PredictionMarket } from '@/lib/predictData'
-import { useOnChainMarket, type OnChainMarket } from '@/lib/useMarkets'
+import { useOnChainMarket, useAllOnChainMarkets, useMarketCount, type OnChainMarket } from '@/lib/useMarkets'
 import { formatLargeValue } from '@/lib/perpsData'
 import { generateProbabilityHistory } from '@/lib/chartData'
 import { ChartErrorBoundary } from '@/components/ChartErrorBoundary'
@@ -204,6 +204,45 @@ function chainToMarket(m: OnChainMarket): PredictionMarket {
   }
 }
 
+function RelatedMarkets({ currentId, category }: { currentId: string; category: MarketCategory }) {
+  const { count } = useMarketCount()
+  const { markets: allOnChain } = useAllOnChainMarkets(count)
+
+  const related = useMemo(() => {
+    if (!allOnChain || allOnChain.length === 0) return []
+    return allOnChain
+      .map(chainToMarket)
+      .filter(m => m.id !== currentId && m.category === category && getMarketStatus(m.endDate) !== 'expired')
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, 3)
+  }, [allOnChain, currentId, category])
+
+  if (related.length === 0) return null
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-sm font-semibold text-white mb-4">Related Markets</h2>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {related.map(m => {
+          const pct = Math.round(m.yesPrice * 100)
+          return (
+            <Link key={m.id} href={`/predict/${m.id}`}
+              className="bg-dark-100 rounded-xl border border-gray-700/20 p-4 hover:border-goodgreen/30 transition-all group">
+              <p className="text-xs font-semibold text-white leading-snug line-clamp-2 group-hover:text-goodgreen/90 transition-colors mb-2">
+                {m.question}
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-bold text-green-400">{pct}%</span>
+                <span className="text-[10px] text-gray-500">{formatVolume(m.volume)} Vol.</span>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const LOADING_TIMEOUT_MS = 5_000
 
 function MarketNotFound() {
@@ -365,6 +404,8 @@ export default function MarketDetailPage() {
           )}
         </div>
       </div>
+
+      <RelatedMarkets currentId={market.id} category={market.category} />
     </div>
   )
 }

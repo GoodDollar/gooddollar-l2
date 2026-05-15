@@ -2,10 +2,10 @@
 
 parent: gooddollar-l2
 id: gooddollar-l2-predict-related-markets-grouping
-status: open
+status: done
 priority: medium
 planned: true
-executed: false
+executed: true
 split: false
 type: feature
 area: predict

@@ -359,7 +359,7 @@ contract CollateralVault is ReentrancyGuard {
      * @param user Address of the position owner to liquidate
      * @param ticker Stock ticker
      */
-    function liquidate(address user, string calldata ticker) external whenNotPaused {
+    function liquidate(address user, string calldata ticker) external whenNotPaused nonReentrant {
         bytes32 key = _key(ticker);
         address syntheticAsset = syntheticAssets[key];
         if (syntheticAsset == address(0)) revert AssetNotRegistered(key);
