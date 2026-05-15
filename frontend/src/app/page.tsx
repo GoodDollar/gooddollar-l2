@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 
 const SwapCard = dynamic(
-  () => import('@/components/SwapCard').then(m => ({ default: m.SwapCard })),
+  () => import('@/components/LandingSwapCard'),
   {
     ssr: false,
     loading: () => (

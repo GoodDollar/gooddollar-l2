@@ -89,13 +89,19 @@ const nextConfig = {
       ...config.optimization.splitChunks,
       cacheGroups: {
         ...config.optimization.splitChunks.cacheGroups,
-        // Web3 vendor chunk for better caching
+        // Web3 vendor chunk — `chunks: 'async'` ensures wagmi / RainbowKit /
+        // WalletConnect / viem only end up in the bundle of routes that
+        // statically reach them (the `(app)` route group via WalletProviders),
+        // OR are loaded on demand via `next/dynamic({ ssr: false })`. They are
+        // never preloaded as a `<script async>` on marketing pages such as `/`.
+        // See `.autobuilder/initiatives/0002-security-hardening/tasks/0020-...`.
         web3: {
           name: 'web3-vendor',
-          chunks: 'all',
-          test: /[\\/]node_modules[\\/](@wagmi|viem|@rainbow-me|@walletconnect)/,
+          chunks: 'async',
+          test: /[\\/]node_modules[\\/](@wagmi|wagmi|viem|@rainbow-me|@walletconnect|@reown)/,
           priority: 30,
           reuseExistingChunk: true,
+          enforce: true,
         },
         // UI vendor chunk
         ui: {
