@@ -13,10 +13,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "../interfaces/IGoodDollarToken.sol";
 
-interface IERC20Transfer {
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
-    function transfer(address to, uint256 amount) external returns (bool);
-}
+import "../interfaces/IERC20Transfer.sol";
 
 /**
  * @notice Interface expected by MarketFactory for redemption fee splitting

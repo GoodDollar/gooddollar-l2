@@ -56,6 +56,9 @@ contract StableUBIFeeSplitterTest is Test {
     );
     event StabilityFeeSplit(bytes32 indexed ilk, uint256 feeGUSD, uint256 ubiShare);
     event MintingFeeSplit(address indexed user, string indexed swapDirection, uint256 fee, uint256 ubiShare);
+    event DailyStablecoinImpact(uint256 date, uint256 ubiAmount);
+    event MonthlyTargetUpdated(uint256 oldTarget, uint256 newTarget);
+    event UBIRecipientUpdated(address oldRecipient, address newRecipient);
 
     function setUp() public {
         goodDollar = new MockGoodDollarToken();
@@ -661,6 +664,22 @@ contract MockGoodDollarToken is IGoodDollarToken {
     function fundUBIPool(uint256 amount) external {
         balanceOf[msg.sender] -= amount;
         ubiPoolFunded += amount;
+    }
+
+    function isVerifiedHuman(address) external pure returns (bool) {
+        return true;
+    }
+
+    function dailyUBIAmount() external pure returns (uint256) {
+        return 0;
+    }
+
+    function ubiPool() external view returns (uint256) {
+        return ubiPoolFunded;
+    }
+
+    function totalVerifiedHumans() external pure returns (uint256) {
+        return 0;
     }
 
     // Minimal implementation of other IGoodDollarToken methods

@@ -45,13 +45,14 @@ contract DiagnoseSwapIssues is Script {
 
         // 1. Check if router contract exists
         uint256 codeSize;
+        address routerAddr = ROUTER;
         assembly {
-            codeSize := extcodesize(ROUTER)
+            codeSize := extcodesize(routerAddr)
         }
         console.log("Router code size:", codeSize, "bytes");
 
         if (codeSize == 0) {
-            console.log("✗ ERROR: No code at router address - contract not deployed");
+            console.log(unicode"✗ ERROR: No code at router address - contract not deployed");
             return;
         }
 
@@ -60,23 +61,23 @@ contract DiagnoseSwapIssues is Script {
 
         // Test swapExactTokensForTokens (should exist)
         try this.testSwapExactTokensForTokens() {
-            console.log("✓ swapExactTokensForTokens: EXISTS");
+            console.log(unicode"✓ swapExactTokensForTokens: EXISTS");
         } catch {
-            console.log("✗ swapExactTokensForTokens: MISSING");
+            console.log(unicode"✗ swapExactTokensForTokens: MISSING");
         }
 
         // Test swapExactTokensForETH (missing)
         try this.testSwapExactTokensForETH() {
-            console.log("✓ swapExactTokensForETH: EXISTS");
+            console.log(unicode"✓ swapExactTokensForETH: EXISTS");
         } catch {
-            console.log("✗ swapExactTokensForETH: MISSING (ROOT CAUSE)");
+            console.log(unicode"✗ swapExactTokensForETH: MISSING (ROOT CAUSE)");
         }
 
         // Test swapExactETHForTokens (missing)
         try this.testSwapExactETHForTokens() {
-            console.log("✓ swapExactETHForTokens: EXISTS");
+            console.log(unicode"✓ swapExactETHForTokens: EXISTS");
         } catch {
-            console.log("✗ swapExactETHForTokens: MISSING");
+            console.log(unicode"✗ swapExactETHForTokens: MISSING");
         }
 
         // 3. Check pool registration
@@ -85,20 +86,20 @@ contract DiagnoseSwapIssues is Script {
             console.log("GDT/WETH pool:", pool);
 
             if (pool == address(0)) {
-                console.log("✗ No pool registered for GDT/WETH pair");
+                console.log(unicode"✗ No pool registered for GDT/WETH pair");
                 console.log("This could cause swaps to fail even if function exists");
             } else {
-                console.log("✓ Pool registered");
+                console.log(unicode"✓ Pool registered");
 
                 // Check pool state
                 try this.checkPoolState(pool) {
-                    console.log("✓ Pool state accessible");
+                    console.log(unicode"✓ Pool state accessible");
                 } catch {
-                    console.log("✗ Pool state inaccessible - pool may be broken");
+                    console.log(unicode"✗ Pool state inaccessible - pool may be broken");
                 }
             }
         } catch {
-            console.log("✗ Cannot query pool registry - router interface mismatch");
+            console.log(unicode"✗ Cannot query pool registry - router interface mismatch");
         }
 
         // 4. Check router ownership (for pool registration)

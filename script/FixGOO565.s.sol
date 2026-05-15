@@ -25,9 +25,9 @@ interface IGoodLendToken {
  */
 contract FixGOO565 is Script {
     // Addresses from latest deployment
-    address constant POOL = 0x171b627111dd81c46f6ae3f1455232bf1cbc311f;
-    address constant GUSDC = 0x9fc087971b01dcbecef4781d121fffb9e40399f5;
-    address constant GWETH = 0x153c299219d31111f1237c86180e9962e49a33d2;
+    address constant POOL = 0x171B627111dd81C46F6ae3F1455232bF1cbC311F;
+    address constant GUSDC = 0x9FC087971b01DCBeceF4781D121ffFb9e40399f5;
+    address constant GWETH = 0x153c299219D31111f1237C86180e9962e49a33D2;
 
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
@@ -62,10 +62,10 @@ contract FixGOO565 is Script {
         vm.stopBroadcast();
 
         if (anyFixed) {
-            console.log("\n✅ Fix complete! Try withdrawing again.");
+            console.log(unicode"\n✅ Fix complete! Try withdrawing again.");
             console.log("Test with: pool.withdraw(asset, smallAmount)");
         } else {
-            console.log("\n⚠️  No approvals were fixed.");
+            console.log(unicode"\n⚠️  No approvals were fixed.");
             console.log("The issue may be elsewhere (inactive reserves, insufficient balance, etc.)");
         }
     }
@@ -83,17 +83,17 @@ contract FixGOO565 is Script {
             try IERC20(underlying).allowance(gToken, POOL) returns (uint256 allowance) {
                 console.log("  Current allowance:", allowance);
                 if (allowance == type(uint256).max) {
-                    console.log("  ✓ Unlimited approval");
+                    console.log(unicode"  ✓ Unlimited approval");
                 } else if (allowance > 1e30) {
-                    console.log("  ✓ High approval (probably fine)");
+                    console.log(unicode"  ✓ High approval (probably fine)");
                 } else {
-                    console.log("  ✗ Low approval - needs fixing!");
+                    console.log(unicode"  ✗ Low approval - needs fixing!");
                 }
             } catch {
-                console.log("  ✗ Failed to check allowance");
+                console.log(unicode"  ✗ Failed to check allowance");
             }
         } catch {
-            console.log("  ✗ Failed to get underlying asset");
+            console.log(unicode"  ✗ Failed to get underlying asset");
         }
     }
 
@@ -105,7 +105,7 @@ contract FixGOO565 is Script {
             uint256 currentAllowance = IERC20(underlying).allowance(gToken, POOL);
 
             if (currentAllowance >= type(uint256).max / 2) {
-                console.log("  ✓ Approval already sufficient");
+                console.log(unicode"  ✓ Approval already sufficient");
                 return false;
             }
 
@@ -113,7 +113,7 @@ contract FixGOO565 is Script {
             // The gToken contract itself needs to call approve(), which should happen in its constructor
             // or via an admin function if one exists.
 
-            console.log("  ⚠️  ISSUE: Cannot approve on behalf of gToken contract");
+            console.log(unicode"  ⚠️  ISSUE: Cannot approve on behalf of gToken contract");
             console.log("    The gToken contract itself must call approve()");
             console.log("    Check if gToken has an admin function for this");
             console.log("    Or redeploy gToken contracts to trigger constructor approval");
@@ -121,7 +121,7 @@ contract FixGOO565 is Script {
             return false;
 
         } catch {
-            console.log("  ✗ Failed to get underlying asset");
+            console.log(unicode"  ✗ Failed to get underlying asset");
             return false;
         }
     }

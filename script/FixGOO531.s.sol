@@ -31,10 +31,10 @@ interface IFeeSplitterPerp {
  */
 contract FixGOO531 is Script {
     // Known problematic addresses from issue description
-    address constant OLD_PERP_ENGINE = 0x2e2ed0cfd3ad2f1d34481277b3204d807ca2f8c2;
+    address constant OLD_PERP_ENGINE = 0x2E2Ed0Cfd3AD2f1d34481277b3204d807Ca2F8c2;
     address constant FEE_SPLITTER = 0x976fcd02f7C4773dd89C309fBF55D5923B4c98a1;
-    address constant GDT = 0x36c02da8a0983159322a80ffe9f24b1acff8b570;
-    address constant MARGIN_VAULT = 0xb22c255250d74b0add1bfb936676d2a299bf48bd;
+    address constant GDT = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
+    address constant MARGIN_VAULT = 0xB22C255250d74B0ADD1bfB936676D2a299BF48Bd;
 
     // Test user from issue
     address constant TEST_USER = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
@@ -58,14 +58,14 @@ contract FixGOO531 is Script {
         console.log("The bug is in PerpEngine.sol lines 259-261:");
         console.log("");
         console.log("CURRENT (BROKEN):");
-        console.log("  vault.flushFee(address(this), fee);  // ✅ Transfers TO PerpEngine");
-        console.log("  IMarginToken2(address(vault.collateral())).approve(feeSplitter, fee);  // ❌ Wrong caller");
-        console.log("  IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));  // ❌ No allowance");
+        console.log(unicode"  vault.flushFee(address(this), fee);  // ✅ Transfers TO PerpEngine");
+        console.log(unicode"  IMarginToken2(address(vault.collateral())).approve(feeSplitter, fee);  // ❌ Wrong caller");
+        console.log(unicode"  IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));  // ❌ No allowance");
         console.log("");
         console.log("FIXED:");
-        console.log("  vault.flushFee(address(this), fee);  // ✅ Transfers TO PerpEngine");
-        console.log("  IERC20(vault.collateral()).approve(feeSplitter, fee);  // ✅ PerpEngine approves");
-        console.log("  IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));  // ✅ Has allowance");
+        console.log(unicode"  vault.flushFee(address(this), fee);  // ✅ Transfers TO PerpEngine");
+        console.log(unicode"  IERC20(vault.collateral()).approve(feeSplitter, fee);  // ✅ PerpEngine approves");
+        console.log(unicode"  IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));  // ✅ Has allowance");
 
         console.log("\n=== Manual Fix Steps ===");
         console.log("1. Edit src/perps/PerpEngine.sol line 260:");
@@ -103,21 +103,21 @@ contract FixGOO531 is Script {
         console.log("FeeSplitter code size:", splitterCodeSize);
 
         if (perpCodeSize == 0) {
-            console.log("⚠️  PerpEngine contract not found - may need to use updated address");
+            console.log(unicode"⚠️  PerpEngine contract not found - may need to use updated address");
             return;
         }
 
         // Check GDT allowances
         try IERC20(GDT).allowance(OLD_PERP_ENGINE, FEE_SPLITTER) returns (uint256 perpToSplitter) {
-            console.log("PerpEngine → FeeSplitter allowance:", perpToSplitter);
+            console.log(unicode"PerpEngine → FeeSplitter allowance:", perpToSplitter);
         } catch {
-            console.log("Could not read PerpEngine → FeeSplitter allowance");
+            console.log(unicode"Could not read PerpEngine → FeeSplitter allowance");
         }
 
         try IERC20(GDT).allowance(GDT, FEE_SPLITTER) returns (uint256 gdtToSplitter) {
-            console.log("GDT → FeeSplitter allowance:", gdtToSplitter);
+            console.log(unicode"GDT → FeeSplitter allowance:", gdtToSplitter);
         } catch {
-            console.log("Could not read GDT → FeeSplitter allowance");
+            console.log(unicode"Could not read GDT → FeeSplitter allowance");
         }
 
         // Check balances
@@ -133,7 +133,7 @@ contract FixGOO531 is Script {
             console.log("Could not read test user GDT balance");
         }
 
-        console.log("\n💡 Expected Issue: PerpEngine approves from wrong address");
+        console.log(unicode"\n💡 Expected Issue: PerpEngine approves from wrong address");
         console.log("   The approval should come FROM PerpEngine, not FROM vault.collateral()");
     }
 }

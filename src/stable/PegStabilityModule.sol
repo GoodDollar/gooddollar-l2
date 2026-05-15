@@ -27,10 +27,10 @@ import "./interfaces/IGoodStable.sol";
 interface IgUSDMinter is IgUSD {}
 
 /**
- * @notice Enhanced UBIFeeSplitter interface for better minting fee tracking.
+ * @notice Enhanced UBIFeeSplitter interface for PSM minting fee tracking.
  *         Only implemented by StableUBIFeeSplitter, not the standard UBIFeeSplitter.
  */
-interface IStableUBIFeeSplitterEnhanced {
+interface IStableUBIFeeSplitterMinting {
     function splitMintingFee(
         uint256 totalFee,
         address dAppRecipient,
@@ -139,7 +139,7 @@ contract PegStabilityModule {
         require(msg.sender == address(this), "PSM: only self");
 
         // Attempt enhanced tracking call (only works with StableUBIFeeSplitter)
-        try IStableUBIFeeSplitterEnhanced(address(feeSplitter)).splitMintingFee(
+        try IStableUBIFeeSplitterMinting(address(feeSplitter)).splitMintingFee(
             fee,
             dAppRecipient,
             token,

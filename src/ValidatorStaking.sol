@@ -27,6 +27,11 @@ contract ValidatorStaking is ReentrancyGuard {
 
     uint256 public constant MIN_STAKE = 1_000_000e18; // 1M G$ minimum
     uint256 public constant UNBONDING_PERIOD = 7 days;
+
+    /// @dev Override in descendants that need a runtime-configurable minimum stake.
+    function _minStake() internal view virtual returns (uint256) {
+        return MIN_STAKE;
+    }
     uint256 public rewardRateBPS = 500; // 5% annual reward rate
     uint256 public slashBPS = 1000;     // 10% slash for misbehavior
 
@@ -90,8 +95,8 @@ contract ValidatorStaking is ReentrancyGuard {
      * @param name Human-readable validator name
      * @param endpoint RPC endpoint for this validator
      */
-    function stake(uint256 amount, string calldata name, string calldata endpoint) external nonReentrant {
-        if (amount < MIN_STAKE) revert BelowMinStake();
+    function stake(uint256 amount, string calldata name, string calldata endpoint) external virtual nonReentrant {
+        if (amount < _minStake()) revert BelowMinStake();
 
         goodDollar.transferFrom(msg.sender, address(this), amount);
 

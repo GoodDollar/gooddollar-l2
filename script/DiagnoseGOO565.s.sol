@@ -40,11 +40,11 @@ interface IGoodLendPoolExtended {
  */
 contract DiagnoseGOO565 is Script {
     // Addresses from latest deployment
-    address constant POOL = 0x171b627111dd81c46f6ae3f1455232bf1cbc311f;
-    address constant MOCK_USDC = 0x7c938b88a1be87501dd0efc3e955a13221c9c19c;
-    address constant MOCK_WETH = 0x0f9ad2d34a3c2943375185437ef53b2bbda76cbb;
-    address constant GUSDC = 0x9fc087971b01dcbecef4781d121fffb9e40399f5;
-    address constant GWETH = 0x153c299219d31111f1237c86180e9962e49a33d2;
+    address constant POOL = 0x171B627111dd81C46F6ae3F1455232bF1cbC311F;
+    address constant MOCK_USDC = 0x7C938B88A1BE87501DD0EfC3e955A13221C9c19c;
+    address constant MOCK_WETH = 0x0f9Ad2d34a3C2943375185437EF53B2BbdA76cbb;
+    address constant GUSDC = 0x9FC087971b01DCBeceF4781D121ffFb9e40399f5;
+    address constant GWETH = 0x153c299219D31111f1237C86180e9962e49a33D2;
 
     function run() external view {
         console.log("=== GOO-565 Comprehensive Diagnosis ===");
@@ -56,10 +56,10 @@ contract DiagnoseGOO565 is Script {
         assembly { poolCodeSize := extcodesize(POOL) }
 
         if (poolCodeSize == 0) {
-            console.log("✗ CRITICAL: GoodLendPool contract not found at", POOL);
+            console.log(unicode"✗ CRITICAL: GoodLendPool contract not found at", POOL);
             return;
         }
-        console.log("✓ GoodLendPool contract exists");
+        console.log(unicode"✓ GoodLendPool contract exists");
         console.log("  Address:", POOL);
         console.log("  Code size:", poolCodeSize);
 
@@ -69,17 +69,17 @@ contract DiagnoseGOO565 is Script {
         uint256 reservesCount;
         try pool.getReservesCount() returns (uint256 count) {
             reservesCount = count;
-            console.log("✓ Pool.getReservesCount() succeeded:", count);
+            console.log(unicode"✓ Pool.getReservesCount() succeeded:", count);
         } catch Error(string memory reason) {
-            console.log("✗ Pool.getReservesCount() failed:", reason);
+            console.log(unicode"✗ Pool.getReservesCount() failed:", reason);
             return;
         } catch {
-            console.log("✗ Pool.getReservesCount() reverted");
+            console.log(unicode"✗ Pool.getReservesCount() reverted");
             return;
         }
 
         if (reservesCount == 0) {
-            console.log("⚠️  No reserves found - pool not initialized or reserves inactive");
+            console.log(unicode"⚠️  No reserves found - pool not initialized or reserves inactive");
             console.log();
             console.log("=== Possible Causes ===");
             console.log("1. Reserves were never initialized");
@@ -126,7 +126,7 @@ contract DiagnoseGOO565 is Script {
                 uint256 borrowRate,
                 uint256 accruedToTreasury
             ) {
-                console.log("✓ Reserve is ACTIVE");
+                console.log(unicode"✓ Reserve is ACTIVE");
                 console.log("  Total deposits:", totalDeposits);
                 console.log("  Total borrows:", totalBorrows);
                 console.log("  Liquidity index:", liquidityIndex);
@@ -137,14 +137,14 @@ contract DiagnoseGOO565 is Script {
                     console.log("  gToken:", gToken);
                     _checkGTokenApproval(asset, gToken);
                 } else {
-                    console.log("  ⚠️  Could not determine gToken address");
+                    console.log(unicode"  ⚠️  Could not determine gToken address");
                 }
 
             } catch Error(string memory reason) {
-                console.log("✗ Reserve is INACTIVE or ERROR");
+                console.log(unicode"✗ Reserve is INACTIVE or ERROR");
                 console.log("  Error:", reason);
             } catch {
-                console.log("✗ Reserve is INACTIVE (reverted)");
+                console.log(unicode"✗ Reserve is INACTIVE (reverted)");
             }
         }
 
@@ -167,36 +167,36 @@ contract DiagnoseGOO565 is Script {
         assembly { gTokenCodeSize := extcodesize(gToken) }
 
         if (gTokenCodeSize == 0) {
-            console.log("  ✗ gToken contract not found");
+            console.log(unicode"  ✗ gToken contract not found");
             return;
         }
 
         try IERC20Extended(asset).allowance(gToken, POOL) returns (uint256 allowance) {
-            console.log("  gToken → Pool allowance:", allowance);
+            console.log(unicode"  gToken → Pool allowance:", allowance);
 
             if (allowance == type(uint256).max) {
-                console.log("  ✓ Unlimited approval - should work");
+                console.log(unicode"  ✓ Unlimited approval - should work");
             } else if (allowance > 1e30) {
-                console.log("  ✓ High approval - likely sufficient");
+                console.log(unicode"  ✓ High approval - likely sufficient");
             } else {
-                console.log("  ✗ LOW APPROVAL - This is likely the issue!");
+                console.log(unicode"  ✗ LOW APPROVAL - This is likely the issue!");
                 console.log("    The gToken needs to approve the pool for unlimited spending");
                 console.log("    This should happen in the gToken constructor");
             }
         } catch Error(string memory reason) {
-            console.log("  ✗ Failed to check allowance:", reason);
+            console.log(unicode"  ✗ Failed to check allowance:", reason);
         } catch {
-            console.log("  ✗ Allowance check reverted");
+            console.log(unicode"  ✗ Allowance check reverted");
         }
 
         // Check gToken balance
         try IERC20Extended(asset).balanceOf(gToken) returns (uint256 balance) {
             console.log("  gToken underlying balance:", balance);
             if (balance == 0) {
-                console.log("  ⚠️  gToken has no underlying tokens - no liquidity");
+                console.log(unicode"  ⚠️  gToken has no underlying tokens - no liquidity");
             }
         } catch {
-            console.log("  ✗ Failed to check gToken balance");
+            console.log(unicode"  ✗ Failed to check gToken balance");
         }
     }
 
@@ -204,8 +204,8 @@ contract DiagnoseGOO565 is Script {
         console.log("Testing theoretical withdrawal flow:");
         console.log("1. User has gTokens from previous supply");
         console.log("2. User calls pool.withdraw(asset, amount)");
-        console.log("3. Pool calls gToken.burn(user, amount) ← Should work");
-        console.log("4. Pool calls asset.transferFrom(gToken, user, amount) ← FAILS HERE");
+        console.log(unicode"3. Pool calls gToken.burn(user, amount) ← Should work");
+        console.log(unicode"4. Pool calls asset.transferFrom(gToken, user, amount) ← FAILS HERE");
         console.log();
         console.log("The failure happens because:");
         console.log("- gToken contract needs to approve pool to spend its underlying tokens");

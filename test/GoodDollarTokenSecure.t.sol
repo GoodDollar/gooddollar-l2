@@ -31,6 +31,13 @@ contract GoodDollarTokenSecureTest is Test {
         );
     }
 
+    function _reachVerifyConsensus(address human) internal {
+        vm.prank(oracle1);
+        token.voteVerifyHuman(human, true, true);
+        vm.prank(oracle2);
+        token.voteVerifyHuman(human, true, true);
+    }
+
     // ============ Oracle Multi-Sig Tests ============
 
     function test_constructor_requiresMinimumOracles() public {
@@ -42,22 +49,18 @@ contract GoodDollarTokenSecureTest is Test {
     }
 
     function test_multipleOraclesCanVerify() public {
-        // Oracle 1 can verify
-        vm.prank(oracle1);
-        token.verifyHuman(user, true);
+        _reachVerifyConsensus(user);
         assertTrue(token.isVerifiedHuman(user));
 
-        // Oracle 2 can also verify different user
         address user2 = address(0x8);
-        vm.prank(oracle2);
-        token.verifyHuman(user2, true);
+        _reachVerifyConsensus(user2);
         assertTrue(token.isVerifiedHuman(user2));
     }
 
     function test_nonOracleCannotVerify() public {
         vm.prank(attacker);
         vm.expectRevert(abi.encodeWithSelector(GoodDollarTokenSecure.UnauthorizedRole.selector, token.ORACLE_ROLE()));
-        token.verifyHuman(user, true);
+        token.voteVerifyHuman(user, true, true);
     }
 
     // ============ Emergency Pause Tests ============
@@ -87,8 +90,8 @@ contract GoodDollarTokenSecureTest is Test {
 
         // Oracle cannot verify when paused
         vm.prank(oracle1);
-        vm.expectRevert(GoodDollarTokenSecure.VerificationPaused.selector);
-        token.verifyHuman(user, true);
+        vm.expectRevert(GoodDollarTokenSecure.VerificationTemporarilyPaused.selector);
+        token.voteVerifyHuman(user, true, true);
     }
 
     function test_batchVerificationFailsWhenPaused() public {
@@ -99,8 +102,8 @@ contract GoodDollarTokenSecureTest is Test {
         users[0] = user;
         users[1] = address(0x8);
 
-        vm.prank(oracle1);
-        vm.expectRevert(GoodDollarTokenSecure.VerificationPaused.selector);
+        vm.prank(admin);
+        vm.expectRevert(GoodDollarTokenSecure.VerificationTemporarilyPaused.selector);
         token.batchVerifyHumans(users);
     }
 
@@ -201,9 +204,7 @@ contract GoodDollarTokenSecureTest is Test {
     // ============ UBI Functionality Still Works ============
 
     function test_verifiedUserCanClaimUBI() public {
-        // Verify user
-        vm.prank(oracle1);
-        token.verifyHuman(user, true);
+        _reachVerifyConsensus(user);
 
         uint256 initialBalance = token.balanceOf(user);
 
@@ -221,7 +222,7 @@ contract GoodDollarTokenSecureTest is Test {
         users[1] = address(0x8);
         users[2] = address(0x9);
 
-        vm.prank(oracle1);
+        vm.prank(admin);
         token.batchVerifyHumans(users);
 
         assertTrue(token.isVerifiedHuman(user));
@@ -251,9 +252,10 @@ contract GoodDollarTokenSecureTest is Test {
     // ============ Security Scenario Tests ============
 
     function test_compromisedOracleIsolation() public {
-        // Oracle1 gets compromised and tries malicious verification
         vm.prank(oracle1);
-        token.verifyHuman(attacker, true);
+        token.voteVerifyHuman(attacker, true, true);
+        vm.prank(oracle2);
+        token.voteVerifyHuman(attacker, true, true);
 
         // Admin immediately pauses verification
         vm.prank(admin);
@@ -265,8 +267,8 @@ contract GoodDollarTokenSecureTest is Test {
 
         // Compromised oracle can no longer do anything
         vm.prank(oracle1);
-        vm.expectRevert(GoodDollarTokenSecure.VerificationPaused.selector);
-        token.verifyHuman(address(0x999), true);
+        vm.expectRevert(GoodDollarTokenSecure.VerificationTemporarilyPaused.selector);
+        token.voteVerifyHuman(address(0x999), true, true);
 
         // After timelock, remove the compromised oracle
         vm.warp(block.timestamp + TIMELOCK_DELAY);
@@ -279,9 +281,9 @@ contract GoodDollarTokenSecureTest is Test {
         // Oracle1 no longer has oracle role
         assertFalse(token.hasRole(token.ORACLE_ROLE(), oracle1));
 
-        // Oracle2 still works
+        // Oracle2 still works (single-oracle majority after removal)
         vm.prank(oracle2);
-        token.verifyHuman(user, true);
+        token.voteVerifyHuman(user, true, true);
         assertTrue(token.isVerifiedHuman(user));
     }
 }

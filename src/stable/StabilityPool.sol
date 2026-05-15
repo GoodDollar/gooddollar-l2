@@ -22,11 +22,7 @@ pragma solidity ^0.8.20;
 
 import "./interfaces/IGoodStable.sol";
 
-interface IERC20Transfer {
-    function transfer(address to, uint256 amount) external returns (bool);
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-}
+import "../interfaces/IERC20Transfer.sol";
 
 contract StabilityPool {
     // ============ Constants ============

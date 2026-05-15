@@ -21,7 +21,7 @@ interface IValidatorStaking {
  */
 contract FixValidatorStakingMinStake is Script {
     // From GOO-560 issue
-    address constant VALIDATOR_STAKING = 0x103a3b128991781ee2c8db0454ca99d67b257923;
+    address constant VALIDATOR_STAKING = 0x103A3b128991781EE2c8db0454cA99d67b257923;
 
     // Testing-friendly minimum stake: 10k GDT instead of 1M
     uint256 constant TEST_MIN_STAKE = 10_000e18;
@@ -59,12 +59,12 @@ contract FixValidatorStakingMinStake is Script {
 
         // Update minStake for testing
         try IValidatorStaking(VALIDATOR_STAKING).setMinStake(TEST_MIN_STAKE) {
-            console.log("✓ MinStake updated successfully");
+            console.log(unicode"✓ MinStake updated successfully");
             console.log("New minStake:", TEST_MIN_STAKE / 1e18, "GDT");
         } catch Error(string memory reason) {
-            console.log("✗ Failed to update minStake:", reason);
+            console.log(unicode"✗ Failed to update minStake:", reason);
         } catch {
-            console.log("✗ Failed to update minStake: unknown error");
+            console.log(unicode"✗ Failed to update minStake: unknown error");
             console.log("Possible causes:");
             console.log("1. Deployer is not admin");
             console.log("2. ValidatorStaking contract not updated with configurable minStake");
@@ -79,10 +79,10 @@ contract FixValidatorStakingMinStake is Script {
             console.log("Final minStake:", newMinStake / 1e18, "GDT");
 
             if (newMinStake == TEST_MIN_STAKE) {
-                console.log("✓ SUCCESS: MinStake correctly set to", newMinStake / 1e18, "GDT");
+                console.log(unicode"✓ SUCCESS: MinStake correctly set to", newMinStake / 1e18, "GDT");
                 console.log("Validators can now stake with reasonable amounts for testing");
             } else {
-                console.log("✗ FAILED: MinStake not updated (still", newMinStake / 1e18, "GDT)");
+                console.log(unicode"✗ FAILED: MinStake not updated (still", newMinStake / 1e18, "GDT)");
             }
         } catch {
             console.log("Could not verify new minStake value");
@@ -100,7 +100,7 @@ contract FixValidatorStakingMinStake is Script {
  * @notice Diagnostic script to check ValidatorStaking state
  */
 contract DiagnoseValidatorStaking is Script {
-    address constant VALIDATOR_STAKING = 0x103a3b128991781ee2c8db0454ca99d67b257923;
+    address constant VALIDATOR_STAKING = 0x103A3b128991781EE2c8db0454cA99d67b257923;
 
     function run() external view {
         console.log("=== ValidatorStaking Diagnosis ===");
@@ -108,8 +108,9 @@ contract DiagnoseValidatorStaking is Script {
 
         // Check if contract exists
         uint256 codeSize;
+        address stakingAddr = VALIDATOR_STAKING;
         assembly {
-            codeSize := extcodesize(VALIDATOR_STAKING)
+            codeSize := extcodesize(stakingAddr)
         }
         console.log("Code size:", codeSize, "bytes");
 
@@ -125,9 +126,9 @@ contract DiagnoseValidatorStaking is Script {
             console.log("MinStake (formatted):", minStake / 1e18, "GDT");
 
             if (minStake >= 1_000_000e18) {
-                console.log("⚠️  MinStake is very high for testing");
+                console.log(unicode"⚠️  MinStake is very high for testing");
             } else {
-                console.log("✓ MinStake appears reasonable for testing");
+                console.log(unicode"✓ MinStake appears reasonable for testing");
             }
         } catch {
             console.log("ERROR: Cannot read minStake");

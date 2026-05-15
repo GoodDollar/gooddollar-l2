@@ -104,11 +104,11 @@ contract FixGoodLendReserves is Script {
             }
 
             try IGoodLendPool(POOL).setReserveActive(asset, true) {
-                console.log("  ✓ Activated successfully");
+                console.log(unicode"  ✓ Activated successfully");
             } catch Error(string memory reason) {
-                console.log("  ✗ Failed:", reason);
+                console.log(unicode"  ✗ Failed:", reason);
             } catch {
-                console.log("  ✗ Failed: unknown error");
+                console.log(unicode"  ✗ Failed: unknown error");
             }
         }
 
@@ -125,11 +125,11 @@ contract FixGoodLendReserves is Script {
         IToken(USDC).approve(POOL, 1000e6);
 
         try IGoodLendPool(POOL).supply(USDC, 1000e6) {
-            console.log("✓ USDC supply() works - reserves are active!");
+            console.log(unicode"✓ USDC supply() works - reserves are active!");
         } catch Error(string memory reason) {
-            console.log("✗ USDC supply() still fails:", reason);
+            console.log(unicode"✗ USDC supply() still fails:", reason);
         } catch {
-            console.log("✗ USDC supply() still fails: unknown error");
+            console.log(unicode"✗ USDC supply() still fails: unknown error");
         }
 
         console.log("\n=== GOO-388 Fix Complete ===");

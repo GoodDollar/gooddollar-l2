@@ -81,19 +81,19 @@ describe('Header', () => {
     expect(screen.queryByTestId('mobile-nav')).not.toBeInTheDocument()
   })
 
-  it('Pool and Bridge in desktop nav have no Soon badges', () => {
+  it('Pool and Bridge in desktop nav show Soon badges', () => {
     render(<Header />)
     const desktopNav = document.querySelector('nav.hidden.sm\\:flex')!
     const soonBadges = desktopNav.querySelectorAll('[data-testid="soon-badge"]')
-    expect(soonBadges.length).toBe(0)
+    expect(soonBadges.length).toBe(2)
   })
 
-  it('Pool and Bridge in mobile menu have no Coming Soon badges', () => {
+  it('Pool and Bridge in mobile menu show Coming Soon badges', () => {
     render(<Header />)
     fireEvent.click(screen.getByLabelText('Open menu'))
 
     const mobileNav = screen.getByTestId('mobile-nav')
-    expect(mobileNav.textContent).not.toContain('Coming Soon')
+    expect(mobileNav.textContent).toContain('Coming Soon')
   })
 
   it('has Pool and Bridge as navigable links in mobile menu', () => {

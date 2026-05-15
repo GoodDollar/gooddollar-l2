@@ -16,7 +16,7 @@ import "forge-std/Script.sol";
  */
 contract FixPerpEngineFeeSplitter is Script {
     // Known addresses from GOO-563 reproduction
-    address constant PERP_ENGINE = 0x2e2ed0cfd3ad2f1d34481277b3204d807ca2f8c2;
+    address constant PERP_ENGINE = 0x2E2Ed0Cfd3AD2f1d34481277b3204d807Ca2F8c2;
     address constant FEE_SPLITTER = 0x976fcd02f7C4773dd89C309fBF55D5923B4c98a1;
 
     function run() external {
@@ -65,7 +65,7 @@ contract FixPerpEngineFeeSplitter is Script {
  * @notice Test script to verify the fix works
  */
 contract TestPerpEngineAfterFix is Script {
-    address constant PERP_ENGINE = 0x2e2ed0cfd3ad2f1d34481277b3204d807ca2f8c2;
+    address constant PERP_ENGINE = 0x2E2Ed0Cfd3AD2f1d34481277b3204d807Ca2F8c2;
 
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
@@ -76,11 +76,11 @@ contract TestPerpEngineAfterFix is Script {
         // Test openPosition with minimal parameters
         // Market 0, size 100 GDT, long position, margin 500 GDT (5x leverage)
         try this.testOpenPosition() {
-            console.log("✓ openPosition() test PASSED - fix successful!");
+            console.log(unicode"✓ openPosition() test PASSED - fix successful!");
         } catch Error(string memory reason) {
-            console.log("✗ openPosition() test FAILED:", reason);
+            console.log(unicode"✗ openPosition() test FAILED:", reason);
         } catch {
-            console.log("✗ openPosition() test FAILED: unknown error");
+            console.log(unicode"✗ openPosition() test FAILED: unknown error");
         }
 
         vm.stopBroadcast();

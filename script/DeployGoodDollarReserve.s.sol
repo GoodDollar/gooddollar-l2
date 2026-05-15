@@ -6,6 +6,24 @@ import "../src/lending/GoodLendPool.sol";
 import "../src/lending/GoodLendToken.sol";
 import "../src/lending/DebtToken.sol";
 
+interface ISimplePriceOracle {
+    function setAssetPrice(address asset, uint256 price) external;
+    function getAssetPrice(address asset) external view returns (uint256);
+    function admin() external view returns (address);
+}
+
+/// @dev Distinct from `IInterestRateModel` in GoodLendPool.sol (calculateRates-only).
+interface IScriptInterestRateModel {
+    function setRateParams(
+        address asset,
+        uint256 optimalUtilizationRate,
+        uint256 baseRate,
+        uint256 slope1,
+        uint256 slope2
+    ) external;
+    function admin() external view returns (address);
+}
+
 /**
  * @title DeployGoodDollarReserve
  * @notice Deploy and initialize GoodDollar (G$) reserve in GoodLendPool for GOO-505.
@@ -32,8 +50,8 @@ contract DeployGoodDollarReserve is Script {
 
     // Known deployment addresses (from DeployGoodLend broadcast)
     address constant DEFAULT_POOL = 0x49fd2BE640DB2910c2fAb69bB8531Ab6E76127ff;
-    address constant DEFAULT_ORACLE = 0x46b142DD1E924FAb83eCc3c08E4D46e82f005e0e;
-    address constant DEFAULT_RATE_MODEL = 0x367761085BF3c12E5DA2df99aC6E1a824612B8fB;
+    address constant DEFAULT_ORACLE = 0x46b142DD1E924FAb83eCc3c08e4D46E82f005e0E;
+    address constant DEFAULT_RATE_MODEL = 0x367761085BF3C12e5DA2Df99AC6E1a824612b8fb;
     address constant DEFAULT_GD_TOKEN = 0x6533158b042775e2FdFeF3cA1a782EFDbB8EB9b1;
 
     // G$ reserve parameters (conservative settings)
@@ -47,23 +65,6 @@ contract DeployGoodDollarReserve is Script {
 
     // Oracle price for G$ (in 8 decimals): $0.001 = 100,000
     uint256 constant GD_PRICE_USD = 100_000;         // $0.001
-
-    interface ISimplePriceOracle {
-        function setAssetPrice(address asset, uint256 price) external;
-        function getAssetPrice(address asset) external view returns (uint256);
-        function admin() external view returns (address);
-    }
-
-    interface IInterestRateModel {
-        function setRateParams(
-            address asset,
-            uint256 optimalUtilizationRate,
-            uint256 baseRate,
-            uint256 slope1,
-            uint256 slope2
-        ) external;
-        function admin() external view returns (address);
-    }
 
     function run() external {
         uint256 deployerKey = vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
@@ -126,13 +127,13 @@ contract DeployGoodDollarReserve is Script {
             BORROW_CAP,
             GD_DECIMALS
         ) {
-            console.log("✓ Reserve initialized successfully");
+            console.log(unicode"✓ Reserve initialized successfully");
             console.log("  Supply cap:", SUPPLY_CAP, "G$");
             console.log("  Borrow cap:", BORROW_CAP, "G$");
             console.log("  LTV:", LTV_BPS / 100, "%");
             console.log("  Liq threshold:", LIQ_THRESHOLD_BPS / 100, "%");
         } catch Error(string memory reason) {
-            console.log("✗ Reserve initialization failed:", reason);
+            console.log(unicode"✗ Reserve initialization failed:", reason);
             vm.stopBroadcast();
             return;
         }
@@ -140,28 +141,28 @@ contract DeployGoodDollarReserve is Script {
         // 5. Set oracle price for G$
         console.log("\n--- Setting Oracle Price ---");
         try ISimplePriceOracle(oracle).setAssetPrice(gdToken, GD_PRICE_USD) {
-            console.log("✓ Oracle price set: $0.001 (100,000 in 8-decimal format)");
+            console.log(unicode"✓ Oracle price set: $0.001 (100,000 in 8-decimal format)");
         } catch Error(string memory reason) {
-            console.log("⚠  Oracle price setting failed:", reason);
+            console.log(unicode"⚠  Oracle price setting failed:", reason);
             console.log("   May need admin permissions or different oracle interface");
         }
 
         // 6. Configure interest rate model for G$
         console.log("\n--- Configuring Interest Rate Model ---");
-        try IInterestRateModel(rateModel).setRateParams(
+        try IScriptInterestRateModel(rateModel).setRateParams(
             gdToken,
             0.80e27,    // 80% optimal utilization
             0.01e27,    // 1% base rate
             0.05e27,    // 5% slope1
             1.00e27     // 100% slope2 (high to discourage over-utilization)
         ) {
-            console.log("✓ Interest rate model configured");
+            console.log(unicode"✓ Interest rate model configured");
             console.log("  Optimal utilization: 80%");
             console.log("  Base rate: 1%");
             console.log("  Slope 1: 5%");
             console.log("  Slope 2: 100%");
         } catch Error(string memory reason) {
-            console.log("⚠  Rate model configuration failed:", reason);
+            console.log(unicode"⚠  Rate model configuration failed:", reason);
             console.log("   May need admin permissions");
         }
 
@@ -170,7 +171,7 @@ contract DeployGoodDollarReserve is Script {
         console.log("dGoodDollar (dG$):", address(dGoodDollar));
         console.log("GoodDollar reserve: INITIALIZED");
         console.log("");
-        console.log("✅ GoodDollar can now be supplied/withdrawn from GoodLendPool!");
+        console.log(unicode"✅ GoodDollar can now be supplied/withdrawn from GoodLendPool!");
         console.log("");
         console.log("Next steps:");
         console.log("1. Run verification: python3 verify_goodlend_gooddollar.py");
