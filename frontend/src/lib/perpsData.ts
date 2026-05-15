@@ -24,6 +24,8 @@ export interface PerpPair {
   nextFundingTime: number
   openInterest: number
   maxLeverage: number
+  high24h?: number
+  low24h?: number
 }
 
 export interface AccountSummaryData {

@@ -5,7 +5,7 @@ id: gooddollar-l2-perps-24h-high-low-prices
 status: open
 priority: low
 planned: true
-executed: false
+executed: true
 split: false
 type: feature
 area: perps

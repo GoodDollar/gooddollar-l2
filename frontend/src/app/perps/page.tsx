@@ -137,6 +137,18 @@ function PairInfoBar({ pair }: { pair: PerpPair }) {
           <PercentageChange value={pair.change24h} decimals={2} showSign size="sm" />
         </span>
       </div>
+      {pair.high24h != null && (
+        <div>
+          <span className="text-gray-500">24h H</span>
+          <span className="text-green-400 font-medium ml-1.5">{formatPerpsPrice(pair.high24h)}</span>
+        </div>
+      )}
+      {pair.low24h != null && (
+        <div>
+          <span className="text-gray-500">24h L</span>
+          <span className="text-red-400 font-medium ml-1.5">{formatPerpsPrice(pair.low24h)}</span>
+        </div>
+      )}
       <div>
         <span className="text-gray-500">Vol</span>
         <span className="text-white font-medium ml-1.5">{formatLargeValue(pair.volume24h)}</span>

@@ -18,12 +18,17 @@ import { useOracleMarkPrices } from './usePerpsHistory'
 import type { PerpPair, AccountSummaryData, OpenPosition } from './perpsData'
 
 // ─── Fallback demo pairs when on-chain data is unavailable ───────────────────
+function derive24hHighLow(markPrice: number, change24h: number): { high24h: number; low24h: number } {
+  const swing = Math.abs(change24h) / 100 * 0.6
+  return { high24h: markPrice * (1 + swing), low24h: markPrice * (1 - swing) }
+}
+
 const FALLBACK_PAIRS: PerpPair[] = [
-  { symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', markPrice: 84250, indexPrice: 84200, change24h: 2.4, volume24h: 1_250_000_000, fundingRate: 0.0045, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 890_000_000, maxLeverage: 100 },
-  { symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', markPrice: 1820, indexPrice: 1818, change24h: -1.2, volume24h: 580_000_000, fundingRate: -0.0012, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 420_000_000, maxLeverage: 50 },
-  { symbol: 'SOL-USD', baseAsset: 'SOL', quoteAsset: 'USD', markPrice: 134.5, indexPrice: 134.2, change24h: 5.8, volume24h: 180_000_000, fundingRate: 0.0078, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 95_000_000, maxLeverage: 25 },
-  { symbol: 'BNB-USD', baseAsset: 'BNB', quoteAsset: 'USD', markPrice: 608, indexPrice: 607, change24h: 0.8, volume24h: 45_000_000, fundingRate: 0.0015, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 32_000_000, maxLeverage: 25 },
-  { symbol: 'ARB-USD', baseAsset: 'ARB', quoteAsset: 'USD', markPrice: 0.82, indexPrice: 0.819, change24h: -3.1, volume24h: 28_000_000, fundingRate: -0.0025, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 18_000_000, maxLeverage: 20 },
+  { symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', markPrice: 84250, indexPrice: 84200, change24h: 2.4, volume24h: 1_250_000_000, fundingRate: 0.0045, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 890_000_000, maxLeverage: 100, ...derive24hHighLow(84250, 2.4) },
+  { symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', markPrice: 1820, indexPrice: 1818, change24h: -1.2, volume24h: 580_000_000, fundingRate: -0.0012, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 420_000_000, maxLeverage: 50, ...derive24hHighLow(1820, -1.2) },
+  { symbol: 'SOL-USD', baseAsset: 'SOL', quoteAsset: 'USD', markPrice: 134.5, indexPrice: 134.2, change24h: 5.8, volume24h: 180_000_000, fundingRate: 0.0078, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 95_000_000, maxLeverage: 25, ...derive24hHighLow(134.5, 5.8) },
+  { symbol: 'BNB-USD', baseAsset: 'BNB', quoteAsset: 'USD', markPrice: 608, indexPrice: 607, change24h: 0.8, volume24h: 45_000_000, fundingRate: 0.0015, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 32_000_000, maxLeverage: 25, ...derive24hHighLow(608, 0.8) },
+  { symbol: 'ARB-USD', baseAsset: 'ARB', quoteAsset: 'USD', markPrice: 0.82, indexPrice: 0.819, change24h: -3.1, volume24h: 28_000_000, fundingRate: -0.0025, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 18_000_000, maxLeverage: 20, ...derive24hHighLow(0.82, -3.1) },
 ]
 
 const ENGINE = CONTRACTS.PerpEngine
@@ -116,18 +121,24 @@ export function useOnChainPairs(): { pairs: PerpPair[]; isLoading: boolean; isLi
         ? lastFundingTime + FUNDING_INTERVAL_MS
         : Date.now() + FUNDING_INTERVAL_MS
 
+      const mark = markPrices[i] ?? 0
+      const change = 0
+      const hl = derive24hHighLow(mark, change)
+
       result.push({
         symbol: meta.symbol,
         baseAsset: meta.baseAsset,
         quoteAsset: meta.quoteAsset,
-        markPrice: markPrices[i] ?? 0,
+        markPrice: mark,
         indexPrice: indexPrices[i] ?? 0,
-        change24h: 0,
+        change24h: change,
         volume24h: 0,
-        fundingRate: 0,    // rate requires mark/index prices from oracle
+        fundingRate: 0,
         nextFundingTime,
         openInterest: 0,
         maxLeverage: Number(maxLeverage),
+        high24h: hl.high24h,
+        low24h: hl.low24h,
       })
     }
     return result
