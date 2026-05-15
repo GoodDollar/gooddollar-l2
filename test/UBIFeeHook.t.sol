@@ -85,12 +85,15 @@ contract UBIFeeHookTest is Test {
     }
 
     function test_calculateUBIFee_smallAmount() public view {
-        // 1 wei → fee = 0 (rounds down)
+        // With 20% BPS, integer division rounds down for small amounts.
+        // 1 wei → 1 * 2000 / 10000 = 0
         assertEq(hook.calculateUBIFee(1), 0);
-        // 3 wei → fee = 0 (3 * 2000 / 10000 = 0.9999 → 0)
+        // 3 wei → 3 * 2000 / 10000 = 0 (6000 / 10000 rounds down)
         assertEq(hook.calculateUBIFee(3), 0);
-        // 4 wei → fee = 1 (4 * 2000 / 10000 = 1.3332 → 1)
-        assertEq(hook.calculateUBIFee(4), 1);
+        // 4 wei → 4 * 2000 / 10000 = 0 (8000 / 10000 rounds down)
+        assertEq(hook.calculateUBIFee(4), 0);
+        // 5 wei → 5 * 2000 / 10000 = 1 (first non-zero fee, 10000 / 10000)
+        assertEq(hook.calculateUBIFee(5), 1);
     }
 
     function test_calculateUBIFee_largeAmount() public view {
