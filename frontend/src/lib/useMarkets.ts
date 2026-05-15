@@ -48,6 +48,7 @@ export function useMarketCount(): { count: bigint; isLoading: boolean } {
 export function useOnChainMarket(marketId: bigint): {
   market: OnChainMarket | null
   isLoading: boolean
+  isError: boolean
 } {
   const result = useReadContract({
     address: CONTRACTS.MarketFactory,
@@ -66,7 +67,7 @@ export function useOnChainMarket(marketId: bigint): {
   })
 
   if (!result.data) {
-    return { market: null, isLoading: result.isLoading }
+    return { market: null, isLoading: result.isLoading, isError: result.isError }
   }
 
   const [question, endTime, status, totalYES, totalNO, collateral] = result.data
@@ -91,6 +92,7 @@ export function useOnChainMarket(marketId: bigint): {
       isResolved: statusNum === 1 || statusNum === 2,
     },
     isLoading: result.isLoading,
+    isError: result.isError,
   }
 }
 

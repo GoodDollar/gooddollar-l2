@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
@@ -204,6 +204,20 @@ function chainToMarket(m: OnChainMarket): PredictionMarket {
   }
 }
 
+const LOADING_TIMEOUT_MS = 5_000
+
+function MarketNotFound() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+      <h1 className="text-2xl font-bold text-white mb-3">Market Not Found</h1>
+      <p className="text-sm text-gray-400 mb-6">This prediction market doesn&apos;t exist or could not be loaded.</p>
+      <Link href="/predict" className="px-6 py-3 rounded-xl bg-goodgreen text-white font-semibold hover:bg-goodgreen-600 transition-colors">
+        Back to Markets
+      </Link>
+    </div>
+  )
+}
+
 export default function MarketDetailPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -213,7 +227,18 @@ export default function MarketDetailPage() {
 
   const isValidId = /^\d+$/.test(marketId || '')
   const parsedId = isValidId ? BigInt(marketId!) : BigInt(0)
-  const { market: onChainMarket, isLoading } = useOnChainMarket(parsedId)
+  const { market: onChainMarket, isLoading, isError } = useOnChainMarket(parsedId)
+
+  const [isTimedOut, setIsTimedOut] = useState(false)
+
+  useEffect(() => {
+    if (!isLoading) {
+      setIsTimedOut(false)
+      return
+    }
+    const timer = setTimeout(() => setIsTimedOut(true), LOADING_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [isLoading])
 
   const market = useMemo(() => {
     if (!onChainMarket) return null
@@ -225,24 +250,21 @@ export default function MarketDetailPage() {
     return generateProbabilityHistory(market.yesPrice, 90)
   }, [market])
 
+  if (!isValidId || isError || isTimedOut) {
+    return <MarketNotFound />
+  }
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh]" role="status" aria-label="Loading market data">
         <div className="w-8 h-8 border-2 border-goodgreen/30 border-t-goodgreen rounded-full animate-spin" />
+        <span className="sr-only">Loading market data…</span>
       </div>
     )
   }
 
   if (!market) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <h1 className="text-2xl font-bold text-white mb-3">Market Not Found</h1>
-        <p className="text-sm text-gray-400 mb-6">This prediction market doesn&apos;t exist.</p>
-        <Link href="/predict" className="px-6 py-3 rounded-xl bg-goodgreen text-white font-semibold hover:bg-goodgreen-600 transition-colors">
-          Back to Markets
-        </Link>
-      </div>
-    )
+    return <MarketNotFound />
   }
 
   const yesPct = Math.round(market.yesPrice * 100)
