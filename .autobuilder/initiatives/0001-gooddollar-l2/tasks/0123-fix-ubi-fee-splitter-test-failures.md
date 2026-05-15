@@ -5,7 +5,7 @@ parent: gooddollar-l2
 priority: high
 split: false
 planned: true
-executed: false
+executed: true
 ---
 
 ## Problem
