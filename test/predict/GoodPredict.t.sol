@@ -278,6 +278,16 @@ contract GoodPredictTest is Test {
     }
 
     // ============ MarketFactory: Implied Probability ============
+    //
+    // FRONTEND INVARIANT (task 0075): the frontend in
+    // `frontend/src/lib/useMarkets.ts` and the helper `bpsToYesPrice`
+    // assume `impliedProbabilityYES` returns BPS (10_000 = 100%).
+    // The Vitest suite
+    // `frontend/src/lib/__tests__/useMarkets-bps.test.ts` mirrors the
+    // 5000 / 7500 cases below and will silently drift if these contract
+    // assertions are ever weakened. If you change the unit here, you
+    // MUST update `BPS_DENOMINATOR` in `useMarkets.ts` in the same
+    // commit, or every Predict market will render as "YES 0¢ / NO 100¢".
 
     function test_impliedProbability_noTradesIs50pct() public view {
         assertEq(factory.impliedProbabilityYES(marketId), 5000);

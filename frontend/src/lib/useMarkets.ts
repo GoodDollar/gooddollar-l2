@@ -7,12 +7,34 @@
  * Provides:
  *   - useMarketCount(): number of markets on-chain
  *   - useOnChainMarket(marketId): single market data
- *   - useImpliedProbability(marketId): YES probability (1e18-scaled)
+ *   - useAllOnChainMarkets(count): batched read of N markets
+ *
+ * NOTE on units: `MarketFactory.impliedProbabilityYES(uint256)` returns the
+ * YES probability in basis points (BPS, 10_000 = 100%), not 1e18-scaled.
+ * A freshly-created market with zero liquidity returns 5000 (= 50%).
+ * Earlier versions of this file divided by `1e18`, which produced
+ * ~5e-15 for the 50% default and made every market render as
+ * "YES 0¢ / NO 100¢" in the UI. Use `bpsToYesPrice` below for any
+ * conversion to avoid regressing on that bug.
  */
 
 import { useReadContract, useReadContracts } from 'wagmi'
 import { CONTRACTS } from './chain'
 import { MarketFactoryABI } from './abi'
+
+/** BPS denominator used by MarketFactory.impliedProbabilityYES (10_000 = 100%). */
+export const BPS_DENOMINATOR = 10_000
+
+/**
+ * Convert a BPS-scaled probability from MarketFactory.impliedProbabilityYES
+ * into a 0-1 float suitable for UI display. Returns 0.5 when the on-chain
+ * read is still pending or failed, matching the contract's own
+ * zero-liquidity default of 5000 BPS.
+ */
+export function bpsToYesPrice(probRaw: bigint | undefined): number {
+  if (probRaw === undefined || probRaw === null) return 0.5
+  return Number(probRaw) / BPS_DENOMINATOR
+}
 
 export interface OnChainMarket {
   id: bigint
@@ -97,8 +119,8 @@ export function useOnChainMarket(
   }
 
   const [question, endTime, status, totalYES, totalNO, collateral] = result.data
-  const probRaw = (probResult.data as bigint | undefined) ?? BigInt(0)
-  const yesPrice = Number(probRaw) / 1e18
+  const probRaw = probResult.data as bigint | undefined
+  const yesPrice = bpsToYesPrice(probRaw)
 
   const endTimeMs = Number(endTime) * 1000
   const statusNum = Number(status)
@@ -163,7 +185,7 @@ export function useAllOnChainMarkets(count: bigint): {
 
       const [question, endTime, status, totalYES, totalNO, collateral] = r.result as [string, bigint, number, bigint, bigint, bigint]
       const probRaw = probResults.data?.[i]?.result as bigint | undefined
-      const yesPrice = probRaw ? Number(probRaw) / 1e18 : 0.5
+      const yesPrice = bpsToYesPrice(probRaw)
       const statusNum = Number(status)
 
       markets.push({
