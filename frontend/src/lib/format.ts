@@ -35,8 +35,28 @@ export function formatAmount(value: number | string, maxDecimals = 6): string {
     return trimTrailingZeros(num.toFixed(decimals))
   }
 
+  // Sub-1 range: only safe to use fixed decimals while abs >= 10^-maxDecimals,
+  // otherwise toFixed(maxDecimals) silently rounds to "0.000000" and the UI
+  // shows a misleading literal "0" for real on-chain values (e.g. the
+  // G$/USDC pool spotPrice ratio ~1e-12). Fall back to compact scientific
+  // notation so the magnitude is preserved.
   const significantDecimals = Math.min(maxDecimals, 6)
+  if (abs < Math.pow(10, -significantDecimals)) {
+    return compactScientific(num)
+  }
   return trimTrailingZeros(num.toFixed(significantDecimals))
+}
+
+function compactScientific(num: number): string {
+  // toExponential picks the smallest mantissa precision that still survives
+  // JS's Number → string round-trip, then we trim trailing zeros so e.g.
+  // 1e-12 → "1e-12" rather than "1.000000e-12".
+  const raw = num.toExponential()
+  const [mantissa, exponent] = raw.split('e')
+  const cleanMantissa = mantissa.includes('.')
+    ? mantissa.replace(/0+$/, '').replace(/\.$/, '')
+    : mantissa
+  return `${cleanMantissa}e${exponent}`
 }
 
 function trimTrailingZeros(s: string): string {

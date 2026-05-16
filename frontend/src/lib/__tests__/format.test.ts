@@ -66,6 +66,60 @@ describe('formatAmount', () => {
     expect(formatAmount(0.123456)).toBe('0.123456')
     expect(formatAmount(1.5)).toBe('1.5')
   })
+
+  // Task 0066: formatAmount must never return "0" for a non-zero numeric input.
+  // Previously, formatAmount(1e-12) returned "0" because num.toFixed(6) is "0.000000",
+  // which made the G$/USDC pool spot price (~1e-12 after broken /1e18 derivation)
+  // render as "1 G$ = 0 USDC". After the fix the helper falls back to compact
+  // scientific notation for sub-micro values so the UI never silently rounds a
+  // real on-chain value to a misleading literal zero.
+  describe('sub-micro values (decimal-mismatch defence)', () => {
+    it('returns non-zero representation for 1e-12 (the G$/USDC raw spotPrice ratio)', () => {
+      const result = formatAmount(1e-12)
+      expect(result).not.toBe('0')
+      expect(result).not.toBe('0.000000')
+      // Should look like "1.0e-12" or similar (digits, optional dot, "e", digits).
+      expect(result).toMatch(/^-?\d+(\.\d+)?e-?\d+$/i)
+    })
+
+    it('returns non-zero representation for 1e-9', () => {
+      const result = formatAmount(1e-9)
+      expect(result).not.toBe('0')
+      expect(result).toMatch(/^-?\d+(\.\d+)?e-?\d+$/i)
+    })
+
+    it('returns non-zero representation for a realistic G$/USDC ratio (~9.5e-7)', () => {
+      const result = formatAmount(9.5e-7)
+      expect(result).not.toBe('0')
+      expect(result).toMatch(/^-?\d+(\.\d+)?e-?\d+$/i)
+    })
+
+    it('preserves sign for negative sub-micro values', () => {
+      const result = formatAmount(-1e-10)
+      expect(result).not.toBe('0')
+      expect(result.startsWith('-')).toBe(true)
+    })
+
+    it('still rounds exact zero to "0"', () => {
+      expect(formatAmount(0)).toBe('0')
+    })
+
+    it('handles NaN as "0" (unchanged behaviour)', () => {
+      expect(formatAmount(NaN)).toBe('0')
+    })
+
+    it('does not regress the [1e-6, 1) range', () => {
+      // 1e-6 itself should still use the fixed-decimal branch.
+      expect(formatAmount(0.000001)).toBe('0.000001')
+      // 0.5 should still use the fixed-decimal branch.
+      expect(formatAmount(0.5)).toBe('0.5')
+    })
+
+    it('does not regress the abbreviated range', () => {
+      expect(formatAmount(1_500_000)).toBe('1.5M')
+      expect(formatAmount(1_234)).toBe('1,234')
+    })
+  })
 })
 
 describe('compactAmount', () => {

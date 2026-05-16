@@ -88,6 +88,29 @@ export function formatPoolAmount(amount: bigint | undefined, decimals: number): 
   return parseFloat(formatUnits(amount, decimals))
 }
 
+/**
+ * Compute the spot price (tokenB per 1 tokenA) directly from decimal-aware
+ * reserves. We do NOT use the contract's `spotPrice()` view because it returns
+ * a raw 18-decimal ratio of tokenB-base-units per 1e18 tokenA-base-units. For
+ * pools where tokenA and tokenB have different decimals (e.g. G$ 18d / USDC
+ * 6d) that ratio is ~1e-12 in floating-point land after `formatUnits(_, 18)`,
+ * which then renders as "0" in `formatAmount`. Deriving from already-formatted
+ * reserves keeps the math decimal-aware regardless of the underlying pool.
+ *
+ * @param reserveAFormatted Decimal-aware reserve of tokenA (e.g. 1_000_000 G$)
+ * @param reserveBFormatted Decimal-aware reserve of tokenB (e.g. 1 USDC)
+ * @returns Spot price `B per 1 A`, or `null` when reserves are missing/invalid
+ */
+export function computeSpotPrice(
+  reserveAFormatted: number | null | undefined,
+  reserveBFormatted: number | null | undefined,
+): number | null {
+  if (reserveAFormatted == null || reserveBFormatted == null) return null
+  if (!Number.isFinite(reserveAFormatted) || !Number.isFinite(reserveBFormatted)) return null
+  if (reserveAFormatted <= 0) return null
+  return reserveBFormatted / reserveAFormatted
+}
+
 // ─── Hook: usePoolReserves ────────────────────────────────────────────────────
 
 /**
@@ -114,20 +137,16 @@ export function usePoolReserves(key: PoolKey) {
     functionName: 'totalLiquidity',
   })
 
-  const { data: spotPrice } = useReadContract({
-    address: pool.address,
-    abi: GoodPoolABI,
-    functionName: 'spotPrice',
-  })
-
   const reserveAFormatted = formatPoolAmount(reserveA as bigint | undefined, pool.tokenADecimals)
   const reserveBFormatted = formatPoolAmount(reserveB as bigint | undefined, pool.tokenBDecimals)
   const totalLiquidityFormatted = formatPoolAmount(totalLiquidity as bigint | undefined, 18)
 
-  // spot price is stored as tokenB per tokenA with 18 decimals
-  const spotPriceFormatted = spotPrice
-    ? parseFloat(formatUnits(spotPrice as bigint, 18))
-    : null
+  // Derive spot price (tokenB per 1 tokenA) from decimal-aware reserves.
+  // The on-chain `spotPrice()` view returns a raw 18-decimal ratio that
+  // collapses to ~0 in JS floats whenever tokenA/tokenB use different
+  // decimals (the G$/USDC pool is the canonical case). See computeSpotPrice
+  // doc-comment above for the full reasoning.
+  const spotPriceFormatted = computeSpotPrice(reserveAFormatted, reserveBFormatted)
 
   return {
     reserveA: reserveA as bigint | undefined,
