@@ -52,6 +52,7 @@ const PriceChart = dynamic(
   }
 )
 import { ChartErrorBoundary } from '@/components/ChartErrorBoundary'
+import { ScrollStrip } from '@/components/ScrollStrip'
 
 const OrderBook = dynamic(
   () => import('@/components/OrderBook').then(m => ({ default: m.OrderBook })),
@@ -111,17 +112,14 @@ const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 
 function PairSelector({ pairs, selected, onSelect }: { pairs: PerpPair[]; selected: string; onSelect: (s: string) => void }) {
   return (
-    <div className="relative">
-      <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-        {pairs.map(p => (
-          <button key={p.symbol} onClick={() => onSelect(p.symbol)}
-            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selected === p.symbol ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-50/50 border border-transparent'}`}>
-            {p.symbol}
-          </button>
-        ))}
-      </div>
-      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#0f1117] to-transparent" aria-hidden="true" />
-    </div>
+    <ScrollStrip className="flex gap-1 pb-1" ariaLabel="Select perpetual market pair">
+      {pairs.map(p => (
+        <button key={p.symbol} onClick={() => onSelect(p.symbol)}
+          className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selected === p.symbol ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-50/50 border border-transparent'}`}>
+          {p.symbol}
+        </button>
+      ))}
+    </ScrollStrip>
   )
 }
 

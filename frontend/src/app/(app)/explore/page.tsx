@@ -10,6 +10,7 @@ import { PercentageChange } from '@/components/ui/percentage-change'
 import { formatPrice, formatVolume, formatMarketCap, type TokenMarketData } from '@/lib/marketData'
 import { TOKEN_CATEGORIES, type TokenCategory, resolveCategory } from '@/lib/tokens'
 import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
+import { ScrollStrip } from '@/components/ScrollStrip'
 
 type SortField = 'price' | 'change1h' | 'change24h' | 'change7d' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -519,7 +520,11 @@ function ExplorePageContent() {
         />
       </div>
 
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
+      <ScrollStrip
+        wrapperClassName="mb-4"
+        className="flex gap-2 pb-1"
+        ariaLabel="Filter tokens by category"
+      >
         <button
           onClick={() => handleCategoryClick('All')}
           className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selectedCategory === 'All' ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-100 border border-gray-700/20'}`}
@@ -535,7 +540,7 @@ function ExplorePageContent() {
             {cat}
           </button>
         ))}
-      </div>
+      </ScrollStrip>
 
       {notice && (
         <div

@@ -64,6 +64,24 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+@layer utilities {
+  /*
+   * Cross-browser scrollbar hiding utility. Previously referenced as a
+   * Tailwind class across the codebase but never actually defined — relied
+   * on platform defaults for the visible effect, which leaked through on
+   * desktop Chrome/Firefox. Defining it here makes the behavior consistent
+   * across Firefox (scrollbar-width), legacy Edge/IE (-ms-overflow-style),
+   * and WebKit/Blink (::-webkit-scrollbar). See task 0086.
+   */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /*
  * RainbowKit injects an unstyled <div data-rk=""> wrapper around its children.
  * Inside our <PageTransition> flex container (`flex flex-col items-center`) it

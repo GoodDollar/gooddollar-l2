@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ScrollStrip } from './ScrollStrip'
 
 interface Tab {
   label: string
@@ -18,7 +19,11 @@ export function SectionNav({ tabs }: SectionNavProps) {
 
   return (
     <div className="w-full max-w-5xl mx-auto mb-6">
-      <nav className="flex gap-1 border-b border-gray-700/20 overflow-x-auto scrollbar-none">
+      <ScrollStrip
+        wrapperClassName="border-b border-gray-700/20"
+        className="flex gap-1"
+        ariaLabel="Section navigation"
+      >
         {tabs.map(tab => {
           const active = tab.match(pathname)
           return (
@@ -35,7 +40,7 @@ export function SectionNav({ tabs }: SectionNavProps) {
             </Link>
           )
         })}
-      </nav>
+      </ScrollStrip>
     </div>
   )
 }

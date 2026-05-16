@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, hasMeaningfulPrice, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
 import { useMarketCount, useAllOnChainMarkets, type OnChainMarket } from '@/lib/useMarkets'
 import { InfoBanner } from '@/components/InfoBanner'
+import { ScrollStrip } from '@/components/ScrollStrip'
 
 function ProbabilityBar({ yesPrice }: { yesPrice: number }) {
   const yesPct = Math.round(yesPrice * 100)
@@ -514,7 +515,7 @@ function PredictPageContent() {
           onChange={e => setQuery(e.target.value)}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
         />
-        <div className="flex gap-1 overflow-x-auto scrollbar-none">
+        <ScrollStrip className="flex gap-1" ariaLabel="Sort markets">
           {SORT_OPTIONS.map(o => (
             <button
               key={o.value}
@@ -524,11 +525,14 @@ function PredictPageContent() {
               {o.label}
             </button>
           ))}
-        </div>
+        </ScrollStrip>
       </div>
 
-      <div className="relative mb-6">
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <ScrollStrip
+        wrapperClassName="mb-6"
+        className="flex gap-2 pb-1"
+        ariaLabel="Filter markets by category"
+      >
         <button
           onClick={() => setCategory('All')}
           className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${category === 'All' ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-100 border border-gray-700/20'}`}
@@ -544,9 +548,7 @@ function PredictPageContent() {
             {cat}
           </button>
         ))}
-      </div>
-      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#0f1117] to-transparent" aria-hidden="true" />
-      </div>
+      </ScrollStrip>
 
       {filtered.length === 0 ? (
         <div className="bg-dark-100 rounded-2xl border border-gray-700/20 py-16 text-center">
