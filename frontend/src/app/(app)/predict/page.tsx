@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
 import { useMarketCount, useAllOnChainMarkets, type OnChainMarket } from '@/lib/useMarkets'
@@ -340,13 +340,46 @@ function onChainToMarket(m: OnChainMarket): PredictionMarket {
   }
 }
 
-export default function PredictPage() {
+// Mirrors the Explore listing fix (task 0057): seed the four filter
+// states from URL params on mount so deep links like
+// `/predict?q=ETH&category=Crypto` reflect the URL on first render
+// rather than silently dropping the params. We only read params here;
+// we do NOT push state changes back to the URL.
+const VALID_SORTS: readonly SortOption[] = [
+  'trending', 'newest', 'volume', 'ending',
+]
+
+function PredictPageContent() {
   const { count } = useMarketCount()
   const { markets: onChainMarkets } = useAllOnChainMarkets(count)
-  const [category, setCategory] = useState<MarketCategory | 'All'>('All')
-  const [sort, setSort] = useState<SortOption>('trending')
-  const [query, setQuery] = useState('')
-  const [showExpired, setShowExpired] = useState(false)
+  const searchParams = useSearchParams()
+
+  const initialQuery = () => (searchParams?.get('q') ?? '').trim()
+
+  const initialCategory = (): MarketCategory | 'All' => {
+    const raw = searchParams?.get('category') ?? 'All'
+    if (raw === 'All') return 'All'
+    return (ALL_CATEGORIES as readonly string[]).includes(raw)
+      ? (raw as MarketCategory)
+      : 'All'
+  }
+
+  const initialSort = (): SortOption => {
+    const raw = searchParams?.get('sort') ?? 'trending'
+    return (VALID_SORTS as readonly string[]).includes(raw)
+      ? (raw as SortOption)
+      : 'trending'
+  }
+
+  const initialShowExpired = () => {
+    const raw = (searchParams?.get('expired') ?? '').toLowerCase()
+    return raw === '1' || raw === 'true'
+  }
+
+  const [category, setCategory] = useState<MarketCategory | 'All'>(initialCategory)
+  const [sort, setSort] = useState<SortOption>(initialSort)
+  const [query, setQuery] = useState<string>(initialQuery)
+  const [showExpired, setShowExpired] = useState<boolean>(initialShowExpired)
 
   const allMarkets = useMemo(() => {
     return onChainMarkets.map(onChainToMarket)
@@ -492,5 +525,13 @@ export default function PredictPage() {
         Markets are illustrative. Resolution via oracle coming soon.
       </p>
     </div>
+  )
+}
+
+export default function PredictPage() {
+  return (
+    <Suspense fallback={null}>
+      <PredictPageContent />
+    </Suspense>
   )
 }
