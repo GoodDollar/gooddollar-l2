@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DEVNET_RPC_URL, CONTRACTS as DEVNET_CONTRACTS } from '@/lib/devnet'
 import { Skeleton } from '@/components/ui/skeleton'
+import { computeBarHeights } from './block-timeline'
 
 const RPC_URL = DEVNET_RPC_URL
 
@@ -189,7 +190,10 @@ export default function ActivityPage() {
     return () => clearInterval(interval)
   }, [fetchData])
 
-  const maxBlockTxs = Math.max(1, ...blocks.map(b => b.txCount))
+  const barHeights = computeBarHeights(blocks)
+  const reversedBlocks = blocks.slice().reverse()
+  const reversedHeights = barHeights.slice().reverse()
+  const totalTxsInWindow = blocks.reduce((sum, b) => sum + b.txCount, 0)
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -264,24 +268,59 @@ export default function ActivityPage() {
 
           {/* Block Timeline */}
           <div className="rounded-2xl bg-dark-100/60 border border-gray-700/30 p-4 mb-8">
-            <h2 className="text-sm font-semibold text-white mb-3">Block Timeline</h2>
-            <div className="flex items-end gap-1 h-16">
-              {blocks.slice().reverse().map((b) => (
-                <div
-                  key={b.number}
-                  className="flex-1 group relative"
-                  title={`Block ${b.number}: ${b.txCount} txs`}
-                >
-                  <div
-                    className={`w-full rounded-t transition-all ${b.txCount > 0 ? 'bg-goodgreen' : 'bg-gray-700/30'}`}
-                    style={{ height: `${Math.max(4, (b.txCount / maxBlockTxs) * 64)}px` }}
-                  />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-dark-50 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10">
-                    #{b.number} • {b.txCount} tx
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-white">Block Timeline</h2>
+              <span className="text-xs text-gray-500">
+                {totalTxsInWindow} {totalTxsInWindow === 1 ? 'tx' : 'txs'} in last {blocks.length || 0} blocks
+              </span>
             </div>
+            {blocks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-16 text-center">
+                <p className="text-xs text-gray-500">No recent blocks available.</p>
+                <p className="text-[10px] text-gray-600 mt-1">Waiting for chain to advance…</p>
+              </div>
+            ) : totalTxsInWindow === 0 ? (
+              <>
+                <div className="flex items-end gap-1 h-16" role="img" aria-label="No transactions in the last 20 blocks">
+                  {reversedBlocks.map((b, i) => (
+                    <div
+                      key={b.number}
+                      className="flex-1 group relative"
+                      title={`Block ${b.number}: 0 txs`}
+                    >
+                      <div
+                        className="w-full rounded-t bg-gray-600/40"
+                        style={{ height: `${reversedHeights[i].height}px` }}
+                      />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-dark-50 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10">
+                        #{b.number} • 0 tx
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 text-center mt-2">
+                  No transactions in the last {blocks.length} blocks. Send a swap, perp, or predict tx to light it up.
+                </p>
+              </>
+            ) : (
+              <div className="flex items-end gap-1 h-16" role="img" aria-label={`Block transaction histogram, ${totalTxsInWindow} total transactions`}>
+                {reversedBlocks.map((b, i) => (
+                  <div
+                    key={b.number}
+                    className="flex-1 group relative"
+                    title={`Block ${b.number}: ${b.txCount} txs`}
+                  >
+                    <div
+                      className={`w-full rounded-t transition-all ${reversedHeights[i].hasTxs ? 'bg-goodgreen' : 'bg-gray-600/40'}`}
+                      style={{ height: `${reversedHeights[i].height}px` }}
+                    />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-dark-50 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10">
+                      #{b.number} • {b.txCount} tx
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex justify-between mt-1">
               <span className="text-xs text-gray-500">
                 {blocks.length > 0 ? `#${blocks[blocks.length - 1]?.number}` : ''}
