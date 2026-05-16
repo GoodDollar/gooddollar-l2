@@ -30,7 +30,7 @@ describe('rpcCall', () => {
     await expect(rpcCall<string>(URL, 'eth_blockNumber')).resolves.toBe('0x1a6ce')
   })
 
-  it('sends required headers so a service worker cannot serve a stale HTML response', async () => {
+  it('sends only CORS-safelisted-or-acceptable headers and uses the cache:no-store RequestInit option (no Cache-Control header — that would trigger a CORS preflight that production rpc.goodclaw.org rejects, see task 0091)', async () => {
     fetchSpy.mockResolvedValue(
       new Response(JSON.stringify({ jsonrpc: '2.0', result: '0x1', id: 1 }), { status: 200 }),
     )
@@ -40,7 +40,13 @@ describe('rpcCall', () => {
     const headers = init.headers as Record<string, string>
     expect(headers['Content-Type']).toBe('application/json')
     expect(headers['Accept']).toBe('application/json')
-    expect(headers['Cache-Control']).toBe('no-store')
+    // Regression guard for task 0091: Cache-Control is NOT a CORS-safelisted
+    // request header per the Fetch spec, so sending it forces a preflight that
+    // the upstream RPC (Caddy) rejects because it only whitelists Content-Type
+    // in Access-Control-Allow-Headers. The cache-busting behavior is instead
+    // expressed via the RequestInit `cache` option below.
+    expect(headers['Cache-Control']).toBeUndefined()
+    expect(init.cache).toBe('no-store')
   })
 
   it('throws RpcError when res.ok is false (e.g. 500)', async () => {
@@ -82,8 +88,8 @@ describe('rpcCall', () => {
 
   it('aborts and throws when the request exceeds timeoutMs', async () => {
     // Simulate a hanging fetch that respects the AbortSignal
-    fetchSpy.mockImplementation((_url, init) => {
-      const signal = (init as RequestInit).signal as AbortSignal
+    fetchSpy.mockImplementation((_url: RequestInfo | URL, init?: RequestInit) => {
+      const signal = init?.signal as AbortSignal
       return new Promise((_resolve, reject) => {
         signal.addEventListener('abort', () => {
           const err = new Error('aborted')

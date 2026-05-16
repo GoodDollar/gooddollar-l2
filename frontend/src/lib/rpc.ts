@@ -9,8 +9,8 @@
  *   - no `res.ok` check     → 5xx surfaced as `data.result === undefined`
  *   - no `data.error` check → JSON-RPC errors surfaced as `undefined`
  *   - no timeout            → a hanging service-worker intercept hung forever
- *   - no `Accept: application/json` / `Cache-Control: no-store`
- *                           → the registered service worker could serve a
+ *   - no `Accept: application/json`
+ *                           → an intercepting service worker could serve a
  *                             cached HTML 404 for a POST, making `res.json()`
  *                             throw and the page anchor at "Block #0"
  *
@@ -18,6 +18,18 @@
  * `Block #0` beside a green "Live" pulse — the most misleading possible
  * combination. This helper makes every failure mode loud and typed so callers
  * can render a real error banner.
+ *
+ * Cache-busting note — task 0091: we deliberately do NOT send a
+ * `Cache-Control: no-store` request header. `Cache-Control` is not on the
+ * Fetch spec's CORS-safelisted request header list, so sending it forces a
+ * CORS preflight. Our production RPC (`rpc.goodclaw.org`, fronted by Caddy)
+ * only whitelists `Content-Type` in `Access-Control-Allow-Headers`, so a
+ * preflight that includes `Cache-Control` is rejected and the browser fails
+ * the request with an opaque `TypeError: Failed to fetch`, which silently
+ * breaks the entire /activity page. We instead express the same cache-busting
+ * intent via the `cache: 'no-store'` `RequestInit` option, which instructs
+ * the user agent to bypass the HTTP cache (and any intercepting service
+ * worker that respects it) without adding any non-safelisted headers.
  */
 
 export class RpcError extends Error {
@@ -53,8 +65,11 @@ export async function rpcCall<T = unknown>(
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Cache-Control': 'no-store',
         },
+        // See file docblock — `cache: 'no-store'` bypasses HTTP/SW caches
+        // WITHOUT adding a non-safelisted `Cache-Control` request header
+        // that would trigger a CORS preflight that the upstream RPC rejects.
+        cache: 'no-store',
         body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
         signal: ctrl.signal,
       })
