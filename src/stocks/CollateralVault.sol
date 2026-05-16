@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import "./SyntheticAsset.sol";
 import "./PriceOracle.sol";
 
@@ -247,12 +248,14 @@ contract CollateralVault is ReentrancyGuard {
         uint256 userDebt = debt[msg.sender][key];
 
         if (userDebt > 0) {
-            // Check that remaining collateral still covers the position
+            // Check that remaining collateral still covers the position.
+            // Use Math.mulDiv throughout to avoid divide-before-multiply
+            // precision loss (Slither MEDIUM).
             uint256 stockPrice = oracle.getPriceByKey(oracleKeys[key]); // 8 decimals
-            uint256 debtValueUSD8 = (userDebt * stockPrice) / 1e18; // USD with 8 decimals
+            uint256 debtValueUSD8 = Math.mulDiv(userDebt, stockPrice, 1e18); // USD with 8 decimals
             // G$ is 1:1 USD approximation; treat 1 G$ = 1 USD (8-decimal adjusted)
-            uint256 remainingUSD8 = remaining * 1e8 / 1e18;
-            uint256 ratio = (remainingUSD8 * BPS) / debtValueUSD8;
+            uint256 remainingUSD8 = Math.mulDiv(remaining, 1e8, 1e18);
+            uint256 ratio = Math.mulDiv(remainingUSD8, BPS, debtValueUSD8);
             if (ratio < MIN_COLLATERAL_RATIO) {
                 revert CollateralRatioTooLow(ratio, MIN_COLLATERAL_RATIO);
             }
@@ -310,17 +313,20 @@ contract CollateralVault is ReentrancyGuard {
     }
 
     /// @dev Returns (requiredCollateralG, fee) for a mint of syntheticAmount units.
+    /// @dev Uses Math.mulDiv throughout to avoid divide-before-multiply
+    ///      precision loss (Slither MEDIUM). Math.mulDiv does a full-precision
+    ///      512-bit intermediate so chained scalings stay exact.
     function _mintRequirements(bytes32 key, uint256 syntheticAmount)
         internal
         view
         returns (uint256 requiredCollateralG, uint256 fee)
     {
         uint256 stockPrice = oracle.getPriceByKey(oracleKeys[key]);
-        uint256 positionValueUSD8 = (syntheticAmount * stockPrice) / 1e18;
-        uint256 requiredUSD8 = (positionValueUSD8 * MIN_COLLATERAL_RATIO) / BPS;
-        requiredCollateralG = (requiredUSD8 * 1e18) / 1e8;
-        uint256 positionValueG = (positionValueUSD8 * 1e18) / 1e8;
-        fee = (positionValueG * TRADE_FEE_BPS) / BPS;
+        uint256 positionValueUSD8 = Math.mulDiv(syntheticAmount, stockPrice, 1e18);
+        uint256 requiredUSD8 = Math.mulDiv(positionValueUSD8, MIN_COLLATERAL_RATIO, BPS);
+        requiredCollateralG = Math.mulDiv(requiredUSD8, 1e18, 1e8);
+        uint256 positionValueG = Math.mulDiv(positionValueUSD8, 1e18, 1e8);
+        fee = Math.mulDiv(positionValueG, TRADE_FEE_BPS, BPS);
     }
 
     /**
@@ -337,16 +343,18 @@ contract CollateralVault is ReentrancyGuard {
         uint256 userDebt = debt[msg.sender][key];
         if (syntheticAmount > userDebt) revert InsufficientDebt(userDebt, syntheticAmount);
 
+        // Use Math.mulDiv to avoid divide-before-multiply precision loss
+        // (Slither MEDIUM).
         uint256 stockPrice = oracle.getPriceByKey(oracleKeys[key]);
-        uint256 positionValueUSD8 = (syntheticAmount * stockPrice) / 1e18;
-        uint256 positionValueG = (positionValueUSD8 * 1e18) / 1e8;
+        uint256 positionValueUSD8 = Math.mulDiv(syntheticAmount, stockPrice, 1e18);
+        uint256 positionValueG = Math.mulDiv(positionValueUSD8, 1e18, 1e8);
 
         // Fee on burn
-        uint256 fee = (positionValueG * TRADE_FEE_BPS) / BPS;
+        uint256 fee = Math.mulDiv(positionValueG, TRADE_FEE_BPS, BPS);
 
         // Collateral to release: proportional to debt being repaid
         // Release = (syntheticAmount / totalDebt) * totalCollateral (minus fee)
-        uint256 collateralToRelease = (collateral[msg.sender][key] * syntheticAmount) / userDebt;
+        uint256 collateralToRelease = Math.mulDiv(collateral[msg.sender][key], syntheticAmount, userDebt);
         if (collateralToRelease > fee) {
             collateralToRelease -= fee;
         } else {
@@ -435,15 +443,17 @@ contract CollateralVault is ReentrancyGuard {
         uint256 userCollateral,
         bytes32 key
     ) internal view returns (uint256 debtValueG, uint256 liquidatorReward, uint256 remainingCollateral) {
+        // Math.mulDiv prevents the divide-before-multiply precision loss
+        // Slither flagged in this liquidation flow (MEDIUM).
         uint256 stockPrice    = oracle.getPriceByKey(oracleKeys[key]);
-        uint256 debtValueUSD8 = (userDebt * stockPrice) / 1e18;
-        uint256 collUSD8      = (userCollateral * 1e8) / 1e18;
-        uint256 ratio         = (collUSD8 * BPS) / debtValueUSD8;
+        uint256 debtValueUSD8 = Math.mulDiv(userDebt, stockPrice, 1e18);
+        uint256 collUSD8      = Math.mulDiv(userCollateral, 1e8, 1e18);
+        uint256 ratio         = Math.mulDiv(collUSD8, BPS, debtValueUSD8);
         if (ratio >= LIQUIDATION_RATIO) revert PositionHealthy(ratio, LIQUIDATION_RATIO);
 
         // Liquidator receives: debt value in G$ + 10% bonus
-        debtValueG = (debtValueUSD8 * 1e18) / 1e8;
-        uint256 bonus = (debtValueG * LIQUIDATION_BONUS_BPS) / BPS;
+        debtValueG = Math.mulDiv(debtValueUSD8, 1e18, 1e8);
+        uint256 bonus = Math.mulDiv(debtValueG, LIQUIDATION_BONUS_BPS, BPS);
         liquidatorReward = debtValueG + bonus;
         // Cap at available collateral (edge case: extreme oracle move)
         if (liquidatorReward > userCollateral) liquidatorReward = userCollateral;
@@ -461,10 +471,12 @@ contract CollateralVault is ReentrancyGuard {
         uint256 userDebt = debt[user][key];
         if (userDebt == 0) return type(uint256).max;
 
+        // Math.mulDiv avoids divide-before-multiply precision loss
+        // (Slither MEDIUM).
         uint256 stockPrice = oracle.getPriceByKey(oracleKeys[key]);
-        uint256 debtValueUSD8 = (userDebt * stockPrice) / 1e18;
-        uint256 collateralUSD8 = (collateral[user][key] * 1e8) / 1e18;
-        return (collateralUSD8 * BPS) / debtValueUSD8;
+        uint256 debtValueUSD8 = Math.mulDiv(userDebt, stockPrice, 1e18);
+        uint256 collateralUSD8 = Math.mulDiv(collateral[user][key], 1e8, 1e18);
+        return Math.mulDiv(collateralUSD8, BPS, debtValueUSD8);
     }
 
     /**
@@ -481,10 +493,12 @@ contract CollateralVault is ReentrancyGuard {
         if (userDebt == 0) {
             ratio = type(uint256).max;
         } else {
+            // Math.mulDiv avoids divide-before-multiply precision loss
+            // (Slither MEDIUM).
             uint256 stockPrice = oracle.getPriceByKey(oracleKeys[key]);
-            uint256 debtValueUSD8 = (userDebt * stockPrice) / 1e18;
-            uint256 collateralUSD8 = (userCollateral * 1e8) / 1e18;
-            ratio = (collateralUSD8 * BPS) / debtValueUSD8;
+            uint256 debtValueUSD8 = Math.mulDiv(userDebt, stockPrice, 1e18);
+            uint256 collateralUSD8 = Math.mulDiv(userCollateral, 1e8, 1e18);
+            ratio = Math.mulDiv(collateralUSD8, BPS, debtValueUSD8);
         }
     }
 
@@ -545,12 +559,14 @@ contract CollateralVault is ReentrancyGuard {
         bytes32 key,
         uint256 syntheticAmount
     ) internal view returns (uint256 requiredCollateral, uint256 fee) {
+        // Math.mulDiv avoids divide-before-multiply precision loss
+        // (Slither MEDIUM); behaviour matches `_mintRequirements`.
         uint256 stockPrice      = oracle.getPriceByKey(oracleKeys[key]);
-        uint256 positionValueUSD8 = (syntheticAmount * stockPrice) / 1e18;
-        uint256 requiredUSD8    = (positionValueUSD8 * MIN_COLLATERAL_RATIO) / BPS;
-        requiredCollateral      = (requiredUSD8 * 1e18) / 1e8;
-        uint256 positionValueG  = (positionValueUSD8 * 1e18) / 1e8;
-        fee                     = (positionValueG * TRADE_FEE_BPS) / BPS;
+        uint256 positionValueUSD8 = Math.mulDiv(syntheticAmount, stockPrice, 1e18);
+        uint256 requiredUSD8    = Math.mulDiv(positionValueUSD8, MIN_COLLATERAL_RATIO, BPS);
+        requiredCollateral      = Math.mulDiv(requiredUSD8, 1e18, 1e8);
+        uint256 positionValueG  = Math.mulDiv(positionValueUSD8, 1e18, 1e8);
+        fee                     = Math.mulDiv(positionValueG, TRADE_FEE_BPS, BPS);
     }
 
     // ============ Internals ============
@@ -559,11 +575,13 @@ contract CollateralVault is ReentrancyGuard {
     function _collateralUsed(address user, bytes32 key) internal view returns (uint256) {
         uint256 userDebt = debt[user][key];
         if (userDebt == 0) return 0;
+        // Math.mulDiv avoids divide-before-multiply precision loss
+        // (Slither MEDIUM).
         uint256 stockPrice = oracle.getPriceByKey(oracleKeys[key]);
-        uint256 debtValueUSD8 = (userDebt * stockPrice) / 1e18;
+        uint256 debtValueUSD8 = Math.mulDiv(userDebt, stockPrice, 1e18);
         // Required at MIN_COLLATERAL_RATIO
-        uint256 requiredUSD8 = (debtValueUSD8 * MIN_COLLATERAL_RATIO) / BPS;
-        return (requiredUSD8 * 1e18) / 1e8;
+        uint256 requiredUSD8 = Math.mulDiv(debtValueUSD8, MIN_COLLATERAL_RATIO, BPS);
+        return Math.mulDiv(requiredUSD8, 1e18, 1e8);
     }
 
     function _key(string calldata ticker) internal pure returns (bytes32) {
