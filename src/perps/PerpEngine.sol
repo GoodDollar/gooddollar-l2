@@ -414,33 +414,45 @@ contract PerpEngine is ReentrancyGuard {
         int256 fundingPayment,
         uint256 exitPrice
     ) internal {
-        Position storage pos = positions[trader][marketId];
+        // CEI step 1 — CHECKS / SNAPSHOT.
+        // Copy the position into memory so every value we need
+        // (size, margin, isLong) survives the storage delete in the
+        // EFFECTS phase below.
+        Position memory snap = positions[trader][marketId];
         Market storage m = markets[marketId];
 
-        if (pos.isLong) {
-            m.openInterestLong -= pos.size;
-        } else {
-            m.openInterestShort -= pos.size;
-        }
-
-        // Net PnL after funding
+        // Net PnL after funding, computed against the snapshot.
         int256 netPnL = pnl - fundingPayment;
-
+        uint256 payout;
         if (netPnL >= 0) {
             // Profit: return locked margin + profit
-            vault.credit(trader, pos.margin + uint256(netPnL));
+            payout = snap.margin + uint256(netPnL);
         } else {
             uint256 loss = uint256(-netPnL);
-            if (loss >= pos.margin) {
-                // Wipe out — margin was already debited at open; nothing to return
-                // (insurance fund would cover excess loss in production)
-            } else {
+            if (loss < snap.margin) {
                 // Return remaining margin after loss
-                vault.credit(trader, pos.margin - loss);
+                payout = snap.margin - loss;
             }
+            // else: wipe out — margin was already debited at open;
+            // nothing to return (insurance fund would cover excess
+            // loss in production). payout stays 0.
         }
 
-        emit PositionClosed(trader, marketId, pnl, exitPrice);
+        // CEI step 2 — EFFECTS. All storage mutations and events
+        // happen BEFORE the external call so a callback into this
+        // contract during vault.credit() observes a fully-closed
+        // position with up-to-date open interest.
+        if (snap.isLong) {
+            m.openInterestLong -= snap.size;
+        } else {
+            m.openInterestShort -= snap.size;
+        }
         delete positions[trader][marketId];
+        emit PositionClosed(trader, marketId, pnl, exitPrice);
+
+        // CEI step 3 — INTERACTION. External call goes last.
+        if (payout > 0) {
+            vault.credit(trader, payout);
+        }
     }
 }
