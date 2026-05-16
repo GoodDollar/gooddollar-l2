@@ -174,10 +174,15 @@ export function useTradeHistory(): {
 
     async function load() {
       setIsLoading(true)
-      // Fetch PositionClosed events (these represent completed trades)
-      const closedEvents = await fetchIndexerEvents('perps', 'PositionClosed', 200)
-      // Also fetch PositionOpened for entry info
-      const openedEvents = await fetchIndexerEvents('perps', 'PositionOpened', 200)
+      // Fetch PositionClosed (completed trades) and PositionOpened (entry info)
+      // in parallel. Both are independent reads against the same indexer
+      // endpoint; serializing them was an unnecessary waterfall that doubled
+      // the Trades-tab load latency. fetchIndexerEvents already returns [] on
+      // failure, so Promise.all here cannot reject.
+      const [closedEvents, openedEvents] = await Promise.all([
+        fetchIndexerEvents('perps', 'PositionClosed', 200),
+        fetchIndexerEvents('perps', 'PositionOpened', 200),
+      ])
 
       if (cancelled) return
 
