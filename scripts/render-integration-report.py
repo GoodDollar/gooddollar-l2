@@ -120,7 +120,7 @@ PROTOCOL_ROWS: List[Tuple[str, Optional[str], str, str]] = [
         "GoodPredict",
         "GoodPredict.json",
         "createMarket(\"Will BTC hit $100K by 2026?\", endTime, resolver=0)",
-        "admin-only path executed with deployer key (tester-key fallback intentionally fails first)",
+        "tester key creates market directly via `MarketFactory.marketCreators` allowlist (task 0042); admin grants role idempotently before each run",
     ),
 ]
 

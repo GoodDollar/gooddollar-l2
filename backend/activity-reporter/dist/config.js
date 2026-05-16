@@ -23,7 +23,7 @@ exports.ADDRESSES = {
     GoodSwapRouter: process.env.SWAP_ROUTER || '0x922d6956c99e12dfeb3224dea977d0939758a1fe',
     PerpEngine: process.env.PERP_ENGINE || '0x172076e0166d1f9cc711c77adf8488051744980c',
     GoodLendPool: process.env.LEND_POOL || '0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc',
-    MarketFactory: process.env.MARKET_FACTORY || '0x02df3a3f960393f5b349e40a599feda91a7cc1a7',
+    MarketFactory: process.env.MARKET_FACTORY || '0xfaA7b3a4b5c3f54a934a2e33D34C7bC099f96CCE',
     CollateralVault: process.env.COLLATERAL_VAULT || '0x276c216d241856199a83bf27b2286659e5b877d3',
     VaultFactory: process.env.VAULT_FACTORY || '0x66f625b8c4c635af8b74ece2d7ed0d58b4af3c3d',
 };

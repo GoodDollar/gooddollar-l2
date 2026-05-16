@@ -16,7 +16,7 @@
         "PerpPriceOracle": "0xa4d0806d597146df93796a38435abb2a3cb96677",
         "PerpEngine": "0x084815d1330ecc3ef94193a19ec222c0c73dff2d",
         "ConditionalTokens": "0x12AC093Ef862b0DF59a9207dDFA35A82cf3eb7a5",
-        "MarketFactory": "0x02df3a3f960393f5b349e40a599feda91a7cc1a7",
+        "MarketFactory": "0xfaA7b3a4b5c3f54a934a2e33D34C7bC099f96CCE",
         "AgentRegistry": "0x8a791620dd6260079bf849dc5567adc3f2fdc318",
         "StocksPriceOracle": "0x20d7b364e8ed1f4260b5b90c41c2dec3c1f6d367",
         "CollateralVault": "0x276c216d241856199a83bf27b2286659e5b877d3",

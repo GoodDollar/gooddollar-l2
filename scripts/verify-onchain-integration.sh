@@ -270,21 +270,38 @@ fi
 echo
 
 # ── 6. GoodPredict ───────────────────────────────────────────────────────────
-echo "[6/6] GoodPredict — attempting market creation (admin-only)"
+echo "[6/6] GoodPredict — granting tester market-creator role, then createMarket"
 deadline=$(($(date +%s)+86400))
+
+# Step 6a: idempotently grant tester market-creator rights via the admin
+# (deployer) key. MarketFactory.setMarketCreator(address,bool) was added in
+# task 0042 specifically so the integration suite can drive the full
+# create→buy→resolve flow from the tester wallet without rotating admin.
+# Idempotent on the contract side (boolean set), so re-running this script
+# costs one no-op tx but does not destabilise state.
+is_creator=$(cast call "$MF" "marketCreators(address)(bool)" "$TESTER_WALLET" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+if [[ "$is_creator" != "true" ]]; then
+  grant_out=$(cast send "$MF" "setMarketCreator(address,bool)" "$TESTER_WALLET" true \
+                --private-key "$DEPLOYER_KEY" --rpc-url "$RPC" --json 2>&1) || true
+  grant_hash=$(echo "$grant_out" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('transactionHash',''))" 2>/dev/null || echo "")
+  if [[ -n "$grant_hash" ]]; then
+    echo "  [GoodPredict] granted market-creator role to tester (tx $grant_hash)"
+  else
+    echo "  [GoodPredict] WARN: setMarketCreator tx did not return a hash: $grant_out" >&2
+  fi
+else
+  echo "  [GoodPredict] tester $TESTER_WALLET already has market-creator role (no-op)"
+fi
+
+# Step 6b: tester creates the market directly — this is the path the QA Bot
+# exercises end-to-end (no deployer-key fallback needed any more).
 hash=$(send_tx "GoodPredict" "createMarket(question,endTime,resolver=0)" "$MF" \
          "createMarket(string,uint256,address)" "Will BTC hit \$100K by 2026?" "$deadline" "0x0000000000000000000000000000000000000000" \
          || true)
-# createMarket is onlyAdmin — try with deployer key
-if [[ -z "$hash" ]]; then
-  out=$(cast send "$MF" "createMarket(string,uint256,address)" "Will BTC hit \$100K by 2026?" "$deadline" "0x0000000000000000000000000000000000000000" \
-         --private-key "$DEPLOYER_KEY" --rpc-url "$RPC" --json 2>&1) || true
-  hash=$(echo "$out" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('transactionHash',''))" 2>/dev/null || echo "")
-fi
 if [[ -n "$hash" ]] && capture_receipt "$hash" "GoodPredict"; then
-  record_result "GoodPredict" "PASS" "createMarket tx $hash (admin sender)"
+  record_result "GoodPredict" "PASS" "createMarket tx $hash (tester sender, marketCreators allowlist)"
 else
-  record_result "GoodPredict" "FAIL" "createMarket reverted with both tester and deployer keys"
+  record_result "GoodPredict" "FAIL" "createMarket reverted even after granting tester market-creator role"
 fi
 echo
 

@@ -53,6 +53,15 @@ contract MarketFactory is ReentrancyGuard {
 
     Market[] public markets;
 
+    /// @notice Secondary allowlist of addresses authorised to call createMarket
+    ///         in addition to the admin. Used on devnet/integration runs so the
+    ///         QA Bot's `verify-onchain-integration.sh` can drive the full
+    ///         create→buy→resolve flow from a single tester key without
+    ///         transferring admin away from the deployer. On production
+    ///         networks this mapping is expected to remain empty (or curated)
+    ///         and the contract behaves as if it were single-admin.
+    mapping(address => bool) public marketCreators;
+
     uint256 public constant REDEEM_FEE_BPS = 100; // 1%
     uint256 public constant BPS = 10000;
 
@@ -63,6 +72,7 @@ contract MarketFactory is ReentrancyGuard {
     event Redeemed(uint256 indexed marketId, address indexed redeemer, uint256 amount, uint256 payout);
     event MarketResolved(uint256 indexed marketId, MarketStatus result);
     event MarketVoided(uint256 indexed marketId);
+    event MarketCreatorSet(address indexed who, bool allowed);
 
     // ============ Errors ============
 
@@ -81,6 +91,15 @@ contract MarketFactory is ReentrancyGuard {
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert NotAdmin();
+        _;
+    }
+
+    /// @dev Admin OR any address explicitly granted via `setMarketCreator`.
+    ///      Reverts with the same `NotAdmin()` selector to keep the existing
+    ///      revert ABI stable for tooling that already pattern-matches on
+    ///      `0x7bfa4b9f`.
+    modifier onlyMarketCreator() {
+        if (msg.sender != admin && !marketCreators[msg.sender]) revert NotAdmin();
         _;
     }
 
@@ -111,7 +130,7 @@ contract MarketFactory is ReentrancyGuard {
         string calldata question,
         uint256 endTime,
         address resolver
-    ) external onlyAdmin returns (uint256 marketId) {
+    ) external onlyMarketCreator returns (uint256 marketId) {
         if (endTime <= block.timestamp) revert MarketExpired();
         address res = resolver == address(0) ? admin : resolver;
 
@@ -299,5 +318,19 @@ contract MarketFactory is ReentrancyGuard {
     function setAdmin(address newAdmin) external onlyAdmin {
         if (newAdmin == address(0)) revert ZeroAddress();
         admin = newAdmin;
+    }
+
+    /**
+     * @notice Grant or revoke market-creation rights for an address. Admin-only.
+     * @dev Idempotent: setting an already-true value to true (or already-false
+     *      to false) is a no-op other than re-emitting the event. The admin
+     *      itself does not need to be added — it is always authorised.
+     * @param who     Address whose market-creator status to update.
+     * @param allowed True to grant, false to revoke.
+     */
+    function setMarketCreator(address who, bool allowed) external onlyAdmin {
+        if (who == address(0)) revert ZeroAddress();
+        marketCreators[who] = allowed;
+        emit MarketCreatorSet(who, allowed);
     }
 }

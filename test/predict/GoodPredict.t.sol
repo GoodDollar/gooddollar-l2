@@ -163,6 +163,70 @@ contract GoodPredictTest is Test {
         assertEq(uint8(status), uint8(MarketFactory.MarketStatus.ResolvedYES));
     }
 
+    // ============ MarketFactory: marketCreators Allowlist ============
+
+    function test_setMarketCreator_onlyAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert(MarketFactory.NotAdmin.selector);
+        factory.setMarketCreator(alice, true);
+    }
+
+    function test_setMarketCreator_zeroAddressReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(MarketFactory.ZeroAddress.selector);
+        factory.setMarketCreator(address(0), true);
+    }
+
+    function test_setMarketCreator_grantAllowsCreate() public {
+        // alice cannot create
+        vm.prank(alice);
+        vm.expectRevert(MarketFactory.NotAdmin.selector);
+        factory.createMarket("Pre-grant?", endTime + 1 days, address(0));
+
+        // admin grants
+        vm.prank(admin);
+        factory.setMarketCreator(alice, true);
+        assertTrue(factory.marketCreators(alice));
+
+        // alice can now create
+        vm.prank(alice);
+        uint256 id = factory.createMarket("Post-grant?", endTime + 1 days, address(0));
+        (, , MarketFactory.MarketStatus status,,,) = factory.getMarket(id);
+        assertEq(uint8(status), uint8(MarketFactory.MarketStatus.Open));
+    }
+
+    function test_setMarketCreator_revokeBlocksCreate() public {
+        vm.prank(admin);
+        factory.setMarketCreator(alice, true);
+        vm.prank(alice);
+        factory.createMarket("First?", endTime + 1 days, address(0));
+
+        // revoke
+        vm.prank(admin);
+        factory.setMarketCreator(alice, false);
+        assertFalse(factory.marketCreators(alice));
+
+        vm.prank(alice);
+        vm.expectRevert(MarketFactory.NotAdmin.selector);
+        factory.createMarket("Blocked?", endTime + 1 days, address(0));
+    }
+
+    function test_setMarketCreator_adminStillWorksWithoutSelfGrant() public {
+        // Admin is always authorised, even without being explicitly added.
+        assertFalse(factory.marketCreators(admin));
+        vm.prank(admin);
+        uint256 id = factory.createMarket("Admin?", endTime + 1 days, address(0));
+        (, , MarketFactory.MarketStatus status,,,) = factory.getMarket(id);
+        assertEq(uint8(status), uint8(MarketFactory.MarketStatus.Open));
+    }
+
+    function test_setMarketCreator_emitsEvent() public {
+        vm.expectEmit(true, false, false, true);
+        emit MarketFactory.MarketCreatorSet(alice, true);
+        vm.prank(admin);
+        factory.setMarketCreator(alice, true);
+    }
+
     // ============ MarketFactory: Buying ============
 
     function test_buy_YES_tokens() public {
