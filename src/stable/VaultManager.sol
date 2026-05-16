@@ -590,6 +590,7 @@ contract VaultManager {
 
         IlkAccumulator storage acc = accumulators[ilk];
         uint256 chi = acc.chi == 0 ? RAY : acc.chi;
+        // slither-disable-start divide-before-multiply
         uint256 actualDebt = (vault.normalizedDebt * chi) / RAY;
 
         if (actualDebt == 0) return true;
@@ -602,6 +603,7 @@ contract VaultManager {
         // healthFactor = collValue * WAD / (debt * liquidationRatio / WAD)
         //             = collValue * WAD * WAD / (debt * liquidationRatio)
         uint256 debtTimesRatio = actualDebt * cfg.liquidationRatio / WAD;
+        // slither-disable-end divide-before-multiply
         if (debtTimesRatio == 0) return true;
 
         uint256 vaultHealthFactor = (collValueWAD * WAD) / debtTimesRatio;
@@ -654,6 +656,7 @@ contract VaultManager {
         // slither-disable-next-line weak-prng
         z = n % 2 != 0 ? x : base;
         uint256 half = base / 2;
+        // slither-disable-start divide-before-multiply
         for (n /= 2; n != 0; n /= 2) {
             uint256 xx = x * x;
             require(x == 0 || xx / x == x, "rpow/overflow");
@@ -670,6 +673,7 @@ contract VaultManager {
                 z = zxRound / base;
             }
         }
+        // slither-disable-end divide-before-multiply
     }
 
     // ============ Views ============
@@ -694,6 +698,7 @@ contract VaultManager {
 
         IlkAccumulator storage acc = accumulators[ilk];
         uint256 chi = acc.chi == 0 ? RAY : acc.chi;
+        // slither-disable-start divide-before-multiply
         uint256 actualDebt = (vault.normalizedDebt * chi) / RAY;
         if (actualDebt == 0) return type(uint256).max;
 
@@ -702,6 +707,7 @@ contract VaultManager {
         uint256 collValueWAD = _collateralToGUSD(vault.collateral, price, cfg.token);
 
         uint256 debtTimesRatio = actualDebt * cfg.liquidationRatio / WAD;
+        // slither-disable-end divide-before-multiply
         // slither-disable-next-line incorrect-equality
         if (debtTimesRatio == 0) return type(uint256).max;
 

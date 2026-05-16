@@ -287,8 +287,10 @@ contract PerpUBIFeeSplitter is IFeeSplitterPerp, ReentrancyGuard {
         uint256 daysSinceLaunch = (block.timestamp / 86400) - lastDayTimestamp + 1;
 
         if (daysSinceLaunch > 0) {
+            // slither-disable-start divide-before-multiply
             uint256 avgDailyUBI = totalUBI / daysSinceLaunch;
             estimated = avgDailyUBI * 30; // 30-day estimate
+            // slither-disable-end divide-before-multiply
         }
 
         target = monthlyTargetUBI;

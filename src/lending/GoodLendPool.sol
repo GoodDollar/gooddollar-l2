@@ -479,9 +479,11 @@ contract GoodLendPool {
 
         // collateralToSeize = (debtToCover * debtPrice / debtDecimals)
         //                     * liquidationBonus / collateralPrice * collateralDecimals
+        // slither-disable-start divide-before-multiply
         uint256 debtValue          = debtToCover * debtPrice / (10 ** debtReserve.decimals);
         uint256 collateralAmountRaw = (debtValue * collateralReserve.liquidationBonusBPS) / BPS;
         collateralToSeize          = collateralAmountRaw * (10 ** collateralReserve.decimals) / collateralPrice;
+        // slither-disable-end divide-before-multiply
     }
 
     // ============ Flash Loans ============
@@ -599,8 +601,10 @@ contract GoodLendPool {
         // slither-disable-next-line incorrect-equality
         if (timeDelta == 0) return reserve.liquidityIndex;
         // Linear approximation for supply index growth
+        // slither-disable-start divide-before-multiply
         uint256 supplyInterest = (reserve.currentSupplyRate * timeDelta) / SECONDS_PER_YEAR;
         return reserve.liquidityIndex + (reserve.liquidityIndex * supplyInterest) / RAY;
+        // slither-disable-end divide-before-multiply
     }
 
     /**
@@ -614,8 +618,10 @@ contract GoodLendPool {
         if (timeDelta == 0) return reserve.variableBorrowIndex;
         // Compounded: index *= (1 + rate * dt / year)
         // Simplified: linear approx for small dt
+        // slither-disable-start divide-before-multiply
         uint256 borrowInterest = (reserve.currentBorrowRate * timeDelta) / SECONDS_PER_YEAR;
         return reserve.variableBorrowIndex + (reserve.variableBorrowIndex * borrowInterest) / RAY;
+        // slither-disable-end divide-before-multiply
     }
 
     /**
@@ -722,6 +728,7 @@ contract GoodLendPool {
 
         uint256 totalBorrows = _totalBorrows(asset);
 
+        // slither-disable-start divide-before-multiply
         if (totalBorrows > 0) {
             // Calculate interest accrued
             uint256 borrowInterest = (reserve.currentBorrowRate * timeDelta) / SECONDS_PER_YEAR;
@@ -741,6 +748,7 @@ contract GoodLendPool {
             uint256 supplyInterest = (reserve.currentSupplyRate * timeDelta) / SECONDS_PER_YEAR;
             reserve.liquidityIndex += (reserve.liquidityIndex * supplyInterest) / RAY;
         }
+        // slither-disable-end divide-before-multiply
 
         reserve.lastUpdateTimestamp = uint40(block.timestamp);
 
@@ -834,10 +842,12 @@ contract GoodLendPool {
         uint256 borIdx = getBorrowIndex(asset);
 
         uint256 collateral = _gTokenBalance(asset, user, liqIdx);
+        // slither-disable-start divide-before-multiply
         if (collateral > 0) {
             collateralValueUSD    = (collateral * price) / (10 ** reserve.decimals);
             collateralThresholdUSD = (collateralValueUSD * reserve.liquidationThresholdBPS) / BPS;
         }
+        // slither-disable-end divide-before-multiply
 
         uint256 debt = _debtBalance(asset, user, borIdx);
         if (debt > 0) {

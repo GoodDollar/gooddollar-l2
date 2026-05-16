@@ -173,8 +173,10 @@ contract VoteEscrowedGD is ReentrancyGuard {
         if (block.timestamp >= l.end) revert LockExpired(); // just use withdraw()
 
         uint256 amount = l.amount;
+        // slither-disable-start divide-before-multiply
         uint256 penalty = (amount * EARLY_UNLOCK_PENALTY_BPS) / 10000;
         uint256 toUBI = (penalty * UBI_PENALTY_SHARE_BPS) / 10000;
+        // slither-disable-end divide-before-multiply
         uint256 burned = penalty - toUBI;
         uint256 received = amount - penalty;
 

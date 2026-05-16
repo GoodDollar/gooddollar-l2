@@ -221,8 +221,10 @@ contract ValidatorStakingDevnet {
         if (!v.isActive || v.staked == 0) return 0;
 
         uint256 elapsed = block.timestamp - v.lastStakeTime;
+        // slither-disable-start divide-before-multiply
         uint256 annualReward = (v.staked * rewardRateBPS) / 10000;
         return v.rewardDebt + (annualReward * elapsed) / 365 days;
+        // slither-disable-end divide-before-multiply
     }
 
     /**

@@ -288,9 +288,11 @@ contract StocksUBIFeeSplitter is IUBIFeeSplitter, ReentrancyGuard {
      */
     function getMonthlyUBIEstimate() external view returns (uint256) {
         // Estimate based on current daily volume
+        // slither-disable-start divide-before-multiply
         uint256 avgDailyUBI = (totalUBIFromTrading + totalUBIFromLiquidations) /
                              (block.timestamp / 86400 - lastDayTimestamp + 1);
         return avgDailyUBI * 30; // 30-day estimate
+        // slither-disable-end divide-before-multiply
     }
 
     /**

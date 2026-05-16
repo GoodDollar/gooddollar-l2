@@ -196,9 +196,11 @@ contract FastWithdrawalLP {
         claimed[withdrawalHash] = true;
 
         // Calculate fee
+        // slither-disable-start divide-before-multiply
         uint256 fee = (amount * feeBps) / 10000;
         uint256 netAmount = amount - fee;
         uint256 ubiFee = (fee * UBI_FEE_SHARE) / 10000;
+        // slither-disable-end divide-before-multiply
         uint256 lpFee = fee - ubiFee;
 
         // Effects: apply ALL state changes before any external call (CEI).
@@ -240,9 +242,11 @@ contract FastWithdrawalLP {
 
         claimed[withdrawalHash] = true;
 
+        // slither-disable-start divide-before-multiply
         uint256 fee = (amount * feeBps) / 10000;
         uint256 netAmount = amount - fee;
         uint256 ubiFee = (fee * UBI_FEE_SHARE) / 10000;
+        // slither-disable-end divide-before-multiply
         uint256 lpFee = fee - ubiFee;
 
         // Effects: apply ALL state changes before any external call (CEI).

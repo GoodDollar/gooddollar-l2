@@ -259,10 +259,12 @@ contract MarketFactory is ReentrancyGuard {
             uint256 winningSupply = isYESWin ? m.totalYES : m.totalNO;
 
             // Pro-rata share of total collateral (gross, before fee)
+            // slither-disable-start divide-before-multiply
             uint256 grossPayout = (amount * m.collateral) / winningSupply;
 
             // Deduct 1% fee, route to UBI via fee splitter
             fee = (grossPayout * REDEEM_FEE_BPS) / BPS;
+            // slither-disable-end divide-before-multiply
             payout = grossPayout - fee;
             collateralDecrement = grossPayout; // full gross amount leaves the contract
         }

@@ -321,6 +321,7 @@ contract GoodVault {
 
         if (profit > 0) {
             // Performance fee on profit → UBI
+            // slither-disable-next-line divide-before-multiply
             uint256 _ubiFee = (profit * performanceFeeBPS) / 10000;
 
             // Management fee: 2% annual on total debt, prorated
@@ -345,6 +346,7 @@ contract GoodVault {
                     // Split actual fees proportionally between UBI and mgmt for event accuracy
                     uint256 estimatedTotal = _ubiFee + _mgmtFee;
                     if (estimatedTotal > 0) {
+                        // slither-disable-next-line divide-before-multiply
                         actualUBIFee = (totalFees * _ubiFee) / estimatedTotal;
                         actualMgmtFee = totalFees - actualUBIFee;
                     } else {

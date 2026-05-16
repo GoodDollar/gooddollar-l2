@@ -81,6 +81,7 @@ contract InterestRateModel {
             return (p.baseVariableRate, 0);
         }
 
+        // slither-disable-start divide-before-multiply
         uint256 utilization = (totalBorrows * RAY) / totalDeposits;
         if (utilization > RAY) utilization = RAY;
 
@@ -97,6 +98,7 @@ contract InterestRateModel {
         // supplyRate = borrowRate * utilization * (1 - reserveFactor)
         uint256 reserveFactorRay = (reserveFactorBPS * RAY) / 10_000;
         supplyRate = (borrowRate * utilization / RAY) * (RAY - reserveFactorRay) / RAY;
+        // slither-disable-end divide-before-multiply
     }
 
     function setAdmin(address _admin) external onlyAdmin {

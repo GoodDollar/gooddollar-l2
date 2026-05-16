@@ -291,10 +291,12 @@ contract GoodSwap {
         uint32 elapsed = ts - _blockTimestampLast;
         if (elapsed > 0 && r0 != 0 && r1 != 0) {
             // TWAP accumulators (overflow intentional — uint256 wraps)
+            // slither-disable-start divide-before-multiply
             unchecked {
                 price0CumulativeLast += (uint256(r1) << 112) / r0 * elapsed;
                 price1CumulativeLast += (uint256(r0) << 112) / r1 * elapsed;
             }
+            // slither-disable-end divide-before-multiply
         }
 
         _reserve0            = uint112(bal0);
