@@ -19,7 +19,9 @@
     "build:sdk": "cd sdk && npm run build",
     "build": "npm run build:contracts && npm run build:sdk && npm run build:frontend",
     "test": "npm run test:contracts",
-    "health": "bash scripts/health-check.sh"
+    "health": "bash scripts/health-check.sh",
+    "test:e2e": "cd frontend && npm run test:e2e",
+    "tests:publish": "python3 scripts/publish-tests-page.py"
   },
   "dependencies": {
     "playwright": "^1.58.2"

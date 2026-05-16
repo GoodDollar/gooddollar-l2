@@ -1,0 +1,442 @@
+{
+  "version": "testnet-e2e-0.1",
+  "updatedAt": "2026-05-16",
+  "baseUrls": {
+    "app": "https://goodswap.goodclaw.org",
+    "publicPortal": "https://goodclaw.org/tests"
+  },
+  "playwright": {
+    "config": "frontend/playwright.config.ts",
+    "command": "cd frontend && SKIP_DEV_SERVER=1 BASE_URL=https://goodswap.goodclaw.org npx playwright test e2e/app-regression.spec.ts --project=chromium",
+    "report": "frontend/playwright-report/index.html"
+  },
+  "apps": [
+    {
+      "id": "swap",
+      "name": "GoodSwap",
+      "route": "/",
+      "kind": "core",
+      "owner": "GoodSwap",
+      "critical": true,
+      "assertions": [
+        "loads swap card",
+        "shows UBI funding narrative",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Trade\\. Predict\\. Invest\\. Fund",
+      "mustContain": [
+        "Trade",
+        "UBI"
+      ]
+    },
+    {
+      "id": "explore",
+      "name": "Explore",
+      "route": "/explore",
+      "kind": "core",
+      "owner": "Explore",
+      "critical": true,
+      "assertions": [
+        "token explorer renders",
+        "market rows or empty state render",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Explore",
+      "mustContain": [
+        "Explore"
+      ]
+    },
+    {
+      "id": "pool",
+      "name": "Pool",
+      "route": "/pool",
+      "kind": "core",
+      "owner": "GoodSwap",
+      "critical": false,
+      "assertions": [
+        "pool page renders",
+        "liquidity copy or coming-soon state renders",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Pool|Liquidity",
+      "mustContain": [
+        "Pool"
+      ]
+    },
+    {
+      "id": "bridge",
+      "name": "Bridge",
+      "route": "/bridge",
+      "kind": "core",
+      "owner": "Bridge",
+      "critical": true,
+      "assertions": [
+        "bridge page renders",
+        "network/funding UI does not crash",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Bridge",
+      "mustContain": [
+        "Bridge"
+      ]
+    },
+    {
+      "id": "stocks",
+      "name": "GoodStocks",
+      "route": "/stocks",
+      "kind": "protocol",
+      "owner": "Stocks",
+      "critical": true,
+      "assertions": [
+        "stocks list renders",
+        "synthetic-equities content visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Stocks|Synthetic",
+      "mustContain": [
+        "Stocks"
+      ]
+    },
+    {
+      "id": "stocks-detail",
+      "name": "GoodStocks detail",
+      "route": "/stocks/AAPL",
+      "kind": "protocol",
+      "owner": "Stocks",
+      "critical": true,
+      "assertions": [
+        "AAPL detail route renders",
+        "quote/trade content visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "AAPL|Apple|Stocks",
+      "mustContain": [
+        "AAPL"
+      ]
+    },
+    {
+      "id": "stocks-portfolio",
+      "name": "Stocks portfolio",
+      "route": "/stocks/portfolio",
+      "kind": "portfolio",
+      "owner": "Stocks",
+      "critical": false,
+      "assertions": [
+        "portfolio page renders",
+        "positions or empty state visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Portfolio|Stocks",
+      "mustContain": [
+        "Portfolio"
+      ]
+    },
+    {
+      "id": "predict",
+      "name": "GoodPredict",
+      "route": "/predict",
+      "kind": "protocol",
+      "owner": "Predict",
+      "critical": true,
+      "assertions": [
+        "markets page renders",
+        "market cards or empty state visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Predict|Prediction",
+      "mustContain": [
+        "Predict"
+      ]
+    },
+    {
+      "id": "predict-create",
+      "name": "Predict create",
+      "route": "/predict/create",
+      "kind": "protocol",
+      "owner": "Predict",
+      "critical": false,
+      "assertions": [
+        "create-market page renders",
+        "form or disabled state visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Create|Market|Predict",
+      "mustContain": [
+        "Create"
+      ]
+    },
+    {
+      "id": "predict-portfolio",
+      "name": "Predict portfolio",
+      "route": "/predict/portfolio",
+      "kind": "portfolio",
+      "owner": "Predict",
+      "critical": false,
+      "assertions": [
+        "prediction portfolio renders",
+        "positions or empty state visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Portfolio|Predict",
+      "mustContain": [
+        "Portfolio"
+      ]
+    },
+    {
+      "id": "perps",
+      "name": "GoodPerps",
+      "route": "/perps",
+      "kind": "protocol",
+      "owner": "Perps",
+      "critical": true,
+      "assertions": [
+        "trading screen renders",
+        "pair/order UI visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Perps|Perpetual|BTC",
+      "mustContain": [
+        "Perpetual"
+      ]
+    },
+    {
+      "id": "perps-leaderboard",
+      "name": "Perps leaderboard",
+      "route": "/perps/leaderboard",
+      "kind": "analytics",
+      "owner": "Perps",
+      "critical": false,
+      "assertions": [
+        "leaderboard renders",
+        "rankings or empty state visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Leaderboard|Perps",
+      "mustContain": [
+        "Leaderboard"
+      ]
+    },
+    {
+      "id": "perps-portfolio",
+      "name": "Perps portfolio",
+      "route": "/perps/portfolio",
+      "kind": "portfolio",
+      "owner": "Perps",
+      "critical": false,
+      "assertions": [
+        "portfolio renders",
+        "positions or empty state visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Portfolio|Perps",
+      "mustContain": [
+        "Portfolio"
+      ]
+    },
+    {
+      "id": "lend",
+      "name": "GoodLend",
+      "route": "/lend",
+      "kind": "protocol",
+      "owner": "Lend",
+      "critical": true,
+      "assertions": [
+        "lending market renders",
+        "supply/borrow UI visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Lend|Borrow|Supply",
+      "mustContain": [
+        "Lend"
+      ]
+    },
+    {
+      "id": "stable",
+      "name": "GoodStable",
+      "route": "/stable",
+      "kind": "protocol",
+      "owner": "Stable",
+      "critical": true,
+      "assertions": [
+        "stablecoin page renders",
+        "gUSD/vault UI visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Stable|gUSD|Vault",
+      "mustContain": [
+        "gUSD"
+      ]
+    },
+    {
+      "id": "yield",
+      "name": "GoodYield",
+      "route": "/yield",
+      "kind": "protocol",
+      "owner": "Yield",
+      "critical": true,
+      "assertions": [
+        "yield page renders",
+        "vault APY/TVL content visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Yield|Vault",
+      "mustContain": [
+        "Yield"
+      ]
+    },
+    {
+      "id": "agents",
+      "name": "Agents",
+      "route": "/agents",
+      "kind": "agent",
+      "owner": "Agents",
+      "critical": true,
+      "assertions": [
+        "agent leaderboard renders",
+        "agent metrics or empty state visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Agent|Leaderboard",
+      "mustContain": [
+        "Agent"
+      ]
+    },
+    {
+      "id": "agents-register",
+      "name": "Agent registration",
+      "route": "/agents/register",
+      "kind": "agent",
+      "owner": "Agents",
+      "critical": false,
+      "assertions": [
+        "registration page renders",
+        "wallet/connect gating visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Register|Agent",
+      "mustContain": [
+        "Agent"
+      ]
+    },
+    {
+      "id": "portfolio",
+      "name": "Portfolio",
+      "route": "/portfolio",
+      "kind": "portfolio",
+      "owner": "Wallet",
+      "critical": true,
+      "assertions": [
+        "portfolio page renders",
+        "asset/position summary or empty state visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Portfolio",
+      "mustContain": [
+        "Portfolio"
+      ]
+    },
+    {
+      "id": "governance",
+      "name": "Governance",
+      "route": "/governance",
+      "kind": "governance",
+      "owner": "Governance",
+      "critical": false,
+      "assertions": [
+        "governance page renders",
+        "proposal/voting content visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Governance|DAO|Vote",
+      "mustContain": [
+        "Governance"
+      ]
+    },
+    {
+      "id": "governance-analytics",
+      "name": "Governance analytics",
+      "route": "/governance/analytics",
+      "kind": "analytics",
+      "owner": "Governance",
+      "critical": false,
+      "assertions": [
+        "analytics page renders",
+        "governance charts/metrics visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Analytics|Governance",
+      "mustContain": [
+        "Analytics"
+      ]
+    },
+    {
+      "id": "ubi-impact",
+      "name": "UBI Impact",
+      "route": "/ubi-impact",
+      "kind": "analytics",
+      "owner": "UBI",
+      "critical": true,
+      "assertions": [
+        "UBI dashboard renders",
+        "fee/impact metrics visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "UBI|Impact",
+      "mustContain": [
+        "UBI"
+      ]
+    },
+    {
+      "id": "activity",
+      "name": "Live Activity",
+      "route": "/activity",
+      "kind": "analytics",
+      "owner": "Infra",
+      "critical": true,
+      "assertions": [
+        "activity page renders",
+        "block/RPC status visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Activity|Live",
+      "mustContain": [
+        "Activity"
+      ]
+    },
+    {
+      "id": "test-dashboard",
+      "name": "Test Dashboard",
+      "route": "/test-dashboard",
+      "kind": "qa",
+      "owner": "QA",
+      "critical": false,
+      "assertions": [
+        "test dashboard renders",
+        "test registry or results visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Test|Dashboard",
+      "mustContain": [
+        "Test"
+      ]
+    },
+    {
+      "id": "tests",
+      "name": "E2E Test Registry",
+      "route": "/tests",
+      "kind": "qa",
+      "owner": "QA",
+      "critical": true,
+      "assertions": [
+        "browsable test registry renders",
+        "Playwright command visible",
+        "app coverage cards visible"
+      ],
+      "titlePattern": "E2E|Tests|Playwright",
+      "mustContain": [
+        "Playwright",
+        "GoodSwap"
+      ]
+    }
+  ]
+}
