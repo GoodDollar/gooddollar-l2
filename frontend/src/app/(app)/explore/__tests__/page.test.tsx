@@ -309,3 +309,90 @@ describe('ExplorePage — null market data (G$ has no CoinGecko quote)', () => {
     expect(gRow!.textContent).not.toMatch(/\$0(?![.0-9])/)
   })
 })
+
+// Task 0098 — when no token reports a positive market cap, the Total Market
+// Cap card must NOT render "$0" with a fully-filled green sparkline (which
+// reads as a strong positive trend even though there is literally no data).
+// The card must show "—" with no chart, matching the existing 24h-change
+// "— (24h)" fallback. Per-row Market Cap cells must also fall back to "—"
+// instead of "$0" when token.marketCap <= 0.
+describe('ExplorePage — zero market cap fallback (task 0098)', () => {
+  beforeEach(() => {
+    pushMock.mockClear()
+    replaceMock.mockClear()
+    searchParamsString = ''
+    vi.resetModules()
+  })
+
+  it('Total Market Cap card shows "—" and no sparkline when no token has marketCap > 0', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
+            category: 'GoodDollar' as const, color: '#00B0A0',
+            price: 0.0002, change1h: null, change24h: null, change7d: null,
+            volume24h: null, marketCap: 0, sparkline7d: null,
+            description: 'GoodDollar UBI token', maxSupply: null,
+          },
+        ],
+      }),
+    }))
+    const { default: ExplorePageZeroCap } = await import('../page')
+    const { container } = render(<TestWrapper><ExplorePageZeroCap /></TestWrapper>)
+    // The page renders the Market Stats Bar twice (desktop grid + mobile
+    // carousel), so each title appears 2x — both must show the same fallback.
+    const cardTitles = screen.getAllByText('Total Market Cap')
+    expect(cardTitles.length).toBeGreaterThan(0)
+    for (const title of cardTitles) {
+      // Walk up to the card root (4 levels up from the title <div>).
+      const card = title.closest('.bg-dark-100') ?? title.parentElement!.parentElement!.parentElement!
+      // The card must NOT contain the misleading "$0" / "$0.00" string.
+      expect(card.textContent || '').not.toMatch(/\$0(?![.0-9])/)
+      // It SHOULD contain an em-dash placeholder.
+      expect(card.textContent || '').toContain('—')
+      // And it must NOT render the 120x40 sparkline svg.
+      const sparkline = card.querySelector('svg[width="120"][height="40"]')
+      expect(sparkline).toBeNull()
+    }
+    // Sanity: confirm at least one "—" placeholder is present overall too.
+    expect(container.textContent).toContain('—')
+  })
+
+  it('Total Market Cap card still renders the sparkline when at least one token has marketCap > 0', () => {
+    // Uses the default top-of-file mock (ETH 4e11, G$ 1e7) — so total > 0.
+    const { container } = render(<TestWrapper><ExplorePage /></TestWrapper>)
+    const sparkline = container.querySelector('svg[width="120"][height="40"]')
+    expect(sparkline).not.toBeNull()
+  })
+
+  it('per-row Market Cap cell renders "—" when token.marketCap <= 0', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
+            category: 'GoodDollar' as const, color: '#00B0A0',
+            price: 0.0002, change1h: 0, change24h: 0, change7d: 0,
+            volume24h: null, marketCap: 0, sparkline7d: null,
+            description: 'GoodDollar UBI token', maxSupply: null,
+          },
+        ],
+      }),
+    }))
+    const { default: ExplorePageZeroCap } = await import('../page')
+    render(<TestWrapper><ExplorePageZeroCap /></TestWrapper>)
+    const gRow = screen.getByTestId('icon-G$').closest('tr')!
+    // The Market Cap <td> is the one carrying our "Market cap unavailable"
+    // tooltip — find it by that title attribute and assert content.
+    const mcapCell = gRow.querySelector('td span[title="Market cap unavailable"]')
+    expect(mcapCell).not.toBeNull()
+    expect(mcapCell!.textContent).toBe('—')
+  })
+})

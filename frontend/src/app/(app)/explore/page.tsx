@@ -61,7 +61,11 @@ const TokenRow = memo(function TokenRow({ token, idx, onRowClick, onSwapClick }:
         {formatVolume(token.volume24h)}
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden md:table-cell">
-        {formatMarketCap(token.marketCap)}
+        {token.marketCap > 0 ? (
+          formatMarketCap(token.marketCap)
+        ) : (
+          <span className="text-gray-500" title="Market cap unavailable">—</span>
+        )}
       </td>
       <td
         className="py-3 px-2 hidden lg:table-cell"
@@ -89,7 +93,13 @@ const TokenRow = memo(function TokenRow({ token, idx, onRowClick, onSwapClick }:
 })
 
 function MarketCapSparkline({ value, positive }: { value: number; positive: boolean }) {
+  // When value is 0 (or negative), every generated point collapses to 0,
+  // which renders as a flat filled rectangle along the bottom of the SVG —
+  // visually indistinguishable from a real "trending up" chart and
+  // contradicting the "$0" / "—" label rendered next to it. Render
+  // nothing in that case; the parent card already shows an em-dash.
   const data = useMemo(() => {
+    if (value <= 0) return [] as number[]
     const points: number[] = []
     let v = value * (1 - 0.03 * (positive ? 1 : -1))
     const step = (value - v) / 13
@@ -101,6 +111,8 @@ function MarketCapSparkline({ value, positive }: { value: number; positive: bool
     points[points.length - 1] = value
     return points
   }, [value, positive])
+
+  if (data.length === 0) return null
 
   const w = 120
   const h = 40
@@ -139,6 +151,11 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
 
   const stats = useMemo(() => {
     const totalMarketCap = tokens.reduce((s, t) => s + t.marketCap, 0)
+    // No token reports a positive market cap → treat the index as
+    // "unavailable" rather than rendering "$0" with a misleading
+    // sparkline. Mirrors how `change24h === null` flows through the same
+    // card via `weightedChange === null`.
+    const hasAnyMarketCap = tokens.some(t => t.marketCap > 0)
     // Weight only tokens with known change24h so missing data doesn't drag
     // the index toward zero. If no token reports change24h, weightedChange is null.
     const tokensWithChange = tokens.filter(t => t.change24h !== null)
@@ -154,7 +171,7 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
       .filter(t => t.change24h !== null && t.change24h > 0)
       .sort((a, b) => (b.change24h ?? 0) - (a.change24h ?? 0))
       .slice(0, 3)
-    return { totalMarketCap, weightedChange, trending, gainers }
+    return { totalMarketCap, hasAnyMarketCap, weightedChange, trending, gainers }
   }, [tokens])
 
   const cards = [
@@ -164,7 +181,16 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
         <div className="flex items-start justify-between">
           <div>
             <div className="text-xs text-gray-500 mb-1.5 font-medium">Total Market Cap</div>
-            <div className="text-xl font-bold text-white mb-0.5">{formatMarketCap(stats.totalMarketCap)}</div>
+            {stats.hasAnyMarketCap ? (
+              <div className="text-xl font-bold text-white mb-0.5">{formatMarketCap(stats.totalMarketCap)}</div>
+            ) : (
+              <div
+                className="text-xl font-bold text-gray-500 mb-0.5"
+                title="Market cap data unavailable"
+              >
+                —
+              </div>
+            )}
             {stats.weightedChange === null ? (
               <span
                 className="text-xs font-medium text-gray-500"
@@ -178,10 +204,12 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
               </span>
             )}
           </div>
-          <MarketCapSparkline
-            value={stats.totalMarketCap}
-            positive={(stats.weightedChange ?? 0) >= 0}
-          />
+          {stats.hasAnyMarketCap && (
+            <MarketCapSparkline
+              value={stats.totalMarketCap}
+              positive={(stats.weightedChange ?? 0) >= 0}
+            />
+          )}
         </div>
       )
     },
