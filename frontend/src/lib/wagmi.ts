@@ -1,6 +1,7 @@
 'use client'
 
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { http } from 'viem'
 import { gooddollarL2 } from './chain'
 import { validateWcProjectId } from './wagmi-helpers'
 
@@ -57,4 +58,14 @@ export const config = getDefaultConfig({
   projectId: wcProjectIdForRainbowKit,
   chains: [gooddollarL2],
   ssr: true,
+  // Enable JSON-RPC batching at the HTTP transport layer. Viem coalesces
+  // requests that arrive within a small time window into a single
+  // batched JSON-RPC POST, which complements Multicall3 (wired in
+  // ./chain.ts) by also collapsing reads that don't go through
+  // `useReadContracts` (e.g. raw `useReadContract`, `getBlockNumber`,
+  // ENS lookups, balance reads). Belt-and-suspenders perf win — see
+  // task 0059.
+  transports: {
+    [gooddollarL2.id]: http(undefined, { batch: true }),
+  },
 })
