@@ -189,6 +189,19 @@ contract GoodSwap {
      * @param to          Recipient of the output tokens.
      * @param data        Non-empty triggers a flash-swap callback to `to`.
      */
+    // Reentrancy defense (slither reentrancy-no-eth — Uniswap-V2 flash-swap pattern):
+    //   - The `lock` modifier (lines 84-89) is the actual reentrancy guard. Every state-
+    //     mutating external function in this contract (mint, burn, swap, skim, sync) is
+    //     gated by `lock`, so a re-entrant call from `goodSwapCall` into any writer reverts
+    //     at the mutex check before touching state.
+    //   - State writes inside `_verifyAndUpdateSwap` -> `_update` (_reserve0, _reserve1,
+    //     _blockTimestampLast) happen AFTER the external `goodSwapCall` callback BY DESIGN.
+    //     This is the Uniswap-V2 flash-swap protocol: the recipient receives output tokens
+    //     and runs arbitrary logic before the constant-product invariant is enforced.
+    //     CEI reordering would break flash-swap semantics that routers and arb bots expect.
+    //   - See docs/security/goodswap-reentrancy-analysis.md for the full threat model,
+    //     cross-function reentrancy table, and read-only reentrancy assessment.
+    // slither-disable-next-line reentrancy-no-eth
     function swap(
         uint256 amount0Out,
         uint256 amount1Out,
