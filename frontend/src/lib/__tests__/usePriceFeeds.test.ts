@@ -155,3 +155,111 @@ describe('usePriceFeeds — shared singleton', () => {
     expect(fetchSpy.mock.calls.length).toBe(callsBefore + 1)
   })
 })
+
+// ─── Quotes (richer per-symbol data) ─────────────────────────────────────────
+
+describe('usePriceFeeds — quotes (change24h / volume24h / marketCap)', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    __resetPriceFeedStoreForTests()
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ethereum: {
+            usd: 3500,
+            usd_24h_change: -1.42,
+            usd_24h_vol: 18_500_000_000,
+            usd_market_cap: 362_000_000_000,
+          },
+          'usd-coin': {
+            usd: 1.0,
+            usd_24h_change: 0.01,
+            usd_24h_vol: 5_000_000_000,
+            usd_market_cap: 32_000_000_000,
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+    __resetPriceFeedStoreForTests()
+  })
+
+  it('initial state exposes an empty quotes object', () => {
+    const { result } = renderHook(() => usePriceFeeds(['ETH']))
+    expect(result.current.quotes).toEqual({})
+  })
+
+  it('requests the CoinGecko endpoint with the richer query-string params', async () => {
+    const { result } = renderHook(() => usePriceFeeds(['ETH']))
+    await waitFor(() => expect(result.current.isLive).toBe(true))
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const url = fetchSpy.mock.calls[0][0] as string
+    expect(url).toContain('include_24hr_change=true')
+    expect(url).toContain('include_24hr_vol=true')
+    expect(url).toContain('include_market_cap=true')
+  })
+
+    it('exposes change24h / volume24h / marketCap per symbol', async () => {
+      const { result } = renderHook(() => usePriceFeeds(['ETH', 'USDC', 'WETH']))
+
+      await waitFor(() => expect(result.current.isLive).toBe(true))
+
+      expect(result.current.quotes.ETH).toEqual({
+        price:     3500,
+        change24h: -1.42,
+        volume24h: 18_500_000_000,
+        marketCap: 362_000_000_000,
+      })
+      expect(result.current.quotes.USDC).toEqual({
+        price:     1.0,
+        change24h: 0.01,
+        volume24h: 5_000_000_000,
+        marketCap: 32_000_000_000,
+      })
+      // WETH shares the ETH CoinGecko id, so it should also resolve.
+      expect(result.current.quotes.WETH).toBeDefined()
+      expect(result.current.quotes.WETH.price).toBe(3500)
+    })
+
+  it('keeps prices map identical to before (backwards compat)', async () => {
+    const { result } = renderHook(() => usePriceFeeds(['ETH']))
+    await waitFor(() => expect(result.current.isLive).toBe(true))
+
+    expect(result.current.prices.ETH).toBe(3500)
+    expect(result.current.prices.USDC).toBe(1.0)
+  })
+
+  it('falls back to 0 for missing CoinGecko fields without crashing', async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ethereum: { usd: 3500 }, // no 24h change / vol / market cap
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    const { result } = renderHook(() => usePriceFeeds(['ETH']))
+    await waitFor(() => expect(result.current.isLive).toBe(true))
+
+    expect(result.current.quotes.ETH).toEqual({
+      price:     3500,
+      change24h: 0,
+      volume24h: 0,
+      marketCap: 0,
+    })
+  })
+
+  it('returns empty quotes when fetch fails', async () => {
+    fetchSpy.mockRejectedValueOnce(new Error('network down'))
+    const { result } = renderHook(() => usePriceFeeds(['ETH']))
+
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+    expect(result.current.quotes).toEqual({})
+  })
+})

@@ -92,7 +92,7 @@ export function useOnChainMarketData(): {
   isLive: boolean
   isLoading: boolean
 } {
-  const { prices: cgPrices, isLive: isCgLive } = usePriceFeeds(ALL_SYMBOLS)
+  const { prices: cgPrices, quotes: cgQuotes, isLive: isCgLive } = usePriceFeeds(ALL_SYMBOLS)
 
   const { data: onChainData, isLoading: isOnChainLoading } = useReadContracts({
     contracts: ON_CHAIN_CONTRACTS,
@@ -159,16 +159,27 @@ export function useOnChainMarketData(): {
         const price = prices[t.symbol] ?? FALLBACK_PRICES[t.symbol] ?? 0
         if (price === 0) return null
 
+        const quote = cgQuotes[t.symbol]
+
+        // For G$ we know the on-chain circulating supply, so we can compute
+        // an exact market cap. Other tokens use CoinGecko's market cap.
         const circulatingSupply = t.symbol === 'G$' ? gdCirculatingSupply : undefined
-        const marketCap = circulatingSupply ? circulatingSupply * price : 0
+        const marketCap = t.symbol === 'G$'
+          ? (circulatingSupply ? circulatingSupply * price : 0)
+          : (quote?.marketCap ?? 0)
+
+        // 24h change / volume come from CoinGecko. We don't have a 1h or 7d
+        // feed yet, so those stay at 0 (consumers already render "—" for 0).
+        const change24h = quote?.change24h ?? 0
+        const volume24h = quote?.volume24h ?? 0
 
         return {
           ...t,
           price,
           change1h:  0,
-          change24h: 0,
+          change24h,
           change7d:  0,
-          volume24h: 0,
+          volume24h,
           marketCap,
           sparkline7d: [price, price, price, price, price, price, price],
           description: TOKEN_DESCRIPTIONS[t.symbol] ?? `${t.name} token`,
@@ -177,7 +188,7 @@ export function useOnChainMarketData(): {
         }
       })
       .filter(Boolean) as TokenMarketData[]
-  }, [cgPrices, onChainData])
+  }, [cgPrices, cgQuotes, onChainData])
 
   const hasOnChainSuccess = onChainData?.some(d => d?.status === 'success') ?? false
   const isLive = isCgLive || hasOnChainSuccess

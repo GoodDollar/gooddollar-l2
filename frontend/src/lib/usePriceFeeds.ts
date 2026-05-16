@@ -71,30 +71,75 @@ export const FALLBACK_PRICES: Record<string, number> = {
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 const REFRESH_MS = 60_000
 
-async function fetchCoinGeckoPrices(symbols: string[]): Promise<Record<string, number>> {
-  const ids = Array.from(new Set(symbols.map(s => COINGECKO_IDS[s]).filter(Boolean)))
-  if (ids.length === 0) return {}
+/**
+ * Per-symbol market quote pulled from CoinGecko.
+ * Missing fields (e.g. for tokens CoinGecko doesn't surface volume on) fall
+ * back to 0 — callers should treat 0 as "not available" not "literally zero".
+ */
+export type Quote = {
+  price: number
+  /** 24h price change in percent, e.g. -1.42 means -1.42%. */
+  change24h: number
+  /** 24h trading volume in USD. */
+  volume24h: number
+  /** Market capitalisation in USD. */
+  marketCap: number
+}
 
-  const url = `${COINGECKO_BASE}/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
+interface CoinGeckoSimpleEntry {
+  usd?: number
+  usd_24h_change?: number
+  usd_24h_vol?: number
+  usd_market_cap?: number
+}
+
+async function fetchCoinGeckoQuotes(
+  symbols: string[],
+): Promise<{ prices: Record<string, number>; quotes: Record<string, Quote> }> {
+  const ids = Array.from(new Set(symbols.map(s => COINGECKO_IDS[s]).filter(Boolean)))
+  if (ids.length === 0) return { prices: {}, quotes: {} }
+
+  const url =
+    `${COINGECKO_BASE}/simple/price` +
+    `?ids=${ids.join(',')}` +
+    `&vs_currencies=usd` +
+    `&include_24hr_change=true` +
+    `&include_24hr_vol=true` +
+    `&include_market_cap=true`
+
   const res = await fetch(url, { next: { revalidate: 60 } })
   if (!res.ok) throw new Error(`CoinGecko ${res.status}`)
 
-  const data: Record<string, { usd: number }> = await res.json()
+  const data: Record<string, CoinGeckoSimpleEntry> = await res.json()
 
-  const out: Record<string, number> = {}
+  const prices: Record<string, number> = {}
+  const quotes: Record<string, Quote> = {}
   for (const sym of symbols) {
     const id = COINGECKO_IDS[sym]
-    if (id && data[id]?.usd) {
-      out[sym] = data[id].usd
+    if (!id) continue
+    const entry = data[id]
+    if (!entry || typeof entry.usd !== 'number') continue
+
+    prices[sym] = entry.usd
+    quotes[sym] = {
+      price:     entry.usd,
+      change24h: typeof entry.usd_24h_change   === 'number' ? entry.usd_24h_change   : 0,
+      volume24h: typeof entry.usd_24h_vol      === 'number' ? entry.usd_24h_vol      : 0,
+      marketCap: typeof entry.usd_market_cap   === 'number' ? entry.usd_market_cap   : 0,
     }
   }
-  return out
+  return { prices, quotes }
 }
 
 // ─── Public state shape ───────────────────────────────────────────────────────
 
 export interface PriceFeedState {
   prices: Record<string, number>
+  /**
+   * Per-symbol market quotes including price, 24h change %, 24h volume,
+   * and market cap. Empty until the first successful fetch.
+   */
+  quotes: Record<string, Quote>
   isLive: boolean
   lastUpdated: Date | null
   error: string | null
@@ -117,6 +162,7 @@ interface PriceFeedStore {
 const store: PriceFeedStore = {
   state: {
     prices: FALLBACK_PRICES,
+    quotes: {},
     isLive: false,
     lastUpdated: null,
     error: null,
@@ -142,9 +188,10 @@ async function refresh(): Promise<void> {
 
   store.inFlight = true
   try {
-    const live = await fetchCoinGeckoPrices(symbols)
+    const { prices: live, quotes } = await fetchCoinGeckoQuotes(symbols)
     store.state = {
       prices: { ...store.state.prices, ...live },
+      quotes: { ...store.state.quotes, ...quotes },
       isLive: Object.keys(live).length > 0,
       lastUpdated: new Date(),
       error: null,
@@ -213,6 +260,7 @@ export function __resetPriceFeedStoreForTests(): void {
   store.inFlight = false
   store.state = {
     prices: FALLBACK_PRICES,
+    quotes: {},
     isLive: false,
     lastUpdated: null,
     error: null,
