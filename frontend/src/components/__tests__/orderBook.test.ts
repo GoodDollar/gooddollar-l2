@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateOrderBook } from '../OrderBook'
+import { aggregateBookLevels, generateOrderBook } from '../OrderBook'
 
 // Task 0082 — the perps order book ladder must be strictly monotonic in price.
 // Real exchanges (Hyperliquid, Binance, Coinbase, dYdX, GMX) all render asks
@@ -81,6 +81,92 @@ describe('OrderBook — generateOrderBook', () => {
           expect(asks[i + 1].total).toBeLessThanOrEqual(asks[i].total)
         }
       }
+    }
+  })
+})
+
+// Task 0097 — when adjacent levels round to the same display string, the
+// rendered book must aggregate them into a single row. Real CLOBs do this
+// natively at the displayed tick; the mock generator produces continuous
+// floats that frequently collide after `formatPerpsPrice`'s 2-decimal cap
+// for prices >= $1000.
+describe('OrderBook — aggregateBookLevels', () => {
+  const fmt2 = (n: number) => n.toFixed(2)
+
+  it('passes through entries with distinct formatted prices unchanged', () => {
+    const input = [
+      { price: 100.55, size: 1, total: 1 },
+      { price: 100.45, size: 2, total: 3 },
+      { price: 100.35, size: 3, total: 6 },
+    ]
+    const out = aggregateBookLevels(input, fmt2)
+    expect(out).toHaveLength(3)
+    expect(out.map(r => r.price)).toEqual([100.55, 100.45, 100.35])
+    expect(out.map(r => r.size)).toEqual([1, 2, 3])
+    expect(out.map(r => r.total)).toEqual([1, 3, 6])
+  })
+
+  it('merges consecutive entries that round to the same display string', () => {
+    // Two adjacent levels that both render as "100.55" — must collapse.
+    const input = [
+      { price: 100.554, size: 1, total: 1 },
+      { price: 100.551, size: 2, total: 3 },
+      { price: 100.45, size: 3, total: 6 },
+    ]
+    const out = aggregateBookLevels(input, fmt2)
+    expect(out).toHaveLength(2)
+    expect(out[0].size).toBe(3) // 1 + 2
+    expect(out[1]).toEqual({ price: 100.45, size: 3, total: 6 })
+  })
+
+  it('sets merged total equal to the deepest underlying total in the group (input order = best→deep)', () => {
+    // Render-order convention: bid array is best→deep, totals grow as index grows.
+    // The deepest member of a merge group has the largest `total` and that's what
+    // the rendered row must show, otherwise rows farther from the spread would
+    // claim less depth than they actually represent.
+    const input = [
+      { price: 100.554, size: 1, total: 1 },
+      { price: 100.551, size: 2, total: 3 },
+      { price: 100.549, size: 4, total: 7 },
+    ]
+    const out = aggregateBookLevels(input, fmt2)
+    expect(out).toHaveLength(1)
+    expect(out[0].size).toBe(7) // 1 + 2 + 4
+    expect(out[0].total).toBe(7) // deepest member's total
+    expect(out[0].price).toBe(100.554) // first member's price (representative)
+  })
+
+  it('handles input ordered deep→best (asks after reverse): merged total equals deepest member total', () => {
+    // For asks, the array passed to render goes deep→best, so totals decrease
+    // as index grows. The deepest member of a merge group has the largest
+    // `total` — and is the FIRST entry of that group when iterating in render
+    // order. Aggregation must preserve "row farther from spread shows higher
+    // depth" so the merged total is the maximum total among merged entries.
+    const input = [
+      { price: 100.553, size: 4, total: 7 },
+      { price: 100.549, size: 2, total: 3 },
+      { price: 100.547, size: 1, total: 1 },
+    ]
+    const out = aggregateBookLevels(input, fmt2)
+    expect(out).toHaveLength(1)
+    expect(out[0].size).toBe(7)
+    expect(out[0].total).toBe(7) // max total of merged entries
+  })
+
+  it('returns empty array for empty input', () => {
+    expect(aggregateBookLevels([], fmt2)).toEqual([])
+  })
+
+  it('produces no two consecutive rows with the same formatted price', () => {
+    const input = [
+      { price: 100.554, size: 1, total: 1 },
+      { price: 100.551, size: 2, total: 3 },
+      { price: 100.45, size: 3, total: 6 },
+      { price: 100.453, size: 1, total: 7 }, // also renders as "100.45"
+    ]
+    const out = aggregateBookLevels(input, fmt2)
+    for (let i = 0; i + 1 < out.length; i++) {
+      expect(fmt2(out[i].price)).not.toBe(fmt2(out[i + 1].price))
     }
   })
 })
