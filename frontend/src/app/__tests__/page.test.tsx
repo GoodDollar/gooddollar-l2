@@ -44,6 +44,15 @@ vi.mock('@/components/PlatformShowcase', () => ({
   PlatformShowcase: () => <section>Platform Showcase</section>,
 }))
 
+vi.mock('@/components/SwapPriceChart', () => ({
+  SwapPriceChart: () => <div data-testid="swap-price-chart">Chart</div>,
+}))
+
+vi.mock('@/components/LandingSwapCard', () => ({
+  __esModule: true,
+  default: () => <div data-testid="swap-card" id="swap-card"><input data-testid="swap-input" /></div>,
+}))
+
 import Home from '../page'
 
 describe('Landing page — Start Swapping CTA', () => {
