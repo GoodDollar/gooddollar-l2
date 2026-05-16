@@ -206,17 +206,22 @@ contract StabilityPool {
             }
         }
 
-        require(
-            gusd.transferFrom(msg.sender, address(this), amount),
-            "SP: transfer failed"
-        );
-
+        // EFFECTS — apply all bookkeeping before any external call (CEI, task 0049).
+        // `nonReentrant` already guards classical reentrancy; CEI ordering is the
+        // defense-in-depth audit standard and silences slither's `reentrancy-no-eth`.
         deposits[msg.sender]             += amount;
         depositScaleSnapshot[msg.sender]  = scaleIndex;
         depositEpoch[msg.sender]          = drainEpoch;
         totalDeposits                    += amount;
 
         emit Deposited(msg.sender, amount);
+
+        // INTERACTIONS — external call last. Failure reverts the entire tx
+        // including the effects above, preserving correctness.
+        require(
+            gusd.transferFrom(msg.sender, address(this), amount),
+            "SP: transfer failed"
+        );
     }
 
     /**
@@ -267,14 +272,16 @@ contract StabilityPool {
         require(totalDeposits >= debtAmount, "SP: pool too small");
         require(collateralTokens[ilk] != address(0), "SP: ilk not registered");
 
-        // Pull collateral from VaultManager
         address colToken = collateralTokens[ilk];
-        require(
-            IERC20Transfer(colToken).transferFrom(msg.sender, address(this), collAmount),
-            "SP: collateral transfer failed"
-        );
 
-        // Accumulate gain per deposited gUSD (PRECISION-scaled)
+        // EFFECTS — apply all bookkeeping BEFORE the external collateral pull
+        // and the gUSD burn (CEI, task 0049). `nonReentrant` already guards
+        // classical reentrancy; CEI ordering is the defense-in-depth standard
+        // and silences slither's `reentrancy-no-eth`.
+
+        // Accumulate gain per deposited gUSD (PRECISION-scaled).
+        // Uses the pre-burn `totalDeposits` so the gainPerUnit is computed
+        // against the pool size that actually backed the liquidation.
         if (totalDeposits > 0) {
             uint256 gainPerUnit = (collAmount * PRECISION) / totalDeposits;
             cumulativeGainPerGUSD[ilk] += gainPerUnit;
@@ -282,9 +289,6 @@ contract StabilityPool {
             // Edge case: pool drained, hold as dust
             collateralDust[ilk] += collAmount;
         }
-
-        // Burn pool gUSD in place (StabilityPool holds the tokens, calls burn)
-        gusd.burn(debtAmount);
 
         // Update global scaleIndex to reflect the proportional reduction of deposits.
         // Each depositor's effective balance = deposits[user] * scaleIndex / depositScaleSnapshot[user].
@@ -305,6 +309,15 @@ contract StabilityPool {
         totalDeposits = remaining;
 
         emit Offset(ilk, debtAmount, collAmount);
+
+        // INTERACTIONS — external calls last. If either reverts, all effects
+        // above are reverted with the transaction.
+        require(
+            IERC20Transfer(colToken).transferFrom(msg.sender, address(this), collAmount),
+            "SP: collateral transfer failed"
+        );
+        // Burn pool gUSD in place (StabilityPool holds the tokens, calls burn)
+        gusd.burn(debtAmount);
     }
 
     // ============ Internal helpers ============
