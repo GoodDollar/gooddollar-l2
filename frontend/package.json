@@ -13,7 +13,9 @@
     "analyze": "ANALYZE=true npm run build",
     "check:landing-bundle": "node scripts/check-landing-bundle.mjs",
     "check:no-edge-middleware": "node scripts/check-middleware-absent.mjs",
-    "check:perf": "npm run check:no-edge-middleware && npm run check:landing-bundle",
+    "check:buildid-sync": "node scripts/check-buildid-sync.mjs",
+    "check:perf": "npm run check:no-edge-middleware && npm run check:landing-bundle && npm run check:buildid-sync",
+    "deploy": "bash scripts/deploy.sh",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
