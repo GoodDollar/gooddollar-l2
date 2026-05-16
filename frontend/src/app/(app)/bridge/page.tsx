@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,6 +11,25 @@ import {
 } from '@/lib/useLiFiRoute'
 import { parseUnits } from 'viem'
 import { sanitizeNumericInput } from '@/lib/format'
+
+// Max digits we let into amount inputs before committing to React state.
+// Without this, very long numbers cause `<input type="number">` to render
+// in scientific notation (e.g. `1.0000000200408772e+20`), which makes the
+// input unreadable and breaks cursor behavior. 18 integer + 8 decimal is
+// well beyond any legitimate bridge transfer in any token.
+const MAX_INT_DIGITS = 18
+const MAX_DEC_DIGITS = 8
+
+function capAmountDigits(raw: string): string {
+  const sanitized = sanitizeNumericInput(raw)
+  const dotIdx = sanitized.indexOf('.')
+  if (dotIdx === -1) {
+    return sanitized.slice(0, MAX_INT_DIGITS)
+  }
+  const intPart = sanitized.slice(0, dotIdx).slice(0, MAX_INT_DIGITS)
+  const decPart = sanitized.slice(dotIdx + 1).slice(0, MAX_DEC_DIGITS)
+  return decPart.length > 0 ? `${intPart}.${decPart}` : `${intPart}.`
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -200,6 +219,14 @@ export default function BridgePage() {
   const [nativeToken, setNativeToken] = useState<'ETH' | 'G$' | 'USDC'>('ETH')
   const [nativeAmount, setNativeAmount] = useState('')
 
+  const handleAmountChange = useCallback((raw: string) => {
+    setAmount(capAmountDigits(raw))
+  }, [])
+
+  const handleNativeAmountChange = useCallback((raw: string) => {
+    setNativeAmount(capAmountDigits(raw))
+  }, [])
+
   // Build Li.Fi quote params — only when connected and amount entered
   const quoteParams = useMemo(() => {
     if (!isConnected || !address || !amount || parseFloat(amount) <= 0) return null
@@ -309,7 +336,7 @@ export default function BridgePage() {
             min="0"
             placeholder="0.00"
             value={amount}
-            onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
+            onChange={e => handleAmountChange(e.target.value)}
             className="w-full bg-dark-50 border border-gray-700/40 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-goodgreen/50"
           />
         </div>
@@ -413,7 +440,7 @@ export default function BridgePage() {
             min="0"
             placeholder="0.00"
             value={nativeAmount}
-            onChange={e => setNativeAmount(sanitizeNumericInput(e.target.value))}
+            onChange={e => handleNativeAmountChange(e.target.value)}
             className="w-full bg-dark-50 border border-gray-700/40 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-goodgreen/50"
           />
         </div>
