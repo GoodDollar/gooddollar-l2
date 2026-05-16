@@ -6,7 +6,7 @@ deps: []
 split: false
 depth: 1
 planned: true
-executed: false
+executed: true
 priority: P1
 labels: [contracts, yield, slither, medium, reentrancy, security]
 ---

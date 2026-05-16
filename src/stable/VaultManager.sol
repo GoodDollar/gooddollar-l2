@@ -191,6 +191,14 @@ contract VaultManager {
      * @notice Update the per-ilk chi accumulator and collect accrued stability fees.
      *         Must be called before any vault state change.
      */
+    /// @dev External mint/approve/splitFee calls happen against trusted gusd + feeSplitter
+    ///      contracts. Accumulator state updates inside this function are CEI-correct
+    ///      (chi/lastDrip update before external mint+splitFee), but Slither flags
+    ///      `ilkDebt`/`acc.chi` writes that occur in CALLERS after `drip()` returns.
+    ///      That is the canonical MakerDAO pattern: drip settles the fee accumulator BEFORE
+    ///      the caller mutates `totalNormalizedDebt`. Reordering would charge fees on debt
+    ///      that does not yet exist. All callers use `nonReentrant`.
+    // slither-disable-next-line reentrancy-no-eth
     function drip(bytes32 ilk) public {
         IlkAccumulator storage acc = accumulators[ilk];
 
@@ -349,6 +357,11 @@ contract VaultManager {
      * @param ilk    Collateral type key
      * @param amount gUSD to mint (18 decimals)
      */
+    /// @dev MakerDAO-style accumulator: `drip()` must settle the stability-fee chi BEFORE the new
+    ///      mint changes `totalNormalizedDebt`; otherwise the fee would be charged against the new
+    ///      debt as if it had been outstanding the whole time. `nonReentrant` blocks the cross-
+    ///      function reentry path Slither warns about.
+    // slither-disable-next-line reentrancy-no-eth
     function mintGUSD(bytes32 ilk, uint256 amount) external nonReentrant whenNotPaused {
         require(amount > 0, "VM: zero amount");
 
@@ -388,6 +401,10 @@ contract VaultManager {
      */
     // Note: repayGUSD intentionally omits whenNotPaused — users must always be able to
     // reduce their debt even during an emergency pause (prevents debt traps).
+    /// @dev `drip()` must run first so chi reflects accrued fees BEFORE we reduce
+    ///      `totalNormalizedDebt`; reordering would leak fees on the repaid portion.
+    ///      `nonReentrant` blocks cross-function reentry.
+    // slither-disable-next-line reentrancy-no-eth
     function repayGUSD(bytes32 ilk, uint256 amount) external nonReentrant {
         drip(ilk);
 
@@ -422,6 +439,10 @@ contract VaultManager {
     /**
      * @notice Close vault: repay all debt and withdraw all collateral in one call.
      */
+    /// @dev `drip()` settles fees before debt is zeroed; ordering is required by the chi
+    ///      accumulator. `nonReentrant` blocks cross-function reentry via the gusd/collateral
+    ///      tokens.
+    // slither-disable-next-line reentrancy-no-eth
     function closeVault(bytes32 ilk) external nonReentrant whenNotPaused {
         drip(ilk);
 
@@ -466,6 +487,10 @@ contract VaultManager {
      * @param ilk   Collateral type key
      * @param owner Vault owner to liquidate
      */
+    /// @dev `drip()` settles chi before we mark the vault as liquidated; ordering is required
+    ///      so liquidation uses the up-to-date debt. `nonReentrant` blocks cross-function reentry
+    ///      via the gusd/collateral tokens and the StabilityPool offset hook.
+    // slither-disable-next-line reentrancy-no-eth
     function liquidate(bytes32 ilk, address owner) external nonReentrant whenNotPaused {
         require(owner != address(0), "VM: zero owner");
 

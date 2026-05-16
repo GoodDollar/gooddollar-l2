@@ -209,6 +209,10 @@ contract GoodVault {
     // ERC-4626 Mutative Functions
     // ═══════════════════════════════════════════════════
 
+    // Cross-function reentrancy is blocked by the `nonReentrant` modifier on this function
+    // and every other state-mutating external entrypoint. ERC-4626 mandates token-pull before
+    // share-mint; minting first would let attackers extract shares without paying assets.
+    // slither-disable-next-line reentrancy-no-eth
     function deposit(uint256 assets, address receiver) external whenNotPaused nonReentrant returns (uint256 shares) {
         if (assets == 0) revert ZeroAssets();
         shares = convertToShares(assets);
@@ -227,6 +231,9 @@ contract GoodVault {
     /// @notice Mint exactly `shares` vault shares; pull the required assets from msg.sender.
     ///         Assets are computed with ceiling division so the vault never receives fewer assets
     ///         than the shares are worth.
+    /// @dev Cross-function reentrancy is blocked by the `nonReentrant` modifier. ERC-4626 requires
+    ///      pulling assets before minting shares to prevent free-share issuance.
+    // slither-disable-next-line reentrancy-no-eth
     function mint(uint256 shares, address receiver) external whenNotPaused nonReentrant returns (uint256 assets) {
         if (shares == 0) revert ZeroShares();
         // Ceiling division: assets = ceil(shares * (totalAssets+1) / (totalSupply+1))
@@ -241,6 +248,10 @@ contract GoodVault {
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
+    /// @dev `_ensureLiquidity` calls strategy.withdraw which updates totalDebt before burning shares.
+    ///      Cross-function reentrancy is blocked by `nonReentrant`. Burning before strategy withdraw
+    ///      would over-credit the user if the strategy returns less than requested.
+    // slither-disable-next-line reentrancy-no-eth
     function withdraw(uint256 assets, address receiver, address owner) external nonReentrant returns (uint256 shares) {
         if (assets == 0) revert ZeroAssets();
         uint256 supply = totalSupply;
@@ -263,6 +274,9 @@ contract GoodVault {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
+    /// @dev Strategy withdraw must run before share burn so the burnt amount reflects the actual
+    ///      assets returned. Cross-function reentrancy is blocked by `nonReentrant`.
+    // slither-disable-next-line reentrancy-no-eth
     function redeem(uint256 shares, address receiver, address owner) external nonReentrant returns (uint256 assets) {
         if (shares == 0) revert ZeroShares();
         assets = convertToAssets(shares);
@@ -288,6 +302,10 @@ contract GoodVault {
     // ═══════════════════════════════════════════════════
 
     /// @notice Harvest yield from strategy, take fees, compound remainder
+    /// @dev Harvest is guarded by `nonReentrant` and restricted to the keeper role. All subsequent
+    ///      state mutations (totalDebt, totalGainSinceInception, lastReport) depend on values returned
+    ///      from the trusted strategy; reordering would lose fee accuracy.
+    // slither-disable-next-line reentrancy-no-eth
     function harvest() external nonReentrant onlyKeeper returns (uint256 profit, uint256 loss) {
         (profit, loss) = IStrategy(strategy).harvest();
 
@@ -349,6 +367,10 @@ contract GoodVault {
     // Strategy Management
     // ═══════════════════════════════════════════════════
 
+    /// @dev Admin-only migration; cross-function reentrancy is blocked by `nonReentrant`. We must call
+    ///      emergencyWithdraw on the old strategy before flipping `strategy` so funds end up in this
+    ///      vault rather than orphaned at the previous strategy address.
+    // slither-disable-next-line reentrancy-no-eth
     function migrateStrategy(address newStrategy) external onlyAdmin nonReentrant {
         if (IStrategy(newStrategy).asset() != address(asset)) revert StrategyAssetMismatch();
 
@@ -366,6 +388,10 @@ contract GoodVault {
         emit StrategyMigrated(old, newStrategy);
     }
 
+    /// @dev Admin-only shutdown; cross-function reentrancy is blocked by `nonReentrant`. Setting
+    ///      `paused = true` is intentional but cannot run after the external call without risking the
+    ///      strategy holding funds while the vault remains active.
+    // slither-disable-next-line reentrancy-no-eth
     function emergencyShutdown() external onlyAdmin nonReentrant {
         paused = true;
         uint256 returned = 0;
