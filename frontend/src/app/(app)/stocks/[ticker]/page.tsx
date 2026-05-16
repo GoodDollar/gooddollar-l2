@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { sanitizeNumericInput } from '@/lib/format'
+import { truncateMiddle } from '@/lib/strings'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic } from '@/lib/useStocks'
@@ -201,10 +202,23 @@ export default function StockDetailPage() {
   }, [stock, timeframe])
 
   if (!stock) {
+    // Defensive layout bound: a user-controlled URL segment like
+    // /stocks/<500 'A's> would otherwise render verbatim into the body and
+    // push the layout past the viewport, creating a site-wide horizontal
+    // scrollbar. Cap the visible form at 24 chars (real tickers are 1–5
+    // chars) and keep the full raw value reachable via the title attribute
+    // and the underlying URL.
+    const safeTicker = ticker ?? ''
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <h1 className="text-2xl font-bold text-white mb-3">Stock Not Found</h1>
-        <p className="text-sm text-gray-400 mb-6">The ticker &quot;{ticker}&quot; is not available.</p>
+        <p className="text-sm text-gray-400 mb-6 max-w-md break-all">
+          The ticker{' '}
+          <span className="font-mono text-white" title={safeTicker}>
+            &quot;{truncateMiddle(safeTicker, 24)}&quot;
+          </span>{' '}
+          is not available.
+        </p>
         <Link href="/stocks" className="px-6 py-3 rounded-xl bg-goodgreen text-white font-semibold hover:bg-goodgreen-600 transition-colors">
           Back to Stocks
         </Link>
