@@ -31,6 +31,14 @@ type SwapButtonProps = {
   onChainAmountOutMin?: bigint
   /** True when the selected pair is supported by GoodSwapRouter on devnet */
   pairOnChain?: boolean
+  /**
+   * Defense-in-depth gate: must be true to allow the modal to open.
+   * SwapCard sets this to false for sub-floor / zero-output inputs so the
+   * router never receives a zero-amount tx that would either revert on-chain
+   * (wasted gas) or succeed with `minimumReceived = 0` (slippage neutralised,
+   * sandwich risk). Defaults to true so legacy callers behave identically.
+   */
+  canSubmit?: boolean
   /** Called when user clicks swap with no amount entered — triggers input shake */
   onInvalidSubmit?: () => void
 }
@@ -57,6 +65,7 @@ export function SwapWalletActions(props: SwapWalletActionsProps) {
       ubiFee={props.ubiFee}
       onChainAmountOutMin={props.onChainAmountOutMin}
       pairOnChain={props.pairOnChain}
+      canSubmit={props.canSubmit}
       onInvalidSubmit={props.onInvalidSubmit}
     />
   )
@@ -77,6 +86,7 @@ function SwapButton({
   ubiFee = '',
   onChainAmountOutMin,
   pairOnChain = false,
+  canSubmit = true,
   onInvalidSubmit,
 }: {
   inputToken: Token
@@ -93,6 +103,7 @@ function SwapButton({
   ubiFee?: string
   onChainAmountOutMin?: bigint
   pairOnChain?: boolean
+  canSubmit?: boolean
   onInvalidSubmit?: () => void
 }) {
   const [showReview, setShowReview] = useState(false)
@@ -160,11 +171,27 @@ function SwapButton({
           <button
             onClick={onInvalidSubmit}
             className="w-full py-4 rounded-xl font-semibold text-base bg-dark-50 text-gray-400 cursor-not-allowed"
+            data-testid="swap-button-empty"
           >
             Enter an Amount
           </button>
           <p className="text-xs text-gray-500 text-center mt-3">
             Try swapping {inputToken.symbol} → {outputToken.symbol} — 0.1% of fees fund basic income for 640K+ people
+          </p>
+        </>
+      ) : !canSubmit ? (
+        <>
+          <button
+            onClick={onInvalidSubmit}
+            className="w-full py-4 rounded-xl font-semibold text-base bg-dark-50 text-gray-400 cursor-not-allowed"
+            data-testid="swap-button-dust-guard"
+            aria-disabled="true"
+          >
+            Amount Too Small
+          </button>
+          <p className="text-xs text-amber-400/90 text-center mt-3">
+            Output rounds to zero. Try a larger amount — sub-dust swaps would
+            waste gas and disable slippage protection.
           </p>
         </>
       ) : (
@@ -177,6 +204,7 @@ function SwapButton({
                 ? 'bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-500/50'
                 : 'bg-goodgreen text-white hover:bg-goodgreen-600 focus-visible:ring-goodgreen/50'
             }`}
+            data-testid="swap-button-active"
           >
             {buttonLabel()}
           </button>
@@ -185,7 +213,10 @@ function SwapButton({
       )}
 
       <SwapConfirmModal
-        open={showReview}
+        // Gate on canSubmit so that if a live quote refresh demotes a healthy
+        // amount to dust while the modal is already open, the modal hides
+        // before the user can confirm a zero-output swap.
+        open={showReview && canSubmit}
         onClose={handleClose}
         onConfirm={handleConfirm}
         inputAmount={inputAmount}

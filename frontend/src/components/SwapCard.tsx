@@ -210,6 +210,13 @@ export function SwapCard() {
 
   const hasAmount = !!inputAmount && parseFloat(inputAmount) > 0
 
+  // Defense-in-depth: only allow swap submission when the input is non-zero
+  // AND the on-chain quote produces a non-trivial output. Sub-floor outputs
+  // (rounded to 0 in the UI, or below FLOOR_THRESHOLD) would either revert
+  // on-chain (wasted gas) or accept `amountOutMin = 0`, which disables
+  // slippage protection and exposes the user to sandwich attacks.
+  const canSubmit = hasAmount && rawOutputAmount > 0 && !isBelowFloor
+
   return (
     <div id="swap-card" className="w-full max-w-[460px]">
       <div className="bg-dark-100 rounded-2xl border border-gray-700/30 shadow-xl overflow-hidden">
@@ -403,6 +410,7 @@ export function SwapCard() {
               ? onChainAmountOutWei * BigInt(Math.floor((1 - slippage / 100) * 10000)) / BigInt(10000)
               : onChainAmountOutWei}
             pairOnChain={pairOnChain}
+            canSubmit={canSubmit}
             onInvalidSubmit={() => setInputShake(p => p + 1)}
           />
         </div>
