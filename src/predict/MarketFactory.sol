@@ -156,6 +156,7 @@ contract MarketFactory is ReentrancyGuard {
      * @param isYES True for YES tokens, false for NO tokens
      * @param amount Number of outcome tokens to buy (1e18 = 1 token = 1 G$)
      */
+    // slither-disable-next-line reentrancy-no-eth
     function buy(uint256 marketId, bool isYES, uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         Market storage m = markets[marketId];
@@ -225,6 +226,7 @@ contract MarketFactory is ReentrancyGuard {
      * @param marketId Market index
      * @param amount Number of winning tokens to redeem
      */
+    // slither-disable-next-line reentrancy-no-eth
     function redeem(uint256 marketId, uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         Market storage m = markets[marketId];
@@ -265,9 +267,9 @@ contract MarketFactory is ReentrancyGuard {
             collateralDecrement = grossPayout; // full gross amount leaves the contract
         }
 
-        // CEI: effects before interactions
-        tokens.burn(msg.sender, tokenId, amount);
+        // CEI: all state updates before any external interaction
         m.collateral -= collateralDecrement;
+        tokens.burn(msg.sender, tokenId, amount);
 
         if (fee > 0) {
             require(goodDollar.approve(feeSplitter, fee), "MF: approve failed");

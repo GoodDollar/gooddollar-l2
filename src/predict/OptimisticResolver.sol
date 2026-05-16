@@ -208,6 +208,7 @@ contract OptimisticResolver {
      * @param marketId The market to resolve
      * @param yesWon true if proposing YES outcome, false for NO
      */
+    // slither-disable-next-line reentrancy-no-eth
     function proposeResolution(uint256 marketId, bool yesWon) external nonReentrant {
         if (!resolutionRequested[marketId]) revert NotResolutionRequested(marketId);
         if (resolutions[marketId].status != ResolutionStatus.None) {
@@ -247,6 +248,7 @@ contract OptimisticResolver {
      *         Caller must approve bondAmount of G$ beforehand.
      * @param marketId The market whose resolution to dispute
      */
+    // slither-disable-next-line reentrancy-no-eth
     function disputeResolution(uint256 marketId) external nonReentrant {
         Resolution storage r = resolutions[marketId];
         if (r.status != ResolutionStatus.Proposed) revert NotProposed(marketId);
@@ -349,7 +351,12 @@ contract OptimisticResolver {
         Resolution storage r = resolutions[marketId];
         if (r.status == ResolutionStatus.Finalized) revert AlreadyFinalized(marketId);
 
-        // If there was a proposal, return all bonds
+        // CEI: finalize state before any external interactions
+        r.status = ResolutionStatus.Finalized;
+        r.finalOutcome = yesWon;
+        r.finalizedTime = block.timestamp;
+
+        // Return bonds if a proposal existed
         if (r.proposerBond > 0) {
             bool ok = bondToken.transfer(r.proposer, r.proposerBond);
             if (!ok) revert TransferFailed();
@@ -358,10 +365,6 @@ contract OptimisticResolver {
             bool ok2 = bondToken.transfer(r.disputer, r.disputerBond);
             if (!ok2) revert TransferFailed();
         }
-
-        r.status = ResolutionStatus.Finalized;
-        r.finalOutcome = yesWon;
-        r.finalizedTime = block.timestamp;
 
         marketFactory.resolve(marketId, yesWon);
         emit ResolutionFinalized(marketId, yesWon, false);

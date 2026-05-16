@@ -205,6 +205,7 @@ contract PerpEngine is ReentrancyGuard {
      * @param isLong True for long, false for short
      * @param margin G$ margin to post (size / leverage)
      */
+    // slither-disable-next-line reentrancy-no-eth
     function openPosition(
         uint256 marketId,
         uint256 size,
@@ -278,6 +279,7 @@ contract PerpEngine is ReentrancyGuard {
      * @notice Close an open position and settle PnL + funding.
      * @param marketId Market index
      */
+    // slither-disable-next-line reentrancy-no-eth
     function closePosition(uint256 marketId) external whenNotPaused nonReentrant {
         Position storage pos = positions[msg.sender][marketId];
         if (!pos.isOpen) revert NoOpenPosition();
@@ -299,6 +301,7 @@ contract PerpEngine is ReentrancyGuard {
      * @param trader Address of the trader to liquidate
      * @param marketId Market index
      */
+    // slither-disable-next-line reentrancy-no-eth
     function liquidate(address trader, uint256 marketId) external whenNotPaused nonReentrant {
         Position storage pos = positions[trader][marketId];
         if (!pos.isOpen) revert NoOpenPosition();

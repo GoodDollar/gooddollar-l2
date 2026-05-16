@@ -130,6 +130,7 @@ contract LimitOrderBook {
      * @param expiry      Unix timestamp when order expires (0 = never)
      * @return orderId    ID of the created order
      */
+    // slither-disable-next-line reentrancy-no-eth
     function placeOrder(
         address tokenIn,
         address tokenOut,

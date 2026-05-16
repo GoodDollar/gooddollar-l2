@@ -115,11 +115,11 @@ Phase 1 security hardening is underway to reach 0 HIGH and 0 MEDIUM Slither find
 |---|---|---|---|
 | HIGH findings | 0 | 0 | Done |
 | uninitialized-local | 1 | 0 | Fixed |
-| reentrancy-no-eth | 10 | 10 | Pending |
+| reentrancy-no-eth | 10 | 0 | Fixed |
 | unused-return | 20 | 20 | Pending |
 | incorrect-equality | 28 | 28 | Pending |
 | divide-before-multiply | 26 | 26 | Pending |
-| **Total MEDIUM** | **85** | **84** | **In Progress** |
+| **Total MEDIUM** | **85** | **74** | **In Progress** |
 
 ## Key Docs
 

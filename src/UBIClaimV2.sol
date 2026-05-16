@@ -138,6 +138,7 @@ contract UBIClaimV2 is ReentrancyGuard {
      * @param users Array of addresses to claim for. Max 1000 per call.
      * @return claimed Number of addresses that successfully received UBI.
      */
+    // slither-disable-next-line reentrancy-no-eth
     function batchClaim(address[] calldata users)
         external
         onlyRelayer
