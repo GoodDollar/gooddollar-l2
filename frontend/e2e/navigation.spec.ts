@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Header navigation — desktop', () => {
-  test.use({ viewport: { width: 1280, height: 720 } })
+  test.use({ viewport: { width: 1600, height: 900 } })
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
@@ -14,7 +14,7 @@ test.describe('Header navigation — desktop', () => {
   })
 
   test('desktop nav has Swap, Explore, Pool, Bridge, Stocks, Predict, Perps, Lend links', async ({ page }) => {
-    const nav = page.locator('nav.hidden.sm\\:flex, header nav').first()
+    const nav = page.locator('nav.hidden.\\32 xl\\:flex, header nav').first()
     await expect(nav.getByRole('link', { name: 'Swap' })).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Explore' })).toBeVisible()
     await expect(nav.getByRole('link', { name: /Stocks/ })).toBeVisible()
@@ -82,7 +82,7 @@ test.describe('Header navigation — mobile', () => {
   })
 
   test('desktop nav is hidden on mobile', async ({ page }) => {
-    const desktopNav = page.locator('nav.hidden.sm\\:flex')
+    const desktopNav = page.locator('nav.hidden.\\32 xl\\:flex')
     await expect(desktopNav).toBeHidden()
   })
 

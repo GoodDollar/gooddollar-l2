@@ -83,9 +83,56 @@ describe('Header', () => {
 
   it('Pool and Bridge in desktop nav show Soon badges', () => {
     render(<Header />)
-    const desktopNav = document.querySelector('nav.hidden.sm\\:flex')!
+    const desktopNav = document.querySelector('nav.hidden.\\32 xl\\:flex')!
     const soonBadges = desktopNav.querySelectorAll('[data-testid="soon-badge"]')
     expect(soonBadges.length).toBe(2)
+  })
+
+  it('does NOT include the "Tests" link in the desktop inline nav', () => {
+    // The "Tests" link is for the internal Foundry test dashboard.
+    // It should NOT clutter the primary product nav at desktop widths.
+    // It remains available via the mobile menu and the direct /test-dashboard URL.
+    render(<Header />)
+    const desktopNav = document.querySelector('nav.hidden.\\32 xl\\:flex')!
+    expect(desktopNav.textContent).not.toContain('Tests')
+  })
+
+  it('still includes the "Tests" link in the mobile menu', () => {
+    // Removing Tests from the desktop inline nav must NOT remove it from the
+    // mobile menu — devs / QA still need a way to navigate there.
+    render(<Header />)
+    fireEvent.click(screen.getByLabelText('Open menu'))
+    const mobileNav = screen.getByTestId('mobile-nav')
+    expect(mobileNav.textContent).toContain('Tests')
+    const links = mobileNav.querySelectorAll('a')
+    const hrefs = Array.from(links).map(l => l.getAttribute('href'))
+    expect(hrefs).toContain('/test-dashboard')
+  })
+
+  it('uses 2xl breakpoint for desktop nav (not sm/lg/xl) to avoid clipping WalletButton at 1280px', () => {
+    // Regression test: with 14+ nav links, the inline desktop nav does not fit
+    // inside a 1280px viewport (the xl breakpoint). The desktop nav must
+    // therefore only appear at 2xl (1536px+); below that, the mobile menu is used.
+    render(<Header />)
+    const desktopNav = document.querySelector('nav.hidden.\\32 xl\\:flex')
+    expect(desktopNav).not.toBeNull()
+    // The sm:flex, lg:flex, and xl:flex versions must NOT exist anymore.
+    const oldSmNav = document.querySelector('nav.hidden.sm\\:flex')
+    expect(oldSmNav).toBeNull()
+    const oldLgNav = document.querySelector('nav.hidden.lg\\:flex')
+    expect(oldLgNav).toBeNull()
+    const oldXlNav = document.querySelector('nav.hidden.xl\\:flex')
+    expect(oldXlNav).toBeNull()
+  })
+
+  it('hamburger button is hidden at 2xl breakpoint (matching mobile menu visibility)', () => {
+    render(<Header />)
+    const hamburger = screen.getByLabelText('Open menu')
+    expect(hamburger.className).toMatch(/\b2xl:hidden\b/)
+    expect(hamburger.className).not.toMatch(/\bsm:hidden\b/)
+    expect(hamburger.className).not.toMatch(/\blg:hidden\b/)
+    // Note: "2xl:hidden" contains "xl:hidden" as substring, so we can't use a
+    // negated regex with \b. Instead we explicitly checked the positive match above.
   })
 
   it('Pool and Bridge in mobile menu show Coming Soon badges', () => {

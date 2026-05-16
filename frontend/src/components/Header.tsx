@@ -54,7 +54,7 @@ export function Header() {
 
   return (
     <header className="w-full border-b border-dark-50/50 bg-dark-100/80 backdrop-blur-md relative z-50">
-      <div className="max-w-5xl mx-auto flex items-center justify-between px-4 h-16">
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 h-16">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-goodgreen flex items-center justify-center font-bold text-dark text-sm">
             G$
@@ -62,7 +62,7 @@ export function Header() {
           <span className="text-lg font-semibold text-white">GoodDollar</span>
         </div>
 
-        <nav className="hidden sm:flex items-center gap-6 text-sm text-gray-400">
+        <nav className="hidden 2xl:flex items-center gap-5 text-sm text-gray-400">
           <Link href="/" className={isSwap ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Swap</Link>
           <Link href="/explore" className={isExplore ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Explore</Link>
           <Link href="/pool" className={`flex items-center gap-1.5 ${isPool ? 'text-white font-medium' : 'hover:text-white transition-colors'}`}>
@@ -92,7 +92,6 @@ export function Header() {
               Activity
             </span>
           </Link>
-          <Link href="/test-dashboard" className={isTestDashboard ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Tests</Link>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -108,7 +107,7 @@ export function Header() {
           <button
             aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setMobileMenuOpen(o => !o)}
-            className="sm:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-50 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
+            className="2xl:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-50 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
           >
             {mobileMenuOpen ? (
               <X className="w-5 h-5" />
@@ -123,14 +122,14 @@ export function Header() {
       {mobileMenuOpen && (
         <>
         <div
-          className="fixed inset-0 z-40 bg-black/50 sm:hidden"
+          className="fixed inset-0 z-40 bg-black/50 2xl:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
         <div
           ref={menuRef}
           data-testid="mobile-nav"
-          className="sm:hidden border-t border-dark-50/50 bg-dark-100 backdrop-blur-md animate-in slide-in-from-top-2 duration-200 relative z-50"
+          className="2xl:hidden border-t border-dark-50/50 bg-dark-100 backdrop-blur-md animate-in slide-in-from-top-2 duration-200 relative z-50"
         >
           <nav className="flex flex-col px-4 py-3 gap-1">
             <Link
