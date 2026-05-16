@@ -40,6 +40,11 @@ const DEVNET_DECIMALS: Record<string, number> = {
   WETH: 18,
 }
 
+// A reserve is "live" when it has a deployed devnet address. Everything else
+// is roadmap-only and must not show fabricated supply/borrow/APY numbers.
+const LIVE_SYMBOLS = new Set(Object.keys(DEVNET_RESERVE_ADDRESSES))
+const isLiveReserve = (symbol: string) => LIVE_SYMBOLS.has(symbol)
+
 // ─── Health Factor Gauge ──────────────────────────────────────────────────────
 
 function HealthFactorGauge({ hf }: { hf: number }) {
@@ -486,9 +491,48 @@ function MarketsTable({
           </thead>
           <tbody>
             {reserves.map(r => {
+              const isLive = isLiveReserve(r.symbol)
+              const isSelected = selectedSymbol === r.symbol
+
+              if (!isLive) {
+                // Non-live reserves: show the symbol with a "Coming Soon" badge
+                // and hide all fabricated numbers behind an em dash. Row is not
+                // clickable so the action panel cannot open against a market
+                // that has no deployed contract.
+                return (
+                  <tr
+                    key={r.symbol}
+                    aria-disabled="true"
+                    className="border-b border-gray-700/10 last:border-0 cursor-not-allowed opacity-70"
+                  >
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-gray-700/20 border border-gray-700/30 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0">
+                          {r.symbol.slice(0, 2)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-gray-300">{r.symbol}</p>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-gray-700/40 text-gray-400 text-[9px] font-semibold uppercase tracking-wider">
+                              Coming Soon
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-500">Not yet deployed</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
+                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
+                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
+                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
+                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
+                    <td className="px-5 py-3.5 text-right text-gray-500">—</td>
+                  </tr>
+                )
+              }
+
               const utilization = getUtilizationRate(r)
               const available = getAvailableLiquidity(r)
-              const isSelected = selectedSymbol === r.symbol
               return (
                 <tr
                   key={r.symbol}
@@ -588,6 +632,14 @@ export default function LendPage() {
     })
   }, [mockReserves, usdcData, wethData])
 
+  // Only reserves with deployed contracts count toward headline TVL/borrow/UBI
+  // figures. Mixing fabricated rows into the totals overstates real on-chain
+  // activity by orders of magnitude.
+  const liveReserves = useMemo(
+    () => reserves.filter(r => isLiveReserve(r.symbol)),
+    [reserves]
+  )
+
   const { address, isConnected } = useConnectedAccount()
   const { data: onChainAccount } = useOnChainAccountData(address)
 
@@ -630,8 +682,8 @@ export default function LendPage() {
       </div>
 
       <InfoBanner
-        title="Devnet Preview — Mock Data"
-        description="Most market figures (WBTC, DAI, G$) are hardcoded demo values. USDC and WETH supply/borrow rates are live from devnet contracts. Real on-chain data for all markets coming soon."
+        title="Devnet Preview"
+        description="USDC and WETH markets are live on devnet with real on-chain rates. WBTC, DAI, and G$ are not yet deployed and show no market data."
         storageKey="gd-banner-dismissed-lend"
       />
 
@@ -661,28 +713,32 @@ export default function LendPage() {
             <MarketsTable
               reserves={reserves}
               selectedSymbol={selectedSymbol}
-              onSelect={sym => setSelectedSymbol(sym === selectedSymbol ? null : sym)}
+              onSelect={sym =>
+                isLiveReserve(sym) && setSelectedSymbol(sym === selectedSymbol ? null : sym)
+              }
             />
 
-            {/* Protocol stats */}
+            {/* Protocol stats — live reserves only, so headline TVL/borrow/UBI
+                figures reflect real on-chain devnet activity instead of mock
+                values from yet-to-be-deployed markets. */}
             <div className="grid grid-cols-3 gap-3 mt-4">
               <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 text-center">
                 <p className="text-xs text-gray-400 mb-1">Total Value Locked</p>
                 <p className="text-base font-bold text-white">
-                  {formatUSD(reserves.reduce((s, r) => s + r.totalSupplied * r.price, 0))}
+                  {formatUSD(liveReserves.reduce((s, r) => s + r.totalSupplied * r.price, 0))}
                 </p>
               </div>
               <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 text-center">
                 <p className="text-xs text-gray-400 mb-1">Total Borrowed</p>
                 <p className="text-base font-bold text-white">
-                  {formatUSD(reserves.reduce((s, r) => s + r.totalBorrowed * r.price, 0))}
+                  {formatUSD(liveReserves.reduce((s, r) => s + r.totalBorrowed * r.price, 0))}
                 </p>
               </div>
               <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 text-center">
                 <p className="text-xs text-gray-400 mb-1">UBI Revenue / yr</p>
                 <p className="text-base font-bold text-goodgreen">
                   {formatUSD(
-                    reserves.reduce((s, r) =>
+                    liveReserves.reduce((s, r) =>
                       s + r.totalBorrowed * r.price * r.borrowAPY * (r.reserveFactorBPS / 10_000) * 0.2,
                       0
                     )
@@ -754,7 +810,7 @@ export default function LendPage() {
       )}
 
       <p className="text-xs text-gray-600 text-center mt-4">
-        Market figures shown are devnet demo values. Live on-chain data coming soon.
+        Live markets show real devnet data. Greyed markets are not yet deployed.
       </p>
     </div>
   )
