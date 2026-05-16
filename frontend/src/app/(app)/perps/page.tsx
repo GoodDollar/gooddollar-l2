@@ -125,47 +125,56 @@ function PairSelector({ pairs, selected, onSelect }: { pairs: PerpPair[]; select
 }
 
 function PairInfoBar({ pair }: { pair: PerpPair }) {
+  // Mobile (≤640px): 2-column grid of stacked label/value tiles, so each
+  // stat reads as a single unit. Desktop (≥640px): inline flex-wrap, identical
+  // to the previous layout. See task 0099.
+  const tileCls = "flex flex-col sm:flex-row sm:items-baseline"
+  const labelCls =
+    "text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs sm:normal-case sm:tracking-normal"
   return (
-    <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-3 sm:gap-6 text-xs py-2">
-      <div>
-        <span className="text-gray-500">Mark</span>
-        <span className="text-white font-medium ml-1.5">{formatPerpsPrice(pair.markPrice)}</span>
+    <div
+      data-testid="pair-info-bar"
+      className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 gap-y-2 sm:gap-x-6 sm:gap-y-0 text-xs py-2"
+    >
+      <div className={tileCls}>
+        <span className={labelCls}>Mark</span>
+        <span className="text-white font-medium sm:ml-1.5">{formatPerpsPrice(pair.markPrice)}</span>
       </div>
-      <div>
-        <span className="text-gray-500">24h</span>
-        <span className="font-medium ml-1.5">
+      <div className={tileCls}>
+        <span className={labelCls}>24h</span>
+        <span className="font-medium sm:ml-1.5">
           <PercentageChange value={pair.change24h} decimals={2} showSign size="sm" />
         </span>
       </div>
       {pair.high24h != null && (
-        <div>
-          <span className="text-gray-500">24h H</span>
-          <span className="text-green-400 font-medium ml-1.5">{formatPerpsPrice(pair.high24h)}</span>
+        <div className={tileCls}>
+          <span className={labelCls}>24h H</span>
+          <span className="text-green-400 font-medium sm:ml-1.5">{formatPerpsPrice(pair.high24h)}</span>
         </div>
       )}
       {pair.low24h != null && (
-        <div>
-          <span className="text-gray-500">24h L</span>
-          <span className="text-red-400 font-medium ml-1.5">{formatPerpsPrice(pair.low24h)}</span>
+        <div className={tileCls}>
+          <span className={labelCls}>24h L</span>
+          <span className="text-red-400 font-medium sm:ml-1.5">{formatPerpsPrice(pair.low24h)}</span>
         </div>
       )}
-      <div>
-        <span className="text-gray-500">Vol</span>
-        <span className="text-white font-medium ml-1.5">{formatLargeValue(pair.volume24h)}</span>
+      <div className={tileCls}>
+        <span className={labelCls}>Vol</span>
+        <span className="text-white font-medium sm:ml-1.5">{formatLargeValue(pair.volume24h)}</span>
       </div>
-      <div>
-        <span className="text-gray-500">Funding</span>
-        <span className={`font-medium ml-1.5 ${pair.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+      <div className={tileCls}>
+        <span className={labelCls}>Funding</span>
+        <span className={`font-medium sm:ml-1.5 ${pair.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
           {formatFundingRate(pair.fundingRate)}
         </span>
       </div>
-      <div>
-        <span className="text-gray-500">Funding in</span>
-        <span className="text-gray-300 ml-1.5">{getFundingCountdown(pair.nextFundingTime)}</span>
+      <div className={tileCls}>
+        <span className={labelCls}>Funding in</span>
+        <span className="text-gray-300 sm:ml-1.5">{getFundingCountdown(pair.nextFundingTime)}</span>
       </div>
-      <div>
-        <span className="text-gray-500">OI</span>
-        <span className="text-white font-medium ml-1.5">{formatLargeValue(pair.openInterest)}</span>
+      <div className={tileCls}>
+        <span className={labelCls}>OI</span>
+        <span className="text-white font-medium sm:ml-1.5">{formatLargeValue(pair.openInterest)}</span>
       </div>
     </div>
   )
