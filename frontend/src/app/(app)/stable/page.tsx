@@ -141,6 +141,19 @@ function VaultPanel({ ilkKey, prices }: { ilkKey: IlkKey; prices: Record<string,
   const maxMint     = vault ? maxMintable(vault.collateralFloat, price, liquidationRatio, vault.actualDebtFloat) : 0
   const maxRepay    = vault ? Math.min(vault.actualDebtFloat, gusdBalance) : 0
 
+  const parsedAmount = parseFloat(amount) || 0
+
+  function maxForTab(currentTab: StableActionKind): number {
+    if (currentTab === 'deposit')  return maxDeposit
+    if (currentTab === 'withdraw') return maxWithdraw
+    if (currentTab === 'mint')     return maxMint
+    if (currentTab === 'repay')    return maxRepay
+    return Infinity
+  }
+
+  const isOverMax = (currentTab: StableActionKind) =>
+    currentTab !== 'close' && parsedAmount > maxForTab(currentTab)
+
   function handleMax(currentTab: StableActionKind) {
     const maxVal =
       currentTab === 'deposit'  ? maxDeposit :
@@ -157,6 +170,7 @@ function VaultPanel({ ilkKey, prices }: { ilkKey: IlkKey; prices: Record<string,
       return
     }
     if (!amount || !address) return
+    if (isOverMax(currentTab)) return
     execute(currentTab, ilkKey, amount, ilkMeta.tokenAddress, ilkMeta.decimals)
       .then(() => { if (phase === 'done') setAmount('') })
   }
@@ -249,7 +263,11 @@ function VaultPanel({ ilkKey, prices }: { ilkKey: IlkKey; prices: Record<string,
                       placeholder="0.00"
                       value={amount}
                       onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
-                      className="w-full bg-dark-50/50 border border-dark-50 rounded-xl px-4 py-3 pr-20 text-white text-base placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-goodgreen/40"
+                      className={`w-full bg-dark-50/50 border rounded-xl px-4 py-3 pr-20 text-white text-base placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-goodgreen/40 transition-colors ${
+                        isOverMax(currentTab) ? 'border-red-500/50' : 'border-dark-50'
+                      }`}
+                      aria-invalid={isOverMax(currentTab)}
+                      aria-describedby={isOverMax(currentTab) ? `${ilkKey}-${currentTab}-error` : undefined}
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                       <button
@@ -271,6 +289,15 @@ function VaultPanel({ ilkKey, prices }: { ilkKey: IlkKey; prices: Record<string,
                     {currentTab === 'mint'     && `Max safe: ${fmt(maxMint, 2)} gUSD`}
                     {currentTab === 'repay'    && `Outstanding: ${fmt(maxRepay, 2)} gUSD`}
                   </div>
+
+                  {isOverMax(currentTab) && (
+                    <p
+                      id={`${ilkKey}-${currentTab}-error`}
+                      className="text-xs text-red-400 mb-3 -mt-1"
+                    >
+                      Exceeds available {currentTab === 'mint' || currentTab === 'repay' ? 'gUSD' : cfg.label}
+                    </p>
+                  )}
                 </>
               )}
 
@@ -284,7 +311,11 @@ function VaultPanel({ ilkKey, prices }: { ilkKey: IlkKey; prices: Record<string,
                       handleSubmit(currentTab)
                     }
                   }}
-                  disabled={busy || (currentTab !== 'close' && !amount && phase === 'idle')}
+                  disabled={
+                    busy ||
+                    (currentTab !== 'close' && !amount && phase === 'idle') ||
+                    isOverMax(currentTab)
+                  }
                   className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.99] ${
                     phase === 'done'
                       ? 'bg-goodgreen/20 text-goodgreen border border-goodgreen/30'
