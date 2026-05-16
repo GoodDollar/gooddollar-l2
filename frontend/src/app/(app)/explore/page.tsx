@@ -61,8 +61,18 @@ const TokenRow = memo(function TokenRow({ token, idx, onRowClick, onSwapClick }:
       <td className="py-3 px-3 text-right text-gray-300 hidden md:table-cell">
         {formatMarketCap(token.marketCap)}
       </td>
-      <td className="py-3 px-2 hidden lg:table-cell" aria-label={`7-day trend: ${token.change7d >= 0 ? 'up' : 'down'} ${Math.abs(token.change7d).toFixed(1)}%`}>
-        <Sparkline data={token.sparkline7d} positive={token.change24h >= 0} />
+      <td
+        className="py-3 px-2 hidden lg:table-cell"
+        aria-label={
+          token.change7d === null
+            ? '7-day trend: unavailable'
+            : `7-day trend: ${token.change7d >= 0 ? 'up' : 'down'} ${Math.abs(token.change7d).toFixed(1)}%`
+        }
+      >
+        <Sparkline
+          data={token.sparkline7d}
+          positive={(token.change24h ?? 0) >= 0}
+        />
       </td>
       <td className="py-3 px-1 text-right w-20 hidden sm:table-cell">
         <button
@@ -127,9 +137,21 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
 
   const stats = useMemo(() => {
     const totalMarketCap = tokens.reduce((s, t) => s + t.marketCap, 0)
-    const weightedChange = tokens.reduce((s, t) => s + t.change24h * t.marketCap, 0) / (totalMarketCap || 1)
-    const trending = [...tokens].sort((a, b) => b.volume24h - a.volume24h).slice(0, 3)
-    const gainers = [...tokens].filter(t => t.change24h > 0).sort((a, b) => b.change24h - a.change24h).slice(0, 3)
+    // Weight only tokens with known change24h so missing data doesn't drag
+    // the index toward zero. If no token reports change24h, weightedChange is null.
+    const tokensWithChange = tokens.filter(t => t.change24h !== null)
+    const weightedMarketCap = tokensWithChange.reduce((s, t) => s + t.marketCap, 0)
+    const weightedChange = weightedMarketCap > 0
+      ? tokensWithChange.reduce((s, t) => s + (t.change24h ?? 0) * t.marketCap, 0) / weightedMarketCap
+      : null
+    const trending = [...tokens]
+      .filter(t => t.volume24h !== null && t.volume24h > 0)
+      .sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0))
+      .slice(0, 3)
+    const gainers = [...tokens]
+      .filter(t => t.change24h !== null && t.change24h > 0)
+      .sort((a, b) => (b.change24h ?? 0) - (a.change24h ?? 0))
+      .slice(0, 3)
     return { totalMarketCap, weightedChange, trending, gainers }
   }, [tokens])
 
@@ -141,11 +163,23 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
           <div>
             <div className="text-xs text-gray-500 mb-1.5 font-medium">Total Market Cap</div>
             <div className="text-xl font-bold text-white mb-0.5">{formatMarketCap(stats.totalMarketCap)}</div>
-            <span className={`text-xs font-medium ${stats.weightedChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {stats.weightedChange >= 0 ? '▲' : '▼'} {Math.abs(stats.weightedChange).toFixed(2)}% (24h)
-            </span>
+            {stats.weightedChange === null ? (
+              <span
+                className="text-xs font-medium text-gray-500"
+                title="24h change data unavailable"
+              >
+                — (24h)
+              </span>
+            ) : (
+              <span className={`text-xs font-medium ${stats.weightedChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {stats.weightedChange >= 0 ? '▲' : '▼'} {Math.abs(stats.weightedChange).toFixed(2)}% (24h)
+              </span>
+            )}
           </div>
-          <MarketCapSparkline value={stats.totalMarketCap} positive={stats.weightedChange >= 0} />
+          <MarketCapSparkline
+            value={stats.totalMarketCap}
+            positive={(stats.weightedChange ?? 0) >= 0}
+          />
         </div>
       )
     },
@@ -167,9 +201,13 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400">{formatPrice(t.price)}</span>
-                  <span className={t.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                    {t.change24h >= 0 ? '▲' : '▼'}{Math.abs(t.change24h).toFixed(1)}%
-                  </span>
+                  {t.change24h === null ? (
+                    <span className="text-gray-500" title="24h change unavailable">—</span>
+                  ) : (
+                    <span className={t.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      {t.change24h >= 0 ? '▲' : '▼'}{Math.abs(t.change24h).toFixed(1)}%
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -208,7 +246,7 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400">{formatPrice(t.price)}</span>
                   <span className="text-green-400">
-                    ▲{t.change24h.toFixed(1)}%
+                    ▲{(t.change24h ?? 0).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -392,7 +430,14 @@ function ExplorePageContent() {
     }
     return [...tokens].sort((a, b) => {
       const mul = sortDir === 'asc' ? 1 : -1
-      return (a[sortField] - b[sortField]) * mul
+      const av = a[sortField]
+      const bv = b[sortField]
+      // Null values always sort to the bottom — "no data" is worse than any
+      // value, regardless of sort direction.
+      if (av === null && bv === null) return 0
+      if (av === null) return 1
+      if (bv === null) return -1
+      return (av - bv) * mul
     })
   }, [data, query, selectedCategory, sortField, sortDir])
 

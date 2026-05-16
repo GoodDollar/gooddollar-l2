@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { formatPrice, formatVolume, formatMarketCap } from '@/lib/marketData'
 import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
 import { TokenIcon } from '@/components/TokenIcon'
+import { PercentageChange } from '@/components/ui/percentage-change'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import dynamic from 'next/dynamic'
 
@@ -220,9 +221,15 @@ export default function TokenDetailPage() {
 
           <div className="flex items-baseline gap-3 mb-4">
             <span className="text-3xl font-bold text-white">{formatPrice(token.price)}</span>
-            <span className={`text-sm font-medium ${token.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {token.change24h >= 0 ? '+' : ''}{token.change24h.toFixed(2)}%
-              <span className="text-gray-500 ml-1 text-xs">24h</span>
+            <span className="text-sm font-medium inline-flex items-baseline gap-1">
+              <PercentageChange
+                value={token.change24h}
+                size="sm"
+                showSign
+                showIcon={false}
+                unavailableLabel="24h change unavailable"
+              />
+              <span className="text-gray-500 text-xs">24h</span>
             </span>
           </div>
 
@@ -255,15 +262,23 @@ export default function TokenDetailPage() {
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">1h Change</div>
-                <div className={`font-medium ${token.change1h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {token.change1h >= 0 ? '+' : ''}{token.change1h.toFixed(2)}%
-                </div>
+                <PercentageChange
+                  value={token.change1h}
+                  size="sm"
+                  showSign
+                  showIcon={false}
+                  unavailableLabel="1h change unavailable"
+                />
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">7d Change</div>
-                <div className={`font-medium ${token.change7d >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {token.change7d >= 0 ? '+' : ''}{token.change7d.toFixed(2)}%
-                </div>
+                <PercentageChange
+                  value={token.change7d}
+                  size="sm"
+                  showSign
+                  showIcon={false}
+                  unavailableLabel="7d change unavailable"
+                />
               </div>
               {token.circulatingSupply && (
                 <div>

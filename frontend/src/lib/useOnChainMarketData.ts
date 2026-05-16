@@ -168,20 +168,21 @@ export function useOnChainMarketData(): {
           ? (circulatingSupply ? circulatingSupply * price : 0)
           : (quote?.marketCap ?? 0)
 
-        // 24h change / volume come from CoinGecko. We don't have a 1h or 7d
-        // feed yet, so those stay at 0 (consumers already render "—" for 0).
-        const change24h = quote?.change24h ?? 0
-        const volume24h = quote?.volume24h ?? 0
+        // Pass through CoinGecko fields with `null` sentinels when missing so
+        // the UI can render a neutral placeholder instead of misleading zeros.
+        // We don't have on-chain 1h or 7d feeds yet, so they stay null too.
+        const change24h = quote?.change24h ?? null
+        const volume24h = quote?.volume24h ?? null
 
         return {
           ...t,
           price,
-          change1h:  0,
+          change1h:  null,
           change24h,
-          change7d:  0,
+          change7d:  null,
           volume24h,
           marketCap,
-          sparkline7d: [price, price, price, price, price, price, price],
+          sparkline7d: null,
           description: TOKEN_DESCRIPTIONS[t.symbol] ?? `${t.name} token`,
           circulatingSupply,
           maxSupply: t.symbol === 'G$' ? null : undefined,

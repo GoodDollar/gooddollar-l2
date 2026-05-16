@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { formatPrice, formatVolume, getTokenBySymbol, getTokenMarketData } from '@/lib/marketData'
+import {
+  formatPrice,
+  formatVolume,
+  formatMarketCap,
+  getTokenBySymbol,
+  getTokenMarketData,
+  MARKET_DATA_PLACEHOLDER,
+} from '@/lib/marketData'
 
 describe('formatPrice', () => {
   it('formats large prices with locale comma separators', () => {
@@ -39,6 +46,32 @@ describe('formatVolume', () => {
 
   it('formats sub-thousand values', () => {
     expect(formatVolume(123)).toBe('$123')
+  })
+
+  it('returns the unavailable placeholder for null', () => {
+    expect(formatVolume(null)).toBe(MARKET_DATA_PLACEHOLDER)
+  })
+
+  it('returns the unavailable placeholder for undefined', () => {
+    expect(formatVolume(undefined)).toBe(MARKET_DATA_PLACEHOLDER)
+  })
+
+  it('still formats zero as a real value (not unavailable)', () => {
+    // 0 is a legitimate value (e.g. literally no trading), distinct from
+    // "we don't know" which is represented by null / undefined.
+    expect(formatVolume(0)).toBe('$0')
+  })
+})
+
+describe('formatMarketCap', () => {
+  it('mirrors formatVolume for numeric values', () => {
+    expect(formatMarketCap(2_450_000_000)).toBe('$2.45B')
+    expect(formatMarketCap(0)).toBe('$0')
+  })
+
+  it('returns the unavailable placeholder for null / undefined', () => {
+    expect(formatMarketCap(null)).toBe(MARKET_DATA_PLACEHOLDER)
+    expect(formatMarketCap(undefined)).toBe(MARKET_DATA_PLACEHOLDER)
   })
 })
 

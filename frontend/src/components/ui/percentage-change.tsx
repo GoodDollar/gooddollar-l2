@@ -35,10 +35,18 @@ const percentageChangeVariants = cva(
 )
 
 interface PercentageChangeProps extends VariantProps<typeof percentageChangeVariants> {
-  value: number
+  /**
+   * Percentage value. Pass `null` (or `undefined`) when the upstream data
+   * source did not return a value — the component renders a neutral
+   * placeholder ("—") with a tooltip instead of `0.00%`, so users aren't
+   * misled about a token having literally zero movement.
+   */
+  value: number | null | undefined
   decimals?: number
   showSign?: boolean
   className?: string
+  /** Tooltip shown when value is null/undefined. */
+  unavailableLabel?: string
 }
 
 /**
@@ -50,6 +58,7 @@ interface PercentageChangeProps extends VariantProps<typeof percentageChangeVari
  * - Optional +/- sign display
  * - Consistent with design system
  * - Triangle icons for visual clarity
+ * - Null-safe: renders "—" when value is null/undefined (data unavailable)
  *
  * Used across: GoodSwap, GoodStocks, GoodPredict, GoodPerps
  */
@@ -62,8 +71,27 @@ const PercentageChange = forwardRef<HTMLSpanElement, PercentageChangeProps>(
     variant,
     size,
     className,
+    unavailableLabel = 'Data unavailable',
     ...props
   }, ref) => {
+    // Unavailable (null/undefined) — render neutral placeholder with tooltip.
+    if (value === null || value === undefined) {
+      return (
+        <span
+          ref={ref}
+          className={cn(
+            percentageChangeVariants({ variant: 'muted', size, showIcon: false }),
+            className,
+          )}
+          title={unavailableLabel}
+          aria-label={unavailableLabel}
+          {...props}
+        >
+          —
+        </span>
+      )
+    }
+
     // Auto-detect positive/negative variant if not specified
     const isPositive = value > 0
     const isNegative = value < 0

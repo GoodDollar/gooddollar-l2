@@ -107,3 +107,50 @@ describe('ExplorePage', () => {
     expect(input.value).toBe('')
   })
 })
+
+// Separate suite exercising the "G$ has no off-chain market data" code path —
+// the original P0 bug from task 0073 where missing volume/change appeared as
+// misleading $0 / 0% values instead of "—".
+describe('ExplorePage — null market data (G$ has no CoinGecko quote)', () => {
+  beforeEach(() => {
+    pushMock.mockClear()
+    searchParamsString = ''
+    vi.resetModules()
+  })
+
+  it('renders "—" placeholders instead of $0/0% when G$ data is unavailable', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
+            category: 'GoodDollar' as const, color: '#00B0A0',
+            // Price is real (from on-chain pools), but off-chain quote data is missing.
+            price: 0.0002,
+            change1h: null,
+            change24h: null,
+            change7d: null,
+            volume24h: null,
+            marketCap: 1e7,
+            sparkline7d: null,
+            description: 'GoodDollar UBI token',
+            maxSupply: null,
+          },
+        ],
+      }),
+    }))
+    const { default: ExplorePageNullCase } = await import('../page')
+    render(<TestWrapper><ExplorePageNullCase /></TestWrapper>)
+    // Find the G$ row via the mocked TokenIcon (unambiguous per-token marker).
+    const gRow = screen.getByTestId('icon-G$').closest('tr')
+    expect(gRow).not.toBeNull()
+    // At least one "—" placeholder should show in the row (volume / changes).
+    expect(gRow!.textContent).toContain('—')
+    // And explicitly: there should NOT be a "$0" volume cell pretending real
+    // data exists. The price is "$0.00020" so we exclude "$0." prefixes.
+    expect(gRow!.textContent).not.toMatch(/\$0(?![.0-9])/)
+  })
+})

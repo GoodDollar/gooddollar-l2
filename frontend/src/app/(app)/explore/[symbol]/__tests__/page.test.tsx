@@ -143,3 +143,48 @@ describe('TokenDetailPage — URL-encoded symbol handling', () => {
     })
   })
 })
+
+// Task 0073 — when off-chain quote data is missing for G$ (no CoinGecko
+// listing), the page must render "—" placeholders for change1h/24h/7d and
+// volume/market cap instead of misleading "0%" / "$0" values.
+describe('TokenDetailPage — null market data (G$ has no CoinGecko quote)', () => {
+  beforeEach(() => {
+    pushMock.mockClear()
+    currentParams = {}
+    vi.resetModules()
+  })
+
+  it('renders "—" placeholders for missing 1h/24h/7d change and volume', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
+            category: 'GoodDollar' as const, color: '#00B0A0',
+            price: 0.0002,
+            change1h: null,
+            change24h: null,
+            change7d: null,
+            volume24h: null,
+            marketCap: 1e7,
+            sparkline7d: null,
+            description: 'GoodDollar UBI token',
+            maxSupply: null,
+          },
+        ],
+      }),
+    }))
+    const { default: PageNullCase } = await import('../page')
+    currentParams = { symbol: 'G$' }
+    render(<TestWrapper><PageNullCase /></TestWrapper>)
+    // At least one placeholder somewhere on the page.
+    const placeholders = screen.getAllByText('—')
+    expect(placeholders.length).toBeGreaterThanOrEqual(1)
+    // And no literal "0.00%" — that's the misleading zero-rendering we are
+    // explicitly fixing in this task.
+    expect(screen.queryAllByText(/^0\.00%$/).length).toBe(0)
+  })
+})
