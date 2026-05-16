@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3100",
     "build": "next build",
+    "postbuild": "node scripts/postbuild-reload-pm2.mjs",
     "start": "next start -p 3100",
     "lint": "next lint",
     "test:e2e": "playwright test",
