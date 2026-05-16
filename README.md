@@ -10,7 +10,7 @@ An OP Stack L2 where every useful transaction funds universal basic income for v
 
 ## Current Status
 
-_Last refreshed: 2026-05-16 UTC, after autobuilder iteration 50._
+_Last refreshed: 2026-05-16 UTC, security hardening initiative in progress._
 
 GoodDollar L2 is live on a persistent devnet and moving toward public testnet.
 
@@ -106,6 +106,20 @@ The next 50-iteration roadmap is tracked in `docs/PRODUCTION-ROADMAP-50-ITERATIO
 5. Iterations 87–96 — production operations + mainnet candidate
 
 Dune is a release artifact, not a marketing afterthought. If Dune indexing is not available on public testnet day, the interim internal analytics dashboard ships first and Dune remains marked `pending indexing`. Production still requires a public analytics proof layer.
+
+## Security Hardening
+
+Phase 1 security hardening is underway to reach 0 HIGH and 0 MEDIUM Slither findings.
+
+| Check | Before | After | Status |
+|---|---|---|---|
+| HIGH findings | 0 | 0 | Done |
+| uninitialized-local | 1 | 0 | Fixed |
+| reentrancy-no-eth | 10 | 10 | Pending |
+| unused-return | 20 | 20 | Pending |
+| incorrect-equality | 28 | 28 | Pending |
+| divide-before-multiply | 26 | 26 | Pending |
+| **Total MEDIUM** | **85** | **84** | **In Progress** |
 
 ## Key Docs
 

@@ -423,7 +423,7 @@ contract PerpEngine is ReentrancyGuard {
 
         // Net PnL after funding, computed against the snapshot.
         int256 netPnL = pnl - fundingPayment;
-        uint256 payout;
+        uint256 payout = 0;
         if (netPnL >= 0) {
             // Profit: return locked margin + profit
             payout = snap.margin + uint256(netPnL);
