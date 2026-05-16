@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { TokenIcon } from './TokenIcon'
+import { getPriceImpactSeverity } from '@/lib/useOnChainSwap'
 
 interface SwapConfirmModalProps {
   open: boolean
@@ -23,9 +24,16 @@ interface SwapConfirmModalProps {
   deadlineMinutes?: number
 }
 
+// Tiered colours that match getPriceImpactSeverity:
+//   normal  (<1%)   green
+//   notice  (1–3%)  green-ish
+//   warning (3–5%)  yellow
+//   high    (5–15%) orange/red
+//   extreme (≥15%)  red
 function getPriceImpactColor(impact: number): string {
-  if (impact < 1) return 'text-goodgreen'
-  if (impact < 5) return 'text-yellow-400'
+  const sev = getPriceImpactSeverity(impact)
+  if (sev === 'normal' || sev === 'notice') return 'text-goodgreen'
+  if (sev === 'warning') return 'text-yellow-400'
   return 'text-red-400'
 }
 
@@ -48,9 +56,25 @@ export function SwapConfirmModal({
 }: SwapConfirmModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
+  // Extreme-impact gate: at >=15% the user MUST tick "I understand"
+  // before the Confirm button enables. We reset the ack every time the
+  // modal closes so re-opening always re-arms the safety check.
+  const severity = getPriceImpactSeverity(priceImpact)
+  const isExtreme = severity === 'extreme'
+  const [acknowledged, setAcknowledged] = useState(false)
+  useEffect(() => {
+    if (!open) setAcknowledged(false)
+  }, [open])
+  const confirmDisabled = isExtreme && !acknowledged
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') onClose()
   }, [onClose])
+
+  const handleConfirm = useCallback(() => {
+    if (confirmDisabled) return
+    onConfirm()
+  }, [confirmDisabled, onConfirm])
 
   useEffect(() => {
     if (open && dialogRef.current) {
@@ -165,14 +189,48 @@ export function SwapConfirmModal({
           </div>
         </div>
 
+        {/* Extreme-impact warning — MEV / sandwich protection */}
+        {isExtreme && (
+          <div
+            data-testid="extreme-impact-warning"
+            role="alert"
+            className="mx-5 mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/40 text-sm"
+          >
+            <p className="font-semibold text-red-400">
+              Extreme price impact: {priceImpact.toFixed(2)}%
+            </p>
+            <p className="text-xs text-red-400/80 mt-1">
+              This trade will move the pool significantly and is highly
+              vulnerable to sandwich attacks. Consider splitting it into
+              smaller swaps or routing through a deeper pool.
+            </p>
+            <label className="mt-3 flex items-start gap-2 text-xs text-red-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-red-500/50 bg-transparent accent-red-500 focus-visible:ring-2 focus-visible:ring-red-500/50"
+                aria-label="I understand the risk of an extreme price impact swap"
+              />
+              <span>
+                I understand the risk and want to proceed anyway.
+              </span>
+            </label>
+          </div>
+        )}
+
         {/* Confirm */}
         <div className="p-5 pt-4">
           <button
-            onClick={onConfirm}
+            onClick={handleConfirm}
+            disabled={confirmDisabled}
+            aria-disabled={confirmDisabled}
             className={`w-full py-4 rounded-xl font-semibold text-base transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:outline-none ${
-              priceImpact >= 10
-                ? 'bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-500/50'
-                : 'bg-goodgreen text-white hover:bg-goodgreen-600 focus-visible:ring-goodgreen/50'
+              confirmDisabled
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : isExtreme || priceImpact >= 10
+                  ? 'bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-500/50'
+                  : 'bg-goodgreen text-white hover:bg-goodgreen-600 focus-visible:ring-goodgreen/50'
             }`}
           >
             Confirm Swap

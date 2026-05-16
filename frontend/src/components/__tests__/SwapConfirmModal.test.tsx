@@ -100,4 +100,66 @@ describe('SwapConfirmModal', () => {
     fireEvent.mouseDown(screen.getByTestId('modal-backdrop'))
     expect(onClose).toHaveBeenCalledOnce()
   })
+
+  // ── Extreme price-impact gate (MEV / sandwich protection) ────────────────
+  describe('extreme price-impact gate', () => {
+    it('does NOT render the extreme warning for normal impacts', () => {
+      render(<SwapConfirmModal {...defaultProps} priceImpact={0.45} />)
+      expect(screen.queryByTestId('extreme-impact-warning')).not.toBeInTheDocument()
+      // Confirm button must remain enabled
+      const confirm = screen.getByRole('button', { name: /confirm swap/i })
+      expect(confirm).not.toBeDisabled()
+    })
+
+    it('does NOT render the extreme warning for high (5%) impact', () => {
+      render(<SwapConfirmModal {...defaultProps} priceImpact={7} />)
+      expect(screen.queryByTestId('extreme-impact-warning')).not.toBeInTheDocument()
+      const confirm = screen.getByRole('button', { name: /confirm swap/i })
+      expect(confirm).not.toBeDisabled()
+    })
+
+    it('renders an extreme-impact warning at 15% and disables Confirm', () => {
+      render(<SwapConfirmModal {...defaultProps} priceImpact={20} />)
+      const warning = screen.getByTestId('extreme-impact-warning')
+      expect(warning).toBeInTheDocument()
+      expect(warning.textContent).toMatch(/extreme/i)
+      const confirm = screen.getByRole('button', { name: /confirm swap/i })
+      expect(confirm).toBeDisabled()
+    })
+
+    it('does not call onConfirm when extreme and unacknowledged', () => {
+      const onConfirm = vi.fn()
+      render(<SwapConfirmModal {...defaultProps} priceImpact={20} onConfirm={onConfirm} />)
+      fireEvent.click(screen.getByRole('button', { name: /confirm swap/i }))
+      expect(onConfirm).not.toHaveBeenCalled()
+    })
+
+    it('enables Confirm after the user ticks "I understand"', () => {
+      const onConfirm = vi.fn()
+      render(<SwapConfirmModal {...defaultProps} priceImpact={20} onConfirm={onConfirm} />)
+      const ack = screen.getByRole('checkbox', { name: /i understand/i })
+      fireEvent.click(ack)
+      const confirm = screen.getByRole('button', { name: /confirm swap/i })
+      expect(confirm).not.toBeDisabled()
+      fireEvent.click(confirm)
+      expect(onConfirm).toHaveBeenCalledOnce()
+    })
+
+    it('resets the acknowledgement when the modal is reopened', () => {
+      const { rerender } = render(
+        <SwapConfirmModal {...defaultProps} priceImpact={20} />,
+      )
+      // Acknowledge once
+      fireEvent.click(screen.getByRole('checkbox', { name: /i understand/i }))
+      // Close…
+      rerender(<SwapConfirmModal {...defaultProps} priceImpact={20} open={false} />)
+      // …and reopen
+      rerender(<SwapConfirmModal {...defaultProps} priceImpact={20} open={true} />)
+      // Checkbox must be unchecked again, confirm disabled
+      const ack = screen.getByRole('checkbox', { name: /i understand/i })
+      expect((ack as HTMLInputElement).checked).toBe(false)
+      const confirm = screen.getByRole('button', { name: /confirm swap/i })
+      expect(confirm).toBeDisabled()
+    })
+  })
 })

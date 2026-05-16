@@ -67,8 +67,12 @@ export function SwapCard() {
   }, [searchParams])
 
   // On-chain quote from GoodSwapRouter (supported pairs: G$, WETH/ETH, USDC)
-  const { amountOutFormatted: onChainAmountOut, amountOut: onChainAmountOutWei, isSupported: pairOnChain } =
-    useSwapQuote(inputAmount, inputToken.symbol, outputToken.symbol)
+  const {
+    amountOutFormatted: onChainAmountOut,
+    amountOut: onChainAmountOutWei,
+    isSupported: pairOnChain,
+    priceImpactPct: onChainPriceImpact,
+  } = useSwapQuote(inputAmount, inputToken.symbol, outputToken.symbol)
 
   const rawOutputAmount = useMemo(() => {
     if (pairOnChain && onChainAmountOut) return parseFloat(onChainAmountOut)
@@ -100,13 +104,21 @@ export function SwapCard() {
   }, [inputAmount, inputToken.symbol, outputToken.symbol, prices])
 
   const priceImpact = useMemo(() => {
+    // For on-chain supported pairs, use the real reserve-based impact computed
+    // from a tiny reference quote vs. the user's actual quote — that's the only
+    // honest answer because the previous synthetic ladder was driven by raw
+    // amount, not pool depth, and silently masked sandwich-shaped trades.
+    if (pairOnChain) return onChainPriceImpact
+    // For unsupported pairs (legacy mock-feed fallback), keep a *capped* and
+    // explicitly-conservative estimate so we never under-warn vs. the on-chain
+    // path. This only fires off-chain (no reserves to consult).
     const amt = parseFloat(inputAmount)
     if (!amt || isNaN(amt)) return 0
     if (amt < 1) return 0.01
     if (amt < 10) return 0.1 + (amt / 10) * 0.2
     if (amt < 100) return 0.3 + (amt / 100) * 1.5
     return Math.min(0.3 + (amt / 100) * 1.5, 15)
-  }, [inputAmount])
+  }, [inputAmount, pairOnChain, onChainPriceImpact])
 
   const minimumReceived = useMemo(() => {
     if (!rawOutputAmount) return ''
@@ -304,9 +316,9 @@ export function SwapCard() {
           </>
         )}
 
-        {/* Simple mode: Show only critical warnings */}
+        {/* Simple mode: Show only critical warnings (high / extreme tiers) */}
         {!showAdvanced && (
-          <PriceImpactWarning priceImpact={priceImpact} visible={hasAmount && priceImpact > 5} />
+          <PriceImpactWarning priceImpact={priceImpact} visible={hasAmount && priceImpact >= 5} />
         )}
 
         {/* Swap button */}
