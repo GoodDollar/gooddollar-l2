@@ -335,6 +335,7 @@ contract OptimisticResolver {
         // Send UBI share to fee splitter
         ok = bondToken.approve(feeSplitter, ubiShare);
         if (!ok) revert TransferFailed();
+        // slither-disable-next-line unused-return
         IUBIFeeSplitterResolver(feeSplitter).splitFee(ubiShare, address(this));
 
         // Resolve on MarketFactory

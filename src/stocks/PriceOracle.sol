@@ -162,6 +162,7 @@ contract PriceOracle {
         address feed = priceFeeds[key];
         if (feed == address(0)) revert FeedNotFound(key);
 
+        // slither-disable-next-line unused-return
         (, int256 answer,, uint256 updatedAt,) = AggregatorV3Interface(feed).latestRoundData();
 
         if (block.timestamp - updatedAt > maxAge) {

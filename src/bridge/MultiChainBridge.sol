@@ -275,6 +275,7 @@ contract MultiChainBridge is ReentrancyGuard {
             if (!IERC20(token).approve(address(lifiAggregator), netAmount)) {
                 revert TransferFailed();
             }
+            // slither-disable-next-line unused-return
             lifiAggregator.initiateSwap(
                 token,
                 netAmount,
@@ -334,6 +335,7 @@ contract MultiChainBridge is ReentrancyGuard {
             routeType = RouteType.FastWithdrawal;
         } else {
             routeType = RouteType.LiFiCrossChain;
+            // slither-disable-next-line unused-return
             lifiAggregator.initiateSwapETH{value: netAmount}(
                 destChainId,
                 address(0), // native ETH on dest

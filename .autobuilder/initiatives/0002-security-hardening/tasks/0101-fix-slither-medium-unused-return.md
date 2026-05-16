@@ -5,7 +5,7 @@ type: fix
 priority: P1
 parent: gooddollar-l2
 planned: true
-executed: false
+executed: true
 depends_on: []
 ---
 

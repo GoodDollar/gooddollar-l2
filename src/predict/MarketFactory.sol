@@ -273,6 +273,7 @@ contract MarketFactory is ReentrancyGuard {
 
         if (fee > 0) {
             require(goodDollar.approve(feeSplitter, fee), "MF: approve failed");
+            // slither-disable-next-line unused-return
             IUBIFeeSplitterPredict(feeSplitter).splitFee(fee, address(this));
         }
 

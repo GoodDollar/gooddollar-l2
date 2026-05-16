@@ -378,6 +378,7 @@ contract GoodVault {
 
         // Pull everything from old strategy
         if (totalDebt > 0) {
+            // slither-disable-next-line unused-return
             IStrategy(old).emergencyWithdraw();
             totalDebt = 0;
         }

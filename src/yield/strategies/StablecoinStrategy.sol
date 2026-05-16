@@ -114,6 +114,7 @@ contract StablecoinStrategy {
         // Claim collateral gains (e.g. WETH from liquidations) and accumulate in strategy.
         // Gains are NOT forwarded to the vault; admin recovers them via GoodVault.sweepStrategyToken().
         if (gainToken != address(0)) {
+            // slither-disable-next-line unused-return
             stabilityPool.claimGains();
             uint256 gained = IERC20(gainToken).balanceOf(address(this));
             if (gained > 0) {

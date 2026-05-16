@@ -142,6 +142,7 @@ contract PegStabilityModule {
         require(msg.sender == address(this), "PSM: only self");
 
         // Attempt enhanced tracking call (only works with StableUBIFeeSplitter)
+        // slither-disable-next-line unused-return
         try IStableUBIFeeSplitterMinting(address(feeSplitter)).splitMintingFee(
             fee,
             dAppRecipient,
@@ -283,6 +284,7 @@ contract PegStabilityModule {
                 // Enhanced tracking succeeded
             } catch {
                 // Fallback to standard method for backward compatibility
+                // slither-disable-next-line unused-return
                 feeSplitter.splitFeeToken(fee, address(this), address(gusd));
             }
         }
@@ -343,6 +345,7 @@ contract PegStabilityModule {
                 // Enhanced tracking succeeded
             } catch {
                 // Fallback to standard method for backward compatibility
+                // slither-disable-next-line unused-return
                 feeSplitter.splitFeeToken(fee, address(this), address(gusd));
             }
         }

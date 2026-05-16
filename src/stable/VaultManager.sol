@@ -251,6 +251,7 @@ contract VaultManager {
             // Enhanced tracking succeeded
         } catch {
             // Fallback to standard method for backward compatibility
+            // slither-disable-next-line unused-return
             feeSplitter.splitFeeToken(feeWAD, dAppRecipient, address(gusd));
         }
 
@@ -275,6 +276,7 @@ contract VaultManager {
 
         // Attempt enhanced tracking call (only works with StableUBIFeeSplitter)
         // If feeSplitter is standard UBIFeeSplitter, this will revert and fallback to splitFeeToken
+        // slither-disable-next-line unused-return
         try IStableUBIFeeSplitterEnhanced(address(feeSplitter)).splitStabilityFee(
             feeWAD,
             _dAppRecipient,

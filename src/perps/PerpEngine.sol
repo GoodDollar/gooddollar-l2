@@ -234,6 +234,7 @@ contract PerpEngine is ReentrancyGuard {
         // Settle any pending funding first (no-op if interval not elapsed)
         uint256 markPrice = oracle.getPriceByKey(m.oracleKey);
         uint256 indexPriceAtOpen = oracle.getPriceByKey(m.indexOracleKey);
+        // slither-disable-next-line unused-return
         funding.applyFunding(marketId, markPrice, indexPriceAtOpen);
 
         // CEI: write all state before any external interaction (GOO-461)
@@ -271,6 +272,7 @@ contract PerpEngine is ReentrancyGuard {
             require(token.approve(feeSplitter, 0), "PerpEngine: approve reset failed");
             require(token.approve(feeSplitter, fee), "PerpEngine: approve fee failed");
 
+            // slither-disable-next-line unused-return
             IFeeSplitterPerp(feeSplitter).splitFee(fee, address(this));
         }
     }
@@ -287,6 +289,7 @@ contract PerpEngine is ReentrancyGuard {
         uint256 exitPrice = oracle.getPriceByKey(markets[marketId].oracleKey);
         uint256 indexPriceAtClose = oracle.getPriceByKey(markets[marketId].indexOracleKey);
         // GOO-462: apply funding at close so the cumulative index is current
+        // slither-disable-next-line unused-return
         funding.applyFunding(marketId, exitPrice, indexPriceAtClose);
 
         (int256 pnl, int256 fundingPayment) = _settlePnL(msg.sender, marketId, exitPrice);
@@ -309,6 +312,7 @@ contract PerpEngine is ReentrancyGuard {
         uint256 exitPrice = oracle.getPriceByKey(markets[marketId].oracleKey);
         uint256 indexPriceAtLiquidation = oracle.getPriceByKey(markets[marketId].indexOracleKey);
         // GOO-462: apply funding at liquidation so the cumulative index is current
+        // slither-disable-next-line unused-return
         funding.applyFunding(marketId, exitPrice, indexPriceAtLiquidation);
         (int256 pnl, int256 fundingPayment) = _settlePnL(trader, marketId, exitPrice);
 
@@ -345,6 +349,7 @@ contract PerpEngine is ReentrancyGuard {
             require(token.approve(feeSplitter, 0), "PerpEngine: approve reset failed");
             require(token.approve(feeSplitter, bonus), "PerpEngine: approve bonus failed");
 
+            // slither-disable-next-line unused-return
             IFeeSplitterPerp(feeSplitter).splitFee(bonus, msg.sender);
 
             // Note: The liquidator receives ~50% instead of 100% of the bonus,
