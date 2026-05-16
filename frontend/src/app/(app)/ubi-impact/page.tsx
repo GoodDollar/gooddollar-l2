@@ -28,17 +28,26 @@ import { CONTRACTS, DEVNET_EXPLORER_URL, DEVNET_CHAIN_ID } from '@/lib/devnet'
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, accent }: {
+function StatCard({ label, value, sub, accent, tooltip }: {
   label: string
   value: string
   sub?: string
   accent?: string
+  tooltip?: string
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col gap-1">
       <span className="text-sm text-zinc-400">{label}</span>
       <span className={`text-2xl font-bold ${accent ?? 'text-white'}`}>{value}</span>
-      {sub && <span className="text-xs text-zinc-500">{sub}</span>}
+      {sub && (
+        <span
+          className={`text-xs text-zinc-500 ${tooltip ? 'cursor-help underline decoration-dotted decoration-zinc-600 underline-offset-2' : ''}`}
+          title={tooltip}
+          aria-label={tooltip ? `${sub} — ${tooltip}` : undefined}
+        >
+          {sub}
+        </span>
+      )}
     </div>
   )
 }
@@ -271,6 +280,7 @@ export default function UBIImpactPage() {
             label="Total Fees Collected"
             value={`${dashboard.totalFeesFormatted} G$`}
             sub={`${dashboard.ubiPercentage.toFixed(1)}% → UBI`}
+            tooltip="Derived from UBIFeeSplitter.totalUBIFunded() / totalFeesCollected(). The on-chain split is 20% UBI / 40% protocol / 40% dApp (ubiBPS = 2000)."
           />
           <StatCard
             label="Fee-Generating Txs"

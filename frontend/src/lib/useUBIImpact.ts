@@ -86,6 +86,39 @@ export const CATEGORY_ICONS: Record<string, string> = {
   bridge:  '🌉',
 }
 
+// ─── Pure helpers (exported for unit testing) ─────────────────────────────────
+
+/**
+ * Compute the percentage of gross protocol fees routed to UBI.
+ *
+ * The UBIFeeSplitter contract is the on-chain source of truth: ubiBPS = 2000
+ * (= 20%) splits every fee into UBI / protocol / dapp. When the splitter has
+ * collected any fees, we derive the displayed % from `splitterUBI / splitterFees`
+ * to guarantee the dashboard's headline matches the contract's behavior.
+ *
+ * We only fall back to the aggregated UBIRevenueTracker totals (totalUBI /
+ * totalFees) when the splitter has zero recorded activity — useful during
+ * fresh deploys or replays where the tracker may have been seeded from
+ * historical snapshots before the splitter was wired up.
+ *
+ * Returns 0 (not NaN) for any malformed / zero-fee state.
+ */
+export function computeUbiPercentage(input: {
+  totalUBI: bigint
+  totalFees: bigint
+  splitterUBI: bigint
+  splitterFees: bigint
+}): number {
+  const { totalUBI, totalFees, splitterUBI, splitterFees } = input
+  if (splitterFees > 0n) {
+    return Number((splitterUBI * 10000n) / splitterFees) / 100
+  }
+  if (totalFees > 0n) {
+    return Number((totalUBI * 10000n) / totalFees) / 100
+  }
+  return 0
+}
+
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
 export function useDashboardData(): {
@@ -103,7 +136,7 @@ export function useDashboardData(): {
   const data = useMemo(() => {
     if (!result.data) return null
     const [totalFees, totalUBI, totalTx, protocolCount, activeProtocols, splitterFees, splitterUBI, snapshotCount] = result.data as unknown as bigint[]
-    const ubiPct = totalFees > 0n ? Number((totalUBI * 10000n) / totalFees) / 100 : 0
+    const ubiPct = computeUbiPercentage({ totalUBI, totalFees, splitterUBI, splitterFees })
     return {
       totalFees,
       totalUBI,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/useUBIImpact'
+import { CATEGORY_COLORS, CATEGORY_ICONS, computeUbiPercentage } from '@/lib/useUBIImpact'
 
 // ── Category metadata tests ───────────────────────────────────────────────────
 
@@ -134,5 +134,79 @@ describe('UBI percentage calculation', () => {
     // 200 out of 1000 = 20%
     const pct = calcUBIPct(200n, 1000n)
     expect(pct).toBe(20)
+  })
+})
+
+// ── computeUbiPercentage (authoritative splitter source) ──────────────────────
+//
+// Task 0065 — reconcile the dashboard's headline "20%" claim with the
+// percentage actually displayed on /ubi-impact. The UBIFeeSplitter contract
+// is the on-chain source of truth (ubiBPS = 2000 = 20%). When its
+// totalFeesCollected() > 0 we should derive the displayed % from those
+// authoritative values, not from the aggregated tracker totals which can
+// drift if a keeper reports `fees` as the non-dapp residue (yields 33.3%).
+
+describe('computeUbiPercentage', () => {
+  it('returns 20% when the splitter has collected exactly the 20/80 split', () => {
+    // gross 1000 → 200 UBI, 400 protocol, 400 dapp; splitter.totalFeesCollected=1000, totalUBIFunded=200
+    expect(computeUbiPercentage({
+      totalUBI: 0n,
+      totalFees: 0n,
+      splitterUBI: 200n,
+      splitterFees: 1000n,
+    })).toBeCloseTo(20, 5)
+  })
+
+  it('prefers splitter values over tracker values when splitter has data', () => {
+    // Tracker would say 33.3% (stale / wrong-definition reporter) — splitter says 20%.
+    // The fix MUST use the splitter.
+    expect(computeUbiPercentage({
+      totalUBI: 100n,
+      totalFees: 300n, // 33.3% (the buggy display)
+      splitterUBI: 200n,
+      splitterFees: 1000n, // 20% (authoritative)
+    })).toBeCloseTo(20, 5)
+  })
+
+  it('falls back to tracker values when splitter has no data', () => {
+    // Splitter is zeroed (e.g. fresh deploy, not yet hit) — fall back to tracker
+    expect(computeUbiPercentage({
+      totalUBI: 200n,
+      totalFees: 1000n,
+      splitterUBI: 0n,
+      splitterFees: 0n,
+    })).toBeCloseTo(20, 5)
+  })
+
+  it('returns 0 when neither source has any fees', () => {
+    expect(computeUbiPercentage({
+      totalUBI: 0n,
+      totalFees: 0n,
+      splitterUBI: 0n,
+      splitterFees: 0n,
+    })).toBe(0)
+  })
+
+  it('never returns NaN when splitter fees is 0 but UBI is nonzero (malformed state)', () => {
+    // Should not divide by zero; should fall through to tracker, and from there to 0.
+    const pct = computeUbiPercentage({
+      totalUBI: 0n,
+      totalFees: 0n,
+      splitterUBI: 50n,
+      splitterFees: 0n,
+    })
+    expect(Number.isFinite(pct)).toBe(true)
+    expect(pct).toBe(0)
+  })
+
+  it('handles real wei-scale values (1000 G$ gross fees, 200 G$ UBI)', () => {
+    const gross = 1000n * 10n ** 18n
+    const ubi = 200n * 10n ** 18n
+    expect(computeUbiPercentage({
+      totalUBI: 0n,
+      totalFees: 0n,
+      splitterUBI: ubi,
+      splitterFees: gross,
+    })).toBeCloseTo(20, 5)
   })
 })
