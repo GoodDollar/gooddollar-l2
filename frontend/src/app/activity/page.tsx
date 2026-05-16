@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DEVNET_RPC_URL, DEVNET_CHAIN_ID, CONTRACTS as DEVNET_CONTRACTS } from '@/lib/devnet'
 import { rpcCall as rpcCallStrict, RpcError } from '@/lib/rpc'
+import type { EthBlock, EthReceipt, EthHex } from '@/lib/eth-types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { computeBarHeights } from './block-timeline'
 
@@ -108,11 +109,15 @@ export default function ActivityPage() {
       const latestBlock = hexToNumber(blockHex)
       setCurrentBlock(latestBlock)
 
-      // Fetch last 20 blocks
-      const blockPromises = []
+      // Fetch last 20 blocks. Type the promise as `EthBlock | null` —
+      // anvil can return `null` for not-yet-mined blocks at the head, so we
+      // narrow inside the loop instead of asserting non-null here.
+      const blockPromises: Promise<EthBlock | null>[] = []
       const start = Math.max(0, latestBlock - 19)
       for (let i = latestBlock; i >= start; i--) {
-        blockPromises.push(rpcCall('eth_getBlockByNumber', ['0x' + i.toString(16), true]))
+        blockPromises.push(
+          rpcCall<EthBlock | null>('eth_getBlockByNumber', ['0x' + i.toString(16), true])
+        )
       }
       const blockResults = await Promise.all(blockPromises)
 
@@ -138,11 +143,12 @@ export default function ActivityPage() {
             hits[contractName] = (hits[contractName] || 0) + 1
           }
 
-          // Get receipt for status
+          // Get receipt for status. May be `null` for txs still in the
+          // mempool; the `if (receipt)` guard handles that case explicitly.
           let status: 'success' | 'failed' | 'pending' = 'pending'
           let gasUsed = '0'
           try {
-            const receipt = await rpcCall('eth_getTransactionReceipt', [tx.hash])
+            const receipt = await rpcCall<EthReceipt | null>('eth_getTransactionReceipt', [tx.hash])
             if (receipt) {
               status = receipt.status === '0x1' ? 'success' : 'failed'
               gasUsed = hexToNumber(receipt.gasUsed).toLocaleString()
@@ -167,11 +173,12 @@ export default function ActivityPage() {
       setTransactions(allTxs.slice(0, 50))
       setContractHits(hits)
 
-      // Fetch tester stats
+      // Fetch tester stats. Both calls return a 0x-prefixed hex string;
+      // typing them as `EthHex` keeps `hexToEth` / `hexToNumber` strict.
       const testerPromises = TESTERS.map(async (t) => {
         const [balHex, nonceHex] = await Promise.all([
-          rpcCall('eth_getBalance', [t.address, 'latest']),
-          rpcCall('eth_getTransactionCount', [t.address, 'latest']),
+          rpcCall<EthHex>('eth_getBalance', [t.address, 'latest']),
+          rpcCall<EthHex>('eth_getTransactionCount', [t.address, 'latest']),
         ])
         return {
           ...t,
