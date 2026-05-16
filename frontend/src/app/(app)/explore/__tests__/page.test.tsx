@@ -3,8 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const pushMock = vi.fn()
+let searchParamsString = ''
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
+  useSearchParams: () => new URLSearchParams(searchParamsString),
 }))
 
 vi.mock('@/components/TokenIcon', () => ({
@@ -36,6 +38,7 @@ import ExplorePage from '../page'
 describe('ExplorePage', () => {
   beforeEach(() => {
     pushMock.mockClear()
+    searchParamsString = ''
   })
 
   it('renders token data immediately without artificial delay', () => {
@@ -63,5 +66,44 @@ describe('ExplorePage', () => {
     const swapButtons = screen.getAllByRole('button', { name: /swap/i })
     fireEvent.click(swapButtons[0])
     expect(pushMock).toHaveBeenCalledWith(expect.stringContaining('/?buy='))
+  })
+
+  it('initializes the search input from ?search= URL param', () => {
+    searchParamsString = 'search=ETH'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    const input = screen.getByPlaceholderText(/search/i) as HTMLInputElement
+    expect(input.value).toBe('ETH')
+  })
+
+  it('filters tokens based on ?search= URL param on mount', () => {
+    searchParamsString = 'search=ether'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // Table has 1 header row + N data rows. Only ETH (name="Ether") should
+    // remain — so we expect exactly 2 rows.
+    const rows = screen.getAllByRole('row')
+    expect(rows.length).toBe(2)
+  })
+
+  it('filters tokens based on ?category= URL param on mount', () => {
+    searchParamsString = 'category=GoodDollar'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // Only G$ (category "GoodDollar") remains — header + 1 row.
+    const rows = screen.getAllByRole('row')
+    expect(rows.length).toBe(2)
+  })
+
+  it('ignores unknown ?category= values gracefully', () => {
+    searchParamsString = 'category=BogusCategory'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // Should fall back to All — header + both tokens = 3 rows.
+    const rows = screen.getAllByRole('row')
+    expect(rows.length).toBe(3)
+  })
+
+  it('renders without errors when no URL params are present', () => {
+    searchParamsString = ''
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    const input = screen.getByPlaceholderText(/search/i) as HTMLInputElement
+    expect(input.value).toBe('')
   })
 })

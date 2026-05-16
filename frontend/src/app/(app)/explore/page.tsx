@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, memo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, memo, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, PanInfo } from 'framer-motion'
 import { TokenIcon } from '@/components/TokenIcon'
 import { Sparkline } from '@/components/Sparkline'
@@ -349,10 +349,22 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
   )
 }
 
-export default function ExplorePage() {
+// Inner component reads ?search= and ?category= from the URL. It must be
+// wrapped in <Suspense> because Next.js 14 requires useSearchParams
+// consumers to live under a Suspense boundary during static rendering.
+function ExplorePageContent() {
   const router = useRouter()
-  const [query, setQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<TokenCategory | 'All'>('All')
+  const searchParams = useSearchParams()
+  const initialQuery = searchParams?.get('search') ?? ''
+  const initialCategoryParam = searchParams?.get('category') ?? ''
+  const initialCategory: TokenCategory | 'All' = (() => {
+    if (initialCategoryParam === 'All') return 'All'
+    return (TOKEN_CATEGORIES as readonly string[]).includes(initialCategoryParam)
+      ? (initialCategoryParam as TokenCategory)
+      : 'All'
+  })()
+  const [query, setQuery] = useState(initialQuery)
+  const [selectedCategory, setSelectedCategory] = useState<TokenCategory | 'All'>(initialCategory)
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { tokens: data } = useOnChainMarketData()
@@ -497,5 +509,13 @@ export default function ExplorePage() {
         Prices shown are illustrative. Real-time data coming soon.
       </p>
     </div>
+  )
+}
+
+export default function ExplorePage() {
+  return (
+    <Suspense fallback={null}>
+      <ExplorePageContent />
+    </Suspense>
   )
 }
