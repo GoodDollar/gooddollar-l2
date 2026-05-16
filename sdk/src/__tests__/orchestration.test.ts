@@ -1,7 +1,7 @@
 /**
  * Tests for multi-agent orchestration helpers
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from '@jest/globals'
 import { SignalBus, ManagedAgent, AgentSwarm, PortfolioAggregator, Strategies } from '../orchestration'
 import type { AgentConfig, Signal } from '../orchestration'
 
@@ -232,8 +232,8 @@ describe('ManagedAgent', () => {
       role: 'trader',
       privateKey: MOCK_KEYS[0],
     })
-    // Anvil account 1 address
-    expect(agent.address).toBe('0x70997970C51812dc3A010C7d01b50e0d17dc79C8')
+    // Anvil account 0 address
+    expect(agent.address).toBe('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266')
     expect(agent.name).toBe('test')
     expect(agent.role).toBe('trader')
   })

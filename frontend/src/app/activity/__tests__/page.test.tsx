@@ -56,7 +56,7 @@ describe('ActivityPage — connecting / error / recovery states (task 0069)', ()
   it('clicking Retry re-issues the fetch and recovers the live counter', async () => {
     // First batch of calls fail; after retry, return healthy data.
     let healthy = false
-    fetchSpy.mockImplementation((_input, init) => {
+    fetchSpy.mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => {
       if (!healthy) {
         return Promise.resolve(new Response('boom', { status: 502 }))
       }
@@ -149,7 +149,7 @@ describe('ActivityPage — performance (task 0096)', () => {
     let receiptCallCount = 0
     const RECEIPT_DELAY_MS = 50
 
-    fetchSpy.mockImplementation((_input, init) => {
+    fetchSpy.mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => {
       const body = init?.body ? JSON.parse(String(init.body)) : {}
       const method = body.method as string
       const params = (body.params as unknown[]) || []
@@ -200,7 +200,7 @@ describe('ActivityPage — performance (task 0096)', () => {
   it('skips polling tick when document.visibilityState === "hidden"', async () => {
     vi.useFakeTimers()
 
-    fetchSpy.mockImplementation((_input, init) => {
+    fetchSpy.mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => {
       const body = init?.body ? JSON.parse(String(init.body)) : {}
       const method = body.method as string
       if (method === 'eth_blockNumber') return Promise.resolve(jsonRpcOk('0x14'))
@@ -256,7 +256,7 @@ describe('ActivityPage — performance (task 0096)', () => {
 
     // A fresh eth_blockNumber should have fired in response to the
     // visibilitychange → visible transition.
-    const blockNumberCalls = fetchSpy.mock.calls.filter((call) => {
+    const blockNumberCalls = fetchSpy.mock.calls.filter((call: Parameters<typeof fetch>) => {
       const init = call[1] as RequestInit | undefined
       if (!init?.body) return false
       try {
@@ -277,7 +277,7 @@ describe('ActivityPage — performance (task 0096)', () => {
     let balanceCalls = 0
     let nonceCalls = 0
 
-    fetchSpy.mockImplementation((_input, init) => {
+    fetchSpy.mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => {
       const body = init?.body ? JSON.parse(String(init.body)) : {}
       const method = body.method as string
       if (method === 'eth_blockNumber') {

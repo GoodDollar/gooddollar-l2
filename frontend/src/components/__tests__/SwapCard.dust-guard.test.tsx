@@ -102,7 +102,6 @@ vi.mock('framer-motion', async () => {
             ) continue
             cleaned[k] = v
           }
-          // @ts-expect-error — dynamic tag name
           return <Tag {...cleaned}>{children}</Tag>
         }
         Component.displayName = `motion.${prop}`

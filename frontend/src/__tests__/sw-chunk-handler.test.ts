@@ -173,7 +173,9 @@ function dispatchFetch(
 }
 
 describe('Service Worker runtime behaviour', () => {
-  let dispatchScriptRequest: (url: string) => SyntheticFetchEvent
+  let dispatchScriptRequest: (url: string) => SyntheticFetchEvent = () => {
+    throw new Error('dispatchScriptRequest not initialized')
+  }
 
   beforeAll(() => {
     // No-op — sandbox is rebuilt per test for isolation.
