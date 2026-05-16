@@ -9,11 +9,17 @@ interface OrderBookEntry {
   total: number
 }
 
-function generateOrderBook(midPrice: number, levels: number = 12): { bids: OrderBookEntry[]; asks: OrderBookEntry[]; spread: number } {
+// Exported for unit testing. Task 0082: bid and ask levels MUST be strictly
+// monotonic in price. The per-level random jitter `i * tickSize * (1 + r*0.5)`
+// can invert adjacent levels for i >= 3, so we sort explicitly after generation
+// and recompute cumulative totals in render order (best-quote = smallest total,
+// deepest level = largest total) instead of trusting push order.
+export function generateOrderBook(
+  midPrice: number,
+  levels: number = 12,
+): { bids: OrderBookEntry[]; asks: OrderBookEntry[]; spread: number } {
   const bids: OrderBookEntry[] = []
   const asks: OrderBookEntry[] = []
-  let bidTotal = 0
-  let askTotal = 0
 
   const tickSize = midPrice > 1000 ? 1 : midPrice > 10 ? 0.01 : 0.0001
 
@@ -22,10 +28,22 @@ function generateOrderBook(midPrice: number, levels: number = 12): { bids: Order
     const askPrice = midPrice + i * tickSize * (1 + Math.random() * 0.5)
     const bidSize = parseFloat((0.5 + Math.random() * 5).toFixed(3))
     const askSize = parseFloat((0.5 + Math.random() * 5).toFixed(3))
-    bidTotal += bidSize
-    askTotal += askSize
-    bids.push({ price: bidPrice, size: bidSize, total: bidTotal })
-    asks.push({ price: askPrice, size: askSize, total: askTotal })
+    bids.push({ price: bidPrice, size: bidSize, total: 0 })
+    asks.push({ price: askPrice, size: askSize, total: 0 })
+  }
+
+  bids.sort((a, b) => b.price - a.price)
+  asks.sort((a, b) => a.price - b.price)
+
+  let bidSum = 0
+  for (const b of bids) {
+    bidSum += b.size
+    b.total = bidSum
+  }
+  let askSum = 0
+  for (const a of asks) {
+    askSum += a.size
+    a.total = askSum
   }
 
   const spread = asks[0].price - bids[0].price
