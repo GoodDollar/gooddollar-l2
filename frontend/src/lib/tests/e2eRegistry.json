@@ -7,7 +7,7 @@
   },
   "playwright": {
     "config": "frontend/playwright.config.ts",
-    "command": "cd frontend && SKIP_DEV_SERVER=1 BASE_URL=https://goodswap.goodclaw.org npx playwright test e2e/app-regression.spec.ts --project=chromium",
+    "command": "cd frontend && SKIP_DEV_SERVER=1 BASE_URL=http://localhost:3100 npm run test:e2e",
     "report": "frontend/playwright-report/index.html"
   },
   "apps": [

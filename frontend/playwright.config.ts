@@ -5,6 +5,7 @@ const baseURL = process.env.BASE_URL ?? `http://localhost:${e2ePort}`
 
 export default defineConfig({
   testDir: './e2e',
+  outputDir: '../.playwright-test-results/artifacts',
   // Public-testnet release gates run one route after another for deterministic evidence.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -13,7 +14,7 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
-    ['json', { outputFile: '../test-results/playwright-app-regression.json' }],
+    ['json', { outputFile: '../.playwright-test-results/app-regression.json' }],
   ],
   use: {
     baseURL,

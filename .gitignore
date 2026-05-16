@@ -16,3 +16,4 @@ __pycache__/
 research/aave-v3/aave-v3-core
 .autobuilder/journal.jsonl
 .autobuilder/memory-index.md
+.playwright-test-results/
