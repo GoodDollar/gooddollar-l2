@@ -63,3 +63,19 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+/*
+ * RainbowKit injects an unstyled <div data-rk=""> wrapper around its children.
+ * Inside our <PageTransition> flex container (`flex flex-col items-center`) it
+ * collapses to its intrinsic content width, shrinking every page wrapped by
+ * WalletProviders (the entire (app) route group, plus the landing page via
+ * LandingSwapCard). Force the wrapper to fill the available width and behave
+ * as a column flex container so page-level `max-w-5xl` containers work as
+ * intended. See task 0043.
+ */
+[data-rk] {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
