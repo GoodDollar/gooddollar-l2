@@ -89,17 +89,50 @@ export function getMarketStatus(endDate: string): MarketStatus {
 /**
  * Select the "featured" prediction market for the /predict hero card.
  *
- * Rule: pick the active (non-expired) market with the highest `volume`. Returns
- * `null` when there are no active markets. On a volume tie the first market in
- * input order wins (reduce semantics), keeping selection stable across renders.
+ * Rules (task 0074):
+ *  1. Only consider active (non-expired) markets.
+ *  2. If any active market has positive volume, pick the highest-volume one
+ *     (so we never feature a brand-new seed market over a real one).
+ *  3. If every active market has zero volume, fall back to the most
+ *     "balanced" market — the one whose `yesPrice` is closest to 0.5. This
+ *     avoids parading a 0% or 100% degenerate market as the hero.
+ *  4. Returns `null` when there are no active markets.
  *
- * Lifted out of `<FeaturedMarket />` (task 0044) so the parent page can dedup
- * the chosen market from the active-markets grid below the hero.
+ * On a tie the first market in input order wins (reduce semantics), keeping
+ * selection stable across renders. Lifted out of `<FeaturedMarket />`
+ * (task 0044) so the parent page can dedup the chosen market from the
+ * active-markets grid below the hero.
  */
 export function selectFeaturedMarket(markets: PredictionMarket[]): PredictionMarket | null {
   const active = markets.filter(m => getMarketStatus(m.endDate) !== 'expired')
   if (active.length === 0) return null
-  return active.reduce((top, m) => (m.volume > top.volume ? m : top), active[0])
+
+  const withVolume = active.filter(m => m.volume > 0)
+  if (withVolume.length > 0) {
+    return withVolume.reduce((top, m) => (m.volume > top.volume ? m : top), withVolume[0])
+  }
+
+  // Cold-start fallback: prefer the market whose probability is closest to
+  // 0.5 (i.e. the most genuinely uncertain). 0 and 1 lose against any
+  // non-degenerate price.
+  return active.reduce((top, m) => {
+    const topDist = Math.abs(top.yesPrice - 0.5)
+    const mDist = Math.abs(m.yesPrice - 0.5)
+    return mDist < topDist ? m : top
+  }, active[0])
+}
+
+/**
+ * Whether the market has any signal worth charting (task 0074).
+ *
+ * A market is "degenerate" when its price is exactly 0 or 1 — these are
+ * either uninitialized seeds (no trades, no liquidity) or already-decided
+ * markets, and rendering a wiggly synthetic sparkline next to them is
+ * actively misleading.
+ */
+export function hasMeaningfulPrice(market: Pick<PredictionMarket, 'yesPrice' | 'volume'>): boolean {
+  if (market.yesPrice <= 0 || market.yesPrice >= 1) return false
+  return market.volume > 0
 }
 
 export function getDaysLeftLabel(endDate: string): string {
@@ -126,7 +159,26 @@ function hashString(str: string): number {
   return Math.abs(hash)
 }
 
-export function generateProbabilityHistory(marketId: string, currentPrice: number, points = 30): number[] {
+/**
+ * Generate a deterministic probability-history sparkline for a market.
+ *
+ * Returns `null` (task 0074) when:
+ *   - `currentPrice` is degenerate (≤ 0 or ≥ 1), or
+ *   - the caller explicitly passes `hasVolume = false`, signalling that the
+ *     market has had no real on-chain activity yet.
+ *
+ * Returning `null` lets callers render a "no trades yet" placeholder instead
+ * of a fabricated wiggly line that misrepresents history.
+ */
+export function generateProbabilityHistory(
+  marketId: string,
+  currentPrice: number,
+  points = 30,
+  hasVolume = true,
+): number[] | null {
+  if (!hasVolume) return null
+  if (currentPrice <= 0 || currentPrice >= 1) return null
+
   const rng = seededRandom(hashString(marketId))
   const startPrice = Math.max(0.02, Math.min(0.98, currentPrice + (rng() - 0.5) * 0.4))
   const result: number[] = []

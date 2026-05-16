@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
+import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, hasMeaningfulPrice, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
 import { useMarketCount, useAllOnChainMarkets, type OnChainMarket } from '@/lib/useMarkets'
 import { InfoBanner } from '@/components/InfoBanner'
 
@@ -51,8 +51,8 @@ const CATEGORY_ICONS: Record<MarketCategory, { bg: string; color: string; path: 
   },
 }
 
-function ProbSparkline({ data, width = 72, height = 24 }: { data: number[]; width?: number; height?: number }) {
-  if (data.length < 2) return null
+function ProbSparkline({ data, width = 72, height = 24 }: { data: number[] | null; width?: number; height?: number }) {
+  if (!data || data.length < 2) return null
   const w = width
   const h = height
   const pad = 1
@@ -167,7 +167,14 @@ function MarketCard({ market }: { market: PredictionMarket }) {
             <span className="text-xs text-gray-500">chance</span>
           </div>
           {!isExpired && (
-            <ProbSparkline data={generateProbabilityHistory(market.id, market.yesPrice)} />
+            <ProbSparkline
+              data={generateProbabilityHistory(
+                market.id,
+                market.yesPrice,
+                30,
+                hasMeaningfulPrice(market),
+              )}
+            />
           )}
         </div>
         <ProbabilityBar yesPrice={market.yesPrice} />
@@ -211,7 +218,11 @@ function FeaturedMarket({ market }: { market: PredictionMarket | null }) {
   const yesPct = Math.round(market.yesPrice * 100)
   const noPct = 100 - yesPct
   const timeLabel = getDaysLeftLabel(market.endDate)
-  const sparkData = generateProbabilityHistory(market.id, market.yesPrice, 60)
+  // Task 0074: when the featured market has no real trading activity yet,
+  // suppress the synthetic sparkline and "Live"/"Trending" badges so we
+  // don't lie to users about a wiggly history that never happened.
+  const isLive = hasMeaningfulPrice(market)
+  const sparkData = generateProbabilityHistory(market.id, market.yesPrice, 60, isLive)
 
   const handleClick = () => router.push(`/predict/${market.id}`)
   const handleTrade = (side: 'yes' | 'no', e: React.MouseEvent) => {
@@ -237,20 +248,32 @@ function FeaturedMarket({ market }: { market: PredictionMarket | null }) {
       />
 
       <div className="flex items-center gap-2 mb-3">
-        <svg className="w-3.5 h-3.5 text-goodgreen" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M17.66 11.2C17.43 10.9 17.15 10.64 16.89 10.38C16.22 9.78 15.46 9.35 14.82 8.72C13.33 7.26 13 4.85 13.95 3C13 3.23 12.17 3.75 11.46 4.32C8.87 6.4 7.85 10.07 9.07 13.22C9.11 13.32 9.15 13.42 9.15 13.55C9.15 13.77 9 13.97 8.8 14.05C8.57 14.15 8.33 14.09 8.14 13.93C8.08 13.88 8.04 13.83 8 13.76C6.87 12.33 6.69 10.28 7.45 8.64C5.78 10 4.87 12.3 5 14.47C5.06 14.97 5.12 15.47 5.29 15.97C5.43 16.57 5.7 17.17 6 17.7C7.08 19.43 8.95 20.67 10.96 20.92C13.1 21.19 15.39 20.8 17.03 19.32C18.86 17.66 19.5 15 18.56 12.72L18.43 12.46C18.22 12 17.66 11.2 17.66 11.2Z" />
-        </svg>
-        <span className="text-xs font-semibold text-goodgreen uppercase tracking-wider">Trending</span>
+        {isLive ? (
+          <>
+            <svg className="w-3.5 h-3.5 text-goodgreen" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M17.66 11.2C17.43 10.9 17.15 10.64 16.89 10.38C16.22 9.78 15.46 9.35 14.82 8.72C13.33 7.26 13 4.85 13.95 3C13 3.23 12.17 3.75 11.46 4.32C8.87 6.4 7.85 10.07 9.07 13.22C9.11 13.32 9.15 13.42 9.15 13.55C9.15 13.77 9 13.97 8.8 14.05C8.57 14.15 8.33 14.09 8.14 13.93C8.08 13.88 8.04 13.83 8 13.76C6.87 12.33 6.69 10.28 7.45 8.64C5.78 10 4.87 12.3 5 14.47C5.06 14.97 5.12 15.47 5.29 15.97C5.43 16.57 5.7 17.17 6 17.7C7.08 19.43 8.95 20.67 10.96 20.92C13.1 21.19 15.39 20.8 17.03 19.32C18.86 17.66 19.5 15 18.56 12.72L18.43 12.46C18.22 12 17.66 11.2 17.66 11.2Z" />
+            </svg>
+            <span className="text-xs font-semibold text-goodgreen uppercase tracking-wider">Trending</span>
+          </>
+        ) : (
+          <span className="text-xs font-semibold text-goodgreen/80 uppercase tracking-wider">Featured</span>
+        )}
         <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen/80 border border-goodgreen/15 ml-1">
           {market.category}
         </span>
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/15 ml-1">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+        {isLive ? (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/15 ml-1">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+            </span>
+            Live
           </span>
-          Live
-        </span>
+        ) : (
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/20 ml-1">
+            No trades yet
+          </span>
+        )}
         <span className="text-xs text-gray-500 ml-auto">{timeLabel}</span>
       </div>
 
@@ -297,7 +320,13 @@ function FeaturedMarket({ market }: { market: PredictionMarket | null }) {
         </div>
 
         <div className="hidden sm:flex sm:w-52 items-center justify-center">
-          <ProbSparkline data={sparkData} width={200} height={64} />
+          {sparkData ? (
+            <ProbSparkline data={sparkData} width={200} height={64} />
+          ) : (
+            <div className="text-[11px] text-gray-500 italic px-3 text-center leading-snug">
+              Chart will appear after the first trades.
+            </div>
+          )}
         </div>
       </div>
     </div>
