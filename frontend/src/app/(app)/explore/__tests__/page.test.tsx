@@ -192,6 +192,77 @@ describe('ExplorePage — invalid ?category= canonicalization (task 0076)', () =
   })
 })
 
+// Task 0084 — the "no results" empty state must NOT be a bare grey line of
+// text. It has to:
+//   1. Echo the user's actual query (so they know which string filtered
+//      everything out — vs feeling like the page silently broke).
+//   2. Offer a one-click recovery button (Clear search / Show all tokens)
+//      that resets the relevant state, instead of forcing the user to
+//      hand-delete their input.
+// Same family as task 0080 (Portfolio empty states) and brand-integrity
+// fixes in tasks 0046/0061/0068/0069/0073/0074/0075/0076/0077/0079/0082.
+describe('ExplorePage — search-table empty state (task 0084)', () => {
+  beforeEach(() => {
+    pushMock.mockClear()
+    replaceMock.mockClear()
+    searchParamsString = ''
+  })
+
+  it('echoes the user\'s query when the search filters everything out', () => {
+    searchParamsString = 'search=zzznomatchzzz'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // Header + empty-state row only (the implementation renders the
+    // empty state as a <tr> with colSpan).
+    expect(screen.getAllByRole('row').length).toBe(2)
+    // The empty cell must include the literal query the user typed —
+    // not the generic "No tokens match your search" string from the
+    // pre-task-0084 bare-grey-text version. Use a function matcher
+    // that walks the cell's textContent so we ignore the search input
+    // (its value lives in the attribute, not in text content).
+    const emptyRow = screen.getAllByRole('row')[1]
+    expect(emptyRow.textContent || '').toMatch(/zzznomatchzzz/)
+  })
+
+  it('renders a "Clear search" button when a query has filtered everything out', () => {
+    searchParamsString = 'search=zzznomatchzzz'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    const clearBtn = screen.getByRole('button', { name: /clear search/i })
+    expect(clearBtn).toBeInTheDocument()
+  })
+
+  it('clicking "Clear search" resets the query and restores the table', () => {
+    searchParamsString = 'search=zzznomatchzzz'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // Header + empty-state row before clearing.
+    expect(screen.getAllByRole('row').length).toBe(2)
+    const clearBtn = screen.getByRole('button', { name: /clear search/i })
+    fireEvent.click(clearBtn)
+    // Both ETH and G$ should reappear in addition to the header.
+    expect(screen.getAllByRole('row').length).toBe(3)
+    // And the search input is now empty.
+    const input = screen.getByPlaceholderText(/search/i) as HTMLInputElement
+    expect(input.value).toBe('')
+  })
+
+  it('does NOT show the empty-state recovery UI when results exist', () => {
+    // Sanity: ensure the buttons / SearchX icon are NOT injected into the
+    // page when there is at least one matching row.
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    expect(screen.queryByRole('button', { name: /clear search/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /show all tokens/i })).not.toBeInTheDocument()
+  })
+
+  it('marks the empty-state icon as aria-hidden so screen readers skip it', () => {
+    searchParamsString = 'search=zzznomatchzzz'
+    const { container } = render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // The SearchX lucide icon renders as an <svg> — assert it carries the
+    // aria-hidden attribute so screen readers only narrate the prose +
+    // recovery buttons (which carry their own accessible names).
+    const hiddenSvg = container.querySelector('svg[aria-hidden="true"]')
+    expect(hiddenSvg).not.toBeNull()
+  })
+})
+
 // Separate suite exercising the "G$ has no off-chain market data" code path —
 // the original P0 bug from task 0073 where missing volume/change appeared as
 // misleading $0 / 0% values instead of "—".

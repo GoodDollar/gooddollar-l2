@@ -3,6 +3,7 @@
 import { useState, useMemo, memo, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, PanInfo } from 'framer-motion'
+import { SearchX } from 'lucide-react'
 import { TokenIcon } from '@/components/TokenIcon'
 import { Sparkline } from '@/components/Sparkline'
 import { PercentageChange } from '@/components/ui/percentage-change'
@@ -605,8 +606,67 @@ function ExplorePageContent() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-gray-500">
-                    No tokens match your search
+                  <td colSpan={10} className="py-12 px-4">
+                    <div className="flex flex-col items-center text-center max-w-md mx-auto">
+                      <SearchX
+                        className="text-gray-600 mb-3"
+                        size={36}
+                        strokeWidth={1.5}
+                        aria-hidden="true"
+                      />
+                      <p className="text-sm text-gray-300 mb-1">
+                        {query.trim().length > 0 ? (
+                          <>
+                            No tokens match{' '}
+                            <span className="text-white font-medium break-all">
+                              &ldquo;{query}&rdquo;
+                            </span>
+                            {selectedCategory !== 'All' && (
+                              <>
+                                {' '}in{' '}
+                                <span className="text-white font-medium">
+                                  {selectedCategory}
+                                </span>
+                              </>
+                            )}
+                            .
+                          </>
+                        ) : selectedCategory !== 'All' ? (
+                          <>
+                            No tokens in{' '}
+                            <span className="text-white font-medium">
+                              {selectedCategory}
+                            </span>{' '}
+                            yet.
+                          </>
+                        ) : (
+                          <>No tokens available right now.</>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500 mb-4">
+                        Try a different search term or category.
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        {query.trim().length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setQuery('')}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-goodgreen/15 text-goodgreen border border-goodgreen/20 hover:bg-goodgreen/25 transition-colors"
+                          >
+                            Clear search
+                          </button>
+                        )}
+                        {selectedCategory !== 'All' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCategoryClick('All')}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:text-white bg-dark-50 border border-gray-700/30 transition-colors"
+                          >
+                            Show all tokens
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (
