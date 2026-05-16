@@ -8,17 +8,8 @@ import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
 import { TokenIcon } from '@/components/TokenIcon'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { getChartData, type Timeframe } from '@/lib/chartData'
-import dynamic from 'next/dynamic'
-
-const PriceChart = dynamic(
-  () => import('@/components/PriceChart').then(m => ({ default: m.PriceChart })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
-    ),
-  }
-)
+import { useMounted } from '@/lib/useMounted'
+import { PriceChart } from '@/components/PriceChart'
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 
@@ -87,6 +78,9 @@ export default function TokenDetailPage() {
   const { tokens } = useOnChainMarketData()
   const token = tokens.find(t => t.symbol.toUpperCase() === symbol)
   const [timeframe, setTimeframe] = useState<Timeframe>('1M')
+  // Defer chart render until after hydration to avoid SSR layout glitches
+  // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
+  const chartMounted = useMounted()
 
   // Find current token position and navigation
   const tokenIndex = useMemo(() => {
@@ -246,7 +240,11 @@ export default function TokenDetailPage() {
                 </button>
               ))}
             </div>
-            <PriceChart data={chartData} height={350} />
+            {chartMounted ? (
+              <PriceChart data={chartData} height={350} />
+            ) : (
+              <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
+            )}
           </div>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mb-4">

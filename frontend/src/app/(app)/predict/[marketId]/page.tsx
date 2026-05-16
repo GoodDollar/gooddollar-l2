@@ -12,7 +12,8 @@ import { generateProbabilityHistory } from '@/lib/chartData'
 import { ChartErrorBoundary } from '@/components/ChartErrorBoundary'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { usePredictTrade } from '@/lib/usePredictTrade'
-import dynamic from 'next/dynamic'
+import { useMounted } from '@/lib/useMounted'
+import { ProbabilityChart } from '@/components/ProbabilityChart'
 
 function WalletGatedTradeButton({ isConnected, hasAmount, children }: { isConnected: boolean; hasAmount: boolean; children: React.ReactNode }) {
   if (!isConnected) {
@@ -39,16 +40,6 @@ function WalletGatedTradeButton({ isConnected, hasAmount, children }: { isConnec
   }
   return <>{children}</>
 }
-
-const ProbabilityChart = dynamic(
-  () => import('@/components/ProbabilityChart').then(m => ({ default: m.ProbabilityChart })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 300 }} />
-    ),
-  }
-)
 
 function formatShares(n: number): string {
   const abs = Math.abs(n)
@@ -309,6 +300,11 @@ export default function MarketDetailPage() {
     return generateProbabilityHistory(market.yesPrice, 90)
   }, [market])
 
+  // Defer chart render until after hydration. `lightweight-charts` needs
+  // a real DOM container with measurable dimensions; rendering it during
+  // SSR or first paint causes layout glitches. See task 0090.
+  const chartMounted = useMounted()
+
   if (!isValidId || isOutOfRange || isCountError || isError || (isTimedOut && !market)) {
     return <MarketNotFound />
   }
@@ -355,7 +351,11 @@ export default function MarketDetailPage() {
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
             <h3 className="text-xs text-gray-400 mb-2 font-medium">Probability Over Time</h3>
             <ChartErrorBoundary>
-              <ProbabilityChart data={probData} height={280} />
+              {chartMounted ? (
+                <ProbabilityChart data={probData} height={280} />
+              ) : (
+                <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 280 }} />
+              )}
             </ChartErrorBoundary>
           </div>
 
