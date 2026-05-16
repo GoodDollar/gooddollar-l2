@@ -6,7 +6,7 @@ deps: []
 split: null
 depth: 1
 planned: true
-executed: false
+executed: true
 priority: P2
 split: false
 labels: [frontend, swap, ux, edge-cases, production-readiness, display-overflow]

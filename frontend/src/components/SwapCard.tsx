@@ -30,6 +30,20 @@ function getLiveRate(prices: Record<string, number>, from: string, to: string): 
 const SWAP_FEE_BPS = 30
 const UBI_FEE_BPS = 2000
 
+// Cap on "You pay" input length. 16 chars covers the realistic range
+// for every token in the app (G$ totalSupply ≈ 1 trillion → 13 integer
+// digits + "." + 2 decimals = 16) without entering JS `Number` precision
+// loss territory. Stops the trillion-scale display overflow and the
+// 24-digit "huge input flips to tiny output" pathology at the source.
+const MAX_INPUT_LEN = 16
+
+// Display floor for the "You receive" cell. When the parsed input is
+// non-zero but the resulting `rawOutputAmount` is below 1e-6, we render
+// this literal instead of fabricating a numeric value that's
+// inevitably the wrong order of magnitude.
+const FLOOR_STR = '< 0.000001'
+const FLOOR_THRESHOLD = 1e-6
+
 export function SwapCard() {
   const { slippage } = useSwapSettings()
   const searchParams = useSearchParams()
@@ -93,6 +107,29 @@ export function SwapCard() {
     if (!rawOutputAmount) return ''
     return compactAmount(rawOutputAmount, 6)
   }, [rawOutputAmount])
+
+  // Number of integer digits in the raw output. >10 means we'd render
+  // 11+ digits before the decimal point, which overflows the desktop
+  // card past the output-token selector even with the existing font-size
+  // clamp. AnimatedNumber uses `.toFixed(decimals)` and does not
+  // abbreviate, so the only safe path is to swap to the compact form.
+  const integerDigits = useMemo(() => {
+    if (!rawOutputAmount) return 0
+    return String(Math.floor(Math.abs(rawOutputAmount))).length
+  }, [rawOutputAmount])
+
+  // True when the parsed input is non-zero but the resulting output
+  // would round to 0 at six decimals. Catches the inverse pathology:
+  // `0.000000000000001` ETH → 2.9 trillion G$ render that's purely an
+  // artifact of `parseFloat → formatUnits` scientific-notation churn.
+  const isBelowFloor = useMemo(() => {
+    return rawOutputAmount > 0 && rawOutputAmount < FLOOR_THRESHOLD
+  }, [rawOutputAmount])
+
+  // True the moment the user types a 16th character. The amber warning
+  // chip appears so they know the cap was hit and double-check the
+  // intent before submitting.
+  const inputAtCap = inputAmount.length >= MAX_INPUT_LEN
 
   const ubiFee = useMemo(() => {
     const amt = parseFloat(inputAmount)
@@ -222,7 +259,8 @@ export function SwapCard() {
               placeholder="0"
               aria-label={`Amount to swap (${inputToken?.symbol ?? 'token'})`}
               value={inputAmount}
-              onChange={e => setInputAmount(sanitizeNumericInput(e.target.value))}
+              maxLength={MAX_INPUT_LEN}
+              onChange={e => setInputAmount(sanitizeNumericInput(e.target.value).slice(0, MAX_INPUT_LEN))}
               style={inputFontSize ? { fontSize: inputFontSize } : undefined}
               className={`flex-1 bg-transparent font-medium text-white outline-none placeholder:text-gray-500 min-w-0 focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:ring-offset-1 focus-visible:ring-offset-dark rounded-lg transition-[font-size] duration-100 ${inputFontSize ? '' : 'text-3xl'}`}
             />
@@ -234,6 +272,15 @@ export function SwapCard() {
           </div>
           {inputUsd && (
             <p className="text-xs text-gray-500 mt-1.5" data-testid="input-usd">{inputUsd}</p>
+          )}
+          {inputAtCap && (
+            <p
+              className="text-[11px] text-amber-400 mt-1.5"
+              data-testid="input-cap-warning"
+              role="status"
+            >
+              Amount is unusually large. Double-check before swapping.
+            </p>
           )}
         </motion.div>
 
@@ -257,15 +304,30 @@ export function SwapCard() {
           </div>
           <div className="flex items-center gap-3">
             <span
-              title={rawOutputAmount ? rawOutputAmount.toString() : ''}
+              title={rawOutputAmount ? (outputAmount || rawOutputAmount.toString()) : ''}
               className="flex-1 text-3xl sm:text-3xl font-medium min-w-0 cursor-default select-text"
               style={{ fontSize: outputAmount.length > 10 ? 'clamp(1.125rem, 5vw, 1.875rem)' : undefined }}
+              data-testid="output-amount"
             >
-              <span className="text-white sm:hidden">{compactOutputAmount || <span className="text-gray-600">0</span>}</span>
-              {rawOutputAmount
-                ? <AnimatedNumber value={rawOutputAmount} decimals={outputToken.symbol === 'USDC' ? 2 : 6} className="text-white hidden sm:inline" />
-                : <span className="text-gray-600 hidden sm:inline">0</span>
-              }
+              {/* Mobile — already uses `compactAmount`, just patch the below-floor case */}
+              <span className="text-white sm:hidden">
+                {isBelowFloor
+                  ? FLOOR_STR
+                  : (compactOutputAmount || <span className="text-gray-600">0</span>)}
+              </span>
+              {/* Desktop — three paths:
+                  1. Sub-dust output → render the floor literal
+                  2. >10 integer digits → drop AnimatedNumber for compact form to avoid `.toFixed(6)` overflow
+                  3. Normal range → animate as before */}
+              {isBelowFloor ? (
+                <span className="text-white hidden sm:inline" data-testid="output-floor">{FLOOR_STR}</span>
+              ) : integerDigits > 10 ? (
+                <span className="text-white hidden sm:inline" data-testid="output-compact">{compactOutputAmount}</span>
+              ) : rawOutputAmount ? (
+                <AnimatedNumber value={rawOutputAmount} decimals={outputToken.symbol === 'USDC' ? 2 : 6} className="text-white hidden sm:inline" />
+              ) : (
+                <span className="text-gray-600 hidden sm:inline">0</span>
+              )}
             </span>
             <TokenSelector
               selected={outputToken}
