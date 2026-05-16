@@ -513,11 +513,11 @@ function AccountPanel() {
       <h3 className="text-sm font-semibold text-white mb-3">Account</h3>
       <div className="flex justify-between">
         <span className="text-gray-400">Balance</span>
-        <span className="text-white font-medium">{formatPerpsPrice(account.balance)}</span>
+        <PriceDisplay value={account.balance} prefix="$" size="sm" compact variant="default" className="text-white" />
       </div>
       <div className="flex justify-between">
         <span className="text-gray-400">Equity</span>
-        <span className="text-white font-medium">{formatPerpsPrice(account.equity)}</span>
+        <PriceDisplay value={account.equity} prefix="$" size="sm" compact variant="default" className="text-white" />
       </div>
       <div className="flex justify-between">
         <span className="text-gray-400">Unrealized P&L</span>
@@ -527,11 +527,11 @@ function AccountPanel() {
       </div>
       <div className="flex justify-between">
         <span className="text-gray-400">Margin Used</span>
-        <span className="text-white font-medium">{formatPerpsPrice(account.marginUsed)}</span>
+        <PriceDisplay value={account.marginUsed} prefix="$" size="sm" compact variant="default" className="text-white" />
       </div>
       <div className="flex justify-between">
         <span className="text-gray-400">Available</span>
-        <span className="text-goodgreen font-medium">{formatPerpsPrice(account.availableMargin)}</span>
+        <PriceDisplay value={account.availableMargin} prefix="$" size="sm" compact variant="accent" />
       </div>
       <div className="pt-1">
         <div className="flex justify-between mb-1">
