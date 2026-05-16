@@ -20,7 +20,7 @@ vi.mock('@rainbow-me/rainbowkit', () => ({
   },
 }))
 
-import CreateMarketPage from '../predict/create/page'
+import CreateMarketPage from '../(app)/predict/create/page'
 
 function setEndDate(container: HTMLElement, value: string) {
   const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement

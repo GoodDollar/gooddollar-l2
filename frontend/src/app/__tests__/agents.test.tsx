@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import AgentsPage from '../agents/page'
+import AgentsPage from '../(app)/agents/page'
 
 // Mock wagmi hooks
 vi.mock('wagmi', () => ({

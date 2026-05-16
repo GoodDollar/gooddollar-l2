@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
-import AgentDetailPage from '../agents/[address]/page'
+import AgentDetailPage from '../(app)/agents/[address]/page'
 
 // Mock next/navigation — the address is per-test mutable so we can cover
 // invalid-input cases (non-hex, wrong length, empty, etc.). Default to a

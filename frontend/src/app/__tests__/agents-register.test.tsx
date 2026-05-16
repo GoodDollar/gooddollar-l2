@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import RegisterAgentPage from '../agents/register/page'
+import RegisterAgentPage from '../(app)/agents/register/page'
 
 const { mockWriteContract } = vi.hoisted(() => ({
   mockWriteContract: vi.fn(),

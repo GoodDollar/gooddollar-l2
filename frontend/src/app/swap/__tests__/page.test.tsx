@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import type { Redirect } from 'next/dist/lib/load-custom-routes'
 import nextConfig from '../../../../next.config.js'
 
 describe('Swap route redirect', () => {
@@ -18,7 +19,7 @@ describe('Swap route redirect', () => {
     expect(nextConfig.redirects).toBeTypeOf('function')
 
     const redirects = await nextConfig.redirects!()
-    const swapRedirect = redirects.find((r) => r.source === '/swap')
+    const swapRedirect = redirects.find((r: Redirect) => r.source === '/swap')
 
     expect(swapRedirect).toBeDefined()
     expect(swapRedirect).toMatchObject({
