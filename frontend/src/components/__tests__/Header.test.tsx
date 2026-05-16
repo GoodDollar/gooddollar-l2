@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Header } from '../Header'
 
@@ -97,16 +97,46 @@ describe('Header', () => {
     expect(desktopNav.textContent).not.toContain('Tests')
   })
 
-  it('still includes the "Tests" link in the mobile menu', () => {
-    // Removing Tests from the desktop inline nav must NOT remove it from the
-    // mobile menu — devs / QA still need a way to navigate there.
-    render(<Header />)
-    fireEvent.click(screen.getByLabelText('Open menu'))
-    const mobileNav = screen.getByTestId('mobile-nav')
-    expect(mobileNav.textContent).toContain('Tests')
-    const links = mobileNav.querySelectorAll('a')
-    const hrefs = Array.from(links).map(l => l.getAttribute('href'))
-    expect(hrefs).toContain('/test-dashboard')
+  describe('Tests link in mobile menu (gated by NEXT_PUBLIC_SHOW_DEV_NAV)', () => {
+    // Internal QA dashboard link is hidden in production. Devs/QA can opt in
+    // with NEXT_PUBLIC_SHOW_DEV_NAV=1 in .env.local. The /test-dashboard
+    // route itself stays reachable via direct URL either way. See task 0070.
+    const original = process.env.NEXT_PUBLIC_SHOW_DEV_NAV
+
+    afterEach(() => {
+      if (original === undefined) delete process.env.NEXT_PUBLIC_SHOW_DEV_NAV
+      else process.env.NEXT_PUBLIC_SHOW_DEV_NAV = original
+    })
+
+    it('hides the "Tests" link in the mobile menu by default (flag unset)', () => {
+      delete process.env.NEXT_PUBLIC_SHOW_DEV_NAV
+      render(<Header />)
+      fireEvent.click(screen.getByLabelText('Open menu'))
+      const mobileNav = screen.getByTestId('mobile-nav')
+      const links = mobileNav.querySelectorAll('a')
+      const hrefs = Array.from(links).map(l => l.getAttribute('href'))
+      expect(hrefs).not.toContain('/test-dashboard')
+      expect(mobileNav.textContent).not.toMatch(/\bTests\b/)
+    })
+
+    it('hides the "Tests" link in the mobile menu when flag !== "1"', () => {
+      process.env.NEXT_PUBLIC_SHOW_DEV_NAV = '0'
+      render(<Header />)
+      fireEvent.click(screen.getByLabelText('Open menu'))
+      const mobileNav = screen.getByTestId('mobile-nav')
+      const hrefs = Array.from(mobileNav.querySelectorAll('a')).map(l => l.getAttribute('href'))
+      expect(hrefs).not.toContain('/test-dashboard')
+    })
+
+    it('shows the "Tests" link in the mobile menu when flag === "1"', () => {
+      process.env.NEXT_PUBLIC_SHOW_DEV_NAV = '1'
+      render(<Header />)
+      fireEvent.click(screen.getByLabelText('Open menu'))
+      const mobileNav = screen.getByTestId('mobile-nav')
+      expect(mobileNav.textContent).toContain('Tests')
+      const hrefs = Array.from(mobileNav.querySelectorAll('a')).map(l => l.getAttribute('href'))
+      expect(hrefs).toContain('/test-dashboard')
+    })
   })
 
   it('uses 2xl breakpoint for desktop nav (not sm/lg/xl) to avoid clipping WalletButton at 1280px', () => {

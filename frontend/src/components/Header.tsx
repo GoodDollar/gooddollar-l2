@@ -28,6 +28,10 @@ export function Header() {
   const isActivity = pathname?.startsWith('/activity')
   const isTestDashboard = pathname?.startsWith('/test-dashboard')
   const isPortfolio = pathname === '/portfolio'
+  // Internal QA dashboard link is hidden in production. Devs/QA can enable
+  // it locally with NEXT_PUBLIC_SHOW_DEV_NAV=1. The /test-dashboard route
+  // itself remains reachable via direct URL. See task 0070.
+  const showDevNav = process.env.NEXT_PUBLIC_SHOW_DEV_NAV === '1'
 
   useEffect(() => {
     if (!mobileMenuOpen) return
@@ -239,13 +243,15 @@ export function Header() {
                 Activity
               </span>
             </Link>
-            <Link
-              href="/test-dashboard"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isTestDashboard ? 'text-white font-medium bg-dark-50/50' : 'text-gray-400 hover:text-white'}`}
-            >
-              Tests
-            </Link>
+            {showDevNav && (
+              <Link
+                href="/test-dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isTestDashboard ? 'text-white font-medium bg-dark-50/50' : 'text-gray-400 hover:text-white'}`}
+              >
+                Tests
+              </Link>
+            )}
             <div className="border-t border-dark-50/50 my-1" />
             <Link
               href="/portfolio"
