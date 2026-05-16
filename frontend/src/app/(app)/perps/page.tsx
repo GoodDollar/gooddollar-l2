@@ -7,6 +7,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatPerpsPrice, formatLargeValue, formatFundingRate, getFundingCountdown, type PerpPair, type AccountSummaryData } from '@/lib/perpsData'
 import { useOnChainPairs, useOnChainAccountSummary } from '@/lib/useOnChainPerps'
 import { sanitizeNumericInput } from '@/lib/format'
+import { boundPerpsSize } from '@/lib/perpsInput'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useOpenPosition } from '@/lib/usePerps'
@@ -375,7 +376,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
         <label className="text-xs text-gray-400 mb-1 block">Size ({pair.baseAsset})</label>
         <AmountInput
           value={size}
-          onChange={setSize}
+          onChange={(next) => setSize(boundPerpsSize(next))}
           maxValue={maxSize}
           maxValueLabel="max size"
           symbol={pair.baseAsset}
@@ -423,21 +424,41 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
         )}
       </div>
 
-      {sizeNum > 0 && hasValidPrice && effectivePrice > 0 && (
-        <div className="space-y-1 text-xs">
-          <div className="flex justify-between text-gray-400"><span>Notional</span><span className="text-white truncate ml-2">{formatPerpsPrice(notional)}</span></div>
-          <div className="flex justify-between text-gray-400"><span>Margin</span><span className="text-white truncate ml-2">{formatPerpsPrice(marginRequired)}</span></div>
-          <div className="flex justify-between text-gray-400"><span>Liq. Price</span><span className="text-yellow-400 truncate ml-2">{formatPerpsPrice(liqPrice)}</span></div>
-          <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.05%' : '0.02%'})</span><span className="text-white truncate ml-2">{formatLargeValue(fee)}</span></div>
-          <div className="flex justify-between text-goodgreen/80"><span>→ UBI (20%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
-          {tpPnl !== 0 && !tpInvalid && (
-            <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className="truncate ml-2"><PriceDisplay value={tpPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>
-          )}
-          {slPnl !== 0 && !slInvalid && (
-            <div className="flex justify-between text-gray-400"><span>SL P&L</span><span className="truncate ml-2"><PriceDisplay value={slPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>
-          )}
-        </div>
-      )}
+      {sizeNum > 0 && hasValidPrice && effectivePrice > 0 && (() => {
+        // When the user enters a wildly oversized trade (e.g. pasting a
+        // 21-digit value into Size), the summary rows would otherwise
+        // render `$104.97Q` (quintillion notation) which reads as a
+        // broken number rather than "this is impossible". Use 10× the
+        // current max trade as the cap; anything beyond that gets a
+        // single red explanation line instead of the full block. When
+        // maxSize is 0 (no margin), fall back to MAX_SAFE_INTEGER so a
+        // missing margin doesn't accidentally hide the summary for
+        // normal trades.
+        const summaryCap = maxSize > 0 ? maxSize * 10 : Number.MAX_SAFE_INTEGER
+        if (sizeNum > summaryCap) {
+          return (
+            <p className="text-[11px] text-red-400 text-center" data-testid="perps-size-exceeds-cap">
+              Trade size exceeds available margin
+              {maxSize > 0 ? ` (max ≈ ${formatPerpsPrice(maxSize)} ${pair.baseAsset})` : ''}
+            </p>
+          )
+        }
+        return (
+          <div className="space-y-1 text-xs">
+            <div className="flex justify-between text-gray-400"><span>Notional</span><span className="text-white truncate ml-2">{formatPerpsPrice(notional)}</span></div>
+            <div className="flex justify-between text-gray-400"><span>Margin</span><span className="text-white truncate ml-2">{formatPerpsPrice(marginRequired)}</span></div>
+            <div className="flex justify-between text-gray-400"><span>Liq. Price</span><span className="text-yellow-400 truncate ml-2">{formatPerpsPrice(liqPrice)}</span></div>
+            <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.05%' : '0.02%'})</span><span className="text-white truncate ml-2">{formatLargeValue(fee)}</span></div>
+            <div className="flex justify-between text-goodgreen/80"><span>→ UBI (20%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
+            {tpPnl !== 0 && !tpInvalid && (
+              <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className="truncate ml-2"><PriceDisplay value={tpPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>
+            )}
+            {slPnl !== 0 && !slInvalid && (
+              <div className="flex justify-between text-gray-400"><span>SL P&L</span><span className="truncate ml-2"><PriceDisplay value={slPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>
+            )}
+          </div>
+        )
+      })()}
 
       {perpError && (
         <p className="text-[10px] text-red-400 text-center truncate">{perpError}</p>
