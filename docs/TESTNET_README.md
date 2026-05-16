@@ -1,15 +1,15 @@
 # GoodDollar L2 Testnet Readiness
 
-_Last updated: 2026-05-16 13:51 UTC by `scripts/update-testnet-readme.py`._
+_Last updated: 2026-05-16 15:01 UTC by `scripts/update-testnet-readme.py`._
 
 ## Current Build
 
 - Branch: `main`
 - Snapshot source: committed README + GitHub Actions history for this branch
 - Package version: `0.2.0`
-- Autobuilder iteration: `44`
+- Autobuilder iteration: `46`
 - Chain: GoodDollar L2 Devnet (`42069` configured, `42069` live)
-- Latest local block: `118862`
+- Latest local block: `120965`
 
 ## Public Endpoints
 
