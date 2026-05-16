@@ -311,6 +311,52 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'ending', label: 'Ending Soon' },
 ]
 
+// Rendered when the only thing in the filtered set is the featured hero
+// (which gets deduped out of the grid). Without this, the page would render
+// a blank dead zone below the filter row — see task 0072.
+function OnlyFeaturedNotice({
+  isFiltered,
+  onClear,
+}: {
+  isFiltered: boolean
+  onClear: () => void
+}) {
+  return (
+    <div
+      data-testid="predict-only-featured-notice"
+      role="status"
+      className="bg-dark-100 rounded-2xl border border-gray-700/20 py-10 px-6 text-center"
+    >
+      {isFiltered ? (
+        <>
+          <p className="text-gray-300 text-sm mb-1 font-medium">
+            Only the featured market matches your filter
+          </p>
+          <p className="text-gray-500 text-xs mb-4">
+            The hero above is the single match. Clear your filter to see every market.
+          </p>
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-goodgreen bg-goodgreen/10 border border-goodgreen/20 hover:bg-goodgreen/20 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/40 focus-visible:outline-none"
+          >
+            Clear filter
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-gray-300 text-sm mb-1 font-medium">
+            You&rsquo;re looking at the only active market right now
+          </p>
+          <p className="text-gray-500 text-xs">
+            Check back soon — new markets open frequently.
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
 function inferCategory(question: string): MarketCategory {
   const q = question.toLowerCase()
   if (q.includes('bitcoin') || q.includes('ethereum') || q.includes('crypto') || q.includes('gooddollar') || q.includes('etoro') || q.includes('etor')) return 'Crypto'
@@ -492,6 +538,22 @@ function PredictPageContent() {
               </div>
             </div>
           )}
+
+          {/* Dead-zone guard (task 0072): when filtered is non-empty but the
+              only thing in it is the featured hero (deduped out of the grid)
+              and there are no expired markets either, the page used to render
+              blank space below the filters. Show a helpful notice instead. */}
+          {activeMarketsWithoutFeatured.length === 0 &&
+            expiredMarkets.length === 0 &&
+            featured && (
+              <OnlyFeaturedNotice
+                isFiltered={query.trim() !== '' || category !== 'All'}
+                onClear={() => {
+                  setQuery('')
+                  setCategory('All')
+                }}
+              />
+            )}
 
           {expiredMarkets.length > 0 && (
             <div className="mt-8">
