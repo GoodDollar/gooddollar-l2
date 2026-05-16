@@ -13,7 +13,7 @@ import { ConnectWalletBanner } from '@/components/ConnectWalletBanner'
 import { PortfolioOnChain } from '@/components/PortfolioOnChain'
 import { Sparkline } from '@/components/Sparkline'
 import { getStockByTicker } from '@/lib/stockData'
-import { SummaryCard, SectionHeader } from '@/components/ui'
+import { SummaryCard, SectionHeader, EmptyState } from '@/components/ui'
 
 
 export default function PortfolioPage() {
@@ -82,7 +82,16 @@ export default function PortfolioPage() {
           }
         />
         {stockHoldings.length === 0 ? (
-          <p className="text-sm text-gray-500 py-4 text-center">No stock holdings</p>
+          <EmptyState
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            }
+            title="No stock holdings yet"
+            description="Buy synthetic stocks like sAAPL or sTSLA to start tracking them here."
+            action={{ label: 'Browse stocks', href: '/stocks' }}
+          />
         ) : (
           <div className="space-y-2">
             {stockHoldings.slice(0, 3).map(h => {
@@ -142,7 +151,16 @@ export default function PortfolioPage() {
           }
         />
         {predictPositions.length === 0 ? (
-          <p className="text-sm text-gray-500 py-4 text-center">No prediction positions</p>
+          <EmptyState
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            }
+            title="No prediction positions yet"
+            description="Take a YES or NO position on a market to back your forecast."
+            action={{ label: 'Browse markets', href: '/predict' }}
+          />
         ) : (
           <div className="space-y-2">
             {predictPositions.slice(0, 3).map(pos => {
@@ -185,7 +203,16 @@ export default function PortfolioPage() {
           }
         />
         {perpsPositions.length === 0 ? (
-          <p className="text-sm text-gray-500 py-4 text-center">No open perps positions</p>
+          <EmptyState
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+            }
+            title="No open perps positions"
+            description="Open a long or short with leverage on BTC, ETH and more."
+            action={{ label: 'Open a position', href: '/perps' }}
+          />
         ) : (
           <div className="space-y-2">
             {perpsPositions.slice(0, 3).map((pos, i) => (
