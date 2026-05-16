@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { DEVNET_RPC_URL, DEVNET_CHAIN_ID, CONTRACTS as DEVNET_CONTRACTS } from '@/lib/devnet'
 import { rpcCall as rpcCallStrict, RpcError } from '@/lib/rpc'
 import type { EthBlock, EthReceipt, EthHex } from '@/lib/eth-types'
@@ -8,6 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { computeBarHeights } from './block-timeline'
 
 const RPC_URL = DEVNET_RPC_URL
+
+// Visibility-gated polling cadence — see task 0096. Tab-hidden ticks become
+// no-ops so a forgotten tab cannot pummel the RPC. Value stays at 10s for
+// continuity with the previous behaviour; out of scope to change it here.
+const POLL_INTERVAL_MS = 10_000
 
 const TESTERS = [
   { name: 'Tester Alpha', role: 'Swaps & Lending', address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8', color: '#10b981', emoji: '🟢' },
@@ -102,12 +107,27 @@ export default function ActivityPage() {
   // of silently anchoring the page at "Block #0" with a green "Live" pulse.
   const [rpcError, setRpcError] = useState<RpcError | null>(null)
 
+  // Cache the last block we performed the expensive 20-block sweep on.
+  // On a quiet chain the head advances slower than the 10s poll cadence,
+  // so re-fetching 20 blocks + ~40 receipts + 3×2 tester calls on every
+  // tick is pure waste. See task 0096.
+  const lastFetchedBlockRef = useRef<number>(-1)
+
   const fetchData = useCallback(async () => {
     try {
-      // Get latest block number
+      // Get latest block number. This is the only call we ALWAYS issue —
+      // the rest of the sweep short-circuits if the head hasn't advanced.
       const blockHex = await rpcCall<string>('eth_blockNumber')
       const latestBlock = hexToNumber(blockHex)
       setCurrentBlock(latestBlock)
+
+      // Short-circuit on unchanged head: the "Updated" timestamp still
+      // ticks (gives a live-pulse feel) but we skip the heavy fanout.
+      if (latestBlock === lastFetchedBlockRef.current) {
+        setLastUpdate(new Date())
+        setRpcError(null)
+        return
+      }
 
       // Fetch last 20 blocks. Type the promise as `EthBlock | null` —
       // anvil can return `null` for not-yet-mined blocks at the head, so we
@@ -122,52 +142,71 @@ export default function ActivityPage() {
       const blockResults = await Promise.all(blockPromises)
 
       const newBlocks: BlockInfo[] = []
-      const allTxs: TxInfo[] = []
       const hits: Record<string, number> = {}
+
+      // Pass 1: walk blocks, collect tx metadata + dispatch receipt requests.
+      // Previously the receipt fetch was awaited inside the for-loop, which
+      // serialized N receipts back-to-back (~20 blocks × 2 txs = 40 round-trips
+      // at one round-trip-per-tick). We now build all (tx, receiptPromise)
+      // pairs and Promise.all them together below. See task 0096.
+      type Pending = {
+        tx: NonNullable<EthBlock['transactions']>[number]
+        blockNum: number
+        timestamp: number
+        receiptPromise: Promise<EthReceipt | null>
+      }
+      const pending: Pending[] = []
 
       for (const block of blockResults) {
         if (!block) continue
         const blockNum = hexToNumber(block.number)
         const timestamp = hexToNumber(block.timestamp)
         const txs = block.transactions || []
-        
+
         newBlocks.push({ number: blockNum, txCount: txs.length, timestamp })
 
         for (const tx of txs) {
-          const to = tx.to || '(contract creation)'
           const toAddr = tx.to?.toLowerCase() || ''
-          
-          // Count contract hits
           const contractName = CONTRACTS[toAddr]
           if (contractName) {
             hits[contractName] = (hits[contractName] || 0) + 1
           }
 
-          // Get receipt for status. May be `null` for txs still in the
-          // mempool; the `if (receipt)` guard handles that case explicitly.
-          let status: 'success' | 'failed' | 'pending' = 'pending'
-          let gasUsed = '0'
-          try {
-            const receipt = await rpcCall<EthReceipt | null>('eth_getTransactionReceipt', [tx.hash])
-            if (receipt) {
-              status = receipt.status === '0x1' ? 'success' : 'failed'
-              gasUsed = hexToNumber(receipt.gasUsed).toLocaleString()
-            }
-          } catch { /* ignore */ }
+          // Wrap the receipt call so a single failure cannot reject the
+          // outer Promise.all — receipts may be `null` for in-flight txs.
+          const receiptPromise = rpcCall<EthReceipt | null>(
+            'eth_getTransactionReceipt',
+            [tx.hash],
+          ).catch(() => null as EthReceipt | null)
 
-          allTxs.push({
-            hash: tx.hash,
-            from: tx.from,
-            to,
-            value: tx.value,
-            blockNumber: blockNum,
-            timestamp,
-            status,
-            gasUsed,
-            contractName: CONTRACTS[toAddr] || '',
-          })
+          pending.push({ tx, blockNum, timestamp, receiptPromise })
         }
       }
+
+      // Pass 2: await ALL receipts in parallel.
+      const receipts = await Promise.all(pending.map((p) => p.receiptPromise))
+
+      const allTxs: TxInfo[] = pending.map((p, i) => {
+        const receipt = receipts[i]
+        const toAddr = p.tx.to?.toLowerCase() || ''
+        let status: 'success' | 'failed' | 'pending' = 'pending'
+        let gasUsed = '0'
+        if (receipt) {
+          status = receipt.status === '0x1' ? 'success' : 'failed'
+          gasUsed = hexToNumber(receipt.gasUsed).toLocaleString()
+        }
+        return {
+          hash: p.tx.hash,
+          from: p.tx.from,
+          to: p.tx.to || '(contract creation)',
+          value: p.tx.value,
+          blockNumber: p.blockNum,
+          timestamp: p.timestamp,
+          status,
+          gasUsed,
+          contractName: CONTRACTS[toAddr] || '',
+        }
+      })
 
       setBlocks(newBlocks)
       setTransactions(allTxs.slice(0, 50))
@@ -188,6 +227,10 @@ export default function ActivityPage() {
       })
       setTesterStats(await Promise.all(testerPromises))
 
+      // Only record the new head AFTER all the heavy fetches succeeded —
+      // a thrown RpcError in the middle of the sweep must NOT mark the
+      // block as "already fetched", or the retry button would short-circuit.
+      lastFetchedBlockRef.current = latestBlock
       setLastUpdate(new Date())
       setLoading(false)
       setRpcError(null)
@@ -205,9 +248,36 @@ export default function ActivityPage() {
   }, [])
 
   useEffect(() => {
+    // Initial fetch. We always run this, even if the tab starts hidden —
+    // the user must see SOMETHING on first mount, and the visibility gate
+    // only protects the recurring poll.
     fetchData()
-    const interval = setInterval(fetchData, 10000)
-    return () => clearInterval(interval)
+
+    // Tab-visibility-aware polling. The interval fires every 10s but the
+    // tick is a no-op while the tab is hidden — a forgotten tab will not
+    // continue hammering the RPC. When the tab becomes visible again we
+    // also do an immediate catch-up fetch so the data isn't stale by up
+    // to 10s. See task 0096.
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      fetchData()
+    }, POLL_INTERVAL_MS)
+
+    const onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchData()
+      }
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange)
+    }
+
+    return () => {
+      clearInterval(interval)
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+      }
+    }
   }, [fetchData])
 
   const barHeights = computeBarHeights(blocks)
