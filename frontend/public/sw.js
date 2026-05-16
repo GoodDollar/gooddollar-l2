@@ -1,7 +1,9 @@
 // GoodDollar L2 Service Worker
 // Provides offline caching for static assets and API responses
 
-const CACHE_NAME = 'gooddollar-v1.0.0'
+// Bump this string to purge stale caches. v1.0.1 invalidates the broken
+// caches that shipped with the buggy script handler (see task 0092).
+const CACHE_NAME = 'gooddollar-v1.0.1'
 const STATIC_CACHE = `${CACHE_NAME}-static`
 const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`
 
@@ -61,6 +63,17 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // Bypass the Service Worker entirely for Next.js content-hashed bundles.
+  // These assets are immutable and already cached by the browser's HTTP
+  // cache (Cache-Control: public, max-age=31536000, immutable). Routing them
+  // through the SW caused ChunkLoadError when a previous response failed and
+  // the .catch handler silently resolved with `undefined`, blanking pages
+  // like /perps, /lend, /stable, /ubi-impact and /activity. See task 0092.
+  const sameOrigin = url.origin === self.location.origin
+  if (sameOrigin && url.pathname.startsWith('/_next/')) {
+    return
+  }
+
   // Strategy 1: Cache First for static assets
   if (request.destination === 'image' ||
       request.destination === 'font' ||
@@ -75,8 +88,14 @@ self.addEventListener('fetch', (event) => {
           }
 
           return fetch(request).then((response) => {
-            // Cache successful responses
-            if (response.status === 200) {
+            // Only cache successful, same-origin, non-opaque responses.
+            // Caching opaque cross-origin responses can poison the cache and
+            // produce broken pages on subsequent loads.
+            if (
+              response.status === 200 &&
+              response.type !== 'opaque' &&
+              sameOrigin
+            ) {
               const responseClone = response.clone()
               caches.open(STATIC_CACHE).then((cache) => {
                 cache.put(request, responseClone)
@@ -85,9 +104,17 @@ self.addEventListener('fetch', (event) => {
             return response
           })
         })
-        .catch(() => {
-          // Return offline fallback for critical assets
-          console.log('[SW] Failed to fetch asset:', request.url)
+        .catch((err) => {
+          // CRITICAL: we MUST return a Response here. If we resolve to
+          // `undefined`, browsers turn `event.respondWith(...)` into a
+          // NetworkError, which webpack rewraps as ChunkLoadError. That bug
+          // blanked five pages in production before task 0092.
+          console.log('[SW] Failed to fetch asset:', request.url, err)
+          return new Response('Service Worker fetch failed', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain' },
+          })
         })
     )
     return
