@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useMemo, memo, useCallback, Suspense } from 'react'
+import { useState, useMemo, memo, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, PanInfo } from 'framer-motion'
 import { TokenIcon } from '@/components/TokenIcon'
 import { Sparkline } from '@/components/Sparkline'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { formatPrice, formatVolume, formatMarketCap, type TokenMarketData } from '@/lib/marketData'
-import { TOKEN_CATEGORIES, type TokenCategory } from '@/lib/tokens'
+import { TOKEN_CATEGORIES, type TokenCategory, resolveCategory } from '@/lib/tokens'
 import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
 
 type SortField = 'price' | 'change1h' | 'change24h' | 'change7d' | 'volume24h' | 'marketCap'
@@ -395,17 +395,51 @@ function ExplorePageContent() {
   const searchParams = useSearchParams()
   const initialQuery = searchParams?.get('search') ?? ''
   const initialCategoryParam = searchParams?.get('category') ?? ''
-  const initialCategory: TokenCategory | 'All' = (() => {
-    if (initialCategoryParam === 'All') return 'All'
-    return (TOKEN_CATEGORIES as readonly string[]).includes(initialCategoryParam)
-      ? (initialCategoryParam as TokenCategory)
-      : 'All'
-  })()
+  // resolveCategory tells us BOTH the canonical category AND whether the
+  // URL needs cleaning up. We use a single useMemo so the resolution is
+  // stable across renders and the canonicalisation effect below only fires
+  // once per real URL change.
+  const resolution = useMemo(
+    () => resolveCategory(initialCategoryParam, TOKEN_CATEGORIES),
+    [initialCategoryParam],
+  )
   const [query, setQuery] = useState(initialQuery)
-  const [selectedCategory, setSelectedCategory] = useState<TokenCategory | 'All'>(initialCategory)
+  const [selectedCategory, setSelectedCategory] = useState<TokenCategory | 'All'>(resolution.value)
+  // Notice shown to the user when their ?category= value was wrong. Null
+  // when the URL was already canonical. We clear it on the next category
+  // change so it doesn't stick around after the user picks a new filter.
+  const [notice, setNotice] = useState<string | null>(() => {
+    if (resolution.mode === 'case-fixed') {
+      return `Showing "${resolution.value}" — fixed casing from "${resolution.raw}".`
+    }
+    if (resolution.mode === 'unknown') {
+      return `Unknown category "${resolution.raw}" — showing all tokens.`
+    }
+    return null
+  })
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { tokens: data } = useOnChainMarketData()
+
+  // Canonicalise the URL if the user arrived with a typo or unknown
+  // category. We use router.replace (not push) so the back button still
+  // works the way the user expects, and we only run when the resolution
+  // actually says something needs fixing.
+  useEffect(() => {
+    if (resolution.mode === 'exact' || resolution.mode === 'all') return
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
+    if (resolution.mode === 'case-fixed') {
+      params.set('category', resolution.value)
+    } else {
+      // mode === 'unknown' — drop the broken param entirely.
+      params.delete('category')
+    }
+    const qs = params.toString()
+    router.replace(qs ? `/explore?${qs}` : '/explore')
+    // We intentionally depend only on `resolution` — searchParams changes
+    // on every render in some Next.js setups, which would loop forever.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolution])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -449,6 +483,22 @@ function ExplorePageContent() {
     router.push(`/?buy=${symbol}`)
   }, [router])
 
+  // Single source of truth for category clicks: updates state, mirrors to
+  // the URL (so bookmarks/shares match what the user sees), and clears any
+  // "we ignored your typo" notice from the initial load.
+  const handleCategoryClick = useCallback((cat: TokenCategory | 'All') => {
+    setSelectedCategory(cat)
+    setNotice(null)
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
+    if (cat === 'All') {
+      params.delete('category')
+    } else {
+      params.set('category', cat)
+    }
+    const qs = params.toString()
+    router.replace(qs ? `/explore?${qs}` : '/explore')
+  }, [router, searchParams])
+
   return (
     <div className="w-full max-w-5xl mx-auto">
       <div className="mb-6">
@@ -470,7 +520,7 @@ function ExplorePageContent() {
 
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
         <button
-          onClick={() => setSelectedCategory('All')}
+          onClick={() => handleCategoryClick('All')}
           className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selectedCategory === 'All' ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-100 border border-gray-700/20'}`}
         >
           All
@@ -478,13 +528,32 @@ function ExplorePageContent() {
         {TOKEN_CATEGORIES.map(cat => (
           <button
             key={cat}
-            onClick={() => setSelectedCategory(cat)}
+            onClick={() => handleCategoryClick(cat)}
             className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selectedCategory === cat ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-100 border border-gray-700/20'}`}
           >
             {cat}
           </button>
         ))}
       </div>
+
+      {notice && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="category-notice"
+          className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200"
+        >
+          <span>{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            className="shrink-0 text-amber-300/70 hover:text-amber-100 transition-colors"
+            aria-label="Dismiss notice"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <div className="overflow-x-auto">

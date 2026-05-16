@@ -3,9 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const pushMock = vi.fn()
+const replaceMock = vi.fn()
 let searchParamsString = ''
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: pushMock, replace: replaceMock }),
   useSearchParams: () => new URLSearchParams(searchParamsString),
 }))
 
@@ -38,6 +39,7 @@ import ExplorePage from '../page'
 describe('ExplorePage', () => {
   beforeEach(() => {
     pushMock.mockClear()
+    replaceMock.mockClear()
     searchParamsString = ''
   })
 
@@ -105,6 +107,88 @@ describe('ExplorePage', () => {
     render(<TestWrapper><ExplorePage /></TestWrapper>)
     const input = screen.getByPlaceholderText(/search/i) as HTMLInputElement
     expect(input.value).toBe('')
+  })
+})
+
+// Task 0076: the URL must always reflect the *actually applied* category.
+// Otherwise users bookmark/share a URL ("?category=BogusCategory") that
+// silently shows All, with no feedback that their filter was ignored.
+describe('ExplorePage — invalid ?category= canonicalization (task 0076)', () => {
+  beforeEach(() => {
+    pushMock.mockClear()
+    replaceMock.mockClear()
+    searchParamsString = ''
+  })
+
+  it('does NOT call router.replace when category is valid (exact match)', () => {
+    searchParamsString = 'category=GoodDollar'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    expect(replaceMock).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('category-notice')).not.toBeInTheDocument()
+  })
+
+  it('does NOT call router.replace when no category param is present', () => {
+    searchParamsString = ''
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    expect(replaceMock).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('category-notice')).not.toBeInTheDocument()
+  })
+
+  it('canonicalizes case-mismatched category (gooddollar → GoodDollar) and shows notice', () => {
+    searchParamsString = 'category=gooddollar'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // URL gets rewritten to the canonical casing.
+    expect(replaceMock).toHaveBeenCalledTimes(1)
+    expect(replaceMock).toHaveBeenCalledWith('/explore?category=GoodDollar')
+    // User sees a polite aria-live notice explaining what we did.
+    const notice = screen.getByTestId('category-notice')
+    expect(notice).toHaveAttribute('aria-live', 'polite')
+    expect(notice).toHaveAttribute('role', 'status')
+    expect(notice.textContent).toMatch(/GoodDollar/)
+    expect(notice.textContent).toMatch(/gooddollar/)
+    // Filter is actually applied (G$ only → header + 1 row).
+    const rows = screen.getAllByRole('row')
+    expect(rows.length).toBe(2)
+  })
+
+  it('strips unknown ?category= from URL and shows "unknown category" notice', () => {
+    searchParamsString = 'category=BogusCategory'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // The bogus param is dropped from the URL entirely.
+    expect(replaceMock).toHaveBeenCalledTimes(1)
+    expect(replaceMock).toHaveBeenCalledWith('/explore')
+    // Notice tells the user we ignored their filter.
+    const notice = screen.getByTestId('category-notice')
+    expect(notice.textContent).toMatch(/Unknown/i)
+    expect(notice.textContent).toMatch(/BogusCategory/)
+    // Falls back to showing all tokens.
+    const rows = screen.getAllByRole('row')
+    expect(rows.length).toBe(3)
+  })
+
+  it('preserves other query params (e.g. ?search=) when canonicalizing category', () => {
+    searchParamsString = 'search=ether&category=BogusCategory'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // search= must survive the rewrite.
+    expect(replaceMock).toHaveBeenCalledTimes(1)
+    expect(replaceMock).toHaveBeenCalledWith('/explore?search=ether')
+  })
+
+  it('clicking a category button updates the URL via router.replace', () => {
+    searchParamsString = ''
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    // Pick the "GoodDollar" category button.
+    const gdButton = screen.getByRole('button', { name: 'GoodDollar' })
+    fireEvent.click(gdButton)
+    expect(replaceMock).toHaveBeenCalledWith('/explore?category=GoodDollar')
+  })
+
+  it('clicking "All" removes ?category= from the URL', () => {
+    searchParamsString = 'category=GoodDollar'
+    render(<TestWrapper><ExplorePage /></TestWrapper>)
+    const allButton = screen.getByRole('button', { name: 'All' })
+    fireEvent.click(allButton)
+    expect(replaceMock).toHaveBeenCalledWith('/explore')
   })
 })
 
