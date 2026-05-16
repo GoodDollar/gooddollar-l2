@@ -238,6 +238,7 @@ contract PegStabilityModule {
      * @param usdcAmount Amount of USDC to deposit (6 decimals)
      */
     function swapUSDCForGUSD(uint256 usdcAmount) external nonReentrant whenNotPaused {
+        // CHECKS
         require(usdcAmount > 0, "PSM: zero amount");
 
         // Enforce cap if set
@@ -245,25 +246,32 @@ contract PegStabilityModule {
             require(totalUSDCReserves + usdcAmount <= swapCap, "PSM: swap cap reached");
         }
 
-        // Pull USDC from user
+        // Convert to 18-decimal gUSD equivalent and split fee
+        uint256 gusdEquivalent = usdcAmount * SCALE;
+        uint256 fee     = (gusdEquivalent * feeBPS) / BPS;
+        uint256 gusdOut = gusdEquivalent - fee;
+        require(gusdOut > 0, "PSM: output too small");
+
+        // EFFECTS — apply all bookkeeping before any external call (CEI, task 0050).
+        // `nonReentrant` already guards classical reentrancy; CEI ordering is the
+        // defense-in-depth audit standard and silences slither's `reentrancy-no-eth`.
+        totalUSDCReserves  += usdcAmount;
+        psmMintedGUSD      += gusdOut;
+        if (fee > 0) {
+            totalFeesCollected += fee;
+        }
+
+        emit SwapUSDCForGUSD(msg.sender, usdcAmount, gusdOut, fee);
+
+        // INTERACTIONS — external calls last. Failure reverts the entire tx
+        // including the effects above, preserving correctness.
         require(
             usdc.transferFrom(msg.sender, address(this), usdcAmount),
             "PSM: USDC transfer failed"
         );
-        totalUSDCReserves += usdcAmount;
-
-        // Convert to 18-decimal gUSD equivalent
-        uint256 gusdEquivalent = usdcAmount * SCALE;
-
-        // Calculate fee in gUSD terms
-        uint256 fee = (gusdEquivalent * feeBPS) / BPS;
-        uint256 gusdOut = gusdEquivalent - fee;
-
-        require(gusdOut > 0, "PSM: output too small");
 
         // Mint gUSD to user
         gusd.mint(msg.sender, gusdOut);
-        psmMintedGUSD += gusdOut;
 
         // Mint fee gUSD and route through UBIFeeSplitter
         if (fee > 0) {
@@ -277,10 +285,7 @@ contract PegStabilityModule {
                 // Fallback to standard method for backward compatibility
                 feeSplitter.splitFeeToken(fee, address(this), address(gusd));
             }
-            totalFeesCollected += fee;
         }
-
-        emit SwapUSDCForGUSD(msg.sender, usdcAmount, gusdOut, fee);
     }
 
     /**
@@ -290,6 +295,7 @@ contract PegStabilityModule {
      * @param gusdAmount Amount of gUSD to redeem (18 decimals)
      */
     function swapGUSDForUSDC(uint256 gusdAmount) external nonReentrant whenNotPaused {
+        // CHECKS
         require(gusdAmount > 0, "PSM: zero amount");
 
         // Calculate fee in gUSD
@@ -301,19 +307,32 @@ contract PegStabilityModule {
         require(usdcOut > 0, "PSM: output too small");
         require(totalUSDCReserves >= usdcOut, "PSM: insufficient reserves");
 
+        // EFFECTS — apply all bookkeeping before any external call (CEI, task 0050).
+        // `nonReentrant` already guards classical reentrancy; CEI ordering is the
+        // defense-in-depth audit standard and silences slither's `reentrancy-no-eth`.
+        // We cannot know whether the burned gUSD was minted by this PSM or by
+        // VaultManager, so we track all burns and let withdrawReserves use
+        // max(0, psmMintedGUSD - psmBurnedGUSD) as the outstanding minimum. This
+        // conservatively bounds admin withdrawals to true surplus only.
+        psmBurnedGUSD     += netGUSD;
+        if (fee > 0) {
+            totalFeesCollected += fee;
+        }
+        totalUSDCReserves -= usdcOut;
+
+        emit SwapGUSDForUSDC(msg.sender, gusdAmount, usdcOut, fee);
+
+        // INTERACTIONS — external calls last. Any revert below reverts every
+        // effect above. Solvency-critical invariant
+        // `usdc.balanceOf(this) >= totalUSDCReserves` holds outside an
+        // in-progress call because the external `usdc.transfer` runs in this
+        // same transaction and reverts atomically.
+
         // Pull full gUSD from user
         require(
             gusd.transferFrom(msg.sender, address(this), gusdAmount),
             "PSM: gUSD transfer failed"
         );
-
-        // Burn the net gUSD (backing the USDC we're releasing)
-        gusd.burn(netGUSD);
-        // Increment gross-burned counter. We cannot know whether the burned gUSD was
-        // minted by this PSM or by VaultManager, so we track all burns here and let
-        // withdrawReserves use max(0, psmMintedGUSD - psmBurnedGUSD) as the outstanding
-        // minimum. This conservatively bounds admin withdrawals to true surplus only.
-        psmBurnedGUSD += netGUSD;
 
         // Route fee through UBIFeeSplitter
         if (fee > 0) {
@@ -326,13 +345,13 @@ contract PegStabilityModule {
                 // Fallback to standard method for backward compatibility
                 feeSplitter.splitFeeToken(fee, address(this), address(gusd));
             }
-            totalFeesCollected += fee;
         }
 
-        totalUSDCReserves -= usdcOut;
-        require(usdc.transfer(msg.sender, usdcOut), "PSM: USDC transfer failed");
+        // Burn the net gUSD (backing the USDC we're releasing)
+        gusd.burn(netGUSD);
 
-        emit SwapGUSDForUSDC(msg.sender, gusdAmount, usdcOut, fee);
+        // Release USDC to user
+        require(usdc.transfer(msg.sender, usdcOut), "PSM: USDC transfer failed");
     }
 
     // ============ Views ============
