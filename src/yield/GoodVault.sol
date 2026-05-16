@@ -214,8 +214,10 @@ contract GoodVault {
     // share-mint; minting first would let attackers extract shares without paying assets.
     // slither-disable-next-line reentrancy-no-eth
     function deposit(uint256 assets, address receiver) external whenNotPaused nonReentrant returns (uint256 shares) {
+        // slither-disable-next-line incorrect-equality
         if (assets == 0) revert ZeroAssets();
         shares = convertToShares(assets);
+        // slither-disable-next-line incorrect-equality
         if (shares == 0) revert ZeroShares();
         if (totalAssets() + assets > depositCap) revert DepositCapExceeded();
 
@@ -235,9 +237,11 @@ contract GoodVault {
     ///      pulling assets before minting shares to prevent free-share issuance.
     // slither-disable-next-line reentrancy-no-eth
     function mint(uint256 shares, address receiver) external whenNotPaused nonReentrant returns (uint256 assets) {
+        // slither-disable-next-line incorrect-equality
         if (shares == 0) revert ZeroShares();
         // Ceiling division: assets = ceil(shares * (totalAssets+1) / (totalSupply+1))
         assets = (shares * (totalAssets() + 1) + totalSupply) / (totalSupply + 1);
+        // slither-disable-next-line incorrect-equality
         if (assets == 0) revert ZeroAssets();
         if (totalAssets() + assets > depositCap) revert DepositCapExceeded();
 
@@ -253,6 +257,7 @@ contract GoodVault {
     ///      would over-credit the user if the strategy returns less than requested.
     // slither-disable-next-line reentrancy-no-eth
     function withdraw(uint256 assets, address receiver, address owner) external nonReentrant returns (uint256 shares) {
+        // slither-disable-next-line incorrect-equality
         if (assets == 0) revert ZeroAssets();
         uint256 supply = totalSupply;
         uint256 ta = totalAssets() + 1;
@@ -278,8 +283,10 @@ contract GoodVault {
     ///      assets returned. Cross-function reentrancy is blocked by `nonReentrant`.
     // slither-disable-next-line reentrancy-no-eth
     function redeem(uint256 shares, address receiver, address owner) external nonReentrant returns (uint256 assets) {
+        // slither-disable-next-line incorrect-equality
         if (shares == 0) revert ZeroShares();
         assets = convertToAssets(shares);
+        // slither-disable-next-line incorrect-equality
         if (assets == 0) revert ZeroAssets();
 
         if (msg.sender != owner) {

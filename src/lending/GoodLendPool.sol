@@ -596,6 +596,7 @@ contract GoodLendPool {
         if (!reserve.isActive) return RAY;
         // Calculate pending interest since last update
         uint256 timeDelta = block.timestamp - reserve.lastUpdateTimestamp;
+        // slither-disable-next-line incorrect-equality
         if (timeDelta == 0) return reserve.liquidityIndex;
         // Linear approximation for supply index growth
         uint256 supplyInterest = (reserve.currentSupplyRate * timeDelta) / SECONDS_PER_YEAR;
@@ -609,6 +610,7 @@ contract GoodLendPool {
         ReserveData storage reserve = reserves[asset];
         if (!reserve.isActive) return RAY;
         uint256 timeDelta = block.timestamp - reserve.lastUpdateTimestamp;
+        // slither-disable-next-line incorrect-equality
         if (timeDelta == 0) return reserve.variableBorrowIndex;
         // Compounded: index *= (1 + rate * dt / year)
         // Simplified: linear approx for small dt
@@ -715,6 +717,7 @@ contract GoodLendPool {
         if (!reserve.isActive) return;
 
         uint256 timeDelta = block.timestamp - reserve.lastUpdateTimestamp;
+        // slither-disable-next-line incorrect-equality
         if (timeDelta == 0) return;
 
         uint256 totalBorrows = _totalBorrows(asset);

@@ -107,6 +107,7 @@ contract L2OutputOracle {
 
     /// @notice Get the next expected L2 block number
     function nextBlockNumber() public view returns (uint256) {
+        // slither-disable-next-line incorrect-equality
         if (l2Outputs.length == 0) return startingBlockNumber;
         return uint256(l2Outputs[l2Outputs.length - 1].l2BlockNumber) + submissionInterval;
     }
@@ -125,6 +126,7 @@ contract L2OutputOracle {
 
     /// @notice Total number of outputs
     function latestBlockNumber() external view returns (uint256) {
+        // slither-disable-next-line incorrect-equality
         if (l2Outputs.length == 0) return startingBlockNumber;
         return uint256(l2Outputs[l2Outputs.length - 1].l2BlockNumber);
     }

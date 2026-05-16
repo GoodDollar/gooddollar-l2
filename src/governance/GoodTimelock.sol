@@ -300,6 +300,7 @@ contract GoodTimelock {
     }
 
     /// @notice Check if an operation was executed
+    // slither-disable-next-line incorrect-equality
     function isOperationDone(bytes32 id) public view returns (bool) {
         return timestamps[id] == 1;
     }

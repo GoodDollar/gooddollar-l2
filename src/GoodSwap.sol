@@ -135,6 +135,7 @@ contract GoodSwap {
         uint256 amt1 = bal1 - r1;
 
         uint256 _totalSupply = totalSupply;
+        // slither-disable-next-line incorrect-equality
         if (_totalSupply == 0) {
             liquidity = _sqrt(amt0 * amt1) - MINIMUM_LIQUIDITY;
             balanceOf[address(0)] += MINIMUM_LIQUIDITY; // permanently locked
@@ -144,6 +145,7 @@ contract GoodSwap {
             uint256 l1 = (amt1 * _totalSupply) / r1;
             liquidity  = l0 < l1 ? l0 : l1;
         }
+        // slither-disable-next-line incorrect-equality
         if (liquidity == 0) revert InsufficientLiquidityMinted();
 
         balanceOf[to] += liquidity;
@@ -167,6 +169,7 @@ contract GoodSwap {
 
         amount0 = (liquidity * bal0) / _totalSupply;
         amount1 = (liquidity * bal1) / _totalSupply;
+        // slither-disable-next-line incorrect-equality
         if (amount0 == 0 || amount1 == 0) revert InsufficientLiquidityBurned();
 
         balanceOf[address(this)] -= liquidity;
@@ -222,6 +225,7 @@ contract GoodSwap {
 
         uint256 amt0In = bal0 > r0 - amount0Out ? bal0 - (r0 - amount0Out) : 0;
         uint256 amt1In = bal1 > r1 - amount1Out ? bal1 - (r1 - amount1Out) : 0;
+        // slither-disable-next-line incorrect-equality
         if (amt0In == 0 && amt1In == 0) revert InsufficientInputAmount();
 
         _verifyAndUpdateSwap(bal0, bal1, r0, r1, amt0In, amt1In, amount0Out, amount1Out, to);

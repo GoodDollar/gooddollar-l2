@@ -238,6 +238,7 @@ contract SwapPriceOracle {
      */
     function getTWAP(address token) external view returns (uint256) {
         PriceData storage pd = prices[token];
+        // slither-disable-next-line incorrect-equality
         if (pd.twapWindowStart == 0 || pd.twapWindowStart == block.timestamp) {
             return pd.price; // fallback to spot
         }

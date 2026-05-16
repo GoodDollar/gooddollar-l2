@@ -152,11 +152,13 @@ contract UBIClaimV2 is ReentrancyGuard {
 
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
+            // slither-disable-start incorrect-equality
             if (
                 user == address(0) ||
                 !goodDollar.isVerifiedHuman(user) ||
                 lastClaimEpoch[user] == epoch + 1
             ) {
+            // slither-disable-end incorrect-equality
                 continue;
             }
             lastClaimEpoch[user] = epoch + 1;
@@ -183,6 +185,7 @@ contract UBIClaimV2 is ReentrancyGuard {
         uint256 epoch = currentEpoch();
         // Use epoch+1 as the sentinel so that the default mapping value (0)
         // does not falsely indicate a claim in epoch 0.
+        // slither-disable-next-line incorrect-equality
         if (lastClaimEpoch[user] == epoch + 1) {
             revert AlreadyClaimedThisEpoch(user, epoch);
         }

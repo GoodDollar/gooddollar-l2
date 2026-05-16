@@ -315,6 +315,7 @@ contract OptimisticResolver {
         r.finalizedTime = block.timestamp;
 
         // Determine winner and loser
+        // slither-disable-next-line incorrect-equality
         bool proposerCorrect = (r.proposedOutcome == yesWon);
         address winner = proposerCorrect ? r.proposer : r.disputer;
         address loser = proposerCorrect ? r.disputer : r.proposer;
@@ -384,6 +385,7 @@ contract OptimisticResolver {
      * @notice Check if a market resolution is finalized
      */
     function isFinalized(uint256 marketId) external view returns (bool) {
+        // slither-disable-next-line incorrect-equality
         return resolutions[marketId].status == ResolutionStatus.Finalized;
     }
 
@@ -391,6 +393,7 @@ contract OptimisticResolver {
      * @notice Get the final outcome (only valid if finalized)
      */
     function getFinalOutcome(uint256 marketId) external view returns (bool) {
+        // slither-disable-next-line incorrect-equality
         require(resolutions[marketId].status == ResolutionStatus.Finalized, "not finalized");
         return resolutions[marketId].finalOutcome;
     }

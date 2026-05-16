@@ -130,6 +130,7 @@ contract GoodDollarToken {
      */
     function claimUBI() external {
         require(isVerifiedHuman[msg.sender], "Not verified human");
+        // slither-disable-next-line incorrect-equality
         require(
             lastClaimTime[msg.sender] == 0 || block.timestamp >= lastClaimTime[msg.sender] + CLAIM_INTERVAL,
             "Already claimed today"

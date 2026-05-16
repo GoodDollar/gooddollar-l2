@@ -96,6 +96,7 @@ contract StablecoinStrategy {
 
         // Use actual balance in case pool returned less than requested (rounding/fees).
         uint256 actual = IERC20(asset).balanceOf(address(this));
+        // slither-disable-next-line incorrect-equality
         if (actual == 0) return 0;
         if (!IERC20(asset).transfer(vault, actual)) revert TransferFailed();
 

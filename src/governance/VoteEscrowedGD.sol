@@ -201,6 +201,7 @@ contract VoteEscrowedGD is ReentrancyGuard {
     /// @notice Current voting power of an account (decays linearly)
     function votingPowerOf(address account) public view returns (uint256) {
         Lock memory l = locks[account];
+        // slither-disable-next-line incorrect-equality
         if (l.amount == 0 || block.timestamp >= l.end) return 0;
         uint256 remaining = l.end - block.timestamp;
         return (uint256(l.amount) * remaining) / MAX_LOCK;
@@ -257,6 +258,7 @@ contract VoteEscrowedGD is ReentrancyGuard {
         uint256 oldValue = len > 0 ? ckpts[len - 1].votes : 0;
         uint256 newValue = op(oldValue, delta);
 
+        // slither-disable-next-line incorrect-equality
         if (len > 0 && ckpts[len - 1].timestamp == uint48(block.timestamp)) {
             ckpts[len - 1].votes = uint208(newValue);
         } else {

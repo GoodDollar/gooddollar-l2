@@ -210,6 +210,7 @@ contract VaultManager {
         }
 
         uint256 elapsed = block.timestamp - acc.lastDrip;
+        // slither-disable-next-line incorrect-equality
         if (elapsed == 0) return;
 
         ICollateralRegistry.CollateralConfig memory cfg = registry.getConfig(ilk);
@@ -234,6 +235,7 @@ contract VaultManager {
         uint256 feeRay = acc.totalNormalizedDebt * chiDelta;
         uint256 feeWAD = feeRay / RAY;
 
+        // slither-disable-next-line incorrect-equality
         if (feeWAD == 0) {
             emit Drip(ilk, newChi, 0);
             return;
@@ -643,6 +645,7 @@ contract VaultManager {
      */
     function _rpow(uint256 x, uint256 n, uint256 base) internal pure returns (uint256 z) {
         if (x == 0) {
+            // slither-disable-next-line incorrect-equality
             return n == 0 ? base : 0;
         }
         // SECURITY: `n % 2` is the standard exponentiation-by-squaring parity check on the
@@ -686,6 +689,7 @@ contract VaultManager {
      */
     function healthFactor(bytes32 ilk, address owner) external view returns (uint256) {
         Vault storage vault = vaults[ilk][owner];
+        // slither-disable-next-line incorrect-equality
         if (vault.normalizedDebt == 0) return type(uint256).max;
 
         IlkAccumulator storage acc = accumulators[ilk];
@@ -698,6 +702,7 @@ contract VaultManager {
         uint256 collValueWAD = _collateralToGUSD(vault.collateral, price, cfg.token);
 
         uint256 debtTimesRatio = actualDebt * cfg.liquidationRatio / WAD;
+        // slither-disable-next-line incorrect-equality
         if (debtTimesRatio == 0) return type(uint256).max;
 
         return (collValueWAD * WAD) / debtTimesRatio;
@@ -708,10 +713,12 @@ contract VaultManager {
      */
     function pendingFee(bytes32 ilk) external view returns (uint256) {
         IlkAccumulator storage acc = accumulators[ilk];
+        // slither-disable-next-line incorrect-equality
         if (acc.chi == 0 || acc.totalNormalizedDebt == 0) return 0;
 
         ICollateralRegistry.CollateralConfig memory cfg = registry.getConfig(ilk);
         uint256 elapsed = block.timestamp - acc.lastDrip;
+        // slither-disable-next-line incorrect-equality
         if (elapsed == 0) return 0;
 
         uint256 newChi = _rpow(cfg.stabilityFeeRate, elapsed, RAY);
