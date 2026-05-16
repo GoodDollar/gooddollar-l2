@@ -17,6 +17,7 @@ const defaultProps = {
   minimumReceived: '992,015 G$',
   networkFee: '< $0.01',
   ubiFee: '999.9 G$',
+  deadlineMinutes: 30,
 }
 
 describe('SwapConfirmModal', () => {
@@ -59,6 +60,17 @@ describe('SwapConfirmModal', () => {
   it('shows UBI contribution', () => {
     render(<SwapConfirmModal {...defaultProps} />)
     expect(screen.getByText(/999\.9 G\$/)).toBeInTheDocument()
+  })
+
+  it('shows the user-configured auto-cancel deadline (MEV protection)', () => {
+    render(<SwapConfirmModal {...defaultProps} deadlineMinutes={30} />)
+    expect(screen.getByText(/auto-cancel/i)).toBeInTheDocument()
+    expect(screen.getByText('30 minutes')).toBeInTheDocument()
+  })
+
+  it('uses singular wording for a 1-minute deadline', () => {
+    render(<SwapConfirmModal {...defaultProps} deadlineMinutes={1} />)
+    expect(screen.getByText('1 minute')).toBeInTheDocument()
   })
 
   it('calls onConfirm when Confirm Swap is clicked', () => {

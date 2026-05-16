@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { type Token } from '@/lib/tokens'
 import { SwapConfirmModal } from './SwapConfirmModal'
 import { useSwapExecute } from '@/lib/useOnChainSwap'
+import { useSwapSettings } from '@/lib/useSwapSettings'
 import { toastPending, toastSuccess, toastError } from '@/components/ui/toast'
 
 type BalanceProps = {
@@ -96,6 +97,7 @@ function SwapButton({
 }) {
   const [showReview, setShowReview] = useState(false)
   const { swap, phase, error, reset, isConnected } = useSwapExecute()
+  const { deadline: deadlineMinutes } = useSwapSettings()
   const prevPhase = useRef(phase)
 
   // Fire toasts on phase transitions
@@ -131,9 +133,10 @@ function SwapButton({
         outputToken.symbol,
         inputAmount,
         onChainAmountOutMin ?? BigInt(0),
+        deadlineMinutes,
       )
     }
-  }, [pairOnChain, isConnected, swap, inputToken.symbol, outputToken.symbol, inputAmount, onChainAmountOutMin])
+  }, [pairOnChain, isConnected, swap, inputToken.symbol, outputToken.symbol, inputAmount, onChainAmountOutMin, deadlineMinutes])
 
   const handleClose = useCallback(() => {
     setShowReview(false)
@@ -196,6 +199,7 @@ function SwapButton({
         minimumReceived={minimumReceived}
         networkFee={networkFee}
         ubiFee={ubiFee}
+        deadlineMinutes={deadlineMinutes}
       />
     </>
   )

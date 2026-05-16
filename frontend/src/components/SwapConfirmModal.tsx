@@ -18,6 +18,9 @@ interface SwapConfirmModalProps {
   minimumReceived: string
   networkFee: string
   ubiFee: string
+  /** Auto-cancel deadline shown to the user — sourced from useSwapSettings.
+   *  Defaults to 30 minutes if the caller hasn't wired it up yet. */
+  deadlineMinutes?: number
 }
 
 function getPriceImpactColor(impact: number): string {
@@ -41,6 +44,7 @@ export function SwapConfirmModal({
   minimumReceived,
   networkFee,
   ubiFee,
+  deadlineMinutes = 30,
 }: SwapConfirmModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -148,6 +152,12 @@ export function SwapConfirmModal({
           <div className="flex justify-between text-xs">
             <span className="text-gray-400">Network Fee</span>
             <span className="text-white">{networkFee}</span>
+          </div>
+          <div className="flex justify-between text-xs" title="If the swap doesn't confirm in this window, it will be auto-cancelled to protect against MEV / sandwich attacks.">
+            <span className="text-gray-400">Auto-cancel after</span>
+            <span className="text-white">
+              {deadlineMinutes} {deadlineMinutes === 1 ? 'minute' : 'minutes'}
+            </span>
           </div>
           <div className="flex justify-between text-xs">
             <span className="text-gray-400">UBI Contribution</span>

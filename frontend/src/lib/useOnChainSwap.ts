@@ -38,6 +38,33 @@ export function isSwapSupported(symbol: string): boolean {
   return symbol in SWAP_TOKENS
 }
 
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
+
+/** Lower bound of acceptable swap deadline in seconds (1 minute). */
+export const MIN_SWAP_DEADLINE_SECS = 60
+/** Upper bound of acceptable swap deadline in seconds (3 hours).
+ *  Beyond this the user is exposed to indefinite mempool sandwich risk. */
+export const MAX_SWAP_DEADLINE_SECS = 3 * 60 * 60
+/** Fallback minutes used when no valid value is provided. */
+const DEFAULT_SWAP_DEADLINE_MINUTES = 30
+
+/**
+ * Compute the on-chain deadline (unix seconds) for a swap, honouring the
+ * user-configured `deadlineMinutes` from `useSwapSettings` while clamping to a
+ * safe `[MIN, MAX]` window. Pure for unit-testability — pass `nowSecs` in tests.
+ *
+ * Why clamping: the Uniswap V2-style router rejects `block.timestamp > deadline`,
+ * so a 0/negative value would always revert, while a 24-hour value would leave
+ * the swap exposed to MEV/sandwich attacks long after the user walked away.
+ */
+export function computeSwapDeadline(deadlineMinutes: number, nowSecs?: number): bigint {
+  const now = typeof nowSecs === 'number' ? nowSecs : Math.floor(Date.now() / 1000)
+  const minutes = Number.isFinite(deadlineMinutes) ? deadlineMinutes : DEFAULT_SWAP_DEADLINE_MINUTES
+  const requested = Math.floor(minutes * 60)
+  const clamped = Math.min(MAX_SWAP_DEADLINE_SECS, Math.max(MIN_SWAP_DEADLINE_SECS, requested))
+  return BigInt(now + clamped)
+}
+
 // ─── Read: getAmountOut quote ─────────────────────────────────────────────────
 
 export function useSwapQuote(amountIn: string, tokenInSymbol: string, tokenOutSymbol: string): {
@@ -102,6 +129,7 @@ export function useSwapExecute() {
     tokenOutSymbol: string,
     amountIn: string,
     amountOutMin: bigint,
+    deadlineMinutes: number = DEFAULT_SWAP_DEADLINE_MINUTES,
   ) => {
     if (!isConnected || !address) { setError('Wallet not connected'); return }
     if (!ROUTER) { setError('GoodSwapRouter not deployed'); return }
@@ -117,8 +145,9 @@ export function useSwapExecute() {
       setError('Invalid amount'); return
     }
 
-    // 20-minute deadline
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200)
+    // Deadline is plumbed from useSwapSettings (user setting, default 30m, clamped 1m..3h)
+    // to honour user-configured MEV protection rather than hardcoding 20m.
+    const deadline = computeSwapDeadline(deadlineMinutes)
 
     try {
       setPhase('approving')
