@@ -10,7 +10,7 @@ An OP Stack L2 where every useful transaction funds universal basic income for v
 
 ## Current Status
 
-_Last refreshed: 2026-05-16 UTC, security hardening initiative in progress._
+_Last refreshed: 2026-05-16 UTC, security hardening initiative **complete** — all acceptance criteria met._
 
 GoodDollar L2 is live on a persistent devnet and moving toward public testnet.
 
@@ -109,7 +109,7 @@ Dune is a release artifact, not a marketing afterthought. If Dune indexing is no
 
 ## Security Hardening
 
-Phase 1 security hardening is underway to reach 0 HIGH and 0 MEDIUM Slither findings.
+Phase 1 security hardening is **complete** — 0 HIGH and 0 MEDIUM Slither findings across all contracts.
 
 | Check | Before | After | Status |
 |---|---|---|---|
