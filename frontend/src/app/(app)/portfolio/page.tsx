@@ -9,6 +9,7 @@ import { formatPerpsPrice } from '@/lib/perpsData'
 import { useOnChainHoldings } from '@/lib/useOnChainStocks'
 import { useOnChainPositions, useOnChainAccountSummary } from '@/lib/useOnChainPerps'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
+import { ConnectWalletBanner } from '@/components/ConnectWalletBanner'
 import { PortfolioOnChain } from '@/components/PortfolioOnChain'
 import { Sparkline } from '@/components/Sparkline'
 import { getStockByTicker } from '@/lib/stockData'
@@ -51,6 +52,10 @@ export default function PortfolioPage() {
     <ConnectWalletEmptyState>
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Portfolio Overview</h1>
+
+      {/* CTA banner: prompts disconnected / wrong-chain users to take action.
+          Renders nothing when connected to chain 42069. */}
+      <ConnectWalletBanner />
 
       {/* Live on-chain positions — only visible when connected to devnet (chain 42069) */}
       <PortfolioOnChain />
