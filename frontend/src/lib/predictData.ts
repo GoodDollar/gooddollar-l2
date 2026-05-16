@@ -86,6 +86,22 @@ export function getMarketStatus(endDate: string): MarketStatus {
   return 'active'
 }
 
+/**
+ * Select the "featured" prediction market for the /predict hero card.
+ *
+ * Rule: pick the active (non-expired) market with the highest `volume`. Returns
+ * `null` when there are no active markets. On a volume tie the first market in
+ * input order wins (reduce semantics), keeping selection stable across renders.
+ *
+ * Lifted out of `<FeaturedMarket />` (task 0044) so the parent page can dedup
+ * the chosen market from the active-markets grid below the hero.
+ */
+export function selectFeaturedMarket(markets: PredictionMarket[]): PredictionMarket | null {
+  const active = markets.filter(m => getMarketStatus(m.endDate) !== 'expired')
+  if (active.length === 0) return null
+  return active.reduce((top, m) => (m.volume > top.volume ? m : top), active[0])
+}
+
 export function getDaysLeftLabel(endDate: string): string {
   const status = getMarketStatus(endDate)
   if (status === 'expired') return 'Expired'

@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
-import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
+import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
 import { useMarketCount, useAllOnChainMarkets, type OnChainMarket } from '@/lib/useMarkets'
 import { InfoBanner } from '@/components/InfoBanner'
 
@@ -202,29 +202,23 @@ function MarketCard({ market }: { market: PredictionMarket }) {
   )
 }
 
-function FeaturedMarket({ markets }: { markets: PredictionMarket[] }) {
+function FeaturedMarket({ market }: { market: PredictionMarket | null }) {
   const router = useRouter()
   const [isTrading, setIsTrading] = useState(false)
 
-  const featured = useMemo(() => {
-    const active = markets.filter(m => getMarketStatus(m.endDate) !== 'expired')
-    if (active.length === 0) return null
-    return active.reduce((top, m) => m.volume > top.volume ? m : top, active[0])
-  }, [markets])
+  if (!market) return null
 
-  if (!featured) return null
-
-  const yesPct = Math.round(featured.yesPrice * 100)
+  const yesPct = Math.round(market.yesPrice * 100)
   const noPct = 100 - yesPct
-  const timeLabel = getDaysLeftLabel(featured.endDate)
-  const sparkData = generateProbabilityHistory(featured.id, featured.yesPrice, 60)
+  const timeLabel = getDaysLeftLabel(market.endDate)
+  const sparkData = generateProbabilityHistory(market.id, market.yesPrice, 60)
 
-  const handleClick = () => router.push(`/predict/${featured.id}`)
+  const handleClick = () => router.push(`/predict/${market.id}`)
   const handleTrade = (side: 'yes' | 'no', e: React.MouseEvent) => {
     e.stopPropagation()
     if (isTrading) return
     setIsTrading(true)
-    router.push(`/predict/${featured.id}?side=${side}`)
+    router.push(`/predict/${market.id}?side=${side}`)
   }
 
   return (
@@ -233,7 +227,7 @@ function FeaturedMarket({ markets }: { markets: PredictionMarket[] }) {
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick() } }}
-      aria-label={`Featured: ${featured.question}`}
+      aria-label={`Featured: ${market.question}`}
       className="mb-6 bg-dark-100 rounded-2xl border border-goodgreen/20 p-5 sm:p-6 hover:border-goodgreen/40 transition-all group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/40 relative overflow-hidden"
     >
       <div
@@ -248,7 +242,7 @@ function FeaturedMarket({ markets }: { markets: PredictionMarket[] }) {
         </svg>
         <span className="text-xs font-semibold text-goodgreen uppercase tracking-wider">Trending</span>
         <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen/80 border border-goodgreen/15 ml-1">
-          {featured.category}
+          {market.category}
         </span>
         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/15 ml-1">
           <span className="relative flex h-1.5 w-1.5">
@@ -263,19 +257,19 @@ function FeaturedMarket({ markets }: { markets: PredictionMarket[] }) {
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-3 mb-3">
-            <MarketIcon category={featured.category} />
+            <MarketIcon category={market.category} />
             <h2 className="text-lg font-bold text-white leading-snug group-hover:text-goodgreen/90 transition-colors">
-              {featured.question}
+              {market.question}
             </h2>
           </div>
 
           <div className="flex items-baseline gap-3 mb-2">
             <span className="text-3xl font-bold text-green-400">{yesPct}%</span>
             <span className="text-sm text-gray-500">chance</span>
-            <span className="text-sm font-bold text-white/80 ml-auto">{formatVolume(featured.volume)} Vol.</span>
+            <span className="text-sm font-bold text-white/80 ml-auto">{formatVolume(market.volume)} Vol.</span>
           </div>
 
-          <ProbabilityBar yesPrice={featured.yesPrice} />
+          <ProbabilityBar yesPrice={market.yesPrice} />
 
           <div className="flex gap-2 mt-3">
             <button
@@ -297,8 +291,8 @@ function FeaturedMarket({ markets }: { markets: PredictionMarket[] }) {
           </div>
 
           <div className="flex items-center gap-4 text-xs text-gray-500 mt-3">
-            <span>{formatVolume(featured.liquidity)} liquidity</span>
-            <span>{featured.totalShares.toLocaleString(undefined, { maximumFractionDigits: 0 })} shares</span>
+            <span>{formatVolume(market.liquidity)} liquidity</span>
+            <span>{market.totalShares.toLocaleString(undefined, { maximumFractionDigits: 0 })} shares</span>
           </div>
         </div>
 
@@ -372,6 +366,16 @@ export default function PredictPage() {
     [filtered],
   )
 
+  // Featured selection runs against the unfiltered set so the hero stays
+  // consistent regardless of search/category. The grid below dedups by id so
+  // we never render the same market twice on the same page (task 0044).
+  const featured = useMemo(() => selectFeaturedMarket(allMarkets), [allMarkets])
+  const featuredId = featured?.id
+  const activeMarketsWithoutFeatured = useMemo(
+    () => activeMarkets.filter(m => m.id !== featuredId),
+    [activeMarkets, featuredId],
+  )
+
   return (
     <div className="w-full max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -392,7 +396,7 @@ export default function PredictPage() {
         storageKey="gd-banner-dismissed-predict"
       />
 
-      <FeaturedMarket markets={allMarkets} />
+      <FeaturedMarket market={featured} />
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <input
@@ -443,11 +447,13 @@ export default function PredictPage() {
         </div>
       ) : (
         <>
-          {activeMarkets.length > 0 && (
+          {activeMarketsWithoutFeatured.length > 0 && (
             <div className="mb-2">
-              <p className="text-xs text-gray-500 mb-3 font-medium">{activeMarkets.length} Active {activeMarkets.length === 1 ? 'Market' : 'Markets'}</p>
+              <p className="text-xs text-gray-500 mb-3 font-medium">
+                {activeMarketsWithoutFeatured.length}{featured ? ' More' : ''} Active {activeMarketsWithoutFeatured.length === 1 ? 'Market' : 'Markets'}
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeMarkets.map(market => (
+                {activeMarketsWithoutFeatured.map(market => (
                   <MarketCard key={market.id} market={market} />
                 ))}
               </div>
