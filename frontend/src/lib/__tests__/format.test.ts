@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sanitizeNumericInput, formatAmount, compactAmount, formatUsdValue } from '../format'
+import { sanitizeNumericInput, formatAmount, compactAmount, formatUsdValue, formatTradeAmount } from '../format'
 
 describe('sanitizeNumericInput', () => {
   it('strips non-numeric characters', () => {
@@ -185,5 +185,72 @@ describe('formatUsdValue', () => {
   it('formats exact dollar amounts without trailing zeros', () => {
     expect(formatUsdValue(100)).toBe('~$100')
     expect(formatUsdValue(3000)).toBe('~$3,000')
+  })
+})
+
+// Task 0071: Stocks trade form fee/UBI preview must not collapse to "$0"
+// for trades under $1,000. formatTradeAmount preserves cents below $1,000
+// (so a $0.20 fee on a $200 trade renders as "$0.20", and the 20% UBI
+// contribution renders as "$0.04") while still abbreviating K/M/B/T for
+// larger amounts. It uses an exact "$" prefix (not "~$") because fee and
+// UBI math is exact, not an approximation.
+describe('formatTradeAmount', () => {
+  it('returns "$0.00" for exactly zero so the row is never blank', () => {
+    expect(formatTradeAmount(0)).toBe('$0.00')
+  })
+
+  it('returns "< $0.01" for positive amounts below one cent (UBI on tiny trades)', () => {
+    // A $1 trade × 0.1% fee × 20% UBI = $0.0002.
+    expect(formatTradeAmount(0.0002)).toBe('< $0.01')
+    // A $5 trade × 0.1% fee = $0.005 fee → still below one cent.
+    expect(formatTradeAmount(0.005)).toBe('< $0.01')
+    expect(formatTradeAmount(0.009)).toBe('< $0.01')
+  })
+
+  it('preserves cents in the $0.01–$999.99 range (the regression range)', () => {
+    // The exact bug case: $200 trade × 0.1% = $0.20 fee.
+    expect(formatTradeAmount(0.20)).toBe('$0.20')
+    // 20% UBI of that fee = $0.04.
+    expect(formatTradeAmount(0.04)).toBe('$0.04')
+    expect(formatTradeAmount(0.01)).toBe('$0.01')
+    expect(formatTradeAmount(1)).toBe('$1.00')
+    expect(formatTradeAmount(1.5)).toBe('$1.50')
+    expect(formatTradeAmount(10)).toBe('$10.00')
+    expect(formatTradeAmount(99.99)).toBe('$99.99')
+    expect(formatTradeAmount(999.99)).toBe('$999.99')
+  })
+
+  it('abbreviates with "K" for amounts >= $1,000', () => {
+    expect(formatTradeAmount(1000)).toBe('$1.00K')
+    expect(formatTradeAmount(1234.56)).toBe('$1.23K')
+    expect(formatTradeAmount(50_000)).toBe('$50.00K')
+  })
+
+  it('abbreviates with "M" for amounts >= $1,000,000', () => {
+    expect(formatTradeAmount(5_000_000)).toBe('$5.00M')
+    expect(formatTradeAmount(1_500_000)).toBe('$1.50M')
+  })
+
+  it('abbreviates with "B" and "T" for very large amounts', () => {
+    expect(formatTradeAmount(2_500_000_000)).toBe('$2.50B')
+    expect(formatTradeAmount(1_200_000_000_000)).toBe('$1.20T')
+  })
+
+  it('handles NaN and Infinity defensively', () => {
+    expect(formatTradeAmount(NaN)).toBe('$0.00')
+    expect(formatTradeAmount(Infinity)).toBe('$0.00')
+    expect(formatTradeAmount(-Infinity)).toBe('$0.00')
+  })
+
+  it('preserves sign for negative values', () => {
+    // Defensive: fees/UBI should never be negative, but the helper
+    // should not silently drop the sign if math goes wrong upstream.
+    expect(formatTradeAmount(-0.20)).toBe('-$0.20')
+    expect(formatTradeAmount(-1500)).toBe('-$1.50K')
+  })
+
+  it('matches the boundary at exactly $1,000 (abbreviates, does not preserve cents)', () => {
+    expect(formatTradeAmount(999.99)).toBe('$999.99')
+    expect(formatTradeAmount(1000)).toBe('$1.00K')
   })
 })

@@ -130,6 +130,26 @@ export function formatUsdValue(usd: number): string {
   return `~$${usd.toFixed(2)}`
 }
 
+// Exact-dollar formatter for trade preview rows (Fee, → UBI Pool, etc).
+// Distinct from formatUsdValue (which prefixes with "~$" for approximations)
+// and from stockData.formatLargeNumber (which rounds anything < $1,000 to
+// the nearest whole dollar — that helper is correct for market caps but
+// silently collapses small fees to "$0", which hides the UBI contribution
+// on retail-sized trades). For exact values like fee math we keep cents
+// below the K threshold and abbreviate above it.
+export function formatTradeAmount(n: number): string {
+  if (!isFinite(n) || isNaN(n)) return '$0.00'
+  const abs = Math.abs(n)
+  const sign = n < 0 ? '-' : ''
+  if (abs === 0) return '$0.00'
+  if (abs < 0.01) return '< $0.01'
+  if (abs >= 1e12) return `${sign}$${(abs / 1e12).toFixed(2)}T`
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}B`
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(2)}M`
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(2)}K`
+  return `${sign}$${abs.toFixed(2)}`
+}
+
 export function sanitizeNumericInput(value: string): string {
   let sanitized = value.replace(/[^0-9.]/g, '')
 

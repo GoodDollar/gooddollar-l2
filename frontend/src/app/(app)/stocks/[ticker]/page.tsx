@@ -8,7 +8,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
-import { sanitizeNumericInput } from '@/lib/format'
+import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { truncateMiddle } from '@/lib/strings'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
@@ -151,11 +151,11 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
           </div>
           <div className="flex justify-between text-gray-400">
             <span>Fee (0.1%)</span>
-            <span className="text-white truncate ml-2">{formatLargeNumber(fee)}</span>
+            <span className="text-white truncate ml-2">{formatTradeAmount(fee)}</span>
           </div>
           <div className="flex justify-between text-goodgreen/80">
             <span>→ UBI Pool (20%)</span>
-            <span className="truncate ml-2">{formatLargeNumber(ubiFee)}</span>
+            <span className="truncate ml-2">{formatTradeAmount(ubiFee)}</span>
           </div>
         </div>
       )}
