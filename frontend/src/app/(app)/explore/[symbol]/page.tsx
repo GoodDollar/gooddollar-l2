@@ -141,7 +141,11 @@ export default function TokenDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <h1 className="text-2xl font-bold text-white mb-3">Token Not Found</h1>
-        <p className="text-sm text-gray-400 mb-6 max-w-md break-all">The token &quot;{truncateSymbolForDisplay(symbol)}&quot; is not available on GoodDollar L2.</p>
+        <p className="text-sm text-gray-400 mb-6 max-w-md break-words">
+          The token{' '}
+          <span className="break-all">&quot;{truncateSymbolForDisplay(symbol)}&quot;</span>
+          {' '}is not available on GoodDollar L2.
+        </p>
         <Link href="/explore" className="px-6 py-3 rounded-xl bg-goodgreen text-white font-semibold hover:bg-goodgreen-600 transition-colors">
           Back to Explore
         </Link>

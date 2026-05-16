@@ -132,14 +132,23 @@ describe('TokenDetailPage — URL-encoded symbol handling', () => {
       expect(paragraph.textContent).not.toContain('…')
     })
 
-    it('applies break-all wrapping class to the error paragraph', () => {
+    it('applies wrapping classes that bound long symbols without breaking brand text', () => {
       currentParams = { symbol: longSymbol }
       render(<TestWrapper><TokenDetailPage /></TestWrapper>)
 
       const paragraph = screen.getByText(/is not available on GoodDollar L2/i)
-      // The wrapping class is what prevents any remaining contiguous run
-      // (e.g., the 24 'A's before the ellipsis) from overflowing horizontally.
-      expect(paragraph.className).toMatch(/break-all/)
+      // The paragraph itself uses `break-words` so prose wraps at whitespace
+      // boundaries — preventing the previous regression where "GoodDollar"
+      // was split mid-word as "Goo dDollar".
+      expect(paragraph.className).toMatch(/break-words/)
+      expect(paragraph.className).not.toMatch(/\bbreak-all\b/)
+
+      // The unbreakable symbol value is wrapped in an inner <span> with
+      // `break-all`, so the contiguous 24-char run still wraps inside the
+      // paragraph's `max-w-md` constraint.
+      const innerSpan = paragraph.querySelector('span')
+      expect(innerSpan).not.toBeNull()
+      expect(innerSpan?.className).toMatch(/break-all/)
     })
   })
 })
