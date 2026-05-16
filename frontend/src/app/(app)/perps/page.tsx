@@ -219,6 +219,18 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
     }
   }, [pair.maxLeverage, leverage])
 
+  // Reset market-relative price fields when the user switches pairs.
+  // Without this, a $1,900 limit price typed for ETH-USD would persist
+  // when switching to SOL-USD (~$134) and submit at the wrong price.
+  // User preferences (side, orderType, leverage, marginMode, size) are
+  // intentionally preserved.
+  useEffect(() => {
+    setLimitPrice('')
+    setTriggerPrice('')
+    setTp('')
+    setSl('')
+  }, [pair.symbol])
+
   const sizeNum = parseFloat(size) || 0
   const parsedLimitPrice = parseFloat(limitPrice)
   const limitPriceInvalid = orderType !== 'market' && limitPrice !== '' && (isNaN(parsedLimitPrice) || parsedLimitPrice <= 0)
