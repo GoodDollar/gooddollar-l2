@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { SearchX } from 'lucide-react'
 
 import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, hasMeaningfulPrice, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
 import { useMarketCount, useAllOnChainMarkets, type OnChainMarket } from '@/lib/useMarkets'
@@ -551,9 +552,66 @@ function PredictPageContent() {
       </ScrollStrip>
 
       {filtered.length === 0 ? (
-        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 py-16 text-center">
-          <p className="text-gray-400 text-sm mb-1">No markets found</p>
-          <p className="text-gray-600 text-xs">Try adjusting your search or filters</p>
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 py-12 px-4">
+          <div className="flex flex-col items-center text-center max-w-md mx-auto">
+            <SearchX
+              className="text-gray-600 mb-3"
+              size={36}
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+            <p className="text-sm text-gray-200 font-medium mb-1">
+              No markets found
+            </p>
+            {(query.trim().length > 0 || category !== 'All') && (
+              <p className="text-xs text-gray-400 mb-1">
+                {query.trim().length > 0 ? (
+                  <>
+                    Nothing matches{' '}
+                    <span className="text-white font-medium break-all">
+                      &ldquo;{query}&rdquo;
+                    </span>
+                    {category !== 'All' && (
+                      <>
+                        {' '}in{' '}
+                        <span className="text-white font-medium">{category}</span>
+                      </>
+                    )}
+                    .
+                  </>
+                ) : (
+                  <>
+                    No markets in{' '}
+                    <span className="text-white font-medium">{category}</span>{' '}
+                    yet.
+                  </>
+                )}
+              </p>
+            )}
+            <p className="text-xs text-gray-500 mb-4">
+              Try adjusting your search or filters
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {query.trim().length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-goodgreen/15 text-goodgreen border border-goodgreen/20 hover:bg-goodgreen/25 transition-colors"
+                >
+                  Clear search
+                </button>
+              )}
+              {category !== 'All' && (
+                <button
+                  type="button"
+                  onClick={() => setCategory('All')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:text-white bg-dark-50 border border-gray-700/30 transition-colors"
+                >
+                  Show all categories
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <>
