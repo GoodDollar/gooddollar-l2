@@ -13,6 +13,7 @@ import { truncateMiddle } from '@/lib/strings'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic } from '@/lib/useStocks'
+import { toG$Wei } from '@/lib/gDollarAmount'
 import dynamic from 'next/dynamic'
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
@@ -81,11 +82,13 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
 
     if (isDeployed && orderType === 'market') {
       const amountNum = parseFloat(amount)
-      // Assume G$ ≈ $0.01 on devnet for collateral calculation
+      // Assume G$ ≈ $0.01 on devnet for collateral calculation.
+      // Route through toG$Wei (parseUnits) — never `Math.round(x * 1e18)`,
+      // which drifts by tens of millions of wei on realistic trade sizes.
       const GD_PRICE_USD = 0.01
       const collateralGD = amountNum / GD_PRICE_USD
-      const collateralWei = BigInt(Math.round(collateralGD * 1e18))
-      const sharesWei = BigInt(Math.round(shares * 1e18))
+      const collateralWei = toG$Wei(collateralGD)
+      const sharesWei = toG$Wei(shares)
       if (side === 'buy') {
         await mint(stock.ticker, collateralWei, sharesWei)
       } else {

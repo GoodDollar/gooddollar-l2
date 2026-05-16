@@ -11,6 +11,7 @@ import { boundPerpsSize } from '@/lib/perpsInput'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useOpenPosition } from '@/lib/usePerps'
+import { toG$Wei } from '@/lib/gDollarAmount'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { PercentageChange } from '@/components/ui/percentage-change'
@@ -274,11 +275,13 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
 
     if (isDeployed && orderType === 'market') {
       // Convert to G$ wei (18 decimals). Assume G$ ≈ $0.01 on devnet.
+      // Route through toG$Wei (parseUnits) — never `Math.round(x * 1e18)`,
+      // which drifts by tens of millions of wei on realistic positions.
       const GD_PRICE_USD = 0.01
       const notionalGD = notional / GD_PRICE_USD
       const marginGD = marginRequired / GD_PRICE_USD
-      const sizeWei = BigInt(Math.round(notionalGD * 1e18))
-      const marginWei = BigInt(Math.round(marginGD * 1e18))
+      const sizeWei = toG$Wei(notionalGD)
+      const marginWei = toG$Wei(marginGD)
       await openPosition(BigInt(marketId), marginWei, sizeWei, side === 'long')
     } else {
       // Limit/stop orders or contracts not deployed: UI-only preview
