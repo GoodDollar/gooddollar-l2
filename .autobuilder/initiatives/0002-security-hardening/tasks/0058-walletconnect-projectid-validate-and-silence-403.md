@@ -6,7 +6,7 @@ deps: []
 split: false
 depth: 1
 planned: true
-executed: false
+executed: true
 priority: P2
 labels: [frontend, wagmi, walletconnect, error-handling, console-noise, production-readiness]
 ---
