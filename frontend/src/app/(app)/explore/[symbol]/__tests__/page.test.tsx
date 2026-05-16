@@ -97,4 +97,49 @@ describe('TokenDetailPage — URL-encoded symbol handling', () => {
 
     expect(screen.getByRole('heading', { name: /Token Not Found/i })).toBeTruthy()
   })
+
+  // Defensive bound against user-controlled URL segments. A long contiguous
+  // symbol like 500×'A' must not be rendered verbatim into the page body,
+  // because it has no whitespace boundaries and will push the layout wider
+  // than the viewport, producing a site-wide horizontal scrollbar.
+  describe('"Token Not Found" symbol is bounded for display', () => {
+    const longSymbol = 'A'.repeat(500)
+
+    it('truncates very long symbols in the error message with an ellipsis', () => {
+      currentParams = { symbol: longSymbol }
+      render(<TestWrapper><TokenDetailPage /></TestWrapper>)
+
+      // The "Token Not Found" heading still renders.
+      expect(screen.getByRole('heading', { name: /Token Not Found/i })).toBeTruthy()
+
+      // The error paragraph mentions the truncated form (24 'A's + ellipsis),
+      // not the full 500-char string.
+      const paragraph = screen.getByText(/is not available on GoodDollar L2/i)
+      const text = paragraph.textContent ?? ''
+      expect(text.length).toBeLessThan(120)
+      expect(text).toContain('…')
+      // The full 500-char run must not appear anywhere on the page.
+      expect(text.includes(longSymbol)).toBe(false)
+    })
+
+    it('renders normal-length symbols (≤ 24 chars) unchanged', () => {
+      const normalSymbol = 'NONEXISTENT_TOKEN'
+      currentParams = { symbol: normalSymbol }
+      render(<TestWrapper><TokenDetailPage /></TestWrapper>)
+
+      const paragraph = screen.getByText(/is not available on GoodDollar L2/i)
+      expect(paragraph.textContent).toContain(normalSymbol)
+      expect(paragraph.textContent).not.toContain('…')
+    })
+
+    it('applies break-all wrapping class to the error paragraph', () => {
+      currentParams = { symbol: longSymbol }
+      render(<TestWrapper><TokenDetailPage /></TestWrapper>)
+
+      const paragraph = screen.getByText(/is not available on GoodDollar L2/i)
+      // The wrapping class is what prevents any remaining contiguous run
+      // (e.g., the 24 'A's before the ellipsis) from overflowing horizontally.
+      expect(paragraph.className).toMatch(/break-all/)
+    })
+  })
 })

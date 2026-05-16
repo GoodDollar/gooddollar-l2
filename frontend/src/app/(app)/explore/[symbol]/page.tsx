@@ -36,6 +36,17 @@ function decodeSymbolParam(raw: string | undefined): string {
   }
 }
 
+// The `symbol` URL segment is fully attacker-controlled and rendered into the
+// "Token Not Found" body. Without a length cap, a contiguous string like
+// `/explore/AAAA…` (500 chars) pushes the layout past the viewport and creates
+// a site-wide horizontal scrollbar (the header, footer, and nav extend too).
+// React already escapes the value, so this is a layout-defense issue rather
+// than an XSS one. Cap the visible form at 24 chars; real ERC-20 symbols are
+// 3–8 chars so this never affects legitimate tokens.
+function truncateSymbolForDisplay(value: string, max = 24): string {
+  return value.length > max ? `${value.slice(0, max)}…` : value
+}
+
 // Hook for touch gestures on mobile
 function useSwipeNavigation(onSwipeLeft: () => void, onSwipeRight: () => void) {
   const [touchStart, setTouchStart] = useState(0)
@@ -129,7 +140,7 @@ export default function TokenDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <h1 className="text-2xl font-bold text-white mb-3">Token Not Found</h1>
-        <p className="text-sm text-gray-400 mb-6">The token &quot;{symbol}&quot; is not available on GoodDollar L2.</p>
+        <p className="text-sm text-gray-400 mb-6 max-w-md break-all">The token &quot;{truncateSymbolForDisplay(symbol)}&quot; is not available on GoodDollar L2.</p>
         <Link href="/explore" className="px-6 py-3 rounded-xl bg-goodgreen text-white font-semibold hover:bg-goodgreen-600 transition-colors">
           Back to Explore
         </Link>
