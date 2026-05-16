@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { DEVNET_RPC_URL, CONTRACTS as DEVNET_CONTRACTS } from '@/lib/devnet'
+import { DEVNET_RPC_URL, DEVNET_CHAIN_ID, CONTRACTS as DEVNET_CONTRACTS } from '@/lib/devnet'
+import { rpcCall as rpcCallStrict, RpcError } from '@/lib/rpc'
 import { Skeleton } from '@/components/ui/skeleton'
 import { computeBarHeights } from './block-timeline'
 
@@ -20,21 +21,22 @@ const CONTRACTS: Record<string, string> = Object.fromEntries(
 
 const TESTER_ADDRS = new Set(TESTERS.map(t => t.address.toLowerCase()))
 
-async function rpcCall(method: string, params: unknown[] = []) {
-  const res = await fetch(RPC_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
-  })
-  const data = await res.json()
-  return data.result
+// Strict JSON-RPC helper — throws RpcError on any error path (non-2xx,
+// JSON-RPC error envelope, missing result, network failure, 4s timeout).
+// Previously this was an inline helper that swallowed errors and returned
+// `undefined`, which `hexToNumber(undefined)` coerced to `0`, rendering as
+// "Block #0" beside a green "Live" pulse. See task 0069.
+function rpcCall<T = unknown>(method: string, params: unknown[] = []): Promise<T> {
+  return rpcCallStrict<T>(RPC_URL, method, params)
 }
 
-function hexToNumber(hex: string): number {
+function hexToNumber(hex: string | undefined | null): number {
+  if (!hex) return 0
   return parseInt(hex, 16)
 }
 
-function hexToEth(hex: string): string {
+function hexToEth(hex: string | undefined | null): string {
+  if (!hex) return '0.0000'
   const wei = BigInt(hex)
   const eth = Number(wei) / 1e18
   return eth.toFixed(eth < 1 ? 4 : 2)
@@ -95,11 +97,14 @@ export default function ActivityPage() {
   const [currentBlock, setCurrentBlock] = useState(0)
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  // RpcError surfaces fetch failures as a visible banner with retry, instead
+  // of silently anchoring the page at "Block #0" with a green "Live" pulse.
+  const [rpcError, setRpcError] = useState<RpcError | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
       // Get latest block number
-      const blockHex = await rpcCall('eth_blockNumber')
+      const blockHex = await rpcCall<string>('eth_blockNumber')
       const latestBlock = hexToNumber(blockHex)
       setCurrentBlock(latestBlock)
 
@@ -178,8 +183,16 @@ export default function ActivityPage() {
 
       setLastUpdate(new Date())
       setLoading(false)
+      setRpcError(null)
     } catch (e) {
       console.error('Fetch error:', e)
+      if (e instanceof RpcError) {
+        setRpcError(e)
+      } else {
+        // Wrap non-RpcError failures so the banner still renders with useful
+        // context instead of leaving the page in a silent indeterminate state.
+        setRpcError(new RpcError('unknown', 'unexpected', (e as Error)?.message || String(e), RPC_URL))
+      }
       setLoading(false)
     }
   }, [])
@@ -201,16 +214,51 @@ export default function ActivityPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Live Activity</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Block #{currentBlock.toLocaleString()} • Chain 42069
-            {lastUpdate && <span> • Updated {lastUpdate.toLocaleTimeString()}</span>}
+          <p className="text-sm text-gray-400 mt-1" data-testid="activity-subtitle">
+            {currentBlock === 0 ? (
+              <>Connecting to chain {DEVNET_CHAIN_ID}…</>
+            ) : (
+              <>
+                Block #{currentBlock.toLocaleString()} • Chain {DEVNET_CHAIN_ID}
+                {lastUpdate && <span> • Updated {lastUpdate.toLocaleTimeString()}</span>}
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-goodgreen animate-pulse" />
-          <span className="text-xs text-goodgreen">Live</span>
+          <span
+            className={`inline-block w-2 h-2 rounded-full animate-pulse ${
+              rpcError ? 'bg-red-400' : 'bg-goodgreen'
+            }`}
+          />
+          <span className={`text-xs ${rpcError ? 'text-red-400' : 'text-goodgreen'}`}>
+            {rpcError ? 'Offline' : 'Live'}
+          </span>
         </div>
       </div>
+
+      {rpcError && (
+        <div
+          role="alert"
+          className="mb-6 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+          data-testid="activity-rpc-error"
+        >
+          <div className="flex-1 text-sm text-red-200">
+            <div className="font-semibold">Couldn’t reach the chain RPC.</div>
+            <div className="text-xs text-red-300/80 mt-1 font-mono break-all">
+              {rpcError.method} → {rpcError.url} ({rpcError.message})
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchData()}
+            aria-label="Retry chain RPC fetch"
+            className="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-white text-xs font-semibold"
+          >
+            Retry now
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
