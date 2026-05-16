@@ -146,7 +146,14 @@ _Last updated: {now} by `scripts/update-testnet-readme.py`._
 - On-chain protocol smoke: {integration_status}
 - Frontend E2E: matrix workflow `Parallel Dapp Tests` covers each dapp lane independently.
 - Deployment: devnet deployment workflow is `Deploy to Devnet`.
-- Required before public testnet: persistent OP Stack chain, faucet, final canonical address sync, explorer indexing check.
+- Required before public testnet: persistent OP Stack chain, faucet, final canonical address sync, explorer indexing check, Dune dashboard/indexing.
+
+## Dune Public Analytics
+
+- Status: included in the testnet move plan.
+- Spec: `docs/DUNE-DASHBOARD-SPEC.md`.
+- Launch requirement: public proof dashboard for network usage, protocol activity, UBI fee routing, agent economy, faucet funnel, and success/revert rates.
+- Indexing note: local chain `42069` uses internal indexer until the public testnet is Dune-indexed or Dune indexing is requested.
 
 ## Protocol Smoke Matrix
 

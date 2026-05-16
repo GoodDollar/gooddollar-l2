@@ -1,6 +1,6 @@
 # GoodDollar L2 Testnet Readiness
 
-_Last updated: 2026-05-16 06:19 UTC by `scripts/update-testnet-readme.py`._
+_Last updated: 2026-05-16 06:28 UTC by `scripts/update-testnet-readme.py`._
 
 ## Current Build
 
@@ -9,7 +9,7 @@ _Last updated: 2026-05-16 06:19 UTC by `scripts/update-testnet-readme.py`._
 - Package version: `0.2.0`
 - Autobuilder iteration: `28`
 - Chain: GoodDollar L2 Devnet (`42069` configured, `42069` live)
-- Latest local block: `105298`
+- Latest local block: `105574`
 
 ## Public Endpoints
 
@@ -25,7 +25,14 @@ _Last updated: 2026-05-16 06:19 UTC by `scripts/update-testnet-readme.py`._
 - On-chain protocol smoke: 6/6 protocol smoke tx lanes green
 - Frontend E2E: matrix workflow `Parallel Dapp Tests` covers each dapp lane independently.
 - Deployment: devnet deployment workflow is `Deploy to Devnet`.
-- Required before public testnet: persistent OP Stack chain, faucet, final canonical address sync, explorer indexing check.
+- Required before public testnet: persistent OP Stack chain, faucet, final canonical address sync, explorer indexing check, Dune dashboard/indexing.
+
+## Dune Public Analytics
+
+- Status: included in the testnet move plan.
+- Spec: `docs/DUNE-DASHBOARD-SPEC.md`.
+- Launch requirement: public proof dashboard for network usage, protocol activity, UBI fee routing, agent economy, faucet funnel, and success/revert rates.
+- Indexing note: local chain `42069` uses internal indexer until the public testnet is Dune-indexed or Dune indexing is requested.
 
 ## Protocol Smoke Matrix
 
