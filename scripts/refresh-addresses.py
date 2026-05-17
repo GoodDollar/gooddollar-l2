@@ -13,6 +13,16 @@ bytecode via eth_getCode, then writes:
 
 Both files are derived from the same SYMBOL_MAP so they cannot drift.
 
+Special case — derived getters: some contracts are deployed as CREATE-children
+of another contract and therefore never appear as top-level `contractName`
+rows in any broadcast file. We read those back off-chain via a getter on the
+parent. Today the only such pair is:
+
+  ConditionalTokens ← MarketFactory.tokens()
+
+See `derive_conditional_tokens_from_market_factory` for the implementation
+and `scripts/test_refresh_addresses.py` for the contract.
+
 Exits non-zero if a required symbol cannot be resolved to a live address.
 
 Usage: python3 scripts/refresh-addresses.py [--rpc URL] [--chain-id N]
@@ -89,6 +99,52 @@ def has_code(rpc: str, addr: str) -> bool:
         return False
 
 
+# 4-byte selector for `tokens()` on MarketFactory. Verified with
+# `cast sig "tokens()"` → 0x9d63848a. MarketFactory deploys its
+# own ConditionalTokens in its constructor, so the CT address is
+# never emitted as a top-level row in any Foundry broadcast file
+# — we have to read it back off-chain via this getter.
+_TOKENS_SELECTOR = "0x9d63848a"
+
+
+def derive_conditional_tokens_from_market_factory(rpc: str, mf_addr: str) -> str | None:
+    """Read `MarketFactory.tokens()` off-chain and return the ConditionalTokens address.
+
+    Returns ``None`` (never raises) when:
+      * the RPC call fails or times out
+      * the JSON-RPC response is an error (e.g. execution reverted)
+      * the returned word is malformed (not 32 bytes)
+      * the returned address is the zero address
+      * the returned address has no bytecode on the chain
+
+    On success returns a checksum-less, lowercased ``0x...`` address string.
+
+    This is intentionally narrowly scoped to ConditionalTokens. There is
+    exactly one such derived-getter relationship in the codebase today;
+    generalising the mechanism would obscure rather than clarify.
+    """
+    try:
+        r = rpc_call(rpc, "eth_call", [{"to": mf_addr, "data": _TOKENS_SELECTOR}, "latest"])
+    except Exception:
+        return None
+    if not isinstance(r, dict) or "error" in r:
+        return None
+    result = r.get("result")
+    if not isinstance(result, str):
+        return None
+    hexpart = result.removeprefix("0x")
+    if len(hexpart) != 64:
+        # Address-returning calls always pad to a single 32-byte word.
+        return None
+    # ABI-encoded address: rightmost 20 bytes (40 hex chars) of the word.
+    derived = "0x" + hexpart[-40:].lower()
+    if int(derived, 16) == 0:
+        return None
+    if not has_code(rpc, derived):
+        return None
+    return derived
+
+
 def collect_latest(broadcast_root: Path, chain_id: int) -> dict[str, tuple[float, str, str]]:
     """Scan every run-latest.json for the given chain_id, keep most-recent per contractName."""
     out: dict[str, tuple[float, str, str]] = {}
@@ -139,6 +195,22 @@ def main() -> int:
         else:
             print(f"[refresh-addresses] WARN: {cn} ({sym}) at {addr} has no bytecode — skipping",
                   file=sys.stderr)
+
+    # Derived getter: MarketFactory deploys its own ConditionalTokens in its
+    # constructor (src/predict/MarketFactory.sol), so the CT address never
+    # appears as a top-level row in any Foundry broadcast file. Read it back
+    # off-chain via `MarketFactory.tokens()` whenever MF is live and CT is
+    # either unresolved or pointing at a dead address.
+    if "MF" in resolved and "CONDITIONAL_TOKENS" not in resolved:
+        derived = derive_conditional_tokens_from_market_factory(args.rpc, resolved["MF"])
+        if derived:
+            resolved["CONDITIONAL_TOKENS"] = derived
+            sources["CONDITIONAL_TOKENS"] = "derived: MarketFactory.tokens()"
+            print(
+                f"[refresh-addresses] derived CONDITIONAL_TOKENS={derived} "
+                f"from MarketFactory.tokens()",
+                file=sys.stderr,
+            )
 
     missing = [s for s in REQUIRED if s not in resolved]
     if missing:

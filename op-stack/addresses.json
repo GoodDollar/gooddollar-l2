@@ -1,5 +1,5 @@
 {
-    "_comment": "GoodDollar L2 contract addresses \u2014 synced 2026-05-15 21:04:13 from scripts/refresh-addresses.py (chain_id=42069, rpc=http://localhost:8545). DO NOT hand-edit; re-run the script after every redeploy.",
+    "_comment": "GoodDollar L2 contract addresses \u2014 synced 2026-05-17 19:08:10 from scripts/refresh-addresses.py (chain_id=42069, rpc=http://localhost:8545). DO NOT hand-edit; re-run the script after every redeploy.",
     "chain_id": 42069,
     "chain_name": "GoodDollar L2 Devnet",
     "rpc_url": "https://rpc.goodclaw.org",
@@ -15,7 +15,7 @@
         "MarginVault": "0x82bbaa3b0982d88741b275ae1752db85cafe3c65",
         "PerpPriceOracle": "0xa4d0806d597146df93796a38435abb2a3cb96677",
         "PerpEngine": "0x084815d1330ecc3ef94193a19ec222c0c73dff2d",
-        "ConditionalTokens": "0x12AC093Ef862b0DF59a9207dDFA35A82cf3eb7a5",
+        "ConditionalTokens": "0x9f29cdb0946868a4f9f99fb0e07f71fa598569c0",
         "MarketFactory": "0xfaA7b3a4b5c3f54a934a2e33D34C7bC099f96CCE",
         "AgentRegistry": "0x8a791620dd6260079bf849dc5567adc3f2fdc318",
         "StocksPriceOracle": "0x20d7b364e8ed1f4260b5b90c41c2dec3c1f6d367",
