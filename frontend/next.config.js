@@ -49,6 +49,7 @@ const securityHeaders = [
         'https://pulse.walletconnect.org',
         'wss://pulse.walletconnect.org',
         'https://api.web3modal.org',
+        ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:*'] : []),
       ].join(' '),
       "worker-src 'self' blob:",
       "manifest-src 'self'",
@@ -56,7 +57,7 @@ const securityHeaders = [
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      'upgrade-insecure-requests',
+      ...(process.env.NODE_ENV === 'production' ? ['upgrade-insecure-requests'] : []),
       // TODO: Add report-uri / report-to directive for production CSP violation monitoring
     ].join('; '),
   },
