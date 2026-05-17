@@ -1,0 +1,13 @@
+# Smoke expectations for scripts/testnet/iter01-baseline.sh
+# Each non-comment line is a header that MUST appear in the produced
+# docs/testnet/iter01-baseline.md. Validator:
+#   grep -F "## 1. GIT STATUS" docs/testnet/iter01-baseline.md
+## 1. GIT STATUS
+## 2. PM2 STATUS
+## 3. PORT 3100 OWNERSHIP
+## 4. PUBLIC PAGES
+## 5. /api/status HEALTH
+## 6. CHAIN BLOCK
+## 7. DOC INVENTORY
+## 8. FINDINGS
+## 9. NEXT ITERATION

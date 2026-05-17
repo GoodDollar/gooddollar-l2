@@ -80,6 +80,12 @@ This is the execution plan for the next autonomous autobuilder run. The goal is 
 | 49 | Release candidate decision | Any blockers classified: must-fix, accepted risk, or deferred. | Go/no-go checklist. |
 | 50 | README/doc checkpoint 10 + RC | Testnet RC tag can be cut; README is comprehensive and GitHub-ready. | Final gate output, release manifest, docs index, tag recommendation. |
 
+## Iteration Evidence
+
+| Iter | Evidence | Runner |
+|---:|---|---|
+| 1 | [`docs/testnet/iter01-baseline.md`](testnet/iter01-baseline.md) | `scripts/testnet/iter01-baseline.sh` |
+
 ## README Checkpoint Requirements Every 5 Iterations
 
 Each README refresh must include or update:
