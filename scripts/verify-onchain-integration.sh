@@ -126,6 +126,56 @@ if [[ "${splitter_token,,}" != "${GDT,,}" ]]; then
 fi
 echo
 
+# ── oracle freshness ─────────────────────────────────────────────────────────
+echo "== Oracle Freshness Checks =="
+FRESHNESS_WINDOW=300
+
+block_ts=$(cast block latest --rpc-url "$RPC" -f timestamp 2>/dev/null || echo "0")
+
+# SwapPriceOracle: getPriceUnsafe(address) → (uint256 price, uint256 timestamp)
+if [[ -n "${SWAP_ORACLE:-}" ]]; then
+  swap_result=$(cast call "$SWAP_ORACLE" "getPriceUnsafe(address)(uint256,uint256)" "$GDT" --rpc-url "$RPC" 2>/dev/null || echo "")
+  if [[ -n "$swap_result" ]]; then
+    swap_ts=$(echo "$swap_result" | tail -1 | awk '{print $1}')
+    swap_price=$(echo "$swap_result" | head -1 | awk '{print $1}')
+    swap_age=$((block_ts - swap_ts))
+    echo "[oracle] SwapPriceOracle: GDT price=$swap_price, lastUpdate=${swap_ts}, age=${swap_age}s"
+    if [[ "$swap_age" -gt "$FRESHNESS_WINDOW" ]]; then
+      record_result "Oracle:SwapFreshness" "WARN" "swap oracle stale: ${swap_age}s old (threshold=${FRESHNESS_WINDOW}s)"
+      echo "[oracle] WARN: swap oracle is STALE (${swap_age}s > ${FRESHNESS_WINDOW}s)"
+    else
+      record_result "Oracle:SwapFreshness" "PASS" "swap oracle fresh: ${swap_age}s (threshold=${FRESHNESS_WINDOW}s)"
+      echo "[oracle] swap oracle is FRESH (${swap_age}s)"
+    fi
+  else
+    record_result "Oracle:SwapFreshness" "WARN" "getPriceUnsafe call failed — oracle may not be configured for GDT"
+    echo "[oracle] WARN: SwapPriceOracle.getPriceUnsafe failed"
+  fi
+else
+  record_result "Oracle:SwapFreshness" "SKIP" "SWAP_ORACLE address not set in addresses.env"
+  echo "[oracle] SKIP: SWAP_ORACLE not configured"
+fi
+
+# PerpPriceOracle: isFresh(bytes32) → bool
+if [[ -n "${PERP_ORACLE:-}" ]]; then
+  eth_key=$(cast --format-bytes32-string "ETH" 2>/dev/null || echo "0x4554480000000000000000000000000000000000000000000000000000000000")
+  perp_fresh=$(cast call "$PERP_ORACLE" "isFresh(bytes32)(bool)" "$eth_key" --rpc-url "$RPC" 2>/dev/null || echo "")
+  if [[ "$perp_fresh" == "true" ]]; then
+    record_result "Oracle:PerpFreshness" "PASS" "perp oracle reports ETH price is fresh"
+    echo "[oracle] PerpPriceOracle: ETH is FRESH"
+  elif [[ "$perp_fresh" == "false" ]]; then
+    record_result "Oracle:PerpFreshness" "WARN" "perp oracle reports ETH price is STALE — oracle service may need a poke"
+    echo "[oracle] WARN: PerpPriceOracle: ETH is STALE"
+  else
+    record_result "Oracle:PerpFreshness" "WARN" "isFresh call returned unexpected result: $perp_fresh"
+    echo "[oracle] WARN: PerpPriceOracle.isFresh returned unexpected: $perp_fresh"
+  fi
+else
+  record_result "Oracle:PerpFreshness" "SKIP" "PERP_ORACLE address not set in addresses.env"
+  echo "[oracle] SKIP: PERP_ORACLE not configured"
+fi
+echo
+
 # ── 1. GoodSwap ──────────────────────────────────────────────────────────────
 echo "[1/6] GoodSwap — attempting swap via router"
 pool=$(cast call "$SWAP" "getPool(address,address)(address)" "$GDT" "$WETH" --rpc-url "$RPC" 2>/dev/null || echo "0x0000000000000000000000000000000000000000")
