@@ -1,15 +1,15 @@
 # GoodDollar L2 Testnet Readiness
 
-_Last updated: 2026-05-16 18:01 UTC by `scripts/update-testnet-readme.py`._
+_Last updated: 2026-05-17 18:50 UTC by `scripts/update-testnet-readme.py`._
 
 ## Current Build
 
 - Branch: `main`
 - Snapshot source: committed README + GitHub Actions history for this branch
 - Package version: `0.2.0`
-- Autobuilder iteration: `50`
+- Autobuilder iteration: `4`
 - Chain: GoodDollar L2 Devnet (`42069` configured, `42069` live)
-- Latest local block: `126344`
+- Latest local block: `171037`
 
 ## Public Endpoints
 
@@ -36,12 +36,12 @@ _Last updated: 2026-05-16 18:01 UTC by `scripts/update-testnet-readme.py`._
 
 ## Protocol Smoke Matrix
 
-- GoodSwap: `0x2d754b4766b0…` (✅ success)
-- GoodPerps: `0x347004916a8d…` (✅ success)
-- GoodLend: `0x43a7ab0a5189…` (✅ success)
+- GoodSwap: `0x52c01d13f34c…` (✅ success)
+- GoodPerps: `0x44e23761376c…` (✅ success)
+- GoodLend: `0x6cda4eb0312a…` (✅ success)
 - GoodStable: `0x2306c5aef499…` (✅ success)
-- GoodStocks: `0x2466691c12c7…` (✅ success)
-- GoodPredict: `0xda2a9e27ec2f…` (✅ success)
+- GoodStocks: `0xa8325cba97be…` (✅ success)
+- GoodPredict: `0x899ceb32b4a5…` (✅ success)
 
 ## Canonical Contract Addresses
 
