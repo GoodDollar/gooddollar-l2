@@ -72,7 +72,7 @@ export function Header() {
           <span className="text-lg font-semibold text-white">GoodDollar</span>
         </div>
 
-        <nav className="hidden 2xl:flex items-center gap-5 text-sm text-gray-400">
+        <nav className="hidden xl:flex items-center gap-5 text-sm text-gray-400">
           <Link href="/" className={isSwap ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Swap</Link>
           <Link href="/explore" className={isExplore ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Explore</Link>
           <Link href="/pool" className={`flex items-center gap-1.5 ${isPool ? 'text-white font-medium' : 'hover:text-white transition-colors'}`}>
@@ -121,7 +121,7 @@ export function Header() {
           <button
             aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setMobileMenuOpen(o => !o)}
-            className="2xl:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-50 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
+            className="xl:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-50 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
           >
             {mobileMenuOpen ? (
               <X className="w-5 h-5" />
@@ -136,14 +136,14 @@ export function Header() {
       {mobileMenuOpen && (
         <>
         <div
-          className="fixed inset-0 z-40 bg-black/50 2xl:hidden"
+          className="fixed inset-0 z-40 bg-black/50 xl:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
         <div
           ref={menuRef}
           data-testid="mobile-nav"
-          className="2xl:hidden border-t border-dark-50/50 bg-dark-100 backdrop-blur-md animate-in slide-in-from-top-2 duration-200 relative z-50"
+          className="xl:hidden border-t border-dark-50/50 bg-dark-100 backdrop-blur-md animate-in slide-in-from-top-2 duration-200 relative z-50"
         >
           <nav className="flex flex-col px-4 py-3 gap-1">
             <Link
