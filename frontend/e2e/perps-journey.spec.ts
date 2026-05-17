@@ -142,10 +142,10 @@ test.describe('Perps Journey', () => {
     await sizeInput.fill('0.01')
     await page.waitForTimeout(1000)
 
-    await expect(page.locator('text=Notional')).toBeVisible()
-    await expect(page.locator('text=Margin')).toBeVisible()
-    await expect(page.locator('text=Liq. Price')).toBeVisible()
-    await expect(page.locator('text=Fee')).toBeVisible()
+    await expect(page.getByText('Notional', { exact: true })).toBeVisible()
+    await expect(page.getByText('Margin', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('Liq. Price', { exact: true })).toBeVisible()
+    await expect(page.getByText('Fee (').first()).toBeVisible()
     await expect(page.locator('text=→ UBI (20%)')).toBeVisible()
   })
 

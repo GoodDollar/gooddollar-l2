@@ -87,7 +87,7 @@ test.describe('Stocks Journey', () => {
     const searchInput = page.locator('input[placeholder="Search stocks..."]')
     await searchInput.fill('AAPL')
 
-    await expect(page.locator('text=AAPL')).toBeVisible()
+    await expect(page.locator('table').getByText('AAPL').first()).toBeVisible()
   })
 
   test('no results shows empty state with clear button', async ({ page }) => {
@@ -99,8 +99,8 @@ test.describe('Stocks Journey', () => {
     const searchInput = page.locator('input[placeholder="Search stocks..."]')
     await searchInput.fill('ZZZNONEXISTENT')
 
-    await expect(page.locator('text=No stocks match your search')).toBeVisible()
-    await expect(page.locator('button', { hasText: 'Clear' })).toBeVisible()
+    await expect(page.locator('table').getByText('No stocks match your search')).toBeVisible()
+    await expect(page.locator('table').getByRole('button', { name: 'Clear' })).toBeVisible()
   })
 
   test('clicking sort headers changes sort direction', async ({ page }) => {

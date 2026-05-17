@@ -34,9 +34,9 @@ test.describe('Stable Journey', () => {
 
     await expect(page.locator('h1', { hasText: 'GoodStable' })).toBeVisible({ timeout: 10_000 })
 
-    await expect(page.locator('text=Total gUSD Supply')).toBeVisible()
-    await expect(page.locator('text=UBI Fees Routed')).toBeVisible()
-    await expect(page.locator('text=Min. Ratio')).toBeVisible()
+    await expect(page.getByText('Total gUSD Supply', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('UBI Fees Routed', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('Min. Ratio', { exact: true }).first()).toBeVisible()
   })
 
   test('three vault panels are displayed (WETH, G$, USDC)', async ({ page }) => {
@@ -130,9 +130,9 @@ test.describe('Stable Journey', () => {
     await expect(page.locator('h1', { hasText: 'GoodStable' })).toBeVisible({ timeout: 10_000 })
 
     await expect(page.locator('h2', { hasText: 'How GoodStable works' })).toBeVisible()
-    await expect(page.locator('text=Deposit collateral')).toBeVisible()
-    await expect(page.locator('text=Mint gUSD')).toBeVisible()
-    await expect(page.locator('text=Repay gUSD')).toBeVisible()
+    await expect(page.getByText('Deposit collateral').first()).toBeVisible()
+    await expect(page.getByText('Mint gUSD').first()).toBeVisible()
+    await expect(page.getByText('Repay gUSD').first()).toBeVisible()
   })
 
   test('how it works mentions liquidation risk', async ({ page }) => {

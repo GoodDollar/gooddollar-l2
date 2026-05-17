@@ -202,23 +202,22 @@ test.describe('Swap Journey', () => {
     const swapCard = page.locator('#swap-card')
     await expect(swapCard).toBeVisible()
 
-    const tokenButtons = swapCard.locator('button:has(img)')
+    const tokenButtons = swapCard.locator('button[aria-haspopup="dialog"]')
     const allButtons = await tokenButtons.all()
     expect(allButtons.length).toBeGreaterThanOrEqual(2)
 
-    const firstTokenBefore = await allButtons[0].textContent()
-    const secondTokenBefore = await allButtons[1].textContent()
+    const firstTokenBefore = await allButtons[0].locator('span.font-semibold').textContent()
+    const secondTokenBefore = await allButtons[1].locator('span.font-semibold').textContent()
 
-    const flipButton = swapCard.locator('button:has(svg)').filter({
-      has: page.locator('svg'),
-    }).first()
+    const flipButton = swapCard.locator('button.w-10.h-10')
+    await expect(flipButton).toBeVisible()
 
     await flipButton.click()
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(1000)
 
     const tokensAfter = await tokenButtons.all()
-    const firstTokenAfter = await tokensAfter[0].textContent()
-    const secondTokenAfter = await tokensAfter[1].textContent()
+    const firstTokenAfter = await tokensAfter[0].locator('span.font-semibold').textContent()
+    const secondTokenAfter = await tokensAfter[1].locator('span.font-semibold').textContent()
 
     expect(firstTokenAfter).toBe(secondTokenBefore)
     expect(secondTokenAfter).toBe(firstTokenBefore)

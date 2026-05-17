@@ -69,7 +69,7 @@ test.describe('Predict Journey', () => {
 
     const categories = ['All', 'Crypto', 'Politics', 'Sports', 'AI & Tech']
     for (const cat of categories) {
-      const btn = page.locator('button', { hasText: cat })
+      const btn = page.getByRole('button', { name: cat, exact: true }).first()
       await expect(btn).toBeVisible()
     }
   })
