@@ -15,36 +15,85 @@ const rawWcProjectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID
 const validatedWcProjectId = validateWcProjectId(rawWcProjectId)
 const isValidWcProjectId = validatedWcProjectId !== ''
 
+// Scoped console filter for Reown / WalletConnect noise.
+//
+// Installed on BOTH branches of the config selection below:
+//
+//   - Valid projectId branch (production today): RainbowKit's
+//     getDefaultConfig wires the WalletConnect connector, which
+//     imports @reown/appkit-core. On page load that SDK fetches
+//     remote project config from api.web3modal.org. If the
+//     current page origin is not on the project's Cloud allowlist
+//     the request returns HTTP 403 and the SDK logs:
+//       console.error "Origin <origin> not found on Allowlist - update
+//                      configuration on cloud.reown.com"
+//       console.warn  "[Reown Config] Failed to fetch remote project
+//                      configuration. Using local/default values."
+//     Wallet connectivity itself still works (the SDK falls back
+//     to local defaults), so this is a polish/noise fix, not a
+//     functional regression. The permanent fix is to add the
+//     origin to the project's allowlist in https://cloud.reown.com
+//     — see docs/TESTNET_README.md "Operator runbook → WalletConnect
+//     / Reown Cloud allowlist".
+//
+//   - Invalid projectId branch: kept as a defensive safety net.
+//     In normal operation buildNoWcConfig() avoids importing
+//     @reown/appkit entirely, so the filter is unreachable there;
+//     but a future RainbowKit / wagmi version that reintroduces a
+//     WC code path through a non-WC connector factory would still
+//     be silenced.
+//
+// The filter is intentionally narrow: it matches two exact log
+// patterns and lets every other warn/error pass through unchanged.
+// Idempotency is guarded by a flag on `window` so re-importing
+// wagmi.ts (e.g. in tests with vi.resetModules) does not wrap the
+// console methods on top of themselves.
+function installReownConsoleFilter(): void {
+  if (typeof window === 'undefined') return
+  const w = window as unknown as { __reownConsoleFilterInstalled?: boolean }
+  if (w.__reownConsoleFilterInstalled) return
+  w.__reownConsoleFilterInstalled = true
+
+  // "[Reown Config] Failed to fetch remote project configuration" —
+  // the warning shape from @reown/appkit's remote config fetch.
+  const reownConfigRe = /\[Reown Config\] Failed to fetch remote project configuration/
+  // "Origin ... not found on Allowlist - update configuration on cloud.reown.com" —
+  // the allowlist-403 error. Anchored on `cloud.reown.com` so it
+  // cannot match an unrelated console.error from another component.
+  const reownAllowlistRe = /Origin .* not found on Allowlist - update configuration on cloud\.reown\.com/
+
+  const originalWarn = console.warn.bind(console)
+  console.warn = (...args: unknown[]) => {
+    const first = args[0]
+    if (typeof first === 'string' && reownConfigRe.test(first)) return
+    originalWarn(...args)
+  }
+
+  const originalError = console.error.bind(console)
+  console.error = (...args: unknown[]) => {
+    const first = args[0]
+    if (
+      typeof first === 'string' &&
+      (reownAllowlistRe.test(first) || reownConfigRe.test(first))
+    ) {
+      return
+    }
+    originalError(...args)
+  }
+}
+
+installReownConsoleFilter()
+
 if (typeof window !== 'undefined' && !isValidWcProjectId) {
+  // Developer-help message. Intentionally NOT matched by the
+  // reownAllowlistRe / reownConfigRe patterns above — it must
+  // remain visible so contributors know why mobile wallet flows
+  // are missing in dev when no WalletConnect project ID is set.
   console.error(
     '[wagmi] NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid.\n' +
     'Mobile wallet connections (Rainbow, MetaMask Mobile, Trust Wallet, etc.) will NOT work.\n' +
     'Register a project at https://cloud.walletconnect.com and add NEXT_PUBLIC_WC_PROJECT_ID to your .env.local'
   )
-
-  // Scoped console.warn filter: drop only the known Reown
-  // "Failed to fetch remote project configuration" 403 spam
-  // emitted by @reown/appkit when no valid project ID is
-  // configured. Kept as a defensive safety net — in normal
-  // operation we never construct the WalletConnect connector
-  // when the project ID is invalid (see config builder below),
-  // so the @reown/appkit SDK is never imported and this filter
-  // is unreachable. We keep it in case a future RainbowKit
-  // version reintroduces a WC code path through a non-WC
-  // connector factory.
-  const w = window as unknown as { __reownWarnFilterInstalled?: boolean }
-  if (!w.__reownWarnFilterInstalled) {
-    w.__reownWarnFilterInstalled = true
-    const originalWarn = console.warn.bind(console)
-    const reownSuppressRe = /\[Reown Config\] Failed to fetch remote project configuration/
-    console.warn = (...args: unknown[]) => {
-      const first = args[0]
-      if (typeof first === 'string' && reownSuppressRe.test(first)) {
-        return
-      }
-      originalWarn(...args)
-    }
-  }
 }
 
 export { validateWcProjectId } from './wagmi-helpers'

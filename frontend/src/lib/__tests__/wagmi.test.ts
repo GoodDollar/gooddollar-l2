@@ -166,3 +166,157 @@ describe('config builder — branches on NEXT_PUBLIC_WC_PROJECT_ID', () => {
     expect(valid.config.chains[0]?.id).toBe(42069)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Reown console filter — installs on BOTH branches (iter 10)
+//
+// Surface-sweep review on 2026-05-17 showed @reown/appkit emits two
+// log lines on every page load when the production origin
+// (https://goodswap.goodclaw.org) is not on the Reown Cloud project
+// allowlist:
+//   console.error: "Origin <origin> not found on Allowlist - update
+//                   configuration on cloud.reown.com"
+//   console.warn:  "[Reown Config] Failed to fetch remote project
+//                   configuration. Using local/default values."
+//
+// The previous filter (task 0058) was only installed in the
+// !isValidWcProjectId branch — which is unreachable in production
+// because production has a valid projectId. This block tests that
+// the filter is now installed on BOTH branches AND covers both
+// log channels, without swallowing unrelated developer messages
+// (especially the [wagmi] NEXT_PUBLIC_WC_PROJECT_ID is missing or
+// invalid console.error that is intentional help text).
+// ---------------------------------------------------------------------------
+
+const REOWN_WARN_MSG =
+  '[Reown Config] Failed to fetch remote project configuration. Using local/default values.'
+const REOWN_ALLOWLIST_ERR_MSG =
+  'Origin https://goodswap.goodclaw.org not found on Allowlist - update configuration on cloud.reown.com'
+const WAGMI_DEV_HELP_MSG =
+  '[wagmi] NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid.\n' +
+  'Mobile wallet connections (Rainbow, MetaMask Mobile, Trust Wallet, etc.) will NOT work.\n' +
+  'Register a project at https://cloud.walletconnect.com and add NEXT_PUBLIC_WC_PROJECT_ID to your .env.local'
+
+interface ReownWindow extends Window {
+  __reownConsoleFilterInstalled?: boolean
+}
+
+describe('Reown console filter — installs on both branches', () => {
+  let originalWarn: typeof console.warn
+  let originalError: typeof console.error
+  let warnSpy: ReturnType<typeof vi.fn>
+  let errorSpy: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    // Force a fresh wagmi.ts module evaluation so the filter
+    // installation runs against our brand-new console spies.
+    vi.resetModules()
+    // The install-once flag lives on `window` and survives module
+    // resets in jsdom — clear it so each test exercises a fresh
+    // install of the filter.
+    delete (window as ReownWindow).__reownConsoleFilterInstalled
+
+    originalWarn = console.warn
+    originalError = console.error
+    warnSpy = vi.fn()
+    errorSpy = vi.fn()
+    console.warn = warnSpy as unknown as typeof console.warn
+    console.error = errorSpy as unknown as typeof console.error
+  })
+
+  afterEach(() => {
+    console.warn = originalWarn
+    console.error = originalError
+    vi.unstubAllEnvs()
+    vi.resetModules()
+    delete (window as ReownWindow).__reownConsoleFilterInstalled
+  })
+
+  it('valid projectId branch: suppresses the [Reown Config] warning', async () => {
+    await loadWagmiWithEnv('0123456789abcdef0123456789abcdef')
+    console.warn(REOWN_WARN_MSG)
+    // No spy call should record the suppressed pattern.
+    const warnCalls = warnSpy.mock.calls.map((c) => String(c[0]))
+    expect(warnCalls.some((s) => s.includes('[Reown Config] Failed to fetch'))).toBe(false)
+  })
+
+  it('valid projectId branch: suppresses the Origin ... not found on Allowlist error', async () => {
+    await loadWagmiWithEnv('0123456789abcdef0123456789abcdef')
+    // Drain any boot-time errors emitted by the valid branch (none
+    // expected from wagmi.ts itself, but any noise should not affect
+    // the assertion below).
+    errorSpy.mockClear()
+    console.error(REOWN_ALLOWLIST_ERR_MSG)
+    const errorCalls = errorSpy.mock.calls.map((c) => String(c[0]))
+    expect(errorCalls.some((s) => s.includes('not found on Allowlist'))).toBe(false)
+  })
+
+  it('valid projectId branch: defensively suppresses the [Reown Config] message on console.error too', async () => {
+    await loadWagmiWithEnv('0123456789abcdef0123456789abcdef')
+    errorSpy.mockClear()
+    console.error(REOWN_WARN_MSG)
+    const errorCalls = errorSpy.mock.calls.map((c) => String(c[0]))
+    expect(errorCalls.some((s) => s.includes('[Reown Config] Failed to fetch'))).toBe(false)
+  })
+
+  it('valid projectId branch: passes through an unrelated console.warn', async () => {
+    await loadWagmiWithEnv('0123456789abcdef0123456789abcdef')
+    warnSpy.mockClear()
+    console.warn('hello world')
+    expect(warnSpy).toHaveBeenCalledWith('hello world')
+  })
+
+  it('valid projectId branch: passes through an unrelated console.error', async () => {
+    await loadWagmiWithEnv('0123456789abcdef0123456789abcdef')
+    errorSpy.mockClear()
+    console.error('oops something else')
+    expect(errorSpy).toHaveBeenCalledWith('oops something else')
+  })
+
+  it('invalid projectId branch: still emits the [wagmi] developer-help error', async () => {
+    await loadWagmiWithEnv(undefined)
+    // The boot-time console.error from wagmi.ts itself is what we
+    // are asserting still reaches the spy.
+    const errorCalls = errorSpy.mock.calls.map((c) => String(c[0]))
+    expect(errorCalls.some((s) => s.includes('NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid'))).toBe(true)
+  })
+
+  it('invalid projectId branch: developer-help message must NOT match the suppression regexes', async () => {
+    await loadWagmiWithEnv(undefined)
+    // Manually emit the dev-help message after the wrappers are
+    // installed; it must reach the spy regardless of branch.
+    errorSpy.mockClear()
+    console.error(WAGMI_DEV_HELP_MSG)
+    expect(errorSpy).toHaveBeenCalledWith(WAGMI_DEV_HELP_MSG)
+  })
+
+  it('invalid projectId branch: also suppresses Reown patterns (defensive)', async () => {
+    await loadWagmiWithEnv(undefined)
+    warnSpy.mockClear()
+    errorSpy.mockClear()
+    console.warn(REOWN_WARN_MSG)
+    console.error(REOWN_ALLOWLIST_ERR_MSG)
+    expect(warnSpy.mock.calls.some((c) => String(c[0]).includes('[Reown Config] Failed to fetch'))).toBe(false)
+    expect(errorSpy.mock.calls.some((c) => String(c[0]).includes('not found on Allowlist'))).toBe(false)
+  })
+
+  it('idempotency: re-importing wagmi.ts does not double-wrap console methods', async () => {
+    // First import installs the wrapper.
+    await loadWagmiWithEnv('0123456789abcdef0123456789abcdef')
+    const wrappedWarnAfterFirst = console.warn
+    const wrappedErrorAfterFirst = console.error
+    expect((window as ReownWindow).__reownConsoleFilterInstalled).toBe(true)
+
+    // Second import: flag is already true, so the wrappers must
+    // not be re-applied on top of themselves.
+    await loadWagmiWithEnv('0123456789abcdef0123456789abcdef')
+    expect(console.warn).toBe(wrappedWarnAfterFirst)
+    expect(console.error).toBe(wrappedErrorAfterFirst)
+
+    // And a passthrough call still reaches the underlying spy
+    // exactly once per emission (not twice from double-wrap).
+    warnSpy.mockClear()
+    console.warn('passthrough')
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+  })
+})
