@@ -57,10 +57,21 @@ const securityHeaders = [
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      ...(process.env.NODE_ENV === 'production' ? ['upgrade-insecure-requests'] : []),
-      // TODO: Add report-uri / report-to directive for production CSP violation monitoring
+      ...(process.env.NODE_ENV === 'production'
+        ? ['upgrade-insecure-requests', 'report-uri /api/csp-report', 'report-to csp-violations']
+        : []),
     ].join('; '),
   },
+  ...(process.env.NODE_ENV === 'production'
+    ? [{
+        key: 'Report-To',
+        value: JSON.stringify({
+          group: 'csp-violations',
+          max_age: 86400,
+          endpoints: [{ url: '/api/csp-report' }],
+        }),
+      }]
+    : []),
 ]
 
 const nextConfig = {
