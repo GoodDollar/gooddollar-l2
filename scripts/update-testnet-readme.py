@@ -176,6 +176,35 @@ Run lanes independently so one dapp failure does not hide the others:
 - Stocks: deposit collateral, mint/burn synthetic equity, oracle freshness.
 - Portfolio/Claim: wallet states, balances, UBI claim, explorer links.
 
+## Operator runbook
+
+### WalletConnect / Reown Cloud allowlist
+
+Production origin: `https://goodswap.goodclaw.org`
+
+When deploying a new public origin (preview environment, staging,
+new domain) the SDK will log a red `Origin ... not found on
+Allowlist` error and a `[Reown Config] Failed to fetch remote
+project configuration` warning on every page load until the origin
+is added to the WalletConnect Cloud project.
+
+To add the origin permanently (replaces the runtime suppression in
+`frontend/src/lib/wagmi.ts`):
+
+1. Log into <https://cloud.reown.com> with the project owner
+   account.
+2. Open the project that matches `NEXT_PUBLIC_WC_PROJECT_ID` in
+   `frontend/.env.local` (last four chars: `97d1`).
+3. Under **Settings → Allowed origins**, add the production URL
+   (and any preview/staging URLs).
+4. Reload the app and confirm the console no longer logs the
+   allowlist error even with the suppression filter removed.
+
+The runtime suppression in `wagmi.ts` is a stopgap so the public
+app ships clean while waiting for cloud-side access; it is
+narrowly scoped to those two exact log patterns and silences no
+other Reown logging.
+
 ## Update Cadence
 
 - Group update: every 5 autobuilder commits/iterations via `autobuilder-progress-monitor`.
