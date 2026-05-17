@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { injectMockWallet, TESTER_ADDRESS } from './fixtures'
-import { publicClient } from './fixtures/chain'
+import { publicClient, walletClient } from './fixtures/chain'
+import { CONTRACTS } from '../src/lib/devnet'
+import { PerpEngineABI } from '../src/lib/abi'
 
 test.describe('Perps Journey', () => {
   test.beforeEach(async ({ page }) => {
@@ -272,3 +274,94 @@ test.describe('Perps Journey', () => {
     expect(balance).toBeGreaterThan(BigInt(0))
   })
 })
+
+test.describe('Perps full on-chain flow', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  test.beforeEach(async ({ page }) => {
+    await injectMockWallet(page)
+    await closeTesterPerpPositions()
+  })
+
+  test.afterEach(async () => {
+    await closeTesterPerpPositions()
+  })
+
+  test('opens a real market position through the UI with auto margin deposit', async ({ page }) => {
+    await page.goto('/perps')
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.locator('h1', { hasText: 'Perpetual Futures' })).toBeVisible({ timeout: 15_000 })
+
+    // The mock EIP-1193 wallet auto-connects through RainbowKit on app routes.
+    await expect(page.getByText(/0xf3…2266/i)).toBeVisible({ timeout: 15_000 })
+
+    const before = await readOpenTesterPositions()
+    expect(before.filter((position) => position.isOpen)).toHaveLength(0)
+
+    const sizeInput = page.locator('label', { hasText: /^Size / }).locator('..').locator('input[inputmode="decimal"]')
+    await expect(sizeInput).toBeVisible()
+    await sizeInput.fill('0.001')
+
+    await expect(page.getByText('Notional', { exact: true })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('Margin', { exact: true }).first()).toBeVisible()
+
+    const submit = page.locator('button[type="submit"]').filter({ hasText: /Long|Short/ })
+    await expect(submit).toBeVisible()
+    await expect(submit).toBeEnabled({ timeout: 10_000 })
+
+    await submit.click()
+
+    await expect(page.getByText(/Approving|Confirming|Order Placed!/)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('Order Placed!')).toBeVisible({ timeout: 90_000 })
+
+    await expect.poll(async () => {
+      const positions = await readOpenTesterPositions()
+      return positions.some((position) => position.isOpen && position.size > 0n)
+    }, { timeout: 90_000 }).toBe(true)
+
+    await expect(page.getByRole('heading', { name: 'Open Positions' })).toBeVisible()
+    await expect(page.getByText('No open positions')).not.toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText(/LONG \d+x|SHORT \d+x/)).toBeVisible({ timeout: 15_000 })
+  })
+})
+
+type TesterPerpPosition = {
+  marketId: bigint
+  isOpen: boolean
+  size: bigint
+}
+
+async function readOpenTesterPositions(): Promise<TesterPerpPosition[]> {
+  const marketCount = await publicClient.readContract({
+    address: CONTRACTS.PerpEngine,
+    abi: PerpEngineABI,
+    functionName: 'marketCount',
+  })
+
+  const positions: TesterPerpPosition[] = []
+  for (let i = 0n; i < marketCount; i++) {
+    const result = await publicClient.readContract({
+      address: CONTRACTS.PerpEngine,
+      abi: PerpEngineABI,
+      functionName: 'positions',
+      args: [TESTER_ADDRESS, i],
+    })
+    positions.push({ marketId: i, isOpen: result[0], size: result[2] })
+  }
+  return positions
+}
+
+async function closeTesterPerpPositions(): Promise<void> {
+  const positions = await readOpenTesterPositions()
+  for (const position of positions) {
+    if (!position.isOpen) continue
+    const hash = await walletClient.writeContract({
+      address: CONTRACTS.PerpEngine,
+      abi: PerpEngineABI,
+      functionName: 'closePosition',
+      args: [position.marketId],
+    })
+    await publicClient.waitForTransactionReceipt({ hash })
+  }
+}

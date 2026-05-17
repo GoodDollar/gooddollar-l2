@@ -190,13 +190,13 @@ export function useOnChainPositions(): {
       const pnlResult = data[i * 2 + 1]
       if (posResult?.status !== 'success' || !posResult.result) continue
 
-      const [size, entryPrice, isLong, collateral] = posResult.result as [bigint, bigint, boolean, bigint]
-      if (size === BigInt(0)) continue // no position
+      const [isOpen, isLong, size, entryPrice, margin] = posResult.result as [boolean, boolean, bigint, bigint, bigint, bigint, bigint]
+      if (!isOpen || size === BigInt(0)) continue // no position
 
       const pnl = pnlResult?.status === 'success' ? Number(pnlResult.result as bigint) / 1e18 : 0
       const sizeFloat = Number(size) / 1e18
       const entryFloat = Number(entryPrice) / 1e8
-      const collFloat = Number(collateral) / 1e18
+      const collFloat = Number(margin) / 1e18
       const leverage = collFloat > 0 ? Math.round(sizeFloat * entryFloat / collFloat) : 1
       const mark = markPrices[i] ?? entryFloat  // oracle mark price, fallback to entry
       // Liquidation price estimate: entry ± (margin / size) adjusted by maintenance margin

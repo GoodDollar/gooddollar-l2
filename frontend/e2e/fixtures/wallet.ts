@@ -15,6 +15,7 @@ const TESTER_PRIVATE_KEY =
 const TESTER_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 const CHAIN_ID = 42069
 const RPC_URL = 'http://127.0.0.1:8545'
+const BROWSER_RPC_URL = '/api/rpc'
 
 /**
  * Injects a mock `window.ethereum` into the page before any scripts run.
@@ -107,7 +108,10 @@ export async function injectMockWallet(page: Page) {
           }),
         })
         const data = await resp.json()
-        if (data.error) throw new Error(data.error.message)
+        if (data.error) {
+          console.error('[mock-wallet-rpc-error]', method, JSON.stringify(data.error))
+          throw new Error(data.error.message || JSON.stringify(data.error))
+        }
         return data.result
       }
 
@@ -145,7 +149,7 @@ export async function injectMockWallet(page: Page) {
       window.addEventListener('eip6963:requestProvider', announceProvider)
       announceProvider()
     },
-    { address: TESTER_ADDRESS, chainId: CHAIN_ID, rpcUrl: RPC_URL },
+    { address: TESTER_ADDRESS, chainId: CHAIN_ID, rpcUrl: BROWSER_RPC_URL },
   )
 }
 

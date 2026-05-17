@@ -41,6 +41,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
       className={`${GeistSans.variable} ${GeistMono.variable}`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function suppressExtensionRuntimeErrors() {
+  function isExtensionRuntimeError(value) {
+    var message = String((value && value.message) || value || '')
+    var stack = String((value && value.stack) || '')
+    return (
+      message.indexOf('chrome.runtime.sendMessage() called from a webpage must specify an Extension ID') !== -1 ||
+      (message.indexOf('runtime.sendMessage') !== -1 && stack.indexOf('chrome-extension://') !== -1)
+    )
+  }
+  window.addEventListener('error', function(event) {
+    if (isExtensionRuntimeError(event.error) || isExtensionRuntimeError(event.message)) {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      console.warn('[GoodDollar] Ignored browser-extension runtime error:', event.message)
+    }
+  }, true)
+  window.addEventListener('unhandledrejection', function(event) {
+    if (isExtensionRuntimeError(event.reason)) {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      console.warn('[GoodDollar] Ignored browser-extension promise rejection')
+    }
+  }, true)
+})();
+            `.trim(),
+          }}
+        />
+      </head>
       <body className="font-sans min-h-screen flex flex-col">
         {/* Skip to main content — WCAG 2.4.1 */}
         <a

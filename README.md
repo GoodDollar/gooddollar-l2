@@ -10,17 +10,20 @@ An OP Stack L2 where every useful transaction funds universal basic income for v
 
 ## Current Status
 
-_Last refreshed: 2026-05-16 21:45 UTC, security hardening initiative **complete** — all acceptance criteria met._
+_Last refreshed: 2026-05-17 13:30 UTC. Testnet Readiness Gate initiative started._
 
 GoodDollar L2 is live on a persistent devnet and moving toward public testnet.
 
 - Chain ID: `42069`
 - Package version: `0.2.0`
-- Autobuilder: iteration `50`, phase `iteration-complete`
-- Protocol smoke lanes: `6/6` green — Swap, Perps, Lend, Stable, Stocks, Predict
-- PM2 services: `20/20` online in latest health check
-- Public services: frontend, explorer, RPC, and CORS checks green
-- Production roadmap: `docs/PRODUCTION-ROADMAP-50-ITERATIONS.md`
+- Active autobuilder initiative: `0004-testnet-readiness-gate`
+- Active model/executor: Cursor CLI + `claude-opus-4-7-thinking-high`
+- Protocol smoke lanes: Swap, Perps, Lend, Stable, Stocks, Predict
+- Public services: frontend, explorer, RPC, faucet, status, and docs are the release-critical surfaces
+- Current priority: turn the whole public stack green, reproducible, documented, and externally testable
+- Testnet readiness plan: `docs/TESTNET-READINESS-50-ITERATIONS.md`
+- Architecture + app diagrams: `docs/ARCHITECTURE.md`
+- Previous production roadmap: `docs/PRODUCTION-ROADMAP-50-ITERATIONS.md`
 - Testnet snapshot: `docs/TESTNET_README.md`
 - Dune plan: `docs/DUNE-DASHBOARD-SPEC.md`
 
@@ -97,15 +100,17 @@ GitHub Actions also has a devnet deploy workflow:
 
 ## Public Testnet Path
 
-The next 50-iteration roadmap is tracked in `docs/PRODUCTION-ROADMAP-50-ITERATIONS.md`:
+The active testnet gate is tracked in `docs/TESTNET-READINESS-50-ITERATIONS.md`.
 
-1. Iterations 47–56 — public testnet foundation
-2. Iterations 57–66 — Dune + analytics proof layer
-3. Iterations 67–76 — protocol hardening + economic safety
-4. Iterations 77–86 — real utility: G$ bridge + AntSeed compute
-5. Iterations 87–96 — production operations + mainnet candidate
+The next 50 iterations are organized around:
 
-Dune is a release artifact, not a marketing afterthought. If Dune indexing is not available on public testnet day, the interim internal analytics dashboard ships first and Dune remains marked `pending indexing`. Production still requires a public analytics proof layer.
+1. Iterations 1–10 — infra health, PM2/process hygiene, public RPC/explorer/faucet stability
+2. Iterations 11–20 — address/env freeze, onboarding, and protocol lane hardening
+3. Iterations 21–30 — UBI fee accounting, analytics package, feedback/debug loop
+4. Iterations 31–40 — security, risk controls, runbooks, deploy hardening
+5. Iterations 41–50 — load/tester/release-candidate gates and final GitHub README/doc refresh
+
+Every 5 iterations the README and testnet docs must be refreshed with current links, architecture diagrams, test evidence, known limitations, and release status. Dune is a release artifact, not a marketing afterthought. If Dune indexing is not available on public testnet day, the interim internal analytics dashboard ships first and Dune remains marked `pending indexing`. Production still requires a public analytics proof layer.
 
 ## Security Hardening
 
@@ -123,8 +128,10 @@ Phase 1 security hardening is **complete** — 0 HIGH and 0 MEDIUM Slither findi
 
 ## Key Docs
 
+- `docs/ARCHITECTURE.md` — system topology and Mermaid diagrams of apps running on GoodDollar L2
+- `docs/TESTNET-READINESS-50-ITERATIONS.md` — active 50-iteration readiness sprint with end states and tests
 - `docs/TESTNET_README.md` — live testnet readiness snapshot
-- `docs/PRODUCTION-ROADMAP-50-ITERATIONS.md` — iteration 47→96 production plan
+- `docs/PRODUCTION-ROADMAP-50-ITERATIONS.md` — previous iteration 47→96 production plan
 - `docs/DUNE-DASHBOARD-SPEC.md` — Dune dashboard/query requirements
 - `docs/SECURITY-AUDIT.md` — security audit notes
 - `.autobuilder/status.md` — current autobuilder state

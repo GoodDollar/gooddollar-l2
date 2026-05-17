@@ -46,17 +46,18 @@ export function usePosition(marketId: bigint): {
 
   if (!result.data) return { position: null, isLoading: result.isLoading }
 
-  const [size, entryPrice, isLong, collateral] = result.data
+  const [isOpen, isLong, size, entryPrice, margin] = result.data
+  if (!isOpen) return { position: null, isLoading: result.isLoading }
 
   return {
     position: {
       size,
       entryPrice,
       isLong,
-      collateral,
+      collateral: margin,
       sizeFloat: Number(size) / 1e18,
       entryPriceFloat: Number(entryPrice) / 1e8,
-      collateralFloat: Number(collateral) / 1e18,
+      collateralFloat: Number(margin) / 1e18,
     },
     isLoading: result.isLoading,
   }
