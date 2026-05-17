@@ -77,10 +77,15 @@ export const CONTRACTS = {
   SwapPoolGdWeth:        '0xd6096fbEd8bCc461d06b0C468C8b1cF7d45dC92d' as `0x${string}`,
   SwapPoolGdUsdc:        '0x0aD6371dd7E9923d9968D63Eb8B9858c700abD9d' as `0x${string}`,
   SwapPoolWethUsdc:      '0xAA5c5496e2586F81d8d2d0B970eB85aB088639c2' as `0x${string}`,
-  // GoodSwap pool tokens (devnet mocks) — STALE: no code on-chain — needs redeploy task
-  SwapGD:                '0x547382C0D1b23f707918D3c83A77317B71Aa8470' as `0x${string}`,
-  SwapWETH:              '0x7C8BaafA542c57fF9B2B90612bf8aB9E86e22C09' as `0x${string}`,
-  SwapUSDC:              '0x0a17FabeA4633ce714F1Fa4a2dcA62C3bAc4758d' as `0x${string}`,
+  // GoodSwap pool tokens — aliases to the canonical mock tokens in
+  // op-stack/addresses.json. These are what the live SwapPool* pools above
+  // actually hold; the old hardcoded literals (0x547382…, 0x7C8B…, 0x0a17…)
+  // had no bytecode on-chain and broke any swap flow. Keep these as aliases
+  // (NOT new hex literals) so scripts/verify_swap_token_constants.py and
+  // scripts/check_no_stale_addresses.py stay green after future redeploys.
+  SwapGD:                rawAddresses.contracts.GoodDollarToken as `0x${string}`,
+  SwapWETH:              rawAddresses.contracts.MockWETH as `0x${string}`,
+  SwapUSDC:              rawAddresses.contracts.MockUSDC as `0x${string}`,
 
   // ── GoodPerps — sourced from op-stack/addresses.json (chain 42069) ───────
   // Previous hardcoded PerpEngine address (0x021DBfF4…) collided with the
