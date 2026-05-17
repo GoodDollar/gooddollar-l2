@@ -305,6 +305,80 @@ else
 fi
 echo
 
+# ── 7. Cross-Protocol Flow Tests ─────────────────────────────────────────────
+echo "== Cross-Protocol Flow Tests =="
+echo
+
+# Flow A: Swap → Perps (swap GDT for WETH via router, then deposit WETH to MarginVault)
+echo "[flow-A] Swap → Perps: swap GDT, deposit output to MarginVault"
+if [[ -z "${SWAP:-}" || -z "${VAULT:-}" || "$pool" == "0x0000000000000000000000000000000000000000" ]]; then
+  record_result "Flow:Swap→Perps" "SKIP" "SWAP or VAULT address missing, or no swap pool configured"
+  echo "[flow-A] SKIP — missing addresses or pool"
+else
+  gdt_before=$(cast call "$GDT" "balanceOf(address)(uint256)" "$TESTER_WALLET" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+  echo "[flow-A] GDT balance before swap: $gdt_before"
+
+  send_tx "Flow:Swap→Perps" "approve GDT to router" "$GDT" "approve(address,uint256)" "$SWAP" 500000000000000000000 >/dev/null
+  deadline=$(($(date +%s)+3600))
+  swap_hash=$(send_tx "Flow:Swap→Perps" "swapExactTokensForTokens(500 GDT→WETH)" "$SWAP" \
+    "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)" \
+    500000000000000000000 0 "[$GDT,$WETH]" "$TESTER_WALLET" "$deadline")
+
+  if [[ -n "$swap_hash" ]] && capture_receipt "$swap_hash" "flow-swap-perps-swap"; then
+    gdt_after=$(cast call "$GDT" "balanceOf(address)(uint256)" "$TESTER_WALLET" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+    echo "[flow-A] GDT balance after swap: $gdt_after (spent some GDT)"
+
+    weth_bal=$(cast call "$WETH" "balanceOf(address)(uint256)" "$TESTER_WALLET" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+    echo "[flow-A] WETH balance after swap: $weth_bal"
+
+    if [[ "$weth_bal" -gt 0 ]]; then
+      deposit_amt=$((weth_bal / 2))
+      send_tx "Flow:Swap→Perps" "approve WETH to vault" "$WETH" "approve(address,uint256)" "$VAULT" "$deposit_amt" >/dev/null
+      dep_hash=$(send_tx "Flow:Swap→Perps" "vault.deposit(half WETH)" "$VAULT" "deposit(uint256)" "$deposit_amt")
+      if [[ -n "$dep_hash" ]] && capture_receipt "$dep_hash" "flow-swap-perps-deposit"; then
+        vault_bal=$(cast call "$VAULT" "getBalance(address)(uint256)" "$TESTER_WALLET" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+        echo "[flow-A] Vault balance after deposit: $vault_bal"
+        if [[ "$vault_bal" -gt 0 ]]; then
+          record_result "Flow:Swap→Perps" "PASS" "swap tx $swap_hash → deposit tx $dep_hash, vault balance=$vault_bal"
+        else
+          record_result "Flow:Swap→Perps" "FAIL" "deposit landed but vault balance is 0"
+        fi
+      else
+        record_result "Flow:Swap→Perps" "FAIL" "swap succeeded but vault.deposit reverted"
+      fi
+    else
+      record_result "Flow:Swap→Perps" "FAIL" "swap tx landed but tester WETH balance is 0"
+    fi
+  else
+    record_result "Flow:Swap→Perps" "FAIL" "initial swap reverted"
+  fi
+fi
+echo
+
+# Flow B: Swap → Lend (swap GDT to get tokens, then supply to GoodLend)
+echo "[flow-B] Swap → Lend: swap some GDT, then supply to GoodLend"
+if [[ -z "${SWAP:-}" || -z "${LEND:-}" ]]; then
+  record_result "Flow:Swap→Lend" "SKIP" "SWAP or LEND address missing"
+  echo "[flow-B] SKIP — missing addresses"
+else
+  gdt_before=$(cast call "$GDT" "balanceOf(address)(uint256)" "$TESTER_WALLET" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+  echo "[flow-B] GDT balance: $gdt_before"
+
+  if [[ "$gdt_before" -gt 10000000000000000000 ]]; then
+    supply_amt=5000000000000000000
+    send_tx "Flow:Swap→Lend" "approve GDT to lend" "$GDT" "approve(address,uint256)" "$LEND" "$supply_amt" >/dev/null
+    lend_hash=$(send_tx "Flow:Swap→Lend" "lend.supply(GDT, 5 GDT)" "$LEND" "supply(address,uint256)" "$GDT" "$supply_amt")
+    if [[ -n "$lend_hash" ]] && capture_receipt "$lend_hash" "flow-swap-lend"; then
+      record_result "Flow:Swap→Lend" "PASS" "supply tx $lend_hash (5 GDT supplied to GoodLend)"
+    else
+      record_result "Flow:Swap→Lend" "FAIL" "supply reverted — lend pool may not have GDT reserve initialised"
+    fi
+  else
+    record_result "Flow:Swap→Lend" "SKIP" "tester GDT balance too low for cross-protocol test"
+  fi
+fi
+echo
+
 # ── snapshot UBI splitter state after ────────────────────────────────────────
 ubi_after=$(cast call "$FEE_SPLITTER" "claimableBalance()(uint256)" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
 echo "[ubi] splitter.claimableBalance(after) = $ubi_after"
