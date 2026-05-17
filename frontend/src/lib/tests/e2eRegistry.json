@@ -437,6 +437,42 @@
         "Playwright",
         "GoodSwap"
       ]
+    },
+    {
+      "id": "faucet",
+      "name": "Testnet Faucet",
+      "route": "/faucet",
+      "kind": "community",
+      "owner": "Community",
+      "critical": false,
+      "assertions": [
+        "faucet page renders",
+        "claim form visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Faucet|Testnet",
+      "mustContain": [
+        "Faucet",
+        "Claim"
+      ]
+    },
+    {
+      "id": "testnet-guide",
+      "name": "Testnet Guide",
+      "route": "/testnet-guide",
+      "kind": "community",
+      "owner": "Community",
+      "critical": false,
+      "assertions": [
+        "testnet guide renders",
+        "scenario list visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Testnet|Guide",
+      "mustContain": [
+        "Testnet",
+        "Scenario"
+      ]
     }
   ]
 }
