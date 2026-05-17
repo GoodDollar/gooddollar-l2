@@ -123,6 +123,8 @@ def main() -> int:
     ]
     contract_rows = "\n".join(f"- {name}: `{contracts.get(name, 'MISSING')}`" for name in important)
 
+    chain_id_hex = f"0x{int(chain_id):x}" if str(chain_id).isdigit() else "0xa455"
+
     text = f"""# GoodDollar L2 Testnet Readiness
 
 _Last updated: {now} by `scripts/update-testnet-readme.py`._
@@ -161,6 +163,54 @@ _Last updated: {now} by `scripts/update-testnet-readme.py`._
 
 ## Canonical Contract Addresses
 
+The canonical sources of truth are:
+
+- `op-stack/addresses.json` — imported by the frontend (`frontend/src/lib/devnet.ts`).
+- `.autobuilder/addresses.env` — sourced by deploy scripts, backend services, and tests.
+
+Both files are regenerated from Foundry broadcast artifacts plus on-chain
+bytecode by `scripts/refresh-addresses.py`. They are protected by two CI
+gates that prevent silent drift:
+
+### Gate 1 — Diff guard (`scripts/refresh-addresses.py --check`)
+
+Runs the full pipeline in memory and compares the result against the
+files on disk. Exit code `0` means the registry matches broadcast+chain
+truth; exit code `1` prints a unified diff of every byte that would
+change. Run after any redeploy:
+
+```bash
+python3 scripts/refresh-addresses.py --check
+```
+
+If it fails, drop `--check` to actually rewrite the files, then commit.
+
+### Gate 2 — Stale address scanner (`scripts/check_no_stale_addresses.py`)
+
+Walks `frontend/src/` (override with `--paths`) for every hex address
+literal of the form `0x[0-9a-f]{{40}}` and fails on any address that is
+neither:
+
+1. In the canonical registry above, OR
+2. On the bake-in allowlist (`0x0…0`, `0x…dead`, the four Anvil dev
+   wallets, the OP Stack predeploy range `0x4200…00–0x4200…FF`), OR
+3. Tagged on the line itself or within 20 preceding non-blank lines
+   with one of: `STALE`, `hardcoded`, `redeploy`, or `allowlist:`.
+
+Run it as:
+
+```bash
+python3 scripts/check_no_stale_addresses.py
+python3 scripts/check_no_stale_addresses.py --json   # CI-friendly
+```
+
+This is what blocks "we redeployed everything but the frontend still
+points at the old MarketFactory" from sneaking into a release.
+
+Both gates are exercised by `scripts/test_refresh_addresses.py`.
+
+### Live addresses
+
 {contract_rows}
 
 ## Parallel Test Plan
@@ -175,6 +225,65 @@ Run lanes independently so one dapp failure does not hide the others:
 - Stable: deposit collateral, mint/repay gUSD, PSM swap, stability pool.
 - Stocks: deposit collateral, mint/burn synthetic equity, oracle freshness.
 - Portfolio/Claim: wallet states, balances, UBI claim, explorer links.
+
+## Wallet Onboarding (iter 13)
+
+Public testers should never have to type RPC URLs into MetaMask by hand.
+The frontend now ships a one-click **"Add GoodChain Testnet to wallet"**
+button in two places:
+
+- `/testnet-guide` → top of the "1. Add GoodChain Testnet" section, above
+  the network table. Full-width CTA; success state offers an "Open
+  Faucet →" follow-up link.
+- `/faucet` → compact pill above the "Wallet Address" input, framed by a
+  "First time here?" hint.
+
+Implementation:
+
+- Component: `frontend/src/components/AddNetworkButton.tsx`
+- Unit tests: `frontend/src/components/__tests__/AddNetworkButton.test.tsx`
+  (8 specs, covers idle / compact / no-wallet / success / rejected /
+  error states and asserts the canonical EIP-3085 payload).
+- E2E: `frontend/e2e/onboarding.spec.ts` clicks the button on both pages,
+  captures before/after screenshots in `frontend/e2e/screenshots/`, and
+  asserts the wallet received the canonical payload.
+- Mock wallet: `frontend/e2e/fixtures/wallet.ts` records every
+  `wallet_addEthereumChain` call on `window.__addEthereumChainCalls`
+  so the spec can introspect what reached the wallet.
+
+The button is wired to `frontend/src/lib/devnet.ts`, which sources
+`chain_id`, `rpc_url`, and `explorer_url` directly from
+`op-stack/addresses.json`. No hardcoded fallbacks — when the canonical
+registry changes, the onboarding flow follows automatically.
+
+EIP-3085 payload shape sent to the wallet:
+
+```json
+{{
+  "chainId": "{chain_id_hex}",
+  "chainName": "GoodChain Testnet",
+  "rpcUrls": ["{rpc_url}"],
+  "blockExplorerUrls": ["{explorer_url}"],
+  "nativeCurrency": {{ "name": "GoodDollar", "symbol": "G$", "decimals": 18 }}
+}}
+```
+
+A manual "Or add it manually" panel remains on `/testnet-guide` for
+wallets that do not implement EIP-3085 (hardware wallets, some mobile
+wallets without injected providers).
+
+### For developers (iter 14)
+
+The in-app guide (`/testnet-guide`) now includes a **For developers** section
+with a copy-pasteable RPC reachability `curl` command and direct links to
+`op-stack/addresses.json`, `docs/ARCHITECTURE.md`, and this README on GitHub.
+The section appears in the sticky TOC under `#for-developers`.
+
+The frontend production build is wrapped by `frontend/scripts/atomic-build.mjs`,
+which builds into a temporary `.next.tmp` directory and atomically swaps it
+in only on success. Partial or failed builds can no longer corrupt the
+deployed `.next/` directory. See `docs/runbooks/frontend-rebuild.md` for the
+operator workflow.
 
 ## Operator runbook
 

@@ -18,16 +18,24 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 
 ## Current Status
 
-_Last refreshed: 2026-05-17 19:45 UTC. `main` was fetched from origin and confirmed current at commit `5fe7e70` before this README expansion._
+_Last refreshed: 2026-05-17 22:03 UTC. `main` was fetched from origin and confirmed current at commit `c93eaf95` before this README/doc checkpoint 3 refresh._
 
 GoodDollar L2 is running as a persistent public devnet and is being hardened into a public testnet release candidate.
 
 - Public health: `healthy`, `12 / 12` services OK from `https://goodswap.goodclaw.org/api/status`.
 - Public pages verified: `/`, `/faucet`, `/perps`, `/portfolio`, `/tests`, `/testnet-guide`, `/predict`, `/lend`, `/stable`, `/stocks`, `/bridge`, `/agents` all returned HTTP `200`.
 - Public RPC verified: `eth_chainId = 0xa455`.
-- Active initiative: Testnet Readiness Gate — 50 iterations.
+- Active initiative: Testnet Readiness Gate — 50 iterations (iter 15 / 50 complete).
 - Active priorities: stability, public tester onboarding, protocol smoke evidence, UBI-fee accounting, and release-candidate packaging.
 - Security hardening status: Slither high/medium cleanup complete in the prior security initiative; release gates still require continuous security checks before public testnet.
+
+### Recent readiness milestones (iter 10–14)
+
+- **Iter 10 — Reown allowlist hygiene.** Production app ships clean: scoped runtime suppression in `frontend/src/lib/wagmi.ts` for the WalletConnect Cloud `Origin not on Allowlist` log pair, plus an operator runbook entry in [`docs/TESTNET_README.md`](docs/TESTNET_README.md#operator-runbook) for the permanent cloud-side fix.
+- **Iter 11 — Address registry freeze.** Two CI gates now block stale contract addresses: `python3 scripts/refresh-addresses.py --check` (diff guard against `op-stack/addresses.json` + `.autobuilder/addresses.env`) and `python3 scripts/check_no_stale_addresses.py` (stale-address scanner over `frontend/src/`).
+- **Iter 12 — Frontend env freeze.** Canonical `frontend/.env.production` plus an env-drift gate prevent the public build from drifting away from the canonical RPC, explorer, chain ID, and contract registry.
+- **Iter 13 — Wallet onboarding.** One-click EIP-3085 `AddNetworkButton` on `/testnet-guide` and `/faucet` (`frontend/src/components/AddNetworkButton.tsx`); 8 unit specs + Playwright `frontend/e2e/onboarding.spec.ts` capture before/after screenshots and assert the canonical payload.
+- **Iter 14 — Atomic build wrapper + dev guide.** `frontend/scripts/atomic-build.mjs` builds into `.next.tmp` and atomically swaps on success so partial builds can no longer corrupt deployed assets ([runbook](docs/runbooks/frontend-rebuild.md)). `/testnet-guide` gained a `#for-developers` section with copy-pasteable RPC `curl`, GitHub feedback link, and direct links to `op-stack/addresses.json` + `docs/ARCHITECTURE.md`.
 
 ## Logo and Brand
 

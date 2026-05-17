@@ -1,15 +1,15 @@
 # GoodDollar L2 Testnet Readiness
 
-_Last updated: 2026-05-17 19:49 UTC by `scripts/update-testnet-readme.py`._
+_Last updated: 2026-05-17 22:03 UTC by `scripts/update-testnet-readme.py`._
 
 ## Current Build
 
 - Branch: `main`
 - Snapshot source: committed README + GitHub Actions history for this branch
 - Package version: `0.2.0`
-- Autobuilder iteration: `1`
+- Autobuilder iteration: `6`
 - Chain: GoodDollar L2 Devnet (`42069` configured, `42069` live)
-- Latest local block: `172785`
+- Latest local block: `176824`
 
 ## Public Endpoints
 
@@ -173,6 +173,12 @@ The in-app guide (`/testnet-guide`) now includes a **For developers** section
 with a copy-pasteable RPC reachability `curl` command and direct links to
 `op-stack/addresses.json`, `docs/ARCHITECTURE.md`, and this README on GitHub.
 The section appears in the sticky TOC under `#for-developers`.
+
+The frontend production build is wrapped by `frontend/scripts/atomic-build.mjs`,
+which builds into a temporary `.next.tmp` directory and atomically swaps it
+in only on success. Partial or failed builds can no longer corrupt the
+deployed `.next/` directory. See `docs/runbooks/frontend-rebuild.md` for the
+operator workflow.
 
 ## Operator runbook
 
