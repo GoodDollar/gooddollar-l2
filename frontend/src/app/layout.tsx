@@ -13,6 +13,7 @@ import { AxeDevTools } from '@/components/AxeDevTools'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary'
 import { Toaster } from '@/components/ui/toast'
+import { FeedbackButton } from '@/components/FeedbackButton'
 
 export const metadata: Metadata = {
   title: {
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
             <LandingFooter />
             <Toaster />
+            <FeedbackButton />
           </Providers>
         </GlobalErrorBoundary>
         {process.env.VERCEL && <Analytics />}
