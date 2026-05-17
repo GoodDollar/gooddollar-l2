@@ -24,6 +24,7 @@ interface ExpertProfile {
   avatar?: string
 }
 
+// allowlist: placeholder mock expert addresses (sequential digits, not real wallets) — to be replaced with on-chain attested experts when expert registry ships
 const MOCK_EXPERT_PROFILES: Record<string, ExpertProfile> = {
   '0x1234567890123456789012345678901234567890': {
     address: '0x1234567890123456789012345678901234567890',

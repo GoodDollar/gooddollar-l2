@@ -45,6 +45,54 @@ _Last updated: 2026-05-17 19:49 UTC by `scripts/update-testnet-readme.py`._
 
 ## Canonical Contract Addresses
 
+The canonical sources of truth are:
+
+- `op-stack/addresses.json` — imported by the frontend (`frontend/src/lib/devnet.ts`).
+- `.autobuilder/addresses.env` — sourced by deploy scripts, backend services, and tests.
+
+Both files are regenerated from Foundry broadcast artifacts plus on-chain
+bytecode by `scripts/refresh-addresses.py`. They are protected by two CI
+gates that prevent silent drift:
+
+### Gate 1 — Diff guard (`scripts/refresh-addresses.py --check`)
+
+Runs the full pipeline in memory and compares the result against the
+files on disk. Exit code `0` means the registry matches broadcast+chain
+truth; exit code `1` prints a unified diff of every byte that would
+change. Run after any redeploy:
+
+```bash
+python3 scripts/refresh-addresses.py --check
+```
+
+If it fails, drop `--check` to actually rewrite the files, then commit.
+
+### Gate 2 — Stale address scanner (`scripts/check_no_stale_addresses.py`)
+
+Walks `frontend/src/` (override with `--paths`) for every hex address
+literal of the form `0x[0-9a-f]{40}` and fails on any address that is
+neither:
+
+1. In the canonical registry above, OR
+2. On the bake-in allowlist (`0x0…0`, `0x…dead`, the four Anvil dev
+   wallets, the OP Stack predeploy range `0x4200…00–0x4200…FF`), OR
+3. Tagged on the line itself or within 20 preceding non-blank lines
+   with one of: `STALE`, `hardcoded`, `redeploy`, or `allowlist:`.
+
+Run it as:
+
+```bash
+python3 scripts/check_no_stale_addresses.py
+python3 scripts/check_no_stale_addresses.py --json   # CI-friendly
+```
+
+This is what blocks "we redeployed everything but the frontend still
+points at the old MarketFactory" from sneaking into a release.
+
+Both gates are exercised by `scripts/test_refresh_addresses.py`.
+
+### Live addresses
+
 - GoodDollarToken: `0x8f86403a4de0bb5791fa46b8e795c547942fe4cf`
 - UBIFeeSplitter: `0x809d550fca64d94bd9f66e60752a544199cfac3d`
 - UBIClaimV2: `0x9d4454b023096f34b160d6b654540c56a1f81688`

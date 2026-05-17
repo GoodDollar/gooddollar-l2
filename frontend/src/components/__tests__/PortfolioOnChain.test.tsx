@@ -43,6 +43,7 @@ vi.mock('next/link', () => ({
 import { useAccount } from 'wagmi'
 import { PortfolioOnChain } from '../PortfolioOnChain'
 
+// allowlist: placeholder mock wallet for unit tests (sequential digits, not a real address)
 const mockAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`
 
 describe('PortfolioOnChain', () => {
