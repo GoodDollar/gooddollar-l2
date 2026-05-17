@@ -174,5 +174,15 @@ module.exports = {
         UPSTREAM_RPCS: pick('UPSTREAM_RPCS', 'http://localhost:8545'),
       },
     }),
+    app({
+      name: 'status-aggregator',
+      cwd: path.join(__dirname, 'status-aggregator'),
+      script: 'node_modules/.bin/ts-node',
+      args: 'src/index.ts',
+      env: {
+        ...BASE_ENV,
+        PORT: pick('STATUS_AGGREGATOR_PORT', '9200'),
+      },
+    }),
   ],
 };
