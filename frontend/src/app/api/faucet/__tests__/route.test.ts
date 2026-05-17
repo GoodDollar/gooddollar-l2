@@ -1,0 +1,108 @@
+// @vitest-environment node
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+const VALID_PRIVKEY = '0x' + 'a'.repeat(64)
+
+let tempDir: string
+let claimsFile: string
+
+beforeEach(() => {
+  tempDir = mkdtempSync(join(tmpdir(), 'faucet-route-test-'))
+  claimsFile = join(tempDir, 'claims.json')
+  process.env.FAUCET_CLAIMS_FILE = claimsFile
+  // Default: configured. Individual tests override when they need a different state.
+  process.env.FAUCET_PRIVATE_KEY = VALID_PRIVKEY
+  vi.resetModules()
+})
+
+afterEach(() => {
+  delete process.env.FAUCET_CLAIMS_FILE
+  delete process.env.FAUCET_PRIVATE_KEY
+  rmSync(tempDir, { recursive: true, force: true })
+  vi.restoreAllMocks()
+})
+
+async function loadHandler() {
+  const mod = await import('../route')
+  return mod.POST
+}
+
+function makeRequest(body: BodyInit | null, contentType = 'application/json') {
+  return new Request('http://localhost/api/faucet', {
+    method: 'POST',
+    headers: { 'content-type': contentType },
+    body,
+  })
+}
+
+describe('POST /api/faucet — boundary errors', () => {
+  it('returns 400 for missing body', async () => {
+    const POST = await loadHandler()
+    const res = await POST(makeRequest(null))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid json/i)
+  })
+
+  it('returns 400 for malformed JSON body', async () => {
+    const POST = await loadHandler()
+    const res = await POST(makeRequest('not-json'))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid json/i)
+  })
+
+  it('returns 400 for empty JSON object (no address)', async () => {
+    const POST = await loadHandler()
+    const res = await POST(makeRequest('{}'))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid address/i)
+  })
+
+  it('returns 400 for non-string address', async () => {
+    const POST = await loadHandler()
+    const res = await POST(makeRequest(JSON.stringify({ address: 12345 })))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid address/i)
+  })
+
+  it('returns 400 for malformed address string', async () => {
+    const POST = await loadHandler()
+    const res = await POST(makeRequest(JSON.stringify({ address: 'not-an-address' })))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid address/i)
+  })
+})
+
+describe('POST /api/faucet — configuration & rate limiting', () => {
+  it('returns 503 when FAUCET_PRIVATE_KEY is missing', async () => {
+    delete process.env.FAUCET_PRIVATE_KEY
+    vi.resetModules()
+    const POST = await loadHandler()
+    const validAddr = '0x' + '1'.repeat(40)
+    const res = await POST(makeRequest(JSON.stringify({ address: validAddr })))
+    expect(res.status).toBe(503)
+    const json = await res.json()
+    expect(json.error).toMatch(/not configured/i)
+  })
+
+  it('returns 429 when address is within cooldown window', async () => {
+    // Pre-seed a recent claim so the cooldown branch fires before any
+    // chain call. The route normalizes the key to lowercase.
+    const validAddr = '0x' + 'b'.repeat(40)
+    const recent = Date.now() - 60_000 // 1 minute ago, well inside the 1-hour cooldown
+    writeFileSync(claimsFile, JSON.stringify({ [validAddr.toLowerCase()]: recent }))
+
+    const POST = await loadHandler()
+    const res = await POST(makeRequest(JSON.stringify({ address: validAddr })))
+    expect(res.status).toBe(429)
+    const json = await res.json()
+    expect(json.error).toMatch(/rate limited/i)
+  })
+})

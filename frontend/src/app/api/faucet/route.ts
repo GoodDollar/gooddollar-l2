@@ -18,6 +18,28 @@ class FaucetRateLimitError extends Error {
   }
 }
 
+class FaucetBadRequestError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FaucetBadRequestError'
+  }
+}
+
+class FaucetCapacityError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FaucetCapacityError'
+  }
+}
+
+async function parseJsonBody(request: Request): Promise<unknown> {
+  try {
+    return await request.json()
+  } catch {
+    throw new FaucetBadRequestError('Invalid JSON body')
+  }
+}
+
 async function readClaimTimes(): Promise<Record<string, number>> {
   try {
     const raw = await readFile(CLAIMS_FILE, 'utf8')
@@ -111,10 +133,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { address } = await request.json()
+    const body = await parseJsonBody(request)
+    const address =
+      body && typeof body === 'object' && 'address' in body
+        ? (body as { address: unknown }).address
+        : undefined
 
-    if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
-      return NextResponse.json({ error: 'Invalid address' }, { status: 400 })
+    if (typeof address !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      throw new FaucetBadRequestError('Invalid address')
     }
 
     const key = address.toLowerCase()
@@ -153,10 +179,14 @@ export async function POST(request: Request) {
       ])
 
       if (nativeBalance < NATIVE_ETH_AMOUNT) {
-        throw new Error(`Faucet has insufficient gas ETH (${formatEther(nativeBalance)} ETH available)`)
+        throw new FaucetCapacityError(
+          `Faucet has insufficient gas ETH (${formatEther(nativeBalance)} ETH available)`,
+        )
       }
       if (gdtBalance < GDT_NET_AMOUNT) {
-        throw new Error(`Faucet has insufficient G$ (${formatEther(gdtBalance)} G$ available)`)
+        throw new FaucetCapacityError(
+          `Faucet has insufficient G$ (${formatEther(gdtBalance)} G$ available)`,
+        )
       }
 
       const nativeTxHash = await walletClient.sendTransaction({
@@ -204,8 +234,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ...result, txHash: result.gdtTxHash })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Faucet request failed'
+    if (error instanceof FaucetBadRequestError) {
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
     if (error instanceof FaucetRateLimitError) {
       return NextResponse.json({ error: message }, { status: 429 })
+    }
+    if (error instanceof FaucetCapacityError) {
+      console.warn('[faucet] Capacity issue:', message)
+      return NextResponse.json({ error: message }, { status: 503 })
     }
     console.error('[faucet] Claim failed:', message)
     return NextResponse.json({ error: message }, { status: 500 })
