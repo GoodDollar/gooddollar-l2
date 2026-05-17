@@ -32,6 +32,7 @@ export function Header() {
   const isTestDashboard = pathname?.startsWith('/test-dashboard')
   const isTestnetGuide = pathname?.startsWith('/testnet-guide')
   const isFaucet = pathname?.startsWith('/faucet')
+  const isInvite = pathname?.startsWith('/invite')
   const isPortfolio = pathname === '/portfolio'
   // Internal QA dashboard link is hidden in production. Devs/QA can enable
   // it locally with NEXT_PUBLIC_SHOW_DEV_NAV=1. The /test-dashboard route
@@ -104,6 +105,7 @@ export function Header() {
           <span className="w-px h-4 bg-white/10" />
           <Link href="/faucet" className={isFaucet ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Faucet</Link>
           <Link href="/testnet-guide" className={isTestnetGuide ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Guide</Link>
+          <Link href="/invite" className={isInvite ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Invite</Link>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -275,6 +277,13 @@ export function Header() {
               className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isTestnetGuide ? 'text-accent font-medium bg-accent/10' : 'text-accent/70 hover:text-accent'}`}
             >
               📖 Testnet Guide
+            </Link>
+            <Link
+              href="/invite"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isInvite ? 'text-accent font-medium bg-accent/10' : 'text-accent/70 hover:text-accent'}`}
+            >
+              ✉️ Invite Testers
             </Link>
             <div className="border-t border-dark-50/50 my-1" />
             <Link
