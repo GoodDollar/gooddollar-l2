@@ -1,12 +1,10 @@
-import WalletProviders from '@/components/WalletProviders'
-
 /**
  * Layout for the `(app)` route group.
  *
- * All routes nested under `src/app/(app)/` get wagmi + RainbowKit providers
- * (the 3.2 MB web3 vendor bundle). Marketing/info pages live outside this
- * group so they never pay that cost.
+ * WalletProviders moved to the root Providers wrapper because the shared
+ * Header contains the primary Connect Wallet button and must be inside wagmi /
+ * RainbowKit on every route.
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return <WalletProviders>{children}</WalletProviders>
+  return <>{children}</>
 }

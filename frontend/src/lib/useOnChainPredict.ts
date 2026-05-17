@@ -300,6 +300,6 @@ export function useOnChainPredictSummary() {
     }, 0)
     const unrealizedPnl = currentValue - totalInvested
 
-    return { totalInvested, currentValue, unrealizedPnl }
+    return { totalInvested, currentValue, unrealizedPnl, totalPositions: positions.length }
   }, [positions])
 }

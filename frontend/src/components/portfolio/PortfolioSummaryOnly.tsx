@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
-import { useOnChainPredictSummary } from '@/lib/useOnChainPredict'
+import { useOnChainPredictPositions, useOnChainPredictSummary } from '@/lib/useOnChainPredict'
 import { useOnChainHoldings } from '@/lib/useOnChainStocks'
 import { useOnChainPositions, useOnChainAccountSummary } from '@/lib/useOnChainPerps'
 import { SummaryCard } from '@/components/ui'
@@ -10,6 +10,7 @@ import { SummaryCard } from '@/components/ui'
 export function PortfolioSummaryOnly() {
   const { holdings: stockHoldings } = useOnChainHoldings()
   const predictSummary = useOnChainPredictSummary()
+  const { positions: predictPositions } = useOnChainPredictPositions()
   const { positions: perpsPositions } = useOnChainPositions()
   const { summary: perpsAccount } = useOnChainAccountSummary()
 
@@ -24,7 +25,7 @@ export function PortfolioSummaryOnly() {
 
   const totalValue = stockSummary.totalValue + predictSummary.currentValue + perpsAccount.equity
   const totalPnl = stockSummary.unrealizedPnl + predictSummary.unrealizedPnl + totalPerpsPnl
-  const totalPositions = stockHoldings.length + perpsPositions.length + predictSummary.totalPositions
+  const totalPositions = stockHoldings.length + perpsPositions.length + predictPositions.length
 
   const pnlColor = totalPnl >= 0 ? 'text-green-400' : 'text-red-400'
 

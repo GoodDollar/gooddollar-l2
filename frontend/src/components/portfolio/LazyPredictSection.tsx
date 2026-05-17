@@ -45,19 +45,20 @@ export function LazyPredictSection() {
         <div className="space-y-2">
           {predictPositions.slice(0, 3).map(p => {
             const market = predictMarketMap.get(p.marketId)
-            const currentPrice = p.side === 'YES' ? market?.yesPrice ?? 0 : 1 - (market?.yesPrice ?? 0)
+            const currentPrice = p.side === 'yes' ? market?.yesPrice ?? 0 : 1 - (market?.yesPrice ?? 0)
             const value = p.shares * currentPrice
-            const pnl = value - p.totalCost
+            const pnl = value - (p.shares * p.avgPrice)
+            const sideLabel = p.side.toUpperCase()
 
             return (
               <Link key={`${p.marketId}-${p.side}`} href={`/predict/${p.marketId}`} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
                 <div className="flex items-center gap-2.5">
                   <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[8px] font-bold ${
-                    p.side === 'YES'
+                    p.side === 'yes'
                       ? 'bg-green-500/10 border-green-500/20 text-green-400'
                       : 'bg-red-500/10 border-red-500/20 text-red-400'
                   }`}>
-                    {p.side}
+                    {sideLabel}
                   </div>
                   <div className="min-w-0 flex-1">
                     <span className="text-sm font-medium text-white truncate block">{market?.question || `Market ${p.marketId}`}</span>

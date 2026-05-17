@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useAccount } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import { formatPerpsPrice, formatLargeValue, formatFundingRate, getFundingCountdown, type PerpPair, type AccountSummaryData } from '@/lib/perpsData'
@@ -12,6 +12,8 @@ import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useOpenPosition } from '@/lib/usePerps'
 import { toG$Wei } from '@/lib/gDollarAmount'
+import { ERC20ABI, MarginVaultABI } from '@/lib/abi'
+import { CONTRACTS } from '@/lib/chain'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { PercentageChange } from '@/components/ui/percentage-change'
@@ -556,6 +558,125 @@ function AccountPanel() {
   )
 }
 
+function formatG$Amount(value: number): string {
+  if (!Number.isFinite(value)) return '0 G$'
+  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: value >= 1000 ? 0 : 2 }).format(value)} G$`
+}
+
+function MarginFundingPanel() {
+  const { address, isConnected } = useAccount()
+  const { writeContractAsync } = useWriteContract()
+  const [amount, setAmount] = useState('')
+  const [phase, setPhase] = useState<'idle' | 'approving' | 'depositing' | 'done' | 'error'>('idle')
+  const [error, setError] = useState('')
+
+  const walletBalance = useReadContract({
+    address: CONTRACTS.GoodDollarToken,
+    abi: ERC20ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address, refetchInterval: 10_000 },
+  })
+  const marginBalance = useReadContract({
+    address: CONTRACTS.MarginVault,
+    abi: MarginVaultABI,
+    functionName: 'balances',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address, refetchInterval: 10_000 },
+  })
+
+  const walletG$ = walletBalance.data ? Number(walletBalance.data as bigint) / 1e18 : 0
+  const marginG$ = marginBalance.data ? Number(marginBalance.data as bigint) / 1e18 : 0
+  const amountNum = parseFloat(amount) || 0
+  const invalidAmount = amount !== '' && (amountNum <= 0 || amountNum > walletG$)
+
+  const deposit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!isConnected || amountNum <= 0 || invalidAmount) return
+
+    try {
+      setError('')
+      const amountWei = toG$Wei(amountNum)
+
+      setPhase('approving')
+      await writeContractAsync({
+        address: CONTRACTS.GoodDollarToken,
+        abi: ERC20ABI,
+        functionName: 'approve',
+        args: [CONTRACTS.MarginVault, amountWei],
+      })
+
+      setPhase('depositing')
+      await writeContractAsync({
+        address: CONTRACTS.MarginVault,
+        abi: MarginVaultABI,
+        functionName: 'deposit',
+        args: [amountWei],
+      })
+
+      setPhase('done')
+      setAmount('')
+      void walletBalance.refetch()
+      void marginBalance.refetch()
+    } catch (err: unknown) {
+      const e = err as { shortMessage?: string; message?: string }
+      setError(e?.shortMessage ?? e?.message ?? 'Deposit failed')
+      setPhase('error')
+    }
+  }
+
+  return (
+    <form onSubmit={deposit} className="space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold text-white">Deposit Margin</h3>
+        <p className="text-[11px] text-gray-500 mt-1">GoodPerps margin uses G$ collateral. WETH stays in your wallet for other dapps.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-xl bg-dark-50/40 border border-gray-700/20 p-2.5">
+          <div className="text-gray-500">Wallet G$</div>
+          <div className="text-white font-medium mt-0.5">{formatG$Amount(walletG$)}</div>
+        </div>
+        <div className="rounded-xl bg-dark-50/40 border border-gray-700/20 p-2.5">
+          <div className="text-gray-500">Perps margin</div>
+          <div className="text-goodgreen font-medium mt-0.5">{formatG$Amount(marginG$)}</div>
+        </div>
+      </div>
+
+      <AmountInput
+        value={amount}
+        onChange={(next) => setAmount(sanitizeNumericInput(next))}
+        maxValue={walletG$}
+        maxValueLabel="wallet"
+        symbol="G$"
+        error={invalidAmount ? 'Amount exceeds wallet G$ balance' : false}
+        placeholder="0.00"
+      />
+
+      {!isConnected ? (
+        <ConnectButton.Custom>
+          {({ openConnectModal }) => (
+            <button type="button" onClick={openConnectModal}
+              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors">
+              Connect Wallet to Deposit
+            </button>
+          )}
+        </ConnectButton.Custom>
+      ) : (
+        <button
+          type="submit"
+          disabled={amountNum <= 0 || invalidAmount || phase === 'approving' || phase === 'depositing'}
+          className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {phase === 'approving' ? 'Approving G$…' : phase === 'depositing' ? 'Depositing…' : phase === 'done' ? 'Deposited!' : 'Deposit to Perps'}
+        </button>
+      )}
+
+      {error && <p className="text-[10px] text-red-400 text-center truncate">{error}</p>}
+    </form>
+  )
+}
+
 type MobileTab = 'chart' | 'book' | 'trade'
 
 export default function PerpsPage() {
@@ -648,6 +769,10 @@ export default function PerpsPage() {
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <AccountPanel />
+          </div>
+
+          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
+            <MarginFundingPanel />
           </div>
         </div>
       </div>

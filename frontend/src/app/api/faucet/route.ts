@@ -1,7 +1,85 @@
 import { NextResponse } from 'next/server'
+import { createPublicClient, createWalletClient, defineChain, formatEther, http, parseEther } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { CONTRACTS, DEVNET_CHAIN_ID, DEVNET_EXPLORER_URL, DEVNET_RPC_URL } from '@/lib/devnet'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 const COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
 const claimTimes = new Map<string, number>()
+
+const NATIVE_ETH_AMOUNT = parseEther(process.env.FAUCET_NATIVE_ETH_AMOUNT ?? '0.1')
+const GDT_NET_AMOUNT = parseEther(process.env.FAUCET_GDT_AMOUNT ?? '10000')
+const WETH_AMOUNT = parseEther(process.env.FAUCET_WETH_AMOUNT ?? '1')
+
+const erc20Abi = [
+  {
+    type: 'function',
+    name: 'balanceOf',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'transfer',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    type: 'function',
+    name: 'mint',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [],
+  },
+] as const
+
+const goodDollarL2 = defineChain({
+  id: DEVNET_CHAIN_ID,
+  name: 'GoodDollar L2 Devnet',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: [process.env.FAUCET_RPC_URL ?? DEVNET_RPC_URL] },
+    public: { http: [process.env.FAUCET_RPC_URL ?? DEVNET_RPC_URL] },
+  },
+  blockExplorers: {
+    default: { name: 'GoodDollar Explorer', url: DEVNET_EXPLORER_URL },
+  },
+})
+
+function normalizePrivateKey(raw: string | undefined): `0x${string}` | null {
+  if (!raw) return null
+  const key = raw.startsWith('0x') ? raw : `0x${raw}`
+  return /^0x[0-9a-fA-F]{64}$/.test(key) ? (key as `0x${string}`) : null
+}
+
+function asAddress(address: string): `0x${string}` {
+  return address as `0x${string}`
+}
+
+let faucetQueue: Promise<unknown> = Promise.resolve()
+
+function serializeFaucetClaim<T>(fn: () => Promise<T>): Promise<T> {
+  const run = faucetQueue.then(fn, fn)
+  faucetQueue = run.catch(() => undefined)
+  return run
+}
+
+export async function GET(request: Request) {
+  const requestUrl = new URL(request.url)
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? requestUrl.host
+  const proto = request.headers.get('x-forwarded-proto') ?? requestUrl.protocol.replace(':', '')
+  return NextResponse.redirect(`${proto}://${host}/faucet`)
+}
 
 export async function POST(request: Request) {
   try {
@@ -23,15 +101,84 @@ export async function POST(request: Request) {
       )
     }
 
-    claimTimes.set(key, now)
+    const privateKey = normalizePrivateKey(process.env.FAUCET_PRIVATE_KEY)
+    if (!privateKey) {
+      return NextResponse.json(
+        { error: 'Faucet is not configured yet — missing server private key' },
+        { status: 503 },
+      )
+    }
 
-    // In production this would call ethers to send tokens.
-    // For now, log the claim and return a mock tx hash.
-    const mockTxHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`
-    console.log(`[faucet] Claim for ${address} → ${mockTxHash}`)
+    const result = await serializeFaucetClaim(async () => {
+      const account = privateKeyToAccount(privateKey)
+      const rpcUrl = process.env.FAUCET_RPC_URL ?? DEVNET_RPC_URL
+      const publicClient = createPublicClient({ chain: goodDollarL2, transport: http(rpcUrl) })
+      const walletClient = createWalletClient({ account, chain: goodDollarL2, transport: http(rpcUrl) })
+      const recipient = asAddress(address)
 
-    return NextResponse.json({ ok: true, txHash: mockTxHash })
-  } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+      const [nativeBalance, gdtBalance] = await Promise.all([
+        publicClient.getBalance({ address: account.address }),
+        publicClient.readContract({
+          address: CONTRACTS.GoodDollarToken,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [account.address],
+        }),
+      ])
+
+      if (nativeBalance < NATIVE_ETH_AMOUNT) {
+        throw new Error(`Faucet has insufficient gas ETH (${formatEther(nativeBalance)} ETH available)`)
+      }
+      if (gdtBalance < GDT_NET_AMOUNT) {
+        throw new Error(`Faucet has insufficient G$ (${formatEther(gdtBalance)} G$ available)`)
+      }
+
+      const nativeTxHash = await walletClient.sendTransaction({
+        account,
+        to: recipient,
+        value: NATIVE_ETH_AMOUNT,
+      })
+      await publicClient.waitForTransactionReceipt({ hash: nativeTxHash })
+
+      const gdtTxHash = await walletClient.writeContract({
+        account,
+        address: CONTRACTS.GoodDollarToken,
+        abi: erc20Abi,
+        functionName: 'transfer',
+        args: [recipient, GDT_NET_AMOUNT],
+      })
+      await publicClient.waitForTransactionReceipt({ hash: gdtTxHash })
+
+      const wethTxHash = await walletClient.writeContract({
+        account,
+        address: CONTRACTS.MockWETH,
+        abi: erc20Abi,
+        functionName: 'mint',
+        args: [recipient, WETH_AMOUNT],
+      })
+      await publicClient.waitForTransactionReceipt({ hash: wethTxHash })
+
+      claimTimes.set(key, Date.now())
+
+      return {
+        nativeTxHash,
+        gdtTxHash,
+        wethTxHash,
+        txHashes: [nativeTxHash, gdtTxHash, wethTxHash],
+        amounts: {
+          nativeEth: formatEther(NATIVE_ETH_AMOUNT),
+          gdt: formatEther(GDT_NET_AMOUNT),
+          weth: formatEther(WETH_AMOUNT),
+        },
+      }
+    })
+
+    console.log(`[faucet] Real claim for ${address} → ${result.txHashes.join(', ')}`)
+
+    return NextResponse.json({ ok: true, ...result, txHash: result.gdtTxHash })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Faucet request failed'
+    console.error('[faucet] Claim failed:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

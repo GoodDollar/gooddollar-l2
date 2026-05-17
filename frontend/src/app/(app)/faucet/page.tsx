@@ -11,7 +11,7 @@ export default function FaucetPage() {
   const { address: connectedAddr } = useAccount()
   const [address, setAddress] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'cooldown'>('idle')
-  const [txHash, setTxHash] = useState('')
+  const [txHashes, setTxHashes] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
 
   const effectiveAddr = address || connectedAddr || ''
@@ -19,7 +19,7 @@ export default function FaucetPage() {
   const claim = useCallback(async () => {
     if (!isValidAddress(effectiveAddr)) return
     setStatus('loading')
-    setTxHash('')
+    setTxHashes([])
     setErrorMsg('')
     try {
       const res = await fetch('/api/faucet', {
@@ -38,7 +38,10 @@ export default function FaucetPage() {
         }
         return
       }
-      setTxHash(data.txHash || '')
+      const hashes = Array.isArray(data.txHashes)
+        ? data.txHashes.filter((hash: unknown): hash is string => typeof hash === 'string')
+        : data.txHash ? [data.txHash] : []
+      setTxHashes(hashes)
       setStatus('success')
     } catch {
       setStatus('error')
@@ -63,7 +66,7 @@ export default function FaucetPage() {
         <div className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl p-4">
           <div>
             <p className="text-gray-400 text-xs uppercase tracking-wide">You&apos;ll receive</p>
-            <p className="text-white font-bold text-lg mt-0.5">10,000 G$ + 1 WETH</p>
+            <p className="text-white font-bold text-lg mt-0.5">10,000 G$ + 1 WETH + gas ETH</p>
           </div>
           <div className="text-3xl">💰</div>
         </div>
@@ -109,8 +112,12 @@ export default function FaucetPage() {
         {status === 'success' && (
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 text-center">
             <p className="text-emerald-400 font-semibold">Tokens sent! 🎉</p>
-            {txHash && (
-              <p className="text-gray-400 text-xs mt-1 font-mono break-all">{txHash}</p>
+            {txHashes.length > 0 && (
+              <div className="text-gray-400 text-xs mt-2 space-y-1 font-mono break-all text-left">
+                {txHashes.map((hash, index) => (
+                  <p key={hash}>{index === 0 ? 'Gas' : index === 1 ? 'G$' : 'WETH'}: {hash}</p>
+                ))}
+              </div>
             )}
           </div>
         )}
