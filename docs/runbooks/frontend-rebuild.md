@@ -1,12 +1,15 @@
 # Runbook — Rebuild / Restore `goodswap.goodclaw.org`
 
 > Tracking: [`0015-iter14-blocker-frontend-build-atomic-swap`](../../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0015-iter14-blocker-frontend-build-atomic-swap.md)
+> · [`0018-iter18-blocker-frontend-build-regression-fence`](../../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0018-iter18-blocker-frontend-build-regression-fence.md)
 >
 > Touches:
 > [`frontend/scripts/atomic-build.mjs`](../../frontend/scripts/atomic-build.mjs)
 > · [`frontend/scripts/deploy.sh`](../../frontend/scripts/deploy.sh)
 > · [`frontend/scripts/postbuild-reload-pm2.mjs`](../../frontend/scripts/postbuild-reload-pm2.mjs)
 > · [`frontend/scripts/check-buildid-sync.mjs`](../../frontend/scripts/check-buildid-sync.mjs)
+> · [`frontend/scripts/pm2-launch-next.mjs`](../../frontend/scripts/pm2-launch-next.mjs)
+> · [`pm2-ecosystem.config.js`](../../pm2-ecosystem.config.js)
 > · [`scripts/testnet/iter14-restore-goodswap.sh`](../../scripts/testnet/iter14-restore-goodswap.sh)
 
 This runbook covers three operations on the public frontend:
@@ -41,6 +44,29 @@ Never run a bare `next build` against the live tree. Always go through `npm run 
 3. **Apparently green build with missing BUILD_ID.** Rare, but observed in iter 14: `next build` exited 0 yet `.next/BUILD_ID` was empty / absent. PM2 was reloaded against this poisoned `.next/`. Same symptom.
 
 The `atomic-build.mjs` wrapper structurally prevents (2) and (3); `check-buildid-sync.mjs` and the `npm run deploy` pipeline prevent (1).
+
+### Iter 18 — PM2 launcher fence
+
+After iter 18 (May 17, 2026) the `goodswap` PM2 process no longer runs `next start` directly. PM2's `script:` now points at [`frontend/scripts/pm2-launch-next.mjs`](../../frontend/scripts/pm2-launch-next.mjs), which runs **before** Next can come up and structurally re-validates `.next/`:
+
+1. `.next/BUILD_ID` exists and is non-empty.
+2. `.next/build-manifest.json` exists.
+3. At least 5 hashed JS chunks under `.next/static/chunks/`.
+
+If any check fails the launcher prints a `REFUSING to start next:` diagnostic and exits non-zero — PM2's restart policy then either retries with the same broken `.next/` or marks the app `errored` after `max_restarts`. Either outcome is strictly safer than starting `next start` against a poisoned `.next/` and serving 5xx to the public site.
+
+This is the structural fence that catches a regression of failure modes (2) and (3) *even if* `atomic-build.mjs` is bypassed (e.g. someone runs a bare `next build` and `pm2 reload` by hand).
+
+To exercise the fence locally:
+
+```bash
+cd frontend
+mv .next/BUILD_ID /tmp/BUILD_ID.bak
+node scripts/pm2-launch-next.mjs --port 3199
+# expect: [pm2-launch-next] REFUSING to start next: no-build-id
+# expect: exit code 1
+mv /tmp/BUILD_ID.bak .next/BUILD_ID
+```
 
 ---
 
