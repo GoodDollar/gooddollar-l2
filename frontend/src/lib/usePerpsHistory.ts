@@ -22,7 +22,13 @@ import type {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL || 'http://localhost:4200'
+// Public indexer URL. MUST be a public origin in production; if unset we treat
+// the indexer as unavailable and short-circuit to empty results rather than
+// shipping a `localhost:NNNN` literal into the production client bundle (where
+// it would either CORS-fail or, worse, be blocked as mixed content). For local
+// development, set NEXT_PUBLIC_INDEXER_URL=http://localhost:4200 in
+// frontend/.env.local. See docs/testnet/iter12-frontend-env-freeze.md.
+const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL || ''
 
 // Market oracle keys (keccak256 of ticker string) — used for oracle reads
 // Market ordering matches PerpEngine.markets[] array (verified via on-chain reads)
@@ -132,6 +138,10 @@ async function fetchIndexerEvents(
   eventName?: string,
   limit: number = 100,
 ): Promise<IndexerEvent[]> {
+  // No indexer URL configured → treat as unavailable. Callers already render
+  // empty-state UI for empty arrays, so this is safe and avoids spurious
+  // CORS/network errors in the browser console.
+  if (!INDEXER_URL) return []
   try {
     const params = new URLSearchParams({ limit: String(limit) })
     if (eventName) params.set('event', eventName)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { DEVNET_RPC_URL, DEVNET_CHAIN_ID, DEVNET_EXPLORER_URL } from '@/lib/devnet'
 
 const TOC = [
   { id: 'prerequisites', label: 'Prerequisites' },
@@ -60,11 +61,12 @@ function ExpectedBox({ items }: { items: string[] }) {
 }
 
 function NetworkTable() {
-  const rows = [
+  const rows: Array<[string, string]> = [
     ['Network Name', 'GoodChain Testnet'],
-    ['RPC URL', 'http://localhost:8545'],
-    ['Chain ID', '42069'],
+    ['RPC URL', DEVNET_RPC_URL],
+    ['Chain ID', String(DEVNET_CHAIN_ID)],
     ['Currency', 'G$ (GoodDollar)'],
+    ['Explorer', DEVNET_EXPLORER_URL],
   ]
   return (
     <div className="overflow-x-auto">
