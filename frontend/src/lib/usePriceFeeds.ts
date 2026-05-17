@@ -68,11 +68,10 @@ export const FALLBACK_PRICES: Record<string, number> = {
 
 // ─── Fetch helper ─────────────────────────────────────────────────────────────
 
-const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 const REFRESH_MS = 60_000
 
 /**
- * Per-symbol market quote pulled from CoinGecko.
+ * Per-symbol market quote pulled from CoinGecko (via server-side proxy).
  * Missing fields (e.g. for tokens CoinGecko doesn't surface volume on) fall
  * back to 0 — callers should treat 0 as "not available" not "literally zero".
  */
@@ -99,16 +98,8 @@ async function fetchCoinGeckoQuotes(
   const ids = Array.from(new Set(symbols.map(s => COINGECKO_IDS[s]).filter(Boolean)))
   if (ids.length === 0) return { prices: {}, quotes: {} }
 
-  const url =
-    `${COINGECKO_BASE}/simple/price` +
-    `?ids=${ids.join(',')}` +
-    `&vs_currencies=usd` +
-    `&include_24hr_change=true` +
-    `&include_24hr_vol=true` +
-    `&include_market_cap=true`
-
-  const res = await fetch(url, { next: { revalidate: 60 } })
-  if (!res.ok) throw new Error(`CoinGecko ${res.status}`)
+  const res = await fetch(`/api/prices?symbols=${symbols.join(',')}`)
+  if (!res.ok) throw new Error(`Price proxy ${res.status}`)
 
   const data: Record<string, CoinGeckoSimpleEntry> = await res.json()
 

@@ -194,15 +194,14 @@ describe('usePriceFeeds — quotes (change24h / volume24h / marketCap)', () => {
     expect(result.current.quotes).toEqual({})
   })
 
-  it('requests the CoinGecko endpoint with the richer query-string params', async () => {
+  it('requests the server-side price proxy with symbol list', async () => {
     const { result } = renderHook(() => usePriceFeeds(['ETH']))
     await waitFor(() => expect(result.current.isLive).toBe(true))
 
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     const url = fetchSpy.mock.calls[0][0] as string
-    expect(url).toContain('include_24hr_change=true')
-    expect(url).toContain('include_24hr_vol=true')
-    expect(url).toContain('include_market_cap=true')
+    expect(url).toContain('/api/prices')
+    expect(url).toContain('symbols=')
   })
 
     it('exposes change24h / volume24h / marketCap per symbol', async () => {
