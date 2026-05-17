@@ -221,7 +221,15 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const [tp, setTp] = useState('')
   const [sl, setSl] = useState('')
   const walletReady = useWalletReady()
+  const { address } = useAccount()
   const { openPosition, phase: perpPhase, error: perpError, isDeployed } = useOpenPosition()
+  const walletG$Result = useReadContract({
+    address: CONTRACTS.GoodDollarToken,
+    abi: ERC20ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address, refetchInterval: 10_000 },
+  })
 
   useEffect(() => {
     if (leverage > pair.maxLeverage) {
@@ -250,9 +258,14 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const effectivePrice = orderType === 'market' ? pair.markPrice : (parsedLimitPrice > 0 ? parsedLimitPrice : 0)
   const notional = sizeNum * effectivePrice
   const marginRequired = effectivePrice > 0 ? notional / leverage : 0
-  const feeRate = orderType === 'market' ? 0.0005 : 0.0002
+  const GD_PRICE_USD = 0.01
+  const feeRate = orderType === 'market' ? 0.001 : 0.0002 // on-chain market fee is 0.1%
   const fee = notional * feeRate
   const ubiFee = fee * 0.2
+  const marginRequiredGD = effectivePrice > 0 ? marginRequired / GD_PRICE_USD : 0
+  const feeGD = orderType === 'market' ? (notional / GD_PRICE_USD) * feeRate : 0
+  const totalRequiredGD = marginRequiredGD + feeGD
+  const walletG$ = walletG$Result.data ? Number(walletG$Result.data as bigint) / 1e18 : 0
   const liqPrice = effectivePrice > 0
     ? side === 'long'
       ? effectivePrice * (1 - 0.9 / leverage)
@@ -274,10 +287,12 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
     ? (side === 'long' ? (parsedSl - effectivePrice) * sizeNum : (effectivePrice - parsedSl) * sizeNum)
     : 0
 
-  const exceedsMargin = sizeNum > 0 && marginRequired > account.availableMargin
+  const availableFundingGD = account.availableMargin + walletG$
+  const exceedsMargin = sizeNum > 0 && totalRequiredGD > availableFundingGD
 
-  // Calculate max size based on available margin
-  const maxSize = effectivePrice > 0 ? (account.availableMargin * leverage) / effectivePrice : 0
+  // Calculate max size based on vault + wallet G$ that can be auto-deposited
+  const availableFundingUsd = availableFundingGD * GD_PRICE_USD
+  const maxSize = effectivePrice > 0 ? (availableFundingUsd * leverage) / effectivePrice : 0
   const notionalValue = sizeNum * effectivePrice
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -288,7 +303,6 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
       // Convert to G$ wei (18 decimals). Assume G$ ≈ $0.01 on devnet.
       // Route through toG$Wei (parseUnits) — never `Math.round(x * 1e18)`,
       // which drifts by tens of millions of wei on realistic positions.
-      const GD_PRICE_USD = 0.01
       const notionalGD = notional / GD_PRICE_USD
       const marginGD = marginRequired / GD_PRICE_USD
       const sizeWei = toG$Wei(notionalGD)
@@ -405,7 +419,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           maxValueLabel="max size"
           symbol={pair.baseAsset}
           usdValue={notionalValue}
-          error={exceedsMargin ? `Exceeds available margin (${formatPerpsPrice(account.availableMargin)})` : false}
+          error={exceedsMargin ? `Needs ${formatG$Amount(totalRequiredGD)} total; available ${formatG$Amount(availableFundingGD)}` : false}
           placeholder="0.00"
         />
       </div>
@@ -472,7 +486,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
             <div className="flex justify-between text-gray-400"><span>Notional</span><span className="text-white truncate ml-2">{formatPerpsPrice(notional)}</span></div>
             <div className="flex justify-between text-gray-400"><span>Margin</span><span className="text-white truncate ml-2">{formatPerpsPrice(marginRequired)}</span></div>
             <div className="flex justify-between text-gray-400"><span>Liq. Price</span><span className="text-yellow-400 truncate ml-2">{formatPerpsPrice(liqPrice)}</span></div>
-            <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.05%' : '0.02%'})</span><span className="text-white truncate ml-2">{formatLargeValue(fee)}</span></div>
+            <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.10%' : '0.02%'})</span><span className="text-white truncate ml-2">{formatLargeValue(fee)}</span></div>
             <div className="flex justify-between text-goodgreen/80"><span>→ UBI (20%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
             {tpPnl !== 0 && !tpInvalid && (
               <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className="truncate ml-2"><PriceDisplay value={tpPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { dirname } from 'node:path'
 import { createPublicClient, createWalletClient, defineChain, formatEther, http, parseEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { CONTRACTS, DEVNET_CHAIN_ID, DEVNET_EXPLORER_URL, DEVNET_RPC_URL } from '@/lib/devnet'
@@ -7,7 +9,33 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
-const claimTimes = new Map<string, number>()
+const CLAIMS_FILE = process.env.FAUCET_CLAIMS_FILE ?? '/tmp/gooddollar-l2-faucet-claims.json'
+
+class FaucetRateLimitError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FaucetRateLimitError'
+  }
+}
+
+async function readClaimTimes(): Promise<Record<string, number>> {
+  try {
+    const raw = await readFile(CLAIMS_FILE, 'utf8')
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, number] => typeof entry[1] === 'number'),
+    )
+  } catch {
+    return {}
+  }
+}
+
+async function writeClaimTime(addressKey: string, timestamp: number): Promise<void> {
+  const claims = await readClaimTimes()
+  claims[addressKey] = timestamp
+  await mkdir(dirname(CLAIMS_FILE), { recursive: true })
+  await writeFile(CLAIMS_FILE, JSON.stringify(claims, null, 2))
+}
 
 const NATIVE_ETH_AMOUNT = parseEther(process.env.FAUCET_NATIVE_ETH_AMOUNT ?? '0.1')
 const GDT_NET_AMOUNT = parseEther(process.env.FAUCET_GDT_AMOUNT ?? '10000')
@@ -90,17 +118,6 @@ export async function POST(request: Request) {
     }
 
     const key = address.toLowerCase()
-    const lastClaim = claimTimes.get(key) ?? 0
-    const now = Date.now()
-
-    if (now - lastClaim < COOLDOWN_MS) {
-      const remaining = Math.ceil((COOLDOWN_MS - (now - lastClaim)) / 60_000)
-      return NextResponse.json(
-        { error: `Rate limited — try again in ${remaining} minutes` },
-        { status: 429 },
-      )
-    }
-
     const privateKey = normalizePrivateKey(process.env.FAUCET_PRIVATE_KEY)
     if (!privateKey) {
       return NextResponse.json(
@@ -110,6 +127,15 @@ export async function POST(request: Request) {
     }
 
     const result = await serializeFaucetClaim(async () => {
+      const claims = await readClaimTimes()
+      const lastClaim = claims[key] ?? 0
+      const now = Date.now()
+
+      if (now - lastClaim < COOLDOWN_MS) {
+        const remaining = Math.ceil((COOLDOWN_MS - (now - lastClaim)) / 60_000)
+        throw new FaucetRateLimitError(`Rate limited — try again in ${remaining} minutes`)
+      }
+
       const account = privateKeyToAccount(privateKey)
       const rpcUrl = process.env.FAUCET_RPC_URL ?? DEVNET_RPC_URL
       const publicClient = createPublicClient({ chain: goodDollarL2, transport: http(rpcUrl) })
@@ -158,7 +184,7 @@ export async function POST(request: Request) {
       })
       await publicClient.waitForTransactionReceipt({ hash: wethTxHash })
 
-      claimTimes.set(key, Date.now())
+      await writeClaimTime(key, Date.now())
 
       return {
         nativeTxHash,
@@ -178,6 +204,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ...result, txHash: result.gdtTxHash })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Faucet request failed'
+    if (error instanceof FaucetRateLimitError) {
+      return NextResponse.json({ error: message }, { status: 429 })
+    }
     console.error('[faucet] Claim failed:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }

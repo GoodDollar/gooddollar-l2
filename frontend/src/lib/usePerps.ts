@@ -85,7 +85,15 @@ export function useOpenPosition() {
   const [phase, setPhase] = useState<PerpActionPhase>('idle')
   const [error, setError] = useState<string | null>(null)
   const { writeContractAsync } = useWriteContract()
-  const { isConnected } = useAccount()
+  const { address, isConnected } = useAccount()
+
+  const vaultBalance = useReadContract({
+    address: VAULT,
+    abi: MarginVaultABI,
+    functionName: 'balances',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address, refetchInterval: 10_000 },
+  })
 
   const reset = useCallback(() => { setPhase('idle'); setError(null) }, [])
 
@@ -99,25 +107,32 @@ export function useOpenPosition() {
     if (!ENGINE || !VAULT) { setError('PerpEngine not deployed yet'); return }
 
     try {
-      // 1. Approve G$ to MarginVault
-      setPhase('approving')
-      await writeContractAsync({
-        address: CONTRACTS.GoodDollarToken,
-        abi: ERC20ABI,
-        functionName: 'approve',
-        args: [VAULT, margin],
-      })
+      // PerpEngine requires margin + trade fee to already be present in
+      // MarginVault. Top up only the missing amount, then open the position.
+      const fee = (size * 10n) / 10_000n // PerpEngine.TRADE_FEE_BPS = 10 = 0.1%
+      const totalRequired = margin + fee
+      const currentVaultBalance = (vaultBalance.data as bigint | undefined) ?? 0n
+      const depositAmount = currentVaultBalance >= totalRequired ? 0n : totalRequired - currentVaultBalance
 
-      // 2. Deposit margin into MarginVault
+      if (depositAmount > 0n) {
+        setPhase('approving')
+        await writeContractAsync({
+          address: CONTRACTS.GoodDollarToken,
+          abi: ERC20ABI,
+          functionName: 'approve',
+          args: [VAULT, depositAmount],
+        })
+
+        setPhase('pending')
+        await writeContractAsync({
+          address: VAULT,
+          abi: MarginVaultABI,
+          functionName: 'deposit',
+          args: [depositAmount],
+        })
+      }
+
       setPhase('pending')
-      await writeContractAsync({
-        address: VAULT,
-        abi: MarginVaultABI,
-        functionName: 'deposit',
-        args: [margin],
-      })
-
-      // 3. Open position on PerpEngine
       await writeContractAsync({
         address: ENGINE,
         abi: PerpEngineABI,
@@ -130,7 +145,7 @@ export function useOpenPosition() {
       setError(e?.shortMessage ?? e?.message ?? 'Transaction failed')
       setPhase('error')
     }
-  }, [isConnected, writeContractAsync])
+  }, [isConnected, vaultBalance.data, writeContractAsync])
 
   return { openPosition, phase, error, reset, isConnected, isDeployed: !!ENGINE }
 }
