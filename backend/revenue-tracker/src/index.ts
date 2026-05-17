@@ -23,7 +23,7 @@
 import { ethers } from 'ethers';
 import dotenv from 'dotenv';
 import pino from 'pino';
-import { startHealthServer } from '../../shared/healthServer';
+import { startHealthServer } from './healthServer';
 
 dotenv.config();
 const logger = pino({ name: 'revenue-tracker' });

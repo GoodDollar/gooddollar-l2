@@ -16,7 +16,7 @@
 import { LendLiquidator } from './lendLiquidator'
 import { StableLiquidator } from './stableLiquidator'
 import { CONFIG } from './config'
-import { startHealthServer } from '../../shared/healthServer'
+import { startHealthServer } from './healthServer'
 
 async function main() {
   console.log('═══════════════════════════════════════════════')

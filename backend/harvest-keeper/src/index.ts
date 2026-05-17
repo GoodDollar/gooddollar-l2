@@ -16,7 +16,7 @@
  */
 
 import { HarvestKeeper, HarvestKeeperConfig } from './lib';
-import { startHealthServer } from '../../shared/healthServer';
+import { startHealthServer } from './healthServer';
 
 async function main() {
   const args = process.argv.slice(2);

@@ -7,7 +7,7 @@
  */
 
 import { ActivityReporter } from './reporter';
-import { startHealthServer } from '../../shared/healthServer';
+import { startHealthServer } from './healthServer';
 
 async function main() {
   console.log('═══════════════════════════════════════════════');

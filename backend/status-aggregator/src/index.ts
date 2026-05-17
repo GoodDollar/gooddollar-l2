@@ -27,11 +27,11 @@ const SERVICES: ServiceConfig[] = [
   { name: 'revenue-tracker',   url: `http://localhost:${process.env.REVENUE_TRACKER_PORT ?? '9104'}/health` },
   { name: 'stocks-keeper',     url: `http://localhost:${process.env.STOCKS_KEEPER_PORT ?? '9105'}/health` },
   { name: 'indexer',           url: `http://localhost:${process.env.INDEXER_PORT ?? '4200'}/api/health` },
-  { name: 'monitor',           url: `http://localhost:${process.env.MONITOR_PORT ?? '4600'}/health` },
+  { name: 'monitor',           url: `http://localhost:${process.env.MONITOR_PORT ?? '4201'}/health` },
   { name: 'rpc-balancer',      url: `http://localhost:${process.env.RPC_BALANCER_PORT ?? '8546'}/health` },
-  { name: 'bridge-keeper',     url: `http://localhost:${process.env.BRIDGE_KEEPER_PORT ?? '4400'}/health` },
-  { name: 'perps',             url: `http://localhost:${process.env.PERPS_PORT ?? '4100'}/health` },
-  { name: 'predict',           url: `http://localhost:${process.env.PREDICT_PORT ?? '4300'}/health` },
+  { name: 'bridge-keeper',     url: `http://localhost:${process.env.BRIDGE_KEEPER_PORT ?? '3006'}/health` },
+  { name: 'perps',             url: `http://localhost:${process.env.PERPS_PORT ?? '8080'}/health` },
+  { name: 'predict',           url: `http://localhost:${process.env.PREDICT_PORT ?? '3040'}/health` },
 ];
 
 interface ServiceStatus {
