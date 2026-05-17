@@ -184,5 +184,35 @@ module.exports = {
         PORT: pick('STATUS_AGGREGATOR_PORT', '9200'),
       },
     }),
+    // Iter 3 (testnet-readiness-gate): adopt the goodswap Next.js frontend
+    // into ecosystem.config.js so PM2 supervises it with production-grade
+    // restart policies and a pinned NEXT_SERVER_ACTIONS_ENCRYPTION_KEY.
+    //
+    // Without the pinned key Next 14 generates a fresh action ID on every
+    // `next build`, producing the `Failed to find Server Action "x"` crash
+    // loop that accumulated 4,400+ restarts on the ad-hoc PM2 entry.
+    //
+    // Layout note: the repo is an npm workspace (frontend, sdk) so the
+    // `next` binary is hoisted to the repo-root node_modules. We invoke it
+    // directly to bypass `npx`, which swallows signals and re-resolves the
+    // binary on every restart.
+    app({
+      name: 'goodswap',
+      cwd: path.resolve(__dirname, '..', 'frontend'),
+      script: path.resolve(__dirname, '..', 'node_modules', '.bin', 'next'),
+      args: 'start -p 3100',
+      min_uptime: '30s',
+      max_memory_restart: '1G',
+      kill_timeout: 10000,
+      node_args: '--max-old-space-size=896',
+      env: {
+        NODE_ENV: 'production',
+        PORT: '3100',
+        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: pick(
+          'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY',
+          '',
+        ),
+      },
+    }),
   ],
 };
