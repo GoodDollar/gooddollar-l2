@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useAccount } from 'wagmi'
+import { AddNetworkButton } from '@/components/AddNetworkButton'
 
 function isValidAddress(addr: string): boolean {
   return /^0x[0-9a-fA-F]{40}$/.test(addr)
@@ -69,6 +70,22 @@ export default function FaucetPage() {
             <p className="text-white font-bold text-lg mt-0.5">10,000 G$ + 1 WETH + gas ETH</p>
           </div>
           <div className="text-3xl">💰</div>
+        </div>
+
+        {/* Add network shortcut */}
+        <div
+          data-testid="add-network-button-container"
+          className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-dark/40 px-4 py-3"
+        >
+          <div className="min-w-0">
+            <p className="text-white text-sm font-medium leading-tight">
+              First time here?
+            </p>
+            <p className="text-gray-500 text-xs leading-tight mt-0.5">
+              Add the GoodChain Testnet to your wallet in one click.
+            </p>
+          </div>
+          <AddNetworkButton variant="compact" />
         </div>
 
         {/* Address input */}

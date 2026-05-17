@@ -78,8 +78,19 @@ export async function injectMockWallet(page: Page) {
             case 'wallet_switchEthereumChain':
               return null
 
-            case 'wallet_addEthereumChain':
+            case 'wallet_addEthereumChain': {
+              // Record the call so E2E tests can assert the canonical EIP-3085
+              // payload reached the wallet. Stored on `window` because Playwright
+              // can read it back via `page.evaluate(...)`.
+              const w = window as unknown as {
+                __addEthereumChainCalls?: unknown[]
+              }
+              if (!Array.isArray(w.__addEthereumChainCalls)) {
+                w.__addEthereumChainCalls = []
+              }
+              w.__addEthereumChainCalls.push(params)
               return null
+            }
 
             case 'personal_sign':
             case 'eth_sign':

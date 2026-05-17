@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { DEVNET_RPC_URL, DEVNET_CHAIN_ID, DEVNET_EXPLORER_URL } from '@/lib/devnet'
+import { AddNetworkButton } from '@/components/AddNetworkButton'
 
 const TOC = [
   { id: 'prerequisites', label: 'Prerequisites' },
@@ -182,9 +183,20 @@ export default function TestnetGuidePage() {
           {/* Add Network */}
           <section id="add-network" className="scroll-mt-20">
             <h2 className="text-2xl font-bold text-white mb-4">1. Add GoodChain Testnet</h2>
+            <div className="mb-5" data-testid="add-network-button-container">
+              <AddNetworkButton
+                successCta={{ label: 'Open Faucet →', href: '/faucet' }}
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                One click adds the network to MetaMask (or any EIP-1193 wallet)
+                using the canonical values below.
+              </p>
+            </div>
             <NetworkTable />
             <div className="mt-4">
-              <p className="text-sm text-gray-500 uppercase tracking-wide mb-2 font-semibold">Steps</p>
+              <p className="text-sm text-gray-500 uppercase tracking-wide mb-2 font-semibold">
+                Or add it manually
+              </p>
               <StepList steps={[
                 'Open MetaMask → Settings → Networks → Add Network',
                 'Enter the network details from the table above',

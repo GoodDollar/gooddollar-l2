@@ -121,6 +121,52 @@ Run lanes independently so one dapp failure does not hide the others:
 - Stocks: deposit collateral, mint/burn synthetic equity, oracle freshness.
 - Portfolio/Claim: wallet states, balances, UBI claim, explorer links.
 
+## Wallet Onboarding (iter 13)
+
+Public testers should never have to type RPC URLs into MetaMask by hand.
+The frontend now ships a one-click **"Add GoodChain Testnet to wallet"**
+button in two places:
+
+- `/testnet-guide` → top of the "1. Add GoodChain Testnet" section, above
+  the network table. Full-width CTA; success state offers an "Open
+  Faucet →" follow-up link.
+- `/faucet` → compact pill above the "Wallet Address" input, framed by a
+  "First time here?" hint.
+
+Implementation:
+
+- Component: `frontend/src/components/AddNetworkButton.tsx`
+- Unit tests: `frontend/src/components/__tests__/AddNetworkButton.test.tsx`
+  (8 specs, covers idle / compact / no-wallet / success / rejected /
+  error states and asserts the canonical EIP-3085 payload).
+- E2E: `frontend/e2e/onboarding.spec.ts` clicks the button on both pages,
+  captures before/after screenshots in `frontend/e2e/screenshots/`, and
+  asserts the wallet received the canonical payload.
+- Mock wallet: `frontend/e2e/fixtures/wallet.ts` records every
+  `wallet_addEthereumChain` call on `window.__addEthereumChainCalls`
+  so the spec can introspect what reached the wallet.
+
+The button is wired to `frontend/src/lib/devnet.ts`, which sources
+`chain_id`, `rpc_url`, and `explorer_url` directly from
+`op-stack/addresses.json`. No hardcoded fallbacks — when the canonical
+registry changes, the onboarding flow follows automatically.
+
+EIP-3085 payload shape sent to the wallet:
+
+```json
+{
+  "chainId": "0xa455",
+  "chainName": "GoodChain Testnet",
+  "rpcUrls": ["https://rpc.goodclaw.org"],
+  "blockExplorerUrls": ["https://explorer.goodclaw.org"],
+  "nativeCurrency": { "name": "GoodDollar", "symbol": "G$", "decimals": 18 }
+}
+```
+
+A manual "Or add it manually" panel remains on `/testnet-guide` for
+wallets that do not implement EIP-3085 (hardware wallets, some mobile
+wallets without injected providers).
+
 ## Operator runbook
 
 ### WalletConnect / Reown Cloud allowlist
