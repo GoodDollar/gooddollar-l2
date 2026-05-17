@@ -144,24 +144,24 @@ function Dashboard() {
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
-          <p className="text-xs text-gray-400 mb-1">Total Supplied</p>
-          <p className="text-lg font-bold text-white">{formatUSD(account.totalCollateralUSD)}</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-3 sm:p-4">
+          <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">Total Supplied</p>
+          <p className="text-base sm:text-lg font-bold text-white truncate">{formatUSD(account.totalCollateralUSD)}</p>
         </div>
-        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
-          <p className="text-xs text-gray-400 mb-1">Total Borrowed</p>
-          <p className="text-lg font-bold text-white">{formatUSD(account.totalBorrowedUSD)}</p>
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-3 sm:p-4">
+          <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">Total Borrowed</p>
+          <p className="text-base sm:text-lg font-bold text-white truncate">{formatUSD(account.totalBorrowedUSD)}</p>
         </div>
-        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
-          <p className="text-xs text-gray-400 mb-1">Net APY</p>
-          <p className={`text-lg font-bold ${account.netAPY >= 0 ? 'text-goodgreen' : 'text-red-400'}`}>
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-3 sm:p-4">
+          <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">Net APY</p>
+          <p className={`text-base sm:text-lg font-bold truncate ${account.netAPY >= 0 ? 'text-goodgreen' : 'text-red-400'}`}>
             {account.netAPY >= 0 ? '+' : ''}{formatAPY(account.netAPY)}
           </p>
         </div>
-        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
-          <p className="text-xs text-gray-400 mb-1">Available to Borrow</p>
-          <p className="text-lg font-bold text-white">{formatUSD(account.availableToBorrowUSD)}</p>
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-3 sm:p-4">
+          <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">Available to Borrow</p>
+          <p className="text-base sm:text-lg font-bold text-white truncate">{formatUSD(account.availableToBorrowUSD)}</p>
         </div>
       </div>
 
@@ -721,22 +721,22 @@ export default function LendPage() {
             {/* Protocol stats — live reserves only, so headline TVL/borrow/UBI
                 figures reflect real on-chain devnet activity instead of mock
                 values from yet-to-be-deployed markets. */}
-            <div className="grid grid-cols-3 gap-3 mt-4">
-              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 text-center">
-                <p className="text-xs text-gray-400 mb-1">Total Value Locked</p>
-                <p className="text-base font-bold text-white">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4">
+              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-2.5 sm:p-4 text-center">
+                <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">Total Value Locked</p>
+                <p className="text-sm sm:text-base font-bold text-white truncate">
                   {formatUSD(liveReserves.reduce((s, r) => s + r.totalSupplied * r.price, 0))}
                 </p>
               </div>
-              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 text-center">
-                <p className="text-xs text-gray-400 mb-1">Total Borrowed</p>
-                <p className="text-base font-bold text-white">
+              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-2.5 sm:p-4 text-center">
+                <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">Total Borrowed</p>
+                <p className="text-sm sm:text-base font-bold text-white truncate">
                   {formatUSD(liveReserves.reduce((s, r) => s + r.totalBorrowed * r.price, 0))}
                 </p>
               </div>
-              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 text-center">
-                <p className="text-xs text-gray-400 mb-1">UBI Revenue / yr</p>
-                <p className="text-base font-bold text-goodgreen">
+              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-2.5 sm:p-4 text-center">
+                <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">UBI Revenue / yr</p>
+                <p className="text-sm sm:text-base font-bold text-goodgreen truncate">
                   {formatUSD(
                     liveReserves.reduce((s, r) =>
                       s + r.totalBorrowed * r.price * r.borrowAPY * (r.reserveFactorBPS / 10_000) * 0.2,

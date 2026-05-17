@@ -517,16 +517,16 @@ export default function GovernanceAnalyticsPage() {
       {/* Governance Parameters Reference */}
       <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5">
         <h3 className="text-sm font-semibold text-gray-400 mb-3">Governance Parameters</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-          <div><span className="text-gray-500">Proposal Threshold:</span> <span className="text-white">1% veG$</span></div>
-          <div><span className="text-gray-500">Quorum:</span> <span className="text-white">10% veG$</span></div>
-          <div><span className="text-gray-500">Voting Period:</span> <span className="text-white">3 days</span></div>
-          <div><span className="text-gray-500">Voting Delay:</span> <span className="text-white">1 day</span></div>
-          <div><span className="text-gray-500">Timelock:</span> <span className="text-white">1 day</span></div>
-          <div><span className="text-gray-500">Max Lock:</span> <span className="text-white">4 years</span></div>
-          <div><span className="text-gray-500">Early Unlock Penalty:</span> <span className="text-white">30%</span></div>
-          <div><span className="text-gray-500">Penalty → UBI:</span> <span className="text-white">20%</span></div>
-          <div><span className="text-gray-500">Execution Window:</span> <span className="text-white">7 days</span></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 text-sm">
+          <div className="min-w-0"><span className="text-gray-500">Proposal Threshold:</span> <span className="text-white">1% veG$</span></div>
+          <div className="min-w-0"><span className="text-gray-500">Quorum:</span> <span className="text-white">10% veG$</span></div>
+          <div className="min-w-0"><span className="text-gray-500">Voting Period:</span> <span className="text-white">3 days</span></div>
+          <div className="min-w-0"><span className="text-gray-500">Voting Delay:</span> <span className="text-white">1 day</span></div>
+          <div className="min-w-0"><span className="text-gray-500">Timelock:</span> <span className="text-white">1 day</span></div>
+          <div className="min-w-0"><span className="text-gray-500">Max Lock:</span> <span className="text-white">4 years</span></div>
+          <div className="min-w-0"><span className="text-gray-500">Early Unlock Penalty:</span> <span className="text-white">30%</span></div>
+          <div className="min-w-0"><span className="text-gray-500">Penalty → UBI:</span> <span className="text-white">20%</span></div>
+          <div className="min-w-0"><span className="text-gray-500">Execution Window:</span> <span className="text-white">7 days</span></div>
         </div>
       </div>
     </div>

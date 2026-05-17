@@ -408,13 +408,13 @@ function GovernanceParams() {
   return (
     <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5">
       <h3 className="text-sm font-semibold text-gray-400 mb-3">Governance Parameters</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-        <div><span className="text-gray-500">Proposal Threshold:</span> <span className="text-white">{fmtBps(thresholdBps as bigint | undefined)}</span></div>
-        <div><span className="text-gray-500">Quorum:</span> <span className="text-white">{fmtBps(quorumBps as bigint | undefined)}</span></div>
-        <div><span className="text-gray-500">Voting Period:</span> <span className="text-white">{fmtSecs(votingPeriod as bigint | undefined)}</span></div>
-        <div><span className="text-gray-500">Voting Delay:</span> <span className="text-white">{fmtSecs(votingDelay as bigint | undefined)}</span></div>
-        <div><span className="text-gray-500">Timelock:</span> <span className="text-white">{fmtSecs(timelockDelay as bigint | undefined)}</span></div>
-        <div><span className="text-gray-500">Early Unlock Penalty:</span> <span className="text-white">30% (⅓ → UBI)</span></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 text-sm">
+        <div className="min-w-0"><span className="text-gray-500">Proposal Threshold:</span> <span className="text-white break-words">{fmtBps(thresholdBps as bigint | undefined)}</span></div>
+        <div className="min-w-0"><span className="text-gray-500">Quorum:</span> <span className="text-white break-words">{fmtBps(quorumBps as bigint | undefined)}</span></div>
+        <div className="min-w-0"><span className="text-gray-500">Voting Period:</span> <span className="text-white break-words">{fmtSecs(votingPeriod as bigint | undefined)}</span></div>
+        <div className="min-w-0"><span className="text-gray-500">Voting Delay:</span> <span className="text-white break-words">{fmtSecs(votingDelay as bigint | undefined)}</span></div>
+        <div className="min-w-0"><span className="text-gray-500">Timelock:</span> <span className="text-white break-words">{fmtSecs(timelockDelay as bigint | undefined)}</span></div>
+        <div className="min-w-0"><span className="text-gray-500">Early Unlock Penalty:</span> <span className="text-white break-words">30% (⅓ → UBI)</span></div>
       </div>
     </div>
   )
