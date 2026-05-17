@@ -91,3 +91,10 @@ PAPERCLIP_*.md
 docs/PAPERCLIP-*.md
 
 scripts/report-to-paperclip.sh
+.autobuilder/status.md
+.autobuilder/loop.log
+.autobuilder/stop
+.autobuilder/daemon.pid
+.autobuilder/PRODUCTION_READY.md
+.autobuilder/journal.jsonl
+.autobuilder/memory-index.md
