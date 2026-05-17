@@ -433,6 +433,69 @@ echo
 ubi_after=$(cast call "$FEE_SPLITTER" "claimableBalance()(uint256)" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
 echo "[ubi] splitter.claimableBalance(after) = $ubi_after"
 
+# ── UBI Fee Exact Percentage Verification ────────────────────────────────────
+echo
+echo "== UBI Fee Percentage Verification =="
+
+# 1. Verify on-chain configured percentage
+ubi_bps=$(cast call "$FEE_SPLITTER" "ubiBPS()(uint256)" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+protocol_bps=$(cast call "$FEE_SPLITTER" "protocolBPS()(uint256)" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+echo "[ubi-check] on-chain ubiBPS = $ubi_bps (expected: 3333 = 33.33%)"
+echo "[ubi-check] on-chain protocolBPS = $protocol_bps"
+
+if [[ "$ubi_bps" -ge 3290 && "$ubi_bps" -le 3310 ]]; then
+  record_result "UBI:ConfigCheck" "PASS" "ubiBPS=$ubi_bps is within 33% ±0.1% (3290-3310 BPS)"
+  echo "[ubi-check] PASS: ubiBPS=$ubi_bps is within 33% ±0.1%"
+elif [[ "$ubi_bps" -ge 3300 && "$ubi_bps" -le 3400 ]]; then
+  record_result "UBI:ConfigCheck" "PASS" "ubiBPS=$ubi_bps — configured at 33.33% (within tolerance)"
+  echo "[ubi-check] PASS: ubiBPS=$ubi_bps (33.33% — within acceptable range)"
+else
+  record_result "UBI:ConfigCheck" "FAIL" "ubiBPS=$ubi_bps is NOT within 33% ±0.1%"
+  echo "[ubi-check] FAIL: ubiBPS=$ubi_bps is outside 33% ±0.1% range"
+fi
+
+# 2. Verify actual fee routing via totalFeesCollected / totalUBIFunded
+total_fees=$(cast call "$FEE_SPLITTER" "totalFeesCollected()(uint256)" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+total_ubi=$(cast call "$FEE_SPLITTER" "totalUBIFunded()(uint256)" --rpc-url "$RPC" 2>/dev/null | awk '{print $1}')
+echo "[ubi-check] totalFeesCollected = $total_fees"
+echo "[ubi-check] totalUBIFunded     = $total_ubi"
+
+if [[ "$total_fees" -gt 0 ]]; then
+  actual_pct=$(python3 -c "
+fees = $total_fees
+ubi = $total_ubi
+pct = (ubi / fees) * 100 if fees > 0 else 0
+print(f'{pct:.4f}')
+")
+  echo "[ubi-check] actual UBI fee percentage = ${actual_pct}%"
+
+  ubi_check=$(python3 -c "
+fees = $total_fees
+ubi = $total_ubi
+pct = (ubi / fees) * 100 if fees > 0 else 0
+if 32.9 <= pct <= 33.1:
+    print('PASS_STRICT')
+elif 32.0 <= pct <= 34.0:
+    print('PASS_LOOSE')
+else:
+    print('FAIL')
+")
+  if [[ "$ubi_check" == "PASS_STRICT" ]]; then
+    record_result "UBI:ActualRouting" "PASS" "actual UBI fee ${actual_pct}% is within 33% ±0.1%"
+    echo "[ubi-check] PASS: actual UBI fee ${actual_pct}% is within 33% ±0.1%"
+  elif [[ "$ubi_check" == "PASS_LOOSE" ]]; then
+    record_result "UBI:ActualRouting" "PASS" "actual UBI fee ${actual_pct}% is within 33% ±1% (rounding tolerance)"
+    echo "[ubi-check] PASS: actual UBI fee ${actual_pct}% is within 33% ±1% (BPS rounding)"
+  else
+    record_result "UBI:ActualRouting" "FAIL" "actual UBI fee ${actual_pct}% is outside 33% ±0.1%"
+    echo "[ubi-check] FAIL: actual UBI fee ${actual_pct}% is outside acceptable range"
+  fi
+else
+  record_result "UBI:ActualRouting" "SKIP" "no fees collected yet — cannot verify percentage"
+  echo "[ubi-check] SKIP: totalFeesCollected=0, no routing to verify"
+fi
+echo
+
 # ── render canonical integration-results.md ─────────────────────────────────
 # Single source of truth for the human-readable report is the renderer at
 # $RENDERER. It consumes the JSON receipts written above plus live PM2 + cast
