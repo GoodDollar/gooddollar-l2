@@ -54,6 +54,15 @@ body {
   color: #0f1729;
 }
 
+/*
+ * Global focus-visible indicator for all interactive elements.
+ * Uses the accent color (#00B0A0 / goodgreen) for consistency with the dark theme.
+ */
+:focus-visible {
+  outline: 2px solid #00B0A0;
+  outline-offset: 2px;
+}
+
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
