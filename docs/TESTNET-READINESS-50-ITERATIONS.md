@@ -85,6 +85,7 @@ This is the execution plan for the next autonomous autobuilder run. The goal is 
 | Iter | Evidence | Runner |
 |---:|---|---|
 | 1 | [`docs/testnet/iter01-baseline.md`](testnet/iter01-baseline.md) | `scripts/testnet/iter01-baseline.sh` |
+| 2 | [`docs/testnet/iter02-health-gate.md`](testnet/iter02-health-gate.md) (contract: [`docs/testnet/HEALTH-CONTRACT.md`](testnet/HEALTH-CONTRACT.md)) | `scripts/testnet/health-gate.sh` |
 
 ## README Checkpoint Requirements Every 5 Iterations
 
