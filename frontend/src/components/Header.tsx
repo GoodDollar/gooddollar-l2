@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Menu, X } from 'lucide-react'
 import { WalletButton } from './WalletButton'
+import { WalletButtonConnected } from './WalletButtonConnected'
+import { useWalletReady } from '@/lib/WalletReadyContext'
 import { ActivityButton } from './ActivityButton'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -12,6 +14,7 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
+  const walletReady = useWalletReady()
   const isSwap = pathname === '/'
   const isExplore = pathname === '/explore'
   const isPool = pathname === '/pool'
@@ -119,7 +122,7 @@ export function Header() {
               <Menu className="w-5 h-5" />
             )}
           </button>
-          <WalletButton />
+          {walletReady ? <WalletButtonConnected /> : <WalletButton />}
         </div>
       </div>
 

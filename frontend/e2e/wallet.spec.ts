@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { injectMockWallet, TESTER_ADDRESS } from './fixtures'
 
 test.describe('Wallet connection', () => {
   // Connect Wallet button lives in the desktop header; run at desktop viewport
@@ -52,8 +53,51 @@ test.describe('SwapCard wallet actions', () => {
   test('entering amount and clicking swap shows connect wallet prompt', async ({ page }) => {
     const input = page.locator('#swap-card input[inputmode="decimal"]')
     await input.fill('1')
-    // There should be a swap/connect action button visible
     const swapActions = page.locator('#swap-card div.p-4.pt-3')
     await expect(swapActions).toBeVisible()
+  })
+})
+
+test.describe('Mock wallet integration', () => {
+  test.use({ viewport: { width: 1280, height: 720 } })
+
+  test('injected mock wallet is detected on /swap page', async ({ page }) => {
+    await injectMockWallet(page)
+    await page.goto('/swap')
+    await page.waitForLoadState('networkidle')
+
+    const hasMock = await page.evaluate(() => (window as any).ethereum?._isMock)
+    expect(hasMock).toBe(true)
+  })
+
+  test('mock wallet provides correct chain ID', async ({ page }) => {
+    await injectMockWallet(page)
+    await page.goto('/swap')
+    await page.waitForLoadState('networkidle')
+
+    const chainId = await page.evaluate(
+      () => (window as any).ethereum?.request({ method: 'eth_chainId' }),
+    )
+    expect(chainId).toBe('0xa455')
+  })
+
+  test('mock wallet returns tester account', async ({ page }) => {
+    await injectMockWallet(page)
+    await page.goto('/swap')
+    await page.waitForLoadState('networkidle')
+
+    const accounts: string[] = await page.evaluate(
+      () => (window as any).ethereum?.request({ method: 'eth_requestAccounts' }),
+    )
+    expect(accounts).toContain(TESTER_ADDRESS.toLowerCase())
+  })
+
+  test('Connect Wallet button shows RainbowKit on app routes', async ({ page }) => {
+    await injectMockWallet(page)
+    await page.goto('/swap')
+    await page.waitForLoadState('networkidle')
+
+    const connectBtn = page.getByRole('button', { name: /connect wallet/i })
+    await expect(connectBtn).toBeVisible({ timeout: 10000 })
   })
 })
