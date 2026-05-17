@@ -9,6 +9,7 @@
  */
 
 import * as http from 'http';
+import { parseHealthStatus } from './parseHealthStatus';
 
 const PORT = parseInt(process.env.PORT ?? '9200', 10);
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS ?? '15000', 10);
@@ -68,9 +69,7 @@ async function checkService(svc: ServiceConfig): Promise<ServiceStatus> {
     }
 
     const body = await res.json() as Record<string, unknown>;
-    const svcStatus = body.status === 'ok' ? 'ok'
-      : body.status === 'degraded' ? 'degraded'
-      : 'error';
+    const svcStatus = parseHealthStatus(body);
     return {
       name: svc.name,
       status: svcStatus,
