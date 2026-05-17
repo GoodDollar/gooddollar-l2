@@ -1,4 +1,6 @@
 const ABBREVIATIONS: [number, string][] = [
+  [1e18, 'Qi'],
+  [1e15, 'Q'],
   [1e12, 'T'],
   [1e9, 'B'],
   [1e6, 'M'],
@@ -35,14 +37,9 @@ export function formatAmount(value: number | string, maxDecimals = 6): string {
     return trimTrailingZeros(num.toFixed(decimals))
   }
 
-  // Sub-1 range: only safe to use fixed decimals while abs >= 10^-maxDecimals,
-  // otherwise toFixed(maxDecimals) silently rounds to "0.000000" and the UI
-  // shows a misleading literal "0" for real on-chain values (e.g. the
-  // G$/USDC pool spotPrice ratio ~1e-12). Fall back to compact scientific
-  // notation so the magnitude is preserved.
   const significantDecimals = Math.min(maxDecimals, 6)
   if (abs < Math.pow(10, -significantDecimals)) {
-    return compactScientific(num)
+    return '< 0.000001'
   }
   return trimTrailingZeros(num.toFixed(significantDecimals))
 }

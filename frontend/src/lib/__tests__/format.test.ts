@@ -57,6 +57,14 @@ describe('formatAmount', () => {
     expect(formatAmount(1200000000000)).toBe('1.2T')
   })
 
+  it('formats very large numbers with Q and Qi abbreviations', () => {
+    expect(formatAmount(1.5e15)).toBe('1.5Q')
+    expect(formatAmount(3.33e20)).toBe('333Qi')
+    expect(formatAmount(1e18)).toBe('1Qi')
+    expect(formatAmount(5e15)).toBe('5Q')
+    expect(formatAmount(1e21)).toBe('1000Qi')
+  })
+
   it('formats numbers with thousands separators', () => {
     expect(formatAmount(1234)).toBe('1,234')
     expect(formatAmount(999999)).toBe('999,999')
@@ -67,37 +75,32 @@ describe('formatAmount', () => {
     expect(formatAmount(1.5)).toBe('1.5')
   })
 
-  // Task 0066: formatAmount must never return "0" for a non-zero numeric input.
-  // Previously, formatAmount(1e-12) returned "0" because num.toFixed(6) is "0.000000",
-  // which made the G$/USDC pool spot price (~1e-12 after broken /1e18 derivation)
-  // render as "1 G$ = 0 USDC". After the fix the helper falls back to compact
-  // scientific notation for sub-micro values so the UI never silently rounds a
-  // real on-chain value to a misleading literal zero.
+  // Task 0044: Sub-micro values now display as "< 0.000001" instead of raw
+  // scientific notation for better UX readability. The original task 0066
+  // requirement (never return "0" for non-zero input) is still satisfied.
   describe('sub-micro values (decimal-mismatch defence)', () => {
-    it('returns non-zero representation for 1e-12 (the G$/USDC raw spotPrice ratio)', () => {
+    it('returns "< 0.000001" for 1e-12 instead of scientific notation', () => {
       const result = formatAmount(1e-12)
       expect(result).not.toBe('0')
-      expect(result).not.toBe('0.000000')
-      // Should look like "1.0e-12" or similar (digits, optional dot, "e", digits).
-      expect(result).toMatch(/^-?\d+(\.\d+)?e-?\d+$/i)
+      expect(result).toBe('< 0.000001')
     })
 
-    it('returns non-zero representation for 1e-9', () => {
+    it('returns "< 0.000001" for 1e-9', () => {
       const result = formatAmount(1e-9)
       expect(result).not.toBe('0')
-      expect(result).toMatch(/^-?\d+(\.\d+)?e-?\d+$/i)
+      expect(result).toBe('< 0.000001')
     })
 
-    it('returns non-zero representation for a realistic G$/USDC ratio (~9.5e-7)', () => {
+    it('returns "< 0.000001" for a realistic G$/USDC ratio (~9.5e-7)', () => {
       const result = formatAmount(9.5e-7)
       expect(result).not.toBe('0')
-      expect(result).toMatch(/^-?\d+(\.\d+)?e-?\d+$/i)
+      expect(result).toBe('< 0.000001')
     })
 
-    it('preserves sign for negative sub-micro values', () => {
+    it('returns "< 0.000001" for negative sub-micro values', () => {
       const result = formatAmount(-1e-10)
       expect(result).not.toBe('0')
-      expect(result.startsWith('-')).toBe(true)
+      expect(result).toBe('< 0.000001')
     })
 
     it('still rounds exact zero to "0"', () => {
@@ -109,9 +112,7 @@ describe('formatAmount', () => {
     })
 
     it('does not regress the [1e-6, 1) range', () => {
-      // 1e-6 itself should still use the fixed-decimal branch.
       expect(formatAmount(0.000001)).toBe('0.000001')
-      // 0.5 should still use the fixed-decimal branch.
       expect(formatAmount(0.5)).toBe('0.5')
     })
 

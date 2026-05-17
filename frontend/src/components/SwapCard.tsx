@@ -311,7 +311,7 @@ export function SwapCard() {
           </div>
           <div className="flex items-center gap-3">
             <span
-              title={rawOutputAmount ? (outputAmount || rawOutputAmount.toString()) : ''}
+              title={rawOutputAmount ? rawOutputAmount.toString() : ''}
               className="flex-1 text-3xl sm:text-3xl font-medium min-w-0 cursor-default select-text"
               style={{ fontSize: outputAmount.length > 10 ? 'clamp(1.125rem, 5vw, 1.875rem)' : undefined }}
               data-testid="output-amount"
