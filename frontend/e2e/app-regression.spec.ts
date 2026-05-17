@@ -67,7 +67,7 @@ function isAllowedConsoleError(line: string) {
     /Fix any of the following|insufficient color contrast|not contained by landmarks|visible to screen readers/i,
     /Module not found: Can't resolve '@react-native-async-storage\/async-storage'/i,
     /localhost:4200\/api\/events\/perps|violates the document's Content Security Policy/i,
-    // Transient upstream gateway errors (Coingecko rate-limits, RPC overload) don't break rendering.
-    /Failed to load resource:.*\b(502|503|504)\b/i,
+    // Transient upstream gateway / rate-limit errors don't break rendering.
+    /Failed to load resource:.*\b(429|502|503|504)\b/i,
   ].some((pattern) => pattern.test(line))
 }
