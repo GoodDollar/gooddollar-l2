@@ -7,6 +7,7 @@
  */
 
 import { ActivityReporter } from './reporter';
+import { startHealthServer } from '../../shared/healthServer';
 
 async function main() {
   console.log('═══════════════════════════════════════════════');
@@ -14,6 +15,11 @@ async function main() {
   console.log('═══════════════════════════════════════════════');
 
   const reporter = new ActivityReporter();
+
+  startHealthServer({
+    name: 'activity-reporter',
+    port: parseInt(process.env.HEALTH_PORT ?? '9101', 10),
+  });
 
   // Graceful shutdown
   process.on('SIGINT', () => {

@@ -23,6 +23,7 @@
 import { ethers } from 'ethers';
 import dotenv from 'dotenv';
 import pino from 'pino';
+import { startHealthServer } from '../../shared/healthServer';
 
 dotenv.config();
 const logger = pino({ name: 'revenue-tracker' });
@@ -448,6 +449,13 @@ async function main(): Promise<void> {
     snapshotInterval: SNAPSHOT_INTERVAL_MS,
     protocols: PROTOCOLS.length,
   }, 'Starting UBI Revenue Tracker Keeper');
+
+  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  startHealthServer({
+    name: 'revenue-tracker',
+    port: parseInt(process.env.HEALTH_PORT ?? '9104', 10),
+    chainCheck: async () => Number(await provider.getBlockNumber()),
+  });
 
   const reporter = new RevenueReporter(RPC_URL, OPERATOR_KEY, TRACKER_ADDRESS);
   await reporter.init();

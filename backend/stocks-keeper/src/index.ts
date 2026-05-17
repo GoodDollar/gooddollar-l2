@@ -16,6 +16,7 @@
 import { ethers } from 'ethers';
 import dotenv from 'dotenv';
 import pino from 'pino';
+import { startHealthServer } from '../../shared/healthServer';
 
 dotenv.config();
 const logger = pino({ name: 'stocks-keeper' });
@@ -270,6 +271,13 @@ async function main(): Promise<void> {
     logger.error('PRICE_ORACLE_ADDRESS not set');
     process.exit(1);
   }
+
+  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  startHealthServer({
+    name: 'stocks-keeper',
+    port: parseInt(process.env.HEALTH_PORT ?? '9105', 10),
+    chainCheck: async () => Number(await provider.getBlockNumber()),
+  });
 
   const updater = new OracleUpdater(RPC_URL, OPERATOR_KEY, ORACLE_ADDRESS);
   await updater.init();

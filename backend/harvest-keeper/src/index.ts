@@ -16,6 +16,7 @@
  */
 
 import { HarvestKeeper, HarvestKeeperConfig } from './lib';
+import { startHealthServer } from '../../shared/healthServer';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -42,6 +43,11 @@ async function main() {
   console.log('═══════════════════════════════════════════════');
 
   const keeper = new HarvestKeeper(config);
+
+  startHealthServer({
+    name: 'harvest-keeper',
+    port: parseInt(process.env.HEALTH_PORT ?? '9102', 10),
+  });
 
   if (once) {
     const results = await keeper.runCycle();

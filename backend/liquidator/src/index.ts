@@ -16,6 +16,7 @@
 import { LendLiquidator } from './lendLiquidator'
 import { StableLiquidator } from './stableLiquidator'
 import { CONFIG } from './config'
+import { startHealthServer } from '../../shared/healthServer'
 
 async function main() {
   console.log('═══════════════════════════════════════════════')
@@ -43,6 +44,11 @@ async function main() {
   stableLiquidator.listenForNewVaults()
 
   console.log('[Boot] ✅ Liquidator bot online — watching for underwater positions...\n')
+
+  startHealthServer({
+    name: 'liquidator',
+    port: parseInt(process.env.HEALTH_PORT ?? '9103', 10),
+  })
 
   // Main polling loop
   let cycle = 0

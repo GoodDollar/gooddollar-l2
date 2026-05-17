@@ -1,0 +1,161 @@
+/**
+ * GoodDollar L2 Status Aggregator
+ *
+ * Polls all backend service health endpoints and exposes:
+ *   GET /status.json — aggregated health of all services
+ *   GET /health      — own health
+ *
+ * Each service entry reports: status (ok|error|timeout), uptime, chainBlock, latencyMs.
+ */
+
+import * as http from 'http';
+
+const PORT = parseInt(process.env.PORT ?? '9200', 10);
+const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS ?? '15000', 10);
+const TIMEOUT_MS = 5000;
+
+interface ServiceConfig {
+  name: string;
+  url: string;
+}
+
+const SERVICES: ServiceConfig[] = [
+  { name: 'swap-oracle',       url: `http://localhost:${process.env.SWAP_ORACLE_PORT ?? '9100'}/health` },
+  { name: 'activity-reporter', url: `http://localhost:${process.env.ACTIVITY_REPORTER_PORT ?? '9101'}/health` },
+  { name: 'harvest-keeper',    url: `http://localhost:${process.env.HARVEST_KEEPER_PORT ?? '9102'}/health` },
+  { name: 'liquidator',        url: `http://localhost:${process.env.LIQUIDATOR_PORT ?? '9103'}/health` },
+  { name: 'revenue-tracker',   url: `http://localhost:${process.env.REVENUE_TRACKER_PORT ?? '9104'}/health` },
+  { name: 'stocks-keeper',     url: `http://localhost:${process.env.STOCKS_KEEPER_PORT ?? '9105'}/health` },
+  { name: 'indexer',           url: `http://localhost:${process.env.INDEXER_PORT ?? '4200'}/api/health` },
+  { name: 'monitor',           url: `http://localhost:${process.env.MONITOR_PORT ?? '4600'}/health` },
+  { name: 'rpc-balancer',      url: `http://localhost:${process.env.RPC_BALANCER_PORT ?? '8546'}/health` },
+  { name: 'bridge-keeper',     url: `http://localhost:${process.env.BRIDGE_KEEPER_PORT ?? '4400'}/health` },
+  { name: 'perps',             url: `http://localhost:${process.env.PERPS_PORT ?? '4100'}/health` },
+  { name: 'predict',           url: `http://localhost:${process.env.PREDICT_PORT ?? '4300'}/health` },
+];
+
+interface ServiceStatus {
+  name: string;
+  status: 'ok' | 'error' | 'timeout' | 'unreachable';
+  latencyMs: number;
+  uptime?: number;
+  chainBlock?: number;
+  error?: string;
+  lastChecked: string;
+}
+
+let cachedStatuses: ServiceStatus[] = [];
+const startedAt = Date.now();
+
+async function checkService(svc: ServiceConfig): Promise<ServiceStatus> {
+  const start = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  try {
+    const res = await fetch(svc.url, { signal: controller.signal });
+    clearTimeout(timer);
+    const latencyMs = Date.now() - start;
+
+    if (!res.ok) {
+      return {
+        name: svc.name,
+        status: 'error',
+        latencyMs,
+        error: `HTTP ${res.status}`,
+        lastChecked: new Date().toISOString(),
+      };
+    }
+
+    const body = await res.json() as Record<string, unknown>;
+    return {
+      name: svc.name,
+      status: body.status === 'ok' ? 'ok' : 'error',
+      latencyMs,
+      uptime: typeof body.uptime === 'number' ? body.uptime : undefined,
+      chainBlock: typeof body.chainBlock === 'number' ? body.chainBlock : undefined,
+      error: body.status !== 'ok' ? String(body.error ?? 'unhealthy') : undefined,
+      lastChecked: new Date().toISOString(),
+    };
+  } catch (err: any) {
+    clearTimeout(timer);
+    const latencyMs = Date.now() - start;
+    const isTimeout = err.name === 'AbortError';
+    return {
+      name: svc.name,
+      status: isTimeout ? 'timeout' : 'unreachable',
+      latencyMs,
+      error: isTimeout ? `timeout after ${TIMEOUT_MS}ms` : (err.message ?? 'unreachable'),
+      lastChecked: new Date().toISOString(),
+    };
+  }
+}
+
+async function pollAll(): Promise<void> {
+  cachedStatuses = await Promise.all(SERVICES.map(checkService));
+  const healthy = cachedStatuses.filter(s => s.status === 'ok').length;
+  console.log(
+    `[status] ${healthy}/${SERVICES.length} services healthy @ ${new Date().toISOString()}`,
+  );
+}
+
+function buildStatusJson() {
+  const healthy = cachedStatuses.filter(s => s.status === 'ok').length;
+  return {
+    overall: healthy === SERVICES.length ? 'healthy' : healthy > 0 ? 'degraded' : 'down',
+    healthy,
+    total: SERVICES.length,
+    aggregatorUptime: Math.floor((Date.now() - startedAt) / 1000),
+    timestamp: new Date().toISOString(),
+    services: cachedStatuses,
+  };
+}
+
+const server = http.createServer((req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/json');
+
+  if (req.url === '/status.json' && req.method === 'GET') {
+    const status = buildStatusJson();
+    const code = status.overall === 'down' ? 503 : 200;
+    res.writeHead(code);
+    res.end(JSON.stringify(status, null, 2));
+    return;
+  }
+
+  if (req.url === '/health' && req.method === 'GET') {
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      status: 'ok',
+      service: 'status-aggregator',
+      uptime: Math.floor((Date.now() - startedAt) / 1000),
+      timestamp: new Date().toISOString(),
+    }));
+    return;
+  }
+
+  res.writeHead(404);
+  res.end(JSON.stringify({ error: 'Not found' }));
+});
+
+async function main() {
+  console.log('╔══════════════════════════════════════════════╗');
+  console.log('║   GoodDollar L2 Status Aggregator           ║');
+  console.log('╠══════════════════════════════════════════════╣');
+  console.log(`║  Port:     ${PORT.toString().padEnd(33)} ║`);
+  console.log(`║  Services: ${SERVICES.length.toString().padEnd(33)} ║`);
+  console.log(`║  Poll:     ${(POLL_INTERVAL_MS / 1000 + 's').padEnd(33)} ║`);
+  console.log('╚══════════════════════════════════════════════╝');
+
+  await pollAll();
+  setInterval(pollAll, POLL_INTERVAL_MS);
+
+  server.listen(PORT, () => {
+    console.log(`[status-aggregator] Serving at http://localhost:${PORT}/status.json`);
+  });
+}
+
+main().catch(err => {
+  console.error('Fatal:', err);
+  process.exit(1);
+});

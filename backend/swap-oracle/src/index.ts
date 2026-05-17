@@ -16,6 +16,7 @@
 import { ethers } from 'ethers';
 import dotenv from 'dotenv';
 import pino from 'pino';
+import { startHealthServer } from '../../shared/healthServer';
 
 dotenv.config();
 const logger = pino({ name: 'swap-oracle' });
@@ -192,6 +193,12 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const wallet = new ethers.Wallet(OPERATOR_KEY, provider);
   const oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, wallet);
+
+  startHealthServer({
+    name: 'swap-oracle',
+    port: parseInt(process.env.HEALTH_PORT ?? '9100', 10),
+    chainCheck: async () => Number(await provider.getBlockNumber()),
+  });
 
   // Verify connection
   try {
