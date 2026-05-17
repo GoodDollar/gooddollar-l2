@@ -28,7 +28,7 @@ export default function PerpsError({ reset }: PerpsErrorProps) {
         <button
           type="button"
           onClick={reset}
-          className="rounded-xl bg-goodgreen px-6 py-3 font-semibold text-white transition-colors hover:bg-goodgreen-600 active:scale-[0.98]"
+          className="rounded-xl bg-goodgreen px-6 py-3 font-semibold text-black transition-colors hover:bg-goodgreen-600 active:scale-[0.98]"
         >
           Try Again
         </button>

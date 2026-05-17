@@ -288,7 +288,7 @@ ${errorDetails.stack}
               {errorInfo?.canRetry && (
                 <button
                   onClick={this.handleManualRetry}
-                  className="w-full flex items-center justify-center gap-2 bg-goodgreen hover:bg-goodgreen-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
+                  className="w-full flex items-center justify-center gap-2 bg-goodgreen hover:bg-goodgreen-600 text-black px-6 py-3 rounded-xl font-semibold transition-colors"
                 >
                   <RefreshCcw className="w-4 h-4" />
                   Try Again

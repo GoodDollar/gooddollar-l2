@@ -230,7 +230,7 @@ export function SwapConfirmModal({
                 ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 : isExtreme || priceImpact >= 10
                   ? 'bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-500/50'
-                  : 'bg-goodgreen text-white hover:bg-goodgreen-600 focus-visible:ring-goodgreen/50'
+                  : 'bg-goodgreen text-black hover:bg-goodgreen-600 focus-visible:ring-goodgreen/50'
             }`}
           >
             Confirm Swap

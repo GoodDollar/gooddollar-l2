@@ -140,7 +140,7 @@ export default function CreateMarketPage() {
           <h2 className="text-xl font-bold text-white mb-2">Market Created!</h2>
           <p className="text-sm text-gray-400 mb-6">&quot;{question}&quot;</p>
           <div className="flex gap-3 justify-center">
-            <Link href="/predict" className="px-5 py-2.5 rounded-xl bg-goodgreen text-white font-semibold text-sm hover:bg-goodgreen-600 transition-colors">
+            <Link href="/predict" className="px-5 py-2.5 rounded-xl bg-goodgreen text-black font-semibold text-sm hover:bg-goodgreen-600 transition-colors">
               View Markets
             </Link>
             <button onClick={() => { setSubmitted(false); setQuestion(''); setCriteria(''); setEndDate(''); setLiquidity(''); setErrors({}) }}
@@ -220,14 +220,14 @@ export default function CreateMarketPage() {
           <ConnectButton.Custom>
             {({ openConnectModal }) => (
               <button type="button" onClick={openConnectModal}
-                className="w-full py-3 rounded-xl bg-goodgreen text-white font-semibold text-sm hover:bg-goodgreen/90 transition-colors">
+                className="w-full py-3 rounded-xl bg-goodgreen text-black font-semibold text-sm hover:bg-goodgreen/90 transition-colors">
                 Connect Wallet to Create Market
               </button>
             )}
           </ConnectButton.Custom>
         ) : (
           <button type="submit" disabled={txPhase === 'pending'}
-            className="w-full py-3 rounded-xl bg-goodgreen text-white font-semibold text-sm hover:bg-goodgreen/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]">
+            className="w-full py-3 rounded-xl bg-goodgreen text-black font-semibold text-sm hover:bg-goodgreen/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]">
             {txPhase === 'pending' ? 'Creating Market…' : 'Create Market'}
           </button>
         )}

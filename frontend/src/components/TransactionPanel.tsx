@@ -24,7 +24,7 @@ function StatusIcon({ status }: { status: Transaction['status'] }) {
   }
   if (status === 'confirmed') {
     return (
-      <div className="w-5 h-5 rounded-full bg-goodgreen/20 flex items-center justify-center">
+      <div className="w-5 h-5 rounded-full bg-goodgreen/10 flex items-center justify-center">
         <svg className="w-3 h-3 text-goodgreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
         </svg>
@@ -88,7 +88,7 @@ function EmptyStateConnected({ onClose }: { onClose: () => void }) {
       <p className="text-xs text-gray-500 mb-3">Complete your first swap and it&apos;ll show up here</p>
       <button
         onClick={onClose}
-        className="px-4 py-1.5 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/20 transition-colors"
+        className="px-4 py-1.5 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/10 transition-colors"
       >
         Start Swapping
       </button>

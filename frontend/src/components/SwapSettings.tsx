@@ -59,7 +59,7 @@ export function SwapSettings() {
                   onClick={() => { setSlippage(p); setCustomSlippage('') }}
                   className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none ${
                     slippage === p && isPreset
-                      ? 'bg-goodgreen/20 text-goodgreen border border-goodgreen/40'
+                      ? 'bg-goodgreen/10 text-goodgreen border border-goodgreen/40'
                       : 'bg-dark-50 text-gray-300 border border-gray-700/50 hover:border-gray-600'
                   }`}
                 >

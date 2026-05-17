@@ -88,7 +88,7 @@ function HealthBar({ hf, minRatio }: { hf: number; minRatio: number }) {
       </div>
       <div className="flex justify-between mt-0.5">
         <span className="text-[10px] text-red-400/60">Liq.</span>
-        <span className="text-[10px] text-goodgreen/60">Safe</span>
+        <span className="text-[10px] text-goodgreen">Safe</span>
       </div>
     </div>
   )
@@ -236,7 +236,7 @@ function VaultPanel({ ilkKey, prices }: { ilkKey: IlkKey; prices: Record<string,
                 className={`py-1.5 rounded-lg text-xs font-medium transition-colors capitalize whitespace-nowrap px-1 ${
                   t === 'close'
                     ? 'data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400 data-[state=inactive]:text-red-400/60 data-[state=inactive]:hover:text-red-400'
-                    : 'data-[state=active]:bg-goodgreen data-[state=active]:text-white data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white'
+                    : 'data-[state=active]:bg-goodgreen data-[state=active]:text-black data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white'
                 } data-[state=active]:shadow-none`}
               >
                 {t === 'mint' ? 'Mint' : t === 'repay' ? 'Repay' : t === 'deposit' ? 'Deposit' : t === 'withdraw' ? 'Withdraw' : 'Close'}
@@ -318,12 +318,12 @@ function VaultPanel({ ilkKey, prices }: { ilkKey: IlkKey; prices: Record<string,
                   }
                   className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.99] ${
                     phase === 'done'
-                      ? 'bg-goodgreen/20 text-goodgreen border border-goodgreen/30'
+                      ? 'bg-goodgreen/10 text-goodgreen border border-goodgreen/30'
                       : phase === 'error'
                       ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                       : currentTab === 'close'
                       ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed'
-                      : 'bg-goodgreen text-white hover:bg-goodgreen/90 disabled:opacity-50 disabled:cursor-not-allowed'
+                      : 'bg-goodgreen text-black hover:bg-goodgreen/90 disabled:opacity-50 disabled:cursor-not-allowed'
                   }`}
                 >
                   {getPhaseLabel(currentTab)[phase]}

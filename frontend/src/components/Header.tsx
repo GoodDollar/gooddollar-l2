@@ -93,7 +93,7 @@ export function Header() {
           <Link href="/governance" className={isGovernance ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Govern</Link>
           <Link href="/agents" className={isAgents ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Agents</Link>
           <Link href="/ubi-impact" className={isUBIImpact ? 'text-green-400 font-medium' : 'text-green-400/60 hover:text-green-400 transition-colors'}>UBI</Link>
-          <Link href="/activity" className={isActivity ? 'text-goodgreen font-medium' : 'text-goodgreen/60 hover:text-goodgreen transition-colors'}>
+          <Link href="/activity" className={isActivity ? 'text-goodgreen font-medium' : 'text-goodgreen hover:text-goodgreen transition-colors'}>
             <span className="flex items-center gap-1">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-goodgreen animate-pulse" />
               Activity
@@ -239,7 +239,7 @@ export function Header() {
             <Link
               href="/activity"
               onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isActivity ? 'text-goodgreen font-medium bg-dark-50/50' : 'text-goodgreen/60 hover:text-goodgreen'}`}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isActivity ? 'text-goodgreen font-medium bg-dark-50/50' : 'text-goodgreen hover:text-goodgreen'}`}
             >
               <span className="flex items-center gap-1.5">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-goodgreen animate-pulse" />

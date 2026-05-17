@@ -202,7 +202,7 @@ function SwapButton({
             className={`w-full py-4 rounded-xl font-semibold text-base transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:outline-none disabled:opacity-70 disabled:cursor-not-allowed ${
               priceImpact >= 10
                 ? 'bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-500/50'
-                : 'bg-goodgreen text-white hover:bg-goodgreen-600 focus-visible:ring-goodgreen/50'
+                : 'bg-goodgreen text-black hover:bg-goodgreen-600 focus-visible:ring-goodgreen/50'
             }`}
             data-testid="swap-button-active"
           >

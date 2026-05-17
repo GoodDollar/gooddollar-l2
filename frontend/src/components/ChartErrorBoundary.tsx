@@ -53,7 +53,7 @@ export class ChartErrorBoundary extends Component<ChartErrorBoundaryProps, Chart
           <button
             type="button"
             onClick={this.handleRetry}
-            className="rounded-xl bg-goodgreen px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-goodgreen-600 active:scale-[0.98]"
+            className="rounded-xl bg-goodgreen px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-goodgreen-600 active:scale-[0.98]"
           >
             Retry
           </button>

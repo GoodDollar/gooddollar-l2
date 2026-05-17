@@ -236,7 +236,7 @@ contract MultiChainBridge is ReentrancyGuard {
         uint256 minOutput,
         uint256 deadline,
         bool useFastWithdrawal
-    ) external returns (uint256 requestId) {
+    ) external nonReentrant returns (uint256 requestId) {
         if (amount == 0) revert ZeroAmount();
         if (receiver == address(0)) revert ZeroAddress();
         if (destChainId == L2_CHAIN_ID) revert AlreadyOnL2();

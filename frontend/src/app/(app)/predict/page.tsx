@@ -369,7 +369,7 @@ function OnlyFeaturedNotice({
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-goodgreen bg-goodgreen/10 border border-goodgreen/20 hover:bg-goodgreen/20 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/40 focus-visible:outline-none"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-goodgreen bg-goodgreen/10 border border-goodgreen/20 hover:bg-goodgreen/10 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/40 focus-visible:outline-none"
           >
             Clear filter
           </button>

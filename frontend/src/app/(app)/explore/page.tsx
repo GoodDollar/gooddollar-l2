@@ -83,7 +83,7 @@ const TokenRow = memo(function TokenRow({ token, idx, onRowClick, onSwapClick }:
       <td className="py-3 px-1 text-right w-20 hidden sm:table-cell">
         <button
           onClick={(e) => { e.stopPropagation(); onSwapClick(token.symbol) }}
-          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity px-3 py-1 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/20"
+          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity px-3 py-1 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/10"
         >
           Swap
         </button>

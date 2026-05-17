@@ -22,7 +22,7 @@ function WalletGatedTradeButton({ isConnected, hasAmount, children }: { isConnec
         <ConnectButton.Custom>
           {({ openConnectModal }) => (
             <button type="button" onClick={openConnectModal}
-              className="w-full py-3 rounded-xl font-semibold text-sm bg-goodgreen text-white hover:bg-goodgreen/90 transition-colors">
+              className="w-full py-3 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors">
               Connect Wallet to Trade
             </button>
           )}
@@ -158,7 +158,7 @@ function TradePanel({ market, initialSide }: { market: PredictionMarket, initial
         </button>
       )}
 
-      <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-goodgreen/60">
+      <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-goodgreen">
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
         <span>1% fee on winnings → 20% funds UBI</span>
       </div>
@@ -241,7 +241,7 @@ function MarketNotFound() {
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
       <h1 className="text-2xl font-bold text-white mb-3">Market Not Found</h1>
       <p className="text-sm text-gray-400 mb-6">This prediction market doesn&apos;t exist or could not be loaded.</p>
-      <Link href="/predict" className="px-6 py-3 rounded-xl bg-goodgreen text-white font-semibold hover:bg-goodgreen-600 transition-colors">
+      <Link href="/predict" className="px-6 py-3 rounded-xl bg-goodgreen text-black font-semibold hover:bg-goodgreen-600 transition-colors">
         Back to Markets
       </Link>
     </div>

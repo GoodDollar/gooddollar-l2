@@ -36,7 +36,7 @@ function PoolStatsCard({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="flex -space-x-2">
-            <div className="w-8 h-8 rounded-full bg-goodgreen/20 border-2 border-dark-100 flex items-center justify-center text-[10px] font-bold text-goodgreen">
+            <div className="w-8 h-8 rounded-full bg-goodgreen/10 border-2 border-dark-100 flex items-center justify-center text-[10px] font-bold text-goodgreen">
               {pool.tokenASymbol.slice(0, 2)}
             </div>
             <div className="w-8 h-8 rounded-full bg-blue-500/20 border-2 border-dark-100 flex items-center justify-center text-[10px] font-bold text-blue-400">
@@ -50,7 +50,7 @@ function PoolStatsCard({
         </div>
         <button
           onClick={() => onSelect(pool.key)}
-          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/20 transition-colors"
+          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/10 transition-colors"
         >
           Manage
         </button>
@@ -196,7 +196,7 @@ function AddLiquidityForm({ pool }: { pool: PoolMeta }) {
       <button
         onClick={handleSubmit}
         disabled={!canSubmit || isBusy}
-        className="w-full py-3 rounded-xl bg-goodgreen text-white font-semibold text-sm hover:bg-goodgreen-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+        className="w-full py-3 rounded-xl bg-goodgreen text-black font-semibold text-sm hover:bg-goodgreen-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
       >
         {isBusy ? 'Processing…' : 'Add Liquidity'}
       </button>
@@ -315,7 +315,7 @@ function PoolManager({
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-700/30">
           <div className="flex items-center gap-2">
             <div className="flex -space-x-1.5">
-              <div className="w-6 h-6 rounded-full bg-goodgreen/20 border border-dark-100 flex items-center justify-center text-[9px] font-bold text-goodgreen">
+              <div className="w-6 h-6 rounded-full bg-goodgreen/10 border border-dark-100 flex items-center justify-center text-[9px] font-bold text-goodgreen">
                 {pool.tokenASymbol.slice(0, 2)}
               </div>
               <div className="w-6 h-6 rounded-full bg-blue-500/20 border border-dark-100 flex items-center justify-center text-[9px] font-bold text-blue-400">
@@ -339,7 +339,7 @@ function PoolManager({
           <TabsList className="flex gap-1 p-3 bg-dark-50 w-full">
             <TabsTrigger
               value="add"
-              className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors data-[state=active]:bg-goodgreen/20 data-[state=active]:text-goodgreen data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white data-[state=active]:shadow-none"
+              className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors data-[state=active]:bg-goodgreen/10 data-[state=active]:text-goodgreen data-[state=inactive]:text-gray-400 data-[state=inactive]:hover:text-white data-[state=active]:shadow-none"
             >
               Add Liquidity
             </TabsTrigger>

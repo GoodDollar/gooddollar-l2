@@ -127,7 +127,7 @@ export default function RegisterAgentPage() {
         <div className="flex gap-3">
           <Link
             href={`/agents/${effectiveAgent}`}
-            className="flex-1 text-center px-4 py-2 bg-goodgreen/20 border border-goodgreen/30 rounded-lg text-goodgreen text-sm font-medium hover:bg-goodgreen/30 transition-colors"
+            className="flex-1 text-center px-4 py-2 bg-goodgreen/10 border border-goodgreen/30 rounded-lg text-goodgreen text-sm font-medium hover:bg-goodgreen/30 transition-colors"
           >
             View Agent Profile →
           </Link>
@@ -234,7 +234,7 @@ export default function RegisterAgentPage() {
                 onClick={() => setStrategyPreset(preset.value)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                   strategyPreset === preset.value
-                    ? 'bg-goodgreen/20 border-goodgreen/40 text-goodgreen'
+                    ? 'bg-goodgreen/10 border-goodgreen/40 text-goodgreen'
                     : 'bg-dark-100 border-gray-700/30 text-gray-400 hover:border-gray-600'
                 }`}
               >
@@ -286,7 +286,7 @@ export default function RegisterAgentPage() {
           <li className="flex gap-2"><span>4.</span> Climb the leaderboard by contributing the most UBI</li>
         </ul>
         <div className="pt-2 border-t border-gray-700/10">
-          <code className="text-[10px] text-goodgreen/60">npm install @gooddollar/agent-sdk</code>
+          <code className="text-[10px] text-goodgreen">npm install @gooddollar/agent-sdk</code>
         </div>
       </div>
     </div>

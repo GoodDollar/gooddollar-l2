@@ -276,7 +276,7 @@ export function CalculatorOverlay({
                 className={cn(
                   'aspect-square rounded-lg font-medium transition-colors text-sm',
                   btn === '='
-                    ? 'bg-goodgreen text-white hover:bg-goodgreen/80'
+                    ? 'bg-goodgreen text-black hover:bg-goodgreen/80'
                     : ['+', '-', '*', '/'].includes(btn)
                     ? 'bg-gray-600/40 text-gray-200 hover:text-white hover:bg-gray-500/50'
                     : 'bg-gray-700/30 text-gray-300 hover:text-white hover:bg-gray-600/40'
@@ -307,7 +307,7 @@ export function CalculatorOverlay({
           <button
             onClick={handleCalculate}
             aria-label="Apply calculated result to input field"
-            className="py-2 px-3 rounded-lg bg-goodgreen text-white text-xs font-medium hover:bg-goodgreen/80 transition-colors"
+            className="py-2 px-3 rounded-lg bg-goodgreen text-black text-xs font-medium hover:bg-goodgreen/80 transition-colors"
           >
             Apply
           </button>

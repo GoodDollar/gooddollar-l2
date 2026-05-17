@@ -20,7 +20,7 @@ export default function WalletProviders({ children }: { children: React.ReactNod
       <RainbowKitProvider
         theme={darkTheme({
           accentColor: '#00B0A0',
-          accentColorForeground: 'white',
+          accentColorForeground: '#071311',
           borderRadius: 'medium',
         })}
       >

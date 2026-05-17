@@ -56,7 +56,7 @@ function StatCard({ label, value, sub, accent, tooltip }: {
       <span className={`text-2xl font-bold ${accent ?? 'text-white'}`}>{value}</span>
       {sub && (
         <span
-          className={`text-xs text-zinc-500 ${tooltip ? 'cursor-help underline decoration-dotted decoration-zinc-600 underline-offset-2' : ''}`}
+          className={`text-xs text-zinc-400 ${tooltip ? 'cursor-help underline decoration-dotted decoration-zinc-600 underline-offset-2' : ''}`}
           title={tooltip}
           aria-label={tooltip ? `${sub} — ${tooltip}` : undefined}
         >
@@ -79,12 +79,12 @@ function ProtocolCard({ protocol }: { protocol: ProtocolStats }) {
         <span className="text-xl">{icon}</span>
         <div className="flex-1">
           <h3 className="font-semibold text-white">{protocol.name}</h3>
-          <span className="text-xs text-zinc-500 uppercase tracking-wide">{protocol.category}</span>
+          <span className="text-xs text-zinc-400 uppercase tracking-wide">{protocol.category}</span>
         </div>
         {protocol.active ? (
           <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">Active</span>
         ) : (
-          <span className="text-xs bg-zinc-700/50 text-zinc-500 px-2 py-0.5 rounded-full">Inactive</span>
+          <span className="text-xs bg-zinc-700/50 text-zinc-400 px-2 py-0.5 rounded-full">Inactive</span>
         )}
       </div>
 
@@ -100,7 +100,7 @@ function ProtocolCard({ protocol }: { protocol: ProtocolStats }) {
             style={{ width: `${Math.min(protocol.feeShare, 100)}%`, backgroundColor: color }}
           />
         </div>
-        <div className="flex justify-between text-xs text-zinc-500">
+        <div className="flex justify-between text-xs text-zinc-400">
           <span>{protocol.feeShare.toFixed(1)}% of total</span>
           <span>{Number(protocol.txCount).toLocaleString()} txs</span>
         </div>
@@ -230,7 +230,7 @@ function HistorySection({
     return (
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-4">📅 Historical Snapshots</h2>
-        <p className="text-zinc-500 text-sm">No snapshots yet. The revenue keeper will start recording daily.</p>
+        <p className="text-zinc-400 text-sm">No snapshots yet. The revenue keeper will start recording daily.</p>
       </div>
     )
   }
@@ -246,7 +246,7 @@ function HistorySection({
           const pct = maxUBI > 0n ? Number((s.totalUBI * 100n) / maxUBI) : 0
           return (
             <div key={s.date} className="flex items-center gap-3">
-              <span className="text-xs text-zinc-500 w-24 shrink-0 font-mono">{s.date}</span>
+              <span className="text-xs text-zinc-400 w-24 shrink-0 font-mono">{s.date}</span>
               <div className="flex-1 h-4 bg-zinc-800 rounded overflow-hidden">
                 <div
                   className="h-full bg-green-500/50 rounded transition-all"
@@ -444,7 +444,7 @@ export default function UBIImpactPage() {
                   ))}
               </div>
             ) : (
-              <p className="text-zinc-500 text-sm">No protocols registered yet.</p>
+              <p className="text-zinc-400 text-sm">No protocols registered yet.</p>
             )}
           </div>
 
@@ -462,7 +462,7 @@ export default function UBIImpactPage() {
       {/* Contract Info — always rendered, including in error/empty states */}
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
         <h3 className="text-sm font-semibold text-zinc-400 mb-2">📝 Contract Details</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-zinc-500 font-mono">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-zinc-400 font-mono">
           <div>UBIRevenueTracker: <a href={`${DEVNET_EXPLORER_URL}/address/${CONTRACTS.UBIRevenueTracker}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{CONTRACTS.UBIRevenueTracker.slice(0, 6)}...{CONTRACTS.UBIRevenueTracker.slice(-3)}</a></div>
           <div>UBIFeeSplitter: <a href={`${DEVNET_EXPLORER_URL}/address/${CONTRACTS.UBIFeeSplitter}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{CONTRACTS.UBIFeeSplitter.slice(0, 6)}...{CONTRACTS.UBIFeeSplitter.slice(-3)}</a></div>
           <div>Chain: GoodDollar L2 (ID {DEVNET_CHAIN_ID})</div>

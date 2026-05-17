@@ -444,7 +444,7 @@ function ActionPanel({ reserve, onClose }: { reserve: LendReserve; onClose: () =
                     : `${currentTab.charAt(0).toUpperCase() + currentTab.slice(1)} ${reserve.symbol}`}
                 </button>
 
-                <div className="flex items-center justify-center gap-1.5 text-[10px] text-goodgreen/60">
+                <div className="flex items-center justify-center gap-1.5 text-[10px] text-goodgreen">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
@@ -797,7 +797,7 @@ export default function LendPage() {
             <div className="lg:w-80 shrink-0">
               <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-8 text-center">
                 <div className="w-12 h-12 rounded-xl bg-goodgreen/10 border border-goodgreen/20 flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6 text-goodgreen/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-goodgreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
                   </svg>
                 </div>

@@ -22,7 +22,7 @@ export function SwapRoute({ inputToken, outputToken }: { inputToken: Token; outp
         </svg>
 
         <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-goodgreen/10 border border-goodgreen/20 text-xs font-medium text-goodgreen">
-          <span className="w-3.5 h-3.5 rounded-full bg-goodgreen/20 flex items-center justify-center text-[8px]">G</span>
+          <span className="w-3.5 h-3.5 rounded-full bg-goodgreen/10 flex items-center justify-center text-[8px]">G</span>
           GoodSwap Pool
         </span>
 

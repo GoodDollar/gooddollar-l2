@@ -27,6 +27,10 @@ const config: Config = {
           800: '#005A52',
           900: '#003A35',
         },
+        gray: {
+          500: '#9ca3af',
+          600: '#9ca3af',
+        },
         dark: {
           DEFAULT: '#0f1729',
           50: '#1a2540',

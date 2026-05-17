@@ -60,7 +60,7 @@ export function ConnectWalletBanner() {
               className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base font-bold ${
                 wrongChain
                   ? 'bg-amber-500/20 text-amber-300'
-                  : 'bg-goodgreen/20 text-goodgreen'
+                  : 'bg-goodgreen/10 text-goodgreen'
               }`}
             >
               {wrongChain ? '⚠' : '✦'}
@@ -80,7 +80,7 @@ export function ConnectWalletBanner() {
             className={`shrink-0 self-start sm:self-auto px-4 py-2 rounded-xl text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-100 ${
               wrongChain
                 ? 'bg-amber-500 text-black hover:bg-amber-400 focus:ring-amber-400'
-                : 'bg-goodgreen text-white hover:bg-goodgreen/90 focus:ring-goodgreen'
+                : 'bg-goodgreen text-black hover:bg-goodgreen/90 focus:ring-goodgreen'
             }`}
           >
             {ctaLabel}

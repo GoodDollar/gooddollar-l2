@@ -36,7 +36,7 @@ export function FeeBreakdownBadge() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 text-xs bg-goodgreen/10 text-goodgreen px-2.5 py-1 rounded-lg hover:bg-goodgreen/20 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
+        className="flex items-center gap-1.5 text-xs bg-goodgreen/10 text-goodgreen px-2.5 py-1 rounded-lg hover:bg-goodgreen/10 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
         aria-expanded={open}
       >
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">

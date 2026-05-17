@@ -85,8 +85,8 @@ export function UBIImpactErrorCard({
         onClick={onRetry}
         className={
           isCompact
-            ? 'rounded-lg bg-goodgreen px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-goodgreen-600 active:scale-[0.98]'
-            : 'rounded-xl bg-goodgreen px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-goodgreen-600 active:scale-[0.98]'
+            ? 'rounded-lg bg-goodgreen px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-goodgreen-600 active:scale-[0.98]'
+            : 'rounded-xl bg-goodgreen px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-goodgreen-600 active:scale-[0.98]'
         }
       >
         Retry

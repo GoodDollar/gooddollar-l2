@@ -42,7 +42,7 @@ export function RecentTrades({ markPrice }: RecentTradesProps) {
         <span>Size</span>
         <span>Time</span>
       </div>
-      <div className="max-h-[300px] overflow-y-auto divide-y divide-gray-700/5 scrollbar-none">
+      <div className="max-h-[300px] overflow-y-auto divide-y divide-gray-700/5 scrollbar-none" tabIndex={0} role="region" aria-label="Recent trades list">
         {trades.map((t, i) => (
           <div key={i} className="flex justify-between px-2 py-1">
             <span className={t.side === 'buy' ? 'text-green-400' : 'text-red-400'}>{formatPerpsPrice(t.price)}</span>

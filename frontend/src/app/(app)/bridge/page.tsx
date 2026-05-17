@@ -67,7 +67,7 @@ function ChainSelector({
               disabled={isDisabled}
               className={`py-2 px-2 rounded-xl text-xs font-medium transition-colors border ${
                 isSelected
-                  ? 'bg-goodgreen/20 text-goodgreen border-goodgreen/40'
+                  ? 'bg-goodgreen/10 text-goodgreen border-goodgreen/40'
                   : isDisabled
                   ? 'opacity-30 cursor-not-allowed bg-dark-50 border-gray-700/30 text-gray-500'
                   : 'bg-dark-50 border-gray-700/30 text-gray-400 hover:text-white hover:border-gray-600'
@@ -101,7 +101,7 @@ function TokenSelector({
             onClick={() => onChange(token)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
               value === token
-                ? 'bg-goodgreen/20 text-goodgreen border-goodgreen/40'
+                ? 'bg-goodgreen/10 text-goodgreen border-goodgreen/40'
                 : 'bg-dark-50 border-gray-700/30 text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
@@ -368,7 +368,7 @@ export default function BridgePage() {
           )}
           <button
             disabled={!toAmountFormatted || !isConnected}
-            className="flex-1 py-3 rounded-xl bg-goodgreen text-white font-semibold text-sm hover:bg-goodgreen-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+            className="flex-1 py-3 rounded-xl bg-goodgreen text-black font-semibold text-sm hover:bg-goodgreen-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
           >
             {!isConnected ? 'Connect Wallet' : !toAmountFormatted ? 'Enter amount' : 'Bridge'}
           </button>
@@ -395,7 +395,7 @@ export default function BridgePage() {
             onClick={() => setBridgeMode('deposit')}
             className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
               bridgeMode === 'deposit'
-                ? 'bg-goodgreen/20 text-goodgreen'
+                ? 'bg-goodgreen/10 text-goodgreen'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -405,7 +405,7 @@ export default function BridgePage() {
             onClick={() => setBridgeMode('withdraw')}
             className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
               bridgeMode === 'withdraw'
-                ? 'bg-goodgreen/20 text-goodgreen'
+                ? 'bg-goodgreen/10 text-goodgreen'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -421,7 +421,7 @@ export default function BridgePage() {
               onClick={() => setNativeToken(token)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                 nativeToken === token
-                  ? 'bg-goodgreen/20 text-goodgreen border-goodgreen/40'
+                  ? 'bg-goodgreen/10 text-goodgreen border-goodgreen/40'
                   : 'bg-dark-50 border-gray-700/30 text-gray-400 hover:text-white'
               }`}
             >

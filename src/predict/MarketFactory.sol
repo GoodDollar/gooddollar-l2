@@ -86,6 +86,7 @@ contract MarketFactory is ReentrancyGuard {
     error MarketNotExpired();
     error Unauthorized();
     error TransferFailed();
+    error NoWinningTokensExist();
 
     // ============ Modifiers ============
 
@@ -257,6 +258,9 @@ contract MarketFactory is ReentrancyGuard {
         } else {
             tokenId = isYESWin ? marketId * 2 : marketId * 2 + 1;
             uint256 winningSupply = isYESWin ? m.totalYES : m.totalNO;
+
+            // Check for division by zero - if no winning tokens exist, void the market
+            if (winningSupply == 0) revert NoWinningTokensExist();
 
             // Pro-rata share of total collateral (gross, before fee)
             // slither-disable-start divide-before-multiply

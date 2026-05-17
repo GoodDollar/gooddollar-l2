@@ -58,7 +58,7 @@ function TokenBalances({ gdBalance, gusdBalance }: { gdBalance: number; gusdBala
           <div className="text-xs text-gray-400">G$ Balance</div>
           <div className="text-sm font-semibold text-white mt-0.5">{fmtN(gdBalance, 2)} G$</div>
         </div>
-        <div className="w-8 h-8 rounded-full bg-goodgreen/20 flex items-center justify-center text-goodgreen text-xs font-bold">G$</div>
+        <div className="w-8 h-8 rounded-full bg-goodgreen/10 flex items-center justify-center text-goodgreen text-xs font-bold">G$</div>
       </div>
       <div className="bg-dark-50/30 rounded-xl px-4 py-3 flex items-center justify-between">
         <div>
@@ -117,7 +117,7 @@ function StableVaultRow({ ilkMeta, vault, isLoading }: { ilkMeta: IlkMeta; vault
   return (
     <div className="flex items-center justify-between py-1.5 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
       <div className="flex items-center gap-2">
-        <div className="w-5 h-5 rounded-full bg-goodgreen/20 flex items-center justify-center text-goodgreen text-[9px] font-bold">
+        <div className="w-5 h-5 rounded-full bg-goodgreen/10 flex items-center justify-center text-goodgreen text-[9px] font-bold">
           {ilkMeta.label.slice(0, 2)}
         </div>
         <span className="text-sm text-white">{ilkMeta.label}</span>

@@ -33,7 +33,7 @@ export function TxStatus({ hash, isPending, isSuccess, isError, error, onClose }
 
         {isSuccess && (
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-goodgreen/20 flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-goodgreen/10 flex items-center justify-center">
               <Check className="w-8 h-8 text-goodgreen" />
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">Swap Successful!</h3>

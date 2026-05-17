@@ -135,7 +135,7 @@ const PriceDisplay = forwardRef<HTMLSpanElement, PriceDisplayProps>(
           </span>
         )}
         {contextLabelText && (
-          <span className="ml-1.5 text-muted-foreground text-[0.75em] opacity-70">
+          <span className="ml-1.5 text-gray-400 text-[0.75em]">
             {contextLabelText}
           </span>
         )}

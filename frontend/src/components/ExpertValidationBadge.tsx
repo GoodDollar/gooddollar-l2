@@ -78,7 +78,7 @@ export function ExpertValidationBadge({
   }
 
   const badgeContent = consensusReached ? (
-    <Badge variant="secondary" className={`bg-goodgreen/10 text-goodgreen border-goodgreen/20 hover:bg-goodgreen/20 transition-colors cursor-pointer ${className}`}>
+    <Badge variant="secondary" className={`bg-goodgreen/10 text-goodgreen border-goodgreen/20 hover:bg-goodgreen/10 transition-colors cursor-pointer ${className}`}>
       <CheckCircle className="w-3 h-3 mr-1" />
       Expert Validated ({validatorCount})
     </Badge>
