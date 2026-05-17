@@ -89,7 +89,46 @@ test.describe('Mock wallet integration', () => {
     const accounts: string[] = await page.evaluate(
       () => (window as any).ethereum?.request({ method: 'eth_requestAccounts' }),
     )
-    expect(accounts).toContain(TESTER_ADDRESS.toLowerCase())
+    expect(accounts.map((account) => account.toLowerCase())).toContain(
+      TESTER_ADDRESS.toLowerCase(),
+    )
+  })
+
+  test('mock wallet announces itself through EIP-6963 discovery', async ({ page }) => {
+    await injectMockWallet(page)
+    await page.goto('/swap')
+    await page.waitForLoadState('networkidle')
+
+    const provider = await page.evaluate(async () => {
+      return new Promise<{
+        name: string
+        rdns: string
+        hasProviderRequest: boolean
+        isMock: boolean
+      }>((resolve) => {
+        window.addEventListener(
+          'eip6963:announceProvider',
+          (event) => {
+            const detail = (event as CustomEvent).detail
+            resolve({
+              name: detail.info.name,
+              rdns: detail.info.rdns,
+              hasProviderRequest: typeof detail.provider?.request === 'function',
+              isMock: Boolean(detail.provider?._isMock),
+            })
+          },
+          { once: true },
+        )
+        window.dispatchEvent(new Event('eip6963:requestProvider'))
+      })
+    })
+
+    expect(provider).toEqual({
+      name: 'GoodDollar E2E Wallet',
+      rdns: 'org.gooddollar.e2e',
+      hasProviderRequest: true,
+      isMock: true,
+    })
   })
 
   test('Connect Wallet button shows RainbowKit on app routes', async ({ page }) => {

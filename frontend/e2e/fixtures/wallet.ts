@@ -3,6 +3,8 @@
  *
  * Injects `window.ethereum` with a pre-funded account before the page loads,
  * so RainbowKit's `injectedWallet` connector picks it up automatically.
+ * Also announces the provider via EIP-6963 so modern multi-wallet discovery
+ * code can detect the same mock without depending on legacy globals alone.
  * All JSON-RPC requests are proxied to the Anvil devnet RPC.
  */
 
@@ -109,11 +111,39 @@ export async function injectMockWallet(page: Page) {
         return data.result
       }
 
+      const providerInfo = Object.freeze({
+        uuid: '350670db-19fa-4704-a166-e52e178b59d2',
+        name: 'GoodDollar E2E Wallet',
+        icon: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%2316a34a%22/%3E%3Ctext x=%2232%22 y=%2240%22 text-anchor=%22middle%22 font-size=%2224%22 fill=%22white%22 font-family=%22Arial%22%3EG%24%3C/text%3E%3C/svg%3E',
+        rdns: 'org.gooddollar.e2e',
+      })
+      const providerDetail = Object.freeze({
+        info: providerInfo,
+        provider: mockEthereum,
+      })
+
+      function announceProvider() {
+        window.dispatchEvent(
+          new CustomEvent('eip6963:announceProvider', {
+            detail: providerDetail,
+          }),
+        )
+      }
+
+      Object.defineProperty(mockEthereum, 'providers', {
+        value: [mockEthereum],
+        writable: false,
+        configurable: false,
+      })
+
       Object.defineProperty(window, 'ethereum', {
         value: mockEthereum,
         writable: false,
         configurable: true,
       })
+
+      window.addEventListener('eip6963:requestProvider', announceProvider)
+      announceProvider()
     },
     { address: TESTER_ADDRESS, chainId: CHAIN_ID, rpcUrl: RPC_URL },
   )
