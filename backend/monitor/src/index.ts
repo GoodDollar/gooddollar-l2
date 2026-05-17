@@ -12,6 +12,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import path from "node:path";
 import express from "express";
 import {
   CheckResult,
@@ -21,6 +22,7 @@ import {
   checkHTTPService,
   checkExplorer,
 } from "./checks";
+import { loadContracts } from "./addresses";
 
 const RPC = process.env.RPC_URL || "http://localhost:8545";
 const EXPLORER = process.env.EXPLORER_URL || "https://explorer.goodclaw.org";
@@ -28,16 +30,19 @@ const PORT = parseInt(process.env.MONITOR_PORT || "4201", 10);
 const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL_MS || "30000", 10);
 const DEPLOYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
-const CONTRACTS: [string, string][] = [
-  ["GoodDollarToken", "0x5FbDB2315678afecb367f032d93F642f64180aa3"],
-  ["UBIFeeSplitter", "0xC0BF43A4Ca27e0976195E6661b099742f10507e5"],
-  ["PerpEngine", "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"],
-  ["MarginVault", "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"],
-  ["MarketFactory", "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"],
-  ["ConditionalTokens", "0x8aCd85898458400f7Db866d53FCFF6f0D49741FF"],
-  ["SyntheticAssetFactory", "0x610178dA211FEF7D417bC0e6FeD39F05609AD788"],
-  ["CollateralVault", "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"],
-];
+// Canonical contract addresses come from op-stack/addresses.json
+// (non-negotiable #7 of initiative 0004). The previous hardcoded Anvil
+// devnet constants caused every contract check to fail on the real chain.
+// Resolved from repo root regardless of pm_cwd, with env override for tests.
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
+const ADDRESSES_PATH =
+  process.env.ADDRESSES_FILE || path.join(REPO_ROOT, "op-stack", "addresses.json");
+const CONTRACTS: [string, string][] = loadContracts(ADDRESSES_PATH);
+console.log(
+  `[Monitor] loaded ${CONTRACTS.length} contracts from ${ADDRESSES_PATH}: ${CONTRACTS.map(
+    ([n]) => n
+  ).join(", ")}`
+);
 
 const SERVICES: [string, string][] = [
   ["Indexer API", "http://localhost:4200/api/health"],
