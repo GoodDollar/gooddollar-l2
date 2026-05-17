@@ -185,10 +185,10 @@ function LeverageSlider({ value, onChange, max }: { value: number; onChange: (v:
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-xs text-gray-400">Leverage</label>
+        <label htmlFor="leverage-slider" className="text-xs text-gray-400">Leverage</label>
         <span className="text-sm font-bold text-goodgreen">{value}x</span>
       </div>
-      <input type="range" min={1} max={max} step={1} value={value} onChange={e => onChange(parseInt(e.target.value))}
+      <input id="leverage-slider" type="range" min={1} max={max} step={1} value={value} onChange={e => onChange(parseInt(e.target.value))}
         className="w-full h-1.5 bg-dark-50 rounded-full appearance-none cursor-pointer accent-goodgreen" />
       <div className="flex justify-between mt-1">
         {presets.map(p => (

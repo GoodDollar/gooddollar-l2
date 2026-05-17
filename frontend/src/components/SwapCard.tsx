@@ -295,6 +295,7 @@ export function SwapCard() {
         <div className="flex justify-center -my-3 relative z-[60]">
           <button
             onClick={handleFlip}
+            aria-label="Swap token direction"
             className="w-10 h-10 rounded-xl bg-dark-100 border border-gray-700/50 flex items-center justify-center hover:border-goodgreen/50 hover:text-goodgreen transition-colors text-gray-400 focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
           >
             <ArrowUpDown
