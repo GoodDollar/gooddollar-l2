@@ -20,6 +20,7 @@ const REQUIRED_SERVICES = [
   'monitor',
   'revenue-tracker',
   'rpc-balancer',
+  'status-aggregator',
   'stocks-keeper',
   'swap-oracle',
 ];
@@ -45,7 +46,8 @@ for (const svc of REQUIRED_SERVICES) {
 for (const app of config.apps) {
   assert(typeof app.script === 'string' && app.script.length > 0,
     `${app.name}: script is set`);
-  assert(fs.existsSync(path.join(__dirname, app.script)),
+  const scriptBase = app.cwd || __dirname;
+  assert(fs.existsSync(path.join(scriptBase, app.script)),
     `${app.name}: script file exists at ${app.script}`);
   assert(app.max_restarts === 10, `${app.name}: max_restarts === 10 (got ${app.max_restarts})`);
   assert(app.restart_delay === 5000, `${app.name}: restart_delay === 5000 (got ${app.restart_delay})`);
