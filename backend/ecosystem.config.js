@@ -32,6 +32,13 @@ function loadDotenv(filePath) {
           (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
+      // Strip inline comments (anything after a whitespace+# pair) when value is
+      // unquoted. This protects downstream consumers from malformed env files
+      // that legacy generators may still produce. See iter04 task 0005.
+      const hashIdx = value.search(/\s+#/);
+      if (hashIdx !== -1) {
+        value = value.slice(0, hashIdx).trim();
+      }
       if (key) out[key] = value;
     }
   } catch (_err) {

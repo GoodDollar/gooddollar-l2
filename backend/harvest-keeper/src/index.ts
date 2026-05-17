@@ -15,8 +15,36 @@
  *   DRY_RUN           — Set to "true" for simulation mode
  */
 
+import { getAddress, isAddress } from 'ethers';
 import { HarvestKeeper, HarvestKeeperConfig } from './lib';
 import { startHealthServer } from './healthServer';
+
+/**
+ * Defensive address sanitizer.
+ *
+ * `.autobuilder/addresses.env` historically contained inline `# comment`
+ * markers that PM2's dotenv parser does not strip, producing values like
+ * `0x66f6...3d  # DeployGoodYield.s.sol`. Passing such a string to ethers
+ * falls through to ENS resolution, which the Anvil devnet does not
+ * support — the service then crashes in an infinite restart loop.
+ *
+ * This helper strips trailing junk and either returns a checksummed
+ * address or throws a loud, named error at startup. Failing here is
+ * orders of magnitude cheaper than the ENS-loop failure mode.
+ */
+function sanitizeAddress(raw: string | undefined, name: string, fallback: string): string {
+  const source = raw ?? fallback;
+  const cleaned = source.split(/\s+/)[0].split('#')[0].trim();
+  if (!isAddress(cleaned)) {
+    throw new Error(
+      `[harvest-keeper] ${name} is not a valid address. raw=${JSON.stringify(source)} cleaned=${JSON.stringify(cleaned)}`,
+    );
+  }
+  if (cleaned !== source) {
+    console.warn(`[sanitizeAddress] ${name}: stripped trailing junk; raw=${JSON.stringify(source)} → ${cleaned}`);
+  }
+  return getAddress(cleaned);
+}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -26,7 +54,7 @@ async function main() {
   const config: HarvestKeeperConfig = {
     rpcUrl: process.env.RPC_URL || 'http://localhost:8545',
     privateKey: process.env.PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
-    factoryAddress: process.env.VAULT_FACTORY || '0xe70f935c32da4db13e7876795f1e175465e6458e',
+    factoryAddress: sanitizeAddress(process.env.VAULT_FACTORY, 'VAULT_FACTORY', '0xe70f935c32da4db13e7876795f1e175465e6458e'),
     minHarvestIntervalSeconds: parseInt(process.env.MIN_HARVEST_GAP || '3600'),
     minProfitThresholdBPS: 10,
     dryRun,

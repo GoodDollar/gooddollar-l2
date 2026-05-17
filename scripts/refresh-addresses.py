@@ -165,14 +165,22 @@ def main() -> int:
         "",
         "# --- Required (integration tests depend on these) ---",
     ]
+    # NOTE on format: source provenance lives on the line *before* each
+    # KEY=VALUE pair, never on the same line. PM2's dotenv parser (and many
+    # others) does not strip inline `# ...` comments — it would pass the
+    # comment through as part of the value, silently corrupting addresses
+    # for every consumer. Keep the human-readable provenance, just on its
+    # own line.
     for sym in REQUIRED:
-        lines.append(f"{sym}={resolved[sym]}  # {sources[sym]}")
+        lines.append(f"# source: {sources[sym]}")
+        lines.append(f"{sym}={resolved[sym]}")
     lines.append("")
     lines.append("# --- Auxiliary ---")
     for sym, addr in resolved.items():
         if sym in REQUIRED:
             continue
-        lines.append(f"{sym}={addr}  # {sources.get(sym, '?')}")
+        lines.append(f"# source: {sources.get(sym, '?')}")
+        lines.append(f"{sym}={addr}")
     lines.append("")
 
     out_path = Path(args.out)

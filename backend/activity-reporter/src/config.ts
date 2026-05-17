@@ -6,8 +6,39 @@
  * reported to the AgentRegistry.
  */
 
+import { getAddress, isAddress } from 'ethers';
+
 export const RPC_URL = process.env.RPC_URL || 'http://localhost:8545';
 export const CHAIN_ID = 42069;
+
+/**
+ * Sanitize an address sourced from a process env var.
+ *
+ * Defensive against `.env` files where inline `# comment` markers leak
+ * into the value (PM2's dotenv parser does NOT strip them). Strategy:
+ *   1. Take the first whitespace-delimited token (drops `  # source`).
+ *   2. Strip `#`-comment tails just in case.
+ *   3. Validate with ethers.isAddress; throw a loud, named error if not.
+ *   4. Return a checksummed address so downstream `new Contract(addr,…)`
+ *      never falls into the ENS resolution code-path.
+ *
+ * Logs the raw→cleaned transformation once if they differ — invaluable
+ * for diagnosing future regressions (search logs for `[sanitizeAddress]`).
+ */
+export function sanitizeAddress(raw: string | undefined, name: string, fallback: string): string {
+  const source = raw ?? fallback;
+  const cleaned = source.split(/\s+/)[0].split('#')[0].trim();
+  if (!isAddress(cleaned)) {
+    throw new Error(
+      `[config] ${name} is not a valid 0x address. raw=${JSON.stringify(source)} cleaned=${JSON.stringify(cleaned)}`,
+    );
+  }
+  if (cleaned !== source) {
+    // eslint-disable-next-line no-console
+    console.warn(`[sanitizeAddress] ${name}: stripped trailing junk; raw=${JSON.stringify(source)} → ${cleaned}`);
+  }
+  return getAddress(cleaned);
+}
 
 // Deployer/reporter private key (has admin on AgentRegistry)
 export const REPORTER_KEY =
@@ -23,13 +54,13 @@ export const INITIAL_LOOKBACK = Number(process.env.INITIAL_LOOKBACK) || 1000;
 // ─── Contract Addresses ───────────────────────────────────────────────────────
 
 export const ADDRESSES = {
-  AgentRegistry:         process.env.AGENT_REGISTRY  || '0x8a791620dd6260079bf849dc5567adc3f2fdc318',
-  GoodSwapRouter:        process.env.SWAP_ROUTER     || '0x922d6956c99e12dfeb3224dea977d0939758a1fe',
-  PerpEngine:            process.env.PERP_ENGINE     || '0x172076e0166d1f9cc711c77adf8488051744980c',
-  GoodLendPool:          process.env.LEND_POOL       || '0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc',
-  MarketFactory:         process.env.MARKET_FACTORY  || '0xfaA7b3a4b5c3f54a934a2e33D34C7bC099f96CCE',
-  CollateralVault:       process.env.COLLATERAL_VAULT|| '0x276c216d241856199a83bf27b2286659e5b877d3',
-  VaultFactory:          process.env.VAULT_FACTORY   || '0x66f625b8c4c635af8b74ece2d7ed0d58b4af3c3d',
+  AgentRegistry:   sanitizeAddress(process.env.AGENT_REGISTRY,  'AGENT_REGISTRY',  '0x8a791620dd6260079bf849dc5567adc3f2fdc318'),
+  GoodSwapRouter:  sanitizeAddress(process.env.SWAP_ROUTER,     'SWAP_ROUTER',     '0x922d6956c99e12dfeb3224dea977d0939758a1fe'),
+  PerpEngine:      sanitizeAddress(process.env.PERP_ENGINE,     'PERP_ENGINE',     '0x172076e0166d1f9cc711c77adf8488051744980c'),
+  GoodLendPool:    sanitizeAddress(process.env.LEND_POOL,       'LEND_POOL',       '0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc'),
+  MarketFactory:   sanitizeAddress(process.env.MARKET_FACTORY,  'MARKET_FACTORY',  '0xfaA7b3a4b5c3f54a934a2e33D34C7bC099f96CCE'),
+  CollateralVault: sanitizeAddress(process.env.COLLATERAL_VAULT,'COLLATERAL_VAULT','0x276c216d241856199a83bf27b2286659e5b877d3'),
+  VaultFactory:    sanitizeAddress(process.env.VAULT_FACTORY,   'VAULT_FACTORY',   '0x66f625b8c4c635af8b74ece2d7ed0d58b4af3c3d'),
 } as const;
 
 // ─── Protocol Definitions ─────────────────────────────────────────────────────

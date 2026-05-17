@@ -28,6 +28,35 @@ import { startHealthServer } from './healthServer';
 dotenv.config();
 const logger = pino({ name: 'revenue-tracker' });
 
+/**
+ * Defensive address sanitizer.
+ *
+ * `.autobuilder/addresses.env` historically contained inline `# comment`
+ * markers (e.g. `VAULT_FACTORY=0x...  # DeployGoodYield.s.sol`). PM2's
+ * dotenv parser does not strip those, so the raw value reaches consumer
+ * code, fails the strict `0x[a-f0-9]{40}` test inside ethers, and falls
+ * through to ENS resolution — which the Anvil devnet does not support.
+ * Result: every transaction crashes with "network does not support ENS"
+ * and PM2 burns CPU restarting the service forever.
+ *
+ * This helper strips trailing junk and validates the address before any
+ * ethers code sees it. If the input is malformed we throw a loud, named
+ * error at startup instead of looping silently.
+ */
+function sanitizeAddress(raw: string | undefined, name: string, fallback: string): string {
+  const source = raw ?? fallback;
+  const cleaned = source.split(/\s+/)[0].split('#')[0].trim();
+  if (!ethers.isAddress(cleaned)) {
+    throw new Error(
+      `[revenue-tracker] ${name} is not a valid address. raw=${JSON.stringify(source)} cleaned=${JSON.stringify(cleaned)}`,
+    );
+  }
+  if (cleaned !== source) {
+    logger.warn({ name, raw: source, cleaned }, '[sanitizeAddress] stripped trailing junk');
+  }
+  return ethers.getAddress(cleaned);
+}
+
 // ─── Configuration ───────────────────────────────────────────────────────────
 
 const RPC_URL = process.env.L2_RPC_URL ?? 'http://localhost:8545';
@@ -35,8 +64,11 @@ const OPERATOR_KEY = process.env.OPERATOR_PRIVATE_KEY ??
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 
 // UBIRevenueTracker contract
-const TRACKER_ADDRESS = process.env.UBI_REVENUE_TRACKER ??
-  '0x021DBfF4A864Aa25c51F0ad2Cd73266Fde66199d';
+const TRACKER_ADDRESS = sanitizeAddress(
+  process.env.UBI_REVENUE_TRACKER,
+  'UBI_REVENUE_TRACKER',
+  '0x021DBfF4A864Aa25c51F0ad2Cd73266Fde66199d',
+);
 
 // Report interval — every 5 minutes for devnet, would be hourly in production
 const REPORT_INTERVAL_MS = parseInt(process.env.REPORT_INTERVAL_MS ?? '300000', 10);
@@ -111,17 +143,17 @@ const PROTOCOLS: ProtocolConfig[] = [
     name: 'GoodSwap',
     category: 'swap',
     contracts: [{
-      address: process.env.SWAP_POOL_GD_WETH ?? '0xA4899D35897033b927acFCf422bc745916139776',
+      address: sanitizeAddress(process.env.SWAP_POOL_GD_WETH, 'SWAP_POOL_GD_WETH', '0xA4899D35897033b927acFCf422bc745916139776'),
       abi: SWAP_POOL_ABI,
       feeField: 'totalFees',
       txField: 'swapCount',
     }, {
-      address: process.env.SWAP_POOL_GD_USDC ?? '0xf953b3A269d80e3eB0F2947630Da976B896A8C5b',
+      address: sanitizeAddress(process.env.SWAP_POOL_GD_USDC, 'SWAP_POOL_GD_USDC', '0xf953b3A269d80e3eB0F2947630Da976B896A8C5b'),
       abi: SWAP_POOL_ABI,
       feeField: 'totalFees',
       txField: 'swapCount',
     }, {
-      address: process.env.SWAP_POOL_WETH_USDC ?? '0xAA292E8611aDF267e563f334Ee42320aC96D0463',
+      address: sanitizeAddress(process.env.SWAP_POOL_WETH_USDC, 'SWAP_POOL_WETH_USDC', '0xAA292E8611aDF267e563f334Ee42320aC96D0463'),
       abi: SWAP_POOL_ABI,
       feeField: 'totalFees',
       txField: 'swapCount',
@@ -132,7 +164,7 @@ const PROTOCOLS: ProtocolConfig[] = [
     name: 'GoodPerps',
     category: 'perps',
     contracts: [{
-      address: process.env.PERP_ENGINE ?? '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
+      address: sanitizeAddress(process.env.PERP_ENGINE, 'PERP_ENGINE', '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853'),
       abi: PERP_ENGINE_ABI,
       feeField: 'totalFeesPaid',
       txField: 'positionCount',
@@ -143,7 +175,7 @@ const PROTOCOLS: ProtocolConfig[] = [
     name: 'GoodPredict',
     category: 'predict',
     contracts: [{
-      address: process.env.MARKET_FACTORY ?? '0xc7cDb7A2E5dDa1B7A0E792Fe1ef08ED20A6F56D4',
+      address: sanitizeAddress(process.env.MARKET_FACTORY, 'MARKET_FACTORY', '0xc7cDb7A2E5dDa1B7A0E792Fe1ef08ED20A6F56D4'),
       abi: MARKET_FACTORY_ABI,
       txField: 'marketCount',
     }],
@@ -153,7 +185,7 @@ const PROTOCOLS: ProtocolConfig[] = [
     name: 'GoodLend',
     category: 'lend',
     contracts: [{
-      address: process.env.LEND_POOL ?? '0x322813fd9a801c5507c9de605d63cea4f2ce6c44',
+      address: sanitizeAddress(process.env.LEND_POOL, 'LEND_POOL', '0x322813fd9a801c5507c9de605d63cea4f2ce6c44'),
       abi: LEND_POOL_ABI,
       feeField: 'totalInterestPaid',
     }],
@@ -163,7 +195,7 @@ const PROTOCOLS: ProtocolConfig[] = [
     name: 'GoodStable',
     category: 'stable',
     contracts: [{
-      address: process.env.VAULT_MANAGER ?? '0xe039608E695D21aB11675EBBA00261A0e750526c',
+      address: sanitizeAddress(process.env.VAULT_MANAGER, 'VAULT_MANAGER', '0xe039608E695D21aB11675EBBA00261A0e750526c'),
       abi: VAULT_MANAGER_ABI,
       feeField: 'totalStabilityFees',
     }],
@@ -173,7 +205,7 @@ const PROTOCOLS: ProtocolConfig[] = [
     name: 'GoodStocks',
     category: 'stocks',
     contracts: [{
-      address: process.env.SYNTHETIC_FACTORY ?? '0xd9140951d8aE6E5F625a02F5908535e16e3af964',
+      address: sanitizeAddress(process.env.SYNTHETIC_FACTORY, 'SYNTHETIC_FACTORY', '0xd9140951d8aE6E5F625a02F5908535e16e3af964'),
       abi: SYNTHETIC_FACTORY_ABI,
       feeField: 'totalFees',
     }],
