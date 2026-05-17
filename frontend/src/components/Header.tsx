@@ -30,6 +30,8 @@ export function Header() {
   const isAgents = pathname?.startsWith('/agents')
   const isActivity = pathname?.startsWith('/activity')
   const isTestDashboard = pathname?.startsWith('/test-dashboard')
+  const isTestnetGuide = pathname?.startsWith('/testnet-guide')
+  const isFaucet = pathname?.startsWith('/faucet')
   const isPortfolio = pathname === '/portfolio'
   // Internal QA dashboard link is hidden in production. Devs/QA can enable
   // it locally with NEXT_PUBLIC_SHOW_DEV_NAV=1. The /test-dashboard route
@@ -99,6 +101,9 @@ export function Header() {
               Activity
             </span>
           </Link>
+          <span className="w-px h-4 bg-white/10" />
+          <Link href="/faucet" className={isFaucet ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Faucet</Link>
+          <Link href="/testnet-guide" className={isTestnetGuide ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Guide</Link>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -255,6 +260,22 @@ export function Header() {
                 Tests
               </Link>
             )}
+            <div className="border-t border-dark-50/50 my-1" />
+            <p className="px-3 pt-1 pb-0.5 text-[10px] uppercase tracking-wider text-accent/60 font-semibold">Testnet</p>
+            <Link
+              href="/faucet"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isFaucet ? 'text-accent font-medium bg-accent/10' : 'text-accent/70 hover:text-accent'}`}
+            >
+              🚰 Faucet
+            </Link>
+            <Link
+              href="/testnet-guide"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isTestnetGuide ? 'text-accent font-medium bg-accent/10' : 'text-accent/70 hover:text-accent'}`}
+            >
+              📖 Testnet Guide
+            </Link>
             <div className="border-t border-dark-50/50 my-1" />
             <Link
               href="/portfolio"

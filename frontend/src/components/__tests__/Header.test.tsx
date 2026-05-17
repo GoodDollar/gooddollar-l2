@@ -199,4 +199,20 @@ describe('Header', () => {
     expect(mobileNav.textContent).toContain('Lend')
     expect(mobileNav.textContent).toContain('Stable')
   })
+
+  it('has Faucet and Testnet Guide links in desktop nav', () => {
+    render(<Header />)
+    const desktopNav = document.querySelector('nav.hidden.\\32 xl\\:flex')!
+    expect(desktopNav.textContent).toContain('Faucet')
+    expect(desktopNav.textContent).toContain('Guide')
+  })
+
+  it('has Faucet and Testnet Guide links in mobile menu', () => {
+    render(<Header />)
+    fireEvent.click(screen.getByLabelText('Open menu'))
+    const mobileNav = screen.getByTestId('mobile-nav')
+    const hrefs = Array.from(mobileNav.querySelectorAll('a')).map(l => l.getAttribute('href'))
+    expect(hrefs).toContain('/faucet')
+    expect(hrefs).toContain('/testnet-guide')
+  })
 })
