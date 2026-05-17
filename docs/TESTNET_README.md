@@ -167,6 +167,13 @@ A manual "Or add it manually" panel remains on `/testnet-guide` for
 wallets that do not implement EIP-3085 (hardware wallets, some mobile
 wallets without injected providers).
 
+### For developers (iter 14)
+
+The in-app guide (`/testnet-guide`) now includes a **For developers** section
+with a copy-pasteable RPC reachability `curl` command and direct links to
+`op-stack/addresses.json`, `docs/ARCHITECTURE.md`, and this README on GitHub.
+The section appears in the sticky TOC under `#for-developers`.
+
 ## Operator runbook
 
 ### WalletConnect / Reown Cloud allowlist

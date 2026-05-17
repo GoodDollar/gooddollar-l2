@@ -3,11 +3,13 @@
 import { useState } from 'react'
 import { DEVNET_RPC_URL, DEVNET_CHAIN_ID, DEVNET_EXPLORER_URL } from '@/lib/devnet'
 import { AddNetworkButton } from '@/components/AddNetworkButton'
+import { GITHUB_LINKS } from '@/lib/links'
 
 const TOC = [
   { id: 'prerequisites', label: 'Prerequisites' },
   { id: 'add-network', label: 'Add GoodChain Testnet' },
   { id: 'get-tokens', label: 'Get Test G$' },
+  { id: 'for-developers', label: 'For Developers' },
   { id: 'scenario-1', label: 'Scenario 1: First Swap' },
   { id: 'scenario-2', label: 'Scenario 2: Perps Position' },
   { id: 'scenario-3', label: 'Scenario 3: Prediction Market' },
@@ -16,6 +18,39 @@ const TOC = [
   { id: 'troubleshooting', label: 'Troubleshooting' },
   { id: 'feedback', label: 'Feedback' },
 ] as const
+
+function CopyableCommand({ label, cmd }: { label: string; cmd: string }) {
+  const [copied, setCopied] = useState(false)
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(cmd)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Clipboard access denied (e.g. HTTP context). Silent — the
+      // command is still visible/selectable in the <pre>.
+    }
+  }
+  return (
+    <div className="bg-dark-50 border border-white/10 rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/[0.02]">
+        <span className="text-xs text-gray-400 font-medium">{label}</span>
+        <button
+          type="button"
+          onClick={onCopy}
+          aria-label={`Copy command: ${label}`}
+          data-testid="copyable-command-copy"
+          className="text-xs text-accent hover:text-white transition-colors px-2 py-0.5 rounded border border-accent/30 hover:bg-accent/10"
+        >
+          {copied ? 'Copied ✓' : 'Copy'}
+        </button>
+      </div>
+      <pre className="px-3 py-3 text-xs text-gray-200 font-mono overflow-x-auto whitespace-pre-wrap break-all">
+        {cmd}
+      </pre>
+    </div>
+  )
+}
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
@@ -219,6 +254,60 @@ export default function TestnetGuidePage() {
             ]} />
           </section>
 
+          {/* For Developers (iter 14) */}
+          <section id="for-developers" className="scroll-mt-20">
+            <h2 className="text-2xl font-bold text-white mb-4">For developers</h2>
+            <p className="text-gray-300 mb-4">
+              Verify the public RPC and look up canonical addresses without leaving the docs.
+              Everything below points to the same registry the frontend uses at runtime.
+            </p>
+            <CopyableCommand
+              label="Test the public RPC"
+              cmd={`curl -sX POST ${DEVNET_RPC_URL} -H 'content-type: application/json' -d '{"jsonrpc":"2.0","method":"eth_blockNumber","id":1}'`}
+            />
+            <ul className="list-disc list-inside text-gray-300 space-y-2 mt-4">
+              <li>
+                Canonical contract addresses:{' '}
+                <a
+                  className="text-accent underline hover:text-white"
+                  href={GITHUB_LINKS.addressesJson}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="dev-link-addresses"
+                >
+                  op-stack/addresses.json →
+                </a>{' '}
+                <span className="text-xs text-gray-500">
+                  (single source of truth for the frontend, backend, and cast scripts)
+                </span>
+              </li>
+              <li>
+                System architecture &amp; protocol topology:{' '}
+                <a
+                  className="text-accent underline hover:text-white"
+                  href={GITHUB_LINKS.architectureDoc}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="dev-link-architecture"
+                >
+                  docs/ARCHITECTURE.md →
+                </a>
+              </li>
+              <li>
+                GitHub-facing testnet entry point:{' '}
+                <a
+                  className="text-accent underline hover:text-white"
+                  href={GITHUB_LINKS.testnetReadme}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="dev-link-testnet-readme"
+                >
+                  docs/TESTNET_README.md →
+                </a>
+              </li>
+            </ul>
+          </section>
+
           {/* Divider */}
           <div className="border-t border-white/10 pt-4">
             <h2 className="text-2xl font-bold text-white">Guided Test Scenarios</h2>
@@ -391,7 +480,17 @@ export default function TestnetGuidePage() {
             <p className="text-gray-300">
               Found a bug or have a suggestion? Use the{' '}
               <strong className="text-accent">Feedback</strong> button in the bottom-right corner
-              of every page, or open an issue on GitHub.
+              of every page, or{' '}
+              <a
+                className="text-accent underline hover:text-white"
+                href={GITHUB_LINKS.newTestnetIssue}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="feedback-github-link"
+              >
+                open an issue on GitHub →
+              </a>
+              .
             </p>
             <p className="text-gray-400 text-sm mt-3">
               Thank you for testing GoodDollar L2! Your feedback directly shapes the protocol.
