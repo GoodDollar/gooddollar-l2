@@ -19,22 +19,17 @@ const securityHeaders = [
   // Permissions policy — deny access to camera, mic, geolocation
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
   // Content-Security-Policy
-  // Allows: self, specific CDNs for fonts/images, wagmi/viem RPC endpoints,
-  //         CoinGecko price feeds, and inline styles (needed by Tailwind).
-  // 'unsafe-eval' is required by wagmi/viem WebAssembly modules.
+  // 'unsafe-eval' + 'unsafe-inline' in script-src are required by wagmi/viem
+  // WebAssembly crypto modules and Next.js RSC inline scripts respectively.
+  // Removing them breaks wallet connections and server component hydration.
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      // Scripts: self + wagmi/rainbowkit bundles; unsafe-eval for WASM; unsafe-inline for Next.js RSC inline scripts
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-      // Styles: self + inline (Tailwind injects via style attributes)
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      // Fonts
       "font-src 'self' https://fonts.gstatic.com",
-      // Images: self + data URIs (token icons) + trusted CDNs
-      "img-src 'self' data: https:",
-      // Connect: self + known blockchain/price-feed endpoints
+      "img-src 'self' data: https://assets.coingecko.com https://raw.githubusercontent.com https://goodswap.goodclaw.org",
       [
         "connect-src 'self'",
         'https://*.alchemyapi.io',
@@ -55,11 +50,14 @@ const securityHeaders = [
         'wss://pulse.walletconnect.org',
         'https://api.web3modal.org',
       ].join(' '),
-      // Iframes: deny (no wallet iframes needed)
+      "worker-src 'self' blob:",
+      "manifest-src 'self'",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
+      'upgrade-insecure-requests',
+      // TODO: Add report-uri / report-to directive for production CSP violation monitoring
     ].join('; '),
   },
 ]
