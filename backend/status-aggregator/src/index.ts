@@ -5,7 +5,7 @@
  *   GET /status.json — aggregated health of all services
  *   GET /health      — own health
  *
- * Each service entry reports: status (ok|error|timeout), uptime, chainBlock, latencyMs.
+ * Each service entry reports: status (ok|degraded|error|timeout), uptime, chainBlock, latencyMs.
  */
 
 import * as http from 'http';
@@ -30,13 +30,13 @@ const SERVICES: ServiceConfig[] = [
   { name: 'monitor',           url: `http://localhost:${process.env.MONITOR_PORT ?? '4201'}/health` },
   { name: 'rpc-balancer',      url: `http://localhost:${process.env.RPC_BALANCER_PORT ?? '8546'}/health` },
   { name: 'bridge-keeper',     url: `http://localhost:${process.env.BRIDGE_KEEPER_PORT ?? '3006'}/health` },
-  { name: 'perps',             url: `http://localhost:${process.env.PERPS_PORT ?? '8080'}/health` },
+  { name: 'perps',             url: `http://localhost:${process.env.PERPS_PORT ?? '8082'}/health` },
   { name: 'predict',           url: `http://localhost:${process.env.PREDICT_PORT ?? '3040'}/health` },
 ];
 
 interface ServiceStatus {
   name: string;
-  status: 'ok' | 'error' | 'timeout' | 'unreachable';
+  status: 'ok' | 'degraded' | 'error' | 'timeout' | 'unreachable';
   latencyMs: number;
   uptime?: number;
   chainBlock?: number;
@@ -68,13 +68,16 @@ async function checkService(svc: ServiceConfig): Promise<ServiceStatus> {
     }
 
     const body = await res.json() as Record<string, unknown>;
+    const svcStatus = body.status === 'ok' ? 'ok'
+      : body.status === 'degraded' ? 'degraded'
+      : 'error';
     return {
       name: svc.name,
-      status: body.status === 'ok' ? 'ok' : 'error',
+      status: svcStatus,
       latencyMs,
       uptime: typeof body.uptime === 'number' ? body.uptime : undefined,
       chainBlock: typeof body.chainBlock === 'number' ? body.chainBlock : undefined,
-      error: body.status !== 'ok' ? String(body.error ?? 'unhealthy') : undefined,
+      error: svcStatus === 'error' ? String(body.error ?? 'unhealthy') : undefined,
       lastChecked: new Date().toISOString(),
     };
   } catch (err: any) {
@@ -93,17 +96,18 @@ async function checkService(svc: ServiceConfig): Promise<ServiceStatus> {
 
 async function pollAll(): Promise<void> {
   cachedStatuses = await Promise.all(SERVICES.map(checkService));
-  const healthy = cachedStatuses.filter(s => s.status === 'ok').length;
+  const operational = cachedStatuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
   console.log(
-    `[status] ${healthy}/${SERVICES.length} services healthy @ ${new Date().toISOString()}`,
+    `[status] ${operational}/${SERVICES.length} services operational @ ${new Date().toISOString()}`,
   );
 }
 
 function buildStatusJson() {
-  const healthy = cachedStatuses.filter(s => s.status === 'ok').length;
+  const ok = cachedStatuses.filter(s => s.status === 'ok').length;
+  const operational = cachedStatuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
   return {
-    overall: healthy === SERVICES.length ? 'healthy' : healthy > 0 ? 'degraded' : 'down',
-    healthy,
+    overall: operational === SERVICES.length ? (ok === SERVICES.length ? 'healthy' : 'degraded') : operational > 0 ? 'degraded' : 'down',
+    healthy: operational,
     total: SERVICES.length,
     aggregatorUptime: Math.floor((Date.now() - startedAt) / 1000),
     timestamp: new Date().toISOString(),

@@ -108,6 +108,17 @@ app.use((_req, res, next) => {
   next();
 });
 
+app.get("/health", (_req, res) => {
+  const err = latestResults.filter((r) => r.status === "error").length;
+  res.json({
+    status: err === 0 ? "ok" : "degraded",
+    service: "monitor",
+    uptime: process.uptime(),
+    lastCheck: lastCheckTime ? new Date(lastCheckTime).toISOString() : null,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.get("/api/health", (_req, res) => {
   const ok = latestResults.filter((r) => r.status === "ok").length;
   const warn = latestResults.filter((r) => r.status === "warn").length;
