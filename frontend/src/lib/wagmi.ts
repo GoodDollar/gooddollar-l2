@@ -56,7 +56,7 @@ export { validateWcProjectId } from './wagmi-helpers'
 // `useReadContracts` (raw `useReadContract`, `getBlockNumber`, ENS
 // lookups, balance reads). See task 0059.
 const transports = {
-  [gooddollarL2.id]: http(undefined, { batch: true }),
+  [gooddollarL2.id]: http('/api/rpc', { batch: true }),
 } as const
 
 // Branch on whether we have a real, 32-char-hex WalletConnect project

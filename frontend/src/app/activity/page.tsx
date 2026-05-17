@@ -7,7 +7,7 @@ import type { EthBlock, EthReceipt, EthHex } from '@/lib/eth-types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { computeBarHeights } from './block-timeline'
 
-const RPC_URL = DEVNET_RPC_URL
+const RPC_URL = '/api/rpc'
 
 // Visibility-gated polling cadence — see task 0096. Tab-hidden ticks become
 // no-ops so a forgotten tab cannot pummel the RPC. Value stays at 10s for
