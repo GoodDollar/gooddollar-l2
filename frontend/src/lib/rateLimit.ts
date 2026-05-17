@@ -1,34 +1,16 @@
 /**
- * In-memory IP rate limiter for use inside Next.js API route handlers
+ * Fixed-window IP rate limiter for use inside Next.js API route handlers
  * (Node.js runtime).
  *
- * Originally lived in `src/middleware.ts`, which had to be deleted because
- * Next.js 14.2.35's Edge Runtime sandbox uses `eval()` internally and crashes
- * with `EvalError: Code generation from strings disallowed for this context`
- * on Node 22+ in production (`next start`). See
- * `.autobuilder/initiatives/0002-security-hardening/tasks/0021-fix-middleware-evalerror-crashes-next-start.md`
- * for details.
+ * NOTE: middleware.ts now exists and uses the token-bucket implementation
+ * in `src/lib/rate-limit.ts` for Edge Runtime rate limiting. This module is
+ * currently unused by middleware but kept for its `getRealIp()` utility and
+ * as a Node.js-runtime alternative for API route handlers.
  *
  * Limits each IP to RATE_LIMIT_MAX requests per RATE_LIMIT_WINDOW_MS.
  * Production deployments on multi-instance infrastructure should replace this
  * with a Redis-backed store (e.g. @upstash/ratelimit) or push the limiter into
  * an upstream proxy (Cloudflare / nginx).
- *
- * Usage in a future API route:
- *   // app/api/foo/route.ts
- *   import { NextResponse } from 'next/server'
- *   import { checkRateLimit, getRealIp, RATE_LIMIT_MAX } from '@/lib/rateLimit'
- *
- *   export const runtime = 'nodejs'  // NOT 'edge'
- *
- *   export async function GET(req: Request) {
- *     const ip = getRealIp(req)
- *     const { allowed, remaining, resetAt } = checkRateLimit(ip)
- *     if (!allowed) {
- *       return new NextResponse('Too many requests', { status: 429 })
- *     }
- *     // ... handle the request ...
- *   }
  */
 
 export const RATE_LIMIT_MAX = 60 // requests per window

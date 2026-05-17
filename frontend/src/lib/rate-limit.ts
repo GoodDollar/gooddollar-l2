@@ -10,6 +10,12 @@ interface Bucket {
 const buckets = new Map<string, Bucket>();
 let lastCleanup = Date.now();
 
+/** Test-only helper to reset in-process state between tests. */
+export function _resetBuckets(): void {
+  buckets.clear();
+  lastCleanup = Date.now();
+}
+
 function cleanup() {
   const now = Date.now();
   if (now - lastCleanup < CLEANUP_INTERVAL_MS) return;

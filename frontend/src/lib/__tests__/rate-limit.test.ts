@@ -1,0 +1,79 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { checkRateLimit, _resetBuckets } from '../rate-limit'
+
+describe('rate-limit (token bucket)', () => {
+  beforeEach(() => {
+    _resetBuckets()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-15T12:00:00Z'))
+    delete process.env.RATE_LIMIT_RPM
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    delete process.env.RATE_LIMIT_RPM
+  })
+
+  it('allows the first request from a new IP', () => {
+    const result = checkRateLimit('10.0.0.1')
+    expect(result.allowed).toBe(true)
+    expect(result.retryAfterSeconds).toBe(0)
+  })
+
+  it('allows up to DEFAULT_RPM (60) requests then blocks', () => {
+    for (let i = 0; i < 60; i++) {
+      const r = checkRateLimit('10.0.0.1')
+      expect(r.allowed).toBe(true)
+    }
+    const blocked = checkRateLimit('10.0.0.1')
+    expect(blocked.allowed).toBe(false)
+    expect(blocked.retryAfterSeconds).toBeGreaterThan(0)
+  })
+
+  it('refills tokens over time and allows requests again', () => {
+    for (let i = 0; i < 60; i++) {
+      checkRateLimit('10.0.0.1')
+    }
+    expect(checkRateLimit('10.0.0.1').allowed).toBe(false)
+
+    // Advance 2 seconds — at 60 RPM that's 2 tokens refilled
+    vi.advanceTimersByTime(2_000)
+
+    const afterWait = checkRateLimit('10.0.0.1')
+    expect(afterWait.allowed).toBe(true)
+  })
+
+  it('tracks each IP independently', () => {
+    for (let i = 0; i < 60; i++) {
+      checkRateLimit('10.0.0.1')
+    }
+    expect(checkRateLimit('10.0.0.1').allowed).toBe(false)
+    expect(checkRateLimit('10.0.0.2').allowed).toBe(true)
+  })
+
+  it('respects RATE_LIMIT_RPM env var override', () => {
+    process.env.RATE_LIMIT_RPM = '5'
+    _resetBuckets()
+
+    for (let i = 0; i < 5; i++) {
+      expect(checkRateLimit('10.0.0.1').allowed).toBe(true)
+    }
+    expect(checkRateLimit('10.0.0.1').allowed).toBe(false)
+  })
+
+  it('cleans up stale buckets after threshold', () => {
+    checkRateLimit('10.0.0.1')
+    checkRateLimit('10.0.0.2')
+
+    // Advance past both cleanup interval (5 min) and stale threshold (10 min)
+    vi.advanceTimersByTime(11 * 60 * 1000)
+
+    // Trigger cleanup via a new request
+    checkRateLimit('10.0.0.3')
+
+    // The old IPs should have been cleaned; a fresh request for them should start with full tokens
+    const result = checkRateLimit('10.0.0.1')
+    expect(result.allowed).toBe(true)
+    expect(result.retryAfterSeconds).toBe(0)
+  })
+})
