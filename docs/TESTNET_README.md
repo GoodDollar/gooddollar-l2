@@ -203,6 +203,91 @@ operator workflow.
 
 ## Operator runbook
 
+### Frontend health (iter 19)
+
+`goodswap` (port 3100) is supervised by **two** layers:
+
+1. **PM2 launcher** (`frontend/scripts/pm2-launch-next.mjs`) — refuses to
+   start `next start` if `.next/` is missing a manifest or has been clobbered
+   by a `next dev` tree (`.next/static/development/`). This is the
+   "fail-fast on broken build" gate; see iter19 blocker task
+   `0029-iter19-blocker-playwright-clobber-recurrence-3-distdir-isolation.md`
+   for the full diagnosis of the recurrence.
+2. **Watchdog** (`frontend/scripts/goodswap-watchdog.mjs`, PM2 process
+   `goodswap-watchdog`) — the runtime probe. Every `PROBE_INTERVAL_MS`
+   (default 60s) it hits `PROBE_URL` (default `http://localhost:3100/`),
+   parses the served HTML for `/_next/static/chunks/*.js` URLs, samples up
+   to `chunkSampleLimit` of them, and HEADs each one. If the page is
+   unreachable, returns non-200, or **any sampled chunk 404s**, the probe
+   counts as a failure.
+
+The watchdog never reloads on the first failure. It increments a streak
+counter, requires the streak to reach `FAILURE_THRESHOLD` (default 3)
+within the recent window, then calls `pm2 reload goodswap` and enters a
+`reloadCooldownMs` window (default 5 min) before it will fire again.
+A clean probe inside the recovery window resets the streak.
+
+**Why it exists.** Three times now (iters 17/18/19) `next dev` clobbered
+the production `.next/` and the only signal was 404s on
+`/_next/static/chunks/*.js`. The 200 on `/` alone was not enough — the
+HTML shell loaded fine while the JS bundles were gone. The watchdog
+probes the same chunk URLs `check-served-chunks.mjs` uses for one-shot
+verification, so the recovery check used after `atomic-build` and the
+runtime watchdog see the world the same way.
+
+**Config knobs** (all env-driven, no rebuild required):
+
+| Env var               | Default                       | Meaning                                    |
+|-----------------------|-------------------------------|--------------------------------------------|
+| `PROBE_URL`           | `http://localhost:3100/`      | URL to fetch + parse for chunk references  |
+| `PROBE_INTERVAL_MS`   | `60000`                       | How often to probe                         |
+| `FAILURE_THRESHOLD`   | `3`                           | Consecutive failures before reload         |
+| `RELOAD_COOLDOWN_MS`  | `300000`                      | Min gap between two reloads                |
+| `RECOVERY_DELAY_MS`   | `30000`                       | Grace period after reload before reprobing |
+| `PM2_TARGET`          | `goodswap`                    | PM2 process to reload                      |
+| `WATCHDOG_LOG_FILE`   | (unset)                       | If set, mirror every JSON event to file    |
+
+**Start / stop / inspect:**
+
+```bash
+# start (or reload if already running)
+pm2 startOrReload frontend/ecosystem.watchdog.config.cjs
+pm2 save
+
+# live status + last 50 events
+pm2 describe goodswap-watchdog
+pm2 logs goodswap-watchdog --lines 50 --nostream
+
+# file log (configured via WATCHDOG_LOG_FILE in the ecosystem)
+tail -n 50 frontend/.autobuilder-logs/goodswap-watchdog.log
+```
+
+**Dry-run mode** (operator wants to simulate a failure without reloading
+production):
+
+```bash
+PROBE_URL=http://localhost:3999/ PROBE_INTERVAL_MS=300 \
+  node frontend/scripts/goodswap-watchdog.mjs --dry-run
+```
+
+This emits `reload-start` / `reload-end` events with `dryRun:true` and
+exit code 0 instead of invoking `pm2 reload`, so the streak and cooldown
+logic can be exercised against a deliberately unreachable port without
+touching the live `goodswap` process.
+
+**Single-shot mode** (`--once`) is used by smoke tests / CI:
+
+```bash
+node frontend/scripts/goodswap-watchdog.mjs --once
+# exit 0 — current probe OK
+# exit 2 — current probe failed (reason in stdout JSON)
+```
+
+**Manual recovery when the watchdog fires.** If the watchdog reloads
+`goodswap` and the next probe is still failing, the `.next/` directory
+is structurally broken — a `pm2 reload` alone cannot fix it. Run the
+atomic rebuild from `docs/runbooks/frontend-rebuild.md` instead.
+
 ### WalletConnect / Reown Cloud allowlist
 
 Production origin: `https://goodswap.goodclaw.org`
