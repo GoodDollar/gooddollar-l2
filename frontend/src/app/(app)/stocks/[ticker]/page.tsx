@@ -6,7 +6,7 @@ import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import Link from 'next/link'
-import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
+import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { truncateMiddle } from '@/lib/strings'
@@ -63,7 +63,12 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
   const fee = amount ? parseFloat(amount) * 0.001 : 0
   const ubiFee = fee * 0.2
-  const hasAmount = !!amount && parseFloat(amount) > 0
+  // Sanity-cap the Amount (USD) input so the summary cannot advertise
+  // implausibly large notional values (e.g. $1T phantom orders) and so
+  // we never submit an order the chain would just revert. See task 0058.
+  const parsedAmount = parseFloat(amount)
+  const amountTooLarge = !!amount && Number.isFinite(parsedAmount) && parsedAmount > MAX_STOCK_ORDER_USD
+  const hasAmount = !!amount && parsedAmount > 0 && !amountTooLarge
 
   // Sell-side balance gating: when a user is on the Sell tab we must not
   // let them attempt to burn more sToken debt than they actually minted —
@@ -83,6 +88,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || !hasValidPrice) return
+    if (amountTooLarge) return
     if (sellDisabled) return
 
     if (isDeployed && orderType === 'market') {
@@ -157,15 +163,20 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
       <div className="mb-3">
         <label className="text-xs text-gray-400 mb-1 block">Amount (USD)</label>
         <input type="text" inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
-          aria-invalid={sellSharesExceedsBalance || undefined}
-          className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${sellSharesExceedsBalance ? 'border-red-500/50' : 'border-gray-700/30'}`} />
+          aria-invalid={sellSharesExceedsBalance || amountTooLarge || undefined}
+          className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${sellSharesExceedsBalance || amountTooLarge ? 'border-red-500/50' : 'border-gray-700/30'}`} />
+        {amountTooLarge && (
+          <p className="text-red-400 text-[10px] mt-1">
+            Max order is ${MAX_STOCK_ORDER_USD.toLocaleString('en-US')} per trade. Split larger orders into multiple smaller ones.
+          </p>
+        )}
       </div>
 
-      {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && !sellGated && (
+      {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && !sellGated && !amountTooLarge && (
         <div className="mb-4 space-y-1.5 text-xs">
           <div className="flex justify-between text-gray-400">
             <span>Est. Shares</span>
-            <span className="text-white truncate ml-2">{shares >= 1e6 ? `${(shares / 1e6).toFixed(2)}M` : shares >= 1e3 ? `${(shares / 1e3).toFixed(1)}K` : shares.toFixed(4)} {stock.ticker}</span>
+            <span className="text-white truncate ml-2">{formatStockShares(shares)} {stock.ticker}</span>
           </div>
           <div className="flex justify-between text-gray-400">
             <span>Price</span>
@@ -192,7 +203,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
         </button>
       ) : walletReady ? (
         <WalletGatedTradeButton hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance}>
-          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance}
+          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge}
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
@@ -200,7 +211,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled}
+        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge}
           className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>

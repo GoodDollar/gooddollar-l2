@@ -62,6 +62,42 @@ export function formatLargeNumber(n: number): string {
   return `$${n.toFixed(0)}`
 }
 
+/**
+ * formatStockShares — render a share count using the same K/M/B/T
+ * vocabulary as `formatLargeNumber`, but WITHOUT the leading `$`
+ * because shares are a count, not a USD value. Used by the order
+ * summary on `/stocks/[ticker]`.
+ *
+ * Boundaries match the proven `formatLargeNumber` ladder so the two
+ * formatters never disagree on which suffix applies at a given
+ * magnitude. NaN / non-finite inputs degrade to `'0'` rather than
+ * leaking `'NaN'` or `'Infinity'` into the UI.
+ */
+export function formatStockShares(n: number): string {
+  if (!Number.isFinite(n)) return '0'
+  const abs = Math.abs(n)
+  const sign = n < 0 ? '-' : ''
+  if (abs >= 1e12) return `${sign}${(abs / 1e12).toFixed(2)}T`
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(2)}B`
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(2)}M`
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}K`
+  return `${sign}${abs.toFixed(4)}`
+}
+
+// ─── Order-form bounds ────────────────────────────────────────────────────────
+
+/**
+ * MAX_STOCK_ORDER_USD — highest plausible single-trade notional on
+ * the Stocks order form. Calibrated to be ~2 orders of magnitude
+ * above the largest realistic devnet/testnet order and far below
+ * any number that overflows the downstream `bigint` math in
+ * `toG$Wei` / `CollateralVault.mint`.
+ *
+ * Living in one place so the cap is auditable and easy to tune; do
+ * not duplicate the literal in the page or in tests.
+ */
+export const MAX_STOCK_ORDER_USD = 10_000_000
+
 // ─── Ticker list (for oracle reads) ──────────────────────────────────────────
 
 const TICKERS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 'JPM', 'V', 'DIS', 'NFLX', 'AMD']

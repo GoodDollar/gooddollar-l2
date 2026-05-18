@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { formatStockPrice, formatLargeNumber, getStockData, getStockByTicker, getAllTickers } from '@/lib/stockData'
+import {
+  formatStockPrice,
+  formatLargeNumber,
+  formatStockShares,
+  MAX_STOCK_ORDER_USD,
+  getStockData,
+  getStockByTicker,
+  getAllTickers,
+} from '@/lib/stockData'
 
 describe('formatStockPrice', () => {
   it('formats a price with 2 decimal places', () => {
@@ -40,6 +48,55 @@ describe('formatLargeNumber', () => {
 
   it('formats values under 1000', () => {
     expect(formatLargeNumber(250)).toBe('$250')
+  })
+})
+
+describe('formatStockShares', () => {
+  it('renders zero as four-decimal zero', () => {
+    expect(formatStockShares(0)).toBe('0.0000')
+  })
+
+  it('renders a small fractional share with four decimals', () => {
+    expect(formatStockShares(1.5)).toBe('1.5000')
+  })
+
+  it('renders thousands with the K suffix', () => {
+    expect(formatStockShares(1_500)).toBe('1.5K')
+  })
+
+  it('renders millions with the M suffix', () => {
+    expect(formatStockShares(1_500_000)).toBe('1.50M')
+  })
+
+  it('renders billions with the B suffix', () => {
+    expect(formatStockShares(1_500_000_000)).toBe('1.50B')
+  })
+
+  it('renders trillions with the T suffix', () => {
+    expect(formatStockShares(1.5e12)).toBe('1.50T')
+  })
+
+  it('renders Infinity as 0 rather than leaking "Infinity" into the UI', () => {
+    expect(formatStockShares(Number.POSITIVE_INFINITY)).toBe('0')
+  })
+
+  it('renders NaN as 0 rather than leaking "NaN" into the UI', () => {
+    expect(formatStockShares(Number.NaN)).toBe('0')
+  })
+
+  it('preserves the sign for negative share counts', () => {
+    expect(formatStockShares(-1_500_000)).toBe('-1.50M')
+  })
+})
+
+describe('MAX_STOCK_ORDER_USD', () => {
+  it('is a finite positive number', () => {
+    expect(Number.isFinite(MAX_STOCK_ORDER_USD)).toBe(true)
+    expect(MAX_STOCK_ORDER_USD).toBeGreaterThan(0)
+  })
+
+  it('is comfortably below 2^53 (no JS-number drift on parseFloat round-trip)', () => {
+    expect(MAX_STOCK_ORDER_USD).toBeLessThan(Number.MAX_SAFE_INTEGER)
   })
 })
 
