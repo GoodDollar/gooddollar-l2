@@ -1,0 +1,60 @@
+No files changed, compilation skipped
+
+Ran 3 tests for test/perps/MarginVault.invariant.t.sol:MarginVaultInvariantTest
+[PASS] invariant_feeBufferEqualsDebitsMinusFlushed() (runs: 256, calls: 128000, reverts: 0)
+
+╭--------------------+----------------+-------+---------+----------╮
+| Contract           | Selector       | Calls | Reverts | Discards |
++==================================================================+
+| MarginVaultHandler | credit         | 21181 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | debit          | 21481 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | deposit        | 21193 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | flushFee       | 21426 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | transferEngine | 21279 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | withdraw       | 21440 | 0       | 0        |
+╰--------------------+----------------+-------+---------+----------╯
+
+[PASS] invariant_totalDepositedEqualsSumOfBalances() (runs: 256, calls: 128000, reverts: 0)
+
+╭--------------------+----------------+-------+---------+----------╮
+| Contract           | Selector       | Calls | Reverts | Discards |
++==================================================================+
+| MarginVaultHandler | credit         | 21403 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | debit          | 21387 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | deposit        | 21154 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | flushFee       | 21124 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | transferEngine | 21426 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | withdraw       | 21506 | 0       | 0        |
+╰--------------------+----------------+-------+---------+----------╯
+
+[PASS] invariant_vaultSolvent() (runs: 256, calls: 128000, reverts: 0)
+
+╭--------------------+----------------+-------+---------+----------╮
+| Contract           | Selector       | Calls | Reverts | Discards |
++==================================================================+
+| MarginVaultHandler | credit         | 21321 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | debit          | 21511 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | deposit        | 21340 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | flushFee       | 21327 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | transferEngine | 21303 | 0       | 0        |
+|--------------------+----------------+-------+---------+----------|
+| MarginVaultHandler | withdraw       | 21198 | 0       | 0        |
+╰--------------------+----------------+-------+---------+----------╯
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 10.12s (27.75s CPU time)
+
+Ran 1 test suite in 10.12s (10.12s CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)
