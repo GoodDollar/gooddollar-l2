@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { SearchX } from 'lucide-react'
+import { SearchX, Clock } from 'lucide-react'
 
 import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, hasMeaningfulPrice, isDevnetSeedMarket, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
 import { useMarketCount, useAllOnChainMarkets, type OnChainMarket } from '@/lib/useMarkets'
@@ -455,6 +455,84 @@ function OnlyFeaturedNotice({
   )
 }
 
+// Renders when the active grid is empty but the expired archive has markets.
+// Two variants:
+//  - `only-expired`     → no featured hero, no active markets, archive has rows.
+//  - `filter-no-active` → user is filtering and only expired matches remain.
+// Without this, the page would render ~500px of dark space between the
+// filter row and the "Show expired (N)" toggle (task 0061).
+function EmptyMarketsNotice({
+  variant,
+  expiredCount,
+  onShowExpired,
+  onClear,
+}: {
+  variant: 'only-expired' | 'filter-no-active'
+  expiredCount: number
+  onShowExpired: () => void
+  onClear: () => void
+}) {
+  const isFilter = variant === 'filter-no-active'
+  return (
+    <div
+      data-testid="predict-empty-markets-notice"
+      role="status"
+      className="bg-dark-100 rounded-2xl border border-gray-700/20 py-10 px-6 text-center max-w-md mx-auto"
+    >
+      <div className="flex justify-center mb-3">
+        <Clock
+          className="text-gray-600"
+          size={32}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+      </div>
+      {isFilter ? (
+        <>
+          <p className="text-gray-300 text-sm mb-1 font-medium">
+            No active markets match your filter
+          </p>
+          <p className="text-gray-500 text-xs mb-4">
+            {expiredCount} resolved {expiredCount === 1 ? 'market matches' : 'markets match'}: open the archive below or clear your filters.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={onShowExpired}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-goodgreen bg-goodgreen/10 border border-goodgreen/20 hover:bg-goodgreen/20 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/40 focus-visible:outline-none"
+            >
+              Browse archive →
+            </button>
+            <button
+              type="button"
+              onClick={onClear}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:text-white bg-dark-50 border border-gray-700/30 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/40 focus-visible:outline-none"
+            >
+              Clear filters
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-gray-300 text-sm mb-1 font-medium">
+            All current markets have resolved
+          </p>
+          <p className="text-gray-500 text-xs mb-4">
+            Past predictions are archived below. New markets are added by the oracle as upcoming events get scheduled.
+          </p>
+          <button
+            type="button"
+            onClick={onShowExpired}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-goodgreen bg-goodgreen/10 border border-goodgreen/20 hover:bg-goodgreen/20 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/40 focus-visible:outline-none"
+          >
+            Browse archive →
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 function inferCategory(question: string): MarketCategory {
   const q = question.toLowerCase()
   if (q.includes('bitcoin') || q.includes('ethereum') || q.includes('crypto') || q.includes('gooddollar') || q.includes('etoro') || q.includes('etor')) return 'Crypto'
@@ -544,6 +622,10 @@ function PredictPageContent() {
   const [sort, setSort] = useState<SortOption>(initialSort)
   const [query, setQuery] = useState<string>(initialQuery)
   const [showExpired, setShowExpired] = useState<boolean>(initialShowExpired)
+
+  // Used by EmptyMarketsNotice's "Browse archive →" action to scroll the
+  // expired-markets section into view after `setShowExpired(true)` (task 0061).
+  const expiredSectionRef = useRef<HTMLDivElement>(null)
 
   const allMarkets = useMemo(() => {
     return onChainMarkets.map(m => {
@@ -757,8 +839,41 @@ function PredictPageContent() {
               />
             )}
 
+          {/* Dead-zone guard (task 0061): when no active markets are renderable
+              (with or without a featured hero) but the expired archive has
+              rows, surface a contextual notice that points the user at the
+              archive or at clearing their filters, instead of leaving a blank
+              region between the filter row and the "Show expired (N)" toggle. */}
+          {activeMarketsWithoutFeatured.length === 0 &&
+            !featured &&
+            expiredMarkets.length > 0 && (
+              <EmptyMarketsNotice
+                variant={
+                  query.trim() !== '' || category !== 'All'
+                    ? 'filter-no-active'
+                    : 'only-expired'
+                }
+                expiredCount={expiredMarkets.length}
+                onShowExpired={() => {
+                  setShowExpired(true)
+                  // Wait one frame so the archive grid is mounted before
+                  // we ask the browser to scroll to it.
+                  requestAnimationFrame(() => {
+                    expiredSectionRef.current?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    })
+                  })
+                }}
+                onClear={() => {
+                  setQuery('')
+                  setCategory('All')
+                }}
+              />
+            )}
+
           {expiredMarkets.length > 0 && (
-            <div className="mt-8">
+            <div ref={expiredSectionRef} className="mt-8">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex-1 h-px bg-gray-700/40" />
                 <button
