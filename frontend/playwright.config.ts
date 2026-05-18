@@ -1,6 +1,11 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const e2ePort = process.env.E2E_PORT ?? '3109'
+// Port 3109 is reserved for the PM2-managed `goodagent-tori-prototype` service
+// and reverse-proxied by Caddy via `@tori` (see `infra/caddy/Caddyfile`). Picking
+// 3109 here causes Playwright `webServer` to fail with EADDRINUSE every run.
+// 3119 is intentionally far from production / supervised ports (3100 prod
+// goodswap, 3109 tori) and was verified free at iter17 plan time.
+const e2ePort = process.env.E2E_PORT ?? '3119'
 const baseURL = process.env.BASE_URL ?? `http://localhost:${e2ePort}`
 
 export default defineConfig({

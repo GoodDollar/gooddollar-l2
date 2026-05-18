@@ -1,0 +1,77 @@
+{
+  "iteration": 17,
+  "iterationTitle": "Perps lane hardening",
+  "capturedAt": "2026-05-18T00:05:09.040Z",
+  "chainId": 42069,
+  "blockNumber": "180468",
+  "rpcUrl": "http://127.0.0.1:8545",
+  "perpEngine": "0x084815d1330ecc3ef94193a19ec222c0c73dff2d",
+  "tester": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "marketCount": "6",
+  "positions": [
+    {
+      "queriedMarketId": "0",
+      "structMarketId": "0",
+      "isOpen": false,
+      "isLong": false,
+      "size": "0",
+      "entryPrice": "0",
+      "margin": "0",
+      "entryFundingIdx": "0"
+    },
+    {
+      "queriedMarketId": "1",
+      "structMarketId": "0",
+      "isOpen": false,
+      "isLong": false,
+      "size": "0",
+      "entryPrice": "0",
+      "margin": "0",
+      "entryFundingIdx": "0"
+    },
+    {
+      "queriedMarketId": "2",
+      "structMarketId": "0",
+      "isOpen": false,
+      "isLong": false,
+      "size": "0",
+      "entryPrice": "0",
+      "margin": "0",
+      "entryFundingIdx": "0"
+    },
+    {
+      "queriedMarketId": "3",
+      "structMarketId": "0",
+      "isOpen": false,
+      "isLong": false,
+      "size": "0",
+      "entryPrice": "0",
+      "margin": "0",
+      "entryFundingIdx": "0"
+    },
+    {
+      "queriedMarketId": "4",
+      "structMarketId": "0",
+      "isOpen": false,
+      "isLong": false,
+      "size": "0",
+      "entryPrice": "0",
+      "margin": "0",
+      "entryFundingIdx": "0"
+    },
+    {
+      "queriedMarketId": "5",
+      "structMarketId": "0",
+      "isOpen": false,
+      "isLong": false,
+      "size": "0",
+      "entryPrice": "0",
+      "margin": "0",
+      "entryFundingIdx": "0"
+    }
+  ],
+  "invariant": {
+    "description": "After the Playwright Perps Journey suite finishes, every position the tester opened during the on-chain flow MUST be closed by the afterEach cleanup hook. So every entry in `positions[].isOpen` should be `false`.",
+    "allClosed": true
+  }
+}

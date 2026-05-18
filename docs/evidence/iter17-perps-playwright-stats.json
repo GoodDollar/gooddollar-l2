@@ -1,0 +1,40 @@
+{
+  "iteration": 17,
+  "iterationTitle": "Perps lane hardening",
+  "capturedAt": "2026-05-18T00:05:54Z",
+  "source": ".playwright-test-results/iter17-perps-proof.json",
+  "configMetadata": {
+    "actualWorkers": 1
+  },
+  "stats": {
+    "startTime": "2026-05-18T00:01:39.957Z",
+    "duration": 97610.395,
+    "expected": 20,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "specCount": 19,
+  "passedTitles": [
+    "perps page loads with BTC-USD selected by default",
+    "pair selector shows available markets",
+    "switching pairs updates the info bar",
+    "order form shows \"Enter Size\" when no size entered",
+    "long/short toggle switches side",
+    "order type selector shows market/limit/stop-limit",
+    "selecting limit order type shows limit price input",
+    "selecting stop-limit shows trigger + limit price inputs",
+    "leverage slider defaults to 10x",
+    "entering size shows order summary (notional, margin, liq price, fee)",
+    "entering size activates the submit button",
+    "account panel shows balance, equity, margin info",
+    "open positions section shows \"No open positions\" initially",
+    "TP/SL toggle reveals take profit and stop loss inputs",
+    "advanced options toggle shows margin mode and quick size",
+    "timeframe buttons switch chart period",
+    "order book and recent trades sections are present",
+    "UBI fee info is displayed in order form",
+    "tester address is funded on devnet"
+  ],
+  "failedTitles": []
+}

@@ -161,9 +161,9 @@ test.describe('Perps Journey', () => {
     await sizeInput.fill('0.01')
     await page.waitForTimeout(1000)
 
-    const submitButton = page.locator('button[type="submit"]')
+    const submitButton = page.getByRole('button', { name: /^Long BTC$/ })
     await expect(submitButton).toBeVisible()
-    await expect(submitButton).toHaveText(/Long BTC/)
+    await expect(submitButton).toBeEnabled()
   })
 
   test('account panel shows balance, equity, margin info', async ({ page }) => {
