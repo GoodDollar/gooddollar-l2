@@ -27,6 +27,27 @@ _Last updated: 2026-05-17 22:03 UTC by `scripts/update-testnet-readme.py`._
 - Deployment: devnet deployment workflow is `Deploy to Devnet`.
 - Required before public testnet: persistent OP Stack chain, faucet, final canonical address sync, explorer indexing check, Dune dashboard/indexing.
 
+## Sibling Experimental Apps (Not in Release Gate)
+
+These apps run on the same host and are publicly reachable but are **explicitly out of scope** for the testnet release gate. They share Caddy + PM2 with `goodswap.goodclaw.org` but their health is **not** counted in `/api/status` and a failure must not block a testnet tag.
+
+| App | URL | Port | PM2 name | Source repo |
+|---|---|---|---|---|
+| GoodAgent prototype | https://goodagent.goodclaw.org | 3099 | `goodagent-prototype` | `/home/goodclaw/goodagent-prototype` |
+
+Rules per non-negotiable #8 ("Do not hide degraded services; fix them or document why they are intentionally excluded"):
+
+1. **Excluded from `/api/status`.** The 12 backend services tracked by `/api/status` are the only services that gate releases (`swap-oracle`, `activity-reporter`, `harvest-keeper`, `liquidator`, `revenue-tracker`, `stocks-keeper`, `indexer`, `monitor`, `rpc-balancer`, `bridge-keeper`, `perps`, `predict`). Sibling apps do not appear there and do not block the gate.
+2. **Still must not degrade the host.** If a sibling app hot-loops (PM2 restart counter climbing, port held by an orphaned process, or `EADDRINUSE` on its assigned port), it must be fixed or stopped — its noise cannot mask gate-relevant problems. See `.autobuilder/test-evidence/iter15/goodagent-prototype-recovery/` for the iter15 recovery from an orphaned `next-server` on port 3099.
+3. **Port ownership.** Each sibling app owns one port. The testnet gate owns port 3100 (frontend). If a sibling app collides with a gate port, the sibling app loses.
+4. **Triage commands** (when a sibling app is misbehaving):
+   ```bash
+   pm2 describe <name>                       # restart count, uptime, current PID
+   ss -tlnp 'sport = :<port>'                # who actually holds the port
+   ps -p <pid> -o pid,ppid,uid,etime,cmd     # PPID=1 means orphan — kill it
+   ```
+   If PM2's tracked PID and the port owner PID differ AND the port owner has PPID=1, kill the orphan (`kill <pid>`), then `pm2 reset <name>` to clear the restart counter.
+
 ## Dune Public Analytics
 
 - Status: included in the testnet move plan.
