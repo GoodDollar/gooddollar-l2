@@ -12,7 +12,8 @@ import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { truncateMiddle } from '@/lib/strings'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
-import { useMintSynthetic, useRedeemSynthetic } from '@/lib/useStocks'
+import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
+import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { PriceChart } from '@/components/PriceChart'
@@ -44,13 +45,14 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 
-function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
+function OrderForm({ stock, position }: { stock: { ticker: string; price: number }; position: OnChainStockPosition | null }) {
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [amount, setAmount] = useState('')
   const [limitPrice, setLimitPrice] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const walletReady = useWalletReady()
+  const { isConnected } = useAccount()
   const { mint, phase: mintPhase, error: mintError, isDeployed } = useMintSynthetic()
   const { redeem, phase: redeemPhase, error: redeemError } = useRedeemSynthetic()
 
@@ -63,6 +65,17 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
   const ubiFee = fee * 0.2
   const hasAmount = !!amount && parseFloat(amount) > 0
 
+  // Sell-side balance gating: when a user is on the Sell tab we must not
+  // let them attempt to burn more sToken debt than they actually minted —
+  // the on-chain `burn` call would revert with poor UX. See task 0057.
+  const { sellGated, sellSharesExceedsBalance, balanceShares } = computeSellGuards({
+    side,
+    isConnected,
+    debtFloat: position?.debtFloat ?? null,
+    sharesRequested: shares,
+  })
+  const sellDisabled = sellGated || sellSharesExceedsBalance
+
   const actionPhase = side === 'buy' ? mintPhase : redeemPhase
   const actionError = side === 'buy' ? mintError : redeemError
   const isPending = actionPhase === 'approving' || actionPhase === 'pending'
@@ -70,6 +83,7 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || !hasValidPrice) return
+    if (sellDisabled) return
 
     if (isDeployed && orderType === 'market') {
       const amountNum = parseFloat(amount)
@@ -127,13 +141,27 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
         </div>
       )}
 
+      {sellGated && (
+        <div role="alert" aria-live="polite"
+          className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          You have no {stock.ticker} to sell. Switch to <span className="font-semibold">Buy</span> to open a position first.
+        </div>
+      )}
+      {sellSharesExceedsBalance && (
+        <div role="alert" aria-live="polite"
+          className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          You only hold {balanceShares.toFixed(4)} {stock.ticker}. Reduce the amount to sell.
+        </div>
+      )}
+
       <div className="mb-3">
         <label className="text-xs text-gray-400 mb-1 block">Amount (USD)</label>
         <input type="text" inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
-          className="w-full px-3 py-2.5 rounded-xl bg-dark-50 border border-gray-700/30 text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50" />
+          aria-invalid={sellSharesExceedsBalance || undefined}
+          className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${sellSharesExceedsBalance ? 'border-red-500/50' : 'border-gray-700/30'}`} />
       </div>
 
-      {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && (
+      {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && !sellGated && (
         <div className="mb-4 space-y-1.5 text-xs">
           <div className="flex justify-between text-gray-400">
             <span>Est. Shares</span>
@@ -157,9 +185,14 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
       {actionError && (
         <p className="text-[10px] text-red-400 text-center truncate mb-2">{actionError}</p>
       )}
-      {walletReady ? (
-        <WalletGatedTradeButton hasAmount={hasAmount && hasValidPrice}>
-          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending}
+      {walletReady && sellGated ? (
+        <button type="button" disabled
+          className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-gray-400 cursor-not-allowed">
+          No {stock.ticker} to sell
+        </button>
+      ) : walletReady ? (
+        <WalletGatedTradeButton hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance}>
+          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance}
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
@@ -167,7 +200,7 @@ function OrderForm({ stock }: { stock: { ticker: string; price: number } }) {
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice}
+        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled}
           className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>
@@ -188,6 +221,7 @@ export default function StockDetailPage() {
   const ticker = (params.ticker as string)?.toUpperCase()
   const { stocks } = useOnChainStocks()
   const stock = stocks.find(s => s.ticker === ticker?.toUpperCase())
+  const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
@@ -320,17 +354,44 @@ export default function StockDetailPage() {
         </div>
 
         <div className="lg:w-80 shrink-0">
-          <OrderForm stock={stock} />
+          <OrderForm stock={stock} position={position} />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
-            <div className="text-center py-6 text-gray-500 text-sm">
-              <svg className="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 12H4" />
-              </svg>
-              No position in {stock.ticker}
-              <div className="mt-1 text-xs text-gray-600">Place an order to get started</div>
-            </div>
+            {position && position.debtFloat > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-2xl font-bold text-white tabular-nums">
+                    {position.debtFloat.toFixed(4)}
+                  </span>
+                  <span className="text-xs font-medium text-gray-400">{stock.ticker}</span>
+                </div>
+                <div className="flex items-baseline justify-between text-xs text-gray-400">
+                  <span>Notional value</span>
+                  <span className="text-white tabular-nums">{formatStockPrice(position.debtFloat * stock.price)}</span>
+                </div>
+                {position.collateralFloat > 0 && (
+                  <div className="flex items-baseline justify-between text-xs text-gray-400">
+                    <span>Collateral locked</span>
+                    <span className="text-white tabular-nums">{position.collateralFloat.toFixed(2)} G$</span>
+                  </div>
+                )}
+                {position.collateralRatio > 0 && (
+                  <div className="flex items-baseline justify-between text-xs text-gray-400">
+                    <span>Collateral ratio</span>
+                    <span className="text-white tabular-nums">{(position.collateralRatio * 100).toFixed(0)}%</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500 text-sm">
+                <svg className="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 12H4" />
+                </svg>
+                No position in {stock.ticker}
+                <div className="mt-1 text-xs text-gray-600">Place an order to get started</div>
+              </div>
+            )}
           </div>
 
           <div className="mt-4 bg-dark-100/50 rounded-2xl border border-gray-700/10 p-4">
