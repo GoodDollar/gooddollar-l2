@@ -7,7 +7,7 @@ import { SearchX } from 'lucide-react'
 import { TokenIcon } from '@/components/TokenIcon'
 import { Sparkline } from '@/components/Sparkline'
 import { PercentageChange } from '@/components/ui/percentage-change'
-import { formatPrice, formatVolume, formatMarketCap, type TokenMarketData } from '@/lib/marketData'
+import { formatPrice, formatVolume, formatMarketCap, selectTopGainers, type TokenMarketData } from '@/lib/marketData'
 import { TOKEN_CATEGORIES, type TokenCategory, resolveCategory } from '@/lib/tokens'
 import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
 import { ScrollStrip } from '@/components/ScrollStrip'
@@ -168,10 +168,11 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
       .filter(t => t.volume24h !== null && t.volume24h > 0)
       .sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0))
       .slice(0, 3)
-    const gainers = [...tokens]
-      .filter(t => t.change24h !== null && t.change24h > 0)
-      .sort((a, b) => (b.change24h ?? 0) - (a.change24h ?? 0))
-      .slice(0, 3)
+    // Use the shared selector so "Top Gainers" only includes tokens whose
+    // 24h change actually renders as a non-zero percent (task 0052). The
+    // old inline `change24h > 0` filter let DAI through at +0.02%, which
+    // displayed as a contradictory "▲0.0% gainer".
+    const gainers = selectTopGainers(tokens, 3)
     return { totalMarketCap, hasAnyMarketCap, weightedChange, trending, gainers }
   }, [tokens])
 
@@ -247,12 +248,15 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
                 No trending data yet
               </div>
             ) : (
-              stats.trending.length < 3 && Array.from({ length: 3 - stats.trending.length }).map((_, i) => (
-                <div key={`t-e-${i}`} className="flex items-center text-xs text-gray-700 italic py-0.5" aria-hidden="true">
-                  <span className="w-3 mr-1.5">{stats.trending.length + i + 1}</span>
-                  <span className="text-gray-600">{'\u00A0'}</span>
+              // When fewer than 3 tokens have real volume, render a single
+              // clear empty-state line instead of numbered blank rows
+              // (task 0052). The previous padded-row treatment looked like
+              // the card had half-loaded and broken.
+              stats.trending.length < 3 && (
+                <div className="text-[11px] text-gray-500 italic pt-1 pl-5">
+                  No more trending data in 24h
                 </div>
-              ))
+              )
             )}
           </div>
         </div>
@@ -287,12 +291,14 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
                 No gainers today
               </div>
             ) : (
-              stats.gainers.length < 3 && Array.from({ length: 3 - stats.gainers.length }).map((_, i) => (
-                <div key={`g-e-${i}`} className="flex items-center text-xs text-gray-700 italic py-0.5" aria-hidden="true">
-                  <span className="w-3 mr-1.5">{stats.gainers.length + i + 1}</span>
-                  <span className="text-gray-600">{'\u00A0'}</span>
+              // Single empty-state line when fewer than 3 tokens cleared the
+              // visible-gainer floor (task 0052). Replaces the misleading
+              // numbered blank rows that looked like a half-loaded card.
+              stats.gainers.length < 3 && (
+                <div className="text-[11px] text-gray-500 italic pt-1 pl-5">
+                  No more gainers in 24h
                 </div>
-              ))
+              )
             )}
           </div>
         </div>

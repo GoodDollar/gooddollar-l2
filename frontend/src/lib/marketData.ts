@@ -71,6 +71,40 @@ export function formatMarketCap(cap: number | null | undefined): string {
 
 export { TOKEN_COLORS }
 
+// ─── Top Gainers selection (task 0052) ───────────────────────────────────────
+
+/**
+ * Smallest `change24h` value that still renders as a non-zero percent under
+ * `change24h.toFixed(1)` (which is how the Explore Top Gainers card formats
+ * the badge). Anything below this rounds to `0.0%` — and a "▲0.0% gainer" is
+ * incoherent UX, so we filter those tokens out at the selection step.
+ *
+ * Keep this constant in lock-step with the display rounding in
+ * `frontend/src/app/(app)/explore/page.tsx`. If the card switches to a
+ * different decimal count, this floor must move with it.
+ */
+export const MIN_VISIBLE_GAINER_PCT = 0.05
+
+/**
+ * Pick the top `n` tokens by 24h change for the Explore "Top Gainers" card.
+ *
+ * Selection rules (see task 0052):
+ *  - `change24h === null` → excluded (unknown is not a gainer).
+ *  - `change24h < MIN_VISIBLE_GAINER_PCT` → excluded (would render as 0.0%).
+ *  - Remainder is sorted descending by `change24h` and sliced to `n`.
+ *
+ * Pure helper — does not mutate the input array.
+ */
+export function selectTopGainers(
+  tokens: readonly TokenMarketData[],
+  n = 3,
+): TokenMarketData[] {
+  return [...tokens]
+    .filter(t => t.change24h !== null && t.change24h >= MIN_VISIBLE_GAINER_PCT)
+    .sort((a, b) => (b.change24h ?? 0) - (a.change24h ?? 0))
+    .slice(0, n)
+}
+
 // ─── Deprecated mock getters — return empty; use hooks instead ───────────────
 
 /** @deprecated Use useOnChainMarketData() hook instead */
