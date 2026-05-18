@@ -31,7 +31,7 @@ GoodDollar L2 is running as a persistent public devnet and is being hardened int
 - Foundry contract test suite: `1126 / 1126` passing as of the iter 30 surface sweep.
 - Frontend production build: `pm2` reload completed in iter 30 (`BUILD_ID` synced between disk and `/_buildManifest.js`); iter 27 `/analytics`, iter 28 Dune package surfaces, and iter 29 `/api/feedback` schema are now live on `https://goodswap.goodclaw.org` ([iter30 stale-build redeploy evidence](docs/testnet/iter30-stale-build-redeploy.md)).
 
-### Recent readiness milestones (iter 15–30)
+### Recent readiness milestones (iter 15–35)
 
 - **Iter 15 — README/doc checkpoint 3.** Refreshed `README.md`, `docs/ARCHITECTURE.md`, and `docs/TESTNET_README.md` after the iter 10–14 work landed; added the doc-link CI gate (`python3 scripts/check-doc-links.py`) to keep cross-doc references honest.
 - **Iter 16 — Swap lane hardening.** Re-pointed the stale `SwapGD` / `SwapWETH` / `SwapUSDC` constants in `frontend/src/lib/devnet.ts` at the canonical addresses from `op-stack/addresses.json`, unblocking the swap happy-path and dust/error proof on the public app.
@@ -49,6 +49,7 @@ GoodDollar L2 is running as a persistent public devnet and is being hardened int
 - **Iter 28 — Dune / indexing-request package.** Published [`analytics/dune-package/`](analytics/dune-package/README.md): `INDEXING_MANIFEST.json`, a SQL pack covering swap volume, perps OI, UBI fee splits, and a decoding cookbook so an external Dune wizard (or any other indexer) can stand up the same dashboards we run in-house. This is the iter 28 release-prep deliverable for analytics partners.
 - **Iter 29 — Feedback pipeline with context capture + redaction.** Promoted the floating "Feedback" button on `goodswap.goodclaw.org` from a stub to a real ingest path. The client now captures route, connected wallet, viewport, sessionId, frontend buildSha, and the last ≤ 20 console errors; the `/api/feedback` route is schema-validated, body-capped at 16 KiB, redacts private keys / mnemonics / JWTs / Bearer tokens / emails via [`frontend/src/lib/redactSecrets.ts`](frontend/src/lib/redactSecrets.ts), persists to a JSONL log for triage, and is still rate-limited. Proofs: Vitest API suite (17/17), Vitest helper suite, Playwright UI suite (3/3), react-doctor 96/100 ([iter29 evidence](docs/testnet/iter29-feedback-pipeline.md)).
 - **Iter 30 — README/doc checkpoint 6 + stale-prod-build fix.** This refresh. The iter 30 product review caught a stale public build — iter 27 `/analytics` and the iter 29 `/api/feedback` schema were not live on `https://goodswap.goodclaw.org` because the `.next/` bundle dated from before iter 27. Critical task `0041` ran `frontend/scripts/deploy.sh` to rebuild + `pm2 reload` + sync `BUILD_ID` ([iter30 redeploy evidence](docs/testnet/iter30-stale-build-redeploy.md)), and task `0042` (this commit) refreshes `README.md`, `docs/TESTNET_README.md`, `docs/ARCHITECTURE.md`, and the 50-iter plan to document the iter 26–29 analytics + feedback work ([iter30 checkpoint summary](docs/testnet/iter30-readme-doc-checkpoint-6.md), [link-check artefact](docs/testnet/iter30-link-check.md)).
+- **Iter 35 — Oracle risk controls verification (plan row 33).** Verification-only sweep across all four price oracles: `PerpPriceOracle` (`maxStaleness 120s`, deviation 20%), `SwapPriceOracle` (per-token `maxAge`, default 300s, deviation 25%), `Stocks PriceOracle` (`maxAge 1h`), and `Lending SimplePriceOracle` (devnet placeholder — no guards, replacement tracked in Known Boundaries). Off-chain monitoring confirmed: `swap-oracle` keeper + `backend/monitor` chain-block-age check are both `ok` on `/api/status`. Tests: 56/56 oracle tests passed (`PerpPriceOracle.t.sol` 18, `SwapPriceOracle.t.sol` 20, `OracleVerification.t.sol` 18). Evidence: [`docs/security/iter35-oracle-risk-controls.md`](docs/security/iter35-oracle-risk-controls.md).
 
 ## Logo and Brand
 
@@ -317,6 +318,7 @@ Every five iterations the README, testnet guide, architecture docs, status proof
 - Internal analytics is now shipped on the public app at [`/analytics`](https://goodswap.goodclaw.org/analytics) backed by [`/api/analytics/overview`](https://goodswap.goodclaw.org/api/analytics/overview) (iter 27), and the Dune / indexing-request package is published in [`analytics/dune-package/`](analytics/dune-package/) (iter 28); external Dune indexing remains pending and is tracked as a release artifact.
 - Tester feedback now has a redacted ingest path (iter 29): the floating Feedback button → `/api/feedback` → `frontend/data/feedback.jsonl`. The on-disk JSONL stream is the operator triage queue; there is no public viewer yet — surfacing it (e.g. a moderated `/feedback` page) is deferred.
 - WalletConnect/Reown Cloud origin allowlist should include production/testnet origins to remove SDK remote-config noise at the source.
+- **Lending oracle is admin-set (iter 35).** `src/lending/SimplePriceOracle.sol` has no on-chain staleness or deviation guard; it is a documented devnet placeholder to be replaced with a Pyth/Chainlink adapter for mainnet. The other three oracles (`PerpPriceOracle`, `SwapPriceOracle`, `Stocks PriceOracle`) all enforce staleness + deviation and are covered by 56 passing tests — see [`docs/security/iter35-oracle-risk-controls.md`](docs/security/iter35-oracle-risk-controls.md).
 - External audit and bug bounty are still required before mainnet.
 
 ## Key Docs
@@ -330,6 +332,7 @@ Every five iterations the README, testnet guide, architecture docs, status proof
 - [`analytics/dune-package/README.md`](analytics/dune-package/README.md) — Dune / indexing-request package: SQL pack, `INDEXING_MANIFEST.json`, decoding cookbook (iter 28).
 - [`docs/DUNE-DASHBOARD-SPEC.md`](docs/DUNE-DASHBOARD-SPEC.md) — analytics dashboard spec.
 - [`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md) — security audit notes.
+- [`docs/security/iter35-oracle-risk-controls.md`](docs/security/iter35-oracle-risk-controls.md) — iter 35 oracle staleness/deviation guards + monitor coverage evidence (plan row 33).
 - [`docs/runbooks/frontend-rebuild.md`](docs/runbooks/frontend-rebuild.md) — frontend rebuild, restore, and BUILD_ID drift diagnosis runbook.
 - [`docs/testnet/iter25-readme-doc-checkpoint-5.md`](docs/testnet/iter25-readme-doc-checkpoint-5.md) — iter 25 documentation checkpoint summary.
 - [`docs/testnet/iter25-link-check.md`](docs/testnet/iter25-link-check.md) — iter 25 link-check artefact (`scripts/check-doc-links.py`).
