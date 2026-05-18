@@ -1,6 +1,6 @@
 # GoodDollar L2 Architecture
 
-_Last updated: 2026-05-17 22:03 UTC (iter 15 / 50 — README/doc checkpoint 3)._
+_Last updated: 2026-05-18 10:35 UTC (iter 30 / 50 — README/doc checkpoint 6). Adds the analytics + feedback pipeline that landed in iter 26–29 and was restored to the public app by the iter 30 stale-build redeploy._
 
 GoodDollar L2 is the Good Chain: an OP Stack-style EVM chain where useful app activity routes protocol fees into UBI funding.
 
@@ -41,7 +41,15 @@ flowchart TB
   Bridge --> UBI
   Agents --> UBI
 
-  UBI --> Analytics[Status + Analytics + Dune Package]
+  UBI --> AnalyticsAPI[/api/analytics/overview\niter 27]
+  AnalyticsAPI --> AnalyticsPage[/analytics dashboard\niter 27]
+  Chain --> AddressBook[analytics/address-book.json\niter 26]
+  AddressBook --> AnalyticsAPI
+  AddressBook --> DunePackage[analytics/dune-package/\niter 28]
+
+  Frontend --> FeedbackButton[Feedback button\niter 29]
+  FeedbackButton --> FeedbackAPI[/api/feedback\nrate-limit + 16KiB cap\nschema-validated\nredacted]
+  FeedbackAPI --> FeedbackJSONL[frontend/data/feedback.jsonl]
 ```
 
 ## Apps Running on Top of the Chain
@@ -105,6 +113,102 @@ flowchart TB
   Revenue --> ChainRPC
   Monitor --> ChainRPC
 ```
+
+## Analytics + Feedback Pipeline (iter 26–29)
+
+Iter 26–29 added the two observability loops the public testnet needs: a
+**read loop** so testers and external analysts can see what the chain is
+doing, and a **write loop** so testers can report what they actually hit on
+the app. Both loops landed in iter 26–29 and were restored to the public
+deployment by the iter 30 stale-build redeploy
+([`docs/testnet/iter30-stale-build-redeploy.md`](testnet/iter30-stale-build-redeploy.md)).
+
+```mermaid
+flowchart LR
+  subgraph ReadLoop[Read loop: chain → analysts]
+    AddressBook[analytics/address-book.json\niter 26: canonical contract index]
+    OverviewAPI[/api/analytics/overview\niter 27: live JSON aggregate]
+    DashboardPage[/analytics page\niter 27: public dashboard]
+    DunePackage[analytics/dune-package/\niter 28: indexer-ready ABIs + manifest]
+    AddressBook --> OverviewAPI
+    OverviewAPI --> DashboardPage
+    AddressBook --> DunePackage
+  end
+
+  subgraph WriteLoop[Write loop: testers → maintainers]
+    FloatingButton[Feedback button\nframework wrapper on every page]
+    ClientContext[feedbackContext.ts\nFEEDBACK_LIMITS cap + redact]
+    FeedbackRoute[/api/feedback route\niter 29]
+    RateLimit[withApiRateLimit]
+    SchemaCheck[FeedbackPayload schema]
+    ServerRedact[redactDeep — redactSecrets.ts]
+    JSONL[frontend/data/feedback.jsonl\nappend-only, gitignored]
+    FloatingButton --> ClientContext
+    ClientContext --> FeedbackRoute
+    FeedbackRoute --> RateLimit
+    RateLimit --> SchemaCheck
+    SchemaCheck --> ServerRedact
+    ServerRedact --> JSONL
+  end
+
+  Testers[Public testers + agents] --> FloatingButton
+  Testers --> DashboardPage
+  Analysts[External analysts] --> DunePackage
+  Analysts --> OverviewAPI
+```
+
+**Read loop — what testers and analysts can see.**
+
+- [`analytics/address-book.json`](../analytics/address-book.json) (iter 26)
+  is the canonical, per-protocol contract index derived from
+  [`op-stack/addresses.json`](../op-stack/addresses.json). Both the public
+  dashboard and the Dune package depend on it instead of hardcoding
+  addresses, so a redeploy of the chain only requires regenerating the
+  address book.
+- [`/api/analytics/overview`](../frontend/src/app/api/analytics/overview/route.ts)
+  (iter 27) aggregates chain reads (block height, UBI splitter totals,
+  per-protocol volume) into one cacheable JSON document.
+  [`/analytics`](../frontend/src/app/%28app%29/analytics/page.tsx) is the public,
+  no-wallet dashboard that renders it.
+- [`analytics/dune-package/`](../analytics/dune-package/) (iter 28) ships
+  the ABIs, deployment metadata, and
+  [`INDEXING_MANIFEST.json`](../analytics/dune-package/INDEXING_MANIFEST.json)
+  needed by external indexers (Dune, Goldsky, Subsquid) so we are not the
+  only source of truth for chain analytics.
+
+**Write loop — how testers tell us what broke.**
+
+The feedback pipeline is a deliberate trust boundary: the client builds a
+rich payload (route, console errors ring buffer, browser metadata, optional
+free-text), but the server treats every field as untrusted and enforces a
+hard contract before anything reaches disk.
+
+- **Transport.** `POST /api/feedback` only. The floating Feedback button is
+  the only first-party caller. There is no GET path and no admin UI yet —
+  surfacing feedback is intentionally deferred (see
+  [`docs/TESTNET_README.md` → Known Boundaries](TESTNET_README.md#known-boundaries-before-public-testnet)).
+- **Rate + size limits.** Wrapped in
+  [`withApiRateLimit`](../frontend/src/lib/withApiRateLimit.ts) and capped
+  at 16 KiB request body. Anything bigger is rejected with 413 before the
+  schema check.
+- **Schema.** The `FeedbackPayload` interface and `FEEDBACK_LIMITS`
+  constants live in
+  [`frontend/src/lib/feedbackContext.ts`](../frontend/src/lib/feedbackContext.ts).
+  `pathname` must be a string starting with `/`. Free-text fields, console
+  error arrays, and metadata each have explicit length and shape caps.
+- **Redaction.** Every accepted payload is recursively scrubbed by
+  [`redactDeep` in `frontend/src/lib/redactSecrets.ts`](../frontend/src/lib/redactSecrets.ts)
+  before persistence. Regexes cover private keys, mnemonics, JWTs, bearer
+  tokens, generic `api_key=` parameters, and bare email addresses. Test
+  vectors live in
+  [`frontend/src/app/api/feedback/__tests__/route.test.ts`](../frontend/src/app/api/feedback/__tests__/route.test.ts) (redaction is exercised via the route integration tests; see the `redacts private keys, mnemonics, JWTs, bearer tokens, emails` case).
+- **Persistence.** Redacted payloads are appended to
+  `frontend/data/feedback.jsonl` via `appendFileSync` with `mkdirSync` on
+  first write. The directory is gitignored so testers' content never enters
+  the public history.
+- **Proofs.** Vitest unit suite for redactor + route, Playwright spec for
+  the floating-button → JSONL flow, plus live `curl` probes captured in
+  [`docs/testnet/iter29-feedback-pipeline.md`](testnet/iter29-feedback-pipeline.md).
 
 ## Recent Readiness Milestones (iter 10–14)
 

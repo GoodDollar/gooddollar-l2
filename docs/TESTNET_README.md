@@ -1,6 +1,6 @@
 # GoodDollar L2 Testnet Readiness
 
-_Last updated: 2026-05-18 05:39 UTC during iter 20 (README/doc checkpoint 4). This doc has hand-curated sections (Sibling Apps, Protocol Lane Hardening Status, Frontend health, operator runbook). **Do not re-run `scripts/update-testnet-readme.py` until its template is reconciled with those sections** — the generator currently overwrites them._
+_Last updated: 2026-05-18 10:30 UTC during iter 30 (README/doc checkpoint 6). The iter 26–30 work added the analytics + feedback loops surfaces (`/analytics`, `/api/analytics/overview`, the Dune package, `/api/feedback`) — see the new **Analytics + Feedback Loops (iter 26–29)** section below for the tester-facing walk-through. Iter 30 also caught and fixed a stale production build that was hiding iter 27/29 from the public app — see [`docs/testnet/iter30-stale-build-redeploy.md`](testnet/iter30-stale-build-redeploy.md). This doc has hand-curated sections (Sibling Apps, Protocol Lane Hardening Status, Analytics + Feedback Loops, Frontend health, operator runbook). **Do not re-run `scripts/update-testnet-readme.py` until its template is reconciled with those sections** — the generator currently overwrites them._
 
 ## Current Build
 
@@ -27,9 +27,9 @@ _Last updated: 2026-05-18 05:39 UTC during iter 20 (README/doc checkpoint 4). Th
 - Deployment: devnet deployment workflow is `Deploy to Devnet`.
 - Required before public testnet: persistent OP Stack chain, faucet, final canonical address sync, explorer indexing check, Dune dashboard/indexing.
 
-## Protocol Lane Hardening Status (iter 16–24)
+## Protocol Lane Hardening Status (iter 16–30)
 
-Per-lane status after the iter 16–24 hardening pass. "Hardened" means the
+Per-lane status after the iter 16–30 hardening pass. "Hardened" means the
 lane has named proof on the public app (or — for cross-protocol UBI work
 — named proof on devnet) and is ready to feed the release candidate
 manifest. "Deferred" means the slot was consumed by a blocker and the
@@ -47,18 +47,124 @@ work moves to a later row.
 | UBI fee truth source | 22 | ✅ shipped | [`docs/UBI-FEE-ACCOUNTING.md`](UBI-FEE-ACCOUNTING.md) — canonical 14-route map from every protocol fee path into the UBI revenue tracker. |
 | UBI integration proof I (Swap + Perps) | 23 | ✅ integration proven | [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) — routes 1–5 proven by event + balance-delta receipts (commit `2b30ad5`). |
 | UBI integration proof II (Predict + Lend + Stable + Stocks) | 24 | ✅ integration proven | [`test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol`](../test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol) — routes 6–14 proven; all 14 routes now read `✅ integration proven` in the accounting spec (commit `3f2806a`). |
+| Analytics address book | 26 | ✅ shipped | [`analytics/address-book.json`](../analytics/address-book.json) + [`analytics/README.md`](../analytics/README.md) — machine-readable chain/protocol/fee-route truth source derived from `op-stack/addresses.json`. |
+| Public analytics dashboard | 27 | ✅ hardened | [`/analytics`](https://goodswap.goodclaw.org/analytics) + [`/api/analytics/overview`](https://goodswap.goodclaw.org/api/analytics/overview) — KPIs (chain block, supply, UBI revenue, protocol activity) on the live app, restored to HTTP 200 in iter 30 after a stale-build redeploy. |
+| Dune / indexing-request package | 28 | ✅ shipped | [`analytics/dune-package/`](../analytics/dune-package/README.md) — SQL pack, `INDEXING_MANIFEST.json`, decoding cookbook; ready to hand to external indexers (Dune, Goldsky, Allium). |
+| Tester feedback ingest | 29 | ✅ hardened | Floating "Feedback" button on every page → `/api/feedback` (rate-limited, 16 KiB body cap, schema-validated, redacted) → `frontend/data/feedback.jsonl`. Vitest 17/17 + Playwright 3/3 + live POST proof in iter 30. See [`docs/testnet/iter29-feedback-pipeline.md`](testnet/iter29-feedback-pipeline.md). |
+| Stale-prod-build fix + doc checkpoint 6 | 30 | ✅ shipped | iter 30 product review caught the live `/analytics` + `/api/feedback` schema were running an outdated build. `frontend/scripts/deploy.sh` redeployed the production tree; `BUILD_ID` re-synced. Evidence: [`docs/testnet/iter30-stale-build-redeploy.md`](testnet/iter30-stale-build-redeploy.md), checkpoint summary: [`docs/testnet/iter30-readme-doc-checkpoint-6.md`](testnet/iter30-readme-doc-checkpoint-6.md). |
 
 Cross-cutting infra hardening that landed alongside the lane work:
 
 - **Iter 18 BLOCKER — PM2 build-less-start fence.** `frontend/scripts/pm2-launch-next.mjs` refuses to launch `next start` if `.next/` is missing a manifest or contaminated by a `next dev` tree. This prevents the third class of "HTML 200 but every chunk 500" outages.
 - **Iter 19 BLOCKER — `next dev` clobber recurrence #3 closed.** `distDir` isolation for Playwright + the `goodswap-watchdog` PM2 process that probes `/_next/static/chunks/*.js` every 60 s and reloads `goodswap` after a 3-failure streak. Full operator runbook in [Frontend health (iter 19)](#frontend-health-iter-19).
 - **Iter 21 BLOCKER — `--dist-dir` CLI flag unsupported.** Removed the unsupported `--dist-dir` flag from the Playwright wrapper and switched to env-based isolation so the portfolio lane could be greened in the same iteration.
+- **Iter 30 CRITICAL — stale production build.** Iter 30's product review caught `/analytics` (iter 27) returning HTTP 404 and `/api/feedback` (iter 29) running the old non-validating handler on the public app, while both passed locally. The fix was procedural — run `frontend/scripts/deploy.sh` (`npm ci && npm run build && pm2 reload goodswap --update-env && scripts/check-buildid-sync.mjs --strict`) — but it confirms why **non-negotiable #6** ("public URLs and production behavior matter more than localhost") has to be enforced every five iterations. See [`docs/testnet/iter30-stale-build-redeploy.md`](testnet/iter30-stale-build-redeploy.md).
 
 The Lend/Stable lane deferral is intentionally visible here so a tester
 reading this doc does not assume rows 19/20 of the 50-iteration plan
 mean those lanes have public-app proof yet — the **UBI fee routing** for
 Lend and Stable, however, is fully integration-proven (iter 24) even
 though the public-app lane proof remains deferred.
+
+## Analytics + Feedback Loops (iter 26–29)
+
+The iter 26–29 work turned the chain into something testers can actually
+look at and talk back to. Four loops, all live on the public app after
+the iter 30 redeploy:
+
+### 1. Address book (iter 26)
+
+[`analytics/address-book.json`](../analytics/address-book.json) is the
+machine-readable truth source for every chain ID, RPC, explorer,
+protocol contract, and UBI fee route. It is derived from
+[`op-stack/addresses.json`](../op-stack/addresses.json), so when
+contracts redeploy the address book follows automatically and external
+indexers do not have to scrape source code or guess at deployment
+broadcast files. See [`analytics/README.md`](../analytics/README.md).
+
+### 2. Public analytics dashboard (iter 27)
+
+The live app exposes a tester-facing dashboard at
+<https://goodswap.goodclaw.org/analytics>, backed by
+<https://goodswap.goodclaw.org/api/analytics/overview>. The page reads
+the address book and reports:
+
+- Current chain block + chain ID
+- G$ total supply
+- UBI revenue tracker balance (the on-chain "how much fee revenue has
+  reached UBI so far?" number)
+- Recent protocol activity counters
+
+The endpoint returns HTTP 200 JSON; the page renders the same numbers
+in a polished card layout. Iter 30's stale-build CRITICAL caught that
+this route was 404 on the public app between iter 27 and iter 30 — the
+iter 30 redeploy restored it. Do not skip the public-URL probe on
+future doc checkpoints.
+
+### 3. Dune / indexing-request package (iter 28)
+
+[`analytics/dune-package/`](../analytics/dune-package/README.md) is the
+external-indexer onboarding kit. It contains:
+
+- **`INDEXING_MANIFEST.json`** — the contracts + ABIs + fee routes an
+  external indexer needs to subscribe to.
+- **SQL pack** — a starter set of Dune queries against the manifest
+  (network usage, protocol activity, UBI fee routing, agent economy,
+  faucet funnel, success/revert rates).
+- **Decoding cookbook** — protocol-by-protocol notes on event semantics
+  and gotchas so an indexer can ship correct dashboards without reading
+  the Solidity.
+
+Use this when handing the chain off to Dune, Goldsky, Allium, or a
+custom indexer.
+
+### 4. Tester feedback ingest (iter 29)
+
+Every page now has a floating **Feedback** button in the bottom-right.
+Click it to open a modal that captures, automatically:
+
+- Route + full URL the tester is on
+- Connected wallet address (preserved — public identifier)
+- Wallet chain ID
+- Viewport size + user agent
+- Anonymous `sessionId` (for cross-page correlation; no PII)
+- Build SHA the production app is currently serving
+- The last ≤ 20 console errors observed by `ConsoleErrorCapture`
+  (truncated to 500 chars each)
+- The tester's own `description` + `type` (`bug` / `ux` / `feature` /
+  `other`)
+
+The form `POST`s to `/api/feedback`, which is:
+
+1. Rate-limited (`withApiRateLimit`).
+2. Body-capped at 16 KiB **before** JSON parsing.
+3. Schema-validated against
+   [`FeedbackPayload`](../frontend/src/lib/feedbackContext.ts) — wrong
+   field name, wrong type, or out-of-bounds value returns HTTP 400 with
+   a per-field message.
+4. **Redacted on every string leaf** by
+   [`redactDeep`](../frontend/src/lib/redactSecrets.ts) — hex private
+   keys, 12/24-word BIP-39 mnemonics, JWTs, `Bearer …` tokens,
+   `password=`/`api_key=` form/query fragments, and emails are replaced
+   with `[REDACTED]`. Wallet addresses are intentionally preserved.
+5. Persisted as one JSON line per record to `FEEDBACK_LOG_FILE`
+   (defaults to `frontend/data/feedback.jsonl`, gitignored). Disk-write
+   failures are logged but never bubble up — feedback never 5xx.
+
+The on-disk JSONL stream is the operator triage queue. Tail it with:
+
+```bash
+tail -n 20 frontend/data/feedback.jsonl | jq .
+```
+
+Tests pinning this contract: Vitest 17/17 in
+`frontend/src/app/api/feedback/__tests__/route.test.ts`, Playwright 3/3
+in `frontend/e2e/feedback-button.spec.ts`, plus a live production POST
+proof in [`docs/testnet/iter30-stale-build-redeploy.md`](testnet/iter30-stale-build-redeploy.md).
+
+Full implementation notes (architecture diagram, redaction policy,
+schema, persistence format, all proofs) live in
+[`docs/testnet/iter29-feedback-pipeline.md`](testnet/iter29-feedback-pipeline.md).
 
 ## Sibling Experimental Apps (Not in Release Gate)
 

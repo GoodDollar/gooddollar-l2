@@ -32,7 +32,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Iterable
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -92,6 +92,10 @@ def is_skippable(link: str) -> bool:
 def check_relative(link: str, source: Path) -> tuple[bool, str]:
     target = link.split("#", 1)[0]
     target = target.split("?", 1)[0]
+    # URL-decode so paths like ../foo/%28app%29/page.tsx resolve to (app).
+    # Next.js route groups use literal parentheses in folder names which
+    # collide with markdown link syntax, so authors percent-encode them.
+    target = unquote(target)
     if not target:
         return True, "anchor-only"
     candidate = (source.parent / target).resolve()

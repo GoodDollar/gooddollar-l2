@@ -18,19 +18,20 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 
 ## Current Status
 
-_Last refreshed: 2026-05-18 08:22 UTC. `main` was fetched from origin and confirmed current at commit `1c9e179` before this README/doc checkpoint 5 refresh._
+_Last refreshed: 2026-05-18 10:25 UTC. `main` was fetched from origin and confirmed current before this README/doc checkpoint 6 refresh; iter 30 is the analytics + feedback-loop documentation checkpoint._
 
 GoodDollar L2 is running as a persistent public devnet and is being hardened into a public testnet release candidate.
 
 - Public health: `healthy`, `12 / 12` services OK from `https://goodswap.goodclaw.org/api/status`.
 - Public pages verified: `/`, `/faucet`, `/perps`, `/portfolio`, `/tests`, `/testnet-guide`, `/predict`, `/lend`, `/stable`, `/stocks`, `/bridge`, `/agents` all returned HTTP `200`.
 - Public RPC verified: `eth_chainId = 0xa455`.
-- Active initiative: Testnet Readiness Gate — 50 iterations (iter 25 / 50 complete; iter 26 next).
-- Active priorities: stability, public tester onboarding, protocol smoke evidence, UBI-fee accounting, and release-candidate packaging.
+- Active initiative: Testnet Readiness Gate — 50 iterations (iter 30 / 50 complete; iter 31 next).
+- Active priorities: stability, public tester onboarding, protocol smoke evidence, UBI-fee accounting, analytics + feedback loops, and release-candidate packaging.
 - Security hardening status: Slither high/medium cleanup complete in the prior security initiative; release gates still require continuous security checks before public testnet.
-- Foundry contract test suite: `1126 / 1126` passing as of iter 25 surface sweep.
+- Foundry contract test suite: `1126 / 1126` passing as of the iter 30 surface sweep.
+- Frontend production build: `pm2` reload completed in iter 30 (`BUILD_ID` synced between disk and `/_buildManifest.js`); iter 27 `/analytics`, iter 28 Dune package surfaces, and iter 29 `/api/feedback` schema are now live on `https://goodswap.goodclaw.org` ([iter30 stale-build redeploy evidence](docs/testnet/iter30-stale-build-redeploy.md)).
 
-### Recent readiness milestones (iter 15–25)
+### Recent readiness milestones (iter 15–30)
 
 - **Iter 15 — README/doc checkpoint 3.** Refreshed `README.md`, `docs/ARCHITECTURE.md`, and `docs/TESTNET_README.md` after the iter 10–14 work landed; added the doc-link CI gate (`python3 scripts/check-doc-links.py`) to keep cross-doc references honest.
 - **Iter 16 — Swap lane hardening.** Re-pointed the stale `SwapGD` / `SwapWETH` / `SwapUSDC` constants in `frontend/src/lib/devnet.ts` at the canonical addresses from `op-stack/addresses.json`, unblocking the swap happy-path and dust/error proof on the public app.
@@ -42,7 +43,12 @@ GoodDollar L2 is running as a persistent public devnet and is being hardened int
 - **Iter 22 — UBI fee truth source.** Shipped [`docs/UBI-FEE-ACCOUNTING.md`](docs/UBI-FEE-ACCOUNTING.md), the canonical 14-route map from every protocol fee path (Swap V4, Swap Li.Fi, Perps trading/funding/liquidation, Predict factory + resolver, Lend reserve factor, Stable stability/minting/liquidation/governance, Stocks trading + liquidation remnant) into the UBI revenue tracker, with addresses sourced from `op-stack/addresses.json`.
 - **Iter 23 — UBI integration proof I (Swap + Perps).** Added [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) proving routes 1–5 by event + balance-delta receipts (commit `2b30ad5`); the matching rows in `docs/UBI-FEE-ACCOUNTING.md` flipped from `⏳ proof needed` to `✅ integration proven (iter 23)`.
 - **Iter 24 — UBI integration proof II (Predict + Lend + Stable + Stocks).** Added [`test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol`](test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol) proving routes 6–14 with the same event + balance-delta methodology (commit `3f2806a`); all 14 fee routes now read `✅ integration proven` and the spec records the closeout in its §6 summary.
-- **Iter 25 — README/doc checkpoint 5.** This refresh. `README.md`, `docs/TESTNET_README.md`, and `docs/TESTNET-READINESS-50-ITERATIONS.md` were updated to surface the iter 20–24 milestones, link the UBI fee accounting spec and its two integration proofs from the canonical entry points, and re-run the intra-repo link check ([iter25 checkpoint summary](docs/testnet/iter25-readme-doc-checkpoint-5.md), [link-check artefact](docs/testnet/iter25-link-check.md)).
+- **Iter 25 — README/doc checkpoint 5.** Refreshed `README.md`, `docs/TESTNET_README.md`, and `docs/TESTNET-READINESS-50-ITERATIONS.md` to surface the iter 20–24 milestones, link the UBI fee accounting spec and its two integration proofs from the canonical entry points, and re-ran the intra-repo link check ([iter25 checkpoint summary](docs/testnet/iter25-readme-doc-checkpoint-5.md), [link-check artefact](docs/testnet/iter25-link-check.md)).
+- **Iter 26 — Analytics address book.** Shipped [`analytics/address-book.json`](analytics/address-book.json) and [`analytics/README.md`](analytics/README.md) as the machine-readable truth source for chain ID, RPC, protocol contracts, and the 14 UBI fee routes. The address book is derived from `op-stack/addresses.json` so indexers (Dune, The Graph, Goldsky, custom) consume one canonical map instead of scraping the frontend.
+- **Iter 27 — Public `/analytics` dashboard.** Added the [`/analytics`](https://goodswap.goodclaw.org/analytics) page backed by `/api/analytics/overview`, exposing protocol-level KPIs (active markets, swap volume, perps OI, UBI fees split), data freshness, and last-block heartbeat for testers and stakeholders without requiring Dune access. The endpoint reads canonical addresses from the iter 26 address book so on-chain reality stays the source of truth.
+- **Iter 28 — Dune / indexing-request package.** Published [`analytics/dune-package/`](analytics/dune-package/README.md): `INDEXING_MANIFEST.json`, a SQL pack covering swap volume, perps OI, UBI fee splits, and a decoding cookbook so an external Dune wizard (or any other indexer) can stand up the same dashboards we run in-house. This is the iter 28 release-prep deliverable for analytics partners.
+- **Iter 29 — Feedback pipeline with context capture + redaction.** Promoted the floating "Feedback" button on `goodswap.goodclaw.org` from a stub to a real ingest path. The client now captures route, connected wallet, viewport, sessionId, frontend buildSha, and the last ≤ 20 console errors; the `/api/feedback` route is schema-validated, body-capped at 16 KiB, redacts private keys / mnemonics / JWTs / Bearer tokens / emails via [`frontend/src/lib/redactSecrets.ts`](frontend/src/lib/redactSecrets.ts), persists to a JSONL log for triage, and is still rate-limited. Proofs: Vitest API suite (17/17), Vitest helper suite, Playwright UI suite (3/3), react-doctor 96/100 ([iter29 evidence](docs/testnet/iter29-feedback-pipeline.md)).
+- **Iter 30 — README/doc checkpoint 6 + stale-prod-build fix.** This refresh. The iter 30 product review caught a stale public build — iter 27 `/analytics` and the iter 29 `/api/feedback` schema were not live on `https://goodswap.goodclaw.org` because the `.next/` bundle dated from before iter 27. Critical task `0041` ran `frontend/scripts/deploy.sh` to rebuild + `pm2 reload` + sync `BUILD_ID` ([iter30 redeploy evidence](docs/testnet/iter30-stale-build-redeploy.md)), and task `0042` (this commit) refreshes `README.md`, `docs/TESTNET_README.md`, `docs/ARCHITECTURE.md`, and the 50-iter plan to document the iter 26–29 analytics + feedback work ([iter30 checkpoint summary](docs/testnet/iter30-readme-doc-checkpoint-6.md), [link-check artefact](docs/testnet/iter30-link-check.md)).
 
 ## Logo and Brand
 
@@ -201,6 +207,33 @@ Release work must preserve this path for every app. A feature is not complete ju
 - [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) — routes 1–5 (iter 23).
 - [`test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol`](test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol) — routes 6–14 (iter 24).
 
+## Analytics + Feedback Loops
+
+Iterations 26–29 added the four loops that turn on-chain activity and tester reports into measurable, redacted, and actionable signal. Iter 30 surfaced and stabilised these loops on the public app after a stale-build redeploy.
+
+| Loop | Surface | Source of truth | Iter | Evidence |
+|---|---|---|---:|---|
+| Address book | [`analytics/address-book.json`](analytics/address-book.json) | Derived from [`op-stack/addresses.json`](op-stack/addresses.json) | 26 | [`analytics/README.md`](analytics/README.md) |
+| Public analytics dashboard | [`/analytics`](https://goodswap.goodclaw.org/analytics) on the live app + [`/api/analytics/overview`](https://goodswap.goodclaw.org/api/analytics/overview) | On-chain reads via the address book | 27 | live route returns HTTP 200 after the iter 30 redeploy |
+| Dune / indexing-request package | [`analytics/dune-package/`](analytics/dune-package/README.md) | `INDEXING_MANIFEST.json` + SQL pack + cookbook | 28 | [`analytics/dune-package/README.md`](analytics/dune-package/README.md) |
+| Tester feedback ingest | Floating "Feedback" button on every page → `/api/feedback` → `frontend/data/feedback.jsonl` | Client-captured route, wallet, viewport, sessionId, buildSha, last ≤ 20 console errors | 29 | [`docs/testnet/iter29-feedback-pipeline.md`](docs/testnet/iter29-feedback-pipeline.md) |
+
+**Feedback safety contract.** The `/api/feedback` route is the only place where tester input enters disk, and its safety posture is fixed in code:
+
+1. Wrapped by `withApiRateLimit` — no DoS lane added by iter 29.
+2. Body capped at `FEEDBACK_LIMITS.totalBodyMaxBytes = 16 KiB` _before_ JSON parsing.
+3. Schema-validated against `FeedbackPayload` ([`frontend/src/lib/feedbackContext.ts`](frontend/src/lib/feedbackContext.ts)) — wrong field name, wrong type, or out-of-bounds value returns HTTP 400 with a per-field message.
+4. **Every string leaf** is passed through `redactDeep` ([`frontend/src/lib/redactSecrets.ts`](frontend/src/lib/redactSecrets.ts)) which replaces hex private keys, 12/24-word BIP-39 mnemonics, JWTs, `Bearer …` tokens, `password=`/`api_key=` form/query fragments, and emails with `[REDACTED]`. Wallet addresses (`0x` + 40 hex) are intentionally preserved — they are public on-chain identifiers and the operator needs them for correlation.
+5. Persistence is one JSON record per line to `FEEDBACK_LOG_FILE` (default `frontend/data/feedback.jsonl`, gitignored). Disk-write failures are logged but never bubble up — feedback must never 5xx.
+
+This contract is pinned by tests:
+
+- API contract: [`frontend/src/app/api/feedback/__tests__/route.test.ts`](frontend/src/app/api/feedback/__tests__/route.test.ts) (17 / 17 passing — covers verb/content-type guard, body cap, schema rejections, happy path, redaction path, disk-failure path).
+- Helper: [`frontend/src/lib/__tests__/feedbackContext.test.ts`](frontend/src/lib/__tests__/feedbackContext.test.ts).
+- End-to-end UX: [`frontend/e2e/feedback-button.spec.ts`](frontend/e2e/feedback-button.spec.ts) (3 / 3 passing — open → fill → submit, disabled-when-empty, and 400 surface).
+
+**How testers use it.** See [`docs/TESTNET_README.md` § Analytics + Feedback Loops](docs/TESTNET_README.md#analytics--feedback-loops-iter-26-29) for the tester-facing walk-through. The short version: every page has a floating Feedback button in the bottom-right; the modal captures context automatically and the operator triages the resulting JSONL stream.
+
 ## Test and Release Gates
 
 Before a release-candidate push or deploy, run the relevant gates:
@@ -281,7 +314,8 @@ Every five iterations the README, testnet guide, architecture docs, status proof
 
 - The current network is a persistent public devnet, not final mainnet infrastructure.
 - Public testnet release still needs final release-candidate manifest and tag recommendation.
-- Analytics/Dune indexing remains a release artifact; if public Dune indexing is not available on day one, internal analytics must be shipped and Dune marked pending.
+- Internal analytics is now shipped on the public app at [`/analytics`](https://goodswap.goodclaw.org/analytics) backed by [`/api/analytics/overview`](https://goodswap.goodclaw.org/api/analytics/overview) (iter 27), and the Dune / indexing-request package is published in [`analytics/dune-package/`](analytics/dune-package/) (iter 28); external Dune indexing remains pending and is tracked as a release artifact.
+- Tester feedback now has a redacted ingest path (iter 29): the floating Feedback button → `/api/feedback` → `frontend/data/feedback.jsonl`. The on-disk JSONL stream is the operator triage queue; there is no public viewer yet — surfacing it (e.g. a moderated `/feedback` page) is deferred.
 - WalletConnect/Reown Cloud origin allowlist should include production/testnet origins to remove SDK remote-config noise at the source.
 - External audit and bug bounty are still required before mainnet.
 
@@ -299,6 +333,10 @@ Every five iterations the README, testnet guide, architecture docs, status proof
 - [`docs/runbooks/frontend-rebuild.md`](docs/runbooks/frontend-rebuild.md) — frontend rebuild, restore, and BUILD_ID drift diagnosis runbook.
 - [`docs/testnet/iter25-readme-doc-checkpoint-5.md`](docs/testnet/iter25-readme-doc-checkpoint-5.md) — iter 25 documentation checkpoint summary.
 - [`docs/testnet/iter25-link-check.md`](docs/testnet/iter25-link-check.md) — iter 25 link-check artefact (`scripts/check-doc-links.py`).
+- [`docs/testnet/iter29-feedback-pipeline.md`](docs/testnet/iter29-feedback-pipeline.md) — iter 29 feedback pipeline (architecture, redaction policy, schema, persistence format, Vitest / Playwright proofs).
+- [`docs/testnet/iter30-stale-build-redeploy.md`](docs/testnet/iter30-stale-build-redeploy.md) — iter 30 stale-prod-build diagnosis and `frontend/scripts/deploy.sh` redeploy evidence (task 0041).
+- [`docs/testnet/iter30-readme-doc-checkpoint-6.md`](docs/testnet/iter30-readme-doc-checkpoint-6.md) — iter 30 documentation checkpoint summary + gate sweep.
+- [`docs/testnet/iter30-link-check.md`](docs/testnet/iter30-link-check.md) — iter 30 link-check artefact (`scripts/check-doc-links.py`).
 - [`.autobuilder/integration-results.md`](.autobuilder/integration-results.md) — integration smoke matrix.
 - [`scripts/check-doc-links.py`](scripts/check-doc-links.py) — README/docs link checker.
 

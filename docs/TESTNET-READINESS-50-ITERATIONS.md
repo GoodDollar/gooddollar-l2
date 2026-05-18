@@ -1,6 +1,6 @@
 # GoodDollar L2 — Testnet Readiness Gate: Next 50 Iterations
 
-_Last updated: 2026-05-17 UTC._
+_Last updated: 2026-05-18 UTC — iter 30 / 50 complete; iter 31 next._
 
 This is the execution plan for the next autonomous autobuilder run. The goal is not more surface area; it is a public-testnet release candidate that real external testers can use, debug, and trust.
 
@@ -54,11 +54,11 @@ This is the execution plan for the next autonomous autobuilder run. The goal is 
 | 23 | UBI event/accounting tests I | Swap/Perps fee routing proven by event or balance deltas. | Foundry/integration receipts. |
 | 24 | UBI event/accounting tests II | Lend/Stable/Predict/Stocks fee routing proven. | Foundry/integration receipts. |
 | 25 | README/doc checkpoint 5 | README explains fee routes and links accounting proof. | README/docs refresh + link check. ✅ executed iter 25 — task [`0036`](../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0036-iter25-readme-doc-checkpoint-5.md), evidence in [`docs/testnet/iter25-readme-doc-checkpoint-5.md`](testnet/iter25-readme-doc-checkpoint-5.md). |
-| 26 | Analytics address book | Publish machine-readable labels, ABIs, protocol IDs, event signatures. | JSON artifact + validation script. |
-| 27 | Internal analytics dashboard | Public/interim page shows tx counts, protocol activity, UBI fees, status. | Screenshot + API check. |
-| 28 | Dune package | Dune/indexing request package ready even if chain indexing pending. | SQL/query pack + docs. |
-| 29 | Feedback pipeline | Feedback button captures route, wallet, console/session context safely. | API tests + UI test. |
-| 30 | README/doc checkpoint 6 + gate | Docs include analytics + feedback loops. | README/docs refresh + full gate. |
+| 26 | Analytics address book | Publish machine-readable labels, ABIs, protocol IDs, event signatures. | ✅ executed iter 26 — [`analytics/address-book.json`](../analytics/address-book.json) + [`analytics/README.md`](../analytics/README.md). |
+| 27 | Internal analytics dashboard | Public/interim page shows tx counts, protocol activity, UBI fees, status. | ✅ executed iter 27 — [`/analytics`](../frontend/src/app/analytics/page.tsx) backed by [`/api/analytics/overview`](../frontend/src/app/api/analytics/overview/route.ts); restored on public app by iter 30 stale-build redeploy ([`docs/testnet/iter30-stale-build-redeploy.md`](testnet/iter30-stale-build-redeploy.md)). |
+| 28 | Dune package | Dune/indexing request package ready even if chain indexing pending. | ✅ executed iter 28 — [`analytics/dune-package/`](../analytics/dune-package/) + [`INDEXING_MANIFEST.json`](../analytics/dune-package/INDEXING_MANIFEST.json). |
+| 29 | Feedback pipeline | Feedback button captures route, wallet, console/session context safely. | ✅ executed iter 29 — `POST /api/feedback` ([`route.ts`](../frontend/src/app/api/feedback/route.ts)) with rate limit, 16 KiB body cap, `FeedbackPayload` schema, `redactDeep` ([`redactSecrets.ts`](../frontend/src/lib/redactSecrets.ts)), JSONL persistence. Vitest + Playwright + live curl proofs in [`docs/testnet/iter29-feedback-pipeline.md`](testnet/iter29-feedback-pipeline.md). |
+| 30 | README/doc checkpoint 6 + gate | Docs include analytics + feedback loops. | ✅ executed iter 30 — tasks [`0041`](../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0041-iter30-rebuild-redeploy-frontend-stale-prod-build.md) (stale-build redeploy: [`docs/testnet/iter30-stale-build-redeploy.md`](testnet/iter30-stale-build-redeploy.md)) + [`0042`](../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0042-iter30-readme-doc-checkpoint-6-analytics-feedback.md) (doc checkpoint 6: [`docs/testnet/iter30-readme-doc-checkpoint-6.md`](testnet/iter30-readme-doc-checkpoint-6.md), link check [`docs/testnet/iter30-link-check.md`](testnet/iter30-link-check.md)). README, TESTNET_README, ARCHITECTURE refreshed with analytics + feedback loops. |
 | 31 | Security gate refresh | Slither, Foundry, dependency audit status is current. | Fresh outputs archived. |
 | 32 | Fuzz/invariant expansion | Critical perps/vault/UBI/accounting invariants covered. | `forge test` specific invariant proof. |
 | 33 | Oracle risk controls | Stale/bad oracle behavior guarded and monitored. | Unit/integration tests + monitor health. |
@@ -87,16 +87,16 @@ This is the execution plan for the next autonomous autobuilder run. The goal is 
 | 1 | [`docs/testnet/iter01-baseline.md`](testnet/iter01-baseline.md) | `scripts/testnet/iter01-baseline.sh` |
 | 2 | [`docs/testnet/iter02-health-gate.md`](testnet/iter02-health-gate.md) (contract: [`docs/testnet/HEALTH-CONTRACT.md`](testnet/HEALTH-CONTRACT.md)) | `scripts/testnet/health-gate.sh` |
 
-## Recent Executed Iterations (iter 20–25)
+## Recent Executed Iterations (iter 25–30)
 
 | Iter | Row | Outcome | Key artefacts |
 |---:|---|---|---|
-| 20 | README/doc checkpoint 4 + gate | ✅ executed | README refresh, gate run. |
-| 21 | Stocks/portfolio lane hardening | ✅ executed | [`frontend/e2e/portfolio-journey.spec.ts`](../frontend/e2e/portfolio-journey.spec.ts); `--dist-dir` CLI blocker resolved. |
-| 22 | UBI fee truth source | ✅ executed | [`docs/UBI-FEE-ACCOUNTING.md`](UBI-FEE-ACCOUNTING.md) — 14-route canonical map. |
-| 23 | UBI event/accounting tests I (Swap + Perps) | ✅ executed | [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) — routes 1–5 proven (commit `2b30ad5`). |
-| 24 | UBI event/accounting tests II (Predict + Lend + Stable + Stocks) | ✅ executed | [`test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol`](../test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol) — routes 6–14 proven; all 14 routes now `✅ integration proven` (commit `3f2806a`). |
 | 25 | README/doc checkpoint 5 | ✅ executed | Task [`0036`](../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0036-iter25-readme-doc-checkpoint-5.md); [`docs/testnet/iter25-readme-doc-checkpoint-5.md`](testnet/iter25-readme-doc-checkpoint-5.md); link check at [`docs/testnet/iter25-link-check.md`](testnet/iter25-link-check.md). |
+| 26 | Analytics address book | ✅ executed | [`analytics/address-book.json`](../analytics/address-book.json) + [`analytics/README.md`](../analytics/README.md) — canonical per-protocol contract index derived from `op-stack/addresses.json`. |
+| 27 | Internal analytics dashboard | ✅ executed | [`/analytics`](../frontend/src/app/analytics/page.tsx) public page + [`/api/analytics/overview`](../frontend/src/app/api/analytics/overview/route.ts) JSON aggregate. Backed by the iter 26 address book. |
+| 28 | Dune / indexing-request package | ✅ executed | [`analytics/dune-package/`](../analytics/dune-package/) ships ABIs, deployment metadata, and [`INDEXING_MANIFEST.json`](../analytics/dune-package/INDEXING_MANIFEST.json) for Dune / Goldsky / Subsquid handoff. |
+| 29 | Feedback pipeline | ✅ executed | `POST /api/feedback` ([`route.ts`](../frontend/src/app/api/feedback/route.ts)) with `withApiRateLimit`, 16 KiB body cap, `FeedbackPayload` schema ([`feedbackContext.ts`](../frontend/src/lib/feedbackContext.ts)), `redactDeep` ([`redactSecrets.ts`](../frontend/src/lib/redactSecrets.ts)), JSONL persistence to gitignored `frontend/data/feedback.jsonl`. Proofs in [`docs/testnet/iter29-feedback-pipeline.md`](testnet/iter29-feedback-pipeline.md). |
+| 30 | README/doc checkpoint 6 + gate (stale-build fix) | ✅ executed | Task [`0041`](../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0041-iter30-rebuild-redeploy-frontend-stale-prod-build.md) caught + fixed a stale production build that had been masking iter 27 `/analytics` and iter 29 `/api/feedback` schema — evidence: [`docs/testnet/iter30-stale-build-redeploy.md`](testnet/iter30-stale-build-redeploy.md). Task [`0042`](../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0042-iter30-readme-doc-checkpoint-6-analytics-feedback.md) refreshed README + TESTNET_README + ARCHITECTURE with iter 26–29 surfaces. Gate sweep: [`docs/testnet/iter30-readme-doc-checkpoint-6.md`](testnet/iter30-readme-doc-checkpoint-6.md); link check: [`docs/testnet/iter30-link-check.md`](testnet/iter30-link-check.md). |
 
 ## README Checkpoint Requirements Every 5 Iterations
 
