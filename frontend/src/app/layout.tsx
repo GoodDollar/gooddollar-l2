@@ -14,6 +14,7 @@ import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistratio
 import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary'
 import { Toaster } from '@/components/ui/toast'
 import { FeedbackButton } from '@/components/FeedbackButton'
+import { ConsoleErrorCapture } from '@/components/ConsoleErrorCapture'
 
 export const metadata: Metadata = {
   title: {
@@ -82,6 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to main content
         </a>
         <GlobalErrorBoundary>
+          <ConsoleErrorCapture />
           <Providers>
             <Header />
             <UBIBanner />
