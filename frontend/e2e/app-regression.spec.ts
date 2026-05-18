@@ -18,10 +18,7 @@ test.describe('GoodDollar L2 app E2E registry — sequential Playwright automati
       await expect(page).not.toHaveURL(/\/404(?:\/|$)/)
       await expect(page.locator('body')).toBeVisible()
 
-      // Let client-only RPC widgets settle without requiring networkidle on websocket-enabled pages.
-      await page.waitForTimeout(app.critical ? 750 : 400)
-
-      const bodyText = normalize(await page.locator('body').innerText())
+      const bodyText = await waitForRegistryBody(page, app)
       expect(bodyText.length, `${app.id} should render meaningful page text`).toBeGreaterThan(40)
       expect(bodyText, `${app.id} should not render a fatal app/error shell`).not.toMatch(fatalText)
       expect(bodyText, `${app.id} should match its title/content contract`).toMatch(new RegExp(app.titlePattern, 'i'))
@@ -41,6 +38,25 @@ test.describe('GoodDollar L2 app E2E registry — sequential Playwright automati
 
 function normalize(text: string) {
   return text.replace(/\s+/g, ' ').trim()
+}
+
+async function waitForRegistryBody(page: Page, app: AppCoverage) {
+  const titlePattern = new RegExp(app.titlePattern, 'i')
+
+  await expect
+    .poll(
+      async () => {
+        const text = normalize(await page.locator('body').innerText())
+        return text.length > 40 && !fatalText.test(text) && titlePattern.test(text) ? text : ''
+      },
+      {
+        message: `${app.id} should settle into its registry content contract`,
+        timeout: app.critical ? 5000 : 3000,
+      },
+    )
+    .not.toBe('')
+
+  return normalize(await page.locator('body').innerText())
 }
 
 async function visibleActionCount(page: Page) {
