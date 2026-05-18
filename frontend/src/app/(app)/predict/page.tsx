@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { SearchX } from 'lucide-react'
 
-import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, hasMeaningfulPrice, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
+import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, hasMeaningfulPrice, isDevnetSeedMarket, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
 import { useMarketCount, useAllOnChainMarkets, type OnChainMarket } from '@/lib/useMarkets'
 import { useTwentyFourHourVolume } from '@/lib/useTwentyFourHourVolume'
 import { pickArrowDirection, type ArrowDirection } from '@/lib/predictVolume'
@@ -555,9 +555,19 @@ function PredictPageContent() {
     })
   }, [onChainMarkets, volumesByMarketId])
 
+  // Task 0051: hide devnet keeper seed markets (e.g. "Devnet proof market
+  // 2026-05-18T..." / bare ISO timestamps) from every consumer on this page
+  // — grid, featured hero, and discovery sidebar — so the public testnet
+  // surface only shows market questions a real user would recognize. The
+  // underlying contracts and indexing are untouched.
+  const visibleMarkets = useMemo(
+    () => allMarkets.filter(m => !isDevnetSeedMarket(m)),
+    [allMarkets],
+  )
+
   const filtered = useMemo(
-    () => filterAndSortMarkets(allMarkets, category, sort, query),
-    [allMarkets, category, sort, query],
+    () => filterAndSortMarkets(visibleMarkets, category, sort, query),
+    [visibleMarkets, category, sort, query],
   )
 
   const activeMarkets = useMemo(
@@ -569,10 +579,12 @@ function PredictPageContent() {
     [filtered],
   )
 
-  // Featured selection runs against the unfiltered set so the hero stays
-  // consistent regardless of search/category. The grid below dedups by id so
-  // we never render the same market twice on the same page (task 0044).
-  const featured = useMemo(() => selectFeaturedMarket(allMarkets), [allMarkets])
+  // Featured selection runs against the visible-but-otherwise-unfiltered
+  // set so the hero stays consistent regardless of search/category, while
+  // still excluding devnet seed markets (task 0051). The grid below dedups
+  // by id so we never render the same market twice on the same page
+  // (task 0044).
+  const featured = useMemo(() => selectFeaturedMarket(visibleMarkets), [visibleMarkets])
   const featuredId = featured?.id
   const activeMarketsWithoutFeatured = useMemo(
     () => activeMarkets.filter(m => m.id !== featuredId),
@@ -777,13 +789,13 @@ function PredictPageContent() {
         {/*
           Right rail — Polymarket-parity discovery sidebar (task 0048).
           Hidden below `lg` via the parent grid's column collapse. The
-          sidebar reads from `allMarkets` (the full set, unfiltered) so
-          it stays useful as a discovery aid even while the user is
-          filtering the main grid.
+          sidebar reads from `visibleMarkets` (the full set minus devnet
+          seed markets — task 0051) so it stays useful as a discovery aid
+          even while the user is filtering the main grid.
         */}
         <div className="hidden lg:block">
           <PredictDiscoverySidebar
-            markets={allMarkets}
+            markets={visibleMarkets}
             onCategorySelect={setCategory}
           />
         </div>

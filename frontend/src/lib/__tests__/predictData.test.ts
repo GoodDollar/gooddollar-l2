@@ -5,6 +5,7 @@ import {
   filterAndSortMarkets,
   selectFeaturedMarket,
   generateProbabilityHistory,
+  isDevnetSeedMarket,
   type PredictionMarket,
 } from '../predictData'
 
@@ -166,6 +167,64 @@ describe('generateProbabilityHistory (task 0074)', () => {
     const a = generateProbabilityHistory('same-id', 0.5, 20, true)
     const b = generateProbabilityHistory('same-id', 0.5, 20, true)
     expect(a).toEqual(b)
+  })
+})
+
+describe('isDevnetSeedMarket (task 0051)', () => {
+  it('matches the literal "Supplemental devnet proof <ISO>" pattern', () => {
+    expect(
+      isDevnetSeedMarket({
+        question: 'Supplemental devnet proof 2026-05-18T12:29:01.429Z',
+      }),
+    ).toBe(true)
+  })
+
+  it('matches the literal "Devnet proof market <ISO>" pattern', () => {
+    expect(
+      isDevnetSeedMarket({
+        question: 'Devnet proof market 2026-05-18T12:26:53.170Z',
+      }),
+    ).toBe(true)
+  })
+
+  it('matches the seed prefix case-insensitively', () => {
+    expect(
+      isDevnetSeedMarket({ question: 'DEVNET PROOF MARKET 2026-01-01T00:00:00.000Z' }),
+    ).toBe(true)
+    expect(
+      isDevnetSeedMarket({ question: 'supplemental devnet proof 2026-01-01T00:00:00.000Z' }),
+    ).toBe(true)
+  })
+
+  it('matches a bare ISO-8601 timestamp question with no surrounding text', () => {
+    expect(isDevnetSeedMarket({ question: '2026-05-18T12:29:01.429Z' })).toBe(true)
+    expect(isDevnetSeedMarket({ question: '2026-05-18T12:29:01Z' })).toBe(true)
+  })
+
+  it('does not match real-world market questions', () => {
+    expect(
+      isDevnetSeedMarket({ question: 'Will ETH cross $4000 by July?' }),
+    ).toBe(false)
+    expect(
+      isDevnetSeedMarket({ question: 'Will BTC hit $100K by 2026?' }),
+    ).toBe(false)
+    expect(
+      isDevnetSeedMarket({ question: 'Devnet status report' }),
+    ).toBe(false)
+    expect(
+      isDevnetSeedMarket({ question: 'proof of stake — will Ethereum migrate by Q4?' }),
+    ).toBe(false)
+  })
+
+  it('does not match empty or whitespace-only questions', () => {
+    expect(isDevnetSeedMarket({ question: '' })).toBe(false)
+    expect(isDevnetSeedMarket({ question: '   ' })).toBe(false)
+  })
+
+  it('tolerates surrounding whitespace on seed strings', () => {
+    expect(
+      isDevnetSeedMarket({ question: '  Devnet proof market 2026-05-18T12:26:53.170Z  ' }),
+    ).toBe(true)
   })
 })
 

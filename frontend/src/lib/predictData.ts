@@ -13,6 +13,32 @@
 
 export type MarketCategory = 'Crypto' | 'Politics' | 'Sports' | 'AI & Tech' | 'World Events' | 'Culture'
 
+/**
+ * Patterns that identify devnet seed markets (task 0051).
+ *
+ * The keeper scripts in `.autobuilder/tmp/` emit two seed-market question
+ * templates plus the occasional bare ISO-8601 timestamp. These markets are
+ * useful for chain liveness proofs but degrade the public testnet UX, so
+ * the `/predict` page filters them out of both the grid and the featured
+ * hero. Patterns are intentionally narrow and anchored so they can't
+ * collide with real, user-submitted questions like "proof of stake — ...".
+ */
+const DEVNET_SEED_PATTERNS: RegExp[] = [
+  /^supplemental devnet proof\b/i,
+  /^devnet proof market\b/i,
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/,
+]
+
+/**
+ * True if the market's `question` is a known devnet-keeper seed string.
+ * See `DEVNET_SEED_PATTERNS` for the exact rules.
+ */
+export function isDevnetSeedMarket(m: { question: string }): boolean {
+  const q = m.question.trim()
+  if (q.length === 0) return false
+  return DEVNET_SEED_PATTERNS.some(re => re.test(q))
+}
+
 export interface PredictionMarket {
   id: string
   question: string
