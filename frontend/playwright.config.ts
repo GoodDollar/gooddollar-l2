@@ -36,14 +36,24 @@ export default defineConfig({
       use: { ...devices['Pixel 5'] },
     },
   ],
-  // CRITICAL: --dist-dir .next.e2e isolates Playwright's dev server build
+  // CRITICAL: NEXT_DIST_DIR=.next.e2e isolates Playwright's dev-server build
   // artifacts from the production `.next/` directory used by PM2-managed
-  // `goodswap`. Without this flag, `next dev` clobbers production chunks and
-  // breaks the public site (recurrence #3 — see task 0029).
+  // `goodswap`. `next.config.js` reads `process.env.NEXT_DIST_DIR` and feeds
+  // it into Next's `distDir` config, which IS honored by `next dev`.
+  //
+  // Why not `--dist-dir .next.e2e` on the CLI? Iter19 (task 0029) tried that;
+  // Next 14.2.x's `next dev` rejects the flag with `unknown option`, so the
+  // webServer silently failed and isolation was effectively off. See task
+  // 0032 for the full forensics. The
+  // `frontend/scripts/check-playwright-isolation.mjs` guard now refuses both
+  // the legacy CLI flag (poison-pill) and a missing env var.
   webServer: process.env.SKIP_DEV_SERVER
     ? undefined
     : {
-        command: `npx next dev -p ${e2ePort} --dist-dir .next.e2e`,
+        command: `npx next dev -p ${e2ePort}`,
+        env: {
+          NEXT_DIST_DIR: '.next.e2e',
+        },
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

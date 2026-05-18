@@ -75,6 +75,21 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
+  // CRITICAL: Honors NEXT_DIST_DIR env var so Playwright (via webServer.env)
+  // can redirect its `next dev` build artifacts to `.next.e2e/` instead of
+  // clobbering the production `.next/` directory served by the PM2-managed
+  // `goodswap` service. PM2 / `next start` / `next build` leave NEXT_DIST_DIR
+  // unset, so production transparently uses `.next` and behavior is unchanged.
+  //
+  // History: iter19 (task 0029) tried to do this with `next dev --dist-dir`,
+  // but that CLI flag is not supported on `next dev` in Next 14.2.x — the
+  // webServer silently failed every time anyone ran `playwright test`.
+  // Iter21 (task 0032) moved the bridge into the config + env-var pattern,
+  // which IS honored by `next dev`. The
+  // `frontend/scripts/check-playwright-isolation.mjs` guard enforces the
+  // shape of this bridge so it cannot quietly regress again.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+
   async headers() {
     return [
       {
