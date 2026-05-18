@@ -23,6 +23,7 @@ import { TOKENS, TOKEN_COLORS } from './tokens'
 import { CONTRACTS } from './chain'
 import { ERC20ABI, GoodPoolABI, GoodLendPriceOracleABI } from './abi'
 import type { TokenMarketData } from './marketData'
+import { generateSeededSparkline } from './sparklineSeed'
 
 // ─── Token descriptions (static metadata) ────────────────────────────────────
 
@@ -182,7 +183,9 @@ export function useOnChainMarketData(): {
           change7d:  null,
           volume24h,
           marketCap,
-          sparkline7d: null,
+          // Seeded synthetic 7d series until an indexer-backed history is wired in.
+          // TODO(post-testnet): replace with real 7d price history from indexer.
+          sparkline7d: generateSeededSparkline(t.symbol, price, change24h),
           description: TOKEN_DESCRIPTIONS[t.symbol] ?? `${t.name} token`,
           circulatingSupply,
           maxSupply: t.symbol === 'G$' ? null : undefined,
