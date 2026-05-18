@@ -18,24 +18,24 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 
 ## Current Status
 
-_Last refreshed: 2026-05-17 22:03 UTC. `main` was fetched from origin and confirmed current at commit `c93eaf95` before this README/doc checkpoint 3 refresh._
+_Last refreshed: 2026-05-18 05:39 UTC. `main` was fetched from origin and confirmed current at commit `e734001` before this README/doc checkpoint 4 refresh._
 
 GoodDollar L2 is running as a persistent public devnet and is being hardened into a public testnet release candidate.
 
 - Public health: `healthy`, `12 / 12` services OK from `https://goodswap.goodclaw.org/api/status`.
 - Public pages verified: `/`, `/faucet`, `/perps`, `/portfolio`, `/tests`, `/testnet-guide`, `/predict`, `/lend`, `/stable`, `/stocks`, `/bridge`, `/agents` all returned HTTP `200`.
 - Public RPC verified: `eth_chainId = 0xa455`.
-- Active initiative: Testnet Readiness Gate — 50 iterations (iter 15 / 50 complete).
+- Active initiative: Testnet Readiness Gate — 50 iterations (iter 19 / 50 complete; iter 20 in progress).
 - Active priorities: stability, public tester onboarding, protocol smoke evidence, UBI-fee accounting, and release-candidate packaging.
 - Security hardening status: Slither high/medium cleanup complete in the prior security initiative; release gates still require continuous security checks before public testnet.
 
-### Recent readiness milestones (iter 10–14)
+### Recent readiness milestones (iter 15–19)
 
-- **Iter 10 — Reown allowlist hygiene.** Production app ships clean: scoped runtime suppression in `frontend/src/lib/wagmi.ts` for the WalletConnect Cloud `Origin not on Allowlist` log pair, plus an operator runbook entry in [`docs/TESTNET_README.md`](docs/TESTNET_README.md#operator-runbook) for the permanent cloud-side fix.
-- **Iter 11 — Address registry freeze.** Two CI gates now block stale contract addresses: `python3 scripts/refresh-addresses.py --check` (diff guard against `op-stack/addresses.json` + `.autobuilder/addresses.env`) and `python3 scripts/check_no_stale_addresses.py` (stale-address scanner over `frontend/src/`).
-- **Iter 12 — Frontend env freeze.** Canonical `frontend/.env.production` plus an env-drift gate prevent the public build from drifting away from the canonical RPC, explorer, chain ID, and contract registry.
-- **Iter 13 — Wallet onboarding.** One-click EIP-3085 `AddNetworkButton` on `/testnet-guide` and `/faucet` (`frontend/src/components/AddNetworkButton.tsx`); 8 unit specs + Playwright `frontend/e2e/onboarding.spec.ts` capture before/after screenshots and assert the canonical payload.
-- **Iter 14 — Atomic build wrapper + dev guide.** `frontend/scripts/atomic-build.mjs` builds into `.next.tmp` and atomically swaps on success so partial builds can no longer corrupt deployed assets ([runbook](docs/runbooks/frontend-rebuild.md)). `/testnet-guide` gained a `#for-developers` section with copy-pasteable RPC `curl`, GitHub feedback link, and direct links to `op-stack/addresses.json` + `docs/ARCHITECTURE.md`.
+- **Iter 15 — README/doc checkpoint 3.** Refreshed `README.md`, `docs/ARCHITECTURE.md`, and `docs/TESTNET_README.md` after the iter 10–14 work landed; added the doc-link CI gate (`python3 scripts/check-doc-links.py`) to keep cross-doc references honest.
+- **Iter 16 — Swap lane hardening.** Re-pointed the stale `SwapGD` / `SwapWETH` / `SwapUSDC` constants in `frontend/src/lib/devnet.ts` at the canonical addresses from `op-stack/addresses.json`, unblocking the swap happy-path and dust/error proof on the public app.
+- **Iter 17 — Perps lane hardening.** Unblocked the Playwright E2E port collision and re-ran the full open/close flow via `frontend/e2e/perps-journey.spec.ts`, producing on-chain `PerpEngine.positions(...)` proof of a margin-funded trade.
+- **Iter 18 — Predict lane + PM2 build-less-start fence.** Stabilised the public `/predict` market grid so it surfaces meaningful markets even when on-chain seeds are empty, and shipped the iter 18 BLOCKER fix that fences PM2 against build-less starts (`frontend/scripts/pm2-launch-next.mjs` refuses to launch `next start` if `.next/` is missing a manifest or contaminated by a `next dev` tree).
+- **Iter 19 — `next dev` clobber recurrence #3 closed.** Removed the upstream cause of three production outages via `distDir` isolation for Playwright + added the `goodswap-watchdog` PM2 process that probes `/_next/static/chunks/*.js` every 60 s and reloads `goodswap` after a 3-failure streak (`frontend/scripts/goodswap-watchdog.mjs`, `frontend/ecosystem.watchdog.config.cjs`, [frontend health runbook](docs/TESTNET_README.md#frontend-health-iter-19)). Note: the Lend/Stable lane hardening originally mapped to row 19 of the 50-iteration plan is **deferred** to a future iteration — iter 19's slot was consumed by closing the production-down recurrence.
 
 ## Logo and Brand
 

@@ -1,6 +1,6 @@
 # GoodDollar L2 Testnet Readiness
 
-_Last updated: 2026-05-17 22:03 UTC by `scripts/update-testnet-readme.py`._
+_Last updated: 2026-05-18 05:39 UTC during iter 20 (README/doc checkpoint 4). This doc has hand-curated sections (Sibling Apps, Protocol Lane Hardening Status, Frontend health, operator runbook). **Do not re-run `scripts/update-testnet-readme.py` until its template is reconciled with those sections** — the generator currently overwrites them._
 
 ## Current Build
 
@@ -26,6 +26,32 @@ _Last updated: 2026-05-17 22:03 UTC by `scripts/update-testnet-readme.py`._
 - Frontend E2E: matrix workflow `Parallel Dapp Tests` covers each dapp lane independently.
 - Deployment: devnet deployment workflow is `Deploy to Devnet`.
 - Required before public testnet: persistent OP Stack chain, faucet, final canonical address sync, explorer indexing check, Dune dashboard/indexing.
+
+## Protocol Lane Hardening Status (iter 16–19)
+
+Per-lane status after the iter 16–19 hardening pass. "Hardened" means the
+lane has named proof on the public app and is ready to feed the release
+candidate manifest. "Deferred" means the slot was consumed by a blocker
+and the work moves to a later row.
+
+| Lane | Iter | State | Evidence |
+|---|---|---|---|
+| Swap | 16 | ✅ hardened | `frontend/src/lib/devnet.ts` constants re-pointed at `op-stack/addresses.json`; swap happy-path + dust/error proof captured. |
+| Perps | 17 | ✅ hardened | `frontend/e2e/perps-journey.spec.ts` full open/close green; on-chain `PerpEngine.positions(...)` receipt. |
+| Predict | 18 | ✅ hardened | `/predict` market grid surfaces meaningful markets when on-chain seeds are empty; `frontend/e2e/predict-journey.spec.ts` green. |
+| Lend | 19 (target) | ⏳ deferred | Iter 19's slot was consumed by the `next dev` clobber recurrence #3 fix (see [Frontend health (iter 19)](#frontend-health-iter-19)). Lane proof scheduled for a follow-up iteration. |
+| Stable | — | ⏳ deferred | Same deferral as Lend; will be picked up alongside it. |
+| Stocks | — | ✅ stable (existing) | `/stocks` HTTP 200, smoke matrix green from prior iterations; no new hardening in iter 16–19. |
+| Portfolio / Claim | — | ✅ stable (existing) | `/portfolio` HTTP 200; portfolio/claim UX validated in prior iterations. |
+
+Cross-cutting infra hardening that landed alongside the lane work:
+
+- **Iter 18 BLOCKER — PM2 build-less-start fence.** `frontend/scripts/pm2-launch-next.mjs` refuses to launch `next start` if `.next/` is missing a manifest or contaminated by a `next dev` tree. This prevents the third class of "HTML 200 but every chunk 500" outages.
+- **Iter 19 BLOCKER — `next dev` clobber recurrence #3 closed.** `distDir` isolation for Playwright + the `goodswap-watchdog` PM2 process that probes `/_next/static/chunks/*.js` every 60 s and reloads `goodswap` after a 3-failure streak. Full operator runbook in [Frontend health (iter 19)](#frontend-health-iter-19).
+
+The Lend/Stable lane deferral is intentionally visible here so a tester
+reading this doc does not assume rows 19/20 of the 50-iteration plan
+mean those lanes have public-app proof yet.
 
 ## Sibling Experimental Apps (Not in Release Gate)
 

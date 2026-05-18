@@ -1,4 +1,32 @@
 #!/usr/bin/env python3
+# ============================================================================
+# WARNING — DO NOT RUN UNTIL TEMPLATE IS RECONCILED (added iter 20, 2026-05-18)
+# ============================================================================
+#
+# The live `docs/TESTNET_README.md` has drifted past this generator's template.
+# The live doc now contains hand-curated, manually maintained sections that
+# this script does NOT preserve and WILL silently overwrite:
+#
+#   - "Sibling Experimental Apps (Not in Release Gate)"
+#   - "Protocol Lane Hardening Status (iter 16–19)" (iter 20)
+#   - "Frontend health (iter 19)" operator runbook (iter 19)
+#   - "Operator runbook" Reown / WalletConnect Cloud allowlist section (iter 10)
+#   - "For developers" testnet-guide cross-links (iter 14)
+#
+# Running this script as-is reverted those sections during iter 20 and had to
+# be `git checkout`-recovered. Before invoking it again you MUST:
+#
+#   1. Move every hand-edited section into the generator's template below, OR
+#   2. Refactor the generator to "merge-update" (only refresh the auto blocks
+#      and leave hand-edited blocks untouched), AND
+#   3. Add a doc-diff CI gate that fails if a generated file silently drops
+#      a hand-curated section.
+#
+# Iter 20 chose to update `docs/TESTNET_README.md` by hand instead of running
+# this script. See `.autobuilder/initiatives/0004-testnet-readiness-gate/
+# tasks/0030-iter20-readme-doc-checkpoint-4.md` for context.
+#
+# ============================================================================
 """Generate a concise testnet status README from live repo/devnet state.
 
 This file is intentionally boring: no marketing copy, just the current commit,
