@@ -144,6 +144,112 @@ test.describe('Faucet reliability — API regressions', () => {
   })
 })
 
+test.describe('Faucet reliability — 500 response sanitization (iter33 task 0046)', () => {
+  // The catch-all 500 branch of /api/faucet used to echo the raw viem error
+  // message back to the client, leaking the operator EOA, viem version, RPC
+  // URL, and calldata. Task 0046 introduced a sanitization helper. The
+  // helper-level negative assertions live in the Vitest unit test at
+  // `frontend/src/app/api/faucet/__tests__/sanitize.test.ts` (Playwright
+  // can't transpile the TS source on the fly). At the E2E layer we pin
+  // the integration shape:
+  //   1. Live API — if a 500 is returned, the response body is sanitized
+  //      and carries an 8-hex `errorId`.
+  //   2. PM2 logs — the most recent success line uses the redacted address
+  //      form (0xXXXX…YYYY) rather than the full recipient.
+
+  test('POST /api/faucet 500 response (if any) is sanitized and includes errorId', async ({
+    request,
+  }) => {
+    // Probe with a valid-format, unsupported-but-not-burn address so we
+    // exercise either the rate limiter, capacity guard, or real claim path
+    // — never the address guard. Possible outcomes:
+    //   200 — success (claim went through), sanitization not exercised
+    //   400 — guard rejected the address (sanitization not exercised)
+    //   429 — rate limited (sanitization not exercised)
+    //   503 — capacity issue (sanitization not exercised)
+    //   500 — catch-all — MUST be sanitized + carry an errorId
+    //
+    // We never want a 500 to leak viem internals. If the deployment happens
+    // not to return 500 during this run, the test passes trivially — its
+    // purpose is to catch a regression where the response shape leaks.
+    const res = await postFaucet(
+      request,
+      JSON.stringify({
+        address: '0xa1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4',
+      }),
+    )
+
+    expect(
+      [200, 400, 429, 500, 503],
+      `unexpected faucet status: ${res.status()}`,
+    ).toContain(res.status())
+
+    if (res.status() === 500) {
+      const json = await res.json()
+      const errStr = String(json.error ?? '')
+      expect(errStr).toMatch(/please try again later/i)
+      expect(errStr).not.toMatch(/viem/i)
+      expect(errStr).not.toMatch(/version/i)
+      expect(errStr).not.toMatch(/from:/i)
+      expect(errStr).not.toMatch(/0x[0-9a-fA-F]{40}/)
+      expect(String(json.errorId ?? '')).toMatch(/^[0-9a-f]{8}$/)
+    }
+  })
+
+  test('most recent PM2 faucet success log line uses redacted recipient form', async () => {
+    // Best-effort check: assert that the latest line of the form
+    //   [faucet] Real claim for <addr> → 0x...
+    // uses the redacted "0xXXXX…YYYY" form rather than a full 0x[hex]{40}.
+    // Older pre-build lines may still contain full addresses; we only check
+    // the most recent one because that reflects the deployed code.
+    const { readFileSync, existsSync, statSync } = await import('node:fs')
+    const path = await import('node:path')
+
+    const candidates = [
+      path.join(process.env.HOME ?? '', '.pm2/logs/goodswap-out.log'),
+      path.join(
+        process.env.HOME ?? '',
+        '.pm2/logs/goodswap-frontend-out.log',
+      ),
+    ]
+    const logPath = candidates.find((p) => p && existsSync(p))
+    test.skip(!logPath, 'No PM2 log file present (CI environment)')
+
+    // Only read the tail to avoid pulling many MB into memory.
+    const stat = statSync(logPath!)
+    const readFrom = Math.max(0, stat.size - 64 * 1024) // last 64 KB
+    const fd = (await import('node:fs')).openSync(logPath!, 'r')
+    const buf = Buffer.alloc(stat.size - readFrom)
+    ;(await import('node:fs')).readSync(fd, buf, 0, buf.length, readFrom)
+    ;(await import('node:fs')).closeSync(fd)
+    const tail = buf.toString('utf8').split('\n')
+
+    const successLines = tail.filter((l) =>
+      l.includes('[faucet] Real claim for'),
+    )
+    if (successLines.length === 0) {
+      test.skip(true, 'No faucet success lines in the last 64 KB of PM2 log')
+    }
+
+    const latest = successLines[successLines.length - 1]
+    const match = latest.match(/Real claim for (\S+)/)
+    expect(
+      match,
+      `Could not extract recipient token from latest faucet log line: ${latest}`,
+    ).not.toBeNull()
+    const recipient = match![1]
+
+    // The redacted form is 0xXXXX…YYYY where '…' is U+2026 (horizontal
+    // ellipsis). A full 40-hex address in this slot is the regression
+    // we are guarding against.
+    expect(
+      recipient,
+      `Latest PM2 faucet success line leaks full recipient address:\n${latest}`,
+    ).not.toMatch(/^0x[0-9a-fA-F]{40}$/)
+    expect(recipient).toMatch(/^0x[0-9a-fA-F]{4}\u2026[0-9a-fA-F]{4}$/)
+  })
+})
+
 test.describe('Faucet reliability — opt-in real claim', () => {
   // Real on-chain claim only runs when an operator opts in. CI must not burn
   // faucet funds on every push.

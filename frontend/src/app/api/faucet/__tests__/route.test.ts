@@ -127,6 +127,93 @@ describe('POST /api/faucet — burn / unsupported address rejection', () => {
   })
 })
 
+describe('POST /api/faucet — catch-all 500 sanitization (iter33 task 0046)', () => {
+  // Pins the iter-33 task 0046 contract: the catch-all 500 branch must
+  // never echo raw viem/internal error messages back to the client, and
+  // each 500 must include an 8-hex `errorId` for log correlation.
+
+  // A verbose viem-style error message — exactly the leaky shape we
+  // observed on the live deployment before this fix.
+  const RAW_VIEM_ERROR = [
+    'HTTP request failed.',
+    'Status: 500',
+    'URL: https://devnet-rpc.example.com',
+    'Request body: {"method":"eth_getBalance","params":["0xabcdef0123456789abcdef0123456789abcdef01"]}',
+    'Details: revert',
+    'Version: viem@2.21.0',
+  ].join('\n')
+
+  function withMockedViem() {
+    vi.doMock('viem', async () => {
+      const actual = await vi.importActual<typeof import('viem')>('viem')
+      return {
+        ...actual,
+        createPublicClient: () => ({
+          getBalance: vi.fn().mockRejectedValue(new Error(RAW_VIEM_ERROR)),
+          readContract: vi.fn().mockRejectedValue(new Error(RAW_VIEM_ERROR)),
+          waitForTransactionReceipt: vi
+            .fn()
+            .mockRejectedValue(new Error(RAW_VIEM_ERROR)),
+        }),
+        createWalletClient: () => ({
+          sendTransaction: vi.fn().mockRejectedValue(new Error(RAW_VIEM_ERROR)),
+          writeContract: vi.fn().mockRejectedValue(new Error(RAW_VIEM_ERROR)),
+        }),
+      }
+    })
+  }
+
+  it('returns 500 with a fixed user-safe message — never the raw viem error', async () => {
+    withMockedViem()
+    vi.resetModules()
+
+    const POST = await loadHandler()
+    const validAddr = '0x' + 'a1b2c3d4'.repeat(5)
+    const res = await POST(makeRequest(JSON.stringify({ address: validAddr })))
+
+    expect(res.status).toBe(500)
+    const json = await res.json()
+
+    // Must contain the fixed user-safe message
+    expect(json.error).toMatch(/please try again later/i)
+
+    // Must NOT echo any of the viem-internal leaks
+    expect(json.error).not.toMatch(/viem/i)
+    expect(json.error).not.toMatch(/version/i)
+    expect(json.error).not.toMatch(/0x[0-9a-fA-F]{40}/)
+    expect(json.error).not.toMatch(/https?:\/\//)
+    expect(JSON.stringify(json)).not.toMatch(/eth_getBalance/i)
+  })
+
+  it('includes an 8-hex errorId for log correlation', async () => {
+    withMockedViem()
+    vi.resetModules()
+
+    const POST = await loadHandler()
+    const validAddr = '0x' + 'a1b2c3d4'.repeat(5)
+    const res = await POST(makeRequest(JSON.stringify({ address: validAddr })))
+
+    const json = await res.json()
+    expect(json.errorId).toMatch(/^[0-9a-f]{8}$/)
+  })
+
+  it('emits different errorIds across separate failures', async () => {
+    withMockedViem()
+    vi.resetModules()
+
+    const POST = await loadHandler()
+    const validAddr = '0x' + 'a1b2c3d4'.repeat(5)
+
+    const res1 = await POST(makeRequest(JSON.stringify({ address: validAddr })))
+    const res2 = await POST(makeRequest(JSON.stringify({ address: validAddr })))
+
+    const j1 = await res1.json()
+    const j2 = await res2.json()
+
+    expect(j1.errorId).not.toBe(j2.errorId)
+  })
+})
+
 describe('POST /api/faucet — configuration & rate limiting', () => {
   it('returns 503 when FAUCET_PRIVATE_KEY is missing', async () => {
     delete process.env.FAUCET_PRIVATE_KEY

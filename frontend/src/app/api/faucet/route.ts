@@ -6,6 +6,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { CONTRACTS, DEVNET_CHAIN_ID, DEVNET_EXPLORER_URL, DEVNET_RPC_URL } from '@/lib/devnet'
 import { isClaimableFaucetAddress } from '@/lib/addressGuard'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
+import { generateErrorId, sanitizeFaucetError, shortenAddress } from './sanitize'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -234,7 +235,9 @@ async function handlePost(request: NextRequest) {
       }
     })
 
-    console.log(`[faucet] Real claim for ${address} → ${result.txHashes.join(', ')}`)
+    console.log(
+      `[faucet] Real claim for ${shortenAddress(address)} → ${result.txHashes.join(', ')}`,
+    )
 
     return NextResponse.json({ ok: true, ...result, txHash: result.gdtTxHash })
   } catch (error) {
@@ -249,8 +252,16 @@ async function handlePost(request: NextRequest) {
       console.warn('[faucet] Capacity issue:', message)
       return NextResponse.json({ error: message }, { status: 503 })
     }
-    console.error('[faucet] Claim failed:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    // Generic catch-all: log full detail server-side with an errorId so an
+    // operator can correlate a user-reported failure to the stack trace,
+    // but return only a fixed user-safe message + the errorId to the client.
+    // Prevents viem version / operator EOA / RPC URL / calldata leakage.
+    const errorId = generateErrorId()
+    console.error(`[faucet] Claim failed (errorId=${errorId}):`, message)
+    return NextResponse.json(
+      { error: sanitizeFaucetError(message), errorId },
+      { status: 500 },
+    )
   }
 }
 
