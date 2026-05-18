@@ -1,0 +1,1827 @@
+'forge clean' running (wd: /home/goodclaw/gooddollar-l2)
+'forge config --json' running
+'forge build --build-info --skip ./test/** ./script/** --force' running (wd: /home/goodclaw/gooddollar-l2)
+
+Detector: shadowing-local
+VoteEscrowedGD.lock(uint256,uint256).delegate (src/governance/VoteEscrowedGD.sol#98) shadows:
+	- VoteEscrowedGD.delegate(address) (src/governance/VoteEscrowedGD.sol#232-245) (function)
+VoteEscrowedGD.increaseLock(uint256).delegate (src/governance/VoteEscrowedGD.sol#123) shadows:
+	- VoteEscrowedGD.delegate(address) (src/governance/VoteEscrowedGD.sol#232-245) (function)
+VoteEscrowedGD.extendLock(uint256).delegate (src/governance/VoteEscrowedGD.sol#141) shadows:
+	- VoteEscrowedGD.delegate(address) (src/governance/VoteEscrowedGD.sol#232-245) (function)
+VoteEscrowedGD.withdraw().delegate (src/governance/VoteEscrowedGD.sol#157) shadows:
+	- VoteEscrowedGD.delegate(address) (src/governance/VoteEscrowedGD.sol#232-245) (function)
+VoteEscrowedGD.earlyUnlock().delegate (src/governance/VoteEscrowedGD.sol#185) shadows:
+	- VoteEscrowedGD.delegate(address) (src/governance/VoteEscrowedGD.sol#232-245) (function)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#local-variable-shadowing
+
+Detector: events-access
+GoodDollarToken.setIdentityOracle(address) (src/GoodDollarToken.sol#222-224) should emit an event for: 
+	- identityOracle = _oracle (src/GoodDollarToken.sol#223) 
+GoodDollarToken.setAdmin(address) (src/GoodDollarToken.sol#230-232) should emit an event for: 
+	- admin = _admin (src/GoodDollarToken.sol#231) 
+UBIRevenueTracker.transferAdmin(address) (src/UBIRevenueTracker.sol#217-220) should emit an event for: 
+	- admin = newAdmin (src/UBIRevenueTracker.sol#219) 
+FastWithdrawalLP.setAdmin(address) (src/bridge/FastWithdrawalLP.sol#335-338) should emit an event for: 
+	- admin = _admin (src/bridge/FastWithdrawalLP.sol#337) 
+GoodDollarBridgeL1.setL2Bridge(address) (src/bridge/GoodDollarBridgeL1.sol#124-127) should emit an event for: 
+	- l2Bridge = _l2Bridge (src/bridge/GoodDollarBridgeL1.sol#126) 
+	- l2Bridge = _l2Bridge (src/bridge/GoodDollarBridgeL1.sol#126) 
+GoodDollarBridgeL2.setL1Bridge(address) (src/bridge/GoodDollarBridgeL2.sol#125-128) should emit an event for: 
+	- l1Bridge = _l1Bridge (src/bridge/GoodDollarBridgeL2.sol#127) 
+	- l1Bridge = _l1Bridge (src/bridge/GoodDollarBridgeL2.sol#127) 
+InterestRateModel.setAdmin(address) (src/lending/InterestRateModel.sol#104-106) should emit an event for: 
+	- admin = _admin (src/lending/InterestRateModel.sol#105) 
+SimplePriceOracle.setAdmin(address) (src/lending/SimplePriceOracle.sol#42-44) should emit an event for: 
+	- admin = _admin (src/lending/SimplePriceOracle.sol#43) 
+FundingRate.setPerpEngine(address) (src/perps/FundingRate.sol#70-73) should emit an event for: 
+	- perpEngine = engine (src/perps/FundingRate.sol#72) 
+MarginVault.setPerpEngine(address) (src/perps/MarginVault.sol#71-74) should emit an event for: 
+	- perpEngine = engine (src/perps/MarginVault.sol#73) 
+PerpPriceOracle.setAdmin(address) (src/perps/PerpPriceOracle.sol#96-99) should emit an event for: 
+	- admin = _admin (src/perps/PerpPriceOracle.sol#98) 
+	- admin = _admin (src/perps/PerpPriceOracle.sol#98) 
+MarketFactory.setAdmin(address) (src/predict/MarketFactory.sol#327-330) should emit an event for: 
+	- admin = newAdmin (src/predict/MarketFactory.sol#329) 
+	- admin = newAdmin (src/predict/MarketFactory.sol#329) 
+OptimisticResolver.setAdmin(address) (src/predict/OptimisticResolver.sol#175-178) should emit an event for: 
+	- admin = _admin (src/predict/OptimisticResolver.sol#177) 
+	- admin = _admin (src/predict/OptimisticResolver.sol#177) 
+PriceOracle.setAdmin(address) (src/stocks/PriceOracle.sol#122-125) should emit an event for: 
+	- admin = newAdmin (src/stocks/PriceOracle.sol#124) 
+SyntheticAssetFactory.setAdmin(address) (src/stocks/SyntheticAssetFactory.sol#140-143) should emit an event for: 
+	- admin = newAdmin (src/stocks/SyntheticAssetFactory.sol#142) 
+GoodSwapRouter.transferOwnership(address) (src/swap/GoodSwapRouter.sol#114-117) should emit an event for: 
+	- owner = newOwner (src/swap/GoodSwapRouter.sol#116) 
+LimitOrderBook.transferOwnership(address) (src/swap/LimitOrderBook.sol#358-361) should emit an event for: 
+	- owner = newOwner (src/swap/LimitOrderBook.sol#360) 
+LendingStrategy.setVault(address) (src/yield/strategies/LendingStrategy.sol#68-73) should emit an event for: 
+	- vault = _vault (src/yield/strategies/LendingStrategy.sol#72) 
+StablecoinStrategy.setVault(address) (src/yield/strategies/StablecoinStrategy.sol#66-71) should emit an event for: 
+	- vault = _vault (src/yield/strategies/StablecoinStrategy.sol#70) 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-access-control
+
+Detector: events-maths
+AgentRegistry.setMaxAgents(uint256) (src/AgentRegistry.sol#368-371) should emit an event for: 
+	- maxAgents = _max (src/AgentRegistry.sol#370) 
+UBIFeeSplitter.setFeeSplit(uint256,uint256) (src/UBIFeeSplitter.sol#113-117) should emit an event for: 
+	- ubiBPS = _ubiBPS (src/UBIFeeSplitter.sol#115) 
+	- protocolBPS = _protocolBPS (src/UBIFeeSplitter.sol#116) 
+FastWithdrawalLP.setFeeBps(uint256) (src/bridge/FastWithdrawalLP.sol#325-328) should emit an event for: 
+	- feeBps = _feeBps (src/bridge/FastWithdrawalLP.sol#327) 
+L1StandardBridge.setUBIFee(uint256) (src/bridge/L1StandardBridge.sol#139-143) should emit an event for: 
+	- ubiFee = _fee (src/bridge/L1StandardBridge.sol#142) 
+MultiChainBridge.setRoutingFeeBps(uint256) (src/bridge/MultiChainBridge.sol#175-178) should emit an event for: 
+	- routingFeeBps = bps (src/bridge/MultiChainBridge.sol#177) 
+OptimismPortal.setUBIFee(uint256) (src/bridge/OptimismPortal.sol#142-146) should emit an event for: 
+	- ubiFee = _fee (src/bridge/OptimismPortal.sol#145) 
+SwapPriceOracle.setMaxDeviation(uint256) (src/oracle/SwapPriceOracle.sol#144-146) should emit an event for: 
+	- maxDeviationBps = _bps (src/oracle/SwapPriceOracle.sol#145) 
+PerpUBIFeeSplitter.setFeeSplit(uint256,uint256) (src/perps/PerpUBIFeeSplitter.sol#234-238) should emit an event for: 
+	- ubiBPS = _ubiBPS (src/perps/PerpUBIFeeSplitter.sol#236) 
+	- protocolBPS = _protocolBPS (src/perps/PerpUBIFeeSplitter.sol#237) 
+PredictUBIFeeSplitter.setFeeSplit(uint256,uint256) (src/predict/PredictUBIFeeSplitter.sol#194-198) should emit an event for: 
+	- ubiBPS = _ubiBPS (src/predict/PredictUBIFeeSplitter.sol#196) 
+	- protocolBPS = _protocolBPS (src/predict/PredictUBIFeeSplitter.sol#197) 
+PegStabilityModule.withdrawReserves(address,uint256) (src/stable/PegStabilityModule.sol#217-231) should emit an event for: 
+	- totalUSDCReserves -= usdcAmount (src/stable/PegStabilityModule.sol#229) 
+StableUBIFeeSplitter.setFeeSplit(uint256,uint256) (src/stable/StableUBIFeeSplitter.sol#300-304) should emit an event for: 
+	- ubiBPS = _ubiBPS (src/stable/StableUBIFeeSplitter.sol#302) 
+	- protocolBPS = _protocolBPS (src/stable/StableUBIFeeSplitter.sol#303) 
+StocksUBIFeeSplitter.setFeeSplit(uint256,uint256) (src/stocks/StocksUBIFeeSplitter.sol#247-251) should emit an event for: 
+	- ubiBPS = _ubiBPS (src/stocks/StocksUBIFeeSplitter.sol#249) 
+	- protocolBPS = _protocolBPS (src/stocks/StocksUBIFeeSplitter.sol#250) 
+LiFiBridgeAggregator.setUBIFeeRate(uint256) (src/swap/LiFiBridgeAggregator.sol#148-151) should emit an event for: 
+	- ubiFeeRateBps = bps (src/swap/LiFiBridgeAggregator.sol#150) 
+LimitOrderBook.setKeeperFeeBps(uint256) (src/swap/LimitOrderBook.sol#348-351) should emit an event for: 
+	- keeperFeeBps = _bps (src/swap/LimitOrderBook.sol#350) 
+GoodVault.setDepositCap(uint256) (src/yield/GoodVault.sol#419-421) should emit an event for: 
+	- depositCap = _cap (src/yield/GoodVault.sol#420) 
+VaultFactory.setDefaultDepositCap(uint256) (src/yield/VaultFactory.sol#115-117) should emit an event for: 
+	- defaultDepositCap = _cap (src/yield/VaultFactory.sol#116) 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-arithmetic
+
+Detector: missing-zero-check
+GoodDollarToken.constructor(address,address,uint256)._admin (src/GoodDollarToken.sol#75) lacks a zero-check on :
+		- admin = _admin (src/GoodDollarToken.sol#76)
+GoodDollarToken.constructor(address,address,uint256)._identityOracle (src/GoodDollarToken.sol#75) lacks a zero-check on :
+		- identityOracle = _identityOracle (src/GoodDollarToken.sol#77)
+GoodDollarToken.setIdentityOracle(address)._oracle (src/GoodDollarToken.sol#222) lacks a zero-check on :
+		- identityOracle = _oracle (src/GoodDollarToken.sol#223)
+GoodDollarToken.setAdmin(address)._admin (src/GoodDollarToken.sol#230) lacks a zero-check on :
+		- admin = _admin (src/GoodDollarToken.sol#231)
+GoodSwap.constructor(address,address)._token0 (src/GoodSwap.sol#99) lacks a zero-check on :
+		- token0 = _token0 (src/GoodSwap.sol#101)
+GoodSwap.constructor(address,address)._token1 (src/GoodSwap.sol#99) lacks a zero-check on :
+		- token1 = _token1 (src/GoodSwap.sol#102)
+UBIFeeSplitter.constructor(address,address,address)._treasury (src/UBIFeeSplitter.sol#58) lacks a zero-check on :
+		- protocolTreasury = _treasury (src/UBIFeeSplitter.sol#60)
+		- ubiRecipient = _treasury (src/UBIFeeSplitter.sol#62)
+UBIFeeSplitter.constructor(address,address,address)._admin (src/UBIFeeSplitter.sol#58) lacks a zero-check on :
+		- admin = _admin (src/UBIFeeSplitter.sol#61)
+UBIFeeSplitter.setTreasury(address)._treasury (src/UBIFeeSplitter.sol#119) lacks a zero-check on :
+		- protocolTreasury = _treasury (src/UBIFeeSplitter.sol#120)
+UBIRevenueTracker.constructor(address,address)._admin (src/UBIRevenueTracker.sol#78) lacks a zero-check on :
+		- admin = _admin (src/UBIRevenueTracker.sol#79)
+ValidatorStaking.constructor(address,address)._admin (src/ValidatorStaking.sol#85) lacks a zero-check on :
+		- admin = _admin (src/ValidatorStaking.sol#87)
+ValidatorStakingDevnet.constructor(address,address)._admin (src/ValidatorStakingDevnet.sol#71) lacks a zero-check on :
+		- admin = _admin (src/ValidatorStakingDevnet.sol#73)
+GoodDollarBridgeL1.finalizeETHWithdrawal(address,uint256).to (src/bridge/GoodDollarBridgeL1.sol#216) lacks a zero-check on :
+		- (success,None) = to.call{value: amount}() (src/bridge/GoodDollarBridgeL1.sol#223)
+GoodDollarBridgeL2.finalizeETHDeposit(address,address,uint256).to (src/bridge/GoodDollarBridgeL2.sol#158) lacks a zero-check on :
+		- (success,None) = to.call{value: amount}() (src/bridge/GoodDollarBridgeL2.sol#166)
+L1StandardBridge.initialize(address)._portal (src/bridge/L1StandardBridge.sol#52) lacks a zero-check on :
+		- portal = _portal (src/bridge/L1StandardBridge.sol#54)
+L1StandardBridge.finalizeETHWithdrawal(address,address,uint256,bytes)._to (src/bridge/L1StandardBridge.sol#105) lacks a zero-check on :
+		- (ok,None) = _to.call{value: _amount}() (src/bridge/L1StandardBridge.sol#110)
+L2OutputOracle.setProposer(address)._proposer (src/bridge/L2OutputOracle.sol#84) lacks a zero-check on :
+		- proposer = _proposer (src/bridge/L2OutputOracle.sol#86)
+MultiChainBridge.constructor(address,address,address,address,address)._admin (src/bridge/MultiChainBridge.sol#150) lacks a zero-check on :
+		- admin = _admin (src/bridge/MultiChainBridge.sol#156)
+MultiChainBridge.constructor(address,address,address,address,address)._ubiPool (src/bridge/MultiChainBridge.sol#151) lacks a zero-check on :
+		- ubiPool = _ubiPool (src/bridge/MultiChainBridge.sol#157)
+MultiChainBridge.setUBIPool(address)._pool (src/bridge/MultiChainBridge.sol#214) lacks a zero-check on :
+		- ubiPool = _pool (src/bridge/MultiChainBridge.sol#215)
+MultiChainBridge.withdrawProtocolFees(address,uint256,address).to (src/bridge/MultiChainBridge.sol#426) lacks a zero-check on :
+		- (sent,None) = to.call{value: amount}() (src/bridge/MultiChainBridge.sol#428)
+OptimismPortal.finalizeWithdrawalTransaction(bytes32,address,uint256)._to (src/bridge/OptimismPortal.sol#95) lacks a zero-check on :
+		- (ok,None) = _to.call{value: payout}() (src/bridge/OptimismPortal.sol#121)
+OptimismPortal.setUBITreasury(address)._treasury (src/bridge/OptimismPortal.sol#149) lacks a zero-check on :
+		- ubiTreasury = _treasury (src/bridge/OptimismPortal.sol#151)
+SystemConfig.setBatcherHash(address)._batcher (src/bridge/SystemConfig.sol#81) lacks a zero-check on :
+		- batcherHash = _batcher (src/bridge/SystemConfig.sol#83)
+SystemConfig.setUnsafeBlockSigner(address)._signer (src/bridge/SystemConfig.sol#96) lacks a zero-check on :
+		- unsafeBlockSigner = _signer (src/bridge/SystemConfig.sol#98)
+SystemConfig.transferOwnership(address)._newOwner (src/bridge/SystemConfig.sol#102) lacks a zero-check on :
+		- owner = _newOwner (src/bridge/SystemConfig.sol#104)
+GoodDAO.constructor(address,address)._guardian (src/governance/GoodDAO.sol#90) lacks a zero-check on :
+		- guardian = _guardian (src/governance/GoodDAO.sol#92)
+GoodDAO.transferGuardian(address).newGuardian (src/governance/GoodDAO.sol#234) lacks a zero-check on :
+		- guardian = newGuardian (src/governance/GoodDAO.sol#236)
+GoodTimelock.constructor(uint256,address[],address[],address,address)._admin (src/governance/GoodTimelock.sol#92) lacks a zero-check on :
+		- admin = _admin (src/governance/GoodTimelock.sol#98)
+GoodTimelock.constructor(uint256,address[],address[],address,address)._ubiTreasury (src/governance/GoodTimelock.sol#93) lacks a zero-check on :
+		- ubiTreasury = _ubiTreasury (src/governance/GoodTimelock.sol#99)
+GoodTimelock.execute(address,uint256,bytes,bytes32).target (src/governance/GoodTimelock.sol#204) lacks a zero-check on :
+		- (success,None) = target.call{value: value}(data) (src/governance/GoodTimelock.sol#233)
+GoodTimelock.transferAdmin(address).newAdmin (src/governance/GoodTimelock.sol#273) lacks a zero-check on :
+		- admin = newAdmin (src/governance/GoodTimelock.sol#275)
+VoteEscrowedGD.constructor(address,address,address)._ubiTreasury (src/governance/VoteEscrowedGD.sol#75) lacks a zero-check on :
+		- ubiTreasury = _ubiTreasury (src/governance/VoteEscrowedGD.sol#77)
+VoteEscrowedGD.constructor(address,address,address)._admin (src/governance/VoteEscrowedGD.sol#75) lacks a zero-check on :
+		- admin = _admin (src/governance/VoteEscrowedGD.sol#78)
+VoteEscrowedGD.setUbiTreasury(address)._ubiTreasury (src/governance/VoteEscrowedGD.sol#247) lacks a zero-check on :
+		- ubiTreasury = _ubiTreasury (src/governance/VoteEscrowedGD.sol#248)
+DebtToken.constructor(address,address,string,string)._pool (src/lending/DebtToken.sol#36) lacks a zero-check on :
+		- pool = _pool (src/lending/DebtToken.sol#37)
+DebtToken.constructor(address,address,string,string)._underlying (src/lending/DebtToken.sol#36) lacks a zero-check on :
+		- underlyingAsset = _underlying (src/lending/DebtToken.sol#38)
+GoodLendAddressesProvider.setPool(address)._pool (src/lending/GoodLendAddressesProvider.sol#55) lacks a zero-check on :
+		- pool = _pool (src/lending/GoodLendAddressesProvider.sol#57)
+GoodLendAddressesProvider.setOracle(address)._oracle (src/lending/GoodLendAddressesProvider.sol#60) lacks a zero-check on :
+		- oracle = _oracle (src/lending/GoodLendAddressesProvider.sol#62)
+GoodLendAddressesProvider.setTreasury(address)._treasury (src/lending/GoodLendAddressesProvider.sol#65) lacks a zero-check on :
+		- treasury = _treasury (src/lending/GoodLendAddressesProvider.sol#67)
+GoodLendAddressesProvider.setACLAdmin(address)._aclAdmin (src/lending/GoodLendAddressesProvider.sol#70) lacks a zero-check on :
+		- aclAdmin = _aclAdmin (src/lending/GoodLendAddressesProvider.sol#72)
+GoodLendPool.constructor(address,address,address,address)._treasury (src/lending/GoodLendPool.sol#165) lacks a zero-check on :
+		- treasury = _treasury (src/lending/GoodLendPool.sol#168)
+GoodLendPool.constructor(address,address,address,address)._admin (src/lending/GoodLendPool.sol#165) lacks a zero-check on :
+		- admin = _admin (src/lending/GoodLendPool.sol#169)
+GoodLendPool.setTreasury(address)._treasury (src/lending/GoodLendPool.sol#659) lacks a zero-check on :
+		- treasury = _treasury (src/lending/GoodLendPool.sol#660)
+GoodLendToken.constructor(address,address,string,string)._pool (src/lending/GoodLendToken.sol#48) lacks a zero-check on :
+		- pool = _pool (src/lending/GoodLendToken.sol#49)
+GoodLendToken.constructor(address,address,string,string)._underlying (src/lending/GoodLendToken.sol#48) lacks a zero-check on :
+		- underlyingAsset = _underlying (src/lending/GoodLendToken.sol#50)
+InterestRateModel.constructor(address)._admin (src/lending/InterestRateModel.sol#39) lacks a zero-check on :
+		- admin = _admin (src/lending/InterestRateModel.sol#40)
+InterestRateModel.setAdmin(address)._admin (src/lending/InterestRateModel.sol#104) lacks a zero-check on :
+		- admin = _admin (src/lending/InterestRateModel.sol#105)
+SimplePriceOracle.constructor(address)._admin (src/lending/SimplePriceOracle.sol#21) lacks a zero-check on :
+		- admin = _admin (src/lending/SimplePriceOracle.sol#22)
+SimplePriceOracle.setAdmin(address)._admin (src/lending/SimplePriceOracle.sol#42) lacks a zero-check on :
+		- admin = _admin (src/lending/SimplePriceOracle.sol#43)
+PerpUBIFeeSplitter.constructor(address,address,address)._treasury (src/perps/PerpUBIFeeSplitter.sol#89) lacks a zero-check on :
+		- protocolTreasury = _treasury (src/perps/PerpUBIFeeSplitter.sol#91)
+PerpUBIFeeSplitter.constructor(address,address,address)._admin (src/perps/PerpUBIFeeSplitter.sol#89) lacks a zero-check on :
+		- admin = _admin (src/perps/PerpUBIFeeSplitter.sol#92)
+PredictUBIFeeSplitter.constructor(address,address,address)._treasury (src/predict/PredictUBIFeeSplitter.sol#73) lacks a zero-check on :
+		- protocolTreasury = _treasury (src/predict/PredictUBIFeeSplitter.sol#75)
+PredictUBIFeeSplitter.constructor(address,address,address)._admin (src/predict/PredictUBIFeeSplitter.sol#73) lacks a zero-check on :
+		- admin = _admin (src/predict/PredictUBIFeeSplitter.sol#76)
+StableUBIFeeSplitter.constructor(address,address,address)._treasury (src/stable/StableUBIFeeSplitter.sol#106) lacks a zero-check on :
+		- protocolTreasury = _treasury (src/stable/StableUBIFeeSplitter.sol#108)
+		- ubiRecipient = _treasury (src/stable/StableUBIFeeSplitter.sol#110)
+StableUBIFeeSplitter.constructor(address,address,address)._admin (src/stable/StableUBIFeeSplitter.sol#106) lacks a zero-check on :
+		- admin = _admin (src/stable/StableUBIFeeSplitter.sol#109)
+StocksUBIFeeSplitter.constructor(address,address,address)._treasury (src/stocks/StocksUBIFeeSplitter.sol#81) lacks a zero-check on :
+		- protocolTreasury = _treasury (src/stocks/StocksUBIFeeSplitter.sol#83)
+StocksUBIFeeSplitter.constructor(address,address,address)._admin (src/stocks/StocksUBIFeeSplitter.sol#81) lacks a zero-check on :
+		- admin = _admin (src/stocks/StocksUBIFeeSplitter.sol#84)
+LiFiBridgeAggregator.constructor(address,address)._admin (src/swap/LiFiBridgeAggregator.sol#120) lacks a zero-check on :
+		- admin = _admin (src/swap/LiFiBridgeAggregator.sol#121)
+LiFiBridgeAggregator.constructor(address,address)._ubiFeeSplitter (src/swap/LiFiBridgeAggregator.sol#120) lacks a zero-check on :
+		- ubiFeeSplitter = _ubiFeeSplitter (src/swap/LiFiBridgeAggregator.sol#122)
+LiFiBridgeAggregator.setUBIFeeSplitter(address)._splitter (src/swap/LiFiBridgeAggregator.sol#153) lacks a zero-check on :
+		- ubiFeeSplitter = _splitter (src/swap/LiFiBridgeAggregator.sol#154)
+GoodVault.constructor(address,address,address,string,string,uint256,address)._strategy (src/yield/GoodVault.sol#127) lacks a zero-check on :
+		- strategy = _strategy (src/yield/GoodVault.sol#135)
+GoodVault.sweepStrategyToken(address,address).token (src/yield/GoodVault.sol#438) lacks a zero-check on :
+		- (ok,None) = strategy.call(abi.encodeWithSelector(IStrategyWithGains.sweepGains.selector,token,to)) (src/yield/GoodVault.sol#439-441)
+GoodVault.sweepStrategyToken(address,address).to (src/yield/GoodVault.sol#438) lacks a zero-check on :
+		- (ok,None) = strategy.call(abi.encodeWithSelector(IStrategyWithGains.sweepGains.selector,token,to)) (src/yield/GoodVault.sol#439-441)
+LendingStrategy.constructor(address,address,address,address)._asset (src/yield/strategies/LendingStrategy.sol#53) lacks a zero-check on :
+		- asset = _asset (src/yield/strategies/LendingStrategy.sol#58)
+LendingStrategy.constructor(address,address,address,address)._gToken (src/yield/strategies/LendingStrategy.sol#55) lacks a zero-check on :
+		- gToken = _gToken (src/yield/strategies/LendingStrategy.sol#61)
+LendingStrategy.constructor(address,address,address,address)._vault (src/yield/strategies/LendingStrategy.sol#56) lacks a zero-check on :
+		- vault = _vault (src/yield/strategies/LendingStrategy.sol#62)
+StablecoinStrategy.constructor(address,address,address,address)._asset (src/yield/strategies/StablecoinStrategy.sol#52) lacks a zero-check on :
+		- asset = _asset (src/yield/strategies/StablecoinStrategy.sol#57)
+StablecoinStrategy.constructor(address,address,address,address)._gainToken (src/yield/strategies/StablecoinStrategy.sol#54) lacks a zero-check on :
+		- gainToken = _gainToken (src/yield/strategies/StablecoinStrategy.sol#60)
+StablecoinStrategy.constructor(address,address,address,address)._vault (src/yield/strategies/StablecoinStrategy.sol#55) lacks a zero-check on :
+		- vault = _vault (src/yield/strategies/StablecoinStrategy.sol#61)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+
+Detector: calls-loop
+UBIClaimV2.batchClaim(address[]) (src/UBIClaimV2.sol#142-178) has external calls inside a loop: user == address(0) || ! goodDollar.isVerifiedHuman(user) || lastClaimEpoch[user] == epoch + 1 (src/UBIClaimV2.sol#157-159)
+UBIClaimV2.batchClaim(address[]) (src/UBIClaimV2.sol#142-178) has external calls inside a loop: goodDollar.mint(user,amount) (src/UBIClaimV2.sol#165)
+GoodDAO.execute(uint256) (src/governance/GoodDAO.sol#170-185) has external calls inside a loop: (success,None) = p.targets[i].call{value: p.values[i]}(p.calldatas[i]) (src/governance/GoodDAO.sol#180)
+GoodTimelock.executeBatch(address[],uint256[],bytes[],bytes32) (src/governance/GoodTimelock.sol#166-200) has external calls inside a loop: (success,None) = targets[i].call{value: values[i]}(calldatas[i]) (src/governance/GoodTimelock.sol#195)
+GoodLendPool._calculateHealthFactor(address) (src/lending/GoodLendPool.sol#795-823) has external calls inside a loop: price = oracle.getAssetPrice(asset) (src/lending/GoodLendPool.sol#806)
+	Calls stack containing the loop:
+		GoodLendPool.withdraw(address,uint256)
+		GoodLendPool._withdraw(address,uint256,address)
+GoodLendPool._debtBalance(address,address,uint256) (src/lending/GoodLendPool.sol#790-793) has external calls inside a loop: scaled = IDebtToken(reserves[asset].debtToken).scaledBalanceOf(user) (src/lending/GoodLendPool.sol#791)
+	Calls stack containing the loop:
+		GoodLendPool.withdraw(address,uint256)
+		GoodLendPool._withdraw(address,uint256,address)
+		GoodLendPool._calculateHealthFactor(address)
+		GoodLendPool._accumulateAssetValues(address,address,uint256)
+GoodLendPool._calculateHealthFactor(address) (src/lending/GoodLendPool.sol#795-823) has external calls inside a loop: price = oracle.getAssetPrice(asset) (src/lending/GoodLendPool.sol#806)
+	Calls stack containing the loop:
+		GoodLendPool.withdraw(address,uint256,address)
+		GoodLendPool._withdraw(address,uint256,address)
+GoodLendPool._debtBalance(address,address,uint256) (src/lending/GoodLendPool.sol#790-793) has external calls inside a loop: scaled = IDebtToken(reserves[asset].debtToken).scaledBalanceOf(user) (src/lending/GoodLendPool.sol#791)
+	Calls stack containing the loop:
+		GoodLendPool.withdraw(address,uint256,address)
+		GoodLendPool._withdraw(address,uint256,address)
+		GoodLendPool._calculateHealthFactor(address)
+		GoodLendPool._accumulateAssetValues(address,address,uint256)
+GoodLendPool._calculateHealthFactor(address) (src/lending/GoodLendPool.sol#795-823) has external calls inside a loop: price = oracle.getAssetPrice(asset) (src/lending/GoodLendPool.sol#806)
+	Calls stack containing the loop:
+		GoodLendPool.borrow(address,uint256)
+GoodLendPool._gTokenBalance(address,address,uint256) (src/lending/GoodLendPool.sol#785-788) has external calls inside a loop: scaled = IGoodLendToken(reserves[asset].gToken).scaledBalanceOf(user) (src/lending/GoodLendPool.sol#786)
+	Calls stack containing the loop:
+		GoodLendPool.borrow(address,uint256)
+		GoodLendPool._calculateHealthFactor(address)
+		GoodLendPool._accumulateAssetValues(address,address,uint256)
+GoodLendPool._debtBalance(address,address,uint256) (src/lending/GoodLendPool.sol#790-793) has external calls inside a loop: scaled = IDebtToken(reserves[asset].debtToken).scaledBalanceOf(user) (src/lending/GoodLendPool.sol#791)
+	Calls stack containing the loop:
+		GoodLendPool.borrow(address,uint256)
+		GoodLendPool._calculateHealthFactor(address)
+		GoodLendPool._accumulateAssetValues(address,address,uint256)
+GoodLendPool._calculateHealthFactor(address) (src/lending/GoodLendPool.sol#795-823) has external calls inside a loop: price = oracle.getAssetPrice(asset) (src/lending/GoodLendPool.sol#806)
+	Calls stack containing the loop:
+		GoodLendPool.liquidate(address,address,address,uint256)
+GoodLendPool._gTokenBalance(address,address,uint256) (src/lending/GoodLendPool.sol#785-788) has external calls inside a loop: scaled = IGoodLendToken(reserves[asset].gToken).scaledBalanceOf(user) (src/lending/GoodLendPool.sol#786)
+	Calls stack containing the loop:
+		GoodLendPool.liquidate(address,address,address,uint256)
+		GoodLendPool._calculateHealthFactor(address)
+		GoodLendPool._accumulateAssetValues(address,address,uint256)
+GoodLendPool._debtBalance(address,address,uint256) (src/lending/GoodLendPool.sol#790-793) has external calls inside a loop: scaled = IDebtToken(reserves[asset].debtToken).scaledBalanceOf(user) (src/lending/GoodLendPool.sol#791)
+	Calls stack containing the loop:
+		GoodLendPool.liquidate(address,address,address,uint256)
+		GoodLendPool._calculateHealthFactor(address)
+		GoodLendPool._accumulateAssetValues(address,address,uint256)
+GoodLendPool._totalBorrows(address) (src/lending/GoodLendPool.sol#779-783) has external calls inside a loop: scaledDebt = IDebtToken(reserve.debtToken).scaledTotalSupply() (src/lending/GoodLendPool.sol#781)
+	Calls stack containing the loop:
+		GoodLendPool.mintToTreasury(address[])
+		GoodLendPool._updateState(address)
+GoodLendPool.mintToTreasury(address[]) (src/lending/GoodLendPool.sol#558-575) has external calls inside a loop: IGoodLendToken(reserve.gToken).mintToTreasury(treasury,accrued,reserve.liquidityIndex) (src/lending/GoodLendPool.sol#571)
+GoodLendPool._calculateHealthFactor(address) (src/lending/GoodLendPool.sol#795-823) has external calls inside a loop: price = oracle.getAssetPrice(asset) (src/lending/GoodLendPool.sol#806)
+	Calls stack containing the loop:
+		GoodLendPool.getUserAccountData(address)
+GoodLendPool._gTokenBalance(address,address,uint256) (src/lending/GoodLendPool.sol#785-788) has external calls inside a loop: scaled = IGoodLendToken(reserves[asset].gToken).scaledBalanceOf(user) (src/lending/GoodLendPool.sol#786)
+	Calls stack containing the loop:
+		GoodLendPool.getUserAccountData(address)
+		GoodLendPool._calculateHealthFactor(address)
+		GoodLendPool._accumulateAssetValues(address,address,uint256)
+GoodLendPool._debtBalance(address,address,uint256) (src/lending/GoodLendPool.sol#790-793) has external calls inside a loop: scaled = IDebtToken(reserves[asset].debtToken).scaledBalanceOf(user) (src/lending/GoodLendPool.sol#791)
+	Calls stack containing the loop:
+		GoodLendPool.getUserAccountData(address)
+		GoodLendPool._calculateHealthFactor(address)
+		GoodLendPool._accumulateAssetValues(address,address,uint256)
+LimitOrderBook.batchFill(uint256[],uint256[]) (src/swap/LimitOrderBook.sol#272-278) has external calls inside a loop: this.fillOrder(orderIds[i],fillAmounts[i]) (src/swap/LimitOrderBook.sol#276)
+VaultFactory.totalTVL() (src/yield/VaultFactory.sol#81-85) has external calls inside a loop: tvl += GoodVault(allVaults[i]).totalAssets() (src/yield/VaultFactory.sol#83)
+VaultFactory.totalUBIFunded() (src/yield/VaultFactory.sol#88-92) has external calls inside a loop: total += GoodVault(allVaults[i]).totalUBIFunded() (src/yield/VaultFactory.sol#90)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation/#calls-inside-a-loop
+
+Detector: reentrancy-benign
+Reentrancy in UBIClaimV2._claim(address) (src/UBIClaimV2.sol#182-204):
+	External calls:
+	- goodDollar.mint(user,amount) (src/UBIClaimV2.sol#196)
+	State variables written after the call(s):
+	- totalClaims ++ (src/UBIClaimV2.sol#199)
+	- totalMinted += amount (src/UBIClaimV2.sol#200)
+Reentrancy in GoodVault._deployToStrategy() (src/yield/GoodVault.sol#475-483):
+	External calls:
+	- ! asset.approve(strategy,idle) (src/yield/GoodVault.sol#478)
+	- IStrategy(strategy).deposit(idle) (src/yield/GoodVault.sol#479)
+	- ! asset.approve(strategy,0) (src/yield/GoodVault.sol#480)
+	State variables written after the call(s):
+	- totalDebt += idle (src/yield/GoodVault.sol#481)
+Reentrancy in CollateralVault._depositCollateral(bytes32,uint256) (src/stocks/CollateralVault.sol#201-211):
+	External calls:
+	- ok = goodDollar.transferFrom(msg.sender,address(this),amount) (src/stocks/CollateralVault.sol#204)
+	State variables written after the call(s):
+	- collateral[msg.sender][key] += amount (src/stocks/CollateralVault.sol#207)
+	- totalCollateral[key] += amount (src/stocks/CollateralVault.sol#208)
+Reentrancy in GoodVault._ensureLiquidity(uint256) (src/yield/GoodVault.sol#485-495):
+	External calls:
+	- withdrawn = IStrategy(strategy).withdraw(deficit) (src/yield/GoodVault.sol#489)
+	State variables written after the call(s):
+	- totalDebt = 0 (src/yield/GoodVault.sol#493)
+	- totalDebt = totalDebt - withdrawn (src/yield/GoodVault.sol#493)
+Reentrancy in UBIFeeHook.afterSwap(address,PoolKey,SwapParams,BalanceDelta,bytes) (src/hooks/UBIFeeHook.sol#165-206):
+	External calls:
+	- IUBIPool(ubiPool).fundUBIPool(ubiShare) (src/hooks/UBIFeeHook.sol#198)
+	State variables written after the call(s):
+	- totalSwapsProcessed ++ (src/hooks/UBIFeeHook.sol#201)
+	- totalUBIFees[feeToken] += ubiShare (src/hooks/UBIFeeHook.sol#200)
+Reentrancy in UBIClaimV2.batchClaim(address[]) (src/UBIClaimV2.sol#142-178):
+	External calls:
+	- goodDollar.mint(user,amount) (src/UBIClaimV2.sol#165)
+	State variables written after the call(s):
+	- totalClaims += claimed (src/UBIClaimV2.sol#173)
+	- totalMinted += batchTotal (src/UBIClaimV2.sol#174)
+Reentrancy in L1StandardBridge.bridgeERC20(address,address,uint256,uint32,bytes) (src/bridge/L1StandardBridge.sol#89-100):
+	External calls:
+	- require(bool,string)(IERC20Minimal(_l1Token).transferFrom(msg.sender,address(this),_amount),transfer failed) (src/bridge/L1StandardBridge.sol#96)
+	State variables written after the call(s):
+	- deposits[_l1Token][msg.sender] += _amount (src/bridge/L1StandardBridge.sol#97)
+Reentrancy in MultiChainBridge.bridgeETH(uint256,address,uint256,uint256,bool) (src/bridge/MultiChainBridge.sol#314-367):
+	External calls:
+	- _distributeFeeETH(fee) (src/bridge/MultiChainBridge.sol#328)
+		- (sent,None) = ubiPool.call{value: ubiShare}() (src/bridge/MultiChainBridge.sol#387)
+	- nativeBridge.initiateETHWithdrawal{value: netAmount}(receiver) (src/bridge/MultiChainBridge.sol#333)
+	- lifiAggregator.initiateSwapETH{value: netAmount}(destChainId,address(0),receiver,minOutput,deadline) (src/bridge/MultiChainBridge.sol#339-345)
+	State variables written after the call(s):
+	- requestId = requestCount ++ (src/bridge/MultiChainBridge.sol#348)
+	- requests[requestId] = BridgeRequest({user:msg.sender,srcToken:address(0),amount:netAmount,destChainId:destChainId,destToken:address(0),destReceiver:receiver,routeType:routeType,timestamp:block.timestamp,completed:routeType == RouteType.NativeBridge || routeType == RouteType.LiFiCrossChain}) (src/bridge/MultiChainBridge.sol#349-359)
+	- userRequests[msg.sender].push(requestId) (src/bridge/MultiChainBridge.sol#361)
+Reentrancy in MultiChainBridge.bridgeTokens(address,uint256,uint256,address,uint256,uint256,bool) (src/bridge/MultiChainBridge.sol#231-309):
+	External calls:
+	- ! IERC20(token).transferFrom(msg.sender,address(this),amount) (src/bridge/MultiChainBridge.sol#246)
+	- _distributeFee(token,fee) (src/bridge/MultiChainBridge.sol#253)
+		- ! IERC20(token).transfer(ubiPool,ubiShare) (src/bridge/MultiChainBridge.sol#377)
+	- ! IERC20(token).approve(address(nativeBridge),netAmount) (src/bridge/MultiChainBridge.sol#260)
+	- nativeBridge.initiateWithdrawal(token,receiver,netAmount) (src/bridge/MultiChainBridge.sol#263)
+	- ! IERC20(token).approve(address(lifiAggregator),netAmount) (src/bridge/MultiChainBridge.sol#275)
+	- lifiAggregator.initiateSwap(token,netAmount,destChainId,destToken,receiver,minOutput,deadline) (src/bridge/MultiChainBridge.sol#279-287)
+	State variables written after the call(s):
+	- requestId = requestCount ++ (src/bridge/MultiChainBridge.sol#290)
+	- requests[requestId] = BridgeRequest({user:msg.sender,srcToken:token,amount:netAmount,destChainId:destChainId,destToken:token,destReceiver:receiver,routeType:routeType,timestamp:block.timestamp,completed:routeType == RouteType.NativeBridge || routeType == RouteType.LiFiCrossChain}) (src/bridge/MultiChainBridge.sol#291-301)
+	- requests[requestId] = BridgeRequest({user:msg.sender,srcToken:token,amount:netAmount,destChainId:destChainId,destToken:tokenMappings[token][destChainId],destReceiver:receiver,routeType:routeType,timestamp:block.timestamp,completed:routeType == RouteType.NativeBridge || routeType == RouteType.LiFiCrossChain}) (src/bridge/MultiChainBridge.sol#291-301)
+	- userRequests[msg.sender].push(requestId) (src/bridge/MultiChainBridge.sol#303)
+Reentrancy in GoodSwap.burn(address) (src/GoodSwap.sol#164-186):
+	External calls:
+	- _safeTransfer(token0,to,amount0) (src/GoodSwap.sol#178)
+		- ! IERC20Minimal(token).transfer(to,amount) (src/GoodSwap.sol#310)
+	- _safeTransfer(token1,to,amount1) (src/GoodSwap.sol#179)
+		- ! IERC20Minimal(token).transfer(to,amount) (src/GoodSwap.sol#310)
+	State variables written after the call(s):
+	- _update(bal0,bal1,_reserve0,_reserve1) (src/GoodSwap.sol#184)
+		- _blockTimestampLast = ts (src/GoodSwap.sol#304)
+	- _update(bal0,bal1,_reserve0,_reserve1) (src/GoodSwap.sol#184)
+		- _reserve0 = uint112(bal0) (src/GoodSwap.sol#302)
+	- _update(bal0,bal1,_reserve0,_reserve1) (src/GoodSwap.sol#184)
+		- _reserve1 = uint112(bal1) (src/GoodSwap.sol#303)
+	- _update(bal0,bal1,_reserve0,_reserve1) (src/GoodSwap.sol#184)
+		- price0CumulativeLast += (uint256(r1) << 112) / r0 * elapsed (src/GoodSwap.sol#296)
+	- _update(bal0,bal1,_reserve0,_reserve1) (src/GoodSwap.sol#184)
+		- price1CumulativeLast += (uint256(r0) << 112) / r1 * elapsed (src/GoodSwap.sol#297)
+Reentrancy in VaultManager.closeVault(bytes32) (src/stable/VaultManager.sol#450-479):
+	External calls:
+	- drip(ilk) (src/stable/VaultManager.sol#451)
+		- gusd.mint(address(this),feeWAD) (src/stable/VaultManager.sol#247)
+		- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+		- this._callStabilityFeeTracking(feeWAD,dAppRecipient,address(gusd),ilk) (src/stable/VaultManager.sol#252-258)
+		- feeSplitter.splitFeeToken(feeWAD,dAppRecipient,address(gusd)) (src/stable/VaultManager.sol#257)
+	State variables written after the call(s):
+	- vault.normalizedDebt = 0 (src/stable/VaultManager.sol#461)
+Reentrancy in MarginVault.deposit(uint256) (src/perps/MarginVault.sol#92-99):
+	External calls:
+	- ok = collateral.transferFrom(msg.sender,address(this),amount) (src/perps/MarginVault.sol#94)
+	State variables written after the call(s):
+	- balances[msg.sender] += amount (src/perps/MarginVault.sol#96)
+	- totalDeposited += amount (src/perps/MarginVault.sol#97)
+Reentrancy in GoodVault.deposit(uint256,address) (src/yield/GoodVault.sol#216-231):
+	External calls:
+	- ! asset.transferFrom(msg.sender,address(this),assets) (src/yield/GoodVault.sol#224)
+	State variables written after the call(s):
+	- _mint(receiver,shares) (src/yield/GoodVault.sol#225)
+		- balanceOf[to] += amount (src/yield/GoodVault.sol#525)
+Reentrancy in LendingStrategy.deposit(uint256) (src/yield/strategies/LendingStrategy.sol#81-94):
+	External calls:
+	- ! IERC20(asset).transferFrom(vault,address(this),amount) (src/yield/strategies/LendingStrategy.sol#87)
+	- ! IERC20(asset).approve(address(lendPool),amount) (src/yield/strategies/LendingStrategy.sol#88)
+	- lendPool.supply(asset,amount,address(this)) (src/yield/strategies/LendingStrategy.sol#89)
+	- ! IERC20(asset).approve(address(lendPool),0) (src/yield/strategies/LendingStrategy.sol#91)
+	State variables written after the call(s):
+	- totalDeposited += amount (src/yield/strategies/LendingStrategy.sol#92)
+Reentrancy in StablecoinStrategy.deposit(uint256) (src/yield/strategies/StablecoinStrategy.sol#77-90):
+	External calls:
+	- ! IERC20(asset).transferFrom(vault,address(this),amount) (src/yield/strategies/StablecoinStrategy.sol#83)
+	- ! IERC20(asset).approve(address(stabilityPool),amount) (src/yield/strategies/StablecoinStrategy.sol#84)
+	- stabilityPool.deposit(amount) (src/yield/strategies/StablecoinStrategy.sol#85)
+	- ! IERC20(asset).approve(address(stabilityPool),0) (src/yield/strategies/StablecoinStrategy.sol#87)
+	State variables written after the call(s):
+	- totalDeposited += amount (src/yield/strategies/StablecoinStrategy.sol#88)
+Reentrancy in VaultManager.depositCollateral(bytes32,uint256) (src/stable/VaultManager.sol#313-329):
+	External calls:
+	- drip(ilk) (src/stable/VaultManager.sol#318)
+		- gusd.mint(address(this),feeWAD) (src/stable/VaultManager.sol#247)
+		- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+		- this._callStabilityFeeTracking(feeWAD,dAppRecipient,address(gusd),ilk) (src/stable/VaultManager.sol#252-258)
+		- feeSplitter.splitFeeToken(feeWAD,dAppRecipient,address(gusd)) (src/stable/VaultManager.sol#257)
+	- require(bool,string)(IERC20(token).transferFrom(msg.sender,address(this),amount),VM: collateral transfer failed) (src/stable/VaultManager.sol#321-324)
+	State variables written after the call(s):
+	- vaults[ilk][msg.sender].collateral += amount (src/stable/VaultManager.sol#326)
+Reentrancy in GoodDollarBridgeL1.depositGDollar(address,uint256) (src/bridge/GoodDollarBridgeL1.sol#131-149):
+	External calls:
+	- success = goodDollar.transferFrom(msg.sender,address(this),amount) (src/bridge/GoodDollarBridgeL1.sol#135)
+	State variables written after the call(s):
+	- deposits[address(goodDollar)][msg.sender] += amount (src/bridge/GoodDollarBridgeL1.sol#138)
+	- totalGDollarLocked += amount (src/bridge/GoodDollarBridgeL1.sol#139)
+Reentrancy in FastWithdrawalLP.depositLiquidity(address,uint256) (src/bridge/FastWithdrawalLP.sol#124-135):
+	External calls:
+	- ok = IERC20(token).transferFrom(msg.sender,address(this),amount) (src/bridge/FastWithdrawalLP.sol#128)
+	State variables written after the call(s):
+	- lpBalance[msg.sender][token] += amount (src/bridge/FastWithdrawalLP.sol#131)
+	- totalLiquidity[token] += amount (src/bridge/FastWithdrawalLP.sol#132)
+Reentrancy in GoodDollarBridgeL1.depositUSDC(address,uint256) (src/bridge/GoodDollarBridgeL1.sol#151-169):
+	External calls:
+	- success = usdc.transferFrom(msg.sender,address(this),amount) (src/bridge/GoodDollarBridgeL1.sol#155)
+	State variables written after the call(s):
+	- deposits[address(usdc)][msg.sender] += amount (src/bridge/GoodDollarBridgeL1.sol#158)
+	- totalUSDCLocked += amount (src/bridge/GoodDollarBridgeL1.sol#159)
+Reentrancy in VaultManager.drip(bytes32) (src/stable/VaultManager.sol#202-264):
+	External calls:
+	- gusd.mint(address(this),feeWAD) (src/stable/VaultManager.sol#247)
+	- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+	- this._callStabilityFeeTracking(feeWAD,dAppRecipient,address(gusd),ilk) (src/stable/VaultManager.sol#252-258)
+	- feeSplitter.splitFeeToken(feeWAD,dAppRecipient,address(gusd)) (src/stable/VaultManager.sol#257)
+	State variables written after the call(s):
+	- ilkDebt[ilk] += feeWAD (src/stable/VaultManager.sol#260)
+Reentrancy in LendingStrategy.emergencyWithdraw() (src/yield/strategies/LendingStrategy.sol#128-137):
+	External calls:
+	- withdrawn = lendPool.withdraw(asset,bal,vault) (src/yield/strategies/LendingStrategy.sol#133)
+	State variables written after the call(s):
+	- totalDeposited = 0 (src/yield/strategies/LendingStrategy.sol#135)
+Reentrancy in StablecoinStrategy.emergencyWithdraw() (src/yield/strategies/StablecoinStrategy.sol#148-162):
+	External calls:
+	- stabilityPool.withdraw(bal) (src/yield/strategies/StablecoinStrategy.sol#153)
+	- ! IERC20(asset).transfer(vault,actual) (src/yield/strategies/StablecoinStrategy.sol#157)
+	State variables written after the call(s):
+	- totalDeposited = 0 (src/yield/strategies/StablecoinStrategy.sol#160)
+Reentrancy in GoodDollarBridgeL2.finalizeDeposit(address,address,address,uint256) (src/bridge/GoodDollarBridgeL2.sol#138-151):
+	External calls:
+	- IERC20Mintable(l2Token).mint(to,amount) (src/bridge/GoodDollarBridgeL2.sol#147)
+	State variables written after the call(s):
+	- totalMinted[l1Token] += amount (src/bridge/GoodDollarBridgeL2.sol#148)
+Reentrancy in GoodVault.harvest() (src/yield/GoodVault.sol#316-373):
+	External calls:
+	- (profit,loss) = IStrategy(strategy).harvest() (src/yield/GoodVault.sol#317)
+	- actualFees = IStrategy(strategy).withdraw(totalFees) (src/yield/GoodVault.sol#336)
+	- ! asset.approve(address(ubiFee),totalFees) (src/yield/GoodVault.sol#342)
+	- ubiFee.splitFeeToken(totalFees,address(this),address(asset)) (src/yield/GoodVault.sol#343)
+	- ! asset.approve(address(ubiFee),0) (src/yield/GoodVault.sol#344)
+	State variables written after the call(s):
+	- totalGainSinceInception += profit - totalFees (src/yield/GoodVault.sol#364)
+	- totalUBIFunded += totalFees (src/yield/GoodVault.sol#345)
+Reentrancy in StablecoinStrategy.harvest() (src/yield/strategies/StablecoinStrategy.sol#112-136):
+	External calls:
+	- stabilityPool.claimGains() (src/yield/strategies/StablecoinStrategy.sol#119)
+	State variables written after the call(s):
+	- totalDeposited = currentBal (src/yield/strategies/StablecoinStrategy.sol#129)
+	- totalDeposited = currentBal (src/yield/strategies/StablecoinStrategy.sol#132)
+Reentrancy in VoteEscrowedGD.increaseLock(uint256) (src/governance/VoteEscrowedGD.sol#110-128):
+	External calls:
+	- require(bool,string)(gd.transferFrom(msg.sender,address(this),addedAmount),transferFrom failed) (src/governance/VoteEscrowedGD.sol#121)
+	State variables written after the call(s):
+	- _writeCheckpoint(_checkpoints[delegate],_add,newPower - oldPower) (src/governance/VoteEscrowedGD.sol#124)
+		- ckpts[len - 1].votes = uint208(newValue) (src/governance/VoteEscrowedGD.sol#265)
+		- ckpts.push(Checkpoint(uint48(block.timestamp),uint208(newValue))) (src/governance/VoteEscrowedGD.sol#267)
+	- _writeCheckpoint(_totalSupplyCheckpoints,_add,newPower - oldPower) (src/governance/VoteEscrowedGD.sol#125)
+		- ckpts[len - 1].votes = uint208(newValue) (src/governance/VoteEscrowedGD.sol#265)
+		- ckpts.push(Checkpoint(uint48(block.timestamp),uint208(newValue))) (src/governance/VoteEscrowedGD.sol#267)
+Reentrancy in LiFiBridgeAggregator.initiateSwap(address,uint256,uint256,address,address,uint256,uint256) (src/swap/LiFiBridgeAggregator.sol#177-226):
+	External calls:
+	- ! IERC20(srcToken).transferFrom(msg.sender,address(this),srcAmount) (src/swap/LiFiBridgeAggregator.sol#196)
+	- ! IERC20(srcToken).transfer(ubiFeeSplitter,fee) (src/swap/LiFiBridgeAggregator.sol#202)
+	State variables written after the call(s):
+	- swapId = swapCount ++ (src/swap/LiFiBridgeAggregator.sol#205)
+	- swaps[swapId] = SwapRequest({user:msg.sender,srcToken:srcToken,srcAmount:netAmount,destChainId:destChainId,destToken:destToken,destReceiver:destReceiver,minDestAmount:minDestAmount,deadline:deadline,status:SwapStatus.Pending,lifiTxHash:bytes32(0)}) (src/swap/LiFiBridgeAggregator.sol#206-217)
+	- userSwaps[msg.sender].push(swapId) (src/swap/LiFiBridgeAggregator.sol#219)
+Reentrancy in LiFiBridgeAggregator.initiateSwapETH(uint256,address,address,uint256,uint256) (src/swap/LiFiBridgeAggregator.sol#231-272):
+	External calls:
+	- (sent,None) = ubiFeeSplitter.call{value: fee}() (src/swap/LiFiBridgeAggregator.sol#247)
+	State variables written after the call(s):
+	- swapId = swapCount ++ (src/swap/LiFiBridgeAggregator.sol#251)
+	- swaps[swapId] = SwapRequest({user:msg.sender,srcToken:address(0),srcAmount:netAmount,destChainId:destChainId,destToken:destToken,destReceiver:destReceiver,minDestAmount:minDestAmount,deadline:deadline,status:SwapStatus.Pending,lifiTxHash:bytes32(0)}) (src/swap/LiFiBridgeAggregator.sol#252-263)
+	- userSwaps[msg.sender].push(swapId) (src/swap/LiFiBridgeAggregator.sol#265)
+Reentrancy in VaultManager.liquidate(bytes32,address) (src/stable/VaultManager.sol#498-547):
+	External calls:
+	- drip(ilk) (src/stable/VaultManager.sol#501)
+		- gusd.mint(address(this),feeWAD) (src/stable/VaultManager.sol#247)
+		- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+		- this._callStabilityFeeTracking(feeWAD,dAppRecipient,address(gusd),ilk) (src/stable/VaultManager.sol#252-258)
+		- feeSplitter.splitFeeToken(feeWAD,dAppRecipient,address(gusd)) (src/stable/VaultManager.sol#257)
+	State variables written after the call(s):
+	- vault.normalizedDebt = 0 (src/stable/VaultManager.sol#519)
+	- vault.collateral = 0 (src/stable/VaultManager.sol#520)
+Reentrancy in VoteEscrowedGD.lock(uint256,uint256) (src/governance/VoteEscrowedGD.sol#86-107):
+	External calls:
+	- require(bool,string)(gd.transferFrom(msg.sender,address(this),amount),transferFrom failed) (src/governance/VoteEscrowedGD.sol#96)
+	State variables written after the call(s):
+	- _writeCheckpoint(_checkpoints[delegate],_add,votingPowerOf(msg.sender)) (src/governance/VoteEscrowedGD.sol#103)
+		- ckpts[len - 1].votes = uint208(newValue) (src/governance/VoteEscrowedGD.sol#265)
+		- ckpts.push(Checkpoint(uint48(block.timestamp),uint208(newValue))) (src/governance/VoteEscrowedGD.sol#267)
+	- _writeCheckpoint(_totalSupplyCheckpoints,_add,votingPowerOf(msg.sender)) (src/governance/VoteEscrowedGD.sol#104)
+		- ckpts[len - 1].votes = uint208(newValue) (src/governance/VoteEscrowedGD.sol#265)
+		- ckpts.push(Checkpoint(uint48(block.timestamp),uint208(newValue))) (src/governance/VoteEscrowedGD.sol#267)
+	- delegates[msg.sender] = msg.sender (src/governance/VoteEscrowedGD.sol#100)
+Reentrancy in GoodVault.mint(uint256,address) (src/yield/GoodVault.sol#239-253):
+	External calls:
+	- ! asset.transferFrom(msg.sender,address(this),assets) (src/yield/GoodVault.sol#248)
+	State variables written after the call(s):
+	- _mint(receiver,shares) (src/yield/GoodVault.sol#249)
+		- balanceOf[to] += amount (src/yield/GoodVault.sol#525)
+Reentrancy in VaultManager.mintGUSD(bytes32,uint256) (src/stable/VaultManager.sol#369-399):
+	External calls:
+	- drip(ilk) (src/stable/VaultManager.sol#372)
+		- gusd.mint(address(this),feeWAD) (src/stable/VaultManager.sol#247)
+		- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+		- this._callStabilityFeeTracking(feeWAD,dAppRecipient,address(gusd),ilk) (src/stable/VaultManager.sol#252-258)
+		- feeSplitter.splitFeeToken(feeWAD,dAppRecipient,address(gusd)) (src/stable/VaultManager.sol#257)
+	State variables written after the call(s):
+	- vault.normalizedDebt += normalizedAmount (src/stable/VaultManager.sol#384)
+Reentrancy in LimitOrderBook.placeOrder(address,address,uint256,uint256,uint256) (src/swap/LimitOrderBook.sol#134-165):
+	External calls:
+	- ! IERC20(tokenIn).transferFrom(msg.sender,address(this),amountIn) (src/swap/LimitOrderBook.sol#148)
+	State variables written after the call(s):
+	- orderId = nextOrderId ++ (src/swap/LimitOrderBook.sol#150)
+	- orders[orderId] = Order({owner:msg.sender,tokenIn:tokenIn,tokenOut:tokenOut,amountIn:amountIn,amountFilled:0,targetPrice:targetPrice,expiry:expiry,status:OrderStatus.Active}) (src/swap/LimitOrderBook.sol#151-160)
+Reentrancy in VaultManager.repayGUSD(bytes32,uint256) (src/stable/VaultManager.sol#412-441):
+	External calls:
+	- drip(ilk) (src/stable/VaultManager.sol#413)
+		- gusd.mint(address(this),feeWAD) (src/stable/VaultManager.sol#247)
+		- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+		- this._callStabilityFeeTracking(feeWAD,dAppRecipient,address(gusd),ilk) (src/stable/VaultManager.sol#252-258)
+		- feeSplitter.splitFeeToken(feeWAD,dAppRecipient,address(gusd)) (src/stable/VaultManager.sol#257)
+	State variables written after the call(s):
+	- vault.normalizedDebt -= normalizedRepay (src/stable/VaultManager.sol#432)
+Reentrancy in FastWithdrawalLP.settleWithdrawal(bytes32,uint256) (src/bridge/FastWithdrawalLP.sol#283-305):
+	External calls:
+	- ok = IERC20(c.token).transferFrom(msg.sender,address(this),amount) (src/bridge/FastWithdrawalLP.sol#298)
+	State variables written after the call(s):
+	- lpBalance[c.lp][c.token] += amount (src/bridge/FastWithdrawalLP.sol#300)
+	- totalLiquidity[c.token] += amount (src/bridge/FastWithdrawalLP.sol#301)
+Reentrancy in PredictUBIFeeSplitter.splitBondSlashing(uint256,address) (src/predict/PredictUBIFeeSplitter.sol#124-149):
+	External calls:
+	- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/predict/PredictUBIFeeSplitter.sol#137)
+	- goodDollar.fundUBIPool(ubiShare) (src/predict/PredictUBIFeeSplitter.sol#140)
+	- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/predict/PredictUBIFeeSplitter.sol#141)
+	- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/predict/PredictUBIFeeSplitter.sol#142)
+	State variables written after the call(s):
+	- totalBondSlashing += totalFee (src/predict/PredictUBIFeeSplitter.sol#145)
+	- totalUBIFromBonds += ubiShare (src/predict/PredictUBIFeeSplitter.sol#146)
+Reentrancy in StocksUBIFeeSplitter.splitBurnFee(uint256,address,address,string,uint256) (src/stocks/StocksUBIFeeSplitter.sol#147-161):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/stocks/StocksUBIFeeSplitter.sol#154)
+		- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#110)
+		- goodDollar.fundUBIPool(ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#113)
+		- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#114)
+		- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#115)
+	State variables written after the call(s):
+	- totalBurnFees += totalFee (src/stocks/StocksUBIFeeSplitter.sol#157)
+	- totalUBIFromTrading += ubiShare (src/stocks/StocksUBIFeeSplitter.sol#158)
+Reentrancy in UBIFeeSplitter.splitFee(uint256,address) (src/UBIFeeSplitter.sol#73-98):
+	External calls:
+	- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/UBIFeeSplitter.sol#86)
+	- goodDollar.fundUBIPool(ubiShare) (src/UBIFeeSplitter.sol#89)
+	- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),transfer failed) (src/UBIFeeSplitter.sol#90)
+	- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),transfer failed) (src/UBIFeeSplitter.sol#91)
+	State variables written after the call(s):
+	- totalFeesCollected += totalFee (src/UBIFeeSplitter.sol#94)
+	- totalUBIFunded += ubiShare (src/UBIFeeSplitter.sol#95)
+Reentrancy in PerpUBIFeeSplitter.splitFee(uint256,address) (src/perps/PerpUBIFeeSplitter.sol#105-129):
+	External calls:
+	- require(bool,string)(goodDollarToken.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/perps/PerpUBIFeeSplitter.sol#118)
+	- goodDollarToken.fundUBIPool(ubiShare) (src/perps/PerpUBIFeeSplitter.sol#121)
+	- require(bool,string)(goodDollarToken.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/perps/PerpUBIFeeSplitter.sol#122)
+	- require(bool,string)(goodDollarToken.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/perps/PerpUBIFeeSplitter.sol#123)
+	State variables written after the call(s):
+	- _updateDailyDerivativesUBI(ubiShare) (src/perps/PerpUBIFeeSplitter.sol#126)
+		- dailyDerivativesUBI = ubiAmount (src/perps/PerpUBIFeeSplitter.sol#203)
+		- dailyDerivativesUBI += ubiAmount (src/perps/PerpUBIFeeSplitter.sol#207)
+	- _updateDailyDerivativesUBI(ubiShare) (src/perps/PerpUBIFeeSplitter.sol#126)
+		- lastDayTimestamp = currentDay (src/perps/PerpUBIFeeSplitter.sol#204)
+Reentrancy in PredictUBIFeeSplitter.splitFee(uint256,address) (src/predict/PredictUBIFeeSplitter.sol#88-116):
+	External calls:
+	- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/predict/PredictUBIFeeSplitter.sol#101)
+	- goodDollar.fundUBIPool(ubiShare) (src/predict/PredictUBIFeeSplitter.sol#104)
+	- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/predict/PredictUBIFeeSplitter.sol#105)
+	- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/predict/PredictUBIFeeSplitter.sol#106)
+	State variables written after the call(s):
+	- totalRedemptionFees += totalFee (src/predict/PredictUBIFeeSplitter.sol#112)
+	- totalUBIFromRedemption += ubiShare (src/predict/PredictUBIFeeSplitter.sol#113)
+Reentrancy in StableUBIFeeSplitter.splitFee(uint256,address) (src/stable/StableUBIFeeSplitter.sol#123-147):
+	External calls:
+	- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/stable/StableUBIFeeSplitter.sol#136)
+	- goodDollar.fundUBIPool(ubiShare) (src/stable/StableUBIFeeSplitter.sol#139)
+	- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#140)
+	- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#141)
+	State variables written after the call(s):
+	- _updateDailyStablecoinUBI(ubiShare) (src/stable/StableUBIFeeSplitter.sol#144)
+		- dailyStablecoinUBI = ubiAmount (src/stable/StableUBIFeeSplitter.sol#280)
+		- dailyStablecoinUBI += ubiAmount (src/stable/StableUBIFeeSplitter.sol#284)
+	- _updateDailyStablecoinUBI(ubiShare) (src/stable/StableUBIFeeSplitter.sol#144)
+		- lastDayTimestamp = currentDay (src/stable/StableUBIFeeSplitter.sol#281)
+Reentrancy in StocksUBIFeeSplitter.splitFee(uint256,address) (src/stocks/StocksUBIFeeSplitter.sol#97-121):
+	External calls:
+	- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#110)
+	- goodDollar.fundUBIPool(ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#113)
+	- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#114)
+	- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#115)
+	State variables written after the call(s):
+	- _updateDailyUBI(ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#118)
+		- dailyVolumeUBI = ubiAmount (src/stocks/StocksUBIFeeSplitter.sol#192)
+		- dailyVolumeUBI += ubiAmount (src/stocks/StocksUBIFeeSplitter.sol#196)
+	- _updateDailyUBI(ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#118)
+		- lastDayTimestamp = currentDay (src/stocks/StocksUBIFeeSplitter.sol#193)
+Reentrancy in UBIFeeSplitter.splitFeeToken(uint256,address,address) (src/UBIFeeSplitter.sol#151-172):
+	External calls:
+	- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/UBIFeeSplitter.sol#164)
+	- require(bool,string)(t.transfer(ubiRecipient,ubiShare),transfer failed) (src/UBIFeeSplitter.sol#165)
+	- require(bool,string)(t.transfer(protocolTreasury,protocolShare),transfer failed) (src/UBIFeeSplitter.sol#166)
+	- require(bool,string)(t.transfer(dAppRecipient,dAppShare),transfer failed) (src/UBIFeeSplitter.sol#167)
+	State variables written after the call(s):
+	- totalFeesCollected += totalFee (src/UBIFeeSplitter.sol#169)
+Reentrancy in StableUBIFeeSplitter.splitFeeToken(uint256,address,address) (src/stable/StableUBIFeeSplitter.sol#159-182):
+	External calls:
+	- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/stable/StableUBIFeeSplitter.sol#173)
+	- require(bool,string)(t.transfer(ubiRecipient,ubiShare),UBI transfer failed) (src/stable/StableUBIFeeSplitter.sol#174)
+	- require(bool,string)(t.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#175)
+	- require(bool,string)(t.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#176)
+	State variables written after the call(s):
+	- _updateDailyStablecoinUBI(ubiShare) (src/stable/StableUBIFeeSplitter.sol#179)
+		- dailyStablecoinUBI = ubiAmount (src/stable/StableUBIFeeSplitter.sol#280)
+		- dailyStablecoinUBI += ubiAmount (src/stable/StableUBIFeeSplitter.sol#284)
+	- _updateDailyStablecoinUBI(ubiShare) (src/stable/StableUBIFeeSplitter.sol#179)
+		- lastDayTimestamp = currentDay (src/stable/StableUBIFeeSplitter.sol#281)
+Reentrancy in PerpUBIFeeSplitter.splitFundingFee(uint256,address,uint256) (src/perps/PerpUBIFeeSplitter.sol#155-167):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/perps/PerpUBIFeeSplitter.sol#160)
+		- require(bool,string)(goodDollarToken.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/perps/PerpUBIFeeSplitter.sol#118)
+		- goodDollarToken.fundUBIPool(ubiShare) (src/perps/PerpUBIFeeSplitter.sol#121)
+		- require(bool,string)(goodDollarToken.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/perps/PerpUBIFeeSplitter.sol#122)
+		- require(bool,string)(goodDollarToken.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/perps/PerpUBIFeeSplitter.sol#123)
+	State variables written after the call(s):
+	- totalFundingFees += totalFee (src/perps/PerpUBIFeeSplitter.sol#163)
+	- totalUBIFromFunding += ubiShare (src/perps/PerpUBIFeeSplitter.sol#164)
+Reentrancy in StableUBIFeeSplitter.splitGovernanceFee(uint256,address,address,address) (src/stable/StableUBIFeeSplitter.sol#254-267):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFeeToken(totalFee,dAppRecipient,token) (src/stable/StableUBIFeeSplitter.sol#260)
+		- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/stable/StableUBIFeeSplitter.sol#173)
+		- require(bool,string)(t.transfer(ubiRecipient,ubiShare),UBI transfer failed) (src/stable/StableUBIFeeSplitter.sol#174)
+		- require(bool,string)(t.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#175)
+		- require(bool,string)(t.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#176)
+	State variables written after the call(s):
+	- totalGovernanceFees += totalFee (src/stable/StableUBIFeeSplitter.sol#263)
+	- totalUBIFromGovernance += ubiShare (src/stable/StableUBIFeeSplitter.sol#264)
+Reentrancy in PerpUBIFeeSplitter.splitLiquidationFee(uint256,address,address,address) (src/perps/PerpUBIFeeSplitter.sol#173-190):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/perps/PerpUBIFeeSplitter.sol#179)
+		- require(bool,string)(goodDollarToken.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/perps/PerpUBIFeeSplitter.sol#118)
+		- goodDollarToken.fundUBIPool(ubiShare) (src/perps/PerpUBIFeeSplitter.sol#121)
+		- require(bool,string)(goodDollarToken.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/perps/PerpUBIFeeSplitter.sol#122)
+		- require(bool,string)(goodDollarToken.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/perps/PerpUBIFeeSplitter.sol#123)
+	State variables written after the call(s):
+	- _addLiquidatorIfNew(liquidator) (src/perps/PerpUBIFeeSplitter.sol#187)
+		- activeLiquidators.push(liquidator) (src/perps/PerpUBIFeeSplitter.sol#221)
+	- liquidatorContributions[liquidator] += ubiShare (src/perps/PerpUBIFeeSplitter.sol#186)
+	- totalLiquidationFees += totalFee (src/perps/PerpUBIFeeSplitter.sol#182)
+	- totalUBIFromLiquidations += ubiShare (src/perps/PerpUBIFeeSplitter.sol#183)
+Reentrancy in StableUBIFeeSplitter.splitLiquidationPenalty(uint256,address,address,bytes32,address) (src/stable/StableUBIFeeSplitter.sol#234-248):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFeeToken(totalFee,dAppRecipient,token) (src/stable/StableUBIFeeSplitter.sol#241)
+		- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/stable/StableUBIFeeSplitter.sol#173)
+		- require(bool,string)(t.transfer(ubiRecipient,ubiShare),UBI transfer failed) (src/stable/StableUBIFeeSplitter.sol#174)
+		- require(bool,string)(t.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#175)
+		- require(bool,string)(t.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#176)
+	State variables written after the call(s):
+	- totalLiquidationFees += totalFee (src/stable/StableUBIFeeSplitter.sol#244)
+	- totalUBIFromLiquidations += ubiShare (src/stable/StableUBIFeeSplitter.sol#245)
+Reentrancy in StocksUBIFeeSplitter.splitLiquidationProceeds(uint256,address,address) (src/stocks/StocksUBIFeeSplitter.sol#167-179):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalProceeds,dAppRecipient) (src/stocks/StocksUBIFeeSplitter.sol#172)
+		- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#110)
+		- goodDollar.fundUBIPool(ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#113)
+		- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#114)
+		- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#115)
+	State variables written after the call(s):
+	- totalLiquidationProceeds += totalProceeds (src/stocks/StocksUBIFeeSplitter.sol#175)
+	- totalUBIFromLiquidations += ubiShare (src/stocks/StocksUBIFeeSplitter.sol#176)
+Reentrancy in StocksUBIFeeSplitter.splitMintFee(uint256,address,address,string,uint256) (src/stocks/StocksUBIFeeSplitter.sol#127-141):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/stocks/StocksUBIFeeSplitter.sol#134)
+		- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#110)
+		- goodDollar.fundUBIPool(ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#113)
+		- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#114)
+		- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#115)
+	State variables written after the call(s):
+	- totalMintFees += totalFee (src/stocks/StocksUBIFeeSplitter.sol#137)
+	- totalUBIFromTrading += ubiShare (src/stocks/StocksUBIFeeSplitter.sol#138)
+Reentrancy in StableUBIFeeSplitter.splitMintingFee(uint256,address,address,address,string) (src/stable/StableUBIFeeSplitter.sol#212-228):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFeeToken(totalFee,dAppRecipient,token) (src/stable/StableUBIFeeSplitter.sol#219)
+		- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/stable/StableUBIFeeSplitter.sol#173)
+		- require(bool,string)(t.transfer(ubiRecipient,ubiShare),UBI transfer failed) (src/stable/StableUBIFeeSplitter.sol#174)
+		- require(bool,string)(t.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#175)
+		- require(bool,string)(t.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#176)
+	State variables written after the call(s):
+	- mintingFeesByUser[user] += totalFee (src/stable/StableUBIFeeSplitter.sol#224)
+	- psmContributions[msg.sender] += ubiShare (src/stable/StableUBIFeeSplitter.sol#225)
+	- totalMintingFees += totalFee (src/stable/StableUBIFeeSplitter.sol#222)
+	- totalUBIFromMinting += ubiShare (src/stable/StableUBIFeeSplitter.sol#223)
+Reentrancy in StableUBIFeeSplitter.splitStabilityFee(uint256,address,address,bytes32) (src/stable/StableUBIFeeSplitter.sol#188-206):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFeeToken(totalFee,dAppRecipient,token) (src/stable/StableUBIFeeSplitter.sol#194)
+		- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/stable/StableUBIFeeSplitter.sol#173)
+		- require(bool,string)(t.transfer(ubiRecipient,ubiShare),UBI transfer failed) (src/stable/StableUBIFeeSplitter.sol#174)
+		- require(bool,string)(t.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#175)
+		- require(bool,string)(t.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#176)
+	State variables written after the call(s):
+	- _addIlkIfNew(ilk) (src/stable/StableUBIFeeSplitter.sol#203)
+		- activeIlks.push(ilk) (src/stable/StableUBIFeeSplitter.sol#294)
+	- _addIlkIfNew(ilk) (src/stable/StableUBIFeeSplitter.sol#203)
+		- ilkExists[ilk] = true (src/stable/StableUBIFeeSplitter.sol#293)
+	- stabilityFeesByIlk[ilk] += totalFee (src/stable/StableUBIFeeSplitter.sol#199)
+	- totalStabilityFees += totalFee (src/stable/StableUBIFeeSplitter.sol#197)
+	- totalUBIFromStability += ubiShare (src/stable/StableUBIFeeSplitter.sol#198)
+	- vaultManagerContributions[msg.sender] += ubiShare (src/stable/StableUBIFeeSplitter.sol#200)
+Reentrancy in PerpUBIFeeSplitter.splitTradingFee(uint256,address,address,uint256,uint256) (src/perps/PerpUBIFeeSplitter.sol#135-149):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/perps/PerpUBIFeeSplitter.sol#142)
+		- require(bool,string)(goodDollarToken.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/perps/PerpUBIFeeSplitter.sol#118)
+		- goodDollarToken.fundUBIPool(ubiShare) (src/perps/PerpUBIFeeSplitter.sol#121)
+		- require(bool,string)(goodDollarToken.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/perps/PerpUBIFeeSplitter.sol#122)
+		- require(bool,string)(goodDollarToken.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/perps/PerpUBIFeeSplitter.sol#123)
+	State variables written after the call(s):
+	- totalTradingFees += totalFee (src/perps/PerpUBIFeeSplitter.sol#145)
+	- totalUBIFromTrading += ubiShare (src/perps/PerpUBIFeeSplitter.sol#146)
+Reentrancy in ValidatorStaking.stake(uint256,string,string) (src/ValidatorStaking.sol#98-128):
+	External calls:
+	- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),amount),transferFrom failed) (src/ValidatorStaking.sol#101)
+	State variables written after the call(s):
+	- _validatorListIndex[msg.sender] = validatorList.length + 1 (src/ValidatorStaking.sol#107)
+	- activeCount ++ (src/ValidatorStaking.sol#114)
+	- totalStaked += amount (src/ValidatorStaking.sol#125)
+	- validatorList.push(msg.sender) (src/ValidatorStaking.sol#108)
+	- v.isActive = true (src/ValidatorStaking.sol#110)
+	- v.name = name (src/ValidatorStaking.sol#111)
+	- v.endpoint = endpoint (src/ValidatorStaking.sol#112)
+	- v.lastStakeTime = block.timestamp (src/ValidatorStaking.sol#113)
+	- v.rewardDebt += accrued (src/ValidatorStaking.sol#120)
+	- v.lastStakeTime = block.timestamp (src/ValidatorStaking.sol#122)
+	- v.staked += amount (src/ValidatorStaking.sol#124)
+Reentrancy in ValidatorStakingDevnet.stake(uint256,string,string) (src/ValidatorStakingDevnet.sol#84-114):
+	External calls:
+	- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),amount),transferFrom failed) (src/ValidatorStakingDevnet.sol#87)
+	State variables written after the call(s):
+	- _validatorListIndex[msg.sender] = validatorList.length + 1 (src/ValidatorStakingDevnet.sol#93)
+	- activeCount ++ (src/ValidatorStakingDevnet.sol#100)
+	- totalStaked += amount (src/ValidatorStakingDevnet.sol#111)
+	- validatorList.push(msg.sender) (src/ValidatorStakingDevnet.sol#94)
+	- v.isActive = true (src/ValidatorStakingDevnet.sol#96)
+	- v.name = name (src/ValidatorStakingDevnet.sol#97)
+	- v.endpoint = endpoint (src/ValidatorStakingDevnet.sol#98)
+	- v.lastStakeTime = block.timestamp (src/ValidatorStakingDevnet.sol#99)
+	- v.rewardDebt += accrued (src/ValidatorStakingDevnet.sol#106)
+	- v.lastStakeTime = block.timestamp (src/ValidatorStakingDevnet.sol#108)
+	- v.staked += amount (src/ValidatorStakingDevnet.sol#110)
+Reentrancy in GoodSwap.swap(uint256,uint256,address,bytes) (src/GoodSwap.sol#208-232):
+	External calls:
+	- _safeTransfer(token0,to,amount0Out) (src/GoodSwap.sol#219)
+		- ! IERC20Minimal(token).transfer(to,amount) (src/GoodSwap.sol#310)
+	- _safeTransfer(token1,to,amount1Out) (src/GoodSwap.sol#220)
+		- ! IERC20Minimal(token).transfer(to,amount) (src/GoodSwap.sol#310)
+	- IGoodSwapCallee(to).goodSwapCall(msg.sender,amount0Out,amount1Out,data) (src/GoodSwap.sol#221)
+	State variables written after the call(s):
+	- _verifyAndUpdateSwap(bal0,bal1,r0,r1,amt0In,amt1In,amount0Out,amount1Out,to) (src/GoodSwap.sol#231)
+		- price0CumulativeLast += (uint256(r1) << 112) / r0 * elapsed (src/GoodSwap.sol#296)
+	- _verifyAndUpdateSwap(bal0,bal1,r0,r1,amt0In,amt1In,amount0Out,amount1Out,to) (src/GoodSwap.sol#231)
+		- price1CumulativeLast += (uint256(r0) << 112) / r1 * elapsed (src/GoodSwap.sol#297)
+Reentrancy in LendingStrategy.withdraw(uint256) (src/yield/strategies/LendingStrategy.sol#97-110):
+	External calls:
+	- withdrawn = lendPool.withdraw(asset,amount,vault) (src/yield/strategies/LendingStrategy.sol#102)
+	State variables written after the call(s):
+	- totalDeposited = 0 (src/yield/strategies/LendingStrategy.sol#104)
+	- totalDeposited -= withdrawn (src/yield/strategies/LendingStrategy.sol#106)
+Reentrancy in StablecoinStrategy.withdraw(uint256) (src/yield/strategies/StablecoinStrategy.sol#92-110):
+	External calls:
+	- stabilityPool.withdraw(amount) (src/yield/strategies/StablecoinStrategy.sol#95)
+	- ! IERC20(asset).transfer(vault,actual) (src/yield/strategies/StablecoinStrategy.sol#101)
+	State variables written after the call(s):
+	- totalDeposited = 0 (src/yield/strategies/StablecoinStrategy.sol#104)
+	- totalDeposited -= actual (src/yield/strategies/StablecoinStrategy.sol#106)
+Reentrancy in VaultManager.withdrawCollateral(bytes32,uint256) (src/stable/VaultManager.sol#335-357):
+	External calls:
+	- drip(ilk) (src/stable/VaultManager.sol#338)
+		- gusd.mint(address(this),feeWAD) (src/stable/VaultManager.sol#247)
+		- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+		- this._callStabilityFeeTracking(feeWAD,dAppRecipient,address(gusd),ilk) (src/stable/VaultManager.sol#252-258)
+		- feeSplitter.splitFeeToken(feeWAD,dAppRecipient,address(gusd)) (src/stable/VaultManager.sol#257)
+	State variables written after the call(s):
+	- vault.collateral -= amount (src/stable/VaultManager.sol#343)
+Reentrancy in GoodDollarBridgeL2.withdrawGDollar(address,address,uint256) (src/bridge/GoodDollarBridgeL2.sol#175-193):
+	External calls:
+	- IERC20Mintable(l2Token).burn(msg.sender,amount) (src/bridge/GoodDollarBridgeL2.sol#182)
+	State variables written after the call(s):
+	- totalMinted[l1Token] -= amount (src/bridge/GoodDollarBridgeL2.sol#184)
+Reentrancy in GoodDollarBridgeL2.withdrawUSDC(address,address,uint256) (src/bridge/GoodDollarBridgeL2.sol#195-213):
+	External calls:
+	- IERC20Mintable(l2Token).burn(msg.sender,amount) (src/bridge/GoodDollarBridgeL2.sol#202)
+	State variables written after the call(s):
+	- totalMinted[l1Token] -= amount (src/bridge/GoodDollarBridgeL2.sol#204)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+
+Detector: reentrancy-events
+Reentrancy in UBIFeeHook.afterSwap(address,PoolKey,SwapParams,BalanceDelta,bytes) (src/hooks/UBIFeeHook.sol#165-206):
+	External calls:
+	- IUBIPool(ubiPool).fundUBIPool(ubiShare) (src/hooks/UBIFeeHook.sol#198)
+	Event emitted after the call(s):
+	- UBIFeeCollected(feeToken,outputAmount,ubiShare,ubiPool) (src/hooks/UBIFeeHook.sol#203)
+Reentrancy in GoodSwap.burn(address) (src/GoodSwap.sol#164-186):
+	External calls:
+	- _safeTransfer(token0,to,amount0) (src/GoodSwap.sol#178)
+		- ! IERC20Minimal(token).transfer(to,amount) (src/GoodSwap.sol#310)
+	- _safeTransfer(token1,to,amount1) (src/GoodSwap.sol#179)
+		- ! IERC20Minimal(token).transfer(to,amount) (src/GoodSwap.sol#310)
+	Event emitted after the call(s):
+	- Burn(msg.sender,amount0,amount1,to) (src/GoodSwap.sol#185)
+	- Sync(_reserve0,_reserve1) (src/GoodSwap.sol#306)
+		- _update(bal0,bal1,_reserve0,_reserve1) (src/GoodSwap.sol#184)
+Reentrancy in ValidatorStakingDevnet.claimRewards() (src/ValidatorStakingDevnet.sol#237-250):
+	External calls:
+	- require(bool,string)(goodDollar.transfer(msg.sender,rewards),transfer failed) (src/ValidatorStakingDevnet.sol#248)
+	Event emitted after the call(s):
+	- RewardsClaimed(msg.sender,rewards) (src/ValidatorStakingDevnet.sol#249)
+Reentrancy in ValidatorStakingDevnet.completeUnstake() (src/ValidatorStakingDevnet.sol#147-164):
+	External calls:
+	- require(bool,string)(goodDollar.transfer(msg.sender,amount),transfer failed) (src/ValidatorStakingDevnet.sol#162)
+	Event emitted after the call(s):
+	- UnstakeCompleted(msg.sender,amount) (src/ValidatorStakingDevnet.sol#163)
+Reentrancy in PerpEngine.createMarket(bytes32,bytes32,uint256) (src/perps/PerpEngine.sol#167-179):
+	External calls:
+	- funding.initMarket(marketId) (src/perps/PerpEngine.sol#177)
+	Event emitted after the call(s):
+	- MarketCreated(marketId,oracleKey,maxLeverage) (src/perps/PerpEngine.sol#178)
+Reentrancy in LendingStrategy.deposit(uint256) (src/yield/strategies/LendingStrategy.sol#81-94):
+	External calls:
+	- ! IERC20(asset).transferFrom(vault,address(this),amount) (src/yield/strategies/LendingStrategy.sol#87)
+	- ! IERC20(asset).approve(address(lendPool),amount) (src/yield/strategies/LendingStrategy.sol#88)
+	- lendPool.supply(asset,amount,address(this)) (src/yield/strategies/LendingStrategy.sol#89)
+	- ! IERC20(asset).approve(address(lendPool),0) (src/yield/strategies/LendingStrategy.sol#91)
+	Event emitted after the call(s):
+	- Deposited(amount) (src/yield/strategies/LendingStrategy.sol#93)
+Reentrancy in StablecoinStrategy.deposit(uint256) (src/yield/strategies/StablecoinStrategy.sol#77-90):
+	External calls:
+	- ! IERC20(asset).transferFrom(vault,address(this),amount) (src/yield/strategies/StablecoinStrategy.sol#83)
+	- ! IERC20(asset).approve(address(stabilityPool),amount) (src/yield/strategies/StablecoinStrategy.sol#84)
+	- stabilityPool.deposit(amount) (src/yield/strategies/StablecoinStrategy.sol#85)
+	- ! IERC20(asset).approve(address(stabilityPool),0) (src/yield/strategies/StablecoinStrategy.sol#87)
+	Event emitted after the call(s):
+	- Deposited(amount) (src/yield/strategies/StablecoinStrategy.sol#89)
+Reentrancy in VaultManager.drip(bytes32) (src/stable/VaultManager.sol#202-264):
+	External calls:
+	- gusd.mint(address(this),feeWAD) (src/stable/VaultManager.sol#247)
+	- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+	- this._callStabilityFeeTracking(feeWAD,dAppRecipient,address(gusd),ilk) (src/stable/VaultManager.sol#252-258)
+	- feeSplitter.splitFeeToken(feeWAD,dAppRecipient,address(gusd)) (src/stable/VaultManager.sol#257)
+	Event emitted after the call(s):
+	- Drip(ilk,newChi,feeWAD) (src/stable/VaultManager.sol#263)
+	- FeeCollected(ilk,feeWAD) (src/stable/VaultManager.sol#262)
+Reentrancy in GoodTimelock.execute(address,uint256,bytes,bytes32) (src/governance/GoodTimelock.sol#203-237):
+	External calls:
+	- (success,None) = target.call{value: value}(data) (src/governance/GoodTimelock.sol#233)
+	Event emitted after the call(s):
+	- OperationExecuted(id) (src/governance/GoodTimelock.sol#236)
+Reentrancy in GoodTimelock.executeBatch(address[],uint256[],bytes[],bytes32) (src/governance/GoodTimelock.sol#166-200):
+	External calls:
+	- (success,None) = targets[i].call{value: values[i]}(calldatas[i]) (src/governance/GoodTimelock.sol#195)
+	Event emitted after the call(s):
+	- OperationExecuted(id) (src/governance/GoodTimelock.sol#199)
+Reentrancy in LiFiBridgeAggregator.expireSwap(uint256) (src/swap/LiFiBridgeAggregator.sol#319-336):
+	External calls:
+	- (sent,None) = s.user.call{value: s.srcAmount}() (src/swap/LiFiBridgeAggregator.sol#329)
+	- ! IERC20(s.srcToken).transfer(s.user,s.srcAmount) (src/swap/LiFiBridgeAggregator.sol#332)
+	External calls sending eth:
+	- (sent,None) = s.user.call{value: s.srcAmount}() (src/swap/LiFiBridgeAggregator.sol#329)
+	Event emitted after the call(s):
+	- SwapExpired(swapId) (src/swap/LiFiBridgeAggregator.sol#335)
+Reentrancy in OptimismPortal.finalizeWithdrawalTransaction(bytes32,address,uint256) (src/bridge/OptimismPortal.sol#93-125):
+	External calls:
+	- (feeOk,None) = ubiTreasury.call{value: fee}() (src/bridge/OptimismPortal.sol#112)
+	- (ok,None) = _to.call{value: payout}() (src/bridge/OptimismPortal.sol#121)
+	Event emitted after the call(s):
+	- WithdrawalFinalized(_withdrawalHash,true) (src/bridge/OptimismPortal.sol#124)
+Reentrancy in StablecoinStrategy.harvest() (src/yield/strategies/StablecoinStrategy.sol#112-136):
+	External calls:
+	- stabilityPool.claimGains() (src/yield/strategies/StablecoinStrategy.sol#119)
+	Event emitted after the call(s):
+	- GainsClaimed(gained) (src/yield/strategies/StablecoinStrategy.sol#122)
+	- Harvested(profit,loss) (src/yield/strategies/StablecoinStrategy.sol#135)
+Reentrancy in SyntheticAssetFactory.listAsset(string,string,address) (src/stocks/SyntheticAssetFactory.sol#71-96):
+	External calls:
+	- SyntheticAsset(asset).initialize(assetName,syntheticSymbol,vault) (src/stocks/SyntheticAssetFactory.sol#93)
+	Event emitted after the call(s):
+	- AssetListed(ticker,asset,vault) (src/stocks/SyntheticAssetFactory.sol#95)
+Reentrancy in VaultManager.openVault(bytes32) (src/stable/VaultManager.sol#301-306):
+	External calls:
+	- drip(ilk) (src/stable/VaultManager.sol#304)
+		- gusd.mint(address(this),feeWAD) (src/stable/VaultManager.sol#247)
+		- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+		- this._callStabilityFeeTracking(feeWAD,dAppRecipient,address(gusd),ilk) (src/stable/VaultManager.sol#252-258)
+		- feeSplitter.splitFeeToken(feeWAD,dAppRecipient,address(gusd)) (src/stable/VaultManager.sol#257)
+	Event emitted after the call(s):
+	- VaultOpened(msg.sender,ilk) (src/stable/VaultManager.sol#305)
+Reentrancy in LiFiBridgeAggregator.refundSwap(uint256,string) (src/swap/LiFiBridgeAggregator.sol#298-314):
+	External calls:
+	- (sent,None) = s.user.call{value: s.srcAmount}() (src/swap/LiFiBridgeAggregator.sol#307)
+	- ! IERC20(s.srcToken).transfer(s.user,s.srcAmount) (src/swap/LiFiBridgeAggregator.sol#310)
+	External calls sending eth:
+	- (sent,None) = s.user.call{value: s.srcAmount}() (src/swap/LiFiBridgeAggregator.sol#307)
+	Event emitted after the call(s):
+	- SwapRefunded(swapId,reason) (src/swap/LiFiBridgeAggregator.sol#313)
+Reentrancy in ValidatorStakingDevnet.slash(address,string) (src/ValidatorStakingDevnet.sol#174-210):
+	External calls:
+	- goodDollar.fundUBIPool(slashAmount) (src/ValidatorStakingDevnet.sol#208)
+	Event emitted after the call(s):
+	- ValidatorSlashed(validator,slashAmount,reason) (src/ValidatorStakingDevnet.sol#209)
+Reentrancy in PredictUBIFeeSplitter.splitBondSlashing(uint256,address) (src/predict/PredictUBIFeeSplitter.sol#124-149):
+	External calls:
+	- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/predict/PredictUBIFeeSplitter.sol#137)
+	- goodDollar.fundUBIPool(ubiShare) (src/predict/PredictUBIFeeSplitter.sol#140)
+	- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/predict/PredictUBIFeeSplitter.sol#141)
+	- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/predict/PredictUBIFeeSplitter.sol#142)
+	Event emitted after the call(s):
+	- FeeSplit(msg.sender,bond_slashing,totalFee,ubiShare,protocolShare,dAppShare) (src/predict/PredictUBIFeeSplitter.sol#148)
+Reentrancy in StocksUBIFeeSplitter.splitBurnFee(uint256,address,address,string,uint256) (src/stocks/StocksUBIFeeSplitter.sol#147-161):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/stocks/StocksUBIFeeSplitter.sol#154)
+		- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#110)
+		- goodDollar.fundUBIPool(ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#113)
+		- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#114)
+		- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#115)
+	Event emitted after the call(s):
+	- TradingFeeSplit(trader,asset,amount,ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#160)
+Reentrancy in PerpUBIFeeSplitter.splitFundingFee(uint256,address,uint256) (src/perps/PerpUBIFeeSplitter.sol#155-167):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/perps/PerpUBIFeeSplitter.sol#160)
+		- require(bool,string)(goodDollarToken.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/perps/PerpUBIFeeSplitter.sol#118)
+		- goodDollarToken.fundUBIPool(ubiShare) (src/perps/PerpUBIFeeSplitter.sol#121)
+		- require(bool,string)(goodDollarToken.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/perps/PerpUBIFeeSplitter.sol#122)
+		- require(bool,string)(goodDollarToken.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/perps/PerpUBIFeeSplitter.sol#123)
+	Event emitted after the call(s):
+	- FundingFeeSplit(marketId,totalFee,ubiShare) (src/perps/PerpUBIFeeSplitter.sol#166)
+Reentrancy in StableUBIFeeSplitter.splitGovernanceFee(uint256,address,address,address) (src/stable/StableUBIFeeSplitter.sol#254-267):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFeeToken(totalFee,dAppRecipient,token) (src/stable/StableUBIFeeSplitter.sol#260)
+		- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/stable/StableUBIFeeSplitter.sol#173)
+		- require(bool,string)(t.transfer(ubiRecipient,ubiShare),UBI transfer failed) (src/stable/StableUBIFeeSplitter.sol#174)
+		- require(bool,string)(t.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#175)
+		- require(bool,string)(t.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#176)
+	Event emitted after the call(s):
+	- GovernanceFeeSplit(proposer,totalFee,ubiShare) (src/stable/StableUBIFeeSplitter.sol#266)
+Reentrancy in PerpUBIFeeSplitter.splitLiquidationFee(uint256,address,address,address) (src/perps/PerpUBIFeeSplitter.sol#173-190):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/perps/PerpUBIFeeSplitter.sol#179)
+		- require(bool,string)(goodDollarToken.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/perps/PerpUBIFeeSplitter.sol#118)
+		- goodDollarToken.fundUBIPool(ubiShare) (src/perps/PerpUBIFeeSplitter.sol#121)
+		- require(bool,string)(goodDollarToken.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/perps/PerpUBIFeeSplitter.sol#122)
+		- require(bool,string)(goodDollarToken.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/perps/PerpUBIFeeSplitter.sol#123)
+	Event emitted after the call(s):
+	- LiquidationUBI(liquidator,liquidatedTrader,totalFee,ubiShare) (src/perps/PerpUBIFeeSplitter.sol#189)
+Reentrancy in StableUBIFeeSplitter.splitLiquidationPenalty(uint256,address,address,bytes32,address) (src/stable/StableUBIFeeSplitter.sol#234-248):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFeeToken(totalFee,dAppRecipient,token) (src/stable/StableUBIFeeSplitter.sol#241)
+		- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/stable/StableUBIFeeSplitter.sol#173)
+		- require(bool,string)(t.transfer(ubiRecipient,ubiShare),UBI transfer failed) (src/stable/StableUBIFeeSplitter.sol#174)
+		- require(bool,string)(t.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#175)
+		- require(bool,string)(t.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#176)
+	Event emitted after the call(s):
+	- LiquidationPenaltySplit(ilk,liquidatedUser,totalFee,ubiShare) (src/stable/StableUBIFeeSplitter.sol#247)
+Reentrancy in StocksUBIFeeSplitter.splitLiquidationProceeds(uint256,address,address) (src/stocks/StocksUBIFeeSplitter.sol#167-179):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalProceeds,dAppRecipient) (src/stocks/StocksUBIFeeSplitter.sol#172)
+		- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#110)
+		- goodDollar.fundUBIPool(ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#113)
+		- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#114)
+		- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#115)
+	Event emitted after the call(s):
+	- LiquidationUBI(liquidatedUser,totalProceeds,ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#178)
+Reentrancy in StocksUBIFeeSplitter.splitMintFee(uint256,address,address,string,uint256) (src/stocks/StocksUBIFeeSplitter.sol#127-141):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/stocks/StocksUBIFeeSplitter.sol#134)
+		- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#110)
+		- goodDollar.fundUBIPool(ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#113)
+		- require(bool,string)(goodDollar.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#114)
+		- require(bool,string)(goodDollar.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stocks/StocksUBIFeeSplitter.sol#115)
+	Event emitted after the call(s):
+	- TradingFeeSplit(trader,asset,amount,ubiShare) (src/stocks/StocksUBIFeeSplitter.sol#140)
+Reentrancy in StableUBIFeeSplitter.splitMintingFee(uint256,address,address,address,string) (src/stable/StableUBIFeeSplitter.sol#212-228):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFeeToken(totalFee,dAppRecipient,token) (src/stable/StableUBIFeeSplitter.sol#219)
+		- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/stable/StableUBIFeeSplitter.sol#173)
+		- require(bool,string)(t.transfer(ubiRecipient,ubiShare),UBI transfer failed) (src/stable/StableUBIFeeSplitter.sol#174)
+		- require(bool,string)(t.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#175)
+		- require(bool,string)(t.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#176)
+	Event emitted after the call(s):
+	- MintingFeeSplit(user,direction,totalFee,ubiShare) (src/stable/StableUBIFeeSplitter.sol#227)
+Reentrancy in StableUBIFeeSplitter.splitStabilityFee(uint256,address,address,bytes32) (src/stable/StableUBIFeeSplitter.sol#188-206):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFeeToken(totalFee,dAppRecipient,token) (src/stable/StableUBIFeeSplitter.sol#194)
+		- require(bool,string)(t.transferFrom(msg.sender,address(this),totalFee),transferFrom failed) (src/stable/StableUBIFeeSplitter.sol#173)
+		- require(bool,string)(t.transfer(ubiRecipient,ubiShare),UBI transfer failed) (src/stable/StableUBIFeeSplitter.sol#174)
+		- require(bool,string)(t.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/stable/StableUBIFeeSplitter.sol#175)
+		- require(bool,string)(t.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/stable/StableUBIFeeSplitter.sol#176)
+	Event emitted after the call(s):
+	- StabilityFeeSplit(ilk,totalFee,ubiShare) (src/stable/StableUBIFeeSplitter.sol#205)
+Reentrancy in PerpUBIFeeSplitter.splitTradingFee(uint256,address,address,uint256,uint256) (src/perps/PerpUBIFeeSplitter.sol#135-149):
+	External calls:
+	- (ubiShare,protocolShare,dAppShare) = splitFee(totalFee,dAppRecipient) (src/perps/PerpUBIFeeSplitter.sol#142)
+		- require(bool,string)(goodDollarToken.transferFrom(msg.sender,address(this),totalFee),transfer failed) (src/perps/PerpUBIFeeSplitter.sol#118)
+		- goodDollarToken.fundUBIPool(ubiShare) (src/perps/PerpUBIFeeSplitter.sol#121)
+		- require(bool,string)(goodDollarToken.transfer(protocolTreasury,protocolShare),treasury transfer failed) (src/perps/PerpUBIFeeSplitter.sol#122)
+		- require(bool,string)(goodDollarToken.transfer(dAppRecipient,dAppShare),dapp transfer failed) (src/perps/PerpUBIFeeSplitter.sol#123)
+	Event emitted after the call(s):
+	- TradingFeeSplit(trader,marketId,positionSize,ubiShare) (src/perps/PerpUBIFeeSplitter.sol#148)
+Reentrancy in ValidatorStakingDevnet.stake(uint256,string,string) (src/ValidatorStakingDevnet.sol#84-114):
+	External calls:
+	- require(bool,string)(goodDollar.transferFrom(msg.sender,address(this),amount),transferFrom failed) (src/ValidatorStakingDevnet.sol#87)
+	Event emitted after the call(s):
+	- ValidatorStaked(msg.sender,amount,name) (src/ValidatorStakingDevnet.sol#113)
+Reentrancy in GoodSwap.swap(uint256,uint256,address,bytes) (src/GoodSwap.sol#208-232):
+	External calls:
+	- _safeTransfer(token0,to,amount0Out) (src/GoodSwap.sol#219)
+		- ! IERC20Minimal(token).transfer(to,amount) (src/GoodSwap.sol#310)
+	- _safeTransfer(token1,to,amount1Out) (src/GoodSwap.sol#220)
+		- ! IERC20Minimal(token).transfer(to,amount) (src/GoodSwap.sol#310)
+	- IGoodSwapCallee(to).goodSwapCall(msg.sender,amount0Out,amount1Out,data) (src/GoodSwap.sol#221)
+	Event emitted after the call(s):
+	- Swap(msg.sender,amt0In,amt1In,amt0Out,amt1Out,to) (src/GoodSwap.sol#284)
+		- _verifyAndUpdateSwap(bal0,bal1,r0,r1,amt0In,amt1In,amount0Out,amount1Out,to) (src/GoodSwap.sol#231)
+	- Sync(_reserve0,_reserve1) (src/GoodSwap.sol#306)
+		- _verifyAndUpdateSwap(bal0,bal1,r0,r1,amt0In,amt1In,amount0Out,amount1Out,to) (src/GoodSwap.sol#231)
+Reentrancy in GoodVault.sweepToken(address,address) (src/yield/GoodVault.sol#424-431):
+	External calls:
+	- ! IERC20(token).transfer(to,bal) (src/yield/GoodVault.sol#428)
+	Event emitted after the call(s):
+	- TokenSwept(token,to,bal) (src/yield/GoodVault.sol#429)
+Reentrancy in LendingStrategy.withdraw(uint256) (src/yield/strategies/LendingStrategy.sol#97-110):
+	External calls:
+	- withdrawn = lendPool.withdraw(asset,amount,vault) (src/yield/strategies/LendingStrategy.sol#102)
+	Event emitted after the call(s):
+	- Withdrawn(withdrawn) (src/yield/strategies/LendingStrategy.sol#108)
+Reentrancy in StablecoinStrategy.withdraw(uint256) (src/yield/strategies/StablecoinStrategy.sol#92-110):
+	External calls:
+	- stabilityPool.withdraw(amount) (src/yield/strategies/StablecoinStrategy.sol#95)
+	- ! IERC20(asset).transfer(vault,actual) (src/yield/strategies/StablecoinStrategy.sol#101)
+	Event emitted after the call(s):
+	- Withdrawn(actual) (src/yield/strategies/StablecoinStrategy.sol#108)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-4
+
+Detector: timestamp
+AgentRegistry.updateProfile(address,string,string,string) (src/AgentRegistry.sol#155-169) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(profiles[agent].owner == msg.sender || msg.sender == admin,AgentRegistry: not owner) (src/AgentRegistry.sol#162)
+AgentRegistry.deactivateAgent(address) (src/AgentRegistry.sol#172-177) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(profiles[agent].owner == msg.sender || msg.sender == admin,AgentRegistry: not owner) (src/AgentRegistry.sol#174)
+AgentRegistry.getTopAgents(uint256) (src/AgentRegistry.sol#246-289) uses timestamp for comparisons
+	Dangerous comparisons:
+	- ! used[j] && profiles[agents[j]].active && stats[agents[j]].ubiContribution > bestUBI (src/AgentRegistry.sol#272)
+GoodDollarToken.claimUBI() (src/GoodDollarToken.sol#131-156) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(lastClaimTime[msg.sender] == 0 || block.timestamp >= lastClaimTime[msg.sender] + CLAIM_INTERVAL,Already claimed today) (src/GoodDollarToken.sol#134-137)
+GoodDollarTokenSecure.claimUBI() (src/GoodDollarTokenSecure.sol#200-231) uses timestamp for comparisons
+	Dangerous comparisons:
+	- lastClaimTime[msg.sender] != 0 && block.timestamp < lastClaimTime[msg.sender] + CLAIM_INTERVAL (src/GoodDollarTokenSecure.sol#202)
+GoodDollarTokenSecure.executeOracleChange(uint256) (src/GoodDollarTokenSecure.sol#380-396) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < change.executeAt (src/GoodDollarTokenSecure.sol#385)
+GoodDollarTokenSecure.isChangeReady(uint256) (src/GoodDollarTokenSecure.sol#503-508) uses timestamp for comparisons
+	Dangerous comparisons:
+	- change.oracle != address(0) && ! change.executed && block.timestamp >= change.executeAt (src/GoodDollarTokenSecure.sol#505-507)
+GoodSwap.mint(address) (src/GoodSwap.sol#130-156) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _totalSupply == 0 (src/GoodSwap.sol#139)
+	- liquidity == 0 (src/GoodSwap.sol#149)
+	- l0 < l1 (src/GoodSwap.sol#146)
+GoodSwap.swap(uint256,uint256,address,bytes) (src/GoodSwap.sol#208-232) uses timestamp for comparisons
+	Dangerous comparisons:
+	- amount0Out >= r0 || amount1Out >= r1 (src/GoodSwap.sol#216)
+	- amt0In == 0 && amt1In == 0 (src/GoodSwap.sol#229)
+	- bal0 > r0 - amount0Out (src/GoodSwap.sol#226)
+	- bal1 > r1 - amount1Out (src/GoodSwap.sol#227)
+GoodSwap._verifyAndUpdateSwap(uint256,uint256,uint112,uint112,uint256,uint256,uint256,uint256,address) (src/GoodSwap.sol#265-285) uses timestamp for comparisons
+	Dangerous comparisons:
+	- bal0Adj * bal1Adj < uint256(r0) * uint256(r1) * 1_000_000 (src/GoodSwap.sol#279)
+GoodSwap._update(uint256,uint256,uint112,uint112) (src/GoodSwap.sol#287-307) uses timestamp for comparisons
+	Dangerous comparisons:
+	- elapsed > 0 && r0 != 0 && r1 != 0 (src/GoodSwap.sol#292)
+GoodSwap._sqrt(uint256) (src/GoodSwap.sol#313-321) uses timestamp for comparisons
+	Dangerous comparisons:
+	- y > 3 (src/GoodSwap.sol#314)
+	- x < z (src/GoodSwap.sol#317)
+	- y != 0 (src/GoodSwap.sol#318)
+TestRegistry.getResult(uint256) (src/TestRegistry.sol#100-103) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(resultId < _results.length,TestRegistry: out of range) (src/TestRegistry.sol#101)
+TestRegistry.getResults(uint256,uint256) (src/TestRegistry.sol#108-123) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(from <= to,TestRegistry: invalid range) (src/TestRegistry.sol#114)
+	- require(bool,string)(from < len,TestRegistry: from out of range) (src/TestRegistry.sol#115)
+	- to >= len (src/TestRegistry.sol#117)
+	- i < count (src/TestRegistry.sol#120)
+TestRegistry.getResultsByTester(address) (src/TestRegistry.sol#127-151) uses timestamp for comparisons
+	Dangerous comparisons:
+	- i < len (src/TestRegistry.sol#136)
+	- _results[i].tester == tester (src/TestRegistry.sol#137)
+	- i_scope_0 < len (src/TestRegistry.sol#144)
+	- _results[i_scope_0].tester == tester (src/TestRegistry.sol#145)
+UBIClaimV2.canClaim(address) (src/UBIClaimV2.sol#107-111) uses timestamp for comparisons
+	Dangerous comparisons:
+	- goodDollar.isVerifiedHuman(account) && lastClaimEpoch[account] != currentEpoch() + 1 (src/UBIClaimV2.sol#108-110)
+UBIClaimV2.batchClaim(address[]) (src/UBIClaimV2.sol#142-178) uses timestamp for comparisons
+	Dangerous comparisons:
+	- user == address(0) || ! goodDollar.isVerifiedHuman(user) || lastClaimEpoch[user] == epoch + 1 (src/UBIClaimV2.sol#157-159)
+UBIClaimV2._claim(address) (src/UBIClaimV2.sol#182-204) uses timestamp for comparisons
+	Dangerous comparisons:
+	- lastClaimEpoch[user] == epoch + 1 (src/UBIClaimV2.sol#189)
+ValidatorStaking.stake(uint256,string,string) (src/ValidatorStaking.sol#98-128) uses timestamp for comparisons
+	Dangerous comparisons:
+	- accrued > 0 (src/ValidatorStaking.sol#119)
+ValidatorStaking.initiateUnstake(uint256) (src/ValidatorStaking.sol#136-156) uses timestamp for comparisons
+	Dangerous comparisons:
+	- v.staked < MIN_STAKE (src/ValidatorStaking.sol#150)
+ValidatorStaking.completeUnstake() (src/ValidatorStaking.sol#161-178) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < v.unbonding.unbondAt (src/ValidatorStaking.sol#164)
+ValidatorStaking.slash(address,string) (src/ValidatorStaking.sol#188-224) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(v.isActive || v.unbonding.amount > 0,Not active or unbonding) (src/ValidatorStaking.sol#190)
+ValidatorStaking.claimRewards() (src/ValidatorStaking.sol#251-264) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(v.isActive,Not a validator) (src/ValidatorStaking.sol#253)
+	- require(bool,string)(rewards > 0,No rewards) (src/ValidatorStaking.sol#255)
+	- require(bool,string)(goodDollar.balanceOf(address(this)) >= totalStaked + rewards,Insufficient reward reserve) (src/ValidatorStaking.sol#256-259)
+	- require(bool,string)(goodDollar.transfer(msg.sender,rewards),transfer failed) (src/ValidatorStaking.sol#262)
+ValidatorStakingDevnet.stake(uint256,string,string) (src/ValidatorStakingDevnet.sol#84-114) uses timestamp for comparisons
+	Dangerous comparisons:
+	- accrued > 0 (src/ValidatorStakingDevnet.sol#105)
+ValidatorStakingDevnet.initiateUnstake(uint256) (src/ValidatorStakingDevnet.sol#122-142) uses timestamp for comparisons
+	Dangerous comparisons:
+	- v.staked < MIN_STAKE (src/ValidatorStakingDevnet.sol#136)
+ValidatorStakingDevnet.completeUnstake() (src/ValidatorStakingDevnet.sol#147-164) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < v.unbonding.unbondAt (src/ValidatorStakingDevnet.sol#150)
+ValidatorStakingDevnet.slash(address,string) (src/ValidatorStakingDevnet.sol#174-210) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(v.isActive || v.unbonding.amount > 0,Not active or unbonding) (src/ValidatorStakingDevnet.sol#176)
+ValidatorStakingDevnet.claimRewards() (src/ValidatorStakingDevnet.sol#237-250) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(v.isActive,Not a validator) (src/ValidatorStakingDevnet.sol#239)
+	- require(bool,string)(rewards > 0,No rewards) (src/ValidatorStakingDevnet.sol#241)
+	- require(bool,string)(goodDollar.balanceOf(address(this)) >= totalStaked + rewards,Insufficient reward reserve) (src/ValidatorStakingDevnet.sol#242-245)
+	- require(bool,string)(goodDollar.transfer(msg.sender,rewards),transfer failed) (src/ValidatorStakingDevnet.sol#248)
+L2OutputOracle.proposeL2Output(bytes32,uint256,bytes32,uint256) (src/bridge/L2OutputOracle.sol#61-81) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(_l2BlockNumber >= nextBlockNumber(),L2OutputOracle: block number too low) (src/bridge/L2OutputOracle.sol#68-71)
+L2OutputOracle.deleteL2Outputs(uint256) (src/bridge/L2OutputOracle.sol#90-106) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(_l2OutputIndex < l2Outputs.length,L2OutputOracle: invalid index) (src/bridge/L2OutputOracle.sol#92)
+	- i < l2Outputs.length (src/bridge/L2OutputOracle.sol#97)
+L2OutputOracle.nextBlockNumber() (src/bridge/L2OutputOracle.sol#109-113) uses timestamp for comparisons
+	Dangerous comparisons:
+	- l2Outputs.length == 0 (src/bridge/L2OutputOracle.sol#111)
+L2OutputOracle.latestOutputIndex() (src/bridge/L2OutputOracle.sol#116-119) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(l2Outputs.length > 0,L2OutputOracle: no outputs) (src/bridge/L2OutputOracle.sol#117)
+L2OutputOracle.getL2Output(uint256) (src/bridge/L2OutputOracle.sol#122-125) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(_l2OutputIndex < l2Outputs.length,L2OutputOracle: invalid index) (src/bridge/L2OutputOracle.sol#123)
+L2OutputOracle.latestBlockNumber() (src/bridge/L2OutputOracle.sol#128-132) uses timestamp for comparisons
+	Dangerous comparisons:
+	- l2Outputs.length == 0 (src/bridge/L2OutputOracle.sol#130)
+GoodDAO.castVote(uint256,GoodDAO.VoteType) (src/governance/GoodDAO.sol#133-157) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < p.startTime || block.timestamp > p.endTime (src/governance/GoodDAO.sol#135)
+GoodDAO.execute(uint256) (src/governance/GoodDAO.sol#170-185) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < p.executionTime (src/governance/GoodDAO.sol#174)
+	- block.timestamp > p.executionTime + EXECUTION_WINDOW (src/governance/GoodDAO.sol#175)
+GoodDAO.state(uint256) (src/governance/GoodDAO.sol#199-219) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < p.startTime (src/governance/GoodDAO.sol#203)
+	- block.timestamp <= p.endTime (src/governance/GoodDAO.sol#204)
+	- block.timestamp > p.executionTime + EXECUTION_WINDOW (src/governance/GoodDAO.sol#217)
+GoodTimelock.executeBatch(address[],uint256[],bytes[],bytes32) (src/governance/GoodTimelock.sol#166-200) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < readyTime (src/governance/GoodTimelock.sol#177)
+	- block.timestamp > readyTime + GRACE_PERIOD (src/governance/GoodTimelock.sol#178)
+GoodTimelock.execute(address,uint256,bytes,bytes32) (src/governance/GoodTimelock.sol#203-237) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < readyTime (src/governance/GoodTimelock.sol#220)
+	- block.timestamp > readyTime + GRACE_PERIOD (src/governance/GoodTimelock.sol#221)
+GoodTimelock.isOperationPending(bytes32) (src/governance/GoodTimelock.sol#291-294) uses timestamp for comparisons
+	Dangerous comparisons:
+	- ts > 1 (src/governance/GoodTimelock.sol#293)
+GoodTimelock.isOperationReady(bytes32) (src/governance/GoodTimelock.sol#297-300) uses timestamp for comparisons
+	Dangerous comparisons:
+	- ts > 1 && block.timestamp >= ts && block.timestamp <= ts + GRACE_PERIOD (src/governance/GoodTimelock.sol#299)
+GoodTimelock.isOperationDone(bytes32) (src/governance/GoodTimelock.sol#304-306) uses timestamp for comparisons
+	Dangerous comparisons:
+	- timestamps[id] == 1 (src/governance/GoodTimelock.sol#305)
+VoteEscrowedGD.increaseLock(uint256) (src/governance/VoteEscrowedGD.sol#110-128) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= l.end (src/governance/VoteEscrowedGD.sol#114)
+VoteEscrowedGD.extendLock(uint256) (src/governance/VoteEscrowedGD.sol#131-148) uses timestamp for comparisons
+	Dangerous comparisons:
+	- newEnd > block.timestamp + MAX_LOCK (src/governance/VoteEscrowedGD.sol#135)
+	- newPower > oldPower (src/governance/VoteEscrowedGD.sol#142)
+VoteEscrowedGD.withdraw() (src/governance/VoteEscrowedGD.sol#151-167) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < l.end (src/governance/VoteEscrowedGD.sol#154)
+VoteEscrowedGD.earlyUnlock() (src/governance/VoteEscrowedGD.sol#170-199) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= l.end (src/governance/VoteEscrowedGD.sol#173)
+	- power > 0 (src/governance/VoteEscrowedGD.sol#186)
+VoteEscrowedGD.votingPowerOf(address) (src/governance/VoteEscrowedGD.sol#204-210) uses timestamp for comparisons
+	Dangerous comparisons:
+	- l.amount == 0 || block.timestamp >= l.end (src/governance/VoteEscrowedGD.sol#207)
+VoteEscrowedGD.delegate(address) (src/governance/VoteEscrowedGD.sol#232-245) uses timestamp for comparisons
+	Dangerous comparisons:
+	- power > 0 (src/governance/VoteEscrowedGD.sol#237)
+VoteEscrowedGD._writeCheckpoint(VoteEscrowedGD.Checkpoint[],function(uint256,uint256) returns(uint256),uint256) (src/governance/VoteEscrowedGD.sol#254-269) uses timestamp for comparisons
+	Dangerous comparisons:
+	- len > 0 && ckpts[len - 1].timestamp == uint48(block.timestamp) (src/governance/VoteEscrowedGD.sol#264)
+GoodLendPool.initReserve(address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint8) (src/lending/GoodLendPool.sol#174-212) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(! reserves[asset].isActive,GoodLendPool: already initialized) (src/lending/GoodLendPool.sol#186)
+GoodLendPool._supply(address,uint256,address) (src/lending/GoodLendPool.sol#235-262) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reserve.isActive,GoodLendPool: reserve inactive) (src/lending/GoodLendPool.sol#237)
+	- require(bool,string)(totalDeposits + amount <= reserve.supplyCap * (10 ** reserve.decimals),GoodLendPool: supply cap) (src/lending/GoodLendPool.sol#245)
+GoodLendPool._withdraw(address,uint256,address) (src/lending/GoodLendPool.sol#285-320) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reserve.isActive,GoodLendPool: reserve inactive) (src/lending/GoodLendPool.sol#287)
+	- amount == type()(uint256).max (src/lending/GoodLendPool.sol#293)
+	- require(bool,string)(amount > 0 && amount <= userBalance,GoodLendPool: bad amount) (src/lending/GoodLendPool.sol#296)
+GoodLendPool.borrow(address,uint256) (src/lending/GoodLendPool.sol#329-363) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reserve.isActive && reserve.borrowingEnabled,GoodLendPool: borrow disabled) (src/lending/GoodLendPool.sol#331)
+	- require(bool,string)(totalBorrows + amount <= reserve.borrowCap * (10 ** reserve.decimals),GoodLendPool: borrow cap) (src/lending/GoodLendPool.sol#339)
+GoodLendPool.repay(address,uint256) (src/lending/GoodLendPool.sol#372-400) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reserve.isActive,GoodLendPool: reserve inactive) (src/lending/GoodLendPool.sol#374)
+	- amount == type()(uint256).max (src/lending/GoodLendPool.sol#380)
+	- require(bool,string)(amount > 0,GoodLendPool: zero amount) (src/lending/GoodLendPool.sol#383)
+	- amount > userDebt (src/lending/GoodLendPool.sol#384)
+GoodLendPool.liquidate(address,address,address,uint256) (src/lending/GoodLendPool.sol#411-463) uses timestamp for comparisons
+	Dangerous comparisons:
+	- debtToCover > maxClose (src/lending/GoodLendPool.sol#430)
+	- require(bool,string)(debtToCover > 0,GoodLendPool: zero liquidation) (src/lending/GoodLendPool.sol#431)
+	- collateralToSeize > userCollateral (src/lending/GoodLendPool.sol#438)
+GoodLendPool.flashLoan(address,uint256,address,bytes) (src/lending/GoodLendPool.sol#498-550) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reserve.isActive,GoodLendPool: reserve inactive) (src/lending/GoodLendPool.sol#505)
+GoodLendPool.getLiquidityIndex(address) (src/lending/GoodLendPool.sol#596-608) uses timestamp for comparisons
+	Dangerous comparisons:
+	- timeDelta == 0 (src/lending/GoodLendPool.sol#602)
+GoodLendPool.getBorrowIndex(address) (src/lending/GoodLendPool.sol#613-625) uses timestamp for comparisons
+	Dangerous comparisons:
+	- timeDelta == 0 (src/lending/GoodLendPool.sol#618)
+GoodLendPool.setSupplyCap(address,uint256) (src/lending/GoodLendPool.sol#701-706) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reserves[asset].gToken != address(0),GoodLendPool: reserve not initialized) (src/lending/GoodLendPool.sol#702)
+GoodLendPool.setBorrowCap(address,uint256) (src/lending/GoodLendPool.sol#708-713) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reserves[asset].gToken != address(0),GoodLendPool: reserve not initialized) (src/lending/GoodLendPool.sol#709)
+GoodLendPool._updateState(address) (src/lending/GoodLendPool.sol#721-756) uses timestamp for comparisons
+	Dangerous comparisons:
+	- timeDelta == 0 (src/lending/GoodLendPool.sol#727)
+GoodLendPool._calculateHealthFactor(address) (src/lending/GoodLendPool.sol#795-823) uses timestamp for comparisons
+	Dangerous comparisons:
+	- totalDebtUSD == 0 (src/lending/GoodLendPool.sol#818)
+GoodLendPool._accumulateAssetValues(address,address,uint256) (src/lending/GoodLendPool.sol#830-856) uses timestamp for comparisons
+	Dangerous comparisons:
+	- collateral > 0 (src/lending/GoodLendPool.sol#846)
+	- debt > 0 (src/lending/GoodLendPool.sol#853)
+SwapPriceOracle.getPrice(address) (src/oracle/SwapPriceOracle.sol#202-213) uses timestamp for comparisons
+	Dangerous comparisons:
+	- age > cfg.maxAge (src/oracle/SwapPriceOracle.sol#210)
+SwapPriceOracle.getTWAP(address) (src/oracle/SwapPriceOracle.sol#239-248) uses timestamp for comparisons
+	Dangerous comparisons:
+	- pd.twapWindowStart == 0 || pd.twapWindowStart == block.timestamp (src/oracle/SwapPriceOracle.sol#242)
+FundingRate.applyFunding(uint256,uint256,uint256) (src/perps/FundingRate.sol#83-103) uses timestamp for comparisons
+	Dangerous comparisons:
+	- elapsed < FUNDING_INTERVAL (src/perps/FundingRate.sol#89)
+PerpPriceOracle.isFresh(bytes32) (src/perps/PerpPriceOracle.sol#263-268) uses timestamp for comparisons
+	Dangerous comparisons:
+	- (block.timestamp - p.timestamp) <= maxStaleness (src/perps/PerpPriceOracle.sol#267)
+PerpPriceOracle._checkStaleness(bytes32,PerpPriceOracle.PriceData) (src/perps/PerpPriceOracle.sol#272-278) uses timestamp for comparisons
+	Dangerous comparisons:
+	- age > maxStaleness (src/perps/PerpPriceOracle.sol#275)
+PerpUBIFeeSplitter._updateDailyDerivativesUBI(uint256) (src/perps/PerpUBIFeeSplitter.sol#195-209) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentDay > lastDayTimestamp (src/perps/PerpUBIFeeSplitter.sol#198)
+PerpUBIFeeSplitter.getMonthlyUBIEstimate() (src/perps/PerpUBIFeeSplitter.sol#284-298) uses timestamp for comparisons
+	Dangerous comparisons:
+	- daysSinceLaunch > 0 (src/perps/PerpUBIFeeSplitter.sol#289)
+MarketFactory.createMarket(string,uint256,address) (src/predict/MarketFactory.sol#130-150) uses timestamp for comparisons
+	Dangerous comparisons:
+	- endTime <= block.timestamp (src/predict/MarketFactory.sol#135)
+MarketFactory.buy(uint256,bool,uint256) (src/predict/MarketFactory.sol#161-182) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= m.endTime (src/predict/MarketFactory.sol#165)
+MarketFactory.closeMarket(uint256) (src/predict/MarketFactory.sol#189-194) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < m.endTime (src/predict/MarketFactory.sol#192)
+OptimisticResolver.disputeResolution(uint256) (src/predict/OptimisticResolver.sol#252-273) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > r.proposalTime + disputeWindow (src/predict/OptimisticResolver.sol#256)
+OptimisticResolver.finalizeResolution(uint256) (src/predict/OptimisticResolver.sol#279-302) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < deadline (src/predict/OptimisticResolver.sol#285)
+OptimisticResolver.adminResolveDispute(uint256,bool) (src/predict/OptimisticResolver.sol#309-347) uses timestamp for comparisons
+	Dangerous comparisons:
+	- proposerCorrect = (r.proposedOutcome == yesWon) (src/predict/OptimisticResolver.sol#319)
+OptimisticResolver.emergencyResolve(uint256,bool) (src/predict/OptimisticResolver.sol#352-373) uses timestamp for comparisons
+	Dangerous comparisons:
+	- r.proposerBond > 0 (src/predict/OptimisticResolver.sol#362)
+	- r.disputerBond > 0 (src/predict/OptimisticResolver.sol#366)
+OptimisticResolver.isFinalized(uint256) (src/predict/OptimisticResolver.sol#387-390) uses timestamp for comparisons
+	Dangerous comparisons:
+	- resolutions[marketId].status == ResolutionStatus.Finalized (src/predict/OptimisticResolver.sol#389)
+OptimisticResolver.getFinalOutcome(uint256) (src/predict/OptimisticResolver.sol#395-399) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(resolutions[marketId].status == ResolutionStatus.Finalized,not finalized) (src/predict/OptimisticResolver.sol#397)
+OptimisticResolver.disputeTimeRemaining(uint256) (src/predict/OptimisticResolver.sol#404-410) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= deadline (src/predict/OptimisticResolver.sol#408)
+StableUBIFeeSplitter._updateDailyStablecoinUBI(uint256) (src/stable/StableUBIFeeSplitter.sol#272-286) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentDay > lastDayTimestamp (src/stable/StableUBIFeeSplitter.sol#275)
+StableUBIFeeSplitter.getMonthlyUBIEstimate() (src/stable/StableUBIFeeSplitter.sol#361-375) uses timestamp for comparisons
+	Dangerous comparisons:
+	- daysSinceLaunch > 0 (src/stable/StableUBIFeeSplitter.sol#366)
+VaultManager.drip(bytes32) (src/stable/VaultManager.sol#202-264) uses timestamp for comparisons
+	Dangerous comparisons:
+	- elapsed == 0 (src/stable/VaultManager.sol#214)
+	- feeWAD == 0 (src/stable/VaultManager.sol#239)
+	- require(bool,string)(gusd.approve(address(feeSplitter),feeWAD),VM: approve failed) (src/stable/VaultManager.sol#248)
+VaultManager._rpow(uint256,uint256,uint256) (src/stable/VaultManager.sol#648-677) uses timestamp for comparisons
+	Dangerous comparisons:
+	- n != 0 (src/stable/VaultManager.sol#660)
+	- n % 2 != 0 (src/stable/VaultManager.sol#668)
+	- n == 0 (src/stable/VaultManager.sol#651)
+	- n % 2 != 0 (src/stable/VaultManager.sol#657)
+VaultManager.pendingFee(bytes32) (src/stable/VaultManager.sol#720-736) uses timestamp for comparisons
+	Dangerous comparisons:
+	- elapsed == 0 (src/stable/VaultManager.sol#728)
+PriceOracle._getPrice(bytes32) (src/stocks/PriceOracle.sol#155-174) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp - updatedAt > maxAge (src/stocks/PriceOracle.sol#168)
+StocksUBIFeeSplitter._updateDailyUBI(uint256) (src/stocks/StocksUBIFeeSplitter.sol#184-198) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentDay > lastDayTimestamp (src/stocks/StocksUBIFeeSplitter.sol#187)
+LiFiBridgeAggregator.initiateSwap(address,uint256,uint256,address,address,uint256,uint256) (src/swap/LiFiBridgeAggregator.sol#177-226) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > deadline (src/swap/LiFiBridgeAggregator.sol#189)
+LiFiBridgeAggregator.initiateSwapETH(uint256,address,address,uint256,uint256) (src/swap/LiFiBridgeAggregator.sol#231-272) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > deadline (src/swap/LiFiBridgeAggregator.sol#240)
+LiFiBridgeAggregator.expireSwap(uint256) (src/swap/LiFiBridgeAggregator.sol#319-336) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= s.deadline (src/swap/LiFiBridgeAggregator.sol#323)
+LimitOrderBook.placeOrder(address,address,uint256,uint256,uint256) (src/swap/LimitOrderBook.sol#134-165) uses timestamp for comparisons
+	Dangerous comparisons:
+	- expiry != 0 && expiry <= block.timestamp (src/swap/LimitOrderBook.sol#144)
+LimitOrderBook.fillOrder(uint256,uint256) (src/swap/LimitOrderBook.sol#198-265) uses timestamp for comparisons
+	Dangerous comparisons:
+	- order.expiry != 0 && block.timestamp > order.expiry (src/swap/LimitOrderBook.sol#203)
+	- effectivePrice < order.targetPrice (src/swap/LimitOrderBook.sol#253)
+	- keeperReward > 0 (src/swap/LimitOrderBook.sol#260)
+LimitOrderBook.isFillable(uint256) (src/swap/LimitOrderBook.sol#310-327) uses timestamp for comparisons
+	Dangerous comparisons:
+	- order.expiry != 0 && block.timestamp > order.expiry (src/swap/LimitOrderBook.sol#313)
+GoodVault.harvest() (src/yield/GoodVault.sol#316-373) uses timestamp for comparisons
+	Dangerous comparisons:
+	- totalFees > profit (src/yield/GoodVault.sol#332)
+	- totalFees > 0 (src/yield/GoodVault.sol#335)
+	- totalFees > 0 (src/yield/GoodVault.sol#340)
+	- estimatedTotal > 0 (src/yield/GoodVault.sol#348)
+	- loss >= totalDebt (src/yield/GoodVault.sol#368)
+GoodVault.migrateStrategy(address) (src/yield/GoodVault.sol#383-399) uses timestamp for comparisons
+	Dangerous comparisons:
+	- totalDebt > 0 (src/yield/GoodVault.sol#389)
+GoodVault.emergencyShutdown() (src/yield/GoodVault.sol#405-413) uses timestamp for comparisons
+	Dangerous comparisons:
+	- totalDebt > 0 (src/yield/GoodVault.sol#408)
+GoodVault._ensureLiquidity(uint256) (src/yield/GoodVault.sol#485-495) uses timestamp for comparisons
+	Dangerous comparisons:
+	- withdrawn >= totalDebt (src/yield/GoodVault.sol#493)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+
+Detector: assembly
+GoodDollarToken.setMinter(address,bool) (src/GoodDollarToken.sol#239-248) uses assembly
+	- INLINE ASM (src/GoodDollarToken.sol#243)
+GoodDollarTokenSecure.setMinter(address,bool) (src/GoodDollarTokenSecure.sol#473-482) uses assembly
+	- INLINE ASM (src/GoodDollarTokenSecure.sol#477)
+L2OutputOracle.deleteL2Outputs(uint256) (src/bridge/L2OutputOracle.sol#90-106) uses assembly
+	- INLINE ASM (src/bridge/L2OutputOracle.sol#101-103)
+SyntheticAssetFactory._clone(address) (src/stocks/SyntheticAssetFactory.sol#152-163) uses assembly
+	- INLINE ASM (src/stocks/SyntheticAssetFactory.sol#154-161)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+
+Detector: costly-loop
+GoodDollarToken.batchVerifyHumans(address[]) (src/GoodDollarToken.sol#198-206) has costly operations inside a loop:
+	- totalVerifiedHumans ++ (src/GoodDollarToken.sol#202)
+GoodDollarTokenSecure.batchVerifyHumans(address[]) (src/GoodDollarTokenSecure.sol#310-318) has costly operations inside a loop:
+	- totalVerifiedHumans ++ (src/GoodDollarTokenSecure.sol#314)
+GoodDollarTokenSecure.batchRevokeHumans(address[]) (src/GoodDollarTokenSecure.sol#325-333) has costly operations inside a loop:
+	- totalVerifiedHumans -- (src/GoodDollarTokenSecure.sol#329)
+L2OutputOracle.deleteL2Outputs(uint256) (src/bridge/L2OutputOracle.sol#90-106) has costly operations inside a loop:
+	- delete l2Outputs[i] (src/bridge/L2OutputOracle.sol#98)
+SwapPriceOracle.removeToken(address) (src/oracle/SwapPriceOracle.sol#118-133) has costly operations inside a loop:
+	- registeredTokens.pop() (src/oracle/SwapPriceOracle.sol#127)
+PredictUBIFeeSplitter.removeExpert(address) (src/predict/PredictUBIFeeSplitter.sol#164-177) has costly operations inside a loop:
+	- expertList.pop() (src/predict/PredictUBIFeeSplitter.sol#171)
+StocksUBIFeeSplitter.removeImpactPartner(address) (src/stocks/StocksUBIFeeSplitter.sol#218-233) has costly operations inside a loop:
+	- partnerList.pop() (src/stocks/StocksUBIFeeSplitter.sol#227)
+SyntheticAssetFactory.delistAsset(string) (src/stocks/SyntheticAssetFactory.sol#101-119) has costly operations inside a loop:
+	- listedKeys.pop() (src/stocks/SyntheticAssetFactory.sol#113)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#costly-operations-inside-a-loop
+
+Detector: cyclomatic-complexity
+MultiChainBridge.bridgeTokens(address,uint256,uint256,address,uint256,uint256,bool) (src/bridge/MultiChainBridge.sol#231-309) has a high cyclomatic complexity (12).
+LimitOrderBook.fillOrder(uint256,uint256) (src/swap/LimitOrderBook.sol#198-265) has a high cyclomatic complexity (13).
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#cyclomatic-complexity
+
+Detector: dead-code
+VoteEscrowedGD._add(uint256,uint256) (src/governance/VoteEscrowedGD.sol#290) is never used and should be removed
+VoteEscrowedGD._sub(uint256,uint256) (src/governance/VoteEscrowedGD.sol#291) is never used and should be removed
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code
+
+Detector: solc-version
+Version constraint ^0.8.20 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- VerbatimInvalidDeduplication
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess.
+It is used by:
+	- ^0.8.20 (src/AgentRegistry.sol#2)
+	- ^0.8.20 (src/GoodDollarToken.sol#2)
+	- ^0.8.20 (src/GoodDollarTokenSecure.sol#2)
+	- ^0.8.20 (src/GoodSwap.sol#2)
+	- ^0.8.20 (src/UBIClaimV2.sol#2)
+	- ^0.8.20 (src/UBIFeeSplitter.sol#2)
+	- ^0.8.20 (src/UBIRevenueTracker.sol#2)
+	- ^0.8.20 (src/ValidatorStaking.sol#2)
+	- ^0.8.20 (src/ValidatorStakingDevnet.sol#2)
+	- ^0.8.20 (src/bridge/FastWithdrawalLP.sol#2)
+	- ^0.8.20 (src/bridge/GoodDollarBridgeL1.sol#2)
+	- ^0.8.20 (src/bridge/GoodDollarBridgeL2.sol#2)
+	- ^0.8.20 (src/bridge/L1StandardBridge.sol#2)
+	- ^0.8.20 (src/bridge/L2OutputOracle.sol#2)
+	- ^0.8.20 (src/bridge/MultiChainBridge.sol#2)
+	- ^0.8.20 (src/bridge/OptimismPortal.sol#2)
+	- ^0.8.20 (src/bridge/SystemConfig.sol#2)
+	- ^0.8.20 (src/governance/GoodDAO.sol#2)
+	- ^0.8.20 (src/governance/GoodTimelock.sol#2)
+	- ^0.8.20 (src/governance/VoteEscrowedGD.sol#2)
+	- ^0.8.20 (src/hooks/UBIFeeHook.sol#2)
+	- ^0.8.20 (src/interfaces/IERC20Transfer.sol#2)
+	- ^0.8.20 (src/interfaces/IGoodDollarToken.sol#2)
+	- ^0.8.20 (src/interfaces/IStableUBIFeeSplitterEnhanced.sol#2)
+	- ^0.8.20 (src/interfaces/IUBIFeeSplitters.sol#2)
+	- ^0.8.20 (src/lending/DebtToken.sol#2)
+	- ^0.8.20 (src/lending/GoodLendAddressesProvider.sol#2)
+	- ^0.8.20 (src/lending/GoodLendPool.sol#2)
+	- ^0.8.20 (src/lending/GoodLendToken.sol#2)
+	- ^0.8.20 (src/lending/InterestRateModel.sol#2)
+	- ^0.8.20 (src/lending/SimplePriceOracle.sol#2)
+	- ^0.8.20 (src/oracle/SwapPriceOracle.sol#2)
+	- ^0.8.20 (src/perps/FundingRate.sol#2)
+	- ^0.8.20 (src/perps/MarginVault.sol#2)
+	- ^0.8.20 (src/perps/PerpEngine.sol#2)
+	- ^0.8.20 (src/perps/PerpPriceOracle.sol#2)
+	- ^0.8.20 (src/perps/PerpUBIFeeSplitter.sol#2)
+	- ^0.8.20 (src/predict/ConditionalTokens.sol#2)
+	- ^0.8.20 (src/predict/MarketFactory.sol#2)
+	- ^0.8.20 (src/predict/OptimisticResolver.sol#2)
+	- ^0.8.20 (src/predict/PredictUBIFeeSplitter.sol#2)
+	- ^0.8.20 (src/stable/CollateralRegistry.sol#2)
+	- ^0.8.20 (src/stable/PegStabilityModule.sol#2)
+	- ^0.8.20 (src/stable/StabilityPool.sol#2)
+	- ^0.8.20 (src/stable/StableUBIFeeSplitter.sol#2)
+	- ^0.8.20 (src/stable/VaultManager.sol#2)
+	- ^0.8.20 (src/stable/gUSD.sol#2)
+	- ^0.8.20 (src/stable/interfaces/IGoodStable.sol#2)
+	- ^0.8.20 (src/stocks/CollateralVault.sol#2)
+	- ^0.8.20 (src/stocks/PriceOracle.sol#2)
+	- ^0.8.20 (src/stocks/StocksUBIFeeSplitter.sol#2)
+	- ^0.8.20 (src/stocks/SyntheticAsset.sol#2)
+	- ^0.8.20 (src/stocks/SyntheticAssetFactory.sol#2)
+	- ^0.8.20 (src/swap/GoodSwapRouter.sol#2)
+	- ^0.8.20 (src/swap/LiFiBridgeAggregator.sol#2)
+	- ^0.8.20 (src/swap/LimitOrderBook.sol#2)
+	- ^0.8.20 (src/yield/GoodVault.sol#2)
+	- ^0.8.20 (src/yield/VaultFactory.sol#2)
+	- ^0.8.20 (src/yield/strategies/LendingStrategy.sol#2)
+	- ^0.8.20 (src/yield/strategies/StablecoinStrategy.sol#2)
+Version constraint ^0.8.13 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- VerbatimInvalidDeduplication
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess
+	- StorageWriteRemovalBeforeConditionalTermination
+	- AbiReencodingHeadOverflowWithStaticArrayCleanup
+	- DirtyBytesArrayToStorage
+	- InlineAssemblyMemorySideEffects
+	- DataLocationChangeInInternalOverride
+	- NestedCalldataArrayAbiReencodingSizeValidation.
+It is used by:
+	- ^0.8.13 (src/Counter.sol#2)
+	- ^0.8.13 (src/TestRegistry.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+
+Detector: low-level-calls
+Low level call in UBIFeeSplitter.withdrawETH() (src/UBIFeeSplitter.sol#197-202):
+	- (sent,None) = protocolTreasury.call{value: balance}() (src/UBIFeeSplitter.sol#200)
+Low level call in FastWithdrawalLP.withdrawETHLiquidity(uint256) (src/bridge/FastWithdrawalLP.sol#162-173):
+	- (ok,None) = msg.sender.call{value: amount}() (src/bridge/FastWithdrawalLP.sol#169)
+Low level call in FastWithdrawalLP.claimFastETHWithdrawal(uint256,address,bytes32) (src/bridge/FastWithdrawalLP.sol#231-274):
+	- (ok,None) = to.call{value: netAmount}() (src/bridge/FastWithdrawalLP.sol#265)
+	- (ok,None) = ubiPool.call{value: ubiFee}() (src/bridge/FastWithdrawalLP.sol#269)
+Low level call in GoodDollarBridgeL1.finalizeETHWithdrawal(address,uint256) (src/bridge/GoodDollarBridgeL1.sol#215-227):
+	- (success,None) = to.call{value: amount}() (src/bridge/GoodDollarBridgeL1.sol#223)
+Low level call in GoodDollarBridgeL2.finalizeETHDeposit(address,address,uint256) (src/bridge/GoodDollarBridgeL2.sol#156-170):
+	- (success,None) = to.call{value: amount}() (src/bridge/GoodDollarBridgeL2.sol#166)
+Low level call in L1StandardBridge.bridgeETH(uint32,bytes) (src/bridge/L1StandardBridge.sol#58-71):
+	- (ok,None) = ubiTreasury.call{value: fee}() (src/bridge/L1StandardBridge.sol#66)
+Low level call in L1StandardBridge.bridgeETHTo(address,uint32,bytes) (src/bridge/L1StandardBridge.sol#74-86):
+	- (ok,None) = ubiTreasury.call{value: fee}() (src/bridge/L1StandardBridge.sol#81)
+Low level call in L1StandardBridge.finalizeETHWithdrawal(address,address,uint256,bytes) (src/bridge/L1StandardBridge.sol#103-114):
+	- (ok,None) = _to.call{value: _amount}() (src/bridge/L1StandardBridge.sol#110)
+Low level call in MultiChainBridge._distributeFeeETH(uint256) (src/bridge/MultiChainBridge.sol#383-391):
+	- (sent,None) = ubiPool.call{value: ubiShare}() (src/bridge/MultiChainBridge.sol#387)
+Low level call in MultiChainBridge.withdrawProtocolFees(address,uint256,address) (src/bridge/MultiChainBridge.sol#426-433):
+	- (sent,None) = to.call{value: amount}() (src/bridge/MultiChainBridge.sol#428)
+Low level call in OptimismPortal.finalizeWithdrawalTransaction(bytes32,address,uint256) (src/bridge/OptimismPortal.sol#93-125):
+	- (feeOk,None) = ubiTreasury.call{value: fee}() (src/bridge/OptimismPortal.sol#112)
+	- (ok,None) = _to.call{value: payout}() (src/bridge/OptimismPortal.sol#121)
+Low level call in GoodDAO.execute(uint256) (src/governance/GoodDAO.sol#170-185):
+	- (success,None) = p.targets[i].call{value: p.values[i]}(p.calldatas[i]) (src/governance/GoodDAO.sol#180)
+Low level call in GoodTimelock.executeBatch(address[],uint256[],bytes[],bytes32) (src/governance/GoodTimelock.sol#166-200):
+	- (success,None) = targets[i].call{value: values[i]}(calldatas[i]) (src/governance/GoodTimelock.sol#195)
+Low level call in GoodTimelock.execute(address,uint256,bytes,bytes32) (src/governance/GoodTimelock.sol#203-237):
+	- (success,None) = target.call{value: value}(data) (src/governance/GoodTimelock.sol#233)
+Low level call in DebtToken._currentBorrowIndex() (src/lending/DebtToken.sol#103-111):
+	- (ok,data) = pool.staticcall(abi.encodeWithSignature(getBorrowIndex(address),underlyingAsset)) (src/lending/DebtToken.sol#104-106)
+Low level call in GoodLendToken._currentIndex() (src/lending/GoodLendToken.sol#169-178):
+	- (ok,data) = pool.staticcall(abi.encodeWithSignature(getLiquidityIndex(address),underlyingAsset)) (src/lending/GoodLendToken.sol#171-173)
+Low level call in LiFiBridgeAggregator.initiateSwapETH(uint256,address,address,uint256,uint256) (src/swap/LiFiBridgeAggregator.sol#231-272):
+	- (sent,None) = ubiFeeSplitter.call{value: fee}() (src/swap/LiFiBridgeAggregator.sol#247)
+Low level call in LiFiBridgeAggregator.refundSwap(uint256,string) (src/swap/LiFiBridgeAggregator.sol#298-314):
+	- (sent,None) = s.user.call{value: s.srcAmount}() (src/swap/LiFiBridgeAggregator.sol#307)
+Low level call in LiFiBridgeAggregator.expireSwap(uint256) (src/swap/LiFiBridgeAggregator.sol#319-336):
+	- (sent,None) = s.user.call{value: s.srcAmount}() (src/swap/LiFiBridgeAggregator.sol#329)
+Low level call in LimitOrderBook.fillOrder(uint256,uint256) (src/swap/LimitOrderBook.sol#198-265):
+	- (success,data) = router.call(abi.encodeWithSignature(swapExactTokensForTokens(uint256,uint256,address[],address,uint256),fillAmount,minOutput,path,address(this),block.timestamp)) (src/swap/LimitOrderBook.sol#236-245)
+Low level call in GoodVault.sweepStrategyToken(address,address) (src/yield/GoodVault.sol#438-443):
+	- (ok,None) = strategy.call(abi.encodeWithSelector(IStrategyWithGains.sweepGains.selector,token,to)) (src/yield/GoodVault.sol#439-441)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+
+Detector: missing-inheritance
+GoodDollarToken (src/GoodDollarToken.sol#14-273) should inherit from IUBIPool (src/hooks/UBIFeeHook.sol#65-67)
+GoodDollarToken (src/GoodDollarToken.sol#14-273) should inherit from IMarginToken (src/perps/MarginVault.sol#12-16)
+GoodDollarTokenSecure (src/GoodDollarTokenSecure.sol#18-525) should inherit from IUBIPool (src/hooks/UBIFeeHook.sol#65-67)
+GoodDollarTokenSecure (src/GoodDollarTokenSecure.sol#18-525) should inherit from IMarginToken (src/perps/MarginVault.sol#12-16)
+UBIFeeSplitter (src/UBIFeeSplitter.sol#17-215) should inherit from IUBIFeeSplitter (src/UBIClaimV2.sol#21-25)
+FastWithdrawalLP (src/bridge/FastWithdrawalLP.sol#29-358) should inherit from IFastWithdrawalLP (src/bridge/MultiChainBridge.sol#55-62)
+GoodDollarBridgeL1 (src/bridge/GoodDollarBridgeL1.sol#25-272) should inherit from IGoodDollarBridgeL1 (src/bridge/GoodDollarBridgeL2.sol#279-283)
+GoodDollarBridgeL2 (src/bridge/GoodDollarBridgeL2.sol#24-277) should inherit from IGoodDollarBridgeL2 (src/bridge/GoodDollarBridgeL1.sol#274-277)
+DebtToken (src/lending/DebtToken.sol#14-112) should inherit from IERC20 (src/bridge/MultiChainBridge.sol#23-28)
+DebtToken (src/lending/DebtToken.sol#14-112) should inherit from IDebtToken (src/lending/GoodLendPool.sol#33-38)
+DebtToken (src/lending/DebtToken.sol#14-112) should inherit from IGoodLendToken (src/yield/strategies/LendingStrategy.sol#23-26)
+GoodLendPool (src/lending/GoodLendPool.sol#63-857) should inherit from IGoodLendPool (src/yield/strategies/LendingStrategy.sol#18-21)
+GoodLendToken (src/lending/GoodLendToken.sol#17-179) should inherit from IERC20 (src/bridge/MultiChainBridge.sol#23-28)
+GoodLendToken (src/lending/GoodLendToken.sol#17-179) should inherit from IGoodLendToken (src/lending/GoodLendPool.sol#25-31)
+InterestRateModel (src/lending/InterestRateModel.sol#15-107) should inherit from IInterestRateModel (src/lending/GoodLendPool.sol#40-47)
+SimplePriceOracle (src/lending/SimplePriceOracle.sol#10-45) should inherit from IPriceOracle (src/lending/GoodLendPool.sol#49-51)
+MarketFactory (src/predict/MarketFactory.sol#32-345) should inherit from IMarketFactory (src/predict/OptimisticResolver.sol#28-30)
+PredictUBIFeeSplitter (src/predict/PredictUBIFeeSplitter.sol#36-240) should inherit from IUBIFeeSplitterPredict (src/interfaces/IUBIFeeSplitters.sol#22-42)
+CollateralRegistry (src/stable/CollateralRegistry.sol#20-191) should inherit from ICollateralRegistry (src/stable/interfaces/IGoodStable.sol#20-31)
+StableUBIFeeSplitter (src/stable/StableUBIFeeSplitter.sol#29-436) should inherit from IStableUBIFeeSplitterEnhanced (src/interfaces/IStableUBIFeeSplitterEnhanced.sol#8-16)
+StableUBIFeeSplitter (src/stable/StableUBIFeeSplitter.sol#29-436) should inherit from IStableUBIFeeSplitterMinting (src/stable/PegStabilityModule.sol#33-41)
+gUSD (src/stable/gUSD.sol#10-159) should inherit from IMarginToken (src/perps/MarginVault.sol#12-16)
+PriceOracle (src/stocks/PriceOracle.sol#27-179) should inherit from IPriceOraclePerp (src/perps/PerpPriceOracle.sol#22-24)
+StocksUBIFeeSplitter (src/stocks/StocksUBIFeeSplitter.sol#26-318) should inherit from IUBIFeeSplitterStocks (src/interfaces/IUBIFeeSplitters.sol#58-99)
+SyntheticAsset (src/stocks/SyntheticAsset.sol#11-104) should inherit from IMarginToken (src/perps/MarginVault.sol#12-16)
+GoodSwapRouter (src/swap/GoodSwapRouter.sol#35-274) should inherit from IGoodSwapRouter (src/swap/LimitOrderBook.sol#366-372)
+LiFiBridgeAggregator (src/swap/LiFiBridgeAggregator.sol#31-350) should inherit from ILiFiBridgeAggregator (src/bridge/MultiChainBridge.sol#30-48)
+GoodVault (src/yield/GoodVault.sol#39-534) should inherit from IMarginToken (src/perps/MarginVault.sol#12-16)
+StablecoinStrategy (src/yield/strategies/StablecoinStrategy.sol#26-163) should inherit from IStrategyWithGains (src/yield/GoodVault.sol#31-33)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-inheritance
+
+Detector: naming-convention
+Parameter AgentRegistry.setUBIBPS(uint256)._bps (src/AgentRegistry.sol#363) is not in mixedCase
+Parameter AgentRegistry.setMaxAgents(uint256)._max (src/AgentRegistry.sol#368) is not in mixedCase
+Parameter GoodDollarToken.setIdentityOracle(address)._oracle (src/GoodDollarToken.sol#222) is not in mixedCase
+Parameter GoodDollarToken.setAdmin(address)._admin (src/GoodDollarToken.sol#230) is not in mixedCase
+Parameter GoodDollarTokenSecure.setVerificationPaused(bool)._paused (src/GoodDollarTokenSecure.sol#341) is not in mixedCase
+Parameter UBIClaimV2.setFeeSplitter(address)._feeSplitter (src/UBIClaimV2.sol#240) is not in mixedCase
+Parameter UBIFeeSplitter.setFeeSplit(uint256,uint256)._ubiBPS (src/UBIFeeSplitter.sol#113) is not in mixedCase
+Parameter UBIFeeSplitter.setFeeSplit(uint256,uint256)._protocolBPS (src/UBIFeeSplitter.sol#113) is not in mixedCase
+Parameter UBIFeeSplitter.setTreasury(address)._treasury (src/UBIFeeSplitter.sol#119) is not in mixedCase
+Parameter UBIFeeSplitter.setUBIRecipient(address)._ubiRecipient (src/UBIFeeSplitter.sol#123) is not in mixedCase
+Parameter UBIFeeSplitter.setUBIClaimContract(address)._ubiClaimContract (src/UBIFeeSplitter.sol#128) is not in mixedCase
+Parameter UBIFeeSplitter.setGoodDollar(address)._goodDollar (src/UBIFeeSplitter.sol#135) is not in mixedCase
+Parameter UBIRevenueTracker.setFeeSplitter(address)._feeSplitter (src/UBIRevenueTracker.sol#222) is not in mixedCase
+Parameter FastWithdrawalLP.setFeeBps(uint256)._feeBps (src/bridge/FastWithdrawalLP.sol#325) is not in mixedCase
+Parameter FastWithdrawalLP.setUBIPool(address)._ubiPool (src/bridge/FastWithdrawalLP.sol#330) is not in mixedCase
+Parameter FastWithdrawalLP.setAdmin(address)._admin (src/bridge/FastWithdrawalLP.sol#335) is not in mixedCase
+Parameter GoodDollarBridgeL1.setL2Bridge(address)._l2Bridge (src/bridge/GoodDollarBridgeL1.sol#124) is not in mixedCase
+Parameter GoodDollarBridgeL1.setPaused(bool)._paused (src/bridge/GoodDollarBridgeL1.sol#231) is not in mixedCase
+Parameter GoodDollarBridgeL2.setL1Bridge(address)._l1Bridge (src/bridge/GoodDollarBridgeL2.sol#125) is not in mixedCase
+Parameter GoodDollarBridgeL2.setPaused(bool)._paused (src/bridge/GoodDollarBridgeL2.sol#240) is not in mixedCase
+Parameter L1StandardBridge.initialize(address)._portal (src/bridge/L1StandardBridge.sol#52) is not in mixedCase
+Parameter L1StandardBridge.bridgeETH(uint32,bytes)._extraData (src/bridge/L1StandardBridge.sol#58) is not in mixedCase
+Parameter L1StandardBridge.bridgeETHTo(address,uint32,bytes)._to (src/bridge/L1StandardBridge.sol#74) is not in mixedCase
+Parameter L1StandardBridge.bridgeETHTo(address,uint32,bytes)._extraData (src/bridge/L1StandardBridge.sol#74) is not in mixedCase
+Parameter L1StandardBridge.bridgeERC20(address,address,uint256,uint32,bytes)._l1Token (src/bridge/L1StandardBridge.sol#90) is not in mixedCase
+Parameter L1StandardBridge.bridgeERC20(address,address,uint256,uint32,bytes)._l2Token (src/bridge/L1StandardBridge.sol#91) is not in mixedCase
+Parameter L1StandardBridge.bridgeERC20(address,address,uint256,uint32,bytes)._amount (src/bridge/L1StandardBridge.sol#92) is not in mixedCase
+Parameter L1StandardBridge.bridgeERC20(address,address,uint256,uint32,bytes)._extraData (src/bridge/L1StandardBridge.sol#94) is not in mixedCase
+Parameter L1StandardBridge.finalizeETHWithdrawal(address,address,uint256,bytes)._from (src/bridge/L1StandardBridge.sol#104) is not in mixedCase
+Parameter L1StandardBridge.finalizeETHWithdrawal(address,address,uint256,bytes)._to (src/bridge/L1StandardBridge.sol#105) is not in mixedCase
+Parameter L1StandardBridge.finalizeETHWithdrawal(address,address,uint256,bytes)._amount (src/bridge/L1StandardBridge.sol#106) is not in mixedCase
+Parameter L1StandardBridge.finalizeETHWithdrawal(address,address,uint256,bytes)._extraData (src/bridge/L1StandardBridge.sol#107) is not in mixedCase
+Parameter L1StandardBridge.finalizeERC20Withdrawal(address,address,address,address,uint256,bytes)._l1Token (src/bridge/L1StandardBridge.sol#118) is not in mixedCase
+Parameter L1StandardBridge.finalizeERC20Withdrawal(address,address,address,address,uint256,bytes)._l2Token (src/bridge/L1StandardBridge.sol#119) is not in mixedCase
+Parameter L1StandardBridge.finalizeERC20Withdrawal(address,address,address,address,uint256,bytes)._from (src/bridge/L1StandardBridge.sol#120) is not in mixedCase
+Parameter L1StandardBridge.finalizeERC20Withdrawal(address,address,address,address,uint256,bytes)._to (src/bridge/L1StandardBridge.sol#121) is not in mixedCase
+Parameter L1StandardBridge.finalizeERC20Withdrawal(address,address,address,address,uint256,bytes)._amount (src/bridge/L1StandardBridge.sol#122) is not in mixedCase
+Parameter L1StandardBridge.finalizeERC20Withdrawal(address,address,address,address,uint256,bytes)._extraData (src/bridge/L1StandardBridge.sol#123) is not in mixedCase
+Parameter L1StandardBridge.setTokenPair(address,address)._l1Token (src/bridge/L1StandardBridge.sol#133) is not in mixedCase
+Parameter L1StandardBridge.setTokenPair(address,address)._l2Token (src/bridge/L1StandardBridge.sol#133) is not in mixedCase
+Parameter L1StandardBridge.setUBIFee(uint256)._fee (src/bridge/L1StandardBridge.sol#139) is not in mixedCase
+Parameter L2OutputOracle.proposeL2Output(bytes32,uint256,bytes32,uint256)._outputRoot (src/bridge/L2OutputOracle.sol#62) is not in mixedCase
+Parameter L2OutputOracle.proposeL2Output(bytes32,uint256,bytes32,uint256)._l2BlockNumber (src/bridge/L2OutputOracle.sol#63) is not in mixedCase
+Parameter L2OutputOracle.setProposer(address)._proposer (src/bridge/L2OutputOracle.sol#84) is not in mixedCase
+Parameter L2OutputOracle.deleteL2Outputs(uint256)._l2OutputIndex (src/bridge/L2OutputOracle.sol#90) is not in mixedCase
+Parameter L2OutputOracle.getL2Output(uint256)._l2OutputIndex (src/bridge/L2OutputOracle.sol#122) is not in mixedCase
+Parameter MultiChainBridge.setLiFiAggregator(address)._agg (src/bridge/MultiChainBridge.sol#202) is not in mixedCase
+Parameter MultiChainBridge.setNativeBridge(address)._bridge (src/bridge/MultiChainBridge.sol#206) is not in mixedCase
+Parameter MultiChainBridge.setFastWithdrawalLP(address)._lp (src/bridge/MultiChainBridge.sol#210) is not in mixedCase
+Parameter MultiChainBridge.setUBIPool(address)._pool (src/bridge/MultiChainBridge.sol#214) is not in mixedCase
+Parameter OptimismPortal.initialize(address)._l2Oracle (src/bridge/OptimismPortal.sol#54) is not in mixedCase
+Parameter OptimismPortal.depositTransaction(address,uint256,uint64,bool,bytes)._to (src/bridge/OptimismPortal.sol#61) is not in mixedCase
+Parameter OptimismPortal.depositTransaction(address,uint256,uint64,bool,bytes)._value (src/bridge/OptimismPortal.sol#62) is not in mixedCase
+Parameter OptimismPortal.depositTransaction(address,uint256,uint64,bool,bytes)._gasLimit (src/bridge/OptimismPortal.sol#63) is not in mixedCase
+Parameter OptimismPortal.depositTransaction(address,uint256,uint64,bool,bytes)._isCreation (src/bridge/OptimismPortal.sol#64) is not in mixedCase
+Parameter OptimismPortal.depositTransaction(address,uint256,uint64,bool,bytes)._data (src/bridge/OptimismPortal.sol#65) is not in mixedCase
+Parameter OptimismPortal.proveWithdrawalTransaction(bytes32,address,address)._withdrawalHash (src/bridge/OptimismPortal.sol#84) is not in mixedCase
+Parameter OptimismPortal.proveWithdrawalTransaction(bytes32,address,address)._from (src/bridge/OptimismPortal.sol#85) is not in mixedCase
+Parameter OptimismPortal.proveWithdrawalTransaction(bytes32,address,address)._to (src/bridge/OptimismPortal.sol#86) is not in mixedCase
+Parameter OptimismPortal.finalizeWithdrawalTransaction(bytes32,address,uint256)._withdrawalHash (src/bridge/OptimismPortal.sol#94) is not in mixedCase
+Parameter OptimismPortal.finalizeWithdrawalTransaction(bytes32,address,uint256)._to (src/bridge/OptimismPortal.sol#95) is not in mixedCase
+Parameter OptimismPortal.finalizeWithdrawalTransaction(bytes32,address,uint256)._value (src/bridge/OptimismPortal.sol#96) is not in mixedCase
+Parameter OptimismPortal.setUBIFee(uint256)._fee (src/bridge/OptimismPortal.sol#142) is not in mixedCase
+Parameter OptimismPortal.setUBITreasury(address)._treasury (src/bridge/OptimismPortal.sol#149) is not in mixedCase
+Parameter SystemConfig.setGasConfig(uint256,uint256)._overhead (src/bridge/SystemConfig.sol#65) is not in mixedCase
+Parameter SystemConfig.setGasConfig(uint256,uint256)._scalar (src/bridge/SystemConfig.sol#65) is not in mixedCase
+Parameter SystemConfig.setGasLimit(uint64)._gasLimit (src/bridge/SystemConfig.sol#73) is not in mixedCase
+Parameter SystemConfig.setBatcherHash(address)._batcher (src/bridge/SystemConfig.sol#81) is not in mixedCase
+Parameter SystemConfig.setUBIFee(uint256)._feeBps (src/bridge/SystemConfig.sol#88) is not in mixedCase
+Parameter SystemConfig.setUnsafeBlockSigner(address)._signer (src/bridge/SystemConfig.sol#96) is not in mixedCase
+Parameter SystemConfig.transferOwnership(address)._newOwner (src/bridge/SystemConfig.sol#102) is not in mixedCase
+Parameter VoteEscrowedGD.setUbiTreasury(address)._ubiTreasury (src/governance/VoteEscrowedGD.sol#247) is not in mixedCase
+Parameter UBIFeeHook.setPaused(bool)._paused (src/hooks/UBIFeeHook.sol#279) is not in mixedCase
+Parameter GoodLendAddressesProvider.setPool(address)._pool (src/lending/GoodLendAddressesProvider.sol#55) is not in mixedCase
+Parameter GoodLendAddressesProvider.setOracle(address)._oracle (src/lending/GoodLendAddressesProvider.sol#60) is not in mixedCase
+Parameter GoodLendAddressesProvider.setTreasury(address)._treasury (src/lending/GoodLendAddressesProvider.sol#65) is not in mixedCase
+Parameter GoodLendAddressesProvider.setACLAdmin(address)._aclAdmin (src/lending/GoodLendAddressesProvider.sol#70) is not in mixedCase
+Parameter GoodLendPool.setOracle(address)._oracle (src/lending/GoodLendPool.sol#655) is not in mixedCase
+Parameter GoodLendPool.setTreasury(address)._treasury (src/lending/GoodLendPool.sol#659) is not in mixedCase
+Parameter GoodLendPool.setAdmin(address)._admin (src/lending/GoodLendPool.sol#683) is not in mixedCase
+Parameter InterestRateModel.setAdmin(address)._admin (src/lending/InterestRateModel.sol#104) is not in mixedCase
+Parameter SimplePriceOracle.setAssetPrices(address[],uint256[])._prices (src/lending/SimplePriceOracle.sol#30) is not in mixedCase
+Parameter SimplePriceOracle.setAdmin(address)._admin (src/lending/SimplePriceOracle.sol#42) is not in mixedCase
+Parameter SwapPriceOracle.setDefaultMaxAge(uint256)._maxAge (src/oracle/SwapPriceOracle.sol#140) is not in mixedCase
+Parameter SwapPriceOracle.setMaxDeviation(uint256)._bps (src/oracle/SwapPriceOracle.sol#144) is not in mixedCase
+Parameter SwapPriceOracle.setTokenMaxAge(address,uint256)._maxAge (src/oracle/SwapPriceOracle.sol#148) is not in mixedCase
+Parameter SwapPriceOracle.batchUpdatePrices(address[],uint256[])._prices (src/oracle/SwapPriceOracle.sol#171) is not in mixedCase
+Parameter PerpEngine.setPaused(bool)._paused (src/perps/PerpEngine.sol#181) is not in mixedCase
+Parameter PerpPriceOracle.setAdmin(address)._admin (src/perps/PerpPriceOracle.sol#96) is not in mixedCase
+Parameter PerpPriceOracle.setMaxStaleness(uint256)._maxStaleness (src/perps/PerpPriceOracle.sol#107) is not in mixedCase
+Parameter PerpPriceOracle.setMaxDeviation(uint256)._maxDeviationBps (src/perps/PerpPriceOracle.sol#112) is not in mixedCase
+Parameter PerpUBIFeeSplitter.setFeeSplit(uint256,uint256)._ubiBPS (src/perps/PerpUBIFeeSplitter.sol#234) is not in mixedCase
+Parameter PerpUBIFeeSplitter.setFeeSplit(uint256,uint256)._protocolBPS (src/perps/PerpUBIFeeSplitter.sol#234) is not in mixedCase
+Parameter PerpUBIFeeSplitter.setTreasury(address)._treasury (src/perps/PerpUBIFeeSplitter.sol#240) is not in mixedCase
+Parameter PerpUBIFeeSplitter.setMonthlyTarget(uint256)._target (src/perps/PerpUBIFeeSplitter.sol#245) is not in mixedCase
+Parameter PerpUBIFeeSplitter.setGoodDollar(address)._goodDollar (src/perps/PerpUBIFeeSplitter.sol#252) is not in mixedCase
+Parameter OptimisticResolver.setAdmin(address)._admin (src/predict/OptimisticResolver.sol#175) is not in mixedCase
+Parameter OptimisticResolver.setBondAmount(uint256)._bondAmount (src/predict/OptimisticResolver.sol#180) is not in mixedCase
+Parameter OptimisticResolver.setDisputeWindow(uint256)._disputeWindow (src/predict/OptimisticResolver.sol#185) is not in mixedCase
+Parameter OptimisticResolver.setCommittee(address[])._committee (src/predict/OptimisticResolver.sol#190) is not in mixedCase
+Parameter PredictUBIFeeSplitter.setFeeSplit(uint256,uint256)._ubiBPS (src/predict/PredictUBIFeeSplitter.sol#194) is not in mixedCase
+Parameter PredictUBIFeeSplitter.setFeeSplit(uint256,uint256)._protocolBPS (src/predict/PredictUBIFeeSplitter.sol#194) is not in mixedCase
+Parameter PredictUBIFeeSplitter.setTreasury(address)._treasury (src/predict/PredictUBIFeeSplitter.sol#200) is not in mixedCase
+Parameter PredictUBIFeeSplitter.setGoodDollar(address)._goodDollar (src/predict/PredictUBIFeeSplitter.sol#206) is not in mixedCase
+Function PegStabilityModule._callMintingFeeTracking(uint256,address,address,address,string) (src/stable/PegStabilityModule.sol#135-158) is not in mixedCase
+Parameter PegStabilityModule.setFeeBPS(uint256)._feeBPS (src/stable/PegStabilityModule.sol#174) is not in mixedCase
+Parameter PegStabilityModule.setSwapCap(uint256)._cap (src/stable/PegStabilityModule.sol#180) is not in mixedCase
+Parameter PegStabilityModule.setPaused(bool)._paused (src/stable/PegStabilityModule.sol#185) is not in mixedCase
+Parameter StabilityPool.setVaultManager(address)._vm (src/stable/StabilityPool.sol#134) is not in mixedCase
+Parameter StableUBIFeeSplitter.setFeeSplit(uint256,uint256)._ubiBPS (src/stable/StableUBIFeeSplitter.sol#300) is not in mixedCase
+Parameter StableUBIFeeSplitter.setFeeSplit(uint256,uint256)._protocolBPS (src/stable/StableUBIFeeSplitter.sol#300) is not in mixedCase
+Parameter StableUBIFeeSplitter.setTreasury(address)._treasury (src/stable/StableUBIFeeSplitter.sol#306) is not in mixedCase
+Parameter StableUBIFeeSplitter.setUBIRecipient(address)._ubiRecipient (src/stable/StableUBIFeeSplitter.sol#311) is not in mixedCase
+Parameter StableUBIFeeSplitter.setMonthlyTarget(uint256)._target (src/stable/StableUBIFeeSplitter.sol#318) is not in mixedCase
+Parameter StableUBIFeeSplitter.setGoodDollar(address)._goodDollar (src/stable/StableUBIFeeSplitter.sol#325) is not in mixedCase
+Parameter VaultManager.setStabilityPool(address)._pool (src/stable/VaultManager.sol#150) is not in mixedCase
+Parameter VaultManager.setDAppRecipient(address)._recipient (src/stable/VaultManager.sol#156) is not in mixedCase
+Parameter VaultManager.setPaused(bool)._paused (src/stable/VaultManager.sol#161) is not in mixedCase
+Function VaultManager._callStabilityFeeTracking(uint256,address,address,bytes32) (src/stable/VaultManager.sol#271-293) is not in mixedCase
+Parameter VaultManager._callStabilityFeeTracking(uint256,address,address,bytes32)._dAppRecipient (src/stable/VaultManager.sol#273) is not in mixedCase
+Contract gUSD (src/stable/gUSD.sol#10-159) is not in CapWords
+Parameter CollateralVault.setPaused(bool)._paused (src/stocks/CollateralVault.sol#155) is not in mixedCase
+Parameter PriceOracle.setMaxAge(uint256)._maxAge (src/stocks/PriceOracle.sol#114) is not in mixedCase
+Parameter StocksUBIFeeSplitter.setFeeSplit(uint256,uint256)._ubiBPS (src/stocks/StocksUBIFeeSplitter.sol#247) is not in mixedCase
+Parameter StocksUBIFeeSplitter.setFeeSplit(uint256,uint256)._protocolBPS (src/stocks/StocksUBIFeeSplitter.sol#247) is not in mixedCase
+Parameter StocksUBIFeeSplitter.setTreasury(address)._treasury (src/stocks/StocksUBIFeeSplitter.sol#253) is not in mixedCase
+Parameter StocksUBIFeeSplitter.setGoodDollar(address)._goodDollar (src/stocks/StocksUBIFeeSplitter.sol#259) is not in mixedCase
+Parameter SyntheticAsset.initialize(string,string,address)._name (src/stocks/SyntheticAsset.sol#52) is not in mixedCase
+Parameter SyntheticAsset.initialize(string,string,address)._symbol (src/stocks/SyntheticAsset.sol#52) is not in mixedCase
+Parameter SyntheticAsset.initialize(string,string,address)._minter (src/stocks/SyntheticAsset.sol#52) is not in mixedCase
+Parameter LiFiBridgeAggregator.setUBIFeeSplitter(address)._splitter (src/swap/LiFiBridgeAggregator.sol#153) is not in mixedCase
+Parameter LimitOrderBook.setKeeperFeeBps(uint256)._bps (src/swap/LimitOrderBook.sol#348) is not in mixedCase
+Parameter LimitOrderBook.setRouter(address)._router (src/swap/LimitOrderBook.sol#353) is not in mixedCase
+Parameter GoodVault.setDepositCap(uint256)._cap (src/yield/GoodVault.sol#419) is not in mixedCase
+Parameter GoodVault.setFees(uint256,uint256)._perfBPS (src/yield/GoodVault.sol#450) is not in mixedCase
+Parameter GoodVault.setFees(uint256,uint256)._mgmtBPS (src/yield/GoodVault.sol#450) is not in mixedCase
+Parameter VaultFactory.createVault(address,address,string,string,uint256)._asset (src/yield/VaultFactory.sol#55) is not in mixedCase
+Parameter VaultFactory.createVault(address,address,string,string,uint256)._strategy (src/yield/VaultFactory.sol#56) is not in mixedCase
+Parameter VaultFactory.createVault(address,address,string,string,uint256)._name (src/yield/VaultFactory.sol#57) is not in mixedCase
+Parameter VaultFactory.createVault(address,address,string,string,uint256)._symbol (src/yield/VaultFactory.sol#58) is not in mixedCase
+Parameter VaultFactory.createVault(address,address,string,string,uint256)._depositCap (src/yield/VaultFactory.sol#59) is not in mixedCase
+Parameter VaultFactory.getVaultsByAsset(address)._asset (src/yield/VaultFactory.sol#98) is not in mixedCase
+Parameter VaultFactory.approveStrategy(address)._strategy (src/yield/VaultFactory.sol#104) is not in mixedCase
+Parameter VaultFactory.revokeStrategy(address)._strategy (src/yield/VaultFactory.sol#110) is not in mixedCase
+Parameter VaultFactory.setDefaultDepositCap(uint256)._cap (src/yield/VaultFactory.sol#115) is not in mixedCase
+Parameter VaultFactory.transferAdmin(address)._pendingAdmin (src/yield/VaultFactory.sol#119) is not in mixedCase
+Parameter LendingStrategy.setVault(address)._vault (src/yield/strategies/LendingStrategy.sol#68) is not in mixedCase
+Parameter StablecoinStrategy.setVault(address)._vault (src/yield/strategies/StablecoinStrategy.sol#66) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+
+Detector: too-many-digits
+OptimismPortal.receive() (src/bridge/OptimismPortal.sol#155-157) uses literals with too many digits:
+	- this.depositTransaction{value: msg.value}(msg.sender,msg.value,100000,false,bytes()) (src/bridge/OptimismPortal.sol#156)
+CollateralRegistry.constructor(address,address,address,address) (src/stable/CollateralRegistry.sol#56-89) uses literals with too many digits:
+	- _addIlk(ETH,ethToken,15e17,13e16,1_000_000e18,1000000000627937192433212422) (src/stable/CollateralRegistry.sol#61-68)
+CollateralRegistry.constructor(address,address,address,address) (src/stable/CollateralRegistry.sol#56-89) uses literals with too many digits:
+	- _addIlk(GD,gdToken,2e18,15e16,500_000e18,1000000000951293759512929108) (src/stable/CollateralRegistry.sol#71-78)
+CollateralRegistry.constructor(address,address,address,address) (src/stable/CollateralRegistry.sol#56-89) uses literals with too many digits:
+	- _addIlk(USDC,usdcToken,101e16,1e16,10_000_000e18,1000000000158153903837946258) (src/stable/CollateralRegistry.sol#81-88)
+SyntheticAssetFactory._clone(address) (src/stocks/SyntheticAssetFactory.sol#152-163) uses literals with too many digits:
+	- mstore(uint256,uint256)(ptr__clone_asm_0,0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000) (src/stocks/SyntheticAssetFactory.sol#157)
+SyntheticAssetFactory._clone(address) (src/stocks/SyntheticAssetFactory.sol#152-163) uses literals with too many digits:
+	- mstore(uint256,uint256)(ptr__clone_asm_0 + 40,0x5af43d82803e903d91602b57fd5bf30000000000000000000000000000000000) (src/stocks/SyntheticAssetFactory.sol#159)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#too-many-digits
+
+Detector: unindexed-event-address
+Event MultiChainBridge.RoutingFeeCollected(address,uint256,uint256) (src/bridge/MultiChainBridge.sol#125) has address parameters but no indexed parameters
+Event MultiChainBridge.TokenMappingUpdated(address,uint256,address) (src/bridge/MultiChainBridge.sol#127) has address parameters but no indexed parameters
+Event UBIFeeHook.UBIPoolUpdated(address,address) (src/hooks/UBIFeeHook.sol#107) has address parameters but no indexed parameters
+Event UBIFeeHook.AdminUpdated(address,address) (src/hooks/UBIFeeHook.sol#108) has address parameters but no indexed parameters
+Event StableUBIFeeSplitter.UBIRecipientUpdated(address,address) (src/stable/StableUBIFeeSplitter.sol#99) has address parameters but no indexed parameters
+Event VaultManager.StabilityPoolSet(address) (src/stable/VaultManager.sol#106) has address parameters but no indexed parameters
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unindexed-event-address-parameters
+. analyzed (128 contracts with 96 detectors), 551 result(s) found
