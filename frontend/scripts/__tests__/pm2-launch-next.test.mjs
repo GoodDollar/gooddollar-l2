@@ -70,6 +70,7 @@ let nextDir
 let buildIdPath
 let manifestPath
 let appManifestPath
+let devTreePath
 
 beforeEach(() => {
   cwd = '/fake/frontend'
@@ -77,6 +78,7 @@ beforeEach(() => {
   buildIdPath = join(nextDir, 'BUILD_ID')
   manifestPath = join(nextDir, 'build-manifest.json')
   appManifestPath = join(nextDir, 'app-build-manifest.json')
+  devTreePath = join(nextDir, 'static', 'development')
 })
 
 // --- tests ------------------------------------------------------------------
@@ -338,6 +340,66 @@ describe('validateNextBuild (Phase B fence for iter18)', () => {
     })
     expect(result.ok).toBe(false)
     expect(result.reason).toBe('dev-mode-build')
+  })
+
+  // --- iter19 fence: shared-directory clobber (recurrence #3, task 0029) --
+  //
+  // The iter11 manifest-shape check only fires AFTER the manifest is
+  // rewritten by `next dev`. But if dev partially overlays a build (or if
+  // a build runs after dev and rewrites the manifest while dev's
+  // `.next/static/development/` chunks remain on disk), we can end up
+  // with a "valid"-looking manifest sitting on top of a hybrid tree.
+  // The presence of `.next/static/development/` is the SMOKING GUN that
+  // `next dev` has ever touched this directory — `next build` never
+  // writes it. Refuse early with a named reason so alerting / runbooks
+  // can route to the correct fix (rebuild + Playwright `--dist-dir`).
+  it('iter19 mode: .next/static/development/ exists → reason:shared-directory-clobber', () => {
+    const fs = makeFakeFs({
+      [nextDir]: 0,
+      [buildIdPath]: 21,
+      [devTreePath]: 0,
+      // Even with a perfectly healthy-looking manifest + chunks below,
+      // the presence of static/development/ alone must trip the fence
+      // BEFORE any manifest validation runs.
+      [manifestPath]: withFullManifest({
+        lowPriorityFiles: ['static/abcd1234_buildManifest.js'],
+        rootMainFiles: ['static/chunks/webpack-abc.js', 'static/chunks/main-app-abc.js'],
+        pages: { '/_app': ['static/chunks/main.js'] },
+      }),
+      [join(nextDir, 'static/chunks/main.js')]: 4096,
+    })
+    const result = validateNextBuild({
+      cwd,
+      existsSyncImpl: fs.existsSyncImpl,
+      statSizeImpl: fs.statSizeImpl,
+      readFileSyncImpl: fs.readFileSyncImpl,
+      log: () => {},
+      error: () => {},
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reason).toBe('shared-directory-clobber')
+  })
+
+  it('iter19 happy path: no .next/static/development/ present → fence is silent', () => {
+    // Regression guard: the new clobber fence must not false-positive on
+    // healthy production builds (which never have static/development/).
+    const chunks = ['static/chunks/main.js', 'static/chunks/webpack.js']
+    const fs = makeFakeFs({
+      [nextDir]: 0,
+      [buildIdPath]: 21,
+      [manifestPath]: withManifest({ '/_app': chunks }),
+      ...Object.fromEntries(chunks.map((c) => [join(nextDir, c), 4096])),
+      // devTreePath intentionally absent
+    })
+    const result = validateNextBuild({
+      cwd,
+      existsSyncImpl: fs.existsSyncImpl,
+      statSizeImpl: fs.statSizeImpl,
+      readFileSyncImpl: fs.readFileSyncImpl,
+      log: () => {},
+      error: () => {},
+    })
+    expect(result.ok).toBe(true)
   })
 
   // --- App Router fence (also iter11): app-build-manifest.json -----------

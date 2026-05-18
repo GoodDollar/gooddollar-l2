@@ -1,2 +1,4 @@
 node_modules/
 .next/
+# Playwright dev-server build dir — see playwright.config.ts (task 0029)
+.next.e2e/

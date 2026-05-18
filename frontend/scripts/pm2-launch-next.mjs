@@ -34,6 +34,11 @@
 //      (`static/development/_buildManifest.js` etc.). A stray `next dev`
 //      run over the production tree leaves exactly this shape and is the
 //      precise iter11 mode. Loud failure ≫ silent dev-mode in PM2.
+//      As of iter19, Playwright is isolated to `.next.e2e/` via
+//      `--dist-dir`, but this fence stays in place as a second line of
+//      defense against any other process (manual `next dev`, IDE plugin,
+//      tooling regression) writing dev artifacts to `.next/`.
+//      See task 0029-iter19-blocker-playwright-clobber-recurrence-3.md
 //   5. If `.next/app-build-manifest.json` exists (App Router projects),
 //      it must parse as JSON. This is the precise iter11 hole the
 //      original iter18 fence missed: the legacy `build-manifest.json`
@@ -126,6 +131,28 @@ export function validateNextBuild(opts) {
   if (statSizeImpl(buildIdPath) <= 0) {
     error(`.next/BUILD_ID is empty at ${buildIdPath}`)
     return { ok: false, reason: 'empty-build-id' }
+  }
+
+  // 2b. iter19 fence: detect the smoking gun for the shared-directory
+  // clobber (recurrence #3, task 0029). `next dev` writes
+  // `.next/static/development/`; `next build` never does. If that
+  // directory exists on the production tree, something — typically a
+  // stray `next dev`, IDE plugin, or pre-iter19 Playwright run — wrote
+  // dev artifacts into the directory PM2's `goodswap` serves from. Even
+  // if BUILD_ID happens to still be present (e.g. dev partially overlaid
+  // a real build), the hashed-chunk references will be inconsistent.
+  // Refuse to boot with a diagnostic message that names the failure mode
+  // verbatim so the operator (or autobuilder) can reach for the right
+  // runbook entry.
+  const devTreePath = join(nextDir, 'static', 'development')
+  if (existsSyncImpl(devTreePath)) {
+    error('.next/static/development/ exists — shared-directory clobber detected.')
+    error(`  → ${devTreePath}`)
+    error('  → `next dev` wrote into the production .next/ tree.')
+    error('  → Since iter19 (task 0029), Playwright runs with --dist-dir .next.e2e;')
+    error('    if you see this, some other process is bypassing that isolation.')
+    error('  → Rebuild with `npm run build` (from frontend/) and remove the dev tree.')
+    return { ok: false, reason: 'shared-directory-clobber' }
   }
 
   // 3. build-manifest.json must exist and parse.

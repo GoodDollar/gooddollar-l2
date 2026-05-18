@@ -36,10 +36,14 @@ export default defineConfig({
       use: { ...devices['Pixel 5'] },
     },
   ],
+  // CRITICAL: --dist-dir .next.e2e isolates Playwright's dev server build
+  // artifacts from the production `.next/` directory used by PM2-managed
+  // `goodswap`. Without this flag, `next dev` clobbers production chunks and
+  // breaks the public site (recurrence #3 — see task 0029).
   webServer: process.env.SKIP_DEV_SERVER
     ? undefined
     : {
-        command: `npx next dev -p ${e2ePort}`,
+        command: `npx next dev -p ${e2ePort} --dist-dir .next.e2e`,
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
