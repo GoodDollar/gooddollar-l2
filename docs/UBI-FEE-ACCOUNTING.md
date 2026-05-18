@@ -203,9 +203,9 @@ event/balance delta actually fires from the protocol's own entry point.
 
 | # | Route | Unit test file | Integration test file | Status |
 |---|---|---|---|---|
-| 1 | Swap V4 (hook) | `test/UBIFeeHook.t.sol` | `test/integration/UBIFeeAccumulation.t.sol` | ✅ unit + ⏳ proof needed (iter 23) |
-| 2 | Swap Li.Fi bridge | `test/swap/LiFiBridgeAggregator.t.sol` | `test/integration/UBIFeeAccumulation.t.sol` | ✅ unit + ⏳ proof needed (iter 23) |
-| 3–5 | Perps (trading/funding/liquidation) | `test/PerpUBIFeeSplitter.t.sol`, `test/perps/GoodPerps.t.sol`, `test/perps/PerpEngine.fuzz.t.sol` | `test/integration/UBIFeeAccumulation.t.sol` | ✅ unit + ⏳ proof needed (iter 23) |
+| 1 | Swap V4 (hook) | `test/UBIFeeHook.t.sol` | `test/integration/UBIFeeAccumulation.t.sol`, [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) | ✅ unit + ✅ integration proven (iter 23) |
+| 2 | Swap Li.Fi bridge | `test/swap/LiFiBridgeAggregator.t.sol` | `test/integration/UBIFeeAccumulation.t.sol`, [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) | ✅ unit + ✅ integration proven (iter 23) |
+| 3–5 | Perps (trading/funding/liquidation) | `test/PerpUBIFeeSplitter.t.sol`, `test/perps/GoodPerps.t.sol`, `test/perps/PerpEngine.fuzz.t.sol` | `test/integration/UBIFeeAccumulation.t.sol`, [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) | ✅ unit + ✅ integration proven (iter 23) |
 | 6–7 | Predict (factory + resolver) | `test/predict/GoodPredict.t.sol`, `test/predict/OptimisticResolver.t.sol` | `test/integration/UBIFeeVerification.t.sol` | ⏳ proof needed (iter 24) |
 | 8 | Lend reserve factor | `test/GoodLend.t.sol` | `test/integration/UBIFeeAccumulation.t.sol` | ⏳ proof needed (iter 24) |
 | 9–12 | Stable (stability / minting / liquidation / governance) | `test/StableUBIFeeSplitter.t.sol`, `test/GoodStable.t.sol` | `test/integration/UBIFeeVerification.t.sol` | ⏳ proof needed (iter 24) |
@@ -304,3 +304,63 @@ cast call $(jq -r .contracts.UBIFeeSplitter op-stack/addresses.json) \
 
 - **2026-05-18 — iter 22:** initial canonical spec written. No code
   changes; documentation only.
+- **2026-05-18 — iter 23:** added integration proof for the five
+  Swap/Perps UBI fee routes (rows 1, 2, 3–5). Proof file:
+  [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol).
+  See the "Iter 23 receipt" block below.
+
+---
+
+## 10. Iter 23 receipt — Swap + Perps integration proof
+
+The five `⏳ proof needed (iter 23)` rows above have flipped to
+`✅ integration proven (iter 23)`. One Foundry file proves each route
+with **both** the source contract's exact event signature (via
+qualified `Contract.Event` emit syntax so `vm.expectEmit` matches the
+real topic0) **and** the post-call UBI sink balance delta. A sixth
+cumulative test exercises all five routes in sequence and asserts the
+aggregate `GoodDollarToken.ubiPool` + LiFi splitter balance + per-source
+Perp accumulators all match the expected sum of UBI shares.
+
+### Test file
+
+[`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol)
+
+### Routes covered
+
+| # | Route | Event asserted | Balance delta asserted |
+|---|---|---|---|
+| 1 | `UBIFeeHook.afterSwap` (V4) | `UBIFeeHook.UBIFeeCollected(token, feeAmount, ubiShare, pool)` | `GoodDollarToken.ubiPool()` += `feeAmount × ubiFeeShareBPS / 10_000` |
+| 2 | `LiFiBridgeAggregator.initiateSwap` (ERC-20 path) | `LiFiBridgeAggregator.UBIFeeCollected(swapId, token, fee)` | `MockERC20.balanceOf(ubiFeeSplitter)` += `amountIn × ubiFeeRateBps / 10_000` |
+| 3 | `PerpUBIFeeSplitter.splitFee` (trading) | `PerpUBIFeeSplitter.FeeSplit(source, "trading", totalFee, ubi, protocol, dApp)` | `GoodDollarToken.ubiPool()` += `totalFee × ubiBPS / 10_000` |
+| 4 | `PerpUBIFeeSplitter.splitFundingFee` | `PerpUBIFeeSplitter.FundingFeeSplit(marketId, totalFee, ubiShare)` | `GoodDollarToken.ubiPool()` += `totalFee × ubiBPS / 10_000` |
+| 5 | `PerpUBIFeeSplitter.splitLiquidationFee` | `PerpUBIFeeSplitter.LiquidationUBI(liquidator, trader, totalFee, ubiShare)` | `GoodDollarToken.ubiPool()` += `totalFee × ubiBPS / 10_000` |
+
+### Forge pass receipt
+
+```
+$ forge test --match-path 'test/integration/UBIFeeIntegrationProofSwapPerps*' -vv
+Compiling 1 files with Solc 0.8.33
+Solc 0.8.33 finished in 2.83s
+Compiler run successful!
+
+Ran 6 tests for test/integration/UBIFeeIntegrationProofSwapPerps.t.sol:UBIFeeIntegrationProofSwapPerps
+[PASS] test_cumulative_allFiveRoutes_aggregateDeltasMatch() (gas: 809593)
+[PASS] test_route1_swapV4Hook_emitsEventAndIncrementsUbiPool() (gas: 139366)
+[PASS] test_route2_swapLiFi_emitsEventAndTransfersFeeToSplitter() (gas: 327303)
+[PASS] test_route3_perpTrading_emitsFeeSplitAndIncrementsUbiPool() (gas: 161201)
+[PASS] test_route4_perpFunding_emitsFundingFeeSplitAndIncrementsUbiPool() (gas: 201884)
+[PASS] test_route5_perpLiquidation_emitsLiquidationUBIAndIncrementsUbiPool() (gas: 276564)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 2.70ms (4.96ms CPU time)
+
+Ran 1 test suite in 7.36ms (2.70ms CPU time): 6 tests passed, 0 failed, 0 skipped (6 total tests)
+```
+
+### What remains (iter 24)
+
+Rows 6–14 (Predict factory + resolver, Lend reserve factor, Stable
+stability/minting/liquidation/governance, Stocks trading + liquidation
+remnant) are still `⏳ proof needed (iter 24)`. They will land in a
+sister file `test/integration/UBIFeeIntegrationProofRest.t.sol` using
+the same shape: qualified-event `vm.expectEmit` plus balance-delta
+assertions.
