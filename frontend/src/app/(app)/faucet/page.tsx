@@ -3,10 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useAccount } from 'wagmi'
 import { AddNetworkButton } from '@/components/AddNetworkButton'
-
-function isValidAddress(addr: string): boolean {
-  return /^0x[0-9a-fA-F]{40}$/.test(addr)
-}
+import { getFaucetAddressStatus, isClaimableFaucetAddress } from '@/lib/addressGuard'
 
 export default function FaucetPage() {
   const { address: connectedAddr } = useAccount()
@@ -16,9 +13,10 @@ export default function FaucetPage() {
   const [errorMsg, setErrorMsg] = useState('')
 
   const effectiveAddr = address || connectedAddr || ''
+  const addrStatus = effectiveAddr ? getFaucetAddressStatus(effectiveAddr) : 'invalid'
 
   const claim = useCallback(async () => {
-    if (!isValidAddress(effectiveAddr)) return
+    if (!isClaimableFaucetAddress(effectiveAddr)) return
     setStatus('loading')
     setTxHashes([])
     setErrorMsg('')
@@ -101,8 +99,13 @@ export default function FaucetPage() {
             placeholder="0x..."
             className="w-full bg-dark border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm placeholder:text-gray-500 focus:outline-none focus:border-accent/50"
           />
-          {effectiveAddr && !isValidAddress(effectiveAddr) && (
+          {effectiveAddr && addrStatus === 'invalid' && (
             <p className="text-red-400 text-xs mt-1">Invalid Ethereum address</p>
+          )}
+          {effectiveAddr && addrStatus === 'unsupported' && (
+            <p className="text-red-400 text-xs mt-1">
+              This address can&apos;t receive faucet funds (burn or contract address)
+            </p>
           )}
           {connectedAddr && !address && (
             <p className="text-gray-500 text-xs mt-1">Using connected wallet</p>
@@ -112,7 +115,7 @@ export default function FaucetPage() {
         {/* Claim button */}
         <button
           onClick={claim}
-          disabled={!isValidAddress(effectiveAddr) || status === 'loading'}
+          disabled={addrStatus !== 'ok' || status === 'loading'}
           className="w-full bg-accent hover:bg-accent/80 disabled:opacity-50 disabled:cursor-not-allowed text-dark font-bold py-3 rounded-xl text-base transition-colors"
         >
           {status === 'loading' ? (

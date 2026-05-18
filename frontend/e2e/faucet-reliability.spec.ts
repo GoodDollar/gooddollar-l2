@@ -112,18 +112,35 @@ test.describe('Faucet reliability — API regressions', () => {
     expect(String(json.error ?? '')).toMatch(/invalid address/i)
   })
 
-  test('POST with valid-format address returns 200, 429, or 503 — never 500', async ({
+  test('POST with burn / null / contract address returns 400 — never 200 or 500', async ({
     request,
   }) => {
-    const res = await postFaucet(
-      request,
-      JSON.stringify({ address: ZERO_ADDRESS }),
-    )
+    // Burn / null addresses must be rejected at validation time so the faucet
+    // never drains tokens to addresses from which they can never be recovered.
+    // Previously this test allowed [200, 429, 503] for the zero address,
+    // codifying the very drain bug it was supposed to catch.
+    const { CONTRACTS } = await import('../src/lib/devnet')
 
-    // The faucet is allowed to be drained (503), rate-limited (429), or to
-    // succeed (200). What it must NOT do is leak a generic 500.
-    expect(res.status()).not.toBe(500)
-    expect([200, 429, 503]).toContain(res.status())
+    const burnAddresses = [
+      ZERO_ADDRESS,
+      '0xdEaDdEaDdEaDdEaDdEaDdEaDdEaDdEaDdEaDdEaD',
+      '0x000000000000000000000000000000000000dEaD',
+      '0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+      CONTRACTS.GoodDollarToken,
+      CONTRACTS.MockWETH,
+    ]
+
+    for (const addr of burnAddresses) {
+      const res = await postFaucet(request, JSON.stringify({ address: addr }))
+      expect(
+        res.status(),
+        `address ${addr} should be rejected with 400`,
+      ).toBe(400)
+      const json = await res.json()
+      expect(String(json.error ?? '')).toMatch(
+        /invalid or unsupported recipient/i,
+      )
+    }
   })
 })
 

@@ -4,6 +4,7 @@ import { dirname } from 'node:path'
 import { createPublicClient, createWalletClient, defineChain, formatEther, http, parseEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { CONTRACTS, DEVNET_CHAIN_ID, DEVNET_EXPLORER_URL, DEVNET_RPC_URL } from '@/lib/devnet'
+import { isClaimableFaucetAddress } from '@/lib/addressGuard'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
@@ -142,6 +143,9 @@ async function handlePost(request: NextRequest) {
 
     if (typeof address !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
       throw new FaucetBadRequestError('Invalid address')
+    }
+    if (!isClaimableFaucetAddress(address)) {
+      throw new FaucetBadRequestError('Invalid or unsupported recipient address')
     }
 
     const key = address.toLowerCase()
