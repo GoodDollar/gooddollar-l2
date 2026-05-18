@@ -76,6 +76,7 @@ scripts/post_tweet.py
 **/__pycache__/
 
 backend/data/
+frontend/data/
 
 --output
 
