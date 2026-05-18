@@ -8,6 +8,7 @@ import { formatPerpsPrice, formatLargeValue, formatFundingRate, getFundingCountd
 import { useOnChainPairs, useOnChainAccountSummary } from '@/lib/useOnChainPerps'
 import { sanitizeNumericInput } from '@/lib/format'
 import { boundPerpsSize } from '@/lib/perpsInput'
+import { validateStopLimitOrder } from '@/lib/perpsStopLimitValidation'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useOpenPosition } from '@/lib/usePerps'
@@ -254,6 +255,16 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const limitPriceInvalid = orderType !== 'market' && limitPrice !== '' && (isNaN(parsedLimitPrice) || parsedLimitPrice <= 0)
   const parsedTriggerPrice = parseFloat(triggerPrice)
   const triggerPriceInvalid = orderType === 'stop-limit' && triggerPrice !== '' && (isNaN(parsedTriggerPrice) || parsedTriggerPrice <= 0)
+  // Side-aware semantic validation for stop-limit orders. For longs the
+  // trigger must be strictly above mark and the limit ≥ trigger; for shorts
+  // the trigger must be strictly below mark and the limit ≤ trigger.
+  const stopLimitCheck = validateStopLimitOrder({
+    orderType,
+    side,
+    markPrice: pair.markPrice,
+    triggerPrice,
+    limitPrice,
+  })
   const hasValidPrice = orderType === 'market' || (parsedLimitPrice > 0 && (orderType !== 'stop-limit' || parsedTriggerPrice > 0))
   const effectivePrice = orderType === 'market' ? pair.markPrice : (parsedLimitPrice > 0 ? parsedLimitPrice : 0)
   const notional = sizeNum * effectivePrice
@@ -297,7 +308,15 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (sizeNum <= 0 || exceedsMargin || !hasValidPrice || limitPriceInvalid || triggerPriceInvalid) return
+    if (
+      sizeNum <= 0 ||
+      exceedsMargin ||
+      !hasValidPrice ||
+      limitPriceInvalid ||
+      triggerPriceInvalid ||
+      stopLimitCheck.triggerWrongSide ||
+      stopLimitCheck.limitVsTriggerWrong
+    ) return
 
     if (isDeployed && orderType === 'market') {
       // Convert to G$ wei (18 decimals). Assume G$ ≈ $0.01 on devnet.
@@ -391,9 +410,12 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           <label className="text-xs text-gray-400 mb-1 block">Trigger Price</label>
           <input type="text" inputMode="decimal" placeholder={formatPerpsPrice(pair.markPrice)}
             value={triggerPrice} onChange={e => setTriggerPrice(sanitizeNumericInput(e.target.value))}
-            className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${triggerPriceInvalid ? 'border-red-500/50' : 'border-gray-700/30'}`} />
+            className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${(triggerPriceInvalid || stopLimitCheck.triggerWrongSide) ? 'border-red-500/50' : 'border-gray-700/30'}`} />
           {triggerPriceInvalid && (
             <p className="text-red-400 text-[10px] mt-1">Price must be greater than 0</p>
+          )}
+          {!triggerPriceInvalid && stopLimitCheck.triggerErrorMessage && (
+            <p className="text-red-400 text-[10px] mt-1">{stopLimitCheck.triggerErrorMessage}</p>
           )}
         </div>
       )}
@@ -403,9 +425,12 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           <label className="text-xs text-gray-400 mb-1 block">Limit Price</label>
           <input type="text" inputMode="decimal" placeholder={formatPerpsPrice(pair.markPrice)}
             value={limitPrice} onChange={e => setLimitPrice(sanitizeNumericInput(e.target.value))}
-            className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${limitPriceInvalid ? 'border-red-500/50' : 'border-gray-700/30'}`} />
+            className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${(limitPriceInvalid || stopLimitCheck.limitVsTriggerWrong) ? 'border-red-500/50' : 'border-gray-700/30'}`} />
           {limitPriceInvalid && (
             <p className="text-red-400 text-[10px] mt-1">Price must be greater than 0</p>
+          )}
+          {!limitPriceInvalid && stopLimitCheck.limitErrorMessage && (
+            <p className="text-red-400 text-[10px] mt-1">{stopLimitCheck.limitErrorMessage}</p>
           )}
         </div>
       )}
@@ -504,7 +529,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
       {walletReady ? (
         <WalletGatedTradeButton hasSize={sizeNum > 0} exceedsMargin={exceedsMargin}>
           <button type="submit"
-            disabled={exceedsMargin || limitPriceInvalid || triggerPriceInvalid || !hasValidPrice || perpPhase === 'approving' || perpPhase === 'pending'}
+            disabled={exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || perpPhase === 'approving' || perpPhase === 'pending'}
             className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'long' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
@@ -512,7 +537,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={sizeNum <= 0 || exceedsMargin || limitPriceInvalid || triggerPriceInvalid || !hasValidPrice}
+        <button type="submit" disabled={sizeNum <= 0 || exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice}
           className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'long' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>
