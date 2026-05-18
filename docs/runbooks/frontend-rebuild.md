@@ -37,13 +37,14 @@ Never run a bare `next build` against the live tree. Always go through `npm run 
 
 ## Background — why this is delicate
 
-`next build` rewrites `.next/` in place. The PM2-managed `next start -p 3100` process reads `.next/BUILD_ID` once at boot and embeds it in every HTML response, along with `<link>` tags to hashed CSS bundles under `_next/static/css/<hash>.css`. Three failure modes follow:
+`next build` rewrites `.next/` in place. The PM2-managed `next start -p 3100` process reads `.next/BUILD_ID` once at boot and embeds it in every HTML response, along with `<link>` tags to hashed CSS bundles under `_next/static/css/<hash>.css`. Four failure modes follow:
 
 1. **Stale BUILD_ID.** A successful `next build` rotates BUILD_ID and asset hashes; if PM2 is not reloaded, every page references CSS chunks the new build no longer ships ⇒ HTTP 5xx on every `/_next/static/css/*`.
 2. **Partial build wipes BUILD_ID.** A `next build` that exits non-zero (OOM, lint failure, type error) can delete `.next/BUILD_ID` and parts of `.next/static/` while leaving the PM2 process running. The live process still serves HTML pointing at hashes that are no longer on disk ⇒ same symptom.
 3. **Apparently green build with missing BUILD_ID.** Rare, but observed in iter 14: `next build` exited 0 yet `.next/BUILD_ID` was empty / absent. PM2 was reloaded against this poisoned `.next/`. Same symptom.
+4. **`next dev` contamination.** A stray `next dev` invocation in `frontend/` (e.g. an operator debugging locally on the prod tree, an editor "run task", a shell alias) rewrites `.next/` into a development build: `static/development/` appears, `build-manifest.json` switches to dev shape with unhashed `main.js` / `webpack.js` / etc., and the production `BUILD_ID` is replaced or removed. The live PM2 `next start` process keeps serving its old in-memory HTML pointing at production hashes that no longer exist on disk ⇒ HTTP 5xx on every static asset, plus `Cannot find module` flooding `pm2 logs goodswap`. The launcher fence in mode (3) does **not** catch this — dev builds also have a `BUILD_ID`, a `build-manifest.json`, and ≥5 chunks. **Recovery is identical to modes 2/3**: run `npm run build` from `frontend/` so the atomic wrapper rebuilds production over the contaminated tree, and the postbuild hook reloads PM2.
 
-The `atomic-build.mjs` wrapper structurally prevents (2) and (3); `check-buildid-sync.mjs` and the `npm run deploy` pipeline prevent (1).
+The `atomic-build.mjs` wrapper structurally prevents (2) and (3); `check-buildid-sync.mjs` and the `npm run deploy` pipeline prevent (1); (4) is procedural — never run `next dev` against the live `frontend/` tree, use a separate worktree or `frontend.dev/`. See § 6 for the May 18 recurrence postmortem.
 
 ### Iter 18 — PM2 launcher fence
 
@@ -186,12 +187,22 @@ pm2 logs goodswap --lines 200 --nostream
 
 Decision matrix:
 
-| Disk BUILD_ID | Live BUILD_ID | Assets HEAD 200? | Diagnosis | Action |
-| --- | --- | --- | --- | --- |
-| present | matches disk | yes | Healthy — investigate elsewhere | — |
-| present | differs from disk | no | BUILD_ID drift (failure mode 1) | `pm2 reload goodswap --update-env` |
-| missing/empty | (any) | no | Poisoned `.next/` (failure mode 2 or 3) | restore script (§ 2) |
-| present | matches disk | no (`5xx`) | Live HTML references hashes not in `.next/static/` — partial build | restore script (§ 2) |
+| Disk BUILD_ID | Live BUILD_ID | Assets HEAD 200? | `static/development/` present? | Diagnosis | Action |
+| --- | --- | --- | --- | --- | --- |
+| present | matches disk | yes | no | Healthy — investigate elsewhere | — |
+| present | differs from disk | no | no | BUILD_ID drift (failure mode 1) | `pm2 reload goodswap --update-env` |
+| missing/empty | (any) | no | no | Poisoned `.next/` (failure mode 2 or 3) | restore script (§ 2) |
+| present | matches disk | no (`5xx`) | no | Live HTML references hashes not in `.next/static/` — partial build | restore script (§ 2) |
+| (any) | (any) | no | **yes** | `next dev` contamination (failure mode 4) | kill stray dev processes, then restore script (§ 2) |
+
+Quick contamination check:
+
+```bash
+# Fingerprint failure mode 4 in one command:
+ls /home/goodclaw/gooddollar-l2/frontend/.next/static/development/ 2>/dev/null && \
+  echo "DEV CONTAMINATION — kill stray next dev, then restore"
+ps -eo pid,cmd | grep -E '[n]ext.*dev' || echo "no stray next dev"
+```
 
 ---
 
@@ -222,3 +233,15 @@ All six paths must return `200`. This is the same assertion the Testnet Readines
 ## 6. Historical context
 
 The iter 14 outage of May 17, 2026 sent every public page to a fully unstyled state for an extended window because a `next build` exited 0 while leaving `.next/BUILD_ID` empty and several `static/css/` chunks unwritten. PM2 was then reloaded against that poisoned `.next/`, and the live HTML referenced asset hashes that no longer existed. The structural fix is [`atomic-build.mjs`](../../frontend/scripts/atomic-build.mjs); the procedural fix is this runbook plus [`iter14-restore-goodswap.sh`](../../scripts/testnet/iter14-restore-goodswap.sh).
+
+### May 18, 2026 — recurrence as failure mode 4
+
+The same public symptom (unstyled pages, `5xx` on every `/_next/static/*`, `Cannot find module` flooding `pm2 logs goodswap`) reappeared during iter 14 of the automated build loop, but the root cause was different: a stray `next dev` invocation had contaminated `frontend/.next/`, leaving `static/development/` on disk, replacing `build-manifest.json` with the dev shape (unhashed `main.js` / `webpack.js`), and removing the production `BUILD_ID`. The live PM2 `next start` process kept serving its old in-memory HTML pointing at production hashes that no longer existed on disk. This is the pattern now documented as failure mode 4 in § Background.
+
+Recovery used the routine path (§ 1) rather than the emergency restore (§ 2) because `atomic-build.mjs` and `postbuild-reload-pm2.mjs` together are sufficient to overwrite a dev-contaminated tree:
+
+1. Killed all stray `next dev` processes in `frontend/`.
+2. `cd frontend && npm run build` — `atomic-build.mjs` snapshotted the contaminated tree, rebuilt production, validated `BUILD_ID` was non-empty, and dropped the snapshot. `postbuild-reload-pm2.mjs` then reloaded PM2.
+3. Verified with `check-buildid-sync.mjs --strict` and `check-served-chunks.mjs`. All six public pages returned 200 with `text/css` on first CSS asset.
+
+Forensics, recovery report, and visual proof (screenshot diff) are recorded in [`0025-iter14-blocker-stale-bundle-dev-clobber-recurrence`](../../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0025-iter14-blocker-stale-bundle-dev-clobber-recurrence.md). The structural fences (`atomic-build.mjs`, `pm2-launch-next.mjs`) caught it on the next build cycle. The procedural fix is the new failure-mode-4 row in the § 3 decision matrix and a hard rule never to run `next dev` against the live `frontend/` tree — use a separate worktree or `frontend.dev/` instead.
