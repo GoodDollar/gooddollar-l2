@@ -70,13 +70,16 @@ describe('bpsToYesPrice (MarketFactory BPS → 0-1 float)', () => {
 // the module boundary so we exercise the real useOnChainMarket /
 // useAllOnChainMarkets code paths.
 
+// Non-zero liquidity so iter-18's hasLiveLiquidity gate keeps the on-chain
+// markets visible — these tests exercise BPS → yesPrice plumbing, not the
+// fallback gate (separate describe block below covers that).
 const FAKE_MARKET_TUPLE: [string, bigint, number, bigint, bigint, bigint] = [
   'Will BTC hit 100K?',
   BigInt(Math.floor(new Date('2026-12-31').getTime() / 1000)),
   0,
-  BigInt(0),
-  BigInt(0),
-  BigInt(0),
+  BigInt(1e18),  // totalYES
+  BigInt(1e18),  // totalNO
+  BigInt(2e18),  // collateral
 ]
 
 describe('useOnChainMarket — yesPrice integration', () => {
@@ -168,5 +171,129 @@ describe('useAllOnChainMarkets — listing yesPrice integration', () => {
     expect(result.current.markets).toHaveLength(2)
     expect(result.current.markets[0].yesPrice).toBeCloseTo(0.8, 9)
     expect(result.current.markets[1].yesPrice).toBe(0.5)
+  })
+})
+
+// ─── Iter 18: fallback gating when all on-chain markets are zero-liquidity stubs ──
+//
+// Regression bug: MarketFactory had 4 placeholder markets with
+// totalYES = totalNO = collateral = 0. The old gate
+// `markets.length > 0 ? markets : FALLBACK_MARKETS` returned the stubs,
+// and downstream `hasMeaningfulPrice` (volume > 0) filtered them all out,
+// leaving an empty Predict grid and failing E2E. The fix is to fall back
+// to demo markets only when NO on-chain market has any live liquidity.
+
+const ZERO_LIQUIDITY_TUPLE: [string, bigint, number, bigint, bigint, bigint] = [
+  'Will BTC hit $100K by 2026?',
+  BigInt(Math.floor(new Date('2026-12-31').getTime() / 1000)),
+  0,
+  BigInt(0),  // totalYES
+  BigInt(0),  // totalNO
+  BigInt(0),  // collateral
+]
+
+const LIVE_LIQUIDITY_TUPLE: [string, bigint, number, bigint, bigint, bigint] = [
+  'Will ETH flip BTC?',
+  BigInt(Math.floor(new Date('2026-12-31').getTime() / 1000)),
+  0,
+  BigInt(5e18),   // totalYES — non-zero
+  BigInt(3e18),   // totalNO  — non-zero
+  BigInt(10e18),  // collateral — non-zero
+]
+
+describe('useAllOnChainMarkets — fallback gating (iter18)', () => {
+  it('all on-chain markets are zero-liquidity stubs → returns demo FALLBACK_MARKETS', () => {
+    // Exactly the production bug: count=4, every market has zero totals & collateral.
+    useReadContractsMock
+      .mockReturnValueOnce({
+        data: [
+          { status: 'success', result: ZERO_LIQUIDITY_TUPLE },
+          { status: 'success', result: ZERO_LIQUIDITY_TUPLE },
+          { status: 'success', result: ZERO_LIQUIDITY_TUPLE },
+          { status: 'success', result: ZERO_LIQUIDITY_TUPLE },
+        ],
+        isLoading: false,
+      })
+      .mockReturnValueOnce({
+        data: [
+          { status: 'success', result: BigInt(5000) },
+          { status: 'success', result: BigInt(5000) },
+          { status: 'success', result: BigInt(5000) },
+          { status: 'success', result: BigInt(5000) },
+        ],
+        isLoading: false,
+      })
+
+    const { result } = renderHook(() => useAllOnChainMarkets(BigInt(4)))
+
+    // Should return the 6 hard-coded demo markets, not the 4 zero-liquidity stubs.
+    expect(result.current.markets).toHaveLength(6)
+    // Demo markets have known questions distinct from the stub.
+    const questions = result.current.markets.map((m) => m.question)
+    expect(questions).toContain('Will Bitcoin exceed $150,000 by end of 2026?')
+    expect(questions).not.toContain('Will BTC hit $100K by 2026?')
+    // Every returned market must have positive liquidity so hasMeaningfulPrice passes downstream.
+    for (const m of result.current.markets) {
+      expect(m.totalYES > BigInt(0) || m.totalNO > BigInt(0) || m.collateral > BigInt(0)).toBe(true)
+    }
+  })
+
+  it('at least one on-chain market has totalYES > 0 → returns real on-chain markets', () => {
+    useReadContractsMock
+      .mockReturnValueOnce({
+        data: [
+          { status: 'success', result: ZERO_LIQUIDITY_TUPLE },
+          { status: 'success', result: LIVE_LIQUIDITY_TUPLE },
+        ],
+        isLoading: false,
+      })
+      .mockReturnValueOnce({
+        data: [
+          { status: 'success', result: BigInt(5000) },
+          { status: 'success', result: BigInt(6250) },
+        ],
+        isLoading: false,
+      })
+
+    const { result } = renderHook(() => useAllOnChainMarkets(BigInt(2)))
+    expect(result.current.markets).toHaveLength(2)
+    // First on-chain market still present even though its totals are zero.
+    expect(result.current.markets[0].question).toBe('Will BTC hit $100K by 2026?')
+    expect(result.current.markets[1].question).toBe('Will ETH flip BTC?')
+  })
+
+  it('only collateral is non-zero (no trades yet but market is funded) → real markets win', () => {
+    const COLLATERAL_ONLY_TUPLE: [string, bigint, number, bigint, bigint, bigint] = [
+      'Funded market with no trades',
+      BigInt(Math.floor(new Date('2026-12-31').getTime() / 1000)),
+      0,
+      BigInt(0),
+      BigInt(0),
+      BigInt(100e18),  // collateral seeded
+    ]
+
+    useReadContractsMock
+      .mockReturnValueOnce({
+        data: [{ status: 'success', result: COLLATERAL_ONLY_TUPLE }],
+        isLoading: false,
+      })
+      .mockReturnValueOnce({
+        data: [{ status: 'success', result: BigInt(5000) }],
+        isLoading: false,
+      })
+
+    const { result } = renderHook(() => useAllOnChainMarkets(BigInt(1)))
+    expect(result.current.markets).toHaveLength(1)
+    expect(result.current.markets[0].question).toBe('Funded market with no trades')
+  })
+
+  it('count = 0 (no markets at all) → returns demo FALLBACK_MARKETS (existing behaviour)', () => {
+    // With n=0, useReadContracts is disabled and returns undefined data.
+    useReadContractsMock
+      .mockReturnValueOnce({ data: undefined, isLoading: false })
+      .mockReturnValueOnce({ data: undefined, isLoading: false })
+
+    const { result } = renderHook(() => useAllOnChainMarkets(BigInt(0)))
+    expect(result.current.markets).toHaveLength(6)
   })
 })

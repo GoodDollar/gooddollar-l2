@@ -213,7 +213,16 @@ export function useAllOnChainMarkets(count: bigint): {
     { id: BigInt(5), question: 'Will GoodDollar reach 1 million unique claimers by end of 2026?', endTime: BigInt(Math.floor(new Date('2026-12-31').getTime() / 1000)), status: 0, totalYES: BigInt(62e17), totalNO: BigInt(38e17), collateral: BigInt(89e19), yesPrice: 0.62, endTimeMs: new Date('2026-12-31').getTime(), isActive: true, isResolved: false },
   ]
 
-  const finalMarkets = markets.length > 0 ? markets : FALLBACK_MARKETS
+  // Iter 18: when every on-chain market is a zero-liquidity stub (the
+  // current devnet state — 4 placeholder markets with totalYES=totalNO=
+  // collateral=0), the downstream `hasMeaningfulPrice` filter in
+  // predictData.ts drops them all and the Predict grid renders empty.
+  // Only suppress the demo fallback when at least one market has actual
+  // liquidity to display, so testers always see meaningful cards.
+  const hasLiveLiquidity = markets.some(
+    (m) => m.totalYES > BigInt(0) || m.totalNO > BigInt(0) || m.collateral > BigInt(0)
+  )
+  const finalMarkets = hasLiveLiquidity ? markets : FALLBACK_MARKETS
   return {
     markets: finalMarkets,
     isLoading: marketResults.isLoading,
