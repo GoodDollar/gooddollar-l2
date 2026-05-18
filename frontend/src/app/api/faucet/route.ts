@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { createPublicClient, createWalletClient, defineChain, formatEther, http, parseEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { CONTRACTS, DEVNET_CHAIN_ID, DEVNET_EXPLORER_URL, DEVNET_RPC_URL } from '@/lib/devnet'
+import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -124,14 +125,14 @@ function serializeFaucetClaim<T>(fn: () => Promise<T>): Promise<T> {
   return run
 }
 
-export async function GET(request: Request) {
+async function handleGet(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? requestUrl.host
   const proto = request.headers.get('x-forwarded-proto') ?? requestUrl.protocol.replace(':', '')
   return NextResponse.redirect(`${proto}://${host}/faucet`)
 }
 
-export async function POST(request: Request) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await parseJsonBody(request)
     const address =
@@ -248,3 +249,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
+
+export const GET = withApiRateLimit(handleGet)
+export const POST = withApiRateLimit(handlePost)

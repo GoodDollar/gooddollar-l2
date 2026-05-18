@@ -18,10 +18,12 @@
  * / nginx layer in front of Next, this repo MUST NOT contain a
  * `src/middleware.ts` (or `.js`).
  *
- * Reuse the rate-limit helper at `src/lib/rateLimit.ts` from inside Node-runtime
- * route handlers instead.
+ * Reuse the rate-limit helpers in `src/lib/rate-limit.ts` from inside
+ * Node-runtime route handlers instead (see `src/lib/withApiRateLimit.ts`).
  *
- * Tracking: `.autobuilder/initiatives/0002-security-hardening/tasks/0021-fix-middleware-evalerror-crashes-next-start.md`
+ * Tracking:
+ *   - .autobuilder/initiatives/0002-security-hardening/tasks/0021-fix-middleware-evalerror-crashes-next-start.md
+ *   - .autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0023-iter11-followup-middleware-reintroduced-fails-perf-gate.md
  */
 
 import { existsSync } from 'node:fs'
@@ -29,9 +31,9 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const root = join(__dirname, '..')
+const DEFAULT_ROOT = join(__dirname, '..')
 
-const candidates = [
+const CANDIDATES = [
   'src/middleware.ts',
   'src/middleware.js',
   'src/middleware.tsx',
@@ -40,26 +42,60 @@ const candidates = [
   'middleware.js',
 ]
 
-const found = candidates.filter((rel) => existsSync(join(root, rel)))
+/**
+ * Check whether any forbidden middleware files exist under `root`.
+ *
+ * @param {{ root?: string, candidates?: string[], existsImpl?: (p: string) => boolean }} [opts]
+ * @returns {{ exitCode: number, message: string, found: string[] }}
+ */
+export function checkMiddlewareAbsent({
+  root = DEFAULT_ROOT,
+  candidates = CANDIDATES,
+  existsImpl = existsSync,
+} = {}) {
+  const found = candidates.filter((rel) => existsImpl(join(root, rel)))
 
-if (found.length > 0) {
-  console.error(
-    [
-      '[check-middleware-absent] FAIL: Forbidden middleware file detected:',
-      ...found.map((f) => `  - ${f}`),
-      '',
-      'Next.js middleware crashes `next start` in production with',
-      "  EvalError: Code generation from strings disallowed for this context",
-      'because the Edge Runtime sandbox is configured without code generation in',
-      'production mode (Next 14.2.35 + Node 22+).',
-      '',
-      'See .autobuilder/initiatives/0002-security-hardening/tasks/0021-fix-middleware-evalerror-crashes-next-start.md',
-      '',
-      'If you need rate limiting, import `checkRateLimit` from `src/lib/rateLimit.ts`',
-      "inside a Node-runtime API route (set `export const runtime = 'nodejs'`).",
-    ].join('\n'),
-  )
-  process.exit(1)
+  if (found.length > 0) {
+    return {
+      exitCode: 1,
+      found,
+      message: [
+        '[check-middleware-absent] FAIL: Forbidden middleware file detected:',
+        ...found.map((f) => `  - ${f}`),
+        '',
+        'Next.js middleware crashes `next start` in production with',
+        "  EvalError: Code generation from strings disallowed for this context",
+        'because the Edge Runtime sandbox is configured without code generation in',
+        'production mode (Next 14.2.35 + Node 22+).',
+        '',
+        'See:',
+        '  - .autobuilder/initiatives/0002-security-hardening/tasks/0021-fix-middleware-evalerror-crashes-next-start.md',
+        '  - .autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0023-iter11-followup-middleware-reintroduced-fails-perf-gate.md',
+        '',
+        'If you need rate limiting, wrap your route handler with',
+        '`withApiRateLimit` from `src/lib/withApiRateLimit.ts` and set',
+        "`export const runtime = 'nodejs'` on the route.",
+      ].join('\n'),
+    }
+  }
+
+  return {
+    exitCode: 0,
+    found: [],
+    message: '[check-middleware-absent] OK: no middleware.ts present.',
+  }
 }
 
-console.log('[check-middleware-absent] OK: no middleware.ts present.')
+const invokedAsScript =
+  import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1]?.endsWith('check-middleware-absent.mjs')
+
+if (invokedAsScript) {
+  const result = checkMiddlewareAbsent()
+  if (result.exitCode === 0) {
+    console.log(result.message)
+  } else {
+    console.error(result.message)
+  }
+  process.exit(result.exitCode)
+}

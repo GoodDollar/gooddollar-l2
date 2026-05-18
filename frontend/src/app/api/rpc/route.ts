@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
+
 import { DEVNET_RPC_URL } from '@/lib/devnet'
+import { withApiRateLimit } from '@/lib/withApiRateLimit'
+
+export const runtime = 'nodejs'
 
 const TIMEOUT_MS = 8_000
 
-export async function POST(request: Request) {
+async function handlePost(request: NextRequest) {
   let body: unknown
   try {
     body = await request.json()
@@ -53,3 +57,5 @@ export async function POST(request: Request) {
     clearTimeout(timer)
   }
 }
+
+export const POST = withApiRateLimit(handlePost)

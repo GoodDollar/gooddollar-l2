@@ -1,3 +1,25 @@
+/**
+ * Canonical IP rate limiter for Next.js API route handlers (Node.js runtime).
+ *
+ * Implementation: token bucket, in-memory `Map`, per-process.
+ * Default RPM: 60 (override with `RATE_LIMIT_RPM` env var).
+ *
+ * IMPORTANT: This module is for Node.js-runtime route handlers only. It must
+ * never be imported from `src/middleware.ts` — Next.js 14.2.35 + Node 22 runs
+ * middleware inside an Edge Runtime sandbox that crashes any request with
+ *   EvalError: Code generation from strings disallowed for this context
+ * (See `frontend/scripts/check-middleware-absent.mjs` and tasks
+ *  0021-fix-middleware-evalerror-crashes-next-start.md and
+ *  0023-iter11-followup-middleware-reintroduced-fails-perf-gate.md.)
+ *
+ * Use the `withApiRateLimit` wrapper in `./withApiRateLimit.ts` to enforce
+ * limits at the route-handler layer.
+ *
+ * Production deployments on multi-instance infrastructure should replace
+ * the per-process Map with a Redis-backed store (e.g. @upstash/ratelimit)
+ * or push the limiter into an upstream proxy (Cloudflare / nginx / Caddy).
+ */
+
 const DEFAULT_RPM = 60;
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 const STALE_THRESHOLD_MS = 10 * 60 * 1000;
@@ -27,7 +49,12 @@ function cleanup() {
   }
 }
 
-export function checkRateLimit(ip: string): { allowed: boolean; retryAfterSeconds: number } {
+export interface RateLimitDecision {
+  allowed: boolean;
+  retryAfterSeconds: number;
+}
+
+export function checkRateLimit(ip: string): RateLimitDecision {
   cleanup();
 
   const rpm = Number(process.env.RATE_LIMIT_RPM) || DEFAULT_RPM;
@@ -51,4 +78,33 @@ export function checkRateLimit(ip: string): { allowed: boolean; retryAfterSecond
 
   const waitMs = (1 - bucket.tokens) / refillRate;
   return { allowed: false, retryAfterSeconds: Math.ceil(waitMs / 1000) };
+}
+
+/**
+ * Resolve the originating IP from a Web `Request` / `NextRequest`-compatible
+ * object.
+ *
+ * Trusts forwarded headers in this order: `x-real-ip` then the first entry of
+ * `x-forwarded-for`. Falls back to `127.0.0.1` when the request is missing
+ * headers entirely (e.g. unit tests that invoke route handlers without a
+ * Request), so the limiter still degrades gracefully in local development.
+ * The repo sits behind Caddy (which sets `x-real-ip`), so the spoofing
+ * surface is bounded to clients that can reach Caddy directly.
+ */
+export function getRealIp(
+  req: { headers?: { get(name: string): string | null } } | null | undefined,
+): string {
+  const get = req?.headers?.get?.bind(req.headers);
+  if (!get) return '127.0.0.1';
+
+  const realIp = get('x-real-ip');
+  if (realIp) return realIp;
+
+  const forwarded = get('x-forwarded-for');
+  if (forwarded) {
+    const first = forwarded.split(',')[0]?.trim();
+    if (first) return first;
+  }
+
+  return '127.0.0.1';
 }

@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+
+import { withApiRateLimit } from '@/lib/withApiRateLimit';
+
+export const runtime = 'nodejs';
 
 const STATUS_URL = process.env.STATUS_AGGREGATOR_URL ?? 'http://localhost:9200/status.json';
 const TIMEOUT_MS = 5000;
 
-export async function GET() {
+async function handleGet(_req: NextRequest) {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -27,3 +31,5 @@ export async function GET() {
     );
   }
 }
+
+export const GET = withApiRateLimit(handleGet);

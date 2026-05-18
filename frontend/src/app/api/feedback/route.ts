@@ -1,6 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export async function POST(request: Request) {
+import { withApiRateLimit } from '@/lib/withApiRateLimit'
+
+export const runtime = 'nodejs'
+
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json()
     const entry = {
@@ -14,3 +18,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }
+
+export const POST = withApiRateLimit(handlePost)

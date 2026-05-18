@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { withApiRateLimit } from '@/lib/withApiRateLimit'
+
+export const runtime = 'nodejs'
+
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 const CACHE_TTL_MS = 60_000
 
@@ -33,7 +37,7 @@ function buildCacheKey(ids: string[]): string {
 
 let lastCacheKey = ''
 
-export async function GET(req: NextRequest) {
+async function handleGet(req: NextRequest) {
   const symbolsParam = req.nextUrl.searchParams.get('symbols')
   if (!symbolsParam) {
     return NextResponse.json(
@@ -102,3 +106,5 @@ export async function GET(req: NextRequest) {
     )
   }
 }
+
+export const GET = withApiRateLimit(handleGet)
