@@ -53,7 +53,7 @@ This is the execution plan for the next autonomous autobuilder run. The goal is 
 | 22 | UBI fee truth source | Canonical fee routing spec maps every protocol fee path. | `docs/UBI-FEE-ACCOUNTING.md` + tests list. |
 | 23 | UBI event/accounting tests I | Swap/Perps fee routing proven by event or balance deltas. | Foundry/integration receipts. |
 | 24 | UBI event/accounting tests II | Lend/Stable/Predict/Stocks fee routing proven. | Foundry/integration receipts. |
-| 25 | README/doc checkpoint 5 | README explains fee routes and links accounting proof. | README/docs refresh + link check. |
+| 25 | README/doc checkpoint 5 | README explains fee routes and links accounting proof. | README/docs refresh + link check. ✅ executed iter 25 — task [`0036`](../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0036-iter25-readme-doc-checkpoint-5.md), evidence in [`docs/testnet/iter25-readme-doc-checkpoint-5.md`](testnet/iter25-readme-doc-checkpoint-5.md). |
 | 26 | Analytics address book | Publish machine-readable labels, ABIs, protocol IDs, event signatures. | JSON artifact + validation script. |
 | 27 | Internal analytics dashboard | Public/interim page shows tx counts, protocol activity, UBI fees, status. | Screenshot + API check. |
 | 28 | Dune package | Dune/indexing request package ready even if chain indexing pending. | SQL/query pack + docs. |
@@ -86,6 +86,17 @@ This is the execution plan for the next autonomous autobuilder run. The goal is 
 |---:|---|---|
 | 1 | [`docs/testnet/iter01-baseline.md`](testnet/iter01-baseline.md) | `scripts/testnet/iter01-baseline.sh` |
 | 2 | [`docs/testnet/iter02-health-gate.md`](testnet/iter02-health-gate.md) (contract: [`docs/testnet/HEALTH-CONTRACT.md`](testnet/HEALTH-CONTRACT.md)) | `scripts/testnet/health-gate.sh` |
+
+## Recent Executed Iterations (iter 20–25)
+
+| Iter | Row | Outcome | Key artefacts |
+|---:|---|---|---|
+| 20 | README/doc checkpoint 4 + gate | ✅ executed | README refresh, gate run. |
+| 21 | Stocks/portfolio lane hardening | ✅ executed | [`frontend/e2e/portfolio-journey.spec.ts`](../frontend/e2e/portfolio-journey.spec.ts); `--dist-dir` CLI blocker resolved. |
+| 22 | UBI fee truth source | ✅ executed | [`docs/UBI-FEE-ACCOUNTING.md`](UBI-FEE-ACCOUNTING.md) — 14-route canonical map. |
+| 23 | UBI event/accounting tests I (Swap + Perps) | ✅ executed | [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) — routes 1–5 proven (commit `2b30ad5`). |
+| 24 | UBI event/accounting tests II (Predict + Lend + Stable + Stocks) | ✅ executed | [`test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol`](../test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol) — routes 6–14 proven; all 14 routes now `✅ integration proven` (commit `3f2806a`). |
+| 25 | README/doc checkpoint 5 | ✅ executed | Task [`0036`](../.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0036-iter25-readme-doc-checkpoint-5.md); [`docs/testnet/iter25-readme-doc-checkpoint-5.md`](testnet/iter25-readme-doc-checkpoint-5.md); link check at [`docs/testnet/iter25-link-check.md`](testnet/iter25-link-check.md). |
 
 ## README Checkpoint Requirements Every 5 Iterations
 

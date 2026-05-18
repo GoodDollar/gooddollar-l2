@@ -18,24 +18,31 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 
 ## Current Status
 
-_Last refreshed: 2026-05-18 05:39 UTC. `main` was fetched from origin and confirmed current at commit `e734001` before this README/doc checkpoint 4 refresh._
+_Last refreshed: 2026-05-18 08:22 UTC. `main` was fetched from origin and confirmed current at commit `1c9e179` before this README/doc checkpoint 5 refresh._
 
 GoodDollar L2 is running as a persistent public devnet and is being hardened into a public testnet release candidate.
 
 - Public health: `healthy`, `12 / 12` services OK from `https://goodswap.goodclaw.org/api/status`.
 - Public pages verified: `/`, `/faucet`, `/perps`, `/portfolio`, `/tests`, `/testnet-guide`, `/predict`, `/lend`, `/stable`, `/stocks`, `/bridge`, `/agents` all returned HTTP `200`.
 - Public RPC verified: `eth_chainId = 0xa455`.
-- Active initiative: Testnet Readiness Gate — 50 iterations (iter 19 / 50 complete; iter 20 in progress).
+- Active initiative: Testnet Readiness Gate — 50 iterations (iter 25 / 50 complete; iter 26 next).
 - Active priorities: stability, public tester onboarding, protocol smoke evidence, UBI-fee accounting, and release-candidate packaging.
 - Security hardening status: Slither high/medium cleanup complete in the prior security initiative; release gates still require continuous security checks before public testnet.
+- Foundry contract test suite: `1126 / 1126` passing as of iter 25 surface sweep.
 
-### Recent readiness milestones (iter 15–19)
+### Recent readiness milestones (iter 15–25)
 
 - **Iter 15 — README/doc checkpoint 3.** Refreshed `README.md`, `docs/ARCHITECTURE.md`, and `docs/TESTNET_README.md` after the iter 10–14 work landed; added the doc-link CI gate (`python3 scripts/check-doc-links.py`) to keep cross-doc references honest.
 - **Iter 16 — Swap lane hardening.** Re-pointed the stale `SwapGD` / `SwapWETH` / `SwapUSDC` constants in `frontend/src/lib/devnet.ts` at the canonical addresses from `op-stack/addresses.json`, unblocking the swap happy-path and dust/error proof on the public app.
 - **Iter 17 — Perps lane hardening.** Unblocked the Playwright E2E port collision and re-ran the full open/close flow via `frontend/e2e/perps-journey.spec.ts`, producing on-chain `PerpEngine.positions(...)` proof of a margin-funded trade.
 - **Iter 18 — Predict lane + PM2 build-less-start fence.** Stabilised the public `/predict` market grid so it surfaces meaningful markets even when on-chain seeds are empty, and shipped the iter 18 BLOCKER fix that fences PM2 against build-less starts (`frontend/scripts/pm2-launch-next.mjs` refuses to launch `next start` if `.next/` is missing a manifest or contaminated by a `next dev` tree).
 - **Iter 19 — `next dev` clobber recurrence #3 closed.** Removed the upstream cause of three production outages via `distDir` isolation for Playwright + added the `goodswap-watchdog` PM2 process that probes `/_next/static/chunks/*.js` every 60 s and reloads `goodswap` after a 3-failure streak (`frontend/scripts/goodswap-watchdog.mjs`, `frontend/ecosystem.watchdog.config.cjs`, [frontend health runbook](docs/TESTNET_README.md#frontend-health-iter-19)). Note: the Lend/Stable lane hardening originally mapped to row 19 of the 50-iteration plan is **deferred** to a future iteration — iter 19's slot was consumed by closing the production-down recurrence.
+- **Iter 20 — README/doc checkpoint 4 + testnet gate.** Re-ran the public surface sweep, refreshed `README.md` / `docs/TESTNET_README.md` / `docs/ARCHITECTURE.md`, and re-greened the doc link checker after the iter 16–19 lane and watchdog work.
+- **Iter 21 — Stocks/portfolio lane hardening.** Added Playwright E2E proof for the `/portfolio` lane (`frontend/e2e/portfolio-journey.spec.ts`) so wallet-state, balances, and claim UX have named proof on the public app; in-flight blocker (`--dist-dir` CLI flag unsupported) was fixed in the same iteration so the lane could be greened.
+- **Iter 22 — UBI fee truth source.** Shipped [`docs/UBI-FEE-ACCOUNTING.md`](docs/UBI-FEE-ACCOUNTING.md), the canonical 14-route map from every protocol fee path (Swap V4, Swap Li.Fi, Perps trading/funding/liquidation, Predict factory + resolver, Lend reserve factor, Stable stability/minting/liquidation/governance, Stocks trading + liquidation remnant) into the UBI revenue tracker, with addresses sourced from `op-stack/addresses.json`.
+- **Iter 23 — UBI integration proof I (Swap + Perps).** Added [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) proving routes 1–5 by event + balance-delta receipts (commit `2b30ad5`); the matching rows in `docs/UBI-FEE-ACCOUNTING.md` flipped from `⏳ proof needed` to `✅ integration proven (iter 23)`.
+- **Iter 24 — UBI integration proof II (Predict + Lend + Stable + Stocks).** Added [`test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol`](test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol) proving routes 6–14 with the same event + balance-delta methodology (commit `3f2806a`); all 14 fee routes now read `✅ integration proven` and the spec records the closeout in its §6 summary.
+- **Iter 25 — README/doc checkpoint 5.** This refresh. `README.md`, `docs/TESTNET_README.md`, and `docs/TESTNET-READINESS-50-ITERATIONS.md` were updated to surface the iter 20–24 milestones, link the UBI fee accounting spec and its two integration proofs from the canonical entry points, and re-run the intra-repo link check ([iter25 checkpoint summary](docs/testnet/iter25-readme-doc-checkpoint-5.md), [link-check artefact](docs/testnet/iter25-link-check.md)).
 
 ## Logo and Brand
 
@@ -189,6 +196,11 @@ User or agent activity
 
 Release work must preserve this path for every app. A feature is not complete just because it renders; it needs contract wiring, test evidence, and UBI-fee accounting or an explicit reason it is excluded from the public gate.
 
+**Canonical fee map.** Every protocol's fee path is enumerated in [`docs/UBI-FEE-ACCOUNTING.md`](docs/UBI-FEE-ACCOUNTING.md) — 14 routes covering Swap (V4 + Li.Fi), Perps (trading, funding, liquidation), Predict (factory + resolver), Lend (reserve factor), Stable (stability/minting/liquidation/governance), and Stocks (trading + liquidation remnant). All 14 routes are **`✅ integration proven`** on devnet via:
+
+- [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) — routes 1–5 (iter 23).
+- [`test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol`](test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol) — routes 6–14 (iter 24).
+
 ## Test and Release Gates
 
 Before a release-candidate push or deploy, run the relevant gates:
@@ -279,9 +291,12 @@ Every five iterations the README, testnet guide, architecture docs, status proof
 - [`docs/TESTNET_README.md`](docs/TESTNET_README.md) — current public testnet guide and operator notes.
 - [`docs/TESTNET-READINESS-50-ITERATIONS.md`](docs/TESTNET-READINESS-50-ITERATIONS.md) — active readiness sprint.
 - [`docs/PRODUCTION-ROADMAP-50-ITERATIONS.md`](docs/PRODUCTION-ROADMAP-50-ITERATIONS.md) — previous production roadmap.
+- [`docs/UBI-FEE-ACCOUNTING.md`](docs/UBI-FEE-ACCOUNTING.md) — canonical 14-route UBI fee map (all routes integration-proven on devnet, iter 22–24).
 - [`docs/DUNE-DASHBOARD-SPEC.md`](docs/DUNE-DASHBOARD-SPEC.md) — analytics dashboard spec.
 - [`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md) — security audit notes.
 - [`docs/runbooks/frontend-rebuild.md`](docs/runbooks/frontend-rebuild.md) — frontend rebuild, restore, and BUILD_ID drift diagnosis runbook.
+- [`docs/testnet/iter25-readme-doc-checkpoint-5.md`](docs/testnet/iter25-readme-doc-checkpoint-5.md) — iter 25 documentation checkpoint summary.
+- [`docs/testnet/iter25-link-check.md`](docs/testnet/iter25-link-check.md) — iter 25 link-check artefact (`scripts/check-doc-links.py`).
 - [`.autobuilder/integration-results.md`](.autobuilder/integration-results.md) — integration smoke matrix.
 - [`scripts/check-doc-links.py`](scripts/check-doc-links.py) — README/docs link checker.
 

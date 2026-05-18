@@ -27,12 +27,13 @@ _Last updated: 2026-05-18 05:39 UTC during iter 20 (README/doc checkpoint 4). Th
 - Deployment: devnet deployment workflow is `Deploy to Devnet`.
 - Required before public testnet: persistent OP Stack chain, faucet, final canonical address sync, explorer indexing check, Dune dashboard/indexing.
 
-## Protocol Lane Hardening Status (iter 16–19)
+## Protocol Lane Hardening Status (iter 16–24)
 
-Per-lane status after the iter 16–19 hardening pass. "Hardened" means the
-lane has named proof on the public app and is ready to feed the release
-candidate manifest. "Deferred" means the slot was consumed by a blocker
-and the work moves to a later row.
+Per-lane status after the iter 16–24 hardening pass. "Hardened" means the
+lane has named proof on the public app (or — for cross-protocol UBI work
+— named proof on devnet) and is ready to feed the release candidate
+manifest. "Deferred" means the slot was consumed by a blocker and the
+work moves to a later row.
 
 | Lane | Iter | State | Evidence |
 |---|---|---|---|
@@ -42,16 +43,22 @@ and the work moves to a later row.
 | Lend | 19 (target) | ⏳ deferred | Iter 19's slot was consumed by the `next dev` clobber recurrence #3 fix (see [Frontend health (iter 19)](#frontend-health-iter-19)). Lane proof scheduled for a follow-up iteration. |
 | Stable | — | ⏳ deferred | Same deferral as Lend; will be picked up alongside it. |
 | Stocks | — | ✅ stable (existing) | `/stocks` HTTP 200, smoke matrix green from prior iterations; no new hardening in iter 16–19. |
-| Portfolio / Claim | — | ✅ stable (existing) | `/portfolio` HTTP 200; portfolio/claim UX validated in prior iterations. |
+| Portfolio / Claim | 21 | ✅ hardened | `/portfolio` HTTP 200; `frontend/e2e/portfolio-journey.spec.ts` proves wallet-state + balances + claim UX on the public lane (iter 21 also fixed the `--dist-dir` CLI flag blocker so the lane could be greened). |
+| UBI fee truth source | 22 | ✅ shipped | [`docs/UBI-FEE-ACCOUNTING.md`](UBI-FEE-ACCOUNTING.md) — canonical 14-route map from every protocol fee path into the UBI revenue tracker. |
+| UBI integration proof I (Swap + Perps) | 23 | ✅ integration proven | [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) — routes 1–5 proven by event + balance-delta receipts (commit `2b30ad5`). |
+| UBI integration proof II (Predict + Lend + Stable + Stocks) | 24 | ✅ integration proven | [`test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol`](../test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol) — routes 6–14 proven; all 14 routes now read `✅ integration proven` in the accounting spec (commit `3f2806a`). |
 
 Cross-cutting infra hardening that landed alongside the lane work:
 
 - **Iter 18 BLOCKER — PM2 build-less-start fence.** `frontend/scripts/pm2-launch-next.mjs` refuses to launch `next start` if `.next/` is missing a manifest or contaminated by a `next dev` tree. This prevents the third class of "HTML 200 but every chunk 500" outages.
 - **Iter 19 BLOCKER — `next dev` clobber recurrence #3 closed.** `distDir` isolation for Playwright + the `goodswap-watchdog` PM2 process that probes `/_next/static/chunks/*.js` every 60 s and reloads `goodswap` after a 3-failure streak. Full operator runbook in [Frontend health (iter 19)](#frontend-health-iter-19).
+- **Iter 21 BLOCKER — `--dist-dir` CLI flag unsupported.** Removed the unsupported `--dist-dir` flag from the Playwright wrapper and switched to env-based isolation so the portfolio lane could be greened in the same iteration.
 
 The Lend/Stable lane deferral is intentionally visible here so a tester
 reading this doc does not assume rows 19/20 of the 50-iteration plan
-mean those lanes have public-app proof yet.
+mean those lanes have public-app proof yet — the **UBI fee routing** for
+Lend and Stable, however, is fully integration-proven (iter 24) even
+though the public-app lane proof remains deferred.
 
 ## Sibling Experimental Apps (Not in Release Gate)
 
@@ -89,6 +96,29 @@ Rules per non-negotiable #8 ("Do not hide degraded services; fix them or documen
 - GoodStable: `0x2306c5aef499…` (✅ success)
 - GoodStocks: `0xa8325cba97be…` (✅ success)
 - GoodPredict: `0x899ceb32b4a5…` (✅ success)
+
+## UBI Fee Integration Proofs
+
+The on-chain leg of the UBI promise — "every protocol fee routes to the
+UBI revenue tracker" — is enumerated in
+[`docs/UBI-FEE-ACCOUNTING.md`](UBI-FEE-ACCOUNTING.md) (14 routes) and
+proven on devnet by two integration tests:
+
+| Protocols | Routes | Proof file | Iter / commit |
+|---|---|---|---|
+| Swap + Perps | 1–5 | [`test/integration/UBIFeeIntegrationProofSwapPerps.t.sol`](../test/integration/UBIFeeIntegrationProofSwapPerps.t.sol) | iter 23 (`2b30ad5`) |
+| Predict + Lend + Stable + Stocks | 6–14 | [`test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol`](../test/integration/UBIFeeIntegrationProofPredictLendStableStocks.t.sol) | iter 24 (`3f2806a`) |
+
+All 14 routes are marked `✅ integration proven` in the accounting spec
+as of iter 24. Both proof files exercise the real protocol fee paths
+end-to-end and assert UBI revenue tracker balance deltas rather than
+relying on unit-test mocks.
+
+Run the proofs locally:
+
+```bash
+forge test --match-path 'test/integration/UBIFeeIntegrationProof*'
+```
 
 ## Canonical Contract Addresses
 
