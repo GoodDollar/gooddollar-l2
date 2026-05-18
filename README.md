@@ -292,6 +292,8 @@ Every five iterations the README, testnet guide, architecture docs, status proof
 - [`docs/TESTNET-READINESS-50-ITERATIONS.md`](docs/TESTNET-READINESS-50-ITERATIONS.md) — active readiness sprint.
 - [`docs/PRODUCTION-ROADMAP-50-ITERATIONS.md`](docs/PRODUCTION-ROADMAP-50-ITERATIONS.md) — previous production roadmap.
 - [`docs/UBI-FEE-ACCOUNTING.md`](docs/UBI-FEE-ACCOUNTING.md) — canonical 14-route UBI fee map (all routes integration-proven on devnet, iter 22–24).
+- [`analytics/address-book.json`](analytics/address-book.json) + [`analytics/README.md`](analytics/README.md) — machine-readable chain/protocol/fee-route address book (iter 26 truth source for indexers).
+- [`analytics/dune-package/README.md`](analytics/dune-package/README.md) — Dune / indexing-request package: SQL pack, `INDEXING_MANIFEST.json`, decoding cookbook (iter 28).
 - [`docs/DUNE-DASHBOARD-SPEC.md`](docs/DUNE-DASHBOARD-SPEC.md) — analytics dashboard spec.
 - [`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md) — security audit notes.
 - [`docs/runbooks/frontend-rebuild.md`](docs/runbooks/frontend-rebuild.md) — frontend rebuild, restore, and BUILD_ID drift diagnosis runbook.

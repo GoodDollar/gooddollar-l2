@@ -49,6 +49,7 @@ anvil.log
 
 # Review/runtime artifacts
 .review/
+.iter*-screenshots/
 
 # Autobuilder/internal agent artifacts
 .autobuilder/

@@ -1,0 +1,1519 @@
+{
+  "chain": {
+    "bridge_url": "https://goodswap.goodclaw.org/portfolio",
+    "dapp_url": "https://goodswap.goodclaw.org",
+    "docs_url": "https://goodswap.goodclaw.org/testnet-guide",
+    "explorer_url": "https://explorer.goodclaw.org",
+    "faucet_url": "https://goodswap.goodclaw.org/faucet",
+    "fee_split_bps": {
+      "protocol": 8000,
+      "ubi": 2000
+    },
+    "id": 42069,
+    "name": "GoodDollar L2 Devnet",
+    "rpc_url": "https://rpc.goodclaw.org",
+    "ubi_breakdown_bps": {
+      "g_dollar_treasury_bps": 6333,
+      "human_ubi_pool_bps": 1667,
+      "validator_rewards_bps": 2000
+    }
+  },
+  "contracts": [
+    {
+      "address": "0x276c216d241856199a83bf27b2286659e5b877d3",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "currentAdmin",
+            "pendingAdmin"
+          ],
+          "name": "AdminTransferProposed",
+          "signature": "AdminTransferProposed(address,address)",
+          "topic0": "0xc02afc35b5d9b88807390ad5b17e685602c17339aa880db1dfe4e15cb3e2e3a1"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "previousAdmin",
+            "newAdmin"
+          ],
+          "name": "AdminTransferred",
+          "signature": "AdminTransferred(address,address)",
+          "topic0": "0xf8ccb027dfcd135e000e9d45e6cc2d662578a8825d4c45b5e32e0adf67e79ec6"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "key"
+          ],
+          "name": "AssetRegistered",
+          "signature": "AssetRegistered(bytes32,string,address)",
+          "topic0": "0x9190ede1bbf154005e1cdc753cb24ff7912bf4412bf72342e5ab03ee770facf0"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "user",
+            "ticker"
+          ],
+          "name": "Burned",
+          "signature": "Burned(address,bytes32,uint256,uint256,uint256)",
+          "topic0": "0xfbb68f61002cbf89cfd4502b79ed21c0d08c91666d4b22825cc11bf41333648e"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "user",
+            "ticker"
+          ],
+          "name": "CollateralDeposited",
+          "signature": "CollateralDeposited(address,bytes32,uint256)",
+          "topic0": "0x88df26d296ecbf594c8609f433503d1436d24afe03c0d9e5e29c8f6ed92ef9b4"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "user",
+            "ticker"
+          ],
+          "name": "CollateralWithdrawn",
+          "signature": "CollateralWithdrawn(address,bytes32,uint256)",
+          "topic0": "0xe69cdf29a59dd324317b598bee3a9ed1fcffb99cc506db72633ed07b59dc6d04"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "liquidator",
+            "user",
+            "ticker"
+          ],
+          "name": "Liquidated",
+          "signature": "Liquidated(address,address,bytes32,uint256,uint256,uint256)",
+          "topic0": "0x050df5bd39b9045b183cf260962616d90dc134df2b0da18110a7c2bc6c68468a"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "user",
+            "ticker"
+          ],
+          "name": "Minted",
+          "signature": "Minted(address,bytes32,uint256,uint256,uint256)",
+          "topic0": "0xafa80970438fa6a8ad54574239a8d28d0cc4b50da6e4473eab194dea551c6c87"
+        }
+      ],
+      "name": "CollateralVault",
+      "pending_deploy": false,
+      "protocol": "stocks"
+    },
+    {
+      "address": "0x8f86403a4de0bb5791fa46b8e795c547942fe4cf",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "owner",
+            "spender"
+          ],
+          "name": "Approval",
+          "signature": "Approval(address,address,uint256)",
+          "topic0": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "DailyUBIDistributed",
+          "signature": "DailyUBIDistributed(uint256,uint256)",
+          "topic0": "0x965521b036c11dea2ae88b99adf5411a2df283ee9b84c3c0553352d237eeb801"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "human"
+          ],
+          "name": "HumanVerified",
+          "signature": "HumanVerified(address,bool)",
+          "topic0": "0xd3ac88d7d7371ae60bfd5df4b594ee30e643822079fc7e3329ec4d090ff11e41"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "minter"
+          ],
+          "name": "MinterSet",
+          "signature": "MinterSet(address,bool)",
+          "topic0": "0x583b0aa0e528532caf4b907c11d7a8158a122fe2a6fb80cd9b09776ebea8d92d"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "from",
+            "to"
+          ],
+          "name": "Transfer",
+          "signature": "Transfer(address,address,uint256)",
+          "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "claimer"
+          ],
+          "name": "UBIClaimed",
+          "signature": "UBIClaimed(address,uint256,uint256)",
+          "topic0": "0xa265860bad5040e1bef830652f782ec55a23a74fc92eb2c770e61d7d50cbb015"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "from"
+          ],
+          "name": "UBIPoolFunded",
+          "signature": "UBIPoolFunded(address,uint256)",
+          "topic0": "0x7b320d49eac2c333db6dfb543995d40e9f8e96af936ee66da1ac03d9ec4a5a77"
+        }
+      ],
+      "name": "GoodDollarToken",
+      "pending_deploy": false,
+      "protocol": "ubi_core"
+    },
+    {
+      "address": "0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "currentAdmin",
+            "pendingAdmin"
+          ],
+          "name": "AdminTransferProposed",
+          "signature": "AdminTransferProposed(address,address)",
+          "topic0": "0xc02afc35b5d9b88807390ad5b17e685602c17339aa880db1dfe4e15cb3e2e3a1"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "previousAdmin",
+            "newAdmin"
+          ],
+          "name": "AdminTransferred",
+          "signature": "AdminTransferred(address,address)",
+          "topic0": "0xf8ccb027dfcd135e000e9d45e6cc2d662578a8825d4c45b5e32e0adf67e79ec6"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset",
+            "user"
+          ],
+          "name": "Borrow",
+          "signature": "Borrow(address,address,uint256)",
+          "topic0": "0x312a5e5e1079f5dda4e95dbbd0b908b291fd5b992ef22073643ab691572c5b52"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset"
+          ],
+          "name": "BorrowCapUpdated",
+          "signature": "BorrowCapUpdated(address,uint256,uint256)",
+          "topic0": "0x73538f38b30f9237b0e95598cb3adba7d6c69a975fba0f00573473a13a6c81ab"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset",
+            "receiver"
+          ],
+          "name": "FlashLoan",
+          "signature": "FlashLoan(address,address,uint256,uint256)",
+          "topic0": "0x0d7d75e01ab95780d3cd1c8ec0dd6c2ce19e3a20427eec8bf53283b6fb8e95f0"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "collateralAsset",
+            "debtAsset",
+            "user"
+          ],
+          "name": "Liquidation",
+          "signature": "Liquidation(address,address,address,uint256,uint256,address)",
+          "topic0": "0x1a98026bd2fd57ccb4933487f6d856fe1a60aa4605383cead00860edbe14b9f4"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset",
+            "user"
+          ],
+          "name": "Repay",
+          "signature": "Repay(address,address,uint256)",
+          "topic0": "0x05f2eeda0e08e4b437f487c8d7d29b14537d15e3488170dc3de5dbdf8dac4684"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset"
+          ],
+          "name": "ReserveInitialized",
+          "signature": "ReserveInitialized(address,address,address)",
+          "topic0": "0x1d9fcd0dc935b4778d5af97f55c4d7b2553257382f1ef25c412114c8eeebd88e"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset"
+          ],
+          "name": "ReserveUpdated",
+          "signature": "ReserveUpdated(address,uint256,uint256)",
+          "topic0": "0x6d129bd71f2401cbe77f49f546d7d5f58992faecfca6e51ba06b50b261e83331"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset",
+            "user"
+          ],
+          "name": "Supply",
+          "signature": "Supply(address,address,uint256)",
+          "topic0": "0xd1cf3d156d5f8f0d50f6c122ed609cec09d35c9b9fb3fff6ea0959134dae424e"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset"
+          ],
+          "name": "SupplyCapUpdated",
+          "signature": "SupplyCapUpdated(address,uint256,uint256)",
+          "topic0": "0x6d14f44808ce024f263432bc38d019a9951fbe674e9898b54844dbc8dc09c23a"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset"
+          ],
+          "name": "TreasuryMint",
+          "signature": "TreasuryMint(address,uint256)",
+          "topic0": "0x4a9f0bc4fa7e0e0d70aba96482e6e4dadf15298daff23a34b937566acd51b393"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "asset",
+            "user"
+          ],
+          "name": "Withdraw",
+          "signature": "Withdraw(address,address,uint256)",
+          "topic0": "0x9b1bfa7fa9ee420a16e124f794c35ac9f90472acc99140eb2f6447c714cad8eb"
+        }
+      ],
+      "name": "GoodLendPool",
+      "pending_deploy": false,
+      "protocol": "lend"
+    },
+    {
+      "address": "0x1291be112d480055dafd8a610b7d1e203891c274",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "swapId"
+          ],
+          "name": "SwapCompleted",
+          "signature": "SwapCompleted(uint256,bytes32,uint256)",
+          "topic0": "0xbe153a7540773df57259683912ca7d22c48cdd06ffc8b5c80124574854fb9f81"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "swapId"
+          ],
+          "name": "SwapExpired",
+          "signature": "SwapExpired(uint256)",
+          "topic0": "0x72c18cf59fb91f2a255e9d513cf58fcfe7768ff797dc0a7b5f990e85ace94124"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "swapId"
+          ],
+          "name": "SwapRefunded",
+          "signature": "SwapRefunded(uint256,string)",
+          "topic0": "0xb6255d10fb7f930c3444288bc5c9f585a90884e6ece4f5759d8e8136f3e6fb9e"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "swapId",
+            "user"
+          ],
+          "name": "SwapRequested",
+          "signature": "SwapRequested(uint256,address,address,uint256,uint256,address,address,uint256,uint256)",
+          "topic0": "0xf6c283cf38b8e88af2877f803a274dd1c6a5d291aea6206cb808faacc0746042"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "swapId"
+          ],
+          "name": "UBIFeeCollected",
+          "signature": "UBIFeeCollected(uint256,address,uint256)",
+          "topic0": "0xe01bcae5c6f2b7cec9d50a7134a8ab35ac3cf8d770115e10a2662093abeb4988"
+        }
+      ],
+      "name": "LiFiBridgeAggregator",
+      "pending_deploy": false,
+      "protocol": "swap"
+    },
+    {
+      "address": "0xfaA7b3a4b5c3f54a934a2e33D34C7bC099f96CCE",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId",
+            "buyer"
+          ],
+          "name": "Bought",
+          "signature": "Bought(uint256,address,bool,uint256,uint256)",
+          "topic0": "0x94b749af8a24a9e71a160cea1a268a96ec3299200f809d63344a0f668c0f0349"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId"
+          ],
+          "name": "MarketCreated",
+          "signature": "MarketCreated(uint256,string,uint256,address)",
+          "topic0": "0x57d0d124b72f81ed1da0dc728fc33db342705974792928796f6577b8db5c3d53"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "who"
+          ],
+          "name": "MarketCreatorSet",
+          "signature": "MarketCreatorSet(address,bool)",
+          "topic0": "0x5fe1ff4353bab97d308cea3f57ee9de03abde358662b1a55f273673ea743550b"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId"
+          ],
+          "name": "MarketResolved",
+          "signature": "MarketResolved(uint256,uint8)",
+          "topic0": "0x739f283563fb51ab6b89ee95d937b2e63a6cfcb83c385dbebb629f9d97bd43e6"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId"
+          ],
+          "name": "MarketVoided",
+          "signature": "MarketVoided(uint256)",
+          "topic0": "0x195195e0299c84aaf9806e53f35fd9fa6d45ba472297297393afe457bfff7719"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId",
+            "redeemer"
+          ],
+          "name": "Redeemed",
+          "signature": "Redeemed(uint256,address,uint256,uint256)",
+          "topic0": "0xa5851b0172fdafd3dafe0e52ce051747548a4c642a2f22793c01faf228e13062"
+        }
+      ],
+      "name": "MarketFactory",
+      "pending_deploy": false,
+      "protocol": "predict"
+    },
+    {
+      "address": null,
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "BondAmountUpdated",
+          "signature": "BondAmountUpdated(uint256,uint256)",
+          "topic0": "0xbf97c636d2d01a3b53fbd8e0f8dafb46e5ea307183831761aa619933de86ad6f"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId"
+          ],
+          "name": "BondSlashed",
+          "signature": "BondSlashed(uint256,address,address,uint256,uint256)",
+          "topic0": "0x9559fbe5570cd2982480d3e2ba73a67744e489148ee8b109cec45323972b0de9"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "DisputeWindowUpdated",
+          "signature": "DisputeWindowUpdated(uint256,uint256)",
+          "topic0": "0x96e0f610d197acd2144db3bb338fe8cdc5544b8b21a40a14334068ac60e27172"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId",
+            "disputer"
+          ],
+          "name": "ResolutionDisputed",
+          "signature": "ResolutionDisputed(uint256,address,uint256)",
+          "topic0": "0xa0950096f857303fe1784282d8fae72ba187c45f4243c57f82b99df66b61787d"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId"
+          ],
+          "name": "ResolutionFinalized",
+          "signature": "ResolutionFinalized(uint256,bool,bool)",
+          "topic0": "0xd915a7fdfe33fe83973299cbc2c22a3b4f9f820e9922ba44a2ef4ebb2eb51390"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId",
+            "proposer"
+          ],
+          "name": "ResolutionProposed",
+          "signature": "ResolutionProposed(uint256,address,bool,uint256,uint256)",
+          "topic0": "0xec2fa01cf5411c15f0591e3d53250739c2a93f7fead8acfc7331349497f2ff22"
+        }
+      ],
+      "name": "OptimisticResolver",
+      "pending_deploy": true,
+      "protocol": "predict"
+    },
+    {
+      "address": "0x9eb52339b52e71b1efd5537947e75d23b3a7719b",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "currentAdmin",
+            "pendingAdmin"
+          ],
+          "name": "AdminTransferProposed",
+          "signature": "AdminTransferProposed(address,address)",
+          "topic0": "0xc02afc35b5d9b88807390ad5b17e685602c17339aa880db1dfe4e15cb3e2e3a1"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "oldAdmin",
+            "newAdmin"
+          ],
+          "name": "AdminTransferred",
+          "signature": "AdminTransferred(address,address)",
+          "topic0": "0xf8ccb027dfcd135e000e9d45e6cc2d662578a8825d4c45b5e32e0adf67e79ec6"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "FeeBPSUpdated",
+          "signature": "FeeBPSUpdated(uint256,uint256)",
+          "topic0": "0xb04438781e840362c78ce8cc4b97de7afc9aaccde53ad4c035c61d532474c660"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "Paused",
+          "signature": "Paused(bool)",
+          "topic0": "0x0e2fb031ee032dc02d8011dc50b816eb450cf856abd8261680dac74f72165bd2"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "SwapCapUpdated",
+          "signature": "SwapCapUpdated(uint256)",
+          "topic0": "0x334538d502feb3f0c7fab3f05496f1f17cfd920a1f428b3ff468292cfb0a4104"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "user"
+          ],
+          "name": "SwapGUSDForUSDC",
+          "signature": "SwapGUSDForUSDC(address,uint256,uint256,uint256)",
+          "topic0": "0x19d6baaf4008076fefde90765b8965de468a3f462d7d146e5a9d1468008c890d"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "user"
+          ],
+          "name": "SwapUSDCForGUSD",
+          "signature": "SwapUSDCForGUSD(address,uint256,uint256,uint256)",
+          "topic0": "0xc91682597e50d783bf81329b763263cef72b0cda71f5e617e0bd4b4150f84403"
+        }
+      ],
+      "name": "PegStabilityModule",
+      "pending_deploy": false,
+      "protocol": "stable"
+    },
+    {
+      "address": "0x084815d1330ecc3ef94193a19ec222c0c73dff2d",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "previousAdmin",
+            "pendingAdmin"
+          ],
+          "name": "AdminTransferInitiated",
+          "signature": "AdminTransferInitiated(address,address)",
+          "topic0": "0xb4d7bcb4d9a5d6ef6e827e3b1554e5a2578ad9ca843903d42b05d08bfa345894"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "previousAdmin",
+            "newAdmin"
+          ],
+          "name": "AdminTransferred",
+          "signature": "AdminTransferred(address,address)",
+          "topic0": "0xf8ccb027dfcd135e000e9d45e6cc2d662578a8825d4c45b5e32e0adf67e79ec6"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId"
+          ],
+          "name": "MarketCreated",
+          "signature": "MarketCreated(uint256,bytes32,uint256)",
+          "topic0": "0xf7154dd385fd97f5acd402bbddfc43353a65d67ed869dc6e507a9f99d6a2040d"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "trader",
+            "marketId"
+          ],
+          "name": "PositionClosed",
+          "signature": "PositionClosed(address,uint256,int256,uint256)",
+          "topic0": "0x16783b3f0676d6e63220b161cedd5415bd909d2f96353db363fbd217a00971b4"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "liquidator",
+            "trader",
+            "marketId"
+          ],
+          "name": "PositionLiquidated",
+          "signature": "PositionLiquidated(address,address,uint256,uint256)",
+          "topic0": "0xa457abeae7105eb8bccbb20968069d940e939bc0c8d8b9c2c13aaed4755e68c3"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "trader",
+            "marketId"
+          ],
+          "name": "PositionOpened",
+          "signature": "PositionOpened(address,uint256,bool,uint256,uint256,uint256)",
+          "topic0": "0x5cf8fa4a8e333990018876ad3a82065e68b3859d46c3198b692b77fc3043808b"
+        }
+      ],
+      "name": "PerpEngine",
+      "pending_deploy": false,
+      "protocol": "perps"
+    },
+    {
+      "address": null,
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "DailyDerivativesImpact",
+          "signature": "DailyDerivativesImpact(uint256,uint256)",
+          "topic0": "0x0c2d9f0e9c336ef1494b3eb0b7ba4b1eedcf3e4f7d96597d926908e4144ad6d1"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "source",
+            "feeType"
+          ],
+          "name": "FeeSplit",
+          "signature": "FeeSplit(address,string,uint256,uint256,uint256,uint256)",
+          "topic0": "0xf8f449ed6ff79644d8e4e873d43862bed27d3d68aca8a0b36c94de61645df71f"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "marketId"
+          ],
+          "name": "FundingFeeSplit",
+          "signature": "FundingFeeSplit(uint256,uint256,uint256)",
+          "topic0": "0x85da25fdd17804a960fc18d208d012780f3a5be91b204774c8a1a95e0f7c04d6"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "liquidator",
+            "liquidatedTrader"
+          ],
+          "name": "LiquidationUBI",
+          "signature": "LiquidationUBI(address,address,uint256,uint256)",
+          "topic0": "0x08acc47cf71c89e6c22b1d4d5f8ff4534597e3fd3ce984a7c416ffe5cad62d5b"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "MonthlyTargetUpdated",
+          "signature": "MonthlyTargetUpdated(uint256,uint256)",
+          "topic0": "0x7099dfe316ad8496795089a037eda8c64e5a6a7e140083ce87c004fc4fdb7bce"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "trader"
+          ],
+          "name": "TradingFeeSplit",
+          "signature": "TradingFeeSplit(address,uint256,uint256,uint256)",
+          "topic0": "0xe51ed7f1055ec8295a7c4d3aa7e1e9c405571a96ec82a20f8bfec8c5301dae32"
+        }
+      ],
+      "name": "PerpUBIFeeSplitter",
+      "pending_deploy": true,
+      "protocol": "perps"
+    },
+    {
+      "address": null,
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "expert"
+          ],
+          "name": "ExpertApproved",
+          "signature": "ExpertApproved(address)",
+          "topic0": "0x1e2e4f47a2429ad295cb700bd1138a366119700aaa1a35a2df97491db44eb7e4"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "expert"
+          ],
+          "name": "ExpertRemoved",
+          "signature": "ExpertRemoved(address)",
+          "topic0": "0x27a4344e9c4d07274a40fe7a3a5c3e0d8a92ad3b7ae833fc94efaa83158056ac"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "source",
+            "feeType"
+          ],
+          "name": "FeeSplit",
+          "signature": "FeeSplit(address,string,uint256,uint256,uint256,uint256)",
+          "topic0": "0xf8f449ed6ff79644d8e4e873d43862bed27d3d68aca8a0b36c94de61645df71f"
+        }
+      ],
+      "name": "PredictUBIFeeSplitter",
+      "pending_deploy": true,
+      "protocol": "predict"
+    },
+    {
+      "address": null,
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "DailyStablecoinImpact",
+          "signature": "DailyStablecoinImpact(uint256,uint256)",
+          "topic0": "0x400ce819fdf7c3475a786dde6f7400c2ed238ee12f0f3395adc9c2502195fcde"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "source",
+            "feeType"
+          ],
+          "name": "FeeSplit",
+          "signature": "FeeSplit(address,string,uint256,uint256,uint256,uint256,address)",
+          "topic0": "0x854d7c31246b8a37d7f5e5341b8ba6de06a7522f2dbc86dc4da2f5992fc7c3ab"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "proposer"
+          ],
+          "name": "GovernanceFeeSplit",
+          "signature": "GovernanceFeeSplit(address,uint256,uint256)",
+          "topic0": "0xa6a71206c08a4d3d7b84324b1bdb50b29b4e4aa6637cabafcc3b459161442b74"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "ilk",
+            "liquidatedUser"
+          ],
+          "name": "LiquidationPenaltySplit",
+          "signature": "LiquidationPenaltySplit(bytes32,address,uint256,uint256)",
+          "topic0": "0x5e8b853c1e291ab51168b5ab87544a6ab0e724af5f0b9b8ecad3b5c3c4e16f1a"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "user",
+            "swapDirection"
+          ],
+          "name": "MintingFeeSplit",
+          "signature": "MintingFeeSplit(address,string,uint256,uint256)",
+          "topic0": "0x0462d65313f86d5e66ee1e262181238e6f7911e0e0db60149b2246dc8d7b8f25"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "MonthlyTargetUpdated",
+          "signature": "MonthlyTargetUpdated(uint256,uint256)",
+          "topic0": "0x7099dfe316ad8496795089a037eda8c64e5a6a7e140083ce87c004fc4fdb7bce"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "ilk"
+          ],
+          "name": "StabilityFeeSplit",
+          "signature": "StabilityFeeSplit(bytes32,uint256,uint256)",
+          "topic0": "0x9c26d27ebc21a23efb336b7206d6046d2e3133b8e9af7b146c3908e6cc438fe7"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "UBIRecipientUpdated",
+          "signature": "UBIRecipientUpdated(address,address)",
+          "topic0": "0xc490f93bc94a58bddba0c556b568bef04042a0038709642214199f389fcf1722"
+        }
+      ],
+      "name": "StableUBIFeeSplitter",
+      "pending_deploy": true,
+      "protocol": "stable"
+    },
+    {
+      "address": null,
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "DailyUBIImpact",
+          "signature": "DailyUBIImpact(uint256,uint256)",
+          "topic0": "0x1f808f49abb285563b8c237c7c187d0bf842e9d9e412be529bffdf0d4434f0db"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "source",
+            "feeType"
+          ],
+          "name": "FeeSplit",
+          "signature": "FeeSplit(address,string,uint256,uint256,uint256,uint256)",
+          "topic0": "0xf8f449ed6ff79644d8e4e873d43862bed27d3d68aca8a0b36c94de61645df71f"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "liquidatedUser"
+          ],
+          "name": "LiquidationUBI",
+          "signature": "LiquidationUBI(address,uint256,uint256)",
+          "topic0": "0xf5c03f8351f67fe416cb8cb81501ea20729643400202565725d18ae9c067be01"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "partner"
+          ],
+          "name": "PartnerAdded",
+          "signature": "PartnerAdded(address,uint256)",
+          "topic0": "0x2b06702faf86eea27052346f06b81fc1b0108091df3a0fe76bfb7ff20eb0d3df"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "partner"
+          ],
+          "name": "PartnerRemoved",
+          "signature": "PartnerRemoved(address)",
+          "topic0": "0xd2639eca7fc6fcdba5fa158fc8075b41bc021e97ac1e127b9da5f4fd925f0828"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "trader",
+            "asset"
+          ],
+          "name": "TradingFeeSplit",
+          "signature": "TradingFeeSplit(address,string,uint256,uint256)",
+          "topic0": "0x5503d47cba7f0b1b3a1343b3831327875fe679575c535fdad0642a7e97973f65"
+        }
+      ],
+      "name": "StocksUBIFeeSplitter",
+      "pending_deploy": true,
+      "protocol": "stocks"
+    },
+    {
+      "address": "0xD7aCb2708f0D12efD9f02326C98FC56971dfCD9A",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "AdminUpdated",
+          "signature": "AdminUpdated(address,address)",
+          "topic0": "0x101b8081ff3b56bbf45deb824d86a3b0fd38b7e3dd42421105cf8abe9106db0b"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "HookPaused",
+          "signature": "HookPaused(bool)",
+          "topic0": "0x5a7875a14cc4fe5819714bb97d945e04e6b4c0e9a07eb6dce507fb335f5798a1"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "token",
+            "pool"
+          ],
+          "name": "UBIFeeCollected",
+          "signature": "UBIFeeCollected(address,uint256,uint256,address)",
+          "topic0": "0xbc242f5093768aa93572c8496fa881527bd1bbb323867dd5f420727783b4eead"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "UBIFeeShareUpdated",
+          "signature": "UBIFeeShareUpdated(uint256,uint256)",
+          "topic0": "0x0f7f25e7d7dcea40ccf115603293fe697d91c4c831eccce842f57cc95f7dcbb8"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "UBIPoolUpdated",
+          "signature": "UBIPoolUpdated(address,address)",
+          "topic0": "0xd0b5fd4a1ad96329d0b73f65c3ef7b6d2d7eed54cc7045ecf38a8548de9e526b"
+        }
+      ],
+      "name": "UBIFeeHook",
+      "pending_deploy": false,
+      "protocol": "swap"
+    },
+    {
+      "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "dApp"
+          ],
+          "name": "DAppRegistered",
+          "signature": "DAppRegistered(address,string)",
+          "topic0": "0x1b452462b371f0b1fe9691fc8b7ba96e05962067f6beb9a744cd2c78be0322dc"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "dApp"
+          ],
+          "name": "FeeSplit",
+          "signature": "FeeSplit(address,uint256,uint256,uint256,uint256)",
+          "topic0": "0x0dbf6466fc85a1dfc483035dd7c09f8326cee61f37a6cfa6c7097da85140e060"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "oldAddr",
+            "newAddr"
+          ],
+          "name": "GoodDollarUpdated",
+          "signature": "GoodDollarUpdated(address,address)",
+          "topic0": "0xd511f9596ede52c0682115223470c4bdd21d4d183744ce5dcef883cf02ae159c"
+        }
+      ],
+      "name": "UBIFeeSplitter",
+      "pending_deploy": false,
+      "protocol": "ubi_core"
+    },
+    {
+      "address": "0x3489745eff9525ccc3d8c648102fe2cf3485e228",
+      "events": [
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "currentAdmin",
+            "pendingAdmin"
+          ],
+          "name": "AdminTransferProposed",
+          "signature": "AdminTransferProposed(address,address)",
+          "topic0": "0xc02afc35b5d9b88807390ad5b17e685602c17339aa880db1dfe4e15cb3e2e3a1"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "previousAdmin",
+            "newAdmin"
+          ],
+          "name": "AdminTransferred",
+          "signature": "AdminTransferred(address,address)",
+          "topic0": "0xf8ccb027dfcd135e000e9d45e6cc2d662578a8825d4c45b5e32e0adf67e79ec6"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "owner",
+            "ilk"
+          ],
+          "name": "CollateralDeposited",
+          "signature": "CollateralDeposited(address,bytes32,uint256)",
+          "topic0": "0x88df26d296ecbf594c8609f433503d1436d24afe03c0d9e5e29c8f6ed92ef9b4"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "owner",
+            "ilk"
+          ],
+          "name": "CollateralWithdrawn",
+          "signature": "CollateralWithdrawn(address,bytes32,uint256)",
+          "topic0": "0xe69cdf29a59dd324317b598bee3a9ed1fcffb99cc506db72633ed07b59dc6d04"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "ilk"
+          ],
+          "name": "Drip",
+          "signature": "Drip(bytes32,uint256,uint256)",
+          "topic0": "0x3b9f4ab0566d9d10726a6f7f34cdc9e4b7f03a20a878ed293de4e6ed1b419858"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "ilk"
+          ],
+          "name": "FeeCollected",
+          "signature": "FeeCollected(bytes32,uint256)",
+          "topic0": "0x156e588d1067ba3c8a6a7f4376ef70794f8afed114dc9d1421e054b65743e630"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "owner",
+            "ilk"
+          ],
+          "name": "GUSDMinted",
+          "signature": "GUSDMinted(address,bytes32,uint256)",
+          "topic0": "0x7ee657a21ac7f39b81c23a6f713ab60c53f4c04479e9a7847c08e2bc69862e80"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "owner",
+            "ilk"
+          ],
+          "name": "GUSDRepaid",
+          "signature": "GUSDRepaid(address,bytes32,uint256)",
+          "topic0": "0x8293a3003da468402b46b778420ac0fa8c2291bed4eeb36f56768a9d2220be76"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [],
+          "name": "StabilityPoolSet",
+          "signature": "StabilityPoolSet(address)",
+          "topic0": "0x51f43ead43c9a90d53ec229fbf48feb76b24efa7a147089ad9ed34ad384a94d3"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "owner",
+            "ilk"
+          ],
+          "name": "VaultClosed",
+          "signature": "VaultClosed(address,bytes32)",
+          "topic0": "0x45741dfe35116d540a34618f113e41a5092e64d6b09a503ede64ff9058a0e605"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "liquidator",
+            "owner",
+            "ilk"
+          ],
+          "name": "VaultLiquidated",
+          "signature": "VaultLiquidated(address,address,bytes32,uint256,uint256)",
+          "topic0": "0x4ecef300dc49115373f12d5ca31f017d1104f91d9fefeda602a1c42550af9109"
+        },
+        {
+          "anonymous": false,
+          "indexed_inputs": [
+            "owner",
+            "ilk"
+          ],
+          "name": "VaultOpened",
+          "signature": "VaultOpened(address,bytes32)",
+          "topic0": "0x1b3a3b641448ea38df4f27c3b71159ff387dfd96db4bfa0678a500dff874eb61"
+        }
+      ],
+      "name": "VaultManager",
+      "pending_deploy": false,
+      "protocol": "stable"
+    }
+  ],
+  "fee_routes": [
+    {
+      "event_contract": "UBIFeeHook",
+      "event_contract_address": "0xD7aCb2708f0D12efD9f02326C98FC56971dfCD9A",
+      "event_signature": "UBIFeeCollected(address,uint256,uint256,address)",
+      "event_topic0": "0xbc242f5093768aa93572c8496fa881527bd1bbb323867dd5f420727783b4eead",
+      "fee_token": "swap_output",
+      "id": 1,
+      "kind": "v4_hook",
+      "label": "Swap (V4) \u2014 afterSwap hook",
+      "pending_deploy": false,
+      "protocol": "swap",
+      "sink_address": "0x8f86403a4de0bb5791fa46b8e795c547942fe4cf",
+      "sink_address_fallback": null,
+      "sink_contract": "GoodDollarToken",
+      "sink_method": "fundUBIPool"
+    },
+    {
+      "event_contract": "LiFiBridgeAggregator",
+      "event_contract_address": "0x1291be112d480055dafd8a610b7d1e203891c274",
+      "event_signature": "UBIFeeCollected(uint256,address,uint256)",
+      "event_topic0": "0xe01bcae5c6f2b7cec9d50a7134a8ab35ac3cf8d770115e10a2662093abeb4988",
+      "fee_token": "source_token_or_native",
+      "id": 2,
+      "kind": "cross_chain_bridge",
+      "label": "Swap (cross-chain) \u2014 Li.Fi bridge skim",
+      "pending_deploy": false,
+      "protocol": "swap",
+      "sink_address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+      "sink_address_fallback": null,
+      "sink_contract": "UBIFeeSplitter",
+      "sink_method": "transfer"
+    },
+    {
+      "event_contract": "PerpUBIFeeSplitter",
+      "event_contract_address": null,
+      "event_signature": "TradingFeeSplit(address,uint256,uint256,uint256)",
+      "event_topic0": "0xe51ed7f1055ec8295a7c4d3aa7e1e9c405571a96ec82a20f8bfec8c5301dae32",
+      "fee_token": "GoodDollarToken",
+      "id": 3,
+      "kind": "trading_fee",
+      "label": "Perps trading fee \u2014 open/close",
+      "pending_deploy": false,
+      "protocol": "perps",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "PerpUBIFeeSplitter",
+      "sink_method": "splitFee"
+    },
+    {
+      "event_contract": "PerpUBIFeeSplitter",
+      "event_contract_address": null,
+      "event_signature": "FundingFeeSplit(uint256,uint256,uint256)",
+      "event_topic0": "0x85da25fdd17804a960fc18d208d012780f3a5be91b204774c8a1a95e0f7c04d6",
+      "fee_token": "GoodDollarToken",
+      "id": 4,
+      "kind": "funding_fee",
+      "label": "Perps funding fee \u2014 periodic payment",
+      "pending_deploy": false,
+      "protocol": "perps",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "PerpUBIFeeSplitter",
+      "sink_method": "splitFundingFee"
+    },
+    {
+      "event_contract": "PerpUBIFeeSplitter",
+      "event_contract_address": null,
+      "event_signature": "LiquidationUBI(address,address,uint256,uint256)",
+      "event_topic0": "0x08acc47cf71c89e6c22b1d4d5f8ff4534597e3fd3ce984a7c416ffe5cad62d5b",
+      "fee_token": "GoodDollarToken",
+      "id": 5,
+      "kind": "liquidation_fee",
+      "label": "Perps liquidation fee \u2014 liquidator bounty",
+      "pending_deploy": false,
+      "protocol": "perps",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "PerpUBIFeeSplitter",
+      "sink_method": "splitLiquidationFee"
+    },
+    {
+      "event_contract": "PredictUBIFeeSplitter",
+      "event_contract_address": null,
+      "event_signature": "FeeSplit(address,string,uint256,uint256,uint256,uint256)",
+      "event_topic0": "0xf8f449ed6ff79644d8e4e873d43862bed27d3d68aca8a0b36c94de61645df71f",
+      "fee_token": "GoodDollarToken",
+      "id": 6,
+      "kind": "market_creation_fee",
+      "label": "Predict \u2014 market creation fee",
+      "pending_deploy": false,
+      "protocol": "predict",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "PredictUBIFeeSplitter",
+      "sink_method": "splitFee"
+    },
+    {
+      "event_contract": "OptimisticResolver",
+      "event_contract_address": null,
+      "event_signature": "ResolutionFinalized(uint256,bool,bool)",
+      "event_topic0": "0xd915a7fdfe33fe83973299cbc2c22a3b4f9f820e9922ba44a2ef4ebb2eb51390",
+      "fee_token": "GoodDollarToken",
+      "id": 7,
+      "kind": "resolver_fee",
+      "label": "Predict \u2014 optimistic resolver bond/fee",
+      "pending_deploy": true,
+      "protocol": "predict",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "PredictUBIFeeSplitter",
+      "sink_method": "splitFee"
+    },
+    {
+      "event_contract": "GoodLendPool",
+      "event_contract_address": "0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc",
+      "event_signature": "TreasuryMint(address,uint256)",
+      "event_topic0": "0x4a9f0bc4fa7e0e0d70aba96482e6e4dadf15298daff23a34b937566acd51b393",
+      "fee_token": "gToken",
+      "id": 8,
+      "kind": "reserve_factor",
+      "label": "Lend \u2014 reserve factor (treasury mint)",
+      "pending_deploy": false,
+      "protocol": "lend",
+      "sink_address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+      "sink_address_fallback": null,
+      "sink_contract": "UBIFeeSplitter",
+      "sink_method": "mintToTreasury"
+    },
+    {
+      "event_contract": "VaultManager",
+      "event_contract_address": "0x3489745eff9525ccc3d8c648102fe2cf3485e228",
+      "event_signature": "FeeCollected(bytes32,uint256)",
+      "event_topic0": "0x156e588d1067ba3c8a6a7f4376ef70794f8afed114dc9d1421e054b65743e630",
+      "fee_token": "gUSD",
+      "id": 9,
+      "kind": "stability_fee",
+      "label": "Stable \u2014 VaultManager.drip stability fee",
+      "pending_deploy": false,
+      "protocol": "stable",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "StableUBIFeeSplitter",
+      "sink_method": "splitFeeToken"
+    },
+    {
+      "event_contract": "PegStabilityModule",
+      "event_contract_address": "0x9eb52339b52e71b1efd5537947e75d23b3a7719b",
+      "event_signature": "SwapUSDCForGUSD(address,uint256,uint256,uint256)",
+      "event_topic0": "0xc91682597e50d783bf81329b763263cef72b0cda71f5e617e0bd4b4150f84403",
+      "fee_token": "gUSD",
+      "id": 10,
+      "kind": "minting_fee",
+      "label": "Stable \u2014 PegStabilityModule minting fee",
+      "pending_deploy": false,
+      "protocol": "stable",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "StableUBIFeeSplitter",
+      "sink_method": "splitMintingFee"
+    },
+    {
+      "event_contract": "StableUBIFeeSplitter",
+      "event_contract_address": null,
+      "event_signature": "LiquidationPenaltySplit(bytes32,address,uint256,uint256)",
+      "event_topic0": "0x5e8b853c1e291ab51168b5ab87544a6ab0e724af5f0b9b8ecad3b5c3c4e16f1a",
+      "fee_token": "gUSD_or_GoodDollarToken",
+      "id": 11,
+      "kind": "liquidation_penalty",
+      "label": "Stable \u2014 stability pool liquidation penalty",
+      "pending_deploy": true,
+      "protocol": "stable",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "StableUBIFeeSplitter",
+      "sink_method": "splitLiquidationPenalty"
+    },
+    {
+      "event_contract": "StableUBIFeeSplitter",
+      "event_contract_address": null,
+      "event_signature": "GovernanceFeeSplit(address,uint256,uint256)",
+      "event_topic0": "0xa6a71206c08a4d3d7b84324b1bdb50b29b4e4aa6637cabafcc3b459161442b74",
+      "fee_token": "GoodDollarToken",
+      "id": 12,
+      "kind": "governance_fee",
+      "label": "Stable \u2014 governance-mandated fee",
+      "pending_deploy": true,
+      "protocol": "stable",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "StableUBIFeeSplitter",
+      "sink_method": "splitGovernanceFee"
+    },
+    {
+      "event_contract": "StocksUBIFeeSplitter",
+      "event_contract_address": null,
+      "event_signature": "TradingFeeSplit(address,string,uint256,uint256)",
+      "event_topic0": "0x5503d47cba7f0b1b3a1343b3831327875fe679575c535fdad0642a7e97973f65",
+      "fee_token": "GoodDollarToken",
+      "id": 13,
+      "kind": "trading_fee",
+      "label": "Stocks \u2014 synthetic stock trading fee",
+      "pending_deploy": false,
+      "protocol": "stocks",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "StocksUBIFeeSplitter",
+      "sink_method": "splitFee"
+    },
+    {
+      "event_contract": "StocksUBIFeeSplitter",
+      "event_contract_address": null,
+      "event_signature": "FeeSplit(address,string,uint256,uint256,uint256,uint256)",
+      "event_topic0": "0xf8f449ed6ff79644d8e4e873d43862bed27d3d68aca8a0b36c94de61645df71f",
+      "fee_token": "GoodDollarToken",
+      "id": 14,
+      "kind": "liquidation_remnant",
+      "label": "Stocks \u2014 liquidation auction remnant",
+      "pending_deploy": false,
+      "protocol": "stocks",
+      "sink_address": null,
+      "sink_address_fallback": {
+        "address": "0x809d550fca64d94bd9f66e60752a544199cfac3d",
+        "contract": "UBIFeeSplitter"
+      },
+      "sink_contract": "StocksUBIFeeSplitter",
+      "sink_method": "splitFee"
+    }
+  ],
+  "generated_at": "1970-01-01T00:00:00Z",
+  "generator": "scripts/build-dune-package.py",
+  "notes": {
+    "decoded_table_convention": "Amount fields are commented out as bytea2numeric(substr(data, ...)) for the raw-bytes pattern. Once the indexer publishes decoded tables, replace with the named decoded column.",
+    "missing_abis": [
+      "CollateralVault_WRONG_GDT",
+      "MockUSDC",
+      "MockWETH",
+      "StocksPriceOracle"
+    ],
+    "raw_table_convention": "Queries use {{blockchain}}.logs / .transactions / .blocks. Replace {{blockchain}} with the indexer's chain prefix once GoodDollar L2 is onboarded.",
+    "specialised_splitters_pending": [
+      "OptimisticResolver",
+      "PerpUBIFeeSplitter",
+      "PredictUBIFeeSplitter",
+      "StableUBIFeeSplitter",
+      "StocksUBIFeeSplitter"
+    ],
+    "ubi_split_doc": "docs/UBI-FEE-ACCOUNTING.md"
+  },
+  "queries": [
+    {
+      "fee_route_ids": [],
+      "filename": "00_chain_health.sql",
+      "kind": "chain_health",
+      "title": "Chain health \u2014 block & tx volume, 7-day rolling window"
+    },
+    {
+      "fee_route_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "filename": "01_ubi_fees_total.sql",
+      "kind": "union_all_routes",
+      "title": "Total UBI fee events \u2014 union of all 14 routes"
+    },
+    {
+      "fee_route_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "filename": "02_ubi_fees_by_protocol.sql",
+      "kind": "union_all_routes_by_protocol",
+      "title": "UBI fee events grouped by protocol"
+    },
+    {
+      "fee_route_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "filename": "03_ubi_fees_daily.sql",
+      "kind": "union_all_routes_daily",
+      "title": "Daily UBI fee event curve \u2014 90-day rolling window"
+    },
+    {
+      "fee_route_ids": [
+        1
+      ],
+      "filename": "04_swap_volume_by_pool.sql",
+      "kind": "single_event_by_indexed",
+      "title": "Swap (V4) \u2014 UBIFeeHook events grouped by pool"
+    },
+    {
+      "fee_route_ids": [
+        3,
+        4,
+        5
+      ],
+      "filename": "05_perps_trading_fees.sql",
+      "kind": "multi_event_by_route",
+      "title": "Perps \u2014 trading + funding + liquidation fee events"
+    },
+    {
+      "fee_route_ids": [
+        6,
+        7
+      ],
+      "filename": "06_predict_resolution_fees.sql",
+      "kind": "multi_event_by_route",
+      "title": "Predict \u2014 market creation + resolver fee events"
+    },
+    {
+      "fee_route_ids": [
+        8
+      ],
+      "filename": "07_lend_treasury_mint.sql",
+      "kind": "single_event_by_topic",
+      "title": "Lend \u2014 TreasuryMint reserve-factor events"
+    },
+    {
+      "fee_route_ids": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "filename": "08_stable_vault_fees.sql",
+      "kind": "multi_event_by_route",
+      "title": "Stable \u2014 VaultManager + PegStabilityModule + StableUBIFeeSplitter"
+    },
+    {
+      "fee_route_ids": [
+        13,
+        14
+      ],
+      "filename": "09_stocks_trading_fees.sql",
+      "kind": "multi_event_by_route",
+      "title": "Stocks \u2014 synthetic-stock trading + liquidation fee events"
+    },
+    {
+      "fee_route_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "filename": "10_top_ubi_payers.sql",
+      "kind": "top_payers",
+      "title": "Top 100 wallets by count of UBI-emitting transactions"
+    },
+    {
+      "fee_route_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "filename": "11_protocol_activity_30d.sql",
+      "kind": "protocol_activity_30d",
+      "title": "UBI-emitting event count per protocol, rolling 30 days"
+    }
+  ],
+  "source": "analytics/address-book.json",
+  "version": "1"
+}
