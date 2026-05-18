@@ -116,7 +116,7 @@ export default function FaucetPage() {
         <button
           onClick={claim}
           disabled={addrStatus !== 'ok' || status === 'loading'}
-          className="w-full bg-accent hover:bg-accent/80 disabled:opacity-50 disabled:cursor-not-allowed text-dark font-bold py-3 rounded-xl text-base transition-colors"
+          className="w-full bg-goodgreen text-dark-50 font-bold py-3 rounded-xl text-base hover:bg-goodgreen-600 disabled:bg-dark-300 disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-dark-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen focus-visible:ring-offset-2 focus-visible:ring-offset-dark-50 transition-colors"
         >
           {status === 'loading' ? (
             <span className="flex items-center justify-center gap-2">
@@ -127,6 +127,15 @@ export default function FaucetPage() {
             'Claim Test Tokens'
           )}
         </button>
+
+        {/* Helper text when nothing is typed and no wallet connected */}
+        <div aria-live="polite">
+          {addrStatus === 'invalid' && effectiveAddr === '' && status !== 'loading' && (
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              Enter an address above to claim.
+            </p>
+          )}
+        </div>
 
         {/* Status messages */}
         {status === 'success' && (
