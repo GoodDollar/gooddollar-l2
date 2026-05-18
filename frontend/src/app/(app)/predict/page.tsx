@@ -10,6 +10,7 @@ import { useTwentyFourHourVolume } from '@/lib/useTwentyFourHourVolume'
 import { pickArrowDirection, type ArrowDirection } from '@/lib/predictVolume'
 import { InfoBanner } from '@/components/InfoBanner'
 import { ScrollStrip } from '@/components/ScrollStrip'
+import { PredictDiscoverySidebar } from '@/components/predict/PredictDiscoverySidebar'
 import PredictLoading from './loading'
 
 function ProbabilityBar({ yesPrice }: { yesPrice: number }) {
@@ -579,7 +580,7 @@ function PredictPageContent() {
   )
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
+    <div className="w-full max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-9 h-9 rounded-xl bg-goodgreen/10 border border-goodgreen/20 flex items-center justify-center">
           <svg className="w-5 h-5 text-goodgreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -600,7 +601,15 @@ function PredictPageContent() {
 
       <FeaturedMarket market={featured} />
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      {/*
+        Polymarket-parity two-column layout (task 0048).
+        Below `lg` we collapse to a single column so the markets grid keeps
+        the full width on mobile/tablet. At `lg+` we reserve a fixed 320px
+        right rail for the discovery sidebar (Breaking news + Hot topics).
+      */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div className="min-w-0">
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <input
           type="text"
           placeholder="Search markets..."
@@ -763,6 +772,22 @@ function PredictPageContent() {
           )}
         </>
       )}
+        </div>
+
+        {/*
+          Right rail — Polymarket-parity discovery sidebar (task 0048).
+          Hidden below `lg` via the parent grid's column collapse. The
+          sidebar reads from `allMarkets` (the full set, unfiltered) so
+          it stays useful as a discovery aid even while the user is
+          filtering the main grid.
+        */}
+        <div className="hidden lg:block">
+          <PredictDiscoverySidebar
+            markets={allMarkets}
+            onCategorySelect={setCategory}
+          />
+        </div>
+      </div>
 
       <p className="text-xs text-gray-600 text-center mt-6">
         Markets are illustrative. Resolution via oracle coming soon.
