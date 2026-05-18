@@ -100,3 +100,6 @@ scripts/report-to-paperclip.sh
 .autobuilder/PRODUCTION_READY.md
 .autobuilder/journal.jsonl
 .autobuilder/memory-index.md
+
+# Local JSON-on-disk stores for testnet (predict comments etc.)
+frontend/.data/

@@ -14,6 +14,7 @@ import { useWalletReady } from '@/lib/WalletReadyContext'
 import { usePredictTrade } from '@/lib/usePredictTrade'
 import { useMounted } from '@/lib/useMounted'
 import { ProbabilityChart } from '@/components/ProbabilityChart'
+import MarketComments from '@/components/predict/MarketComments'
 
 function WalletGatedTradeButton({ isConnected, hasAmount, children }: { isConnected: boolean; hasAmount: boolean; children: React.ReactNode }) {
   if (!isConnected) {
@@ -423,6 +424,10 @@ export default function MarketDetailPage() {
             <TradePanel market={market} initialSide={initialSide} />
           )}
         </div>
+      </div>
+
+      <div className="mt-6">
+        <MarketComments marketId={market.id} />
       </div>
 
       <RelatedMarkets currentId={market.id} category={market.category} />
