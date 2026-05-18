@@ -4,6 +4,10 @@ import { useState, forwardRef } from 'react'
 import { cn } from '@/lib/cn'
 import { CalculatorOverlay } from './calculator-overlay'
 import { sanitizeNumericInput } from '@/lib/format'
+import {
+  formatCompactCaption,
+  formatCompactUsdCaption,
+} from '@/lib/formatCompactCaption'
 
 interface AmountInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
   value: string
@@ -128,20 +132,14 @@ const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(
           {/* USD Value */}
           {usdValue !== undefined && value && parseFloat(value) > 0 && (
             <span className="text-xs text-gray-500">
-              ≈ ${usdValue.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
+              ≈ {formatCompactUsdCaption(usdValue)}
             </span>
           )}
 
           {/* Max Balance Display */}
           {maxValue !== undefined && (
             <span className="text-xs text-gray-500">
-              {maxValueLabel}: {maxValue.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 4
-              })}
+              {maxValueLabel}: {formatCompactCaption(maxValue)}
               {symbol && ` ${symbol}`}
             </span>
           )}
