@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 
 interface ErrorFallbackProps {
@@ -8,6 +9,7 @@ interface ErrorFallbackProps {
   reset: () => void
   homeHref?: string
   homeLabel?: string
+  error?: Error & { digest?: string }
 }
 
 export function ErrorFallback({
@@ -16,7 +18,14 @@ export function ErrorFallback({
   reset,
   homeHref = '/',
   homeLabel = 'Go Home',
+  error,
 }: ErrorFallbackProps) {
+  useEffect(() => {
+    if (error) {
+      console.error('[error-boundary]', error)
+    }
+  }, [error])
+
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
       <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10">
@@ -37,7 +46,17 @@ export function ErrorFallback({
       </div>
 
       <h1 className="mb-3 text-3xl font-bold text-white">{title}</h1>
-      <p className="mb-8 max-w-xs text-sm text-gray-400">{message}</p>
+      <p className="mb-2 max-w-xs text-sm text-gray-400">{message}</p>
+      {error?.digest ? (
+        <p
+          className="mb-6 select-all font-mono text-xs text-gray-500"
+          data-testid="error-digest"
+        >
+          ref: {error.digest}
+        </p>
+      ) : (
+        <div className="mb-6" />
+      )}
 
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
