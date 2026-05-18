@@ -156,6 +156,95 @@ describe('usePriceFeeds — shared singleton', () => {
   })
 })
 
+// ─── Visibility-aware polling ────────────────────────────────────────────────
+
+describe('usePriceFeeds — pauses while document is hidden', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  function setDocumentHidden(hidden: boolean): void {
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => hidden,
+    })
+  }
+
+  beforeEach(() => {
+    __resetPriceFeedStoreForTests()
+    setDocumentHidden(false)
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ethereum:  { usd: 3500 },
+          'usd-coin': { usd: 1.0 },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+    __resetPriceFeedStoreForTests()
+    setDocumentHidden(false)
+  })
+
+  it('skips refresh() while the tab is hidden — even when a new symbol would normally refetch', async () => {
+    // Tab is visible: first mount triggers exactly one fetch for ETH.
+    const a = renderHook(() => usePriceFeeds(['ETH']))
+    await waitFor(() => expect(a.result.current.isLive).toBe(true))
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    // Now backgrounded. Mounting a consumer that adds a brand-new tracked
+    // symbol (USDC) would normally call refresh() immediately — but the
+    // visibility guard must early-return so no fetch fires.
+    setDocumentHidden(true)
+    renderHook(() => usePriceFeeds(['ETH', 'USDC']))
+
+    // Give microtasks a chance to flush.
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('fires exactly one fetch when the tab becomes visible again', async () => {
+    const { result } = renderHook(() => usePriceFeeds(['ETH']))
+    await waitFor(() => expect(result.current.isLive).toBe(true))
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    // Backgrounded — visibilitychange fires but document.hidden is true,
+    // so handleVisibilityChange must NOT call refresh().
+    setDocumentHidden(true)
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await Promise.resolve()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    // Foregrounded — handleVisibilityChange must fire one immediate refresh.
+    setDocumentHidden(false)
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2))
+  })
+
+  it('does not fire any fetch when the tab becomes hidden', async () => {
+    const { result } = renderHook(() => usePriceFeeds(['ETH']))
+    await waitFor(() => expect(result.current.isLive).toBe(true))
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    setDocumentHidden(true)
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+})
+
 // ─── Quotes (richer per-symbol data) ─────────────────────────────────────────
 
 describe('usePriceFeeds — quotes (change24h / volume24h / marketCap)', () => {

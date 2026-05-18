@@ -174,6 +174,10 @@ function trackedSymbols(): string[] {
 
 async function refresh(): Promise<void> {
   if (store.inFlight) return
+  // Skip work while the tab is hidden so a backgrounded landing page does not
+  // ping CoinGecko forever. handleVisibilityChange below fires an immediate
+  // refresh the moment the tab becomes visible again so prices stay fresh.
+  if (typeof document !== 'undefined' && document.hidden) return
   const symbols = trackedSymbols()
   if (symbols.length === 0) return
 
@@ -199,10 +203,22 @@ async function refresh(): Promise<void> {
   }
 }
 
+/**
+ * Module-level handler so add/remove pair on the exact same reference.
+ * Fires one immediate refresh when the tab returns to the foreground.
+ */
+function handleVisibilityChange(): void {
+  if (typeof document === 'undefined') return
+  if (!document.hidden) void refresh()
+}
+
 function startIntervalIfNeeded(): void {
   if (store.intervalId !== null) return
   if (typeof window === 'undefined') return // SSR: no interval
   store.intervalId = setInterval(refresh, REFRESH_MS)
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+  }
 }
 
 function stopIntervalIfIdle(): void {
@@ -210,6 +226,9 @@ function stopIntervalIfIdle(): void {
   if (store.intervalId !== null) {
     clearInterval(store.intervalId)
     store.intervalId = null
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }
 }
 
@@ -245,6 +264,9 @@ export function __resetPriceFeedStoreForTests(): void {
   if (store.intervalId !== null) {
     clearInterval(store.intervalId)
     store.intervalId = null
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }
   store.refs.clear()
   store.subscribers.clear()
