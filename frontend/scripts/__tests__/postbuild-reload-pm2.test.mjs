@@ -48,13 +48,27 @@ function makeExecFile({
   }
 }
 
-function makeSpawnSync({ syncOk = true, syncMessage = 'OK' } = {}) {
+function makeSpawnSync({
+  syncOk = true,
+  syncMessage = 'OK',
+  chunksOk = true,
+  chunksMessage = 'OK',
+} = {}) {
   // spawnSyncImpl(cmd, args, opts) → { status, stdout, stderr }
+  // Handles BOTH post-reload health probes:
+  //   - check-buildid-sync.mjs (BUILD_ID drift between disk and live process)
+  //   - check-served-chunks.mjs (live HTML references chunks the process
+  //     can no longer return — the iter11 stale-manifest mode)
   return (cmd, args) => {
     if (cmd === 'node' && args?.[0]?.endsWith('check-buildid-sync.mjs')) {
       return syncOk
         ? { status: 0, stdout: `[check-buildid-sync] ${syncMessage}`, stderr: '' }
         : { status: 1, stdout: '', stderr: `[check-buildid-sync] ${syncMessage}` }
+    }
+    if (cmd === 'node' && args?.[0]?.endsWith('check-served-chunks.mjs')) {
+      return chunksOk
+        ? { status: 0, stdout: `[check-served-chunks] ${chunksMessage}`, stderr: '' }
+        : { status: 1, stdout: '', stderr: `[check-served-chunks] ${chunksMessage}` }
     }
     throw new Error(`unexpected spawnSync call: ${cmd} ${args?.join(' ')}`)
   }
@@ -249,5 +263,111 @@ describe('postbuild-reload-pm2', () => {
 
     expect(result.exitCode).toBe(0)
     expect(result.message).toMatch(/reload(ed)? goodswap|goodswap.*reload/i)
+  })
+
+  // --- iter11 chunk-sync wiring ----------------------------------------------
+  // After reload, BUILD_ID parity alone is not sufficient. The live process
+  // may have rolled BUILD_ID but still hold a stale in-memory chunk manifest
+  // (the iter11 mode). We must ALSO run check-served-chunks.mjs --strict and
+  // fail loudly if any chunk referenced by the live HTML returns non-2xx.
+  //
+  // Tracking: .autobuilder/initiatives/0004-testnet-readiness-gate/tasks/
+  //   0022-iter11-blocker-pm2-stale-bundle-after-dev-clobber.md
+  it('runs check-served-chunks --strict after buildid-sync, succeeds → exit 0', async () => {
+    writeBuildId(tmp)
+
+    let chunksWasCalled = false
+    let chunksWasStrict = false
+    let chunksHadLiveUrl = false
+    const spawnSyncImpl = (cmd, args, opts) => {
+      if (cmd === 'node' && args?.[0]?.endsWith('check-buildid-sync.mjs')) {
+        return { status: 0, stdout: '[check-buildid-sync] OK', stderr: '' }
+      }
+      if (cmd === 'node' && args?.[0]?.endsWith('check-served-chunks.mjs')) {
+        chunksWasCalled = true
+        chunksWasStrict = Array.isArray(args) && args.includes('--strict')
+        chunksHadLiveUrl =
+          opts?.env?.NEXT_LIVE_URL === 'http://localhost:3100/'
+        return { status: 0, stdout: '[check-served-chunks] OK — 12 chunks 2xx', stderr: '' }
+      }
+      throw new Error(`unexpected spawnSync: ${cmd} ${args?.join(' ')}`)
+    }
+
+    const result = await postbuildReloadPm2({
+      cwd: tmp,
+      env: {},
+      whichImpl: (bin) => (bin === 'pm2' ? '/usr/bin/pm2' : null),
+      execFileImpl: makeExecFile(),
+      spawnSyncImpl,
+      fetchImpl: makeFetch({ status: 200 }),
+      healthPollMs: 1,
+      healthTimeoutMs: 100,
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(chunksWasCalled).toBe(true)
+    expect(chunksWasStrict).toBe(true)
+    expect(chunksHadLiveUrl).toBe(true)
+    // OK message should surface chunk count so operators see proof.
+    expect(result.message).toMatch(/chunk/i)
+  })
+
+  it('check-served-chunks fails after reload → exit 1 with task 0022 + chunk-failure context forwarded', async () => {
+    writeBuildId(tmp)
+
+    const result = await postbuildReloadPm2({
+      cwd: tmp,
+      env: {},
+      whichImpl: (bin) => (bin === 'pm2' ? '/usr/bin/pm2' : null),
+      execFileImpl: makeExecFile(),
+      // buildid-sync passes, chunks fail → exact iter11 stale-manifest mode.
+      spawnSyncImpl: makeSpawnSync({
+        chunksOk: false,
+        chunksMessage:
+          'FAIL: live process is serving HTML that references chunks it cannot return\n' +
+          '  /_next/static/chunks/app/predict/page-OLD.js → status 404',
+      }),
+      fetchImpl: makeFetch({ status: 200 }),
+      healthPollMs: 1,
+      healthTimeoutMs: 100,
+    })
+
+    expect(result.exitCode).toBe(1)
+    expect(result.message).toMatch(/check-served-chunks|chunk/i)
+    expect(result.message).toMatch(/page-OLD\.js|404/)
+    // Must point operator at the task that documents this failure mode.
+    expect(result.message).toMatch(/0022/)
+  })
+
+  it('check-served-chunks is NOT called when buildid-sync fails (fail-fast contract)', async () => {
+    // No point running the chunk probe if BUILD_ID itself never rolled —
+    // the buildid-sync error already tells the operator exactly what to fix.
+    writeBuildId(tmp)
+
+    let chunksWasCalled = false
+    const spawnSyncImpl = (cmd, args) => {
+      if (cmd === 'node' && args?.[0]?.endsWith('check-buildid-sync.mjs')) {
+        return { status: 1, stdout: '', stderr: '[check-buildid-sync] FAIL: drift' }
+      }
+      if (cmd === 'node' && args?.[0]?.endsWith('check-served-chunks.mjs')) {
+        chunksWasCalled = true
+        return { status: 0, stdout: '[check-served-chunks] OK', stderr: '' }
+      }
+      throw new Error(`unexpected spawnSync: ${cmd}`)
+    }
+
+    const result = await postbuildReloadPm2({
+      cwd: tmp,
+      env: {},
+      whichImpl: (bin) => (bin === 'pm2' ? '/usr/bin/pm2' : null),
+      execFileImpl: makeExecFile(),
+      spawnSyncImpl,
+      fetchImpl: makeFetch({ status: 200 }),
+      healthPollMs: 1,
+      healthTimeoutMs: 100,
+    })
+
+    expect(result.exitCode).toBe(1)
+    expect(chunksWasCalled).toBe(false)
   })
 })

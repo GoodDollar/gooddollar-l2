@@ -30,8 +30,18 @@
 //      truncated-build case `atomic-build.mjs` already catches at build
 //      time, in case `.next/` was tampered with after the build).
 //   3. `.next/build-manifest.json` exists and parses as JSON.
-//   4. A representative sample of JS chunks referenced by the manifest
-//      actually exist on disk (this is the precise iter18 mode).
+//   4. The manifest does NOT carry the dev-mode signature
+//      (`static/development/_buildManifest.js` etc.). A stray `next dev`
+//      run over the production tree leaves exactly this shape and is the
+//      precise iter11 mode. Loud failure ≫ silent dev-mode in PM2.
+//   5. If `.next/app-build-manifest.json` exists (App Router projects),
+//      it must parse as JSON. This is the precise iter11 hole the
+//      original iter18 fence missed: the legacy `build-manifest.json`
+//      is largely empty for App-Router-only routes, so chunk sampling
+//      against it alone is effectively a no-op for this codebase.
+//   6. A representative sample of JS chunks referenced by EITHER manifest
+//      actually exist on disk (this is the precise iter18 mode, extended
+//      to App Router via iter11).
 //
 // What we DELIBERATELY do not validate
 // ------------------------------------
@@ -100,6 +110,7 @@ export function validateNextBuild(opts) {
   const nextDir = join(cwd, NEXT_DIR_NAME)
   const buildIdPath = join(nextDir, 'BUILD_ID')
   const manifestPath = join(nextDir, 'build-manifest.json')
+  const appManifestPath = join(nextDir, 'app-build-manifest.json')
 
   // 1. `.next/` must exist.
   if (!existsSyncImpl(nextDir)) {
@@ -130,25 +141,62 @@ export function validateNextBuild(opts) {
     return { ok: false, reason: 'bad-manifest' }
   }
 
-  // 4. Sample up to SAMPLE_LIMIT JS chunks referenced by the manifest
-  // and confirm they exist on disk. This is the precise iter18 check.
+  // 4. iter11 fence: detect dev-mode signature. `next dev` writes a
+  // distinctive `lowPriorityFiles` entry pointing at static/development/.
+  // If we see it, a developer (or background watcher) wiped the prod tree
+  // and we must refuse to start `next start` against it — otherwise PM2
+  // proudly serves a dev build with no hot-reload client.
+  const lowPriorityFiles =
+    manifest && typeof manifest === 'object' && Array.isArray(manifest.lowPriorityFiles)
+      ? manifest.lowPriorityFiles
+      : []
+  if (lowPriorityFiles.some((f) => typeof f === 'string' && f.startsWith('static/development/'))) {
+    error('.next/build-manifest.json carries dev-mode signature (static/development/*).')
+    error('  → someone ran `next dev` over the production .next/ tree.')
+    error('  → rebuild with `npm run build` (from frontend/) before retrying.')
+    return { ok: false, reason: 'dev-mode-build' }
+  }
+
+  // 5. App Router companion manifest. Optional (Pages-Router-only
+  // projects do not have it), but if present it must parse. This codebase
+  // is App-Router-dominant so most real chunk references live here, not
+  // in `build-manifest.json.pages`.
+  let appManifest = null
+  if (existsSyncImpl(appManifestPath)) {
+    try {
+      appManifest = JSON.parse(readFileSyncImpl(appManifestPath, 'utf8'))
+    } catch (e) {
+      error(`.next/app-build-manifest.json failed to parse: ${e.message}`)
+      return { ok: false, reason: 'bad-app-manifest' }
+    }
+  }
+
+  // 6. Sample up to SAMPLE_LIMIT JS chunks referenced by EITHER manifest
+  // and confirm they exist on disk. This is the precise iter18 check,
+  // extended to App Router via iter11.
   const sampled = []
-  const pages = manifest && typeof manifest === 'object' ? manifest.pages : null
-  if (pages && typeof pages === 'object') {
-    outer: for (const files of Object.values(pages)) {
+  function sampleFromPagesMap(pagesMap) {
+    if (!pagesMap || typeof pagesMap !== 'object') return false
+    for (const files of Object.values(pagesMap)) {
       if (!Array.isArray(files)) continue
       for (const f of files) {
         if (typeof f !== 'string') continue
         if (!f.endsWith('.js')) continue
         if (sampled.includes(f)) continue
         sampled.push(f)
-        if (sampled.length >= SAMPLE_LIMIT) break outer
+        if (sampled.length >= SAMPLE_LIMIT) return true
       }
     }
+    return false
+  }
+  const legacyPages = manifest && typeof manifest === 'object' ? manifest.pages : null
+  const filled = sampleFromPagesMap(legacyPages)
+  if (!filled && appManifest && typeof appManifest === 'object') {
+    sampleFromPagesMap(appManifest.pages)
   }
 
   if (sampled.length === 0) {
-    error('build-manifest.json contained no JS chunk references')
+    error('build-manifest.json + app-build-manifest.json contained no JS chunk references')
     return { ok: false, reason: 'no-chunks' }
   }
 

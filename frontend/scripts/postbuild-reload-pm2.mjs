@@ -243,11 +243,53 @@ export async function postbuildReloadPm2({
     }
   }
 
+  // --- 8. PROVE every chunk the live HTML references is actually returnable --
+  //
+  // Why this exists (iter11)
+  // ------------------------
+  // BUILD_ID parity (step 7) is NECESSARY but not SUFFICIENT. The live
+  // process can pick up the new BUILD_ID and still hold a stale in-memory
+  // chunk manifest if Next's internal manifest cache desynced (the exact
+  // mode caught in iter11 production: HTML rendered with chunk hashes that
+  // no longer existed on disk, every route blank, /api/status still 200).
+  // check-served-chunks.mjs does the runtime probe that closes this gap:
+  // it fetches a sample of live pages, extracts every `/_next/...` URL,
+  // and confirms each one returns 2xx from the same live process.
+  //
+  // Fail-fast: if buildid-sync above failed we already returned, so we only
+  // reach this point when the build rolled over cleanly — meaning any chunk
+  // 404 here is unambiguously the stale-manifest mode and operator-actionable.
+  //
+  // Tracking: .autobuilder/initiatives/0004-testnet-readiness-gate/tasks/
+  //   0022-iter11-blocker-pm2-stale-bundle-after-dev-clobber.md
+  const chunksScript = join(cwd, 'scripts', 'check-served-chunks.mjs')
+  const chunks = spawnSyncImpl('node', [chunksScript, '--strict'], {
+    cwd,
+    env: { ...env, NEXT_LIVE_URL: liveUrl },
+  })
+  if (chunks.status !== 0) {
+    const blob = [chunks.stdout, chunks.stderr].filter(Boolean).join('\n').trim()
+    return {
+      exitCode: 1,
+      message: [
+        `[postbuild-reload-pm2] FAIL (task 0022): check-served-chunks failed after reload.`,
+        blob || '  (no chunk-probe output)',
+        '  the live process is serving HTML that references chunks it cannot return.',
+        '  diagnosis: stale in-memory manifest (iter11 mode). Try a second',
+        `  \`pm2 reload ${pm2AppName} --update-env\`; if it persists, the on-disk`,
+        '  `.next/` tree was clobbered (e.g. a stray `next dev`) — atomic rebuild',
+        '  via `npm run build` (which re-runs this hook) is the canonical fix.',
+        '  Tracking: .autobuilder/initiatives/0004-testnet-readiness-gate/tasks/0022-iter11-blocker-pm2-stale-bundle-after-dev-clobber.md',
+      ].join('\n'),
+    }
+  }
+
   return {
     exitCode: 0,
     message: [
-      `[postbuild-reload-pm2] OK — reloaded ${pm2AppName}; live process serving new BUILD_ID.`,
+      `[postbuild-reload-pm2] OK — reloaded ${pm2AppName}; live process serving new BUILD_ID and all chunks 2xx.`,
       `  ${sync.stdout.trim()}`,
+      `  ${chunks.stdout.trim()}`,
     ].join('\n'),
   }
 }
