@@ -8,6 +8,7 @@ import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, ge
 import { useMarketCount, useAllOnChainMarkets, type OnChainMarket } from '@/lib/useMarkets'
 import { InfoBanner } from '@/components/InfoBanner'
 import { ScrollStrip } from '@/components/ScrollStrip'
+import PredictLoading from './loading'
 
 function ProbabilityBar({ yesPrice }: { yesPrice: number }) {
   const yesPct = Math.round(yesPrice * 100)
@@ -681,7 +682,7 @@ function PredictPageContent() {
 
 export default function PredictPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PredictLoading />}>
       <PredictPageContent />
     </Suspense>
   )

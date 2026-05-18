@@ -11,6 +11,7 @@ import { formatPrice, formatVolume, formatMarketCap, type TokenMarketData } from
 import { TOKEN_CATEGORIES, type TokenCategory, resolveCategory } from '@/lib/tokens'
 import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
 import { ScrollStrip } from '@/components/ScrollStrip'
+import ExploreLoading from './loading'
 
 type SortField = 'price' | 'change1h' | 'change24h' | 'change7d' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -721,7 +722,7 @@ function ExplorePageContent() {
 
 export default function ExplorePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<ExploreLoading />}>
       <ExplorePageContent />
     </Suspense>
   )
