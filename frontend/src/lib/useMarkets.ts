@@ -48,6 +48,20 @@ export interface OnChainMarket {
   endTimeMs: number  // JS timestamp in ms
   isActive: boolean
   isResolved: boolean
+  /**
+   * Sum of `cost` (collateral spent) across all `Bought` events for this
+   * market in the trailing 24h window. Wei-denominated bigint (mirrors how
+   * `collateral` is stored). Optional because the volume hook may not have
+   * loaded yet on first paint.
+   */
+  volume24h?: bigint
+  /**
+   * Same as `volume24h`, but for the *previous* 24h window (i.e. 48h..24h
+   * ago). Used by the card to draw an up/down/neutral momentum arrow. `null`
+   * means we tried to fetch and got nothing (or the hook failed); `undefined`
+   * means we haven't tried yet. Both render as a neutral (no-arrow) card.
+   */
+  volume24hPrev?: bigint | null
 }
 
 // ─── Market count ─────────────────────────────────────────────────────────────

@@ -194,3 +194,57 @@ describe('filterAndSortMarkets - ending sort with expired', () => {
     }
   })
 })
+
+describe('filterAndSortMarkets - volume-24h sort (task 0049)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-02T12:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('sorts by volume24h descending when all markets have a value', () => {
+    const markets: PredictionMarket[] = [
+      mkMarket({ id: 'a', volume24h: 100 }),
+      mkMarket({ id: 'b', volume24h: 5000 }),
+      mkMarket({ id: 'c', volume24h: 0 }),
+      mkMarket({ id: 'd', volume24h: 750 }),
+    ]
+    const sorted = filterAndSortMarkets(markets, 'All', 'volume-24h', '')
+    expect(sorted.map(m => m.id)).toEqual(['b', 'd', 'a', 'c'])
+  })
+
+  it('places markets with undefined volume24h after those with a value', () => {
+    // First-paint case: some markets have loaded volume, some haven't.
+    // We never want a freshly-mounted unknown to outrank an established one.
+    const markets: PredictionMarket[] = [
+      mkMarket({ id: 'loaded-low', volume24h: 1 }),
+      mkMarket({ id: 'unknown', volume24h: undefined }),
+      mkMarket({ id: 'loaded-high', volume24h: 10_000 }),
+    ]
+    const sorted = filterAndSortMarkets(markets, 'All', 'volume-24h', '')
+    expect(sorted.map(m => m.id)).toEqual(['loaded-high', 'loaded-low', 'unknown'])
+  })
+
+  it('treats expired-vs-active as the primary key, like the other sorts', () => {
+    const markets: PredictionMarket[] = [
+      mkMarket({ id: 'expired-big', volume24h: 100_000, endDate: '2025-01-01' }),
+      mkMarket({ id: 'active-small', volume24h: 10, endDate: '2027-01-01' }),
+    ]
+    const sorted = filterAndSortMarkets(markets, 'All', 'volume-24h', '')
+    // Active must come first even though its 24h volume is way lower.
+    expect(sorted[0].id).toBe('active-small')
+  })
+
+  it('returns a stable sort when two markets share the same volume24h', () => {
+    const markets: PredictionMarket[] = [
+      mkMarket({ id: 'a', volume24h: 50 }),
+      mkMarket({ id: 'b', volume24h: 50 }),
+    ]
+    const sorted = filterAndSortMarkets(markets, 'All', 'volume-24h', '')
+    // Tie → input order preserved (Array.prototype.sort is stable in modern JS).
+    expect(sorted.map(m => m.id)).toEqual(['a', 'b'])
+  })
+})

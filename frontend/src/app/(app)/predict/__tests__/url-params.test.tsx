@@ -102,9 +102,17 @@ describe('PredictPage URL params', () => {
   it('respects ?sort= when valid', () => {
     searchParamsString = 'sort=volume'
     render(<TestWrapper><PredictPage /></TestWrapper>)
-    // The active sort button is in the sort row; we look for "Volume"
-    // (label string) and assert the highlight class.
-    const sortBtn = screen.getByRole('button', { name: /volume/i })
+    // The active sort button is in the sort row. After task 0049 added the
+    // separate "24h Volume" option, `/volume/i` is ambiguous, so we anchor
+    // on the exact "Highest Volume" label.
+    const sortBtn = screen.getByRole('button', { name: 'Highest Volume' })
+    expect(sortBtn.className).toMatch(/goodgreen/)
+  })
+
+  it('respects ?sort=volume-24h (task 0049)', () => {
+    searchParamsString = 'sort=volume-24h'
+    render(<TestWrapper><PredictPage /></TestWrapper>)
+    const sortBtn = screen.getByRole('button', { name: '24h Volume' })
     expect(sortBtn.className).toMatch(/goodgreen/)
   })
 
@@ -144,7 +152,8 @@ describe('PredictPage URL params', () => {
     expect(input.value).toBe('ETH')
     const cryptoChip = screen.getByRole('button', { name: 'Crypto' })
     expect(cryptoChip.className).toMatch(/goodgreen/)
-    const volumeBtn = screen.getByRole('button', { name: /volume/i })
+    // Exact label (see "respects ?sort= when valid" above for rationale).
+    const volumeBtn = screen.getByRole('button', { name: 'Highest Volume' })
     expect(volumeBtn.className).toMatch(/goodgreen/)
   })
 })

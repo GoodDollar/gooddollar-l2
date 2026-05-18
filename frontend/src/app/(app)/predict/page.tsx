@@ -6,6 +6,8 @@ import { SearchX } from 'lucide-react'
 
 import { filterAndSortMarkets, formatVolume, ALL_CATEGORIES, getMarketStatus, getDaysLeftLabel, generateProbabilityHistory, selectFeaturedMarket, hasMeaningfulPrice, type MarketCategory, type SortOption, type PredictionMarket } from '@/lib/predictData'
 import { useMarketCount, useAllOnChainMarkets, type OnChainMarket } from '@/lib/useMarkets'
+import { useTwentyFourHourVolume } from '@/lib/useTwentyFourHourVolume'
+import { pickArrowDirection, type ArrowDirection } from '@/lib/predictVolume'
 import { InfoBanner } from '@/components/InfoBanner'
 import { ScrollStrip } from '@/components/ScrollStrip'
 import PredictLoading from './loading'
@@ -99,6 +101,44 @@ function MarketIcon({ category }: { category: MarketCategory }) {
   )
 }
 
+/**
+ * Up/down/flat indicator next to the 24h volume figure. We deliberately keep
+ * this purely presentational and stateless — the *decision* of which arrow to
+ * show lives in `pickArrowDirection` (task 0049) so the rule is unit-tested
+ * without React.
+ */
+function MomentumArrow({ direction }: { direction: ArrowDirection }) {
+  if (direction === 'neutral') return null
+  const isUp = direction === 'up'
+  const color = isUp ? 'text-green-400' : 'text-red-400'
+  const label = isUp ? 'Volume rising vs. previous 24h' : 'Volume falling vs. previous 24h'
+  return (
+    <svg
+      className={`w-3 h-3 ${color}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label={label}
+    >
+      {isUp ? (
+        <>
+          <path d="M5 12l7-7 7 7" />
+          <path d="M12 19V5" />
+        </>
+      ) : (
+        <>
+          <path d="M5 12l7 7 7-7" />
+          <path d="M12 5v14" />
+        </>
+      )}
+    </svg>
+  )
+}
+
 function MarketCard({ market }: { market: PredictionMarket }) {
   const router = useRouter()
   const [isTrading, setIsTrading] = useState(false)
@@ -107,6 +147,20 @@ function MarketCard({ market }: { market: PredictionMarket }) {
   const status = getMarketStatus(market.endDate)
   const isExpired = status === 'expired'
   const timeLabel = getDaysLeftLabel(market.endDate)
+
+  // 24h volume + momentum (task 0049). The forwarding chain is:
+  //   useTwentyFourHourVolume -> onChainToMarket -> PredictionMarket
+  // both fields are in human-readable G$ (1e18 wei -> 1 G$) at this point,
+  // so we can treat them as plain numbers.
+  const has24h = typeof market.volume24h === 'number'
+  const arrowDir = has24h
+    ? pickArrowDirection(
+        BigInt(Math.round(market.volume24h ?? 0)),
+        market.volume24hPrev === null || market.volume24hPrev === undefined
+          ? null
+          : BigInt(Math.round(market.volume24hPrev)),
+      )
+    : 'neutral'
 
   const timeLabelClass = status === 'expired'
     ? 'text-red-400/70 bg-red-500/10 px-1.5 py-0.5 rounded'
@@ -160,7 +214,17 @@ function MarketCard({ market }: { market: PredictionMarket }) {
       </div>
 
       <div className="mb-3 pl-12">
-        <span className="text-xs font-bold text-white/80">{formatVolume(market.volume)} Vol.</span>
+        {has24h ? (
+          <div className="flex flex-col gap-0.5 leading-tight">
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-white/90">
+              {formatVolume(market.volume24h ?? 0)} 24h
+              <MomentumArrow direction={arrowDir} />
+            </span>
+            <span className="text-[10px] text-gray-500">{formatVolume(market.volume)} all-time</span>
+          </div>
+        ) : (
+          <span className="text-xs font-bold text-white/80">{formatVolume(market.volume)} Vol.</span>
+        )}
       </div>
 
       <div className="mb-3">
@@ -340,6 +404,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'trending', label: 'Trending' },
   { value: 'newest', label: 'Newest' },
   { value: 'volume', label: 'Highest Volume' },
+  { value: 'volume-24h', label: '24h Volume' },
   { value: 'ending', label: 'Ending Soon' },
 ]
 
@@ -402,6 +467,18 @@ function inferCategory(question: string): MarketCategory {
 function onChainToMarket(m: OnChainMarket): PredictionMarket {
   const endDate = new Date(m.endTimeMs).toISOString().slice(0, 10)
   const totalTokens = Number(m.totalYES + m.totalNO)
+  // 24h volume comes back as raw wei (bigint) from `useTwentyFourHourVolume`,
+  // but `PredictionMarket.volume24h` is a plain number in G$ units to keep
+  // the UI helpers (formatVolume, sort comparators) uniform with the existing
+  // all-time `volume` field. `null` is preserved for "we tried and got
+  // nothing"; `undefined` for "haven't loaded yet". Both render as no-arrow.
+  const volume24h = m.volume24h === undefined ? undefined : Number(m.volume24h) / 1e18
+  const volume24hPrev =
+    m.volume24hPrev === undefined
+      ? undefined
+      : m.volume24hPrev === null
+      ? null
+      : Number(m.volume24hPrev) / 1e18
   return {
     id: m.id.toString(),
     question: m.question,
@@ -415,6 +492,8 @@ function onChainToMarket(m: OnChainMarket): PredictionMarket {
     resolutionSource: 'On-chain oracle resolution',
     createdAt: endDate,
     totalShares: totalTokens / 1e18,
+    volume24h,
+    volume24hPrev,
   }
 }
 
@@ -424,12 +503,18 @@ function onChainToMarket(m: OnChainMarket): PredictionMarket {
 // rather than silently dropping the params. We only read params here;
 // we do NOT push state changes back to the URL.
 const VALID_SORTS: readonly SortOption[] = [
-  'trending', 'newest', 'volume', 'ending',
+  'trending', 'newest', 'volume', 'volume-24h', 'ending',
 ]
 
 function PredictPageContent() {
   const { count } = useMarketCount()
   const { markets: onChainMarkets } = useAllOnChainMarkets(count)
+  // 24h volume is a *secondary* signal — the page must keep working if this
+  // hook errors or RPC is slow, so we don't gate any render on its loading
+  // state. We just merge whatever it has into the OnChainMarket records
+  // before they get adapted, and pickArrowDirection / the card both treat
+  // undefined/null as "no arrow".
+  const { volumes: volumesByMarketId } = useTwentyFourHourVolume()
   const searchParams = useSearchParams()
 
   const initialQuery = () => (searchParams?.get('q') ?? '').trim()
@@ -460,8 +545,14 @@ function PredictPageContent() {
   const [showExpired, setShowExpired] = useState<boolean>(initialShowExpired)
 
   const allMarkets = useMemo(() => {
-    return onChainMarkets.map(onChainToMarket)
-  }, [onChainMarkets])
+    return onChainMarkets.map(m => {
+      const v = volumesByMarketId.get(m.id.toString())
+      const enriched: OnChainMarket = v
+        ? { ...m, volume24h: v.volume24h, volume24hPrev: v.volume24hPrev }
+        : m
+      return onChainToMarket(enriched)
+    })
+  }, [onChainMarkets, volumesByMarketId])
 
   const filtered = useMemo(
     () => filterAndSortMarkets(allMarkets, category, sort, query),

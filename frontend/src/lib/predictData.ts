@@ -26,11 +26,34 @@ export interface PredictionMarket {
   resolutionSource: string
   createdAt: string
   totalShares: number
+  /**
+   * Trailing-24h trade volume in collateral units (task 0049). Sourced from
+   * client-side `Bought` event rollup in `use24hVolumeForMarkets.ts`. The
+   * unit matches `volume` (already-divided-by-1e18 number). `undefined`
+   * means the hook hasn't returned yet on this paint; `0` means we looked
+   * and there was genuinely no trade activity in the last 24h. The card
+   * differentiates the two — see Polymarket's "—" placeholder convention.
+   */
+  volume24h?: number
+  /**
+   * Previous 24h window volume (48h..24h ago). Used purely to compute the
+   * up/down arrow direction next to the 24h figure. `null` means we tried
+   * to fetch and got nothing back; `undefined` means we haven't tried yet.
+   * Both render as a neutral (no-arrow) card to avoid lying about momentum.
+   */
+  volume24hPrev?: number | null
 }
 
 export const ALL_CATEGORIES: MarketCategory[] = ['Crypto', 'Politics', 'Sports', 'AI & Tech', 'World Events', 'Culture']
 
-export type SortOption = 'trending' | 'newest' | 'volume' | 'ending'
+/**
+ * `'volume-24h'` was added in task 0049 to match Polymarket's default sort
+ * (recency-weighted activity beats lifetime cumulative volume). When a
+ * market has no `volume24h` yet (hook still loading on first paint), it
+ * sorts below any market that does have a value, so the grid never
+ * spuriously hides established markets behind freshly-opened ones.
+ */
+export type SortOption = 'trending' | 'newest' | 'volume' | 'volume-24h' | 'ending'
 
 export function filterAndSortMarkets(
   markets: PredictionMarket[],
@@ -66,6 +89,22 @@ export function filterAndSortMarkets(
       break
     case 'volume':
       result.sort((a, b) => expiredLast(a, b) || b.volume - a.volume)
+      break
+    case 'volume-24h':
+      // task 0049: markets with no loaded 24h figure sort to the bottom of
+      // the active group so the grid doesn't spuriously hide established
+      // markets behind newly-opened ones on first paint. Within the loaded
+      // set, higher 24h volume wins.
+      result.sort((a, b) => {
+        const r = expiredLast(a, b)
+        if (r !== 0) return r
+        const av = a.volume24h
+        const bv = b.volume24h
+        if (av === undefined && bv === undefined) return 0
+        if (av === undefined) return 1
+        if (bv === undefined) return -1
+        return bv - av
+      })
       break
     case 'ending':
       result.sort((a, b) => expiredLast(a, b) || new Date(a.endDate).getTime() - new Date(b.endDate).getTime())

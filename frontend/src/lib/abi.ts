@@ -120,6 +120,42 @@ export const MarketFactoryABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  // Events — required for client-side viem.getLogs(...) volume rollups
+  // (task 0049: 24h volume + momentum delta on cards).
+  {
+    type: 'event',
+    name: 'MarketCreated',
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'marketId', type: 'uint256' },
+      { indexed: false, name: 'question', type: 'string' },
+      { indexed: false, name: 'endTime', type: 'uint256' },
+      { indexed: false, name: 'resolver', type: 'address' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'Bought',
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'marketId', type: 'uint256' },
+      { indexed: true, name: 'buyer', type: 'address' },
+      { indexed: false, name: 'isYES', type: 'bool' },
+      { indexed: false, name: 'amount', type: 'uint256' },
+      { indexed: false, name: 'cost', type: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'Redeemed',
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'marketId', type: 'uint256' },
+      { indexed: true, name: 'redeemer', type: 'address' },
+      { indexed: false, name: 'amount', type: 'uint256' },
+      { indexed: false, name: 'payout', type: 'uint256' },
+    ],
+  },
 ] as const
 
 export const ConditionalTokensABI = [
