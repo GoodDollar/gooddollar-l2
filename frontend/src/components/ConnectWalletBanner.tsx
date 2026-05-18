@@ -36,9 +36,13 @@ export function ConnectWalletBanner() {
     ? 'Switch to the Good Chain devnet'
     : 'Connect your wallet'
 
+  // NOTE: Keep the connected-categories list in sync with the sections that
+  // /portfolio actually renders (StockPositions, PredictPositions, PerpPositions).
+  // When Lend / Stable / Swap portfolio sections ship, expand this sentence
+  // back out — do not leave it stale.
   const description = wrongChain
     ? 'Your wallet is on a different network. Switch to chain 42069 to see your positions.'
-    : 'See your live on-chain positions across Stocks, Predict, Perps, Lend, Stable, and Swap.'
+    : 'See your live on-chain positions across Stocks, Predict, and Perps.'
 
   const ctaLabel = wrongChain ? 'Switch Network' : 'Connect Wallet'
 
