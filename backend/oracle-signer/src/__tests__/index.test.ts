@@ -66,8 +66,9 @@ describe('OracleSignerService', () => {
     const service = new OracleSignerService(makeConfig());
 
     service.getBuffer().update({
+      source: 'etoro',
       symbol: 'AAPL',
-      instrumentId: 1,
+      instrumentId: '1',
       bid: 191.49,
       ask: 191.51,
       mid: 191.50,
@@ -75,6 +76,7 @@ describe('OracleSignerService', () => {
       timestamp: Date.now(),
       sessionState: 'open',
       confidence: 95,
+      stale: false,
     });
 
     const result = await service.tick();
@@ -92,8 +94,9 @@ describe('OracleSignerService', () => {
     // Simulate WS quote for a non-configured symbol
     const wsClient = (service as any).wsClient;
     wsClient._onQuote({
+      source: 'etoro',
       symbol: 'GOOGL',
-      instrumentId: 2,
+      instrumentId: '2',
       bid: 175.79,
       ask: 175.81,
       mid: 175.80,
@@ -101,13 +104,15 @@ describe('OracleSignerService', () => {
       timestamp: Date.now(),
       sessionState: 'open',
       confidence: 90,
+      stale: false,
     });
 
     expect(service.getBuffer().getLatestQuote('GOOGL')).toBeUndefined();
 
     wsClient._onQuote({
+      source: 'etoro',
       symbol: 'AAPL',
-      instrumentId: 1,
+      instrumentId: '1',
       bid: 191.49,
       ask: 191.51,
       mid: 191.50,
@@ -115,6 +120,7 @@ describe('OracleSignerService', () => {
       timestamp: Date.now(),
       sessionState: 'open',
       confidence: 95,
+      stale: false,
     });
 
     expect(service.getBuffer().getLatestQuote('AAPL')).toBeDefined();
@@ -129,8 +135,9 @@ describe('OracleSignerService', () => {
 
     const wsClient = (service as any).wsClient;
     wsClient._onQuote({
+      source: 'etoro',
       symbol: 'GOOGL',
-      instrumentId: 2,
+      instrumentId: '2',
       bid: 175.79,
       ask: 175.81,
       mid: 175.80,
@@ -138,6 +145,7 @@ describe('OracleSignerService', () => {
       timestamp: Date.now(),
       sessionState: 'open',
       confidence: 90,
+      stale: false,
     });
 
     expect(service.getBuffer().getLatestQuote('GOOGL')).toBeDefined();

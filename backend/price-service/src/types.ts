@@ -1,24 +1,5 @@
-export type SessionState =
-  | 'pre-market'
-  | 'open'
-  | 'after-hours'
-  | 'closed'
-  | 'halted'
-  | 'unknown';
-
-export interface NormalizedQuote {
-  source: 'etoro';
-  symbol: string;
-  instrumentId: string;
-  bid: number;
-  ask: number;
-  mid: number;
-  last: number;
-  timestamp: number;
-  sessionState: SessionState;
-  confidence: number;
-  stale: boolean;
-}
+export type { NormalizedQuote, SessionState } from '../../shared/quote-types';
+import type { NormalizedQuote } from '../../shared/quote-types';
 
 export interface RiskFilterResult {
   accepted: boolean;

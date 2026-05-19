@@ -3,8 +3,9 @@ import { NormalizedQuote, SessionState } from '../types';
 
 function makeQuote(symbol: string, mid: number, overrides: Partial<NormalizedQuote> = {}): NormalizedQuote {
   return {
+    source: 'etoro',
     symbol,
-    instrumentId: 1,
+    instrumentId: '1',
     bid: mid - 0.01,
     ask: mid + 0.01,
     mid,
@@ -12,6 +13,7 @@ function makeQuote(symbol: string, mid: number, overrides: Partial<NormalizedQuo
     timestamp: Date.now(),
     sessionState: 'open',
     confidence: 95,
+    stale: false,
     ...overrides,
   };
 }
