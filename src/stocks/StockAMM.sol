@@ -235,10 +235,9 @@ contract StockAMM is ReentrancyGuard {
 
         if (!gDollar.transferFrom(msg.sender, address(this), gDollarIn)) revert TransferFailed();
 
-        pool.gDollarReserve += netIn;
+        uint256 ubiFee = _routeFee(fee);
+        pool.gDollarReserve += gDollarIn - ubiFee;
         pool.syntheticReserve -= syntheticOut;
-
-        _routeFee(fee);
 
         if (!SyntheticAsset(pool.syntheticAsset).transfer(msg.sender, syntheticOut)) revert TransferFailed();
 
@@ -277,10 +276,9 @@ contract StockAMM is ReentrancyGuard {
         SyntheticAsset sa = SyntheticAsset(pool.syntheticAsset);
         if (!sa.transferFrom(msg.sender, address(this), syntheticIn)) revert TransferFailed();
 
+        uint256 ubiFee = _routeFee(fee);
         pool.syntheticReserve += syntheticIn;
-        pool.gDollarReserve -= (gDollarOut + fee);
-
-        _routeFee(fee);
+        pool.gDollarReserve -= (gDollarOut + ubiFee);
 
         if (!gDollar.transfer(msg.sender, gDollarOut)) revert TransferFailed();
 
@@ -351,9 +349,9 @@ contract StockAMM is ReentrancyGuard {
         return spread;
     }
 
-    function _routeFee(uint256 fee) internal {
-        if (fee == 0) return;
-        uint256 ubiFee = Math.mulDiv(fee, UBI_FEE_BPS, TRADE_FEE_BPS);
+    function _routeFee(uint256 fee) internal returns (uint256 ubiFee) {
+        if (fee == 0) return 0;
+        ubiFee = Math.mulDiv(fee, UBI_FEE_BPS, TRADE_FEE_BPS);
         if (ubiFee > 0) {
             if (!gDollar.transfer(feeSplitter, ubiFee)) revert TransferFailed();
         }
