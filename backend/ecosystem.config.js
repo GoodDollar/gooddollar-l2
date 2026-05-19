@@ -202,6 +202,19 @@ module.exports = {
         PORT: pick('STATUS_AGGREGATOR_PORT', '9200'),
       },
     }),
+    app({
+      name: 'oracle-signer',
+      script: 'oracle-signer/dist/index.js',
+      env: {
+        ...BASE_ENV,
+        PRICE_SERVICE_URL: pick('PRICE_SERVICE_URL', 'ws://localhost:4001'),
+        STOCK_ORACLE_V2_ADDRESS: pickAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], ''),
+        ORACLE_SIGNER_KEY: pick('ORACLE_SIGNER_KEY', ''),
+        ORACLE_UPDATE_INTERVAL: pick('ORACLE_UPDATE_INTERVAL', '5000'),
+        ORACLE_MIN_DEVIATION: pick('ORACLE_MIN_DEVIATION', '10'),
+        ORACLE_SYMBOLS: pick('ORACLE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ,NFLX'),
+      },
+    }),
     // Iter 3 (testnet-readiness-gate): adopt the goodswap Next.js frontend
     // into ecosystem.config.js so PM2 supervises it with production-grade
     // restart policies and a pinned NEXT_SERVER_ACTIONS_ENCRYPTION_KEY.
