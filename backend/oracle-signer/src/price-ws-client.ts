@@ -41,8 +41,9 @@ export class PriceWsClient {
 
     this.ws.on('message', (data: WebSocket.Data) => {
       try {
-        const quote = JSON.parse(data.toString()) as NormalizedQuote;
-        if (quote.symbol && typeof quote.mid === 'number') {
+        const parsed = JSON.parse(data.toString());
+        const quote = this.extractQuote(parsed);
+        if (quote && quote.symbol && typeof quote.mid === 'number') {
           this.onQuote(quote);
         }
       } catch {
@@ -65,6 +66,25 @@ export class PriceWsClient {
   private scheduleReconnect(): void {
     setTimeout(() => this.doConnect(), this.reconnectDelay);
     this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
+  }
+
+  /**
+   * Handles both the WsBroadcaster envelope format ({ type: 'quote', data: NormalizedQuote })
+   * and raw NormalizedQuote messages for backward compatibility.
+   */
+  private extractQuote(parsed: unknown): NormalizedQuote | null {
+    if (!parsed || typeof parsed !== 'object') return null;
+    const msg = parsed as Record<string, unknown>;
+
+    if (msg.type === 'quote' && msg.data && typeof msg.data === 'object') {
+      return msg.data as NormalizedQuote;
+    }
+
+    if ('symbol' in msg && 'mid' in msg) {
+      return msg as unknown as NormalizedQuote;
+    }
+
+    return null;
   }
 
   close(): void {
