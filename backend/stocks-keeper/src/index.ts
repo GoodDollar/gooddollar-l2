@@ -17,6 +17,7 @@ import { ethers } from 'ethers';
 import dotenv from 'dotenv';
 import pino from 'pino';
 import { startHealthServer } from './healthServer';
+import { OracleV2Updater } from './oracleV2Updater';
 
 dotenv.config();
 const logger = pino({ name: 'stocks-keeper' });
@@ -26,6 +27,7 @@ const logger = pino({ name: 'stocks-keeper' });
 const RPC_URL = process.env.L2_RPC_URL ?? 'http://localhost:8545';
 const OPERATOR_KEY = process.env.OPERATOR_PRIVATE_KEY ?? '';
 const ORACLE_ADDRESS = process.env.PRICE_ORACLE_ADDRESS ?? '';
+const ORACLE_V2_ADDRESS = process.env.STOCK_ORACLE_V2_ADDRESS ?? '';
 const INTERVAL_MS = parseInt(process.env.UPDATE_INTERVAL_MS ?? '60000', 10); // 1 minute
 const DEVIATION_THRESHOLD_BPS = parseInt(process.env.DEVIATION_BPS ?? '50', 10); // 0.5%
 
@@ -239,7 +241,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function runCycle(updater: OracleUpdater): Promise<void> {
+async function runCycle(updater: OracleUpdater, v2Updater: OracleV2Updater | null): Promise<void> {
   logger.info('Starting price update cycle');
 
   const quotes = await fetchPrices(TICKERS);
@@ -249,6 +251,11 @@ async function runCycle(updater: OracleUpdater): Promise<void> {
   for (const quote of quotes) {
     const didUpdate = await updater.updatePrice(quote);
     if (didUpdate) updated++;
+  }
+
+  if (v2Updater && quotes.length > 0) {
+    const v2Updated = await v2Updater.batchUpdate(quotes);
+    logger.info({ v2Updated }, 'StockOracleV2 batch complete');
   }
 
   logger.info({ updated, skipped: quotes.length - updated }, 'Cycle complete');
@@ -282,14 +289,21 @@ async function main(): Promise<void> {
   const updater = new OracleUpdater(RPC_URL, OPERATOR_KEY, ORACLE_ADDRESS);
   await updater.init();
 
+  let v2Updater: OracleV2Updater | null = null;
+  if (ORACLE_V2_ADDRESS) {
+    v2Updater = new OracleV2Updater(RPC_URL, OPERATOR_KEY, ORACLE_V2_ADDRESS, DEVIATION_THRESHOLD_BPS);
+    await v2Updater.init(TICKERS);
+    logger.info({ oracleV2: ORACLE_V2_ADDRESS }, 'StockOracleV2 updater enabled');
+  }
+
   // Run first cycle immediately
-  await runCycle(updater);
+  await runCycle(updater, v2Updater);
 
   // Then loop
   while (true) {
     await sleep(INTERVAL_MS);
     try {
-      await runCycle(updater);
+      await runCycle(updater, v2Updater);
     } catch (err) {
       logger.error({ err }, 'Cycle failed');
     }

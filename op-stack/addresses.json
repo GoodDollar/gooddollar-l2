@@ -37,7 +37,9 @@
         "MockUSDC": "0x0e801d84fa97b50751dbf25036d067dcf18858bf",
         "CollateralRegistry": "0xa56f946d6398dd7d9d4d9b337cf9e0f68982ca5b",
         "GoodLendToken": "0xc976c932092eccd8f328ffd85066c0c05ed54044",
-        "UBIRevenueTracker": "0x162700d1613dfec978032a909de02643bc55df1a"
+        "UBIRevenueTracker": "0x162700d1613dfec978032a909de02643bc55df1a",
+        "StockOracleV2": "0x0000000000000000000000000000000000000000",
+        "StockOracleV2Adapter": "0x0000000000000000000000000000000000000000"
     },
     "admin": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "sequencer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",

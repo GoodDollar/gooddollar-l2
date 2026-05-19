@@ -119,6 +119,7 @@ module.exports = {
       env: {
         ...BASE_ENV,
         PRICE_ORACLE_ADDRESS: pick('PRICE_ORACLE_ADDRESS', '0x20d7b364e8ed1f4260b5b90c41c2dec3c1f6d367'),
+        STOCK_ORACLE_V2_ADDRESS: pickAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], ''),
         SYNTHETIC_FACTORY: pickAny(['SYNTHETIC_FACTORY', 'STOCKS'], '0xfaaddc93baf78e89dcf37ba67943e1be8f37bb8c'),
         COLLATERAL_VAULT: pick('COLLATERAL_VAULT', '0x276c216d241856199a83bf27b2286659e5b877d3'),
       },
