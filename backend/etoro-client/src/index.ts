@@ -34,8 +34,8 @@ export class EtoroClient {
     });
 
     this.marketData = new MarketDataModule(this.http, config?.marketData);
-    this.trading = new TradingModule();
-    this.account = new AccountModule();
+    this.trading = new TradingModule(this.http, this.audit);
+    this.account = new AccountModule(this.http, this.audit);
   }
 
   async authenticate(): Promise<string> {

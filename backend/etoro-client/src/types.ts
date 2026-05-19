@@ -102,10 +102,10 @@ export interface Position {
 }
 
 export interface AccountBalance {
-  totalBalance: number;
-  availableBalance: number;
-  totalMargin: number;
-  unrealizedPnl: number;
+  totalEquity: number;
+  availableCash: number;
+  usedMargin: number;
+  freeMargin: number;
   currency: string;
 }
 
