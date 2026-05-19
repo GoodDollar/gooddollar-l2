@@ -20,6 +20,7 @@ export interface OracleSignerConfig {
   updateIntervalMs: number;
   minDeviationBps: number;
   symbols: string[];
+  txTimeoutMs: number;
 }
 
 export interface PendingUpdate {

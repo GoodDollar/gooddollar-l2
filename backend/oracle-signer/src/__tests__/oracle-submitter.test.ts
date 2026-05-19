@@ -30,7 +30,17 @@ jest.mock('ethers', () => {
   };
 });
 
-const { __mockContract } = require('ethers') as { __mockContract: Record<string, jest.Mock> };
+const { __mockContract, __mockTx } = require('ethers') as {
+  __mockContract: Record<string, jest.Mock>;
+  __mockTx: { wait: jest.Mock };
+};
+
+function makeSampleUpdates(): PendingUpdate[] {
+  return [
+    { symbol: 'AAPL', price8: BigInt(19_150_000_000), timestamp: 1716100000, session: SessionState.Open, confidence: 95 },
+    { symbol: 'TSLA', price8: BigInt(17_830_000_000), timestamp: 1716100000, session: SessionState.Open, confidence: 90 },
+  ];
+}
 
 describe('OracleSubmitter', () => {
   let submitter: OracleSubmitter;
@@ -41,15 +51,12 @@ describe('OracleSubmitter', () => {
       'http://localhost:8545',
       '0x0000000000000000000000000000000000000001',
       '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      60000,
     );
   });
 
   it('submits a batch of price updates', async () => {
-    const updates: PendingUpdate[] = [
-      { symbol: 'AAPL', price8: BigInt(19_150_000_000), timestamp: 1716100000, session: SessionState.Open, confidence: 95 },
-      { symbol: 'TSLA', price8: BigInt(17_830_000_000), timestamp: 1716100000, session: SessionState.Open, confidence: 90 },
-    ];
-
+    const updates = makeSampleUpdates();
     const result = await submitter.submitBatch(updates);
 
     expect(__mockContract.batchUpdatePrices).toHaveBeenCalledWith(
@@ -68,6 +75,35 @@ describe('OracleSubmitter', () => {
 
   it('throws on empty batch', async () => {
     await expect(submitter.submitBatch([])).rejects.toThrow('Empty batch');
+  });
+
+  it('handles null receipt (transaction dropped/replaced)', async () => {
+    __mockTx.wait.mockResolvedValueOnce(null);
+
+    await expect(submitter.submitBatch(makeSampleUpdates())).rejects.toThrow(
+      'Transaction dropped or replaced',
+    );
+  });
+
+  it('passes timeout to tx.wait()', async () => {
+    const customTimeout = 30000;
+    const sub = new OracleSubmitter(
+      'http://localhost:8545',
+      '0x0000000000000000000000000000000000000001',
+      '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      customTimeout,
+    );
+
+    await sub.submitBatch(makeSampleUpdates());
+    expect(__mockTx.wait).toHaveBeenCalledWith(1, customTimeout);
+  });
+
+  it('propagates timeout errors from ethers', async () => {
+    const timeoutError = new Error('timeout');
+    (timeoutError as any).code = 'TIMEOUT';
+    __mockTx.wait.mockRejectedValueOnce(timeoutError);
+
+    await expect(submitter.submitBatch(makeSampleUpdates())).rejects.toThrow('timeout');
   });
 
   it('exposes signer address', () => {
