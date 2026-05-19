@@ -83,6 +83,7 @@ contract StockAMM is ReentrancyGuard {
     error InsufficientShares(uint256 have, uint256 want);
     error TransferFailed();
     error SlippageExceeded(uint256 received, uint256 minimum);
+    error OraclePriceZero(bytes32 key);
 
     // ============ Modifiers ============
 
@@ -221,7 +222,8 @@ contract StockAMM is ReentrancyGuard {
         _validatePool(pool, key);
 
         uint256 oraclePrice8 = oracle.getPriceByKey(pool.oracleKey);
-        uint256 spreadBps = _calcSpread(pool, key, true);
+        _requireNonZeroPrice(pool.oracleKey, oraclePrice8);
+        uint256 spreadBps = _calcSpread(pool, key, true, oraclePrice8);
         uint256 askPrice8 = oraclePrice8 + Math.mulDiv(oraclePrice8, spreadBps, BPS);
 
         uint256 fee = Math.mulDiv(gDollarIn, TRADE_FEE_BPS, BPS);
@@ -261,7 +263,8 @@ contract StockAMM is ReentrancyGuard {
         _validatePool(pool, key);
 
         uint256 oraclePrice8 = oracle.getPriceByKey(pool.oracleKey);
-        uint256 spreadBps = _calcSpread(pool, key, false);
+        _requireNonZeroPrice(pool.oracleKey, oraclePrice8);
+        uint256 spreadBps = _calcSpread(pool, key, false, oraclePrice8);
         uint256 bidPrice8 = oraclePrice8 - Math.mulDiv(oraclePrice8, spreadBps, BPS);
 
         uint256 grossUSD8 = Math.mulDiv(syntheticIn, bidPrice8, 1e18);
@@ -291,7 +294,8 @@ contract StockAMM is ReentrancyGuard {
         bytes32 key = _key(ticker);
         Pool storage pool = pools[key];
         uint256 oraclePrice8 = oracle.getPriceByKey(pool.oracleKey);
-        uint256 spreadBps = _calcSpread(pool, key, true);
+        _requireNonZeroPrice(pool.oracleKey, oraclePrice8);
+        uint256 spreadBps = _calcSpread(pool, key, true, oraclePrice8);
         uint256 askPrice8 = oraclePrice8 + Math.mulDiv(oraclePrice8, spreadBps, BPS);
 
         fee = Math.mulDiv(gDollarIn, TRADE_FEE_BPS, BPS);
@@ -304,7 +308,8 @@ contract StockAMM is ReentrancyGuard {
         bytes32 key = _key(ticker);
         Pool storage pool = pools[key];
         uint256 oraclePrice8 = oracle.getPriceByKey(pool.oracleKey);
-        uint256 spreadBps = _calcSpread(pool, key, false);
+        _requireNonZeroPrice(pool.oracleKey, oraclePrice8);
+        uint256 spreadBps = _calcSpread(pool, key, false, oraclePrice8);
         uint256 bidPrice8 = oraclePrice8 - Math.mulDiv(oraclePrice8, spreadBps, BPS);
 
         uint256 grossUSD8 = Math.mulDiv(syntheticIn, bidPrice8, 1e18);
@@ -328,11 +333,10 @@ contract StockAMM is ReentrancyGuard {
      * @dev Dynamic spread = base + inventory skew.
      *      Future: add staleness penalty + market-hours multiplier.
      */
-    function _calcSpread(Pool storage pool, bytes32 /* key */, bool buying) internal view returns (uint256) {
+    function _calcSpread(Pool storage pool, bytes32 /* key */, bool buying, uint256 oraclePrice8) internal view returns (uint256) {
         uint256 spread = BASE_SPREAD_BPS;
 
         if (pool.gDollarReserve > 0 && pool.syntheticReserve > 0) {
-            uint256 oraclePrice8 = oracle.getPriceByKey(pool.oracleKey);
             uint256 syntheticValueG = Math.mulDiv(pool.syntheticReserve, oraclePrice8, 1e8);
             uint256 totalValue = pool.gDollarReserve + syntheticValueG;
             uint256 syntheticRatioBps = Math.mulDiv(syntheticValueG, BPS, totalValue);
@@ -347,6 +351,10 @@ contract StockAMM is ReentrancyGuard {
         }
 
         return spread;
+    }
+
+    function _requireNonZeroPrice(bytes32 key, uint256 price) internal pure {
+        if (price == 0) revert OraclePriceZero(key);
     }
 
     function _routeFee(uint256 fee) internal returns (uint256 ubiFee) {

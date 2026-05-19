@@ -233,6 +233,70 @@ contract StockAMMTest is Test {
         amm.createPool("TSLA", makeAddr("sTSLA"));
     }
 
+    // ─── Zero oracle price guard tests ──────────────────────────
+
+    function test_buyStock_revert_zeroOraclePrice() public {
+        _seedPool(50_000 ether);
+
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, false);
+        // Remove the manual price flag — oracle will revert with FeedNotFound
+        // Instead, create a pool with no oracle price set
+        vm.prank(admin);
+        amm.createPool("GHOST", makeAddr("sGHOST"));
+
+        // No oracle price set for GHOST — oracle reverts, but we want AMM to also guard
+        // Test with a different approach: set manual price to 0 with active=true
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, true);
+
+        vm.startPrank(trader);
+        gd.approve(address(amm), 1_000 ether);
+        vm.expectRevert(); // ZeroPrice from oracle or OraclePriceZero from AMM
+        amm.buyStock("AAPL", 1_000 ether, 0);
+        vm.stopPrank();
+    }
+
+    function test_sellStock_revert_zeroOraclePrice() public {
+        _seedPool(50_000 ether);
+
+        // Buy stock first at valid price
+        vm.startPrank(trader);
+        gd.approve(address(amm), 1_000 ether);
+        uint256 bought = amm.buyStock("AAPL", 1_000 ether, 0);
+        vm.stopPrank();
+
+        // Set oracle price to 0
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, true);
+
+        vm.startPrank(trader);
+        sAAPL.approve(address(amm), bought);
+        vm.expectRevert(); // ZeroPrice from oracle or OraclePriceZero from AMM
+        amm.sellStock("AAPL", bought, 0);
+        vm.stopPrank();
+    }
+
+    function test_getQuoteBuy_revert_zeroOraclePrice() public {
+        _seedPool(50_000 ether);
+
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, true);
+
+        vm.expectRevert();
+        amm.getQuoteBuy("AAPL", 1_000 ether);
+    }
+
+    function test_getQuoteSell_revert_zeroOraclePrice() public {
+        _seedPool(50_000 ether);
+
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, true);
+
+        vm.expectRevert();
+        amm.getQuoteSell("AAPL", 1 ether);
+    }
+
     // ─── LP fee accounting tests ───────────────────────────────
 
     function test_buyStock_lp_fee_accrues_to_reserve() public {
@@ -266,7 +330,6 @@ contract StockAMMTest is Test {
         vm.stopPrank();
 
         bytes32 key = keccak256(abi.encodePacked("AAPL"));
-        (, , uint256 reserveBefore, , ,) = amm.pools(key);
 
         // Sell it back
         vm.startPrank(trader);
