@@ -109,6 +109,21 @@ export interface AccountBalance {
   currency: string;
 }
 
+export type QuoteCallback = (quote: NormalizedQuote) => void;
+
+export interface MarketDataConfig {
+  /** WebSocket URL for streaming quotes */
+  wsUrl?: string;
+  /** How often to poll REST when WS is down (ms) */
+  restFallbackIntervalMs?: number;
+  /** Max quote age before marking stale (ms) */
+  maxQuoteAgeMs?: number;
+  /** WS reconnect delay (ms) */
+  wsReconnectDelayMs?: number;
+  /** WS reconnect max delay (ms) */
+  wsReconnectMaxDelayMs?: number;
+}
+
 export interface AuditLogEntry {
   timestamp: string;
   action: string;
