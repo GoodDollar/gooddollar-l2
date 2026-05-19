@@ -33,6 +33,7 @@ const SERVICES: ServiceConfig[] = [
   { name: 'bridge-keeper',     url: `http://localhost:${process.env.BRIDGE_KEEPER_PORT ?? '3006'}/health` },
   { name: 'perps',             url: `http://localhost:${process.env.PERPS_PORT ?? '8082'}/health` },
   { name: 'predict',           url: `http://localhost:${process.env.PREDICT_PORT ?? '3040'}/health` },
+  { name: 'hedge-engine',      url: `http://localhost:${process.env.HEDGE_ENGINE_PORT ?? '9106'}/health` },
 ];
 
 interface ServiceStatus {

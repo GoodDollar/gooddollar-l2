@@ -204,6 +204,19 @@ module.exports = {
       },
     }),
     app({
+      name: 'hedge-engine',
+      script: 'hedge-engine/dist/index.js',
+      env: {
+        ...BASE_ENV,
+        RISK_ENGINE_ADDRESS: pick('RISK_ENGINE_ADDRESS', ''),
+        HEDGE_DRY_RUN: pick('HEDGE_DRY_RUN', 'true'),
+        HEDGE_POLL_INTERVAL_MS: pick('HEDGE_POLL_INTERVAL_MS', '30000'),
+        HEDGE_SYMBOLS: pick('HEDGE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ'),
+        HEDGE_DELTA_THRESHOLD_USD: pick('HEDGE_DELTA_THRESHOLD_USD', '5000'),
+        HEDGE_DELTA_THRESHOLD_PCT: pick('HEDGE_DELTA_THRESHOLD_PCT', '2'),
+      },
+    }),
+    app({
       name: 'oracle-signer',
       script: 'oracle-signer/dist/index.js',
       env: {
