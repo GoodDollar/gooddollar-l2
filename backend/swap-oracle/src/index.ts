@@ -31,8 +31,7 @@ const ORACLE_ADDRESS = process.env.SWAP_ORACLE_ADDRESS ??
 const INTERVAL_MS = parseInt(process.env.UPDATE_INTERVAL_MS ?? '60000', 10);
 const DEVIATION_THRESHOLD_BPS = parseInt(process.env.DEVIATION_BPS ?? '10', 10); // 0.1% min change to update
 
-// Token mapping: on-chain address → CoinGecko ID
-interface TokenMapping {
+export interface TokenMapping {
   address: string;
   coingeckoId: string;
   symbol: string;
@@ -67,7 +66,7 @@ const ORACLE_ABI = [
 
 // ─── Price Fetcher ───────────────────────────────────────────────────────────
 
-interface PriceResult {
+export interface PriceResult {
   token: TokenMapping;
   priceUsd: number;
   priceChainlink: bigint; // 8-decimal format
@@ -77,7 +76,7 @@ interface PriceResult {
  * Fetch crypto prices from CoinGecko free API.
  * Rate limit: 10-30 calls/minute (free tier).
  */
-async function fetchPrices(tokens: TokenMapping[]): Promise<PriceResult[]> {
+export async function fetchPrices(tokens: TokenMapping[]): Promise<PriceResult[]> {
   const ids = tokens.map(t => t.coingeckoId).join(',');
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`;
 
@@ -110,21 +109,22 @@ async function fetchPrices(tokens: TokenMapping[]): Promise<PriceResult[]> {
 
 // ─── Oracle Updater ──────────────────────────────────────────────────────────
 
-let lastPrices = new Map<string, bigint>();
+export let lastPrices = new Map<string, bigint>();
 
-/**
- * Check if a price has deviated enough to warrant an on-chain update.
- */
-function hasDeviatedEnough(address: string, newPrice: bigint): boolean {
+export function resetLastPrices(): void {
+  lastPrices = new Map<string, bigint>();
+}
+
+export function hasDeviatedEnough(address: string, newPrice: bigint, thresholdBps: number = DEVIATION_THRESHOLD_BPS): boolean {
   const old = lastPrices.get(address);
   if (!old) return true; // first price always updates
 
   const diff = newPrice > old ? newPrice - old : old - newPrice;
   const bps = (diff * 10_000n) / old;
-  return bps >= BigInt(DEVIATION_THRESHOLD_BPS);
+  return bps >= BigInt(thresholdBps);
 }
 
-async function updateOnChain(
+export async function updateOnChain(
   oracle: ethers.Contract,
   results: PriceResult[],
 ): Promise<void> {
@@ -237,7 +237,9 @@ async function main() {
   logger.info(`Price keeper running, updating every ${INTERVAL_MS / 1000}s`);
 }
 
-main().catch(err => {
-  logger.fatal({ err }, 'Fatal error');
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    logger.fatal({ err }, 'Fatal error');
+    process.exit(1);
+  });
+}
