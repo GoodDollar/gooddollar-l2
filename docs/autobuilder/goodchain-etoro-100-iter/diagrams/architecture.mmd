@@ -1,0 +1,44 @@
+flowchart LR
+  U[User / AI Agent] --> FE[GoodChain Frontend
+Stocks · Perps · Lend · Yield]
+  FE --> API[GoodChain APIs]
+  API --> GC[GoodChain L2 Contracts]
+
+  ET[eToro API
+Market Data + Account + Orders] --> PS[Price Service
+REST/WS + fallback]
+  PS --> N[Normalizer
+canonical quote + priceE8]
+  N --> QS[Oracle Signer Quorum
+3-of-5 signatures]
+  QS --> SO[StockOracleV2]
+  SO --> GC
+
+  GC --> GS[GoodStocks
+synthetics + vault + AMM]
+  GC --> GP[GoodPerps
+stock perps]
+  GC --> GL[GoodLend / GoodYield
+stock collateral + yield]
+
+  GS --> R[UnifiedRiskEngine]
+  GP --> R
+  GL --> R
+  R --> CH[ClearingHouse
+margin + liquidation]
+  R --> HE[Off-chain Hedge Engine]
+  HE --> ET
+  ET --> RC[Reconciliation Worker]
+  GC --> RC
+  RC --> DASH[Risk Dashboard
+alerts + kill switches]
+  DASH --> GC
+
+  classDef ext fill:#fff3cd,stroke:#b8860b,color:#111;
+  classDef off fill:#e7f1ff,stroke:#2f6fed,color:#111;
+  classDef on fill:#e8f5e9,stroke:#2e7d32,color:#111;
+  classDef risk fill:#fde7ef,stroke:#c2185b,color:#111;
+  class ET ext;
+  class PS,N,QS,HE,RC,API off;
+  class GC,SO,GS,GP,GL,CH on;
+  class R,DASH risk;

@@ -1,0 +1,19 @@
+gantt
+  title GoodChain / eToro 100-Iteration Plan
+  dateFormat  X
+  axisFormat Iter %s
+  section Ingestion
+  eToro API + secrets           :a1, 1, 12
+  Price service + fallbacks     :a2, 13, 10
+  section Oracle
+  Signer quorum + StockOracleV2 :a3, 23, 10
+  section Protocol
+  GoodStocks                    :a4, 33, 16
+  Stock perps                   :a5, 49, 12
+  Lend / Yield stocks           :a6, 61, 12
+  section Risk + Hedge
+  UnifiedRiskEngine             :a7, 73, 12
+  Off-chain hedge engine        :a8, 85, 8
+  section Release
+  Dashboard/admin controls      :a9, 93, 4
+  Frontend + final release      :a10, 97, 4

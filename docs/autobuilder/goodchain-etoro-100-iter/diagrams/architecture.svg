@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+<style>
+  text{font-family:Inter,Arial,sans-serif;fill:#111}.title{font-size:30px;font-weight:700}.sub{font-size:15px;fill:#555}.box{rx:16;stroke-width:2}.ext{fill:#fff3cd;stroke:#b8860b}.off{fill:#e7f1ff;stroke:#2f6fed}.on{fill:#e8f5e9;stroke:#2e7d32}.risk{fill:#fde7ef;stroke:#c2185b}.label{font-size:17px;font-weight:700}.small{font-size:13px;fill:#333}.arrow{stroke:#333;stroke-width:2.2;fill:none;marker-end:url(#arrow)}
+</style>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#333"/></marker></defs>
+<text x="40" y="45" class="title">GoodChain / eToro Synthetic Stocks Architecture</text>
+<text x="40" y="72" class="sub">Price ingestion → signer oracle → on-chain synthetics/perps/lend → unified risk → eToro hedge/reconciliation</text>
+<rect x="40" y="120" width="210" height="86" class="box ext"/><text x="64" y="154" class="label">eToro API</text><text x="64" y="181" class="small">Market data · account · orders</text>
+<rect x="330" y="105" width="220" height="80" class="box off"/><text x="354" y="138" class="label">Price Service</text><text x="354" y="165" class="small">REST/WS + fallback cache</text>
+<rect x="630" y="105" width="220" height="80" class="box off"/><text x="654" y="138" class="label">Normalizer</text><text x="654" y="165" class="small">canonical quote + priceE8</text>
+<rect x="930" y="105" width="220" height="80" class="box off"/><text x="954" y="138" class="label">Oracle Signers</text><text x="954" y="165" class="small">3-of-5 signed updates</text>
+<rect x="930" y="245" width="220" height="80" class="box on"/><text x="954" y="278" class="label">StockOracleV2</text><text x="954" y="305" class="small">verified on-chain prices</text>
+<rect x="610" y="245" width="260" height="94" class="box on"/><text x="634" y="278" class="label">GoodChain Contracts</text><text x="634" y="305" class="small">settlement · balances · events</text>
+<rect x="270" y="420" width="220" height="86" class="box on"/><text x="294" y="454" class="label">GoodStocks</text><text x="294" y="481" class="small">synthetics · vault · AMM</text>
+<rect x="590" y="420" width="220" height="86" class="box on"/><text x="614" y="454" class="label">GoodPerps</text><text x="614" y="481" class="small">funding · margin · liquidations</text>
+<rect x="910" y="420" width="220" height="86" class="box on"/><text x="934" y="454" class="label">GoodLend/Yield</text><text x="934" y="481" class="small">stock collateral · yield</text>
+<rect x="500" y="585" width="280" height="92" class="box risk"/><text x="524" y="619" class="label">UnifiedRiskEngine</text><text x="524" y="646" class="small">net exposure across all products</text>
+<rect x="860" y="585" width="230" height="92" class="box risk"/><text x="884" y="619" class="label">ClearingHouse</text><text x="884" y="646" class="small">margin · liquidation · ADL</text>
+<rect x="180" y="710" width="245" height="92" class="box off"/><text x="204" y="744" class="label">Hedge Engine</text><text x="204" y="771" class="small">net delta → eToro orders</text>
+<rect x="505" y="710" width="260" height="92" class="box off"/><text x="529" y="744" class="label">Reconciliation</text><text x="529" y="771" class="small">on-chain vs eToro positions</text>
+<rect x="845" y="710" width="260" height="92" class="box risk"/><text x="869" y="744" class="label">Risk Dashboard</text><text x="869" y="771" class="small">alerts · kill switches · override</text>
+<rect x="1180" y="420" width="180" height="86" class="box off"/><text x="1204" y="454" class="label">Frontend</text><text x="1204" y="481" class="small">users + AI agents</text>
+<path class="arrow" d="M250 163 H330"/><path class="arrow" d="M550 145 H630"/><path class="arrow" d="M850 145 H930"/><path class="arrow" d="M1040 185 V245"/><path class="arrow" d="M930 285 H870"/><path class="arrow" d="M740 339 V420"/><path class="arrow" d="M670 339 L380 420"/><path class="arrow" d="M810 339 L1020 420"/><path class="arrow" d="M490 463 L570 585"/><path class="arrow" d="M700 506 L670 585"/><path class="arrow" d="M910 463 L760 585"/><path class="arrow" d="M780 631 H860"/><path class="arrow" d="M500 650 L425 710"/><path class="arrow" d="M425 756 H505"/><path class="arrow" d="M765 756 H845"/><path class="arrow" d="M180 756 C80 720,80 220,145 206"/><path class="arrow" d="M1180 463 H1130"/><path class="arrow" d="M1130 463 H1090"/>
+<text x="40" y="860" class="sub">Hard gates: sandbox first · no secrets in git/logs · oracle divergence stop &gt;0.5% · final hedge mismatch &lt;0.3%</text>
+</svg>
