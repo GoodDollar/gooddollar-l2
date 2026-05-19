@@ -245,10 +245,10 @@ contract ClearingHouse {
         view
         returns (uint256 totalCollateral, uint256 totalDebt)
     {
-        // 1. Perp positions: iterate markets, sum margin + unrealizedPnL
         uint256 marketCount = perpEngine.marketCount();
         uint256 perpMargin;
         int256 perpPnL;
+        uint256 perpMaintenanceDebt;
 
         for (uint256 i; i < marketCount; ++i) {
             (int256 sizeTokens, uint256 entryPrice8, uint256 margin, ) =
@@ -258,40 +258,29 @@ contract ClearingHouse {
 
             perpMargin += margin;
 
-            (bytes32 oKey, , , , , , , , , ) = perpEngine.markets(i);
+            (bytes32 oKey, , , , , , , uint256 mmBps, , ) = perpEngine.markets(i);
             (uint256 currentPrice, , , , ) = oracle.prices(oKey);
 
+            uint256 absSize = sizeTokens >= 0 ? uint256(sizeTokens) : uint256(-sizeTokens);
+
             if (currentPrice > 0 && entryPrice8 > 0) {
-                uint256 absSize = sizeTokens >= 0 ? uint256(sizeTokens) : uint256(-sizeTokens);
                 int256 priceDiff = int256(currentPrice) - int256(entryPrice8);
                 int256 rawPnL = (priceDiff * int256(absSize)) / 1e8;
                 if (sizeTokens < 0) rawPnL = -rawPnL;
                 perpPnL += rawPnL;
             }
+
+            {
+                uint256 notional = (absSize * currentPrice) / 1e8;
+                perpMaintenanceDebt += (notional * mmBps) / BPS;
+            }
         }
 
-        // 2. Lending collateral and debt
         uint256 lendCollateral = lendPool.getUserCollateralValue(user);
         uint256 lendDebt = lendPool.getUserDebtValue(user);
 
-        // Aggregate
         int256 signedCollateral = int256(perpMargin) + perpPnL + int256(lendCollateral);
         totalCollateral = signedCollateral > 0 ? uint256(signedCollateral) : 0;
-        totalDebt = lendDebt;
-
-        // Add perp maintenance requirement to debt
-        for (uint256 i; i < marketCount; ++i) {
-            (int256 sizeTokens, , , ) = perpEngine.positions(i, user);
-            if (sizeTokens == 0) continue;
-
-            (, , , , , , , uint256 mmBps, , ) = perpEngine.markets(i);
-            (bytes32 oKey2, , , , , , , , , ) = perpEngine.markets(i);
-            (uint256 price, , , , ) = oracle.prices(oKey2);
-
-            uint256 absSize = sizeTokens >= 0 ? uint256(sizeTokens) : uint256(-sizeTokens);
-            uint256 notional = (absSize * price) / 1e8;
-            uint256 maintenanceReq = (notional * mmBps) / BPS;
-            totalDebt += maintenanceReq;
-        }
+        totalDebt = lendDebt + perpMaintenanceDebt;
     }
 }
