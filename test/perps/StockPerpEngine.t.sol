@@ -694,4 +694,28 @@ contract StockPerpEngineTest is Test {
         );
         engine.liquidate(alice, aaplMarketId);
     }
+
+    function test_unrealizedPnL_revert_zeroOracle() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.unrealizedPnL(alice, aaplMarketId);
+    }
+
+    function test_marginRatio_revert_zeroOracle() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.marginRatio(alice, aaplMarketId);
+    }
 }

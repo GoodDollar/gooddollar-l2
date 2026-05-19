@@ -390,6 +390,7 @@ contract StockPerpEngine is ReentrancyGuard {
         Position storage pos = positions[trader][marketId];
         if (!pos.isOpen) return 0;
         uint256 price = oracle.getPriceByKey(markets[marketId].oracleKey);
+        _requireNonZeroPrice(markets[marketId].oracleKey, price);
         int256 rawPnL = _calcPnL(pos, price);
         int256 size = pos.isLong ? int256(pos.size) : -int256(pos.size);
         int256 fundPay = funding.accruedFunding(size, pos.entryFundingIdx, marketId);
@@ -400,6 +401,7 @@ contract StockPerpEngine is ReentrancyGuard {
         Position storage pos = positions[trader][marketId];
         if (!pos.isOpen) return type(uint256).max;
         uint256 price = oracle.getPriceByKey(markets[marketId].oracleKey);
+        _requireNonZeroPrice(markets[marketId].oracleKey, price);
         int256 rawPnL = _calcPnL(pos, price);
         int256 size = pos.isLong ? int256(pos.size) : -int256(pos.size);
         int256 fundPay = funding.accruedFunding(size, pos.entryFundingIdx, marketId);
