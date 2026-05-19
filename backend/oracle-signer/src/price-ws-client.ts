@@ -43,7 +43,7 @@ export class PriceWsClient {
       try {
         const parsed = JSON.parse(data.toString());
         const quote = this.extractQuote(parsed);
-        if (quote && quote.symbol && typeof quote.mid === 'number') {
+        if (quote && quote.symbol && Number.isFinite(quote.mid) && quote.mid > 0) {
           this.onQuote(quote);
         }
       } catch {

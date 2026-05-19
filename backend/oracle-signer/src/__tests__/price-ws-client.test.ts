@@ -123,4 +123,28 @@ describe('PriceWsClient', () => {
 
     client.connect();
   });
+
+  it('rejects quotes with NaN or Infinity mid', (done) => {
+    const received: NormalizedQuote[] = [];
+
+    server.on('connection', (ws) => {
+      ws.send(wrapEnvelope(makeQuote('BAD1', NaN)));
+      ws.send(wrapEnvelope(makeQuote('BAD2', Infinity)));
+      ws.send(wrapEnvelope(makeQuote('BAD3', -Infinity)));
+      ws.send(wrapEnvelope(makeQuote('BAD4', 0)));
+      ws.send(wrapEnvelope(makeQuote('GOOD', 191.50)));
+    });
+
+    const client = new PriceWsClient(`ws://localhost:${port}`, (quote) => {
+      received.push(quote);
+      if (received.length === 1) {
+        client.close();
+        expect(received[0].symbol).toBe('GOOD');
+        expect(received[0].mid).toBe(191.50);
+        done();
+      }
+    });
+
+    client.connect();
+  });
 });
