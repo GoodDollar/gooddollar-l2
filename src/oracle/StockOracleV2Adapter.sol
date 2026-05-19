@@ -17,6 +17,10 @@ contract StockOracleV2Adapter {
 
     error ZeroAddress();
     error NotAdmin();
+    error SymbolNotActive(bytes32 key);
+    error PriceNotSet(bytes32 key);
+    error PriceStale(bytes32 key, uint256 age, uint256 maxAge);
+    error SessionHalted(bytes32 key);
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert NotAdmin();
@@ -53,6 +57,25 @@ contract StockOracleV2Adapter {
         bytes32 h = keccak256(abi.encodePacked(ticker));
         (,, bool active) = oracleV2.symbolConfigs(h);
         return active;
+    }
+
+    /**
+     * @notice bytes32-keyed price lookup matching the PriceOracle interface
+     *         that CollateralVault expects. Reads directly from StockOracleV2's
+     *         public prices mapping and applies staleness/session checks.
+     */
+    function getPriceByKey(bytes32 key) external view returns (uint256) {
+        (uint256 maxStaleness,, bool active) = oracleV2.symbolConfigs(key);
+        if (!active) revert SymbolNotActive(key);
+
+        (uint256 price8, uint256 ts, StockOracleV2.SessionState session,,) = oracleV2.prices(key);
+        if (price8 == 0) revert PriceNotSet(key);
+        if (session == StockOracleV2.SessionState.Halted) revert SessionHalted(key);
+
+        uint256 age = block.timestamp - ts;
+        if (age > maxStaleness) revert PriceStale(key, age, maxStaleness);
+
+        return price8;
     }
 
     function setAdmin(address newAdmin) external onlyAdmin {
