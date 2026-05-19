@@ -78,6 +78,7 @@ contract ClearingHouse {
     error InsufficientMargin(address user, uint256 healthBps, uint256 required);
     error NoADLCandidate();
     error PositionCapExceeded(bytes32 symbol, uint256 projected, uint256 cap);
+    error OraclePriceZero(bytes32 key);
 
     // ─── Events ──────────────────────────────────────────────────
 
@@ -204,6 +205,7 @@ contract ClearingHouse {
     function autoDeleverage(uint256 marketId, int256 sizeToADL) external onlyAdmin whenNotPaused {
         (bytes32 oracleKey, , , , , , , , , ) = perpEngine.markets(marketId);
         (uint256 oraclePrice, , , , ) = oracle.prices(oracleKey);
+        if (oraclePrice == 0) revert OraclePriceZero(oracleKey);
 
         uint256 absSize = sizeToADL >= 0 ? uint256(sizeToADL) : uint256(-sizeToADL);
         uint256 notional = (absSize * oraclePrice) / 1e8;
@@ -260,10 +262,12 @@ contract ClearingHouse {
 
             (bytes32 oKey, , , , , , , uint256 mmBps, , ) = perpEngine.markets(i);
             (uint256 currentPrice, , , , ) = oracle.prices(oKey);
+            if (currentPrice == 0) revert OraclePriceZero(oKey);
+            if (entryPrice8 == 0) revert OraclePriceZero(oKey);
 
             uint256 absSize = sizeTokens >= 0 ? uint256(sizeTokens) : uint256(-sizeTokens);
 
-            if (currentPrice > 0 && entryPrice8 > 0) {
+            {
                 int256 priceDiff = int256(currentPrice) - int256(entryPrice8);
                 int256 rawPnL = (priceDiff * int256(absSize)) / 1e8;
                 if (sizeTokens < 0) rawPnL = -rawPnL;
