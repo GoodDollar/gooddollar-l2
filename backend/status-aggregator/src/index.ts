@@ -10,6 +10,7 @@
 
 import * as http from 'http';
 import { parseHealthStatus } from './parseHealthStatus';
+import { buildStatusJson, updateStatuses, type ServiceStatus } from './statusBuilder';
 
 const PORT = parseInt(process.env.PORT ?? '9200', 10);
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS ?? '15000', 10);
@@ -37,17 +38,6 @@ const SERVICES: ServiceConfig[] = [
   { name: 'oracle-signer',    url: `http://localhost:${process.env.ORACLE_SIGNER_PORT ?? '9107'}/health` },
 ];
 
-interface ServiceStatus {
-  name: string;
-  status: 'ok' | 'degraded' | 'error' | 'timeout' | 'unreachable';
-  latencyMs: number;
-  uptime?: number;
-  chainBlock?: number;
-  error?: string;
-  lastChecked: string;
-}
-
-let cachedStatuses: ServiceStatus[] = [];
 const startedAt = Date.now();
 
 async function checkService(svc: ServiceConfig): Promise<ServiceStatus> {
@@ -96,24 +86,12 @@ async function checkService(svc: ServiceConfig): Promise<ServiceStatus> {
 }
 
 async function pollAll(): Promise<void> {
-  cachedStatuses = await Promise.all(SERVICES.map(checkService));
-  const operational = cachedStatuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
+  const statuses = await Promise.all(SERVICES.map(checkService));
+  updateStatuses(statuses);
+  const operational = statuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
   console.log(
     `[status] ${operational}/${SERVICES.length} services operational @ ${new Date().toISOString()}`,
   );
-}
-
-function buildStatusJson() {
-  const ok = cachedStatuses.filter(s => s.status === 'ok').length;
-  const operational = cachedStatuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
-  return {
-    overall: operational === SERVICES.length ? (ok === SERVICES.length ? 'healthy' : 'degraded') : operational > 0 ? 'degraded' : 'down',
-    healthy: operational,
-    total: SERVICES.length,
-    aggregatorUptime: Math.floor((Date.now() - startedAt) / 1000),
-    timestamp: new Date().toISOString(),
-    services: cachedStatuses,
-  };
 }
 
 const server = http.createServer((req, res) => {
@@ -121,7 +99,7 @@ const server = http.createServer((req, res) => {
   res.setHeader('Content-Type', 'application/json');
 
   if (req.url === '/status.json' && req.method === 'GET') {
-    const status = buildStatusJson();
+    const status = buildStatusJson(SERVICES.length);
     const code = status.overall === 'down' ? 503 : 200;
     res.writeHead(code);
     res.end(JSON.stringify(status, null, 2));
