@@ -16,20 +16,91 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 - Architecture diagrams: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Testnet guide: [`docs/TESTNET_README.md`](docs/TESTNET_README.md)
 
+## POC V1 Status — 2026-05-19
+
+POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candidate. The product app, public RPC, faucet, protocol pages, analytics, feedback path, Paperclip agent dashboard, and 12 backend health services are online. The current known public blocker is the Explorer / Blockscout endpoint, which returned Cloudflare `502 Bad Gateway` during this refresh and is the active alpha hardening item.
+
+### POC V1 live endpoints
+
+| Surface | Link | Status | Notes |
+|---|---|---|---|
+| Landing site | https://goodclaw.org | ✅ Live | HTTP 200 with browser user-agent. |
+| Main web app | https://goodswap.goodclaw.org | ✅ Live | Next.js app served by PM2 process `goodswap` on port 3100. |
+| Status API | https://goodswap.goodclaw.org/api/status | ✅ Healthy | `12 / 12` services healthy at `2026-05-19 06:57 UTC`. |
+| Public RPC | https://rpc.goodclaw.org | ✅ Live | `eth_chainId = 0xa455` / decimal chain ID `42069`. |
+| Explorer | https://explorer.goodclaw.org | ⚠️ Degraded | Returned Cloudflare `502 Bad Gateway` at refresh; Blockscout hardening is the active infra blocker. |
+| Paperclip / Agents dashboard | https://paperclip.goodclaw.org | ✅ Live | Agent dashboard returned HTTP 200. |
+| Analytics dashboard | https://goodswap.goodclaw.org/analytics | ✅ Live | Public analytics page returned HTTP 200. |
+| Analytics API | https://goodswap.goodclaw.org/api/analytics/overview | ✅ Live | Returns protocol/address-book summary JSON. |
+| Feedback API | `POST /api/feedback` on the main app | ✅ Live | `GET` correctly returns HTTP 405. Floating feedback button writes redacted JSONL for triage. |
+
+### POC V1 app matrix
+
+| App / surface | Link | Current status | What it proves in POC V1 |
+|---|---|---|---|
+| GoodSwap | https://goodswap.goodclaw.org | ✅ Live / E2E green | Token swap surface and UBI-fee routing entry point. |
+| Explore | https://goodswap.goodclaw.org/explore | ✅ Live / E2E green | Token and market discovery. |
+| Pool | https://goodswap.goodclaw.org/pool | ✅ Live / E2E green | Liquidity pool UX. |
+| Yield | https://goodswap.goodclaw.org/yield | ✅ Live / E2E green | Yield / harvest surface. |
+| Faucet | https://goodswap.goodclaw.org/faucet | ✅ Live / E2E green | Tester funding with native gas and test assets. |
+| Bridge | https://goodswap.goodclaw.org/bridge | ✅ Live / E2E green | Bridge UX for L1/L2 and multichain test flows. |
+| GoodPerps | https://goodswap.goodclaw.org/perps | ✅ Live / E2E green | Perpetual futures terminal backed by perps contracts/backend. |
+| Perps leaderboard | https://goodswap.goodclaw.org/perps/leaderboard | ✅ Live / E2E green | Perps ranking / activity surface. |
+| Perps portfolio | https://goodswap.goodclaw.org/perps/portfolio | ✅ Live / E2E green | Perps user positions view. |
+| GoodPredict | https://goodswap.goodclaw.org/predict | ✅ Live / E2E green | Prediction-market listing and trading surface. |
+| Predict create | https://goodswap.goodclaw.org/predict/create | ✅ Live / E2E green | Market creation flow. |
+| Predict portfolio | https://goodswap.goodclaw.org/predict/portfolio | ✅ Live / E2E green | User prediction-market positions. |
+| GoodLend | https://goodswap.goodclaw.org/lend | ✅ Live / E2E green | Supply / borrow / liquidation lane. |
+| GoodStable | https://goodswap.goodclaw.org/stable | ✅ Live / E2E green | gUSD stablecoin, PSM, vault, and stability-pool surface. |
+| GoodStocks | https://goodswap.goodclaw.org/stocks | ✅ Live / E2E green | Synthetic stock listing/trading surface. |
+| Stock detail | https://goodswap.goodclaw.org/stocks/AAPL | ✅ Live / E2E green | Individual synthetic-stock trading page. |
+| Stocks portfolio | https://goodswap.goodclaw.org/stocks/portfolio | ✅ Live / E2E green | User synthetic-stock positions. |
+| Portfolio / Claim | https://goodswap.goodclaw.org/portfolio | ✅ Live / E2E green | Wallet overview, balances, claim-oriented UX. |
+| Agents | https://goodswap.goodclaw.org/agents | ✅ Live / E2E green | Agent-wallet discovery and automation entry point. |
+| Agent registration | https://goodswap.goodclaw.org/agents/register | ✅ Live / E2E green | Agent onboarding/register flow. |
+| Governance | https://goodswap.goodclaw.org/governance | ✅ Live / E2E green | DAO / timelock / veG$ governance surface. |
+| Governance analytics | https://goodswap.goodclaw.org/governance/analytics | ✅ Live / E2E green | Governance metrics surface. |
+| UBI Impact | https://goodswap.goodclaw.org/ubi-impact | ✅ Live / E2E green | Shows transaction fees → UBI impact narrative. |
+| Activity | https://goodswap.goodclaw.org/activity | ✅ Live / E2E green | Chain/app activity timeline. |
+| Test dashboard | https://goodswap.goodclaw.org/test-dashboard | ✅ Live / E2E green | Public QA evidence dashboard. |
+| Tests page | https://goodswap.goodclaw.org/tests | ✅ Live / E2E green | Public test status / checks page. |
+| Testnet guide | https://goodswap.goodclaw.org/testnet-guide | ✅ Live / E2E green | Tester onboarding and network instructions. |
+| Invite page | https://goodswap.goodclaw.org/invite | ✅ Live | Alpha tester invitation page; HTTP 200 at refresh. |
+
+### POC V1 runtime status
+
+| Component | Current status | Evidence / note |
+|---|---|---|
+| Chain | ✅ Live | Public RPC returned `eth_chainId = 0xa455`; `/api/status` chain-backed services reported block `14777` at refresh. |
+| Backend health | ✅ Healthy | `/api/status` reported `overall: healthy`, `healthy: 12`, `total: 12`. |
+| PM2 app processes | ✅ Online | `goodswap`, `goodperps`, `goodpredict`, `paperclip`, and keeper services were online during refresh. |
+| Frontend E2E registry | ✅ Green | Latest gate log `.autobuilder/final-e2e-gate-20260519T051711Z.log`: `27 passed`. |
+| Contract tests | ✅ Green baseline | README checkpoint records Foundry suite at `1126 / 1126` passing; run fresh before release tag. |
+| UBI fee accounting | ✅ Integration-proven on devnet | All 14 routes are proven in [`docs/UBI-FEE-ACCOUNTING.md`](docs/UBI-FEE-ACCOUNTING.md) with integration proofs for Swap/Perps and Predict/Lend/Stable/Stocks. |
+| Explorer / Blockscout | ⚠️ Blocker | Public explorer URL returned `502`; active alpha tasks are RPC saturation and Blockscout devnet hardening in `.autobuilder/initiatives/0005-alpha-testnet-50/`. |
+
+### POC V1 go / no-go
+
+**Go for internal demo and controlled POC V1 testing.** The web app, RPC, backend health, faucet, app routes, analytics, feedback capture, and core protocol surfaces are live.
+
+**Not yet go for broad public alpha.** Explorer reliability must be fixed, and the alpha release manifest still needs exact commit, build ID, service versions, canonical addresses, reset policy, proof transaction hashes, and final go/no-go signoff.
+
 ## Current Status
 
-_Last refreshed: 2026-05-18 10:25 UTC. `main` was fetched from origin and confirmed current before this README/doc checkpoint 6 refresh; iter 30 is the analytics + feedback-loop documentation checkpoint._
+_Last refreshed: 2026-05-19 06:57 UTC. This README refresh documents **POC V1** after live URL checks, `/api/status`, public RPC, PM2 process inspection, and the latest E2E gate evidence._
 
-GoodDollar L2 is running as a persistent public devnet and is being hardened into a public testnet release candidate.
+GoodDollar L2 is running as a persistent public devnet / alpha-testnet candidate and is ready for internal demo plus controlled POC V1 testing.
 
-- Public health: `healthy`, `12 / 12` services OK from `https://goodswap.goodclaw.org/api/status`.
-- Public pages verified: `/`, `/faucet`, `/perps`, `/portfolio`, `/tests`, `/testnet-guide`, `/predict`, `/lend`, `/stable`, `/stocks`, `/bridge`, `/agents` all returned HTTP `200`.
-- Public RPC verified: `eth_chainId = 0xa455`.
-- Active initiative: Testnet Readiness Gate — 50 iterations (iter 30 / 50 complete; iter 31 next).
-- Active priorities: stability, public tester onboarding, protocol smoke evidence, UBI-fee accounting, analytics + feedback loops, and release-candidate packaging.
-- Security hardening status: Slither high/medium cleanup complete in the prior security initiative; release gates still require continuous security checks before public testnet.
-- Foundry contract test suite: `1126 / 1126` passing as of the iter 30 surface sweep.
-- Frontend production build: `pm2` reload completed in iter 30 (`BUILD_ID` synced between disk and `/_buildManifest.js`); iter 27 `/analytics`, iter 28 Dune package surfaces, and iter 29 `/api/feedback` schema are now live on `https://goodswap.goodclaw.org` ([iter30 stale-build redeploy evidence](docs/testnet/iter30-stale-build-redeploy.md)).
+- Public health: `healthy`, `12 / 12` services OK from `https://goodswap.goodclaw.org/api/status` at `2026-05-19T06:57:10Z`.
+- Public app pages verified live: main app, faucet, perps, predict, lend, stable, stocks, bridge, agents, portfolio, tests, testnet guide, analytics, activity, pool, yield, governance, UBI impact, and invite returned HTTP `200` during this refresh.
+- Public RPC verified: `eth_chainId = 0xa455` / decimal chain ID `42069`.
+- Public explorer status: **degraded** — `https://explorer.goodclaw.org` returned Cloudflare `502 Bad Gateway`; Blockscout hardening is the live POC V1 blocker before broad public alpha.
+- Active initiative: Alpha Testnet Readiness — 50 iterations (`.autobuilder/initiatives/0005-alpha-testnet-50/`), with current planned blockers focused on RPC saturation hardening and Blockscout devnet hardening.
+- Active priorities: explorer reliability, proof transaction links, public tester onboarding, protocol smoke evidence, UBI-fee accounting, analytics + feedback loops, and release-candidate packaging.
+- Security hardening status: Slither high/medium cleanup completed in the prior security initiative; release gates still require continuous security checks before public testnet.
+- Foundry contract test suite: `1126 / 1126` passing as of the latest README checkpoint baseline; run fresh before a release tag.
+- Frontend E2E registry: latest gate log `.autobuilder/final-e2e-gate-20260519T051711Z.log` shows `27 passed`.
+- Frontend production build: `goodswap` PM2 process is online; iter 27 `/analytics`, iter 28 Dune package surfaces, and iter 29 `/api/feedback` schema are live on `https://goodswap.goodclaw.org` ([iter30 stale-build redeploy evidence](docs/testnet/iter30-stale-build-redeploy.md)).
 
 ### Recent readiness milestones (iter 15–35)
 
@@ -77,25 +148,29 @@ GoodDollar L2 is not just a token or a single dapp. It is a full stack:
 
 ## Apps Running on GoodDollar L2
 
-| App | Route | Purpose | UBI Link |
-|---|---:|---|---|
-| GoodSwap | `/` | Swap tokens and route value through GoodSwap contracts. | Swap/router fees flow into UBI accounting. |
-| Faucet | `/faucet` | Give testers gas/test assets with boundary and capacity checks. | Enables public testing without manual funding. |
-| GoodPerps | `/perps` | Perpetual futures UX backed by `PerpEngine`, margin vault, funding, and liquidation logic. | Trading, funding, and liquidation fees fund UBI. |
-| GoodPredict | `/predict` | Prediction markets using conditional tokens, market factory, resolver, and CLOB-style backend work. | Market fees route into Predict UBI splitter. |
-| GoodLend | `/lend` | Supply, borrow, debt tokens, interest-rate model, and liquidation lane. | Interest/spread/liquidation fees route to UBI. |
-| GoodStable | `/stable` | gUSD stablecoin, collateral registry, vault manager, PSM, and stability pool. | Stability and PSM fees route to UBI. |
-| GoodStocks | `/stocks` | Synthetic stock assets with price oracle and collateral vault. | Mint/burn/trading fees route to UBI. |
-| Bridge | `/bridge` | L1/L2 and multichain bridge UX for future public testnet flows. | Bridge fees and routing fees can fund UBI. |
-| Portfolio / Claim | `/portfolio` | Wallet overview, positions, balances, and claim-oriented UX. | Shows the user-facing impact of the UBI economy. |
-| Pool / Yield | `/pool`, `/yield` | Liquidity and yield surfaces for testers. | Liquidity activity supports protocol depth and fees. |
-| Explore | `/explore` | Token and market discovery. | Makes useful protocol activity easier to find. |
-| Agents | `/agents` | Agent-wallet and automation entry point. | Agent transactions become another UBI-fee source. |
-| UBI Impact | `/ubi-impact` | Impact and analytics narrative. | Shows transactions → fees → UBI outcomes. |
-| Governance | `/governance` | DAO/timelock/veG$ governance surface. | Long-term protocol stewardship. |
-| Tests | `/tests`, `/test-dashboard` | Public QA evidence and test status. | Makes readiness transparent. |
-| Testnet Guide | `/testnet-guide` | Tester onboarding and network instructions. | Converts visitors into useful test activity. |
-| Invite | `/invite` | Alpha tester invitation page. | Helps recruit testnet users. |
+The POC V1 app suite is centered on `https://goodswap.goodclaw.org`. Status below reflects the `2026-05-19 06:57 UTC` refresh: direct HTTP checks plus the latest 27-route Playwright registry gate where applicable.
+
+| App | Live link | Status | Purpose | UBI Link |
+|---|---|---|---|---|
+| GoodSwap | https://goodswap.goodclaw.org | ✅ Live / E2E green | Swap tokens and route value through GoodSwap contracts. | Swap/router fees flow into UBI accounting. |
+| Faucet | https://goodswap.goodclaw.org/faucet | ✅ Live / E2E green | Give testers gas/test assets with boundary and capacity checks. | Enables public testing without manual funding. |
+| GoodPerps | https://goodswap.goodclaw.org/perps | ✅ Live / E2E green | Perpetual futures UX backed by `PerpEngine`, margin vault, funding, and liquidation logic. | Trading, funding, and liquidation fees fund UBI. |
+| GoodPredict | https://goodswap.goodclaw.org/predict | ✅ Live / E2E green | Prediction markets using conditional tokens, market factory, resolver, and CLOB-style backend work. | Market fees route into Predict UBI splitter. |
+| GoodLend | https://goodswap.goodclaw.org/lend | ✅ Live / E2E green | Supply, borrow, debt tokens, interest-rate model, and liquidation lane. | Interest/spread/liquidation fees route to UBI. |
+| GoodStable | https://goodswap.goodclaw.org/stable | ✅ Live / E2E green | gUSD stablecoin, collateral registry, vault manager, PSM, and stability pool. | Stability and PSM fees route to UBI. |
+| GoodStocks | https://goodswap.goodclaw.org/stocks | ✅ Live / E2E green | Synthetic stock assets with price oracle and collateral vault. | Mint/burn/trading fees route to UBI. |
+| Bridge | https://goodswap.goodclaw.org/bridge | ✅ Live / E2E green | L1/L2 and multichain bridge UX for future public testnet flows. | Bridge fees and routing fees can fund UBI. |
+| Portfolio / Claim | https://goodswap.goodclaw.org/portfolio | ✅ Live / E2E green | Wallet overview, positions, balances, and claim-oriented UX. | Shows the user-facing impact of the UBI economy. |
+| Pool / Yield | https://goodswap.goodclaw.org/pool / https://goodswap.goodclaw.org/yield | ✅ Live / E2E green | Liquidity and yield surfaces for testers. | Liquidity activity supports protocol depth and fees. |
+| Explore | https://goodswap.goodclaw.org/explore | ✅ Live / E2E green | Token and market discovery. | Makes useful protocol activity easier to find. |
+| Agents | https://goodswap.goodclaw.org/agents | ✅ Live / E2E green | Agent-wallet and automation entry point. | Agent transactions become another UBI-fee source. |
+| UBI Impact | https://goodswap.goodclaw.org/ubi-impact | ✅ Live / E2E green | Impact and analytics narrative. | Shows transactions → fees → UBI outcomes. |
+| Governance | https://goodswap.goodclaw.org/governance | ✅ Live / E2E green | DAO/timelock/veG$ governance surface. | Long-term protocol stewardship. |
+| Analytics | https://goodswap.goodclaw.org/analytics | ✅ Live | Protocol KPI dashboard backed by `/api/analytics/overview`. | Makes UBI fee impact measurable. |
+| Activity | https://goodswap.goodclaw.org/activity | ✅ Live / E2E green | Chain/app activity timeline. | Makes useful protocol activity visible. |
+| Tests | https://goodswap.goodclaw.org/tests / https://goodswap.goodclaw.org/test-dashboard | ✅ Live / E2E green | Public QA evidence and test status. | Makes readiness transparent. |
+| Testnet Guide | https://goodswap.goodclaw.org/testnet-guide | ✅ Live / E2E green | Tester onboarding and network instructions. | Converts visitors into useful test activity. |
+| Invite | https://goodswap.goodclaw.org/invite | ✅ Live | Alpha tester invitation page. | Helps recruit testnet users. |
 
 ## System Architecture
 
@@ -271,11 +346,12 @@ python3 scripts/check-doc-links.py README.md docs/TESTNET_README.md docs/ARCHITE
 
 Recent historical full local release pass:
 
-- Foundry: `1026 / 1026` tests passing.
-- SDK: `79 / 79` tests passing.
-- Frontend Vitest: `834` passing, `1` skipped.
-- Dapp lanes: all lanes green.
-- Public health: now `12 / 12` services healthy.
+- Foundry: `1126 / 1126` tests passing at the latest README checkpoint baseline.
+- SDK: `79 / 79` tests passing at the latest full release baseline.
+- Frontend Vitest: `834` passing, `1` skipped at the latest full release baseline.
+- Frontend route registry: `27 / 27` Playwright routes passing in `.autobuilder/final-e2e-gate-20260519T051711Z.log`.
+- Public health: `12 / 12` services healthy at the POC V1 refresh.
+- Public RPC: `eth_chainId = 0xa455`; Explorer currently degraded (`502`) and tracked as the active blocker.
 
 ## Deploy
 
@@ -313,7 +389,8 @@ Every five iterations the README, testnet guide, architecture docs, status proof
 
 ## Known Boundaries Before Public Testnet
 
-- The current network is a persistent public devnet, not final mainnet infrastructure.
+- The current network is **POC V1**: a persistent public devnet / alpha-testnet candidate, not final mainnet infrastructure.
+- Explorer / Blockscout is currently degraded (`502` at the 2026-05-19 refresh) and must be fixed before broad public alpha.
 - Public testnet release still needs final release-candidate manifest and tag recommendation.
 - Internal analytics is now shipped on the public app at [`/analytics`](https://goodswap.goodclaw.org/analytics) backed by [`/api/analytics/overview`](https://goodswap.goodclaw.org/api/analytics/overview) (iter 27), and the Dune / indexing-request package is published in [`analytics/dune-package/`](analytics/dune-package/) (iter 28); external Dune indexing remains pending and is tracked as a release artifact.
 - Tester feedback now has a redacted ingest path (iter 29): the floating Feedback button → `/api/feedback` → `frontend/data/feedback.jsonl`. The on-disk JSONL stream is the operator triage queue; there is no public viewer yet — surfacing it (e.g. a moderated `/feedback` page) is deferred.
