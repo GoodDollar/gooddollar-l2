@@ -18,13 +18,13 @@
  * instead of hardcoding values or importing from chain.ts directly.
  */
 
-import rawAddresses from '../../../op-stack/addresses.json'
+import rawAddresses from "../../../op-stack/addresses.json";
 
 // ─── Network constants ────────────────────────────────────────────────────────
 
-export const DEVNET_CHAIN_ID: number = rawAddresses.chain_id
-export const DEVNET_RPC_URL: string = rawAddresses.rpc_url
-export const DEVNET_EXPLORER_URL: string = rawAddresses.explorer_url
+export const DEVNET_CHAIN_ID: number = rawAddresses.chain_id;
+export const DEVNET_RPC_URL: string = rawAddresses.rpc_url;
+export const DEVNET_EXPLORER_URL: string = rawAddresses.explorer_url;
 
 // ─── Contract addresses ───────────────────────────────────────────────────────
 
@@ -41,125 +41,131 @@ export const DEVNET_EXPLORER_URL: string = rawAddresses.explorer_url
  */
 export const CONTRACTS = {
   // ── Core (from op-stack/addresses.json) ──────────────────────────────────
-  GoodDollarToken:       rawAddresses.contracts.GoodDollarToken as `0x${string}`,
-  UBIClaimV2:            rawAddresses.contracts.UBIClaimV2 as `0x${string}`,
-  UBIFeeSplitter:        rawAddresses.contracts.UBIFeeSplitter as `0x${string}`,
-  LiFiBridgeAggregator:  rawAddresses.contracts.LiFiBridgeAggregator as `0x${string}`,
-  ValidatorStaking:      rawAddresses.contracts.ValidatorStaking as `0x${string}`,
-  UBIFeeHook:            rawAddresses.contracts.UBIFeeHook as `0x${string}`,
-  MarketFactory:         rawAddresses.contracts.MarketFactory as `0x${string}`,
+  GoodDollarToken: rawAddresses.contracts.GoodDollarToken as `0x${string}`,
+  UBIClaimV2: rawAddresses.contracts.UBIClaimV2 as `0x${string}`,
+  UBIFeeSplitter: rawAddresses.contracts.UBIFeeSplitter as `0x${string}`,
+  LiFiBridgeAggregator: rawAddresses.contracts
+    .LiFiBridgeAggregator as `0x${string}`,
+  ValidatorStaking: rawAddresses.contracts.ValidatorStaking as `0x${string}`,
+  UBIFeeHook: rawAddresses.contracts.UBIFeeHook as `0x${string}`,
+  MarketFactory: rawAddresses.contracts.MarketFactory as `0x${string}`,
   // ConditionalTokens: in JSON but currently no code on-chain after re-snapshot;
   // surfaced via JSON so the next refresh-addresses run picks up a redeploy.
-  ConditionalTokens:     rawAddresses.contracts.ConditionalTokens as `0x${string}`,
-  OptimisticResolver:    '0x30426D33a78afdb8788597D5BFaBdADc3Be95698' as `0x${string}`, // STALE: not in JSON, no code on-chain — needs redeploy task
+  ConditionalTokens: rawAddresses.contracts.ConditionalTokens as `0x${string}`,
+  OptimisticResolver:
+    "0x7c8baafa542c57ff9b2b90612bf8ab9e86e22c09" as `0x${string}`, // STALE: not in JSON, no code on-chain — needs redeploy task
 
   // ── GoodLend — sourced from op-stack/addresses.json (chain 42069) ────────
   // Previous hardcoded GoodLendPool (0x49fd…) was wiped by chain re-snapshot.
-  GoodLendPool:                rawAddresses.contracts.GoodLendPool as `0x${string}`,
-  GoodLendPriceOracle:         '0x46b142dd1e924fab83ecc3c08e4d46e82f005e0e' as `0x${string}`, // STALE: no code on-chain — needs redeploy task
-  GoodLendInterestRateModel:   '0x367761085bf3c12e5da2df99ac6e1a824612b8fb' as `0x${string}`, // STALE: no code on-chain — needs redeploy task
+  GoodLendPool: rawAddresses.contracts.GoodLendPool as `0x${string}`,
+  GoodLendPriceOracle:
+    "0x9d4454b023096f34b160d6b654540c56a1f81688" as `0x${string}`, // STALE: no code on-chain — needs redeploy task
+  GoodLendInterestRateModel:
+    "0x809d550fca64d94bd9f66e60752a544199cfac3d" as `0x${string}`, // STALE: no code on-chain — needs redeploy task
   // GoodLend reserve tokens — JSON-tracked
-  MockUSDC:              rawAddresses.contracts.MockUSDC as `0x${string}`,
-  MockWETH:              rawAddresses.contracts.MockWETH as `0x${string}`,
+  MockUSDC: rawAddresses.contracts.MockUSDC as `0x${string}`,
+  MockWETH: rawAddresses.contracts.MockWETH as `0x${string}`,
   // gTokens (interest-bearing) — STALE: not in JSON, no code on-chain — needs redeploy task
-  gUSDC:                 '0x4631bcabd6df18d94796344963cb60d44a4136b6' as `0x${string}`,
-  gWETH:                 '0xa4899d35897033b927acfcf422bc745916139776' as `0x${string}`,
+  gUSDC: "0xb7278a61aa25c888815afc32ad3cc52ff24fe575" as `0x${string}`,
+  gWETH: "0x82e01223d51eb87e16a03e24687edf0f294da6f1" as `0x${string}`,
   // Debt tokens — STALE: not in JSON, no code on-chain — needs redeploy task
-  debtUSDC:              '0x86a2ee8faf9a840f7a2c64ca3d51209f9a02081d' as `0x${string}`,
-  debtWETH:              '0xf953b3a269d80e3eb0f2947630da976b896a8c5b' as `0x${string}`,
+  debtUSDC: "0xcd8a1c3ba11cf5ecfa6267617243239504a98d90" as `0x${string}`,
+  debtWETH: "0x2bdcc0de6be1f7d2ee689a0342d76f52e8efaba3" as `0x${string}`,
 
   // ── GoodSwap — re-seeded to devnet (chain 42069), 2026-05-15 (Task 0011) ──
-  // Router and pools have valid bytecode on-chain. Pool tokens (SwapGD/WETH/
-  // USDC) are stale and need a redeploy.
-  PoolManager:           '0xC9a43158891282A2B1475592D5719c001986Aaec' as `0x${string}`, // STALE: no code on-chain — needs redeploy task
-  GoodSwapRouter:        '0x975cDd867aCB99f0195be09C269E2440aa1b1FA8' as `0x${string}`,
+  // Router, pools, and pool tokens were re-seeded after the 2026-05-18 devnet reset.
+  PoolManager: "0xC9a43158891282A2B1475592D5719c001986Aaec" as `0x${string}`, // STALE: no code on-chain — needs redeploy task
+  GoodSwapRouter: "0xa6e99a4ed7498b3cddcbb61a6a607a4925faa1b7" as `0x${string}`,
   // GoodSwap Liquidity Pools (verified alive)
-  SwapPoolGdWeth:        '0xd6096fbEd8bCc461d06b0C468C8b1cF7d45dC92d' as `0x${string}`,
-  SwapPoolGdUsdc:        '0x0aD6371dd7E9923d9968D63Eb8B9858c700abD9d' as `0x${string}`,
-  SwapPoolWethUsdc:      '0xAA5c5496e2586F81d8d2d0B970eB85aB088639c2' as `0x${string}`,
-  // GoodSwap pool tokens — aliases to the canonical mock tokens in
-  // op-stack/addresses.json. These are what the live SwapPool* pools above
-  // actually hold; the old hardcoded literals (0x547382…, 0x7C8B…, 0x0a17…)
-  // had no bytecode on-chain and broke any swap flow. Keep these as aliases
-  // (NOT new hex literals) so scripts/verify_swap_token_constants.py and
-  // scripts/check_no_stale_addresses.py stay green after future redeploys.
-  SwapGD:                rawAddresses.contracts.GoodDollarToken as `0x${string}`,
-  SwapWETH:              rawAddresses.contracts.MockWETH as `0x${string}`,
-  SwapUSDC:              rawAddresses.contracts.MockUSDC as `0x${string}`,
+  SwapPoolGdWeth: "0x6f6f570f45833e249e27022648a26f4076f48f78" as `0x${string}`,
+  SwapPoolGdUsdc: "0xca8c8688914e0f7096c920146cd0ad85cd7ae8b9" as `0x${string}`,
+  SwapPoolWethUsdc:
+    "0xb0f05d25e41fbc2b52013099ed9616f1206ae21b" as `0x${string}`,
+  // GoodSwap pool tokens — deployed by DeploySwapInfra after reset.
+  SwapGD: "0xb9beecd1a582768711de1ee7b0a1d582d9d72a6c" as `0x${string}`,
+  SwapWETH: "0x8a93d247134d91e0de6f96547cb0204e5be8e5d8" as `0x${string}`,
+  SwapUSDC: "0x40918ba7f132e0acba2ce4de4c4baf9bd2d7d849" as `0x${string}`,
 
   // ── GoodPerps — sourced from op-stack/addresses.json (chain 42069) ───────
   // Previous hardcoded PerpEngine address (0x021DBfF4…) collided with the
   // legacy UBIRevenueTracker slot and had no code on-chain.
-  PerpEngine:            rawAddresses.contracts.PerpEngine as `0x${string}`,
-  MarginVault:           rawAddresses.contracts.MarginVault as `0x${string}`,
-  FundingRate:           rawAddresses.contracts.FundingRate as `0x${string}`,
-  PerpPriceOracle:       rawAddresses.contracts.PerpPriceOracle as `0x${string}`,
+  PerpEngine: rawAddresses.contracts.PerpEngine as `0x${string}`,
+  MarginVault: rawAddresses.contracts.MarginVault as `0x${string}`,
+  FundingRate: rawAddresses.contracts.FundingRate as `0x${string}`,
+  PerpPriceOracle: rawAddresses.contracts.PerpPriceOracle as `0x${string}`,
 
   // ── GoodStocks — sourced from op-stack/addresses.json (chain 42069) ──────
   // CollateralVault and SyntheticAssetFactory now live in the JSON; only the
   // sToken ERC-20s are still hardcoded and need a redeploy.
-  StocksPriceOracle:     rawAddresses.contracts.StocksPriceOracle as `0x${string}`,
-  CollateralVault:       rawAddresses.contracts.CollateralVault as `0x${string}`,
-  SyntheticAssetFactory: rawAddresses.contracts.SyntheticAssetFactory as `0x${string}`,
-  // Synthetic stock tokens (sToken ERC-20s) — STALE: no code on-chain — needs redeploy task
-  sAAPL:                 '0xfD195EeC3ADB4D9484065dcde04D9F657a5F8c45' as `0x${string}`,
-  sTSLA:                 '0xAB8C68E77d2584437b8F2ceD454D33e6B7d1eF48' as `0x${string}`,
-  sNVDA:                 '0x60f83010b4a0509ea8c7a7993471e9a4B3C82dBc' as `0x${string}`,
-  sMSFT:                 '0xC15476cFC8559FD9528141aBea459A709d86b586' as `0x${string}`,
-  sAMZN:                 '0xB701cDEA95F11bad434eb5F4fAd1320ED3544394' as `0x${string}`,
-  sGOOGL:                '0xfC97F96F115d4411821BD64Be4C6Ad670F7c0818' as `0x${string}`,
-  sMETA:                 '0xa9859e16D4DE5e71649F5D28cd47Dddce2af40CB' as `0x${string}`,
-  sJPM:                  '0x9511722bF565DF7420AB739B8e49894c5471Fb28' as `0x${string}`,
-  sV:                    '0x6efeD18c2878F48179F9B52b251c7d4C834BBC0A' as `0x${string}`,
-  sDIS:                  '0x3FDc5a01c707Ef3B708Dcdab36014aF3e229E473' as `0x${string}`,
-  sNFLX:                 '0x3B156D26a707de6E792Af47D5890E11D124F8D6C' as `0x${string}`,
-  sAMD:                  '0x85eD4d86A147a281569Dac55DA64D74d9fF53409' as `0x${string}`,
+  StocksPriceOracle: rawAddresses.contracts.StocksPriceOracle as `0x${string}`,
+  CollateralVault: rawAddresses.contracts.CollateralVault as `0x${string}`,
+  SyntheticAssetFactory: rawAddresses.contracts
+    .SyntheticAssetFactory as `0x${string}`,
+  // Synthetic stock tokens (sToken ERC-20s) — live after reset
+  sAAPL: "0x4a46860E025D02f60Bff5f44afB25ed75298784C" as `0x${string}`,
+  sTSLA: "0x4565072738662672Bb9B1b1b5CF015C4b05A9328" as `0x${string}`,
+  sNVDA: "0x873B05552B084BB737107ED762C36e2eB64b4cDe" as `0x${string}`,
+  sMSFT: "0xC1F24d2C4C30A6DD19277EfB3771e724889eaa5f" as `0x${string}`,
+  sAMZN: "0x0d3AA1Ff33792CD98b966846B0F661276E8eA4e1" as `0x${string}`,
+  sGOOGL: "0xd6A7D966Ea6eDeA76330eA64A773318148E8F02D" as `0x${string}`,
+  sMETA: "0xA0A6e9950d626A1f4F707a82BdE6e48ACFc2FF82" as `0x${string}`,
+  sJPM: "0x6bA870E970f80cD9F7bD3E23EEd8b3Ed042728Cf" as `0x${string}`,
+  sV: "0x7921b17aBf22438a597b3c02017ab6E524fe8521" as `0x${string}`,
+  sDIS: "0x00029cf217b9b1696A51d2145386f601d56D425f" as `0x${string}`,
+  sNFLX: "0xa27e40C9393FeD9E92CbFC42127519155484f89C" as `0x${string}`,
+  sAMD: "0xe320Ed42E8FFbFd8efd219bC35fe0F66c5773890" as `0x${string}`,
 
   // ── Governance — sourced from op-stack/addresses.json ────────────────────
-  VoteEscrowedGD:        rawAddresses.contracts.VoteEscrowedGD as `0x${string}`,
-  GoodDAO:               rawAddresses.contracts.GoodDAO as `0x${string}`,
-  GoodTimelock:          '0xF66CfDf074D2FFD6A4037be3A669Ed04380Aef2B' as `0x${string}`, // STALE: no code on-chain — needs redeploy task
+  VoteEscrowedGD: rawAddresses.contracts.VoteEscrowedGD as `0x${string}`,
+  GoodDAO: rawAddresses.contracts.GoodDAO as `0x${string}`,
+  GoodTimelock: "0x5e6cb7e728e1c320855587e1d9c6f7972ebdd6d5" as `0x${string}`, // STALE: no code on-chain — needs redeploy task
 
   // ── GoodStable — sourced from op-stack/addresses.json (chain 42069) ──────
   // Previous hardcoded addresses (gUSD 0x5D42…, VaultManager 0xAb7b…, etc.)
   // were wiped by chain re-snapshot.
-  gUSD:                  rawAddresses.contracts.gUSD as `0x${string}`,
-  VaultManager:          rawAddresses.contracts.VaultManager as `0x${string}`,
-  CollateralRegistry:    rawAddresses.contracts.CollateralRegistry as `0x${string}`,
-  StabilityPool:         rawAddresses.contracts.StabilityPool as `0x${string}`,
-  PegStabilityModule:    rawAddresses.contracts.PegStabilityModule as `0x${string}`,
-  StablePriceOracle:     '0xACA81583840B1bF2dDF6cdE824ADa250C1936b4D' as `0x${string}`, // STALE: not in JSON — needs redeploy task
-  StableFeeSplitter:     '0xDdE78e6202518ff4936b5302Cc2891Ec180e8bFF' as `0x${string}`, // STALE: not in JSON — needs redeploy task
-  // GoodStable collateral tokens (separate from GoodLend mocks) — STALE: no code on-chain
-  StableMockWETH:        '0x8bCE54fF8aB45CB075b044AE117b8fD91F9351AB' as `0x${string}`,
-  StableMockUSDC:        '0x74Cf9087aD26D541930bAc724B7ab21BA8F00A27' as `0x${string}`,
-  StableMockGD:          '0xeFab0bEB0a557e452b398035Ea964948C750B2FD' as `0x${string}`,
+  gUSD: rawAddresses.contracts.gUSD as `0x${string}`,
+  VaultManager: rawAddresses.contracts.VaultManager as `0x${string}`,
+  CollateralRegistry: rawAddresses.contracts
+    .CollateralRegistry as `0x${string}`,
+  StabilityPool: rawAddresses.contracts.StabilityPool as `0x${string}`,
+  PegStabilityModule: rawAddresses.contracts
+    .PegStabilityModule as `0x${string}`,
+  StablePriceOracle:
+    "0x8bce54ff8ab45cb075b044ae117b8fd91f9351ab" as `0x${string}`, // STALE: not in JSON — needs redeploy task
+  StableFeeSplitter:
+    "0x26b862f640357268bd2d9e95bc81553a2aa81d7e" as `0x${string}`, // STALE: not in JSON — needs redeploy task
+  // GoodStable collateral tokens (separate from GoodLend mocks) — live after reset
+  StableMockWETH: "0xb2b580ce436e6f77a5713d80887e14788ef49c9a" as `0x${string}`,
+  StableMockUSDC: "0xb377a2eed7566ac9fcb0ba673604f9bf875e2bab" as `0x${string}`,
+  StableMockGD: "0x66f625b8c4c635af8b74ece2d7ed0d58b4af3c3d" as `0x${string}`,
 
   // ── UBI Analytics — sourced from op-stack/addresses.json ─────────────────
   // Previous hardcoded UBIRevenueTracker (0x021DBfF4…) was actually the OLD
   // PerpEngine address — wrong contract entirely. Now wired to the canonical
   // 0xfd6f… deployed alongside the current revenue/UBI splitter pair.
-  UBIRevenueTracker:     rawAddresses.contracts.UBIRevenueTracker as `0x${string}`,
+  UBIRevenueTracker: rawAddresses.contracts.UBIRevenueTracker as `0x${string}`,
 
   // ── GoodYield — sourced from op-stack/addresses.json (chain 42069) ───────
-  VaultFactory:          rawAddresses.contracts.VaultFactory as `0x${string}`,
+  VaultFactory: rawAddresses.contracts.VaultFactory as `0x${string}`,
 
-  // ── GoodYield Initial Vaults — STALE: no code on-chain — needs redeploy task ──
-  ETHLendingVault:       '0xa6AB86f760ae5D6fbF06056a7887b816610A4668' as `0x${string}`,
-  GUSDStabilityVault:    '0x6BdBEc8Be23eB0F4A1aeF4B4dDf85bdfF0BdbF97' as `0x${string}`,
-  GDLendingVault:        '0xAD438cEf9a586FcCF01a521bce9465e500a4259E' as `0x${string}`,
+  // ── GoodYield Initial Vaults — live after reset ──
+  ETHLendingVault:
+    "0xE5b9c837CF35ad00937CE3B553A1F13807EAC8f4" as `0x${string}`,
+  GUSDStabilityVault:
+    "0xa327526e816a9f9958C2C1A936BEcC4675CACC4b" as `0x${string}`,
+  GDLendingVault: "0x8dB9B84E12FF48cC14B5ECE688e95A0597fA42B8" as `0x${string}`,
 
   // ── Agent Registry — sourced from op-stack/addresses.json ────────────────
-  AgentRegistry:         rawAddresses.contracts.AgentRegistry as `0x${string}`,
+  AgentRegistry: rawAddresses.contracts.AgentRegistry as `0x${string}`,
 
-  // ── QA TestRegistry — STALE: not in JSON, no code on-chain ───────────────
-  TestRegistry:          '0x12bcb546bc60ff39f1adfc7ce4605d5bd6a6a876' as `0x${string}`,
-} as const
+  // ── QA TestRegistry — live after reset ───────────────────────────────────
+  TestRegistry: "0x0a17fabea4633ce714f1fa4a2dca62c3bac4758d" as `0x${string}`,
+} as const;
 
 /**
  * @deprecated Use CONTRACTS instead. Kept for backward compatibility.
  */
-export const DEVNET_CONTRACTS = CONTRACTS
+export const DEVNET_CONTRACTS = CONTRACTS;
 
 // ─── ABIs ─────────────────────────────────────────────────────────────────────
 // Re-exported from abi.ts so all consumers can import both addresses and ABIs
@@ -189,4 +195,4 @@ export {
   UBIRevenueTrackerABI,
   VaultFactoryABI,
   GoodVaultABI,
-} from './abi'
+} from "./abi";

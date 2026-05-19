@@ -75,8 +75,18 @@ export async function injectMockWallet(page: Page) {
             case 'net_version':
               return String(chainId)
 
-            case 'wallet_switchEthereumChain':
+            case 'wallet_switchEthereumChain': {
+              // Record the call so E2E tests can assert wrong-chain recovery
+              // attempted the canonical EIP-3326 wallet switch flow.
+              const w = window as unknown as {
+                __switchEthereumChainCalls?: unknown[]
+              }
+              if (!Array.isArray(w.__switchEthereumChainCalls)) {
+                w.__switchEthereumChainCalls = []
+              }
+              w.__switchEthereumChainCalls.push(params)
               return null
+            }
 
             case 'wallet_addEthereumChain': {
               // Record the call so E2E tests can assert the canonical EIP-3085

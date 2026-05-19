@@ -15,10 +15,10 @@ import "../src/governance/GoodTimelock.sol";
  */
 contract DeployTimelock is Script {
     function run() external {
-        // Existing governance addresses from op-stack/addresses.json
-        address goodDAO     = 0x5Ffe31E4676D3466268e28a75E51d1eFa4298620;
-        address ubiSplitter = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
-        address deployer    = msg.sender;
+        // Existing governance addresses from op-stack/addresses.json / env.
+        address goodDAO = vm.envOr("GOOD_DAO", address(0x5Ffe31E4676D3466268e28a75E51d1eFa4298620));
+        address ubiSplitter = vm.envOr("UBI_FEE_SPLITTER", address(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512));
+        address deployer = msg.sender;
 
         uint256 timelockDelay = 1 days;
 

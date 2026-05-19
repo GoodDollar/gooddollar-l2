@@ -94,6 +94,22 @@ test.describe('Mock wallet integration', () => {
     )
   })
 
+  test('mock wallet records chain switch requests for wrong-chain assertions', async ({ page }) => {
+    await injectMockWallet(page)
+    await page.goto('/swap')
+    await page.waitForLoadState('networkidle')
+
+    await page.evaluate(() =>
+      (window as any).ethereum?.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0xa455' }],
+      }),
+    )
+
+    const calls = await page.evaluate(() => (window as any).__switchEthereumChainCalls)
+    expect(calls).toEqual([[{ chainId: '0xa455' }]])
+  })
+
   test('mock wallet announces itself through EIP-6963 discovery', async ({ page }) => {
     await injectMockWallet(page)
     await page.goto('/swap')

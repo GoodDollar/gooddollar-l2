@@ -208,15 +208,16 @@ contract DeploySwapInfra is Script {
     uint256 constant SEED_WETH_USDC_WETH=     1_000e18;   // 1K WETH
     uint256 constant SEED_WETH_USDC_USDC= 3_000_000e6;    // 3M USDC (6 dec)
 
-    // Live devnet UBIFeeSplitter (redeployed, GOO-243)
-    address constant UBI_SPLITTER = 0x976fcd02f7C4773dd89C309fBF55D5923B4c98a1;
-
     function run() external {
         uint256 deployerKey = vm.envOr(
             "PRIVATE_KEY",
             uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
         );
         address deployer = vm.addr(deployerKey);
+        address ubiSplitter = vm.envOr(
+            "UBI_FEE_SPLITTER",
+            address(0x976fcd02f7C4773dd89C309fBF55D5923B4c98a1)
+        );
 
         vm.startBroadcast(deployerKey);
 
@@ -236,9 +237,9 @@ contract DeploySwapInfra is Script {
         SwapGoodPool poolWethUsdc = new SwapGoodPool(address(weth), address(usdc), deployer);
 
         // ── 3. Wire UBI fee beneficiary ────────────────────────────────────────
-        poolGdWeth.setFeeBeneficiary(UBI_SPLITTER);
-        poolGdUsdc.setFeeBeneficiary(UBI_SPLITTER);
-        poolWethUsdc.setFeeBeneficiary(UBI_SPLITTER);
+        poolGdWeth.setFeeBeneficiary(ubiSplitter);
+        poolGdUsdc.setFeeBeneficiary(ubiSplitter);
+        poolWethUsdc.setFeeBeneficiary(ubiSplitter);
 
         // ── 4. Seed liquidity (sorted to match canonical tokenA/tokenB order) ──
         _addLiquidity(poolGdWeth,   address(gd),   address(weth), SEED_GD_WETH_GD,    SEED_GD_WETH_WETH);
