@@ -131,11 +131,20 @@ async function main() {
   console.log('╚══════════════════════════════════════════════╝');
 
   await pollAll();
-  setInterval(pollAll, POLL_INTERVAL_MS);
+  const pollTimer = setInterval(pollAll, POLL_INTERVAL_MS);
 
   server.listen(PORT, () => {
     console.log(`[status-aggregator] Serving at http://localhost:${PORT}/status.json`);
   });
+
+  const shutdown = () => {
+    console.log('[status-aggregator] Shutting down...');
+    clearInterval(pollTimer);
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 main().catch(err => {

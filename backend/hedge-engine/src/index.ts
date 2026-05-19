@@ -80,7 +80,7 @@ async function main(): Promise<void> {
   const engine = new HedgeEngine(reader, calculator, executor, config);
 
   const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-  startHealthServer({
+  const healthServer = startHealthServer({
     name: 'hedge-engine',
     port: parseInt(process.env.HEALTH_PORT ?? process.env.HEDGE_ENGINE_PORT ?? '9106', 10),
     chainCheck: async () => Number(await provider.getBlockNumber()),
@@ -89,7 +89,8 @@ async function main(): Promise<void> {
   const shutdown = () => {
     console.log('[HedgeEngine] Shutting down...');
     engine.stop();
-    process.exit(0);
+    healthServer.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000);
   };
 
   process.on('SIGINT', shutdown);

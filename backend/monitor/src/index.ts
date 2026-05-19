@@ -78,8 +78,10 @@ async function runAllChecks(): Promise<CheckResult[]> {
   return results;
 }
 
+let shuttingDown = false;
+
 async function checkLoop() {
-  while (true) {
+  while (!shuttingDown) {
     try {
       latestResults = await runAllChecks();
       lastCheckTime = Date.now();
@@ -102,6 +104,7 @@ async function checkLoop() {
       console.error(`[Monitor] Check loop error:`, err.message);
     }
 
+    if (shuttingDown) break;
     await new Promise((r) => setTimeout(r, CHECK_INTERVAL));
   }
 }
@@ -152,9 +155,18 @@ app.get("/api/alerts", (_req, res) => {
   res.json({ ok: true, count: alerts.length, alerts });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[Monitor] GoodDollar L2 Monitor API on port ${PORT}`);
 });
+
+const shutdown = () => {
+  console.log('[Monitor] Shutting down...');
+  shuttingDown = true;
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 3000);
+};
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 // Start check loop
 checkLoop();
