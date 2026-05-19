@@ -33,6 +33,7 @@ vi.mock('@/lib/useOnChainStocks', () => ({
 vi.mock('@/lib/useStocks', () => ({
   useMintSynthetic: () => ({ mint: vi.fn(), phase: 'idle', error: null, isDeployed: false }),
   useRedeemSynthetic: () => ({ redeem: vi.fn(), phase: 'idle', error: null }),
+  useStockPosition: () => ({ position: null, isLoading: false }),
 }))
 
 vi.mock('@/lib/WalletReadyContext', () => ({

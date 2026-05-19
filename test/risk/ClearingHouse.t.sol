@@ -277,7 +277,7 @@ contract ClearingHouseTest is Test {
         ch.checkPositionCap(AAPL_KEY, 100, 2_000_000e18);
     }
 
-    function test_checkPositionCap_noCap_passes() public view {
+    function test_checkPositionCap_noCap_passes() public {
         ch.checkPositionCap(AAPL_KEY, 100, 999_999_999e18);
     }
 
