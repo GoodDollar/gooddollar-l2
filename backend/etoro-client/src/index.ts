@@ -5,7 +5,7 @@ import { AuditLogger } from './audit-logger';
 import { MarketDataModule } from './market-data';
 import { TradingModule } from './trading';
 import { AccountModule } from './account';
-import { EtoroClientConfig, EtoroCredentials } from './types';
+import { EtoroClientConfig, EtoroCredentials, MarketDataConfig } from './types';
 
 export class EtoroClient {
   readonly credentials: EtoroCredentials;
@@ -18,7 +18,7 @@ export class EtoroClient {
   private readonly audit: AuditLogger;
   private sessionToken?: string;
 
-  constructor(config?: Partial<EtoroClientConfig & { rateLimiter?: RateLimiterConfig }>) {
+  constructor(config?: Partial<EtoroClientConfig & { rateLimiter?: RateLimiterConfig; marketData?: MarketDataConfig }>) {
     this.credentials = config?.credentials ?? loadCredentialsFromEnv();
     this.rateLimiter = new RateLimiter(config?.rateLimiter);
     this.audit = new AuditLogger(this.credentials.mode);
@@ -33,7 +33,7 @@ export class EtoroClient {
       },
     });
 
-    this.marketData = new MarketDataModule();
+    this.marketData = new MarketDataModule(this.http, config?.marketData);
     this.trading = new TradingModule();
     this.account = new AccountModule();
   }

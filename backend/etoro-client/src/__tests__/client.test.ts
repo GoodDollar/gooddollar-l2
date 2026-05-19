@@ -31,10 +31,16 @@ describe('EtoroClient', () => {
     expect(client.account).toBeDefined();
   });
 
-  it('stub modules throw not-implemented errors', async () => {
+  it('trading and account stubs throw not-implemented errors', async () => {
     const client = new EtoroClient({ credentials: MOCK_CREDENTIALS });
-    await expect(client.marketData.getQuotes(['AAPL'])).rejects.toThrow('not yet implemented');
     await expect(client.trading.openPosition({} as never)).rejects.toThrow('not yet implemented');
     await expect(client.account.getBalance()).rejects.toThrow('not yet implemented');
+  });
+
+  it('marketData module is functional (not a stub)', () => {
+    const client = new EtoroClient({ credentials: MOCK_CREDENTIALS });
+    expect(typeof client.marketData.getQuotes).toBe('function');
+    expect(typeof client.marketData.getInstruments).toBe('function');
+    expect(typeof client.marketData.getCandles).toBe('function');
   });
 });
