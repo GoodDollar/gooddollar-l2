@@ -13,8 +13,8 @@ export default function TestnetGuideLoading() {
       <div className="max-w-4xl mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
         <nav className="lg:w-56 flex-shrink-0">
           <div className="lg:sticky lg:top-20 bg-dark-50 rounded-xl p-4 space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-4 bg-dark-50/40 rounded" style={{ width: `${60 + Math.random() * 40}%` }} />
+            {[75, 90, 65, 85, 70, 95, 80, 60].map((w, i) => (
+              <div key={i} className="h-4 bg-dark-50/40 rounded" style={{ width: `${w}%` }} />
             ))}
           </div>
         </nav>
