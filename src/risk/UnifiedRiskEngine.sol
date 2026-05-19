@@ -103,6 +103,12 @@ contract UnifiedRiskEngine {
         _;
     }
 
+    modifier onlyRegisteredSource() {
+        if (!registeredSources[msg.sender] && msg.sender != admin)
+            revert SourceNotRegistered(msg.sender);
+        _;
+    }
+
     // ─── Constructor ────────────────────────────────────────────
 
     constructor(
@@ -136,7 +142,7 @@ contract UnifiedRiskEngine {
     function checkRisk(
         bytes32 symbol,
         int256 additionalExposure
-    ) external whenNotPaused {
+    ) external onlyRegisteredSource whenNotPaused {
         int256 currentNet = getNetExposure(symbol);
         int256 projected = currentNet + additionalExposure;
 
@@ -148,7 +154,8 @@ contract UnifiedRiskEngine {
         }
 
         if (protocolCap > 0) {
-            uint256 totalAbs = _totalAbsExposure() + absProjected;
+            uint256 absCurrentNet = currentNet >= 0 ? uint256(currentNet) : uint256(-currentNet);
+            uint256 totalAbs = _totalAbsExposure() - absCurrentNet + absProjected;
             if (totalAbs > protocolCap) {
                 revert ProtocolCapExceeded(totalAbs, protocolCap);
             }
