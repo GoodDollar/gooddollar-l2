@@ -35,6 +35,7 @@ const DEVIATION_THRESHOLD_BPS = parseInt(process.env.DEVIATION_BPS ?? '50', 10);
 const TICKERS = [
   'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN',
   'GOOGL', 'META', 'JPM', 'V', 'DIS', 'NFLX', 'AMD',
+  'SPY', 'QQQ',
 ];
 
 // PriceOracle ABI (only what we need)

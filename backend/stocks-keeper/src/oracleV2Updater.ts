@@ -15,6 +15,8 @@ const STOCK_ORACLE_V2_ABI = [
   'function getPrice(string calldata symbol) external view returns (uint256)',
   'function getPriceUnsafe(string calldata symbol) external view returns (uint256 price8, uint256 timestamp, uint8 session, uint8 confidence)',
   'function signers(address) view returns (bool)',
+  'function registeredSymbolCount() external view returns (uint256)',
+  'function getAllSymbolHashes() external view returns (bytes32[])',
 ];
 
 interface StockQuote {
@@ -28,6 +30,7 @@ export class OracleV2Updater {
   private wallet: ethers.Wallet;
   private oracle: ethers.Contract;
   private lastPrices: Map<string, bigint> = new Map();
+  private registeredSymbols: Set<string> = new Set();
   private deviationBps: number;
 
   constructor(
@@ -55,9 +58,11 @@ export class OracleV2Updater {
   }
 
   async batchUpdate(quotes: StockQuote[]): Promise<number> {
-    const pending = quotes.filter(q => this.shouldUpdate(q.ticker, q.priceChainlink));
+    const pending = quotes
+      .filter(q => this.registeredSymbols.has(q.ticker))
+      .filter(q => this.shouldUpdate(q.ticker, q.priceChainlink));
     if (pending.length === 0) {
-      logger.debug('No quotes exceed deviation threshold, skipping batch');
+      logger.debug('No registered quotes exceed deviation threshold, skipping batch');
       return 0;
     }
 
@@ -93,7 +98,17 @@ export class OracleV2Updater {
 
   async init(tickers: string[]): Promise<void> {
     logger.info({ signer: this.signerAddress }, 'Initializing OracleV2Updater');
+
+    const onChainHashes: string[] = await this.oracle.getAllSymbolHashes();
+    const hashSet = new Set(onChainHashes.map((h: string) => h.toLowerCase()));
+
     for (const ticker of tickers) {
+      const hash = ethers.keccak256(ethers.toUtf8Bytes(ticker));
+      if (!hashSet.has(hash.toLowerCase())) {
+        logger.info({ ticker, hash }, 'Not registered on StockOracleV2, skipping');
+        continue;
+      }
+      this.registeredSymbols.add(ticker);
       try {
         const result = await this.oracle.getPriceUnsafe(ticker);
         const price8 = BigInt(result.price8);
@@ -102,9 +117,13 @@ export class OracleV2Updater {
           logger.info({ ticker, price8: price8.toString() }, 'Loaded on-chain price');
         }
       } catch {
-        logger.debug({ ticker }, 'No existing price on StockOracleV2');
+        logger.debug({ ticker }, 'Failed to read price from StockOracleV2');
       }
     }
+    logger.info(
+      { registered: [...this.registeredSymbols], count: this.registeredSymbols.size },
+      'OracleV2Updater initialized',
+    );
   }
 }
 
