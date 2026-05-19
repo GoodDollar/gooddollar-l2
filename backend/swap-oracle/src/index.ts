@@ -64,6 +64,22 @@ const ORACLE_ABI = [
   'function admin() external view returns (address)',
 ];
 
+// ─── Price Sanity ────────────────────────────────────────────────────────────
+
+const MAX_CRYPTO_PRICE_USD = parseFloat(process.env.MAX_CRYPTO_PRICE_USD ?? '1000000');
+
+export function isPriceSane(symbol: string, priceUsd: number): boolean {
+  if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
+    logger.error({ symbol, priceUsd }, 'Price rejected: zero, negative, or non-finite');
+    return false;
+  }
+  if (priceUsd > MAX_CRYPTO_PRICE_USD) {
+    logger.error({ symbol, priceUsd, max: MAX_CRYPTO_PRICE_USD }, 'Price rejected: exceeds maximum bound');
+    return false;
+  }
+  return true;
+}
+
 // ─── Price Fetcher ───────────────────────────────────────────────────────────
 
 export interface PriceResult {
@@ -95,7 +111,9 @@ export async function fetchPrices(tokens: TokenMapping[]): Promise<PriceResult[]
         continue;
       }
       const priceUsd = entry.usd as number;
-      // Convert to 8-decimal Chainlink format
+      if (!isPriceSane(token.symbol, priceUsd)) {
+        continue;
+      }
       const priceChainlink = BigInt(Math.round(priceUsd * 1e8));
 
       results.push({ token, priceUsd, priceChainlink });

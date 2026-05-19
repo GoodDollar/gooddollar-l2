@@ -1,4 +1,4 @@
-import { fetchPrices, TokenMapping } from '../index';
+import { fetchPrices, isPriceSane, TokenMapping } from '../index';
 
 const TOKENS: TokenMapping[] = [
   { address: '0xaaa', coingeckoId: 'gooddollar', symbol: 'G$' },
@@ -91,5 +91,82 @@ describe('fetchPrices', () => {
 
     const results = await fetchPrices([]);
     expect(results).toEqual([]);
+  });
+
+  it('filters out zero prices from API response', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        gooddollar: { usd: 0 },
+        ethereum: { usd: 3200 },
+        'usd-coin': { usd: 1 },
+      }),
+    });
+
+    const results = await fetchPrices(TOKENS);
+    expect(results).toHaveLength(2);
+    expect(results.map(r => r.token.symbol)).toEqual(['WETH', 'USDC']);
+  });
+
+  it('filters out negative prices from API response', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        gooddollar: { usd: 0.00015 },
+        ethereum: { usd: -3200 },
+        'usd-coin': { usd: 1 },
+      }),
+    });
+
+    const results = await fetchPrices(TOKENS);
+    expect(results).toHaveLength(2);
+    expect(results.map(r => r.token.symbol)).toEqual(['G$', 'USDC']);
+  });
+
+  it('filters out prices exceeding max bound', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        gooddollar: { usd: 0.00015 },
+        ethereum: { usd: 5000000 },
+        'usd-coin': { usd: 1 },
+      }),
+    });
+
+    const results = await fetchPrices(TOKENS);
+    expect(results).toHaveLength(2);
+    expect(results.map(r => r.token.symbol)).toEqual(['G$', 'USDC']);
+  });
+});
+
+describe('isPriceSane', () => {
+  it('accepts valid prices', () => {
+    expect(isPriceSane('WETH', 3200)).toBe(true);
+    expect(isPriceSane('G$', 0.00015)).toBe(true);
+    expect(isPriceSane('USDC', 1.0001)).toBe(true);
+  });
+
+  it('rejects zero', () => {
+    expect(isPriceSane('WETH', 0)).toBe(false);
+  });
+
+  it('rejects negative', () => {
+    expect(isPriceSane('WETH', -100)).toBe(false);
+  });
+
+  it('rejects NaN', () => {
+    expect(isPriceSane('WETH', NaN)).toBe(false);
+  });
+
+  it('rejects Infinity', () => {
+    expect(isPriceSane('WETH', Infinity)).toBe(false);
+  });
+
+  it('rejects prices above max bound', () => {
+    expect(isPriceSane('WETH', 2000000)).toBe(false);
+  });
+
+  it('accepts prices at exactly max bound', () => {
+    expect(isPriceSane('WETH', 1000000)).toBe(true);
   });
 });

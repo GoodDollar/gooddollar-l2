@@ -46,6 +46,22 @@ const ORACLE_ABI = [
   'function admin() external view returns (address)',
 ];
 
+// ─── Price Sanity ────────────────────────────────────────────────────────────
+
+const MAX_STOCK_PRICE_USD = parseFloat(process.env.MAX_STOCK_PRICE_USD ?? '100000');
+
+export function isStockPriceSane(ticker: string, price: number): boolean {
+  if (!Number.isFinite(price) || price <= 0) {
+    logger.error({ ticker, price }, 'Price rejected: zero, negative, or non-finite');
+    return false;
+  }
+  if (price > MAX_STOCK_PRICE_USD) {
+    logger.error({ ticker, price, max: MAX_STOCK_PRICE_USD }, 'Price rejected: exceeds maximum bound');
+    return false;
+  }
+  return true;
+}
+
 // ─── Price Fetcher ───────────────────────────────────────────────────────────
 
 interface StockQuote {
@@ -94,6 +110,9 @@ async function fetchPrices(tickers: string[]): Promise<StockQuote[]> {
         }
 
         const price = meta.regularMarketPrice;
+        if (!isStockPriceSane(ticker, price)) {
+          continue;
+        }
         quotes.push({
           ticker,
           price,
@@ -133,7 +152,7 @@ async function fetchFromFallback(ticker: string): Promise<StockQuote | null> {
     if (!priceMatch) return null;
 
     const price = parseFloat(priceMatch[1]);
-    if (isNaN(price) || price <= 0) return null;
+    if (!isStockPriceSane(ticker, price)) return null;
 
     return {
       ticker,
@@ -311,9 +330,11 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(err => {
-  logger.error({ err }, 'Fatal error');
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    logger.error({ err }, 'Fatal error');
+    process.exit(1);
+  });
+}
 
 export { fetchPrices, OracleUpdater, StockQuote, TICKERS };
