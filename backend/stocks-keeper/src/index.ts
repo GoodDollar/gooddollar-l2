@@ -300,7 +300,7 @@ async function main(): Promise<void> {
   }
 
   const provider = new ethers.JsonRpcProvider(RPC_URL);
-  startHealthServer({
+  const healthServer = startHealthServer({
     name: 'stocks-keeper',
     port: parseInt(process.env.HEALTH_PORT ?? '9105', 10),
     chainCheck: async () => Number(await provider.getBlockNumber()),
@@ -316,12 +316,23 @@ async function main(): Promise<void> {
     logger.info({ oracleV2: ORACLE_V2_ADDRESS }, 'StockOracleV2 updater enabled');
   }
 
+  let shuttingDown = false;
+  const shutdown = () => {
+    logger.info('Shutting down...');
+    shuttingDown = true;
+    healthServer.close();
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+
   // Run first cycle immediately
   await runCycle(updater, v2Updater);
 
   // Then loop
-  while (true) {
+  while (!shuttingDown) {
     await sleep(INTERVAL_MS);
+    if (shuttingDown) break;
     try {
       await runCycle(updater, v2Updater);
     } catch (err) {

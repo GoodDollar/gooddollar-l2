@@ -207,7 +207,7 @@ async function main() {
   const wallet = new ethers.Wallet(OPERATOR_KEY, provider);
   const oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, wallet);
 
-  startHealthServer({
+  const healthServer = startHealthServer({
     name: 'swap-oracle',
     port: parseInt(process.env.HEALTH_PORT ?? '9100', 10),
     chainCheck: async () => Number(await provider.getBlockNumber()),
@@ -251,8 +251,17 @@ async function main() {
   await tick();
 
   // Then on interval
-  setInterval(tick, INTERVAL_MS);
+  const intervalId = setInterval(tick, INTERVAL_MS);
   logger.info(`Price keeper running, updating every ${INTERVAL_MS / 1000}s`);
+
+  const shutdown = () => {
+    logger.info('Shutting down...');
+    clearInterval(intervalId);
+    healthServer.close();
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 if (require.main === module) {
