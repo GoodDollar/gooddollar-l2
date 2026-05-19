@@ -18,7 +18,7 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 
 ## POC V1 Status — 2026-05-19
 
-POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candidate. The product app, public RPC, faucet, protocol pages, analytics, feedback path, Paperclip agent dashboard, and 12 backend health services are online. The current known public blocker is the Explorer / Blockscout endpoint, which returned Cloudflare `502 Bad Gateway` during this refresh and is the active alpha hardening item.
+POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candidate. The product app, public RPC, faucet, protocol pages, analytics, feedback path, Paperclip agent dashboard, Explorer / Blockscout, and 12 backend health services are online. Explorer was restored at `2026-05-19 07:54 UTC` after the Blockscout web/proxy containers had exited; it remains an alpha hardening watch item, but is no longer a public `502` blocker.
 
 ### POC V1 live endpoints
 
@@ -28,7 +28,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 | Main web app | https://goodswap.goodclaw.org | ✅ Live | Next.js app served by PM2 process `goodswap` on port 3100. |
 | Status API | https://goodswap.goodclaw.org/api/status | ✅ Healthy | `12 / 12` services healthy at `2026-05-19 06:57 UTC`. |
 | Public RPC | https://rpc.goodclaw.org | ✅ Live | `eth_chainId = 0xa455` / decimal chain ID `42069`. |
-| Explorer | https://explorer.goodclaw.org | ⚠️ Degraded | Returned Cloudflare `502 Bad Gateway` at refresh; Blockscout hardening is the active infra blocker. |
+| Explorer | https://explorer.goodclaw.org | ✅ Live | Restored at `2026-05-19 07:54 UTC`; root `/`, `/blocks`, and `/api/v2/main-page/indexing-status` returned HTTP `200`. |
 | Paperclip / Agents dashboard | https://paperclip.goodclaw.org | ✅ Live | Agent dashboard returned HTTP 200. |
 | Analytics dashboard | https://goodswap.goodclaw.org/analytics | ✅ Live | Public analytics page returned HTTP 200. |
 | Analytics API | https://goodswap.goodclaw.org/api/analytics/overview | ✅ Live | Returns protocol/address-book summary JSON. |
@@ -77,13 +77,13 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 | Frontend E2E registry | ✅ Green | Latest gate log `.autobuilder/final-e2e-gate-20260519T051711Z.log`: `27 passed`. |
 | Contract tests | ✅ Green baseline | README checkpoint records Foundry suite at `1126 / 1126` passing; run fresh before release tag. |
 | UBI fee accounting | ✅ Integration-proven on devnet | All 14 routes are proven in [`docs/UBI-FEE-ACCOUNTING.md`](docs/UBI-FEE-ACCOUNTING.md) with integration proofs for Swap/Perps and Predict/Lend/Stable/Stocks. |
-| Explorer / Blockscout | ⚠️ Blocker | Public explorer URL returned `502`; active alpha tasks are RPC saturation and Blockscout devnet hardening in `.autobuilder/initiatives/0005-alpha-testnet-50/`. |
+| Explorer / Blockscout | ✅ Restored / watch | Public explorer URL, `/blocks`, and indexing-status API returned HTTP `200` at `2026-05-19 07:54 UTC`; keep Blockscout devnet hardening active for restart durability and indexing catch-up. |
 
 ### POC V1 go / no-go
 
 **Go for internal demo and controlled POC V1 testing.** The web app, RPC, backend health, faucet, app routes, analytics, feedback capture, and core protocol surfaces are live.
 
-**Not yet go for broad public alpha.** Explorer reliability must be fixed, and the alpha release manifest still needs exact commit, build ID, service versions, canonical addresses, reset policy, proof transaction hashes, and final go/no-go signoff.
+**Not yet go for broad public alpha.** Explorer is restored, but the alpha release manifest still needs exact commit, build ID, service versions, canonical addresses, reset policy, proof transaction hashes, sustained explorer/RPC soak, and final go/no-go signoff.
 
 ## Current Status
 
@@ -94,7 +94,7 @@ GoodDollar L2 is running as a persistent public devnet / alpha-testnet candidate
 - Public health: `healthy`, `12 / 12` services OK from `https://goodswap.goodclaw.org/api/status` at `2026-05-19T06:57:10Z`.
 - Public app pages verified live: main app, faucet, perps, predict, lend, stable, stocks, bridge, agents, portfolio, tests, testnet guide, analytics, activity, pool, yield, governance, UBI impact, and invite returned HTTP `200` during this refresh.
 - Public RPC verified: `eth_chainId = 0xa455` / decimal chain ID `42069`.
-- Public explorer status: **degraded** — `https://explorer.goodclaw.org` returned Cloudflare `502 Bad Gateway`; Blockscout hardening is the live POC V1 blocker before broad public alpha.
+- Public explorer status: **live / watch** — `https://explorer.goodclaw.org`, `/blocks`, and `/api/v2/main-page/indexing-status` returned HTTP `200` at `2026-05-19 07:54 UTC` after restarting the Blockscout web/proxy stack.
 - Active initiative: Alpha Testnet Readiness — 50 iterations (`.autobuilder/initiatives/0005-alpha-testnet-50/`), with current planned blockers focused on RPC saturation hardening and Blockscout devnet hardening.
 - Active priorities: explorer reliability, proof transaction links, public tester onboarding, protocol smoke evidence, UBI-fee accounting, analytics + feedback loops, and release-candidate packaging.
 - Security hardening status: Slither high/medium cleanup completed in the prior security initiative; release gates still require continuous security checks before public testnet.
@@ -351,7 +351,7 @@ Recent historical full local release pass:
 - Frontend Vitest: `834` passing, `1` skipped at the latest full release baseline.
 - Frontend route registry: `27 / 27` Playwright routes passing in `.autobuilder/final-e2e-gate-20260519T051711Z.log`.
 - Public health: `12 / 12` services healthy at the POC V1 refresh.
-- Public RPC: `eth_chainId = 0xa455`; Explorer currently degraded (`502`) and tracked as the active blocker.
+- Public RPC: `eth_chainId = 0xa455`; Explorer restored at `2026-05-19 07:54 UTC` and remains on soak/watch for alpha hardening.
 
 ## Deploy
 
@@ -390,7 +390,7 @@ Every five iterations the README, testnet guide, architecture docs, status proof
 ## Known Boundaries Before Public Testnet
 
 - The current network is **POC V1**: a persistent public devnet / alpha-testnet candidate, not final mainnet infrastructure.
-- Explorer / Blockscout is currently degraded (`502` at the 2026-05-19 refresh) and must be fixed before broad public alpha.
+- Explorer / Blockscout was restored at `2026-05-19 07:54 UTC` after the web/proxy containers had exited; keep it under soak/watch before broad public alpha.
 - Public testnet release still needs final release-candidate manifest and tag recommendation.
 - Internal analytics is now shipped on the public app at [`/analytics`](https://goodswap.goodclaw.org/analytics) backed by [`/api/analytics/overview`](https://goodswap.goodclaw.org/api/analytics/overview) (iter 27), and the Dune / indexing-request package is published in [`analytics/dune-package/`](analytics/dune-package/) (iter 28); external Dune indexing remains pending and is tracked as a release artifact.
 - Tester feedback now has a redacted ingest path (iter 29): the floating Feedback button → `/api/feedback` → `frontend/data/feedback.jsonl`. The on-disk JSONL stream is the operator triage queue; there is no public viewer yet — surfacing it (e.g. a moderated `/feedback` page) is deferred.
