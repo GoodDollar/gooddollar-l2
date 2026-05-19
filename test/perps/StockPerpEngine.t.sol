@@ -527,4 +527,54 @@ contract StockPerpEngineTest is Test {
         assertTrue(aaplOpen);
         assertTrue(tslaOpen);
     }
+
+    // ═══════════════════════════════════════════
+    // Zero oracle price guards
+    // ═══════════════════════════════════════════
+
+    function test_openPosition_revert_zeroMarkPrice() public {
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+    }
+
+    function test_openPosition_revert_zeroIndexPrice() public {
+        oracle.setPrice(aaplIndexKey, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplIndexKey)
+        );
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+    }
+
+    function test_closePosition_revert_zeroExitPrice() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.closePosition(aaplMarketId);
+    }
+
+    function test_liquidate_revert_zeroExitPrice() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 100_000e18, true, 10_000e18);
+
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.liquidate(alice, aaplMarketId);
+    }
 }

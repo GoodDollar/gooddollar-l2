@@ -112,6 +112,7 @@ contract StockPerpEngine is ReentrancyGuard {
     error MaxOIExceeded(uint256 current, uint256 max);
     error PositionHealthy(uint256 marginRatio, uint256 threshold);
     error TransferFailed();
+    error OraclePriceZero(bytes32 key);
 
     // ─── Modifiers ───
 
@@ -225,6 +226,8 @@ contract StockPerpEngine is ReentrancyGuard {
 
         uint256 markPrice = oracle.getPriceByKey(m.oracleKey);
         uint256 indexPrice = oracle.getPriceByKey(m.indexOracleKey);
+        _requireNonZeroPrice(m.oracleKey, markPrice);
+        _requireNonZeroPrice(m.indexOracleKey, indexPrice);
         funding.applyFunding(marketId, markPrice, indexPrice);
 
         pos.isOpen = true;
@@ -255,6 +258,8 @@ contract StockPerpEngine is ReentrancyGuard {
         Market storage m = markets[marketId];
         uint256 exitPrice = oracle.getPriceByKey(m.oracleKey);
         uint256 indexPrice = oracle.getPriceByKey(m.indexOracleKey);
+        _requireNonZeroPrice(m.oracleKey, exitPrice);
+        _requireNonZeroPrice(m.indexOracleKey, indexPrice);
         funding.applyFunding(marketId, exitPrice, indexPrice);
 
         (int256 pnl, int256 fundPay) = _settlePnL(msg.sender, marketId, exitPrice);
@@ -274,6 +279,8 @@ contract StockPerpEngine is ReentrancyGuard {
         Market storage m = markets[marketId];
         uint256 exitPrice = oracle.getPriceByKey(m.oracleKey);
         uint256 indexPrice = oracle.getPriceByKey(m.indexOracleKey);
+        _requireNonZeroPrice(m.oracleKey, exitPrice);
+        _requireNonZeroPrice(m.indexOracleKey, indexPrice);
         funding.applyFunding(marketId, exitPrice, indexPrice);
 
         (int256 pnl, int256 fundPay) = _settlePnL(trader, marketId, exitPrice);
@@ -354,6 +361,10 @@ contract StockPerpEngine is ReentrancyGuard {
     }
 
     // ─── Internals ───
+
+    function _requireNonZeroPrice(bytes32 key, uint256 price) internal pure {
+        if (price == 0) revert OraclePriceZero(key);
+    }
 
     function _calcPnL(Position storage pos, uint256 currentPrice) internal view returns (int256) {
         int256 priceDelta = int256(currentPrice) - int256(pos.entryPrice);
