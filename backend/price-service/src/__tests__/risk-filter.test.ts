@@ -12,7 +12,7 @@ function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
     last: 189.55,
     timestamp: Date.now(),
     sessionState: 'open',
-    confidence: 1,
+    confidence: 95,
     stale: false,
     ...overrides,
   };
@@ -116,6 +116,46 @@ describe('RiskFilter', () => {
       }
       const result = filter.apply(makeQuote({ mid: 101 }));
       expect(result.accepted).toBe(true);
+    });
+  });
+
+  describe('confidence output (0-100 scale)', () => {
+    it('preserves input confidence for accepted quotes', () => {
+      const result = filter.apply(makeQuote({ confidence: 95 }));
+      expect(result.accepted).toBe(true);
+      expect(result.quote.confidence).toBe(95);
+    });
+
+    it('outputs 0-100 integer confidence for stale rejection', () => {
+      const result = filter.apply(makeQuote({ timestamp: Date.now() - 15_000 }));
+      expect(result.accepted).toBe(false);
+      expect(result.quote.confidence).toBe(0);
+      expect(Number.isInteger(result.quote.confidence)).toBe(true);
+    });
+
+    it('outputs 0-100 integer confidence for spread rejection', () => {
+      const result = filter.apply(makeQuote({ bid: 100, ask: 105, mid: 102.5 }));
+      expect(result.accepted).toBe(false);
+      expect(result.quote.confidence).toBeGreaterThanOrEqual(0);
+      expect(result.quote.confidence).toBeLessThanOrEqual(100);
+      expect(Number.isInteger(result.quote.confidence)).toBe(true);
+    });
+
+    it('outputs 0-100 integer confidence for deviation rejection', () => {
+      for (let i = 0; i < 10; i++) {
+        filter.apply(makeQuote({ mid: 100 }));
+      }
+      const result = filter.apply(makeQuote({ mid: 120 }));
+      expect(result.accepted).toBe(false);
+      expect(result.quote.confidence).toBeGreaterThanOrEqual(0);
+      expect(result.quote.confidence).toBeLessThanOrEqual(100);
+      expect(Number.isInteger(result.quote.confidence)).toBe(true);
+    });
+
+    it('outputs 0 confidence for halted rejection', () => {
+      const result = filter.apply(makeQuote({ sessionState: 'halted' }));
+      expect(result.accepted).toBe(false);
+      expect(result.quote.confidence).toBe(0);
     });
   });
 

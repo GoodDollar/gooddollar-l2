@@ -52,7 +52,7 @@ export class RiskFilter {
       return {
         accepted: false,
         reason: `spread-too-wide: ${spreadPct.toFixed(2)}% exceeds max ${this.config.maxSpreadPct}%`,
-        quote: { ...quote, confidence: Math.max(0, 1 - spreadPct / 10) },
+        quote: { ...quote, confidence: Math.round(Math.max(0, 100 * (1 - spreadPct / 10))) },
       };
     }
     return { accepted: true, quote };
@@ -83,7 +83,7 @@ export class RiskFilter {
       return {
         accepted: false,
         reason: `deviation: ${deviationPct.toFixed(2)}% from TWAP exceeds max ${this.config.maxDeviationPct}%`,
-        quote: { ...quote, confidence: Math.max(0, 1 - deviationPct / 20) },
+        quote: { ...quote, confidence: Math.round(Math.max(0, 100 * (1 - deviationPct / 20))) },
       };
     }
     return { accepted: true, quote };

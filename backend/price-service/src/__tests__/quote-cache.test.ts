@@ -12,7 +12,7 @@ function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
     last: 189.55,
     timestamp: Date.now(),
     sessionState: 'open',
-    confidence: 1,
+    confidence: 95,
     stale: false,
     ...overrides,
   };

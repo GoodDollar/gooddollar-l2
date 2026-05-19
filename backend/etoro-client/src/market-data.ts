@@ -288,7 +288,7 @@ export class MarketDataModule {
       last: last ?? price,
       timestamp,
       sessionState,
-      confidence: stale ? 0 : price > 0 ? 1 : 0,
+      confidence: computeConfidence({ bid, ask, mid, price, stale }),
       assetClass,
       currency: pickStr(src, ['currency', 'quoteCurrency']) ?? 'USD',
       stale,
@@ -349,6 +349,44 @@ export function detectUSMarketSession(date: Date, _symbol?: string): SessionStat
   if (timeMinutes >= 960 && timeMinutes < 1200) return 'after-hours';
 
   return 'closed';
+}
+
+// --- Confidence scoring (0-100 scale, matching StockOracleV2 uint8) ---
+
+/**
+ * Computes a 0-100 integer confidence score for a normalized quote.
+ * Scoring factors:
+ *   - Base 50 for any valid price
+ *   - +30 if both bid and ask are present (two-sided market)
+ *   - +20 scaled by spread tightness (spread < 0.1% → full bonus, > 3% → 0)
+ *   - Stale → 0
+ */
+export function computeConfidence(input: {
+  bid?: number;
+  ask?: number;
+  mid?: number;
+  price: number;
+  stale: boolean;
+}): number {
+  if (input.stale || input.price <= 0) return 0;
+
+  let score = 50;
+
+  const hasBidAsk = input.bid !== undefined && input.bid > 0
+    && input.ask !== undefined && input.ask > 0;
+
+  if (hasBidAsk) {
+    score += 30;
+
+    const mid = input.mid ?? (input.bid! + input.ask!) / 2;
+    if (mid > 0) {
+      const spreadPct = ((input.ask! - input.bid!) / mid) * 100;
+      const spreadBonus = Math.max(0, 20 * (1 - spreadPct / 3));
+      score += spreadBonus;
+    }
+  }
+
+  return Math.round(Math.min(100, Math.max(0, score)));
 }
 
 // --- Helpers ---
