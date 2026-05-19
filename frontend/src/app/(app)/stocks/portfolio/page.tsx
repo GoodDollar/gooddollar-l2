@@ -12,7 +12,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { UBIContributionCard } from '@/components/UBIContributionCard'
 import { PartnershipIntegrationCard } from '@/components/PartnershipIntegrationCard'
 
-function CollateralHealth({ ratio }: { ratio: number }) {
+function CollateralHealth({ ratio, totalCollateral = 0 }: { ratio: number; totalCollateral?: number }) {
+  const hasPositions = ratio > 0 || totalCollateral > 0
+
+  if (!hasPositions) {
+    return (
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 gap-0.5">
+          <span className="text-[10px] sm:text-xs text-gray-400">Collateral Health</span>
+          <span className="text-[10px] sm:text-xs font-medium text-gray-500">N/A</span>
+        </div>
+        <div className="h-1.5 bg-dark-50 rounded-full overflow-hidden" />
+      </div>
+    )
+  }
+
   const color = ratio >= 150 ? 'text-green-400' : ratio >= 120 ? 'text-yellow-400' : 'text-red-400'
   const bgColor = ratio >= 150 ? 'bg-green-400' : ratio >= 120 ? 'bg-yellow-400' : 'bg-red-400'
   const label = ratio >= 150 ? 'Healthy' : ratio >= 120 ? 'At Risk' : 'Critical'
@@ -132,7 +146,7 @@ export default function StocksPortfolioPage() {
           </div>
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <CollateralHealth ratio={summary.healthRatio} />
+          <CollateralHealth ratio={summary.healthRatio} totalCollateral={summary.totalCollateral} />
           <div className="hidden sm:block mt-2 text-xs text-gray-500">
             {formatStockPrice(summary.totalCollateral)} / {formatStockPrice(summary.totalRequired)} required
           </div>
