@@ -39,10 +39,11 @@ function StockIcon({ ticker }: { ticker: string }) {
 interface StockRowProps {
   stock: Stock
   idx: number
+  isLive: boolean
   onRowClick: (ticker: string) => void
 }
 
-const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProps) {
+const StockRow = memo(function StockRow({ stock, idx, isLive, onRowClick }: StockRowProps) {
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -73,13 +74,31 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
       <td className="py-3 px-2 hidden sm:table-cell" aria-label={`7-day trend: ${stock.change24h >= 0 ? 'up' : 'down'} ${Math.abs(stock.change24h).toFixed(1)}%`}>
         <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
       </td>
-      <td className="py-3 px-1 text-right w-20 hidden sm:table-cell">
-        <button
-          onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
-          className="px-3 py-1 text-xs font-semibold rounded-lg bg-goodgreen/15 text-goodgreen hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
-        >
-          Trade
-        </button>
+      <td className="py-3 px-1 text-right w-24 hidden sm:table-cell">
+        {isLive ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
+            className="px-3 py-1 text-xs font-semibold rounded-lg bg-goodgreen/15 text-goodgreen hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+          >
+            Trade
+          </button>
+        ) : (
+          <div className="flex items-center justify-end gap-1.5">
+            <span
+              className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+              aria-hidden="true"
+            >
+              Demo
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
+              className="px-3 py-1 text-xs font-semibold rounded-lg bg-dark-100 text-gray-300 border border-gray-700/40 hover:bg-dark-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/50"
+              aria-label={`Preview ${stock.ticker} — demo data`}
+            >
+              Preview
+            </button>
+          </div>
+        )}
       </td>
     </tr>
   )
@@ -144,21 +163,48 @@ export default function StocksPage() {
       />
 
       {!address && (
-        <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
-              <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
-              <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
+        isLive ? (
+          <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
+                <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
+                <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
+              </div>
+              <button
+                onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
+                className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+              >
+                Connect Wallet to Trade Stocks
+              </button>
             </div>
-            <button
-              onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
-              className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
-            >
-              Connect Wallet to Trade Stocks
-            </button>
           </div>
-        </div>
+        ) : (
+          <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-yellow-500/25 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-semibold text-white">Stocks Oracle in Demo Mode</h2>
+                  <span
+                    className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                    aria-hidden="true"
+                  >
+                    Demo
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-gray-300 mt-1">The on-chain stocks oracle isn&apos;t live yet. You can preview the trading experience, but orders cannot be placed.</p>
+                <p className="text-[11px] sm:text-xs text-gray-400 mt-2">Preview a stock to see the trade UI. Trading will unlock once the oracle is reachable.</p>
+              </div>
+              <button
+                onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
+                className="shrink-0 px-4 py-2.5 rounded-xl bg-dark-100 text-gray-200 border border-gray-700/40 font-semibold text-sm hover:bg-dark-50/40 transition"
+                aria-label="Preview stocks demo"
+              >
+                Preview Stocks Demo
+              </button>
+            </div>
+          </div>
+        )
       )}
 
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
@@ -201,9 +247,21 @@ export default function StocksPage() {
                 <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
                 </div>
-                <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
-                  Tap to trade
-                </span>
+                {isLive ? (
+                  <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
+                    Tap to trade
+                  </span>
+                ) : (
+                  <span
+                    className="inline-flex mt-1 items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-50/40 text-gray-300 border border-gray-700/40"
+                    aria-label="Demo data — preview only"
+                  >
+                    <span className="px-1 py-0 rounded bg-yellow-500/10 text-yellow-400 text-[9px] border border-yellow-500/20">
+                      Demo
+                    </span>
+                    Tap to preview
+                  </span>
+                )}
               </div>
             </div>
           ))
@@ -231,7 +289,7 @@ export default function StocksPage() {
                   Market Cap <SortArrow active={sortField === 'marketCap'} dir={sortDir} />
                 </th>
                 <th scope="col" className="py-3 px-2 font-semibold hidden sm:table-cell">7d Trend</th>
-                <th scope="col" className="w-20 hidden sm:table-cell" />
+                <th scope="col" className="w-24 hidden sm:table-cell" />
               </tr>
             </thead>
             <tbody>
@@ -244,7 +302,7 @@ export default function StocksPage() {
                 </tr>
               ) : (
                 filtered.map((stock, idx) => (
-                  <StockRow key={stock.ticker} stock={stock} idx={idx} onRowClick={handleRowClick} />
+                  <StockRow key={stock.ticker} stock={stock} idx={idx} isLive={isLive} onRowClick={handleRowClick} />
                 ))
               )}
             </tbody>
