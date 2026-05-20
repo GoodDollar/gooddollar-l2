@@ -176,6 +176,17 @@ test.describe('Stocks Journey', () => {
     }
   })
 
+  test('malformed percent-encoding routes render branded stocks recovery UI', async ({ page }) => {
+    for (const route of ['/stocks/%', '/stocks/%2', '/stocks/%E0%A4%A']) {
+      await page.goto(route)
+      await page.waitForLoadState('networkidle')
+
+      await expect(page.getByRole('heading', { name: 'Stock Not Found' })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('This stock symbol is not available.', { exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Back to Stocks' })).toBeVisible()
+    }
+  })
+
   test('tester address is funded on devnet', async () => {
     const balance = await publicClient.getBalance({
       address: TESTER_ADDRESS as `0x${string}`,

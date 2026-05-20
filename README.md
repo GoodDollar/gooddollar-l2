@@ -128,6 +128,7 @@ GoodDollar L2 is running as a persistent public devnet / alpha-testnet candidate
 - **2026-05-20 — Encoded-valid ticker route normalization (task 0028).** Fixed `/stocks/[ticker]` boundary behavior so double/triple-encoded valid symbols (for example `%2541APL`, `%252541APL`) resolve to the real stock detail page instead of a false `Stock Not Found`, while preserving strict `UNKNOWN` fallback behavior for malformed payloads.
 - **2026-05-20 — Invalid ticker copy de-risking (task 0029).** Updated `/stocks/[ticker]` not-found UX to use generic safe copy (`This stock symbol is not available.`) instead of echoing route input, and tightened regression tests to ensure percent-encoded malformed payloads (`%20`, `%00`, `%2520`, `%3Csvg...`) never appear in user-facing error text.
 - **2026-05-20 — Slash/null malformed ticker guard expansion (task 0030).** Hardened `/stocks/[ticker]` lookup normalization to reject unsafe ticker shapes and expanded route regression coverage for `%2F`, `%252525252525`, and `AAPL%00`, ensuring malformed slash/null payloads never surface in user-facing error copy.
+- **2026-05-20 — Malformed percent-path recovery routing (task 0031).** Added a guarded Next runtime server path normalizer that rewrites malformed `%` stocks routes (for example `/stocks/%`, `/stocks/%2`, `/stocks/%E0%A4%A`) to a safe fallback ticker so users stay inside branded stocks recovery UI instead of hitting a raw `400 Bad Request` page.
 
 ## Logo and Brand
 
