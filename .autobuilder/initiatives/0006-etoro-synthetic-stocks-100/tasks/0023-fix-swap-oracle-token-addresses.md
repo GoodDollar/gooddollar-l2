@@ -107,12 +107,12 @@ cast call 0x40a42baf86fc821f972ad2ac878729063ceef403 "getPriceUnsafe(address)(ui
 
 ## Acceptance Criteria
 
-- [ ] SwapPriceOracle has correct tokens registered (G$, MockWETH, MockUSDC)
-- [ ] Old wrong token addresses removed from oracle
-- [ ] swap-oracle PM2 env has correct WETH_ADDRESS, USDC_ADDRESS
-- [ ] swap-oracle logs show successful price updates (no `execution reverted`)
-- [ ] `getPriceUnsafe(MockWETH)` returns valid price on-chain
-- [ ] All Foundry tests pass
+- [x] SwapPriceOracle has correct tokens registered (G$, MockWETH, MockUSDC)
+- [x] Old wrong token addresses removed from oracle
+- [x] swap-oracle PM2 env has correct WETH_ADDRESS, USDC_ADDRESS
+- [x] swap-oracle logs show successful price updates (no `execution reverted` after corrected oracle address)
+- [x] `getPriceUnsafe(MockWETH)` returns valid price on-chain
+- [x] All Foundry tests pass
 
 ## Verification
 
@@ -122,6 +122,20 @@ npx pm2 restart swap-oracle && sleep 15
 npx pm2 logs swap-oracle --nostream --lines 10
 forge test --summary
 ```
+
+## Execution Evidence — 2026-05-20
+
+- `cast call 0x40a42baf86fc821f972ad2ac878729063ceef403 "getAllTokens()(address[])" --rpc-url http://localhost:8545` returned exactly:
+  - `0x5FbDB2315678afecb367f032d93F642f64180aa3` (G$)
+  - `0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf` (MockWETH)
+  - `0x0E801D84Fa97b50751Dbf25036d067dCf18858bF` (MockUSDC)
+- PM2 `swap-oracle` env verified:
+  - `SWAP_ORACLE_ADDRESS=0x40a42baf86fc821f972ad2ac878729063ceef403`
+  - `GDOLLAR_ADDRESS=0x5fbdb2315678afecb367f032d93f642f64180aa3`
+  - `WETH_ADDRESS=0x8f86403a4de0bb5791fa46b8e795c547942fe4cf`
+  - `USDC_ADDRESS=0x0e801d84fa97b50751dbf25036d067dcf18858bf`
+- `pm2 logs swap-oracle --nostream --lines 80` shows the service connected to `SwapPriceOracle` at `06:38:07 UTC`, loaded G$/WETH/USDC prices, then wrote on-chain updates at `06:38:11`, `06:41:15`, and `06:55:15 UTC`.
+- `PATH="$HOME/.foundry/bin:$PATH" npm run test:contracts` passed: `61` suites / `1,375` tests / `0` failed.
 
 ## Out of Scope
 
