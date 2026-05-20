@@ -25,8 +25,8 @@ describe('Header', () => {
 
   it('renders desktop nav links', () => {
     render(<Header />)
-    expect(screen.getByText('Swap')).toBeInTheDocument()
-    expect(screen.getByText('Explore')).toBeInTheDocument()
+    expect(screen.getAllByText('Swap').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Explore').length).toBeGreaterThanOrEqual(1)
     const poolLinks = screen.getAllByText('Pool')
     expect(poolLinks.length).toBeGreaterThanOrEqual(1)
     const bridgeLinks = screen.getAllByText('Bridge')
@@ -139,30 +139,30 @@ describe('Header', () => {
     })
   })
 
-  it('uses 2xl breakpoint for desktop nav (not sm/lg/xl) to avoid clipping WalletButton at 1280px', () => {
-    // Regression test: with 14+ nav links, the inline desktop nav does not fit
-    // inside a 1280px viewport (the xl breakpoint). The desktop nav must
-    // therefore only appear at 2xl (1536px+); below that, the mobile menu is used.
+  it('shows condensed nav at lg breakpoint with core links and More dropdown', () => {
     render(<Header />)
-    const desktopNav = document.querySelector('nav.hidden.\\32 xl\\:flex')
-    expect(desktopNav).not.toBeNull()
-    // The sm:flex, lg:flex, and xl:flex versions must NOT exist anymore.
-    const oldSmNav = document.querySelector('nav.hidden.sm\\:flex')
-    expect(oldSmNav).toBeNull()
-    const oldLgNav = document.querySelector('nav.hidden.lg\\:flex')
-    expect(oldLgNav).toBeNull()
-    const oldXlNav = document.querySelector('nav.hidden.xl\\:flex')
-    expect(oldXlNav).toBeNull()
+    const condensedNav = document.querySelector('[data-testid="condensed-nav"]')
+    expect(condensedNav).not.toBeNull()
+    expect(condensedNav!.className).toContain('lg:flex')
+    expect(condensedNav!.className).toContain('2xl:hidden')
+    expect(condensedNav!.textContent).toContain('Swap')
+    expect(condensedNav!.textContent).toContain('Stocks')
+    expect(condensedNav!.textContent).toContain('Perps')
+    expect(condensedNav!.textContent).toContain('Predict')
+    expect(condensedNav!.textContent).toContain('Lend')
+    expect(condensedNav!.textContent).toContain('More')
   })
 
-  it('hamburger button is hidden at 2xl breakpoint (matching mobile menu visibility)', () => {
+  it('keeps full expanded nav at 2xl breakpoint', () => {
+    render(<Header />)
+    const fullNav = document.querySelector('nav.hidden.\\32 xl\\:flex')
+    expect(fullNav).not.toBeNull()
+  })
+
+  it('hamburger button is hidden at lg breakpoint (condensed nav visible)', () => {
     render(<Header />)
     const hamburger = screen.getByLabelText('Open menu')
-    expect(hamburger.className).toMatch(/\b2xl:hidden\b/)
-    expect(hamburger.className).not.toMatch(/\bsm:hidden\b/)
-    expect(hamburger.className).not.toMatch(/\blg:hidden\b/)
-    // Note: "2xl:hidden" contains "xl:hidden" as substring, so we can't use a
-    // negated regex with \b. Instead we explicitly checked the positive match above.
+    expect(hamburger.className).toMatch(/\blg:hidden\b/)
   })
 
   it('Pool and Bridge in mobile menu show Coming Soon badges', () => {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Menu, X, ChevronDown } from 'lucide-react'
 import { WalletButton } from './WalletButton'
 import { WalletButtonConnected } from './WalletButtonConnected'
 import { useWalletReady } from '@/lib/WalletReadyContext'
@@ -108,6 +108,41 @@ export function Header() {
           <Link href="/invite" className={isInvite ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Invite</Link>
         </nav>
 
+        <nav data-testid="condensed-nav" className="hidden lg:flex 2xl:hidden items-center gap-3 text-sm text-gray-400">
+          <Link href="/" className={isSwap ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Swap</Link>
+          <Link href="/stocks" className={isStocks ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Stocks</Link>
+          <Link href="/perps" className={isPerps ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Perps</Link>
+          <Link href="/predict" className={isPredict ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Predict</Link>
+          <Link href="/lend" className={isLend ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Lend</Link>
+          <details className="relative group">
+            <summary className="list-none cursor-pointer flex items-center gap-1 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none rounded-md px-1">
+              More
+              <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="absolute right-0 top-full mt-3 w-48 rounded-xl border border-dark-50 bg-dark-100/95 shadow-xl shadow-black/30 backdrop-blur-md p-2 z-50">
+              <Link href="/explore" className={`block px-3 py-2 rounded-lg ${isExplore ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Explore</Link>
+              <Link href="/pool" className={`flex items-center justify-between px-3 py-2 rounded-lg ${isPool ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>
+                Pool
+                <span className="text-[10px] text-orange-400">Soon</span>
+              </Link>
+              <Link href="/bridge" className={`flex items-center justify-between px-3 py-2 rounded-lg ${isBridge ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>
+                Bridge
+                <span className="text-[10px] text-orange-400">Soon</span>
+              </Link>
+              <Link href="/stable" className={`block px-3 py-2 rounded-lg ${isStable ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Stable</Link>
+              <Link href="/yield" className={`block px-3 py-2 rounded-lg ${isYield ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Yield</Link>
+              <Link href="/governance" className={`block px-3 py-2 rounded-lg ${isGovernance ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Govern</Link>
+              <Link href="/agents" className={`block px-3 py-2 rounded-lg ${isAgents ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Agents</Link>
+              <Link href="/ubi-impact" className={`block px-3 py-2 rounded-lg ${isUBIImpact ? 'text-green-400 bg-dark-50/50 font-medium' : 'text-green-400/70 hover:text-green-400 hover:bg-dark-50/50'}`}>UBI</Link>
+              <Link href="/activity" className={`block px-3 py-2 rounded-lg ${isActivity ? 'text-goodgreen bg-dark-50/50 font-medium' : 'text-goodgreen/80 hover:text-goodgreen hover:bg-dark-50/50'}`}>Activity</Link>
+              <div className="border-t border-dark-50/50 my-1" />
+              <Link href="/faucet" className={`block px-3 py-2 rounded-lg ${isFaucet ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Faucet</Link>
+              <Link href="/testnet-guide" className={`block px-3 py-2 rounded-lg ${isTestnetGuide ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Guide</Link>
+              <Link href="/invite" className={`block px-3 py-2 rounded-lg ${isInvite ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Invite</Link>
+            </div>
+          </details>
+        </nav>
+
         <div className="flex items-center gap-2">
           <Link
             href="/portfolio"
@@ -121,7 +156,7 @@ export function Header() {
           <button
             aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setMobileMenuOpen(o => !o)}
-            className="2xl:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-50 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
+            className="lg:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-50 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
           >
             {mobileMenuOpen ? (
               <X className="w-5 h-5" />
@@ -136,14 +171,14 @@ export function Header() {
       {mobileMenuOpen && (
         <>
         <div
-          className="fixed inset-0 z-40 bg-black/50 2xl:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
         <div
           ref={menuRef}
           data-testid="mobile-nav"
-          className="2xl:hidden border-t border-dark-50/50 bg-dark-100 backdrop-blur-md animate-in slide-in-from-top-2 duration-200 relative z-50"
+          className="lg:hidden border-t border-dark-50/50 bg-dark-100 backdrop-blur-md animate-in slide-in-from-top-2 duration-200 relative z-50"
         >
           <nav className="flex flex-col px-4 py-3 gap-1">
             <Link
