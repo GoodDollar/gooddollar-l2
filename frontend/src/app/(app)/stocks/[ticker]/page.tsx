@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { getAnalystOutlook } from '@/lib/stockInsights'
+import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
@@ -18,6 +19,7 @@ import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
+import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 
 const PriceChart = dynamic(
   () => import('@/components/PriceChart').then((m) => ({ default: m.PriceChart })),
@@ -277,6 +279,7 @@ export default function StockDetailPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
   const [analystLoading, setAnalystLoading] = useState(true)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
+  const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const chartMounted = useMounted()
@@ -422,6 +425,13 @@ export default function StockDetailPage() {
               <p className="text-sm text-gray-400 leading-relaxed">{stock.description}</p>
             </div>
           )}
+
+          <NewsEventsPanel
+            ticker={stock.ticker}
+            isLoading={newsLoading}
+            error={newsError}
+            items={newsItems}
+          />
         </div>
 
         <div className="lg:w-80 shrink-0">
