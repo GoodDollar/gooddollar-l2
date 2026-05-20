@@ -187,18 +187,18 @@ export default function StocksPage() {
               className="bg-dark-100 rounded-xl border border-gray-700/20 px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-dark-50/30 transition-colors active:scale-[0.99]"
             >
               <StockIcon ticker={stock.ticker} />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-white text-sm">{stock.ticker}</span>
-                  <span className="text-gray-500 text-xs truncate">{stock.name}</span>
+                  <span className="font-semibold text-white text-sm truncate max-w-[52px]">{stock.ticker}</span>
+                  <span className="text-gray-500 text-xs truncate max-w-[84px]">{stock.name}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
                 </div>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-white font-medium text-sm">{formatStockPrice(stock.price)}</p>
-                <div className="text-xs font-medium">
+              <div className="text-right shrink-0 w-[96px]">
+                <p className="text-white font-medium text-sm whitespace-nowrap">{formatStockPrice(stock.price)}</p>
+                <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
                 </div>
                 <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">

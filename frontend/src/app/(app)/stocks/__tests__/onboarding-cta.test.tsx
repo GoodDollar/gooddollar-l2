@@ -72,4 +72,31 @@ describe('StocksPage onboarding CTA', () => {
 
     expect(screen.queryByText('Connect Wallet to Trade Stocks')).not.toBeInTheDocument()
   })
+
+  it('keeps mobile row text constrained so ticker/meta does not collide with right-side pricing', () => {
+    walletState.address = undefined
+
+    const { container } = render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    const tickerNodes = screen.getAllByText('AAPL')
+    const row = tickerNodes[0]?.closest('div[class*="bg-dark-100"]')
+    expect(row).toBeTruthy()
+
+    const rightColumn = row?.querySelector('div.text-right')
+    expect(rightColumn?.className).toContain('w-[96px]')
+    expect(rightColumn?.className).toContain('shrink-0')
+
+    const price = screen.getAllByText('$218.27')[0]
+    expect(price.className).toContain('whitespace-nowrap')
+
+    const name = screen.getAllByText('sAAPL')[0]
+    expect(name.className).toContain('max-w-[84px]')
+
+    // Ensure rendered "Tap to trade" badge still exists in constrained layout.
+    expect(container.textContent).toContain('Tap to trade')
+  })
 })
