@@ -184,7 +184,7 @@ export default function PerpsPortfolioPage() {
         </TabsList>
 
         <TabsContent value="positions">
-          positions.length === 0 ? (
+          {positions.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm mb-1">No open positions</p>
               <Link href="/perps" className="text-goodgreen text-sm hover:underline">Start Trading</Link>
@@ -215,11 +215,11 @@ export default function PerpsPortfolioPage() {
                 </tbody>
               </table>
             </div>
-          )
+          )}
         </TabsContent>
 
         <TabsContent value="orders">
-          orders.length === 0 ? (
+          {orders.length === 0 ? (
             <div className="py-16 text-center"><p className="text-gray-400 text-sm">No pending orders</p></div>
           ) : (
             <div className="overflow-x-auto">
@@ -239,11 +239,11 @@ export default function PerpsPortfolioPage() {
                 </tbody>
               </table>
             </div>
-          )
+          )}
         </TabsContent>
 
         <TabsContent value="history">
-          trades.length === 0 ? (
+          {trades.length === 0 ? (
             <div className="py-16 text-center"><p className="text-gray-400 text-sm">No trade history</p></div>
           ) : (
             <div className="overflow-x-auto">
@@ -265,11 +265,11 @@ export default function PerpsPortfolioPage() {
                 </tbody>
               </table>
             </div>
-          )
+          )}
         </TabsContent>
 
         <TabsContent value="funding">
-          funding.length === 0 ? (
+          {funding.length === 0 ? (
             <div className="py-16 text-center"><p className="text-gray-400 text-sm">No funding payments</p></div>
           ) : (
             <div className="overflow-x-auto">
@@ -287,7 +287,7 @@ export default function PerpsPortfolioPage() {
                 </tbody>
               </table>
             </div>
-          )
+          )}
         </TabsContent>
       </Tabs>
     </div>

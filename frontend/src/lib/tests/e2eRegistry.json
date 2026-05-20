@@ -473,6 +473,40 @@
         "Testnet",
         "Scenario"
       ]
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics Dashboard",
+      "route": "/analytics",
+      "kind": "analytics",
+      "owner": "Infra",
+      "critical": false,
+      "assertions": [
+        "analytics dashboard renders",
+        "service health and protocol metrics visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Analytics|Dashboard",
+      "mustContain": [
+        "Analytics"
+      ]
+    },
+    {
+      "id": "invite",
+      "name": "Invite Testers",
+      "route": "/invite",
+      "kind": "community",
+      "owner": "Community",
+      "critical": false,
+      "assertions": [
+        "invite page renders",
+        "invitation template visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Invite|Tester",
+      "mustContain": [
+        "Invite"
+      ]
     }
   ]
 }
