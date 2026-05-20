@@ -45,6 +45,23 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 }
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
+const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
+
+function normalizeTickerForError(rawTicker?: string): string {
+  if (!rawTicker) return 'UNKNOWN'
+
+  let decoded = rawTicker
+  try {
+    decoded = decodeURIComponent(rawTicker)
+  } catch {
+    decoded = rawTicker
+  }
+
+  const normalized = decoded.trim().toUpperCase()
+  if (!normalized) return 'UNKNOWN'
+  if (!/^[A-Z0-9._-]+$/.test(normalized)) return 'UNKNOWN'
+  return normalized
+}
 
 function OrderForm({ stock, position }: { stock: { ticker: string; price: number }; position: OnChainStockPosition | null }) {
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
@@ -251,7 +268,7 @@ export default function StockDetailPage() {
     // scrollbar. Cap the visible form at 24 chars (real tickers are 1–5
     // chars) and keep the full raw value reachable via the title attribute
     // and the underlying URL.
-    const safeTicker = ticker ?? ''
+    const safeTicker = normalizeTickerForError(ticker)
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <h1 className="text-2xl font-bold text-white mb-3">Stock Not Found</h1>
@@ -265,6 +282,18 @@ export default function StockDetailPage() {
         <Link href="/stocks" className="px-6 py-3 rounded-xl bg-goodgreen text-black font-semibold hover:bg-goodgreen-600 transition-colors">
           Back to Stocks
         </Link>
+        <div className="mt-5 flex items-center gap-2 text-xs text-gray-400">
+          <span>Try:</span>
+          {INVALID_TICKER_RECOVERY.map(symbol => (
+            <Link
+              key={symbol}
+              href={`/stocks/${symbol}`}
+              className="px-2.5 py-1 rounded-lg border border-gray-700/40 bg-dark-50/40 text-gray-200 hover:text-white hover:border-goodgreen/40 transition-colors"
+            >
+              {symbol}
+            </Link>
+          ))}
+        </div>
       </div>
     )
   }

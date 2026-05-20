@@ -133,4 +133,37 @@ describe('StockDetailPage — "Stock Not Found" ticker truncation', () => {
     expect(link).toBeTruthy()
     expect(link.getAttribute('href')).toBe('/stocks')
   })
+
+  it('normalizes URL-encoded whitespace ticker to a safe fallback label', () => {
+    currentParams = { ticker: '%20' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/is not available/i)
+    const text = paragraph.textContent ?? ''
+    expect(text).toContain('UNKNOWN')
+    expect(text).not.toContain('%20')
+  })
+
+  it('does not leak encoded script-like payload in not-found copy', () => {
+    currentParams = { ticker: '%3Cscript%3Ealert(1)%3C%2Fscript%3E' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/is not available/i)
+    const text = paragraph.textContent ?? ''
+    expect(text).toContain('UNKNOWN')
+    expect(text).not.toContain('%3C')
+    expect(text).not.toContain('SCRIPT')
+  })
+
+  it('offers quick recovery links for popular tickers', () => {
+    currentParams = { ticker: 'NOTAREALSTOCK' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const aapl = screen.getByRole('link', { name: 'AAPL' })
+    const msft = screen.getByRole('link', { name: 'MSFT' })
+    const nvda = screen.getByRole('link', { name: 'NVDA' })
+    expect(aapl.getAttribute('href')).toBe('/stocks/AAPL')
+    expect(msft.getAttribute('href')).toBe('/stocks/MSFT')
+    expect(nvda.getAttribute('href')).toBe('/stocks/NVDA')
+  })
 })
