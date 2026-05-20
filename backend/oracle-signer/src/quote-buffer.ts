@@ -14,6 +14,7 @@ export class QuoteBuffer {
   }
 
   update(quote: NormalizedQuote): void {
+    if (!Number.isFinite(quote.mid) || quote.mid <= 0) return;
     this.latestQuotes.set(quote.symbol, quote);
   }
 

@@ -6,6 +6,15 @@ export type SessionState =
   | 'halted'
   | 'unknown';
 
+export type EtoroAssetClass =
+  | 'equity'
+  | 'etf'
+  | 'crypto'
+  | 'forex'
+  | 'index'
+  | 'commodity'
+  | 'unknown';
+
 export interface NormalizedQuote {
   source: 'etoro';
   symbol: string;
@@ -17,6 +26,8 @@ export interface NormalizedQuote {
   timestamp: number;
   sessionState: SessionState;
   confidence: number;
+  assetClass?: EtoroAssetClass;
+  currency?: string;
   stale: boolean;
 }
 

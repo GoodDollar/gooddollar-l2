@@ -2,12 +2,15 @@ export { QuoteCache } from './quote-cache';
 export { RiskFilter } from './risk-filter';
 export { WsBroadcaster } from './ws-broadcaster';
 export { createServer } from './server';
+export { connectEtoroSource } from './etoro-source';
+export type { EtoroSourceConfig, EtoroSourceHandle, MarketDataSource } from './etoro-source';
 export type * from './types';
 
 import { QuoteCache } from './quote-cache';
 import { WsBroadcaster } from './ws-broadcaster';
 import { createServer } from './server';
-import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote } from './types';
+import { connectEtoroSource } from './etoro-source';
+import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult } from './types';
 
 export class PriceService {
   readonly cache: QuoteCache;
@@ -21,8 +24,8 @@ export class PriceService {
     this.broadcaster = new WsBroadcaster();
   }
 
-  ingestQuote(quote: NormalizedQuote): void {
-    this.cache.update(quote);
+  ingestQuote(quote: NormalizedQuote): RiskFilterResult {
+    return this.cache.update(quote);
   }
 
   start(): void {
@@ -47,13 +50,38 @@ if (require.main === module) {
   const service = new PriceService();
   service.start();
 
-  process.on('SIGINT', () => {
+  let sourceHandle: import('./etoro-source').EtoroSourceHandle | undefined;
+
+  try {
+    const { EtoroClient } = require('../../etoro-client/src/index') as {
+      EtoroClient: new (config?: unknown) => { marketData: import('./etoro-source').MarketDataSource };
+    };
+
+    const mode = process.env.ETORO_MODE ?? 'sandbox';
+    console.log(`[price-service] Connecting to eToro in ${mode} mode...`);
+
+    const client = new EtoroClient();
+    const symbols = (process.env.ORACLE_SYMBOLS ?? service['config'].symbols.join(',')).split(',').map(s => s.trim()).filter(Boolean);
+
+    sourceHandle = connectEtoroSource(service, {
+      symbols,
+      marketData: client.marketData,
+    });
+
+    console.log(`[price-service] Subscribed to ${symbols.length} symbols via eToro: ${symbols.join(', ')}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[price-service] eToro source unavailable: ${msg}`);
+    console.warn('[price-service] Running without live quotes — use REST API to ingest manually');
+  }
+
+  const shutdown = () => {
     console.log('[price-service] shutting down...');
+    sourceHandle?.stop();
     service.stop();
     process.exit(0);
-  });
-  process.on('SIGTERM', () => {
-    service.stop();
-    process.exit(0);
-  });
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }

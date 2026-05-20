@@ -112,7 +112,8 @@ describe('MarketDataModule', () => {
       expect(result[0].ask).toBe(189.60);
       expect(result[0].mid).toBeCloseTo(189.55, 2);
       expect(result[0].source).toBe('etoro');
-      expect(result[0].confidence).toBe(1);
+      expect(result[0].confidence).toBeGreaterThanOrEqual(80);
+      expect(result[0].confidence).toBeLessThanOrEqual(100);
       expect(result[0].stale).toBe(false);
     });
 
@@ -159,6 +160,58 @@ describe('MarketDataModule', () => {
       expect(result[0].high).toBe(190);
       expect(result[0].close).toBe(189);
       expect(result[0].volume).toBe(50000);
+    });
+  });
+
+  describe('confidence scoring (0-100 scale)', () => {
+    it('scores high confidence for tight bid/ask spread', async () => {
+      const http = createMockAxios({
+        quotes: { quotes: [{ symbol: 'AAPL', bid: 189.50, ask: 189.60, last: 189.55, timestamp: Date.now() }] },
+      });
+      const mod = new MarketDataModule(http);
+      const [q] = await mod.getQuotes(['AAPL']);
+      expect(q.confidence).toBeGreaterThanOrEqual(90);
+      expect(q.confidence).toBeLessThanOrEqual(100);
+    });
+
+    it('scores lower confidence when only last price available (no bid/ask)', async () => {
+      const http = createMockAxios({
+        quotes: { quotes: [{ symbol: 'SPY', last: 500.00, timestamp: Date.now() }] },
+      });
+      const mod = new MarketDataModule(http);
+      const [q] = await mod.getQuotes(['SPY']);
+      expect(q.confidence).toBeGreaterThanOrEqual(40);
+      expect(q.confidence).toBeLessThan(80);
+    });
+
+    it('scores zero confidence for stale quotes', async () => {
+      const staleTs = Date.now() - 10 * 60_000;
+      const http = createMockAxios({
+        quotes: { quotes: [{ symbol: 'OLD', bid: 100, ask: 101, timestamp: staleTs }] },
+      });
+      const mod = new MarketDataModule(http, { maxQuoteAgeMs: 5 * 60_000 });
+      const [q] = await mod.getQuotes(['OLD']);
+      expect(q.confidence).toBe(0);
+      expect(q.stale).toBe(true);
+    });
+
+    it('degrades confidence for wider spreads', async () => {
+      const http = createMockAxios({
+        quotes: { quotes: [{ symbol: 'WIDE', bid: 100, ask: 103, last: 101.5, timestamp: Date.now() }] },
+      });
+      const mod = new MarketDataModule(http);
+      const [q] = await mod.getQuotes(['WIDE']);
+      expect(q.confidence).toBeGreaterThanOrEqual(50);
+      expect(q.confidence).toBeLessThan(90);
+    });
+
+    it('returns integer confidence values', async () => {
+      const http = createMockAxios({ quotes: { quotes: MOCK_QUOTES } });
+      const mod = new MarketDataModule(http);
+      const results = await mod.getQuotes(['AAPL', 'TSLA']);
+      for (const q of results) {
+        expect(Number.isInteger(q.confidence)).toBe(true);
+      }
     });
   });
 

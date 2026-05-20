@@ -13,11 +13,13 @@ const STOCK_ORACLE_V2_ABI = [
 export class OracleSubmitter {
   private readonly contract: ethers.Contract;
   private readonly wallet: ethers.Wallet;
+  private readonly txTimeoutMs: number;
 
-  constructor(rpcUrl: string, oracleAddress: string, signerKey: string) {
+  constructor(rpcUrl: string, oracleAddress: string, signerKey: string, txTimeoutMs = 60000) {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     this.wallet = new ethers.Wallet(signerKey, provider);
     this.contract = new ethers.Contract(oracleAddress, STOCK_ORACLE_V2_ABI, this.wallet);
+    this.txTimeoutMs = txTimeoutMs;
   }
 
   async submitBatch(updates: PendingUpdate[]): Promise<UpdateResult> {
@@ -36,7 +38,14 @@ export class OracleSubmitter {
     const tx = await this.contract.batchUpdatePrices(
       symbols, prices8, timestamps, sessions, confidences,
     );
-    const receipt = await tx.wait();
+    const receipt = await tx.wait(1, this.txTimeoutMs);
+
+    if (!receipt) {
+      throw new Error(
+        `Transaction dropped or replaced (tx: ${tx.hash}). ` +
+        `Batch contained ${updates.length} symbol(s): ${symbols.join(', ')}`,
+      );
+    }
 
     return {
       txHash: receipt.hash,

@@ -1,15 +1,9 @@
-export interface NormalizedQuote {
-  symbol: string;
-  instrumentId: number;
-  bid: number;
-  ask: number;
-  mid: number;
-  last: number;
-  timestamp: number;
-  sessionState: 'open' | 'pre-market' | 'after-hours' | 'closed' | 'halted';
-  confidence: number;
-}
+export type {
+  NormalizedQuote,
+  SessionState as SessionStateString,
+} from '../../shared/quote-types';
 
+/** On-chain session state enum (matches StockOracleV2.SessionState) */
 export enum SessionState {
   Open = 0,
   PreMarket = 1,
@@ -26,6 +20,7 @@ export interface OracleSignerConfig {
   updateIntervalMs: number;
   minDeviationBps: number;
   symbols: string[];
+  txTimeoutMs: number;
 }
 
 export interface PendingUpdate {

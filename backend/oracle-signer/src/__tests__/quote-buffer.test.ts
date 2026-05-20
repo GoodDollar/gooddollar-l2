@@ -3,8 +3,9 @@ import { NormalizedQuote, SessionState } from '../types';
 
 function makeQuote(symbol: string, mid: number, overrides: Partial<NormalizedQuote> = {}): NormalizedQuote {
   return {
+    source: 'etoro',
     symbol,
-    instrumentId: 1,
+    instrumentId: '1',
     bid: mid - 0.01,
     ask: mid + 0.01,
     mid,
@@ -12,6 +13,7 @@ function makeQuote(symbol: string, mid: number, overrides: Partial<NormalizedQuo
     timestamp: Date.now(),
     sessionState: 'open',
     confidence: 95,
+    stale: false,
     ...overrides,
   };
 }
@@ -121,5 +123,59 @@ describe('QuoteBuffer', () => {
 
     const updates = buffer.getPendingUpdates();
     expect(updates[0].timestamp).toBe(1716100000);
+  });
+
+  describe('NaN/Infinity guards', () => {
+    it('silently ignores quotes with NaN mid', () => {
+      const buffer = new QuoteBuffer(0);
+      buffer.update(makeQuote('AAPL', NaN));
+
+      expect(buffer.symbolCount).toBe(0);
+      expect(buffer.getPendingUpdates()).toHaveLength(0);
+    });
+
+    it('silently ignores quotes with Infinity mid', () => {
+      const buffer = new QuoteBuffer(0);
+      buffer.update(makeQuote('AAPL', Infinity));
+
+      expect(buffer.symbolCount).toBe(0);
+      expect(buffer.getPendingUpdates()).toHaveLength(0);
+    });
+
+    it('silently ignores quotes with -Infinity mid', () => {
+      const buffer = new QuoteBuffer(0);
+      buffer.update(makeQuote('AAPL', -Infinity));
+
+      expect(buffer.symbolCount).toBe(0);
+      expect(buffer.getPendingUpdates()).toHaveLength(0);
+    });
+
+    it('silently ignores quotes with zero mid', () => {
+      const buffer = new QuoteBuffer(0);
+      buffer.update(makeQuote('AAPL', 0));
+
+      expect(buffer.symbolCount).toBe(0);
+      expect(buffer.getPendingUpdates()).toHaveLength(0);
+    });
+
+    it('silently ignores quotes with negative mid', () => {
+      const buffer = new QuoteBuffer(0);
+      buffer.update(makeQuote('AAPL', -5.0));
+
+      expect(buffer.symbolCount).toBe(0);
+      expect(buffer.getPendingUpdates()).toHaveLength(0);
+    });
+
+    it('does not block valid quotes when invalid ones are present', () => {
+      const buffer = new QuoteBuffer(0);
+      buffer.update(makeQuote('BAD1', NaN));
+      buffer.update(makeQuote('AAPL', 191.50));
+      buffer.update(makeQuote('BAD2', Infinity));
+      buffer.update(makeQuote('TSLA', 178.30));
+
+      const updates = buffer.getPendingUpdates();
+      expect(updates).toHaveLength(2);
+      expect(updates.map(u => u.symbol).sort()).toEqual(['AAPL', 'TSLA']);
+    });
   });
 });
