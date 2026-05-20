@@ -139,24 +139,25 @@ export default function PerpsPortfolioPage() {
           </tr>
         </thead>
         <tbody>
-          {positions.map((p, i) => (
-            <PositionRow
-              key={i}
-              pos={p}
-              marketId={BigInt(pairs.findIndex(pair => pair.symbol === p.pair))}
-            />
-          ))}
+          {positions.length === 0 ? (
+            <tr>
+              <td colSpan={8} className="py-16 text-center">
+                <p className="text-gray-400 text-sm mb-1">No open positions</p>
+                <Link href="/perps" className="text-goodgreen text-sm hover:underline">Start Trading</Link>
+              </td>
+            </tr>
+          ) : (
+            positions.map((p, i) => (
+              <PositionRow
+                key={i}
+                pos={p}
+                marketId={BigInt(pairs.findIndex(pair => pair.symbol === p.pair))}
+              />
+            ))
+          )}
         </tbody>
       </table>
     </div>
-  )
-  const positionsContent = positions.length === 0 ? (
-    <div className="py-16 text-center">
-      <p className="text-gray-400 text-sm mb-1">No open positions</p>
-      <Link href="/perps" className="text-goodgreen text-sm hover:underline">Start Trading</Link>
-    </div>
-  ) : (
-    positionsTable
   )
 
   return (
@@ -218,7 +219,7 @@ export default function PerpsPortfolioPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="positions">{positionsContent}</TabsContent>
+        <TabsContent value="positions">{positionsTable}</TabsContent>
 
         <TabsContent value="orders">
           {orders.length === 0 ? (

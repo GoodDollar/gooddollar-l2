@@ -134,6 +134,7 @@ GoodDollar L2 is running as a persistent public devnet / alpha-testnet candidate
 - **2026-05-20 — Perps portfolio JSX leak hardening (task 0034).** Refactored `/perps/portfolio` positions tab rendering into explicit precomputed branches to prevent ternary-source text leakage in the UI and keep empty/table states cleanly separated.
 - **2026-05-20 — Stocks portfolio collateral-state regression guard (task 0035).** Tightened `/stocks/portfolio` collateral health gating to require actual holdings before rendering risk tiers, so empty/disconnected states stay neutral even when stale required-collateral values are present.
 - **2026-05-20 — Double-encoded malformed ticker guard expansion (task 0036).** Hardened `/stocks/[ticker]` normalization with explicit unsafe payload blocking (encoded separators, control chars, traversal markers) and expanded regression coverage for `%252F..%252F%00` so not-found copy never leaks attacker-controlled route text.
+- **2026-05-20 — Perps portfolio template-leak regression hardening (task 0037).** Updated `/perps/portfolio` positions rendering to keep a stable table structure in empty states and added regression coverage that verifies no template-source fragments leak into visible UI.
 
 ## Logo and Brand
 

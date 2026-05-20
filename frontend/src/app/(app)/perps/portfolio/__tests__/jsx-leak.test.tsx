@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 vi.mock('next/navigation', () => ({
@@ -55,5 +55,15 @@ describe('PerpsPortfolioPage — JSX ternary rendering (task 0004)', () => {
     )
     const text = container.textContent || ''
     expect(text).toContain('No open positions')
+  })
+
+  it('keeps the positions table structure in empty state', () => {
+    render(
+      <TestWrapper><PerpsPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByRole('columnheader', { name: 'Pair' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Side' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'P&L' })).toBeInTheDocument()
   })
 })
