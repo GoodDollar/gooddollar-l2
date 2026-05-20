@@ -45,6 +45,7 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
+const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 
 function decodeTickerBounded(rawTicker?: string): string {
   if (!rawTicker) return ''
@@ -63,6 +64,7 @@ function decodeTickerBounded(rawTicker?: string): string {
 
 function normalizeTickerForLookup(rawTicker?: string): string {
   const decoded = decodeTickerBounded(rawTicker).trim().toUpperCase()
+  if (!SAFE_TICKER_PATTERN.test(decoded)) return ''
   return decoded
 }
 

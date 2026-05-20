@@ -132,6 +132,33 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(text).not.toContain('ALERT')
   })
 
+  it('does not leak encoded slash payload (%2F) in error copy', () => {
+    currentParams = { ticker: '%2F' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('%2F')
+  })
+
+  it('does not leak repeated percent-encoded payload (%252525252525) in error copy', () => {
+    currentParams = { ticker: '%252525252525' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('%252525252525')
+  })
+
+  it('does not leak mixed alphanumeric null-byte payload (AAPL%00) in error copy', () => {
+    currentParams = { ticker: 'AAPL%00' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('AAPL%00')
+  })
+
   it('still provides quick recovery links', () => {
     currentParams = { ticker: 'NOTAREALSTOCK' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
