@@ -50,6 +50,56 @@ const TOKEN_DESCRIPTIONS: Record<string, string> = {
 
 const ALL_SYMBOLS = Object.keys(FALLBACK_PRICES)
 
+// ─── Pool spot-price helper (pure, decimal-aware) ─────────────────────────────
+
+/**
+ * Decode a constant-product pool's spot price as a JS number.
+ *
+ * The on-chain `spotPrice()` getter returns `(reserveB * 1e18) / reserveA`,
+ * which silently assumes both tokens share 18 decimals. For mixed-decimal
+ * pools (e.g. G$ 18d / USDC 6d) it produces a result that is off by
+ * `10 ** (quoteDecimals - baseDecimals)` — for G$/USDC that's a 1e12 error
+ * in either direction depending on address-sort order. That bug surfaced on
+ * /explore as a ~$15T G$ market cap.
+ *
+ * This helper avoids the issue by reading raw reserves directly and
+ * normalizing each side by its own token decimals before dividing.
+ *
+ * @param baseReserve   raw on-chain reserve of the base token (the one whose
+ *                      price we want to express)
+ * @param quoteReserve  raw on-chain reserve of the quote token (denominator,
+ *                      typically a USD-pegged stable)
+ * @param baseDecimals  decimals of the base token (e.g. 18 for G$)
+ * @param quoteDecimals decimals of the quote token (e.g. 6 for USDC)
+ * @returns price of 1 base unit in quote units, or `null` if either reserve
+ *          is zero (empty / un-seeded pool — caller falls back to CoinGecko)
+ */
+export function decodePoolSpotPrice({
+  baseReserve,
+  quoteReserve,
+  baseDecimals,
+  quoteDecimals,
+}: {
+  baseReserve:   bigint
+  quoteReserve:  bigint
+  baseDecimals:  number
+  quoteDecimals: number
+}): number | null {
+  if (baseReserve === 0n || quoteReserve === 0n) return null
+
+  // formatUnits handles arbitrary bigint precision; parseFloat narrows to
+  // JS number at the end. For realistic DEX reserves both sides are well
+  // inside Number.MAX_SAFE_INTEGER once normalized by decimals, so the
+  // precision loss is acceptable for display-only market data.
+  const base  = parseFloat(formatUnits(baseReserve,  baseDecimals))
+  const quote = parseFloat(formatUnits(quoteReserve, quoteDecimals))
+
+  if (!Number.isFinite(base) || !Number.isFinite(quote) || base === 0) return null
+
+  const price = quote / base
+  return Number.isFinite(price) && price > 0 ? price : null
+}
+
 // ─── On-chain contract reads ──────────────────────────────────────────────────
 
 const ON_CHAIN_CONTRACTS = [
@@ -59,21 +109,33 @@ const ON_CHAIN_CONTRACTS = [
     abi: ERC20ABI,
     functionName: 'totalSupply' as const,
   },
-  // [1] G$/USDC pool spot price — returns USDC per G$ with 18-decimal precision
-  //     formatUnits(result, 18) → G$ price in USD (USDC ≈ $1)
+  // [1] G$/USDC pool tokenA address — pool stores tokens in canonical
+  //     address-sorted order, so we read this to know which reserve is G$.
   {
     address: CONTRACTS.SwapPoolGdUsdc,
     abi: GoodPoolABI,
-    functionName: 'spotPrice' as const,
+    functionName: 'tokenA' as const,
   },
-  // [2] WETH USD price from GoodLend oracle (8 decimals, Aave-style)
+  // [2] G$/USDC pool reserveA (raw, in tokenA's own decimals)
+  {
+    address: CONTRACTS.SwapPoolGdUsdc,
+    abi: GoodPoolABI,
+    functionName: 'reserveA' as const,
+  },
+  // [3] G$/USDC pool reserveB (raw, in tokenB's own decimals)
+  {
+    address: CONTRACTS.SwapPoolGdUsdc,
+    abi: GoodPoolABI,
+    functionName: 'reserveB' as const,
+  },
+  // [4] WETH USD price from GoodLend oracle (8 decimals, Aave-style)
   {
     address: CONTRACTS.GoodLendPriceOracle,
     abi: GoodLendPriceOracleABI,
     functionName: 'getAssetPrice' as const,
     args: [CONTRACTS.MockWETH] as const,
   },
-  // [3] USDC USD price from GoodLend oracle (8 decimals, Aave-style)
+  // [5] USDC USD price from GoodLend oracle (8 decimals, Aave-style)
   {
     address: CONTRACTS.GoodLendPriceOracle,
     abi: GoodLendPriceOracleABI,
@@ -106,24 +168,48 @@ export function useOnChainMarketData(): {
       ? (onChainData[0].result as bigint)
       : undefined
 
-    const gdSpotPriceRaw = onChainData?.[1]?.status === 'success'
-      ? (onChainData[1].result as bigint)
+    const gdPoolTokenA = onChainData?.[1]?.status === 'success'
+      ? (onChainData[1].result as `0x${string}`)
       : undefined
 
-    const wethOraclePriceRaw = onChainData?.[2]?.status === 'success'
+    const gdPoolReserveA = onChainData?.[2]?.status === 'success'
       ? (onChainData[2].result as bigint)
       : undefined
 
-    const usdcOraclePriceRaw = onChainData?.[3]?.status === 'success'
+    const gdPoolReserveB = onChainData?.[3]?.status === 'success'
       ? (onChainData[3].result as bigint)
+      : undefined
+
+    const wethOraclePriceRaw = onChainData?.[4]?.status === 'success'
+      ? (onChainData[4].result as bigint)
+      : undefined
+
+    const usdcOraclePriceRaw = onChainData?.[5]?.status === 'success'
+      ? (onChainData[5].result as bigint)
       : undefined
 
     // ── Derive human-readable values ──────────────────────────────────────────
 
-    // G$ price: spot price from G$/USDC pool (tokenB/tokenA, 18-decimal fixed-point)
-    const gdPriceOnChain = gdSpotPriceRaw !== undefined && gdSpotPriceRaw > 0n
-      ? parseFloat(formatUnits(gdSpotPriceRaw, 18))
-      : null
+    // G$ price: decode the G$/USDC pool reserves with decimal-aware math.
+    // The pool stores tokens in address-sorted order, so we check tokenA to
+    // know whether G$ is the base (reserveA) or quote (reserveB) side.
+    // (Avoids the 1e12 bug from the legacy `spotPrice()` getter that assumes
+    // both tokens have 18 decimals.)
+    let gdPriceOnChain: number | null = null
+    if (
+      gdPoolTokenA  !== undefined &&
+      gdPoolReserveA !== undefined &&
+      gdPoolReserveB !== undefined
+    ) {
+      const gdIsTokenA =
+        gdPoolTokenA.toLowerCase() === CONTRACTS.GoodDollarToken.toLowerCase()
+      gdPriceOnChain = decodePoolSpotPrice({
+        baseReserve:   gdIsTokenA ? gdPoolReserveA : gdPoolReserveB,
+        quoteReserve:  gdIsTokenA ? gdPoolReserveB : gdPoolReserveA,
+        baseDecimals:  18, // G$
+        quoteDecimals: 6,  // USDC
+      })
+    }
 
     // WETH/USDC prices from GoodLend oracle (8 decimals, same as Chainlink)
     const wethPriceOnChain = wethOraclePriceRaw !== undefined && wethOraclePriceRaw > 0n
