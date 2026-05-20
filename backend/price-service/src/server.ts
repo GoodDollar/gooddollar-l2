@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import cors from 'cors';
 import { QuoteCache } from './quote-cache';
 import { PriceServiceConfig, DEFAULT_CONFIG } from './types';
 
@@ -10,7 +9,12 @@ export function createServer(
   const app = express();
   const cfg = { ...DEFAULT_CONFIG, ...config };
 
-  app.use(cors());
+  app.use((_req: Request, res: Response, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+  });
   app.use(express.json());
 
   app.get('/health', (_req: Request, res: Response) => {
