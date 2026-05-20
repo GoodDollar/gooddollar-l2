@@ -49,7 +49,7 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
   return <>{children}</>
 }
 
-const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
+const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'ALL']
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
@@ -386,13 +386,30 @@ export default function StockDetailPage() {
           />
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
-            <div className="flex gap-1 mb-3">
-              {TIMEFRAMES.map(tf => (
-                <button key={tf} onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-                  {tf}
-                </button>
-              ))}
+            <div
+              className="flex flex-wrap gap-1 gap-y-2 mb-3"
+              role="tablist"
+              aria-label="Chart timeframe"
+            >
+              {TIMEFRAMES.map(tf => {
+                const isActive = timeframe === tf
+                return (
+                  <button
+                    key={tf}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setTimeframe(tf)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
+                      isActive
+                        ? 'bg-goodgreen/15 text-goodgreen ring-1 ring-goodgreen/30'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {tf}
+                  </button>
+                )
+              })}
             </div>
             {chartMounted ? (
               <PriceChart data={chartData} height={350} />

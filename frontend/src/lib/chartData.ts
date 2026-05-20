@@ -18,7 +18,13 @@ const TIMEFRAME_CONFIG: Record<Timeframe, TimeframeConfig> = {
   '1W': { points: 28, intervalMs: 6 * 3_600_000, useTimestamp: true },
   '1M': { points: 30, intervalMs: 86_400_000, useTimestamp: false },
   '3M': { points: 90, intervalMs: 86_400_000, useTimestamp: false },
+  '6M': { points: 180, intervalMs: 86_400_000, useTimestamp: false },
   '1Y': { points: 365, intervalMs: 86_400_000, useTimestamp: false },
+  // 5Y / ALL are sampled at coarser cadence so candle count stays manageable
+  // while the visible time span still reads as multi-year. 260 ≈ weekly bars
+  // for 5 years; 240 ≈ monthly bars for 20 years.
+  '5Y': { points: 260, intervalMs: 7 * 86_400_000, useTimestamp: false },
+  'ALL': { points: 240, intervalMs: 30 * 86_400_000, useTimestamp: false },
 }
 
 function generateOHLC(basePrice: number, config: TimeframeConfig, volatility: number = 0.02): OHLCData[] {
@@ -51,7 +57,7 @@ function generateOHLC(basePrice: number, config: TimeframeConfig, volatility: nu
   return data
 }
 
-export type Timeframe = '1D' | '1W' | '1M' | '3M' | '1Y'
+export type Timeframe = '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL'
 
 interface LastCandleAnchor {
   time: string | number
