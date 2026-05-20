@@ -85,6 +85,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
   })
 
   it('shows a neutral dash for collateral health when ratio is 0 with no collateral', () => {
+    holdingsState.holdings = []
     holdingsState.totalCollateral = 0
     holdingsState.totalRequired = 0
     holdingsState.healthRatio = 0
@@ -95,5 +96,26 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     const text = container.textContent || ''
     expect(text).toContain('Collateral Health')
     expect(text).not.toMatch(/0%\s*[—–-]\s*Critical/)
+  })
+
+  it('still shows risk severity when positions exist and required collateral is non-zero', () => {
+    holdingsState.holdings = [{
+      ticker: 'AAPL',
+      shares: 1,
+      avgCost: 100,
+      currentPrice: 100,
+      collateralDeposited: 0,
+      collateralRequired: 100,
+    }]
+    holdingsState.totalCollateral = 0
+    holdingsState.totalRequired = 100
+    holdingsState.healthRatio = 0
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+    const text = container.textContent || ''
+    expect(text).toContain('0% — Critical')
+    expect(text).toContain('$0.00 / $100.00 required')
   })
 })

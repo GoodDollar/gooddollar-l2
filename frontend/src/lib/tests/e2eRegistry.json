@@ -126,11 +126,15 @@
         "positions or empty state visible",
         "no 404/error shell"
       ],
-      "titlePattern": "Portfolio|Stocks",
-      "mustContain": [
-        "Portfolio"
-      ]
-    },
+    "titlePattern": "Portfolio|Stocks",
+    "mustContain": [
+      "Portfolio"
+    ],
+    "mustNotContain": [
+      "0% — Critical",
+      "0% - Critical"
+    ]
+  },
     {
       "id": "predict",
       "name": "GoodPredict",
