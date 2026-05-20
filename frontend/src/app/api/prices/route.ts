@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { methodNotAllowed } from '@/lib/api-error'
+import { apiError, methodNotAllowed } from '@/lib/api-error'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
@@ -29,6 +29,8 @@ const COINGECKO_IDS: Record<string, string> = {
   MATIC: 'matic-network',
 }
 
+const SUPPORTED_SYMBOLS = Object.keys(COINGECKO_IDS)
+
 let cachedData: Record<string, unknown> | null = null
 let cacheTimestamp = 0
 
@@ -47,21 +49,61 @@ async function handleGet(req: NextRequest) {
     )
   }
 
-  const symbols = symbolsParam.split(',').map(s => s.trim()).filter(Boolean)
-  const ids = Array.from(new Set(symbols.map(s => COINGECKO_IDS[s]).filter(Boolean)))
+  // Preserve original order + de-duplicate while remembering which requested
+  // symbols are not mapped to a Coingecko id.
+  const requested: string[] = []
+  const seen = new Set<string>()
+  for (const raw of symbolsParam.split(',')) {
+    const s = raw.trim()
+    if (!s || seen.has(s)) continue
+    seen.add(s)
+    requested.push(s)
+  }
+  const unknownSymbols = requested.filter((s) => !COINGECKO_IDS[s])
+  const knownSymbols = requested.filter((s) => COINGECKO_IDS[s])
+  const ids = Array.from(new Set(knownSymbols.map((s) => COINGECKO_IDS[s])))
 
+  // All requested symbols are unmapped → reject loudly so callers don't
+  // silently render undefined prices. (Task 0027 contract.)
   if (ids.length === 0) {
-    return NextResponse.json({}, { headers: { 'Cache-Control': 'public, max-age=60' } })
+    return apiError(
+      400,
+      'no_supported_symbols',
+      `No supported symbols in request. Requested: ${requested.join(', ')}`,
+      {
+        path: req.nextUrl.pathname,
+        method: req.method,
+        requested,
+        unknownSymbols,
+        supported_sample: SUPPORTED_SYMBOLS.slice(0, 12),
+      },
+    )
   }
 
   const cacheKey = buildCacheKey(ids)
   const now = Date.now()
-  const cacheHit = cachedData && cacheKey === lastCacheKey && now - cacheTimestamp < CACHE_TTL_MS
+  const cacheHit =
+    cachedData && cacheKey === lastCacheKey && now - cacheTimestamp < CACHE_TTL_MS
+
+  // Build the legacy-shape envelope (keeps `body[id]` available for existing
+  // callers) plus the new diagnostic fields.
+  const envelope = (
+    prices: Record<string, unknown>,
+    extraHeaders: Record<string, string>,
+  ) => {
+    const body: Record<string, unknown> = {
+      ...prices,
+      prices,
+      requested,
+      unknownSymbols,
+    }
+    return NextResponse.json(body, {
+      headers: { 'Cache-Control': 'public, max-age=60', ...extraHeaders },
+    })
+  }
 
   if (cacheHit) {
-    return NextResponse.json(cachedData, {
-      headers: { 'Cache-Control': 'public, max-age=60', 'X-Cache': 'HIT' },
-    })
+    return envelope(cachedData as Record<string, unknown>, { 'X-Cache': 'HIT' })
   }
 
   try {
@@ -85,20 +127,16 @@ async function handleGet(req: NextRequest) {
       )
     }
 
-    const data = await upstream.json()
+    const data = (await upstream.json()) as Record<string, unknown>
 
     cachedData = data
     cacheTimestamp = now
     lastCacheKey = cacheKey
 
-    return NextResponse.json(data, {
-      headers: { 'Cache-Control': 'public, max-age=60', 'X-Cache': 'MISS' },
-    })
+    return envelope(data, { 'X-Cache': 'MISS' })
   } catch (err) {
     if (cachedData) {
-      return NextResponse.json(cachedData, {
-        headers: { 'Cache-Control': 'public, max-age=60', 'X-Cache': 'STALE' },
-      })
+      return envelope(cachedData as Record<string, unknown>, { 'X-Cache': 'STALE' })
     }
 
     return NextResponse.json(

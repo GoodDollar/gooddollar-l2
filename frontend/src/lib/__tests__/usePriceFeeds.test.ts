@@ -351,3 +351,111 @@ describe('usePriceFeeds — quotes (change24h / volume24h / marketCap)', () => {
     expect(result.current.quotes).toEqual({})
   })
 })
+
+// ─── Unknown symbols surfacing (task 0027) ───────────────────────────────────
+//
+// The /api/prices server now returns the subset of requested symbols it cannot
+// resolve in an `unknownSymbols` array. The hook must expose that so consumers
+// (e.g. the ticker tape) can render a warning chip instead of silently showing
+// $0 / FALLBACK_PRICES for a symbol nobody supports.
+
+describe('usePriceFeeds — unknownSymbols surfacing', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    __resetPriceFeedStoreForTests()
+  })
+
+  afterEach(() => {
+    fetchSpy?.mockRestore()
+    __resetPriceFeedStoreForTests()
+  })
+
+  it('initial state has an empty unknownSymbols array', () => {
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    )
+    const { result } = renderHook(() => usePriceFeeds([]))
+    expect(result.current.unknownSymbols).toEqual([])
+  })
+
+  it('exposes server-reported unknownSymbols on partial success', async () => {
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ethereum: { usd: 3500 },
+          // Server tells us NOPE was requested but is not supported.
+          unknownSymbols: ['NOPE'],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    const { result } = renderHook(() => usePriceFeeds(['ETH', 'NOPE']))
+    await waitFor(() => expect(result.current.isLive).toBe(true))
+
+    expect(result.current.unknownSymbols).toEqual(['NOPE'])
+    expect(result.current.prices.ETH).toBe(3500)
+  })
+
+  it('falls back to client-computed unknownSymbols when server omits the field (legacy shape)', async () => {
+    // Legacy server shape — no unknownSymbols key. Client must still surface
+    // that NOPE has no Coingecko mapping so consumers can warn the user.
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({ ethereum: { usd: 3500 } }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    const { result } = renderHook(() => usePriceFeeds(['ETH', 'NOPE']))
+    await waitFor(() => expect(result.current.isLive).toBe(true))
+
+    expect(result.current.unknownSymbols).toEqual(['NOPE'])
+  })
+
+  it('short-circuits and returns unknownSymbols without hitting the network when EVERY symbol is unmapped', async () => {
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    )
+    const { result } = renderHook(() => usePriceFeeds(['NOPE', 'ALSO_NOPE']))
+
+    // The hook should populate state without ever calling /api/prices, since
+    // the client's mapping check filters everything out up front. This avoids
+    // burning a request for a guaranteed-empty response.
+    await waitFor(() => {
+      expect(result.current.unknownSymbols).toEqual(['NOPE', 'ALSO_NOPE'])
+    })
+    expect(fetchSpy).not.toHaveBeenCalled()
+    // isLive stays false because nothing came back live, but no error fires.
+    expect(result.current.isLive).toBe(false)
+    expect(result.current.error).toBeNull()
+  })
+
+  it('defensively handles a 400 no_supported_symbols envelope from the server', async () => {
+    // We patch the client's mapping by going through the public API. The
+    // simplest way to force the server-error branch in fetchCoinGeckoQuotes is
+    // to monkey-patch fetch to return a 400 envelope even though the client
+    // would normally short-circuit. This proves the defensive branch wired in
+    // Phase 4 works if the client/server symbol tables ever drift.
+    fetchSpy = vi.spyOn(globalThis, 'fetch')
+    // We have to use a known symbol so the client actually fires the request,
+    // then we return a 400 to exercise the defensive parse.
+    fetchSpy.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: 'No supported symbols in request. Requested: ETH',
+          code: 'no_supported_symbols',
+          details: { unknownSymbols: ['ETH'] },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+
+    const { result } = renderHook(() => usePriceFeeds(['ETH']))
+
+    await waitFor(() => {
+      expect(result.current.unknownSymbols).toEqual(['ETH'])
+    })
+    expect(result.current.prices.ETH).toBe(FALLBACK_PRICES.ETH) // still shows fallback
+    expect(result.current.error).toBeNull() // 400 envelope is not a hard error
+  })
+})
