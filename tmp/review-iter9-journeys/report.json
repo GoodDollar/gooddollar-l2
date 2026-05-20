@@ -1,0 +1,52 @@
+{
+  "observations": [
+    {
+      "journey": "new-user-explores-stocks",
+      "hasSearch": true,
+      "hasRows": 10
+    },
+    {
+      "journey": "research-stock-from-list",
+      "url": "http://127.0.0.1:3100/stocks/AAPL",
+      "hasTradeCard": true,
+      "hasBreadcrumbBack": 1
+    },
+    {
+      "journey": "user-checks-stock-portfolio",
+      "hasCriticalWhenEmpty": false,
+      "hasNoPositions": true
+    },
+    {
+      "journey": "portfolio-to-stocks-discovery",
+      "hasStocksCta": true,
+      "endUrl": "http://127.0.0.1:3100/stocks"
+    },
+    {
+      "journey": "malformed-ticker-resilience",
+      "showsRawEncodedPayload": true,
+      "hasFriendlyNotFoundCopy": true
+    }
+  ],
+  "consoleErrors": [
+    "Access to fetch at 'https://pulse.walletconnect.org/e?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED",
+    "Access to fetch at 'https://api.web3modal.org/appkit/v1/config?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED",
+    "Access to fetch at 'https://pulse.walletconnect.org/e?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED",
+    "Access to fetch at 'https://api.web3modal.org/appkit/v1/config?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED",
+    "Access to fetch at 'https://pulse.walletconnect.org/e?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED",
+    "Access to fetch at 'https://api.web3modal.org/appkit/v1/config?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED",
+    "Access to fetch at 'https://pulse.walletconnect.org/e?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED",
+    "Access to fetch at 'https://api.web3modal.org/appkit/v1/config?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED",
+    "Access to fetch at 'https://pulse.walletconnect.org/e?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED",
+    "Access to fetch at 'https://api.web3modal.org/appkit/v1/config?projectId=e9e4755e5e0e1d47d6c945c7d25d97d1&st=appkit&sv=html-core-1.7.8' from origin 'http://127.0.0.1:3100' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "Failed to load resource: net::ERR_FAILED"
+  ]
+}

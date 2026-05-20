@@ -1,0 +1,128 @@
+[
+  {
+    "route": "/",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/home.png",
+    "bodyTextLen": 1879
+  },
+  {
+    "route": "/explore",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/explore.png",
+    "bodyTextLen": 1719
+  },
+  {
+    "route": "/pool",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/pool.png",
+    "bodyTextLen": 881
+  },
+  {
+    "route": "/bridge",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/bridge.png",
+    "bodyTextLen": 754
+  },
+  {
+    "route": "/stocks",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/stocks.png",
+    "bodyTextLen": 1149
+  },
+  {
+    "route": "/stocks/portfolio",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/stocks_portfolio.png",
+    "bodyTextLen": 800
+  },
+  {
+    "route": "/predict",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/predict.png",
+    "bodyTextLen": 2487
+  },
+  {
+    "route": "/predict/portfolio",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/predict_portfolio.png",
+    "bodyTextLen": 806
+  },
+  {
+    "route": "/perps",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/perps.png",
+    "bodyTextLen": 1895
+  },
+  {
+    "route": "/perps/portfolio",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/perps_portfolio.png",
+    "bodyTextLen": 484
+  },
+  {
+    "route": "/lend",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/lend.png",
+    "bodyTextLen": 986
+  },
+  {
+    "route": "/stable",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/stable.png",
+    "bodyTextLen": 1376
+  },
+  {
+    "route": "/yield",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/yield.png",
+    "bodyTextLen": 912
+  },
+  {
+    "route": "/governance",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/governance.png",
+    "bodyTextLen": 570
+  },
+  {
+    "route": "/agents",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/agents.png",
+    "bodyTextLen": 1151
+  },
+  {
+    "route": "/ubi-impact",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/ubi-impact.png",
+    "bodyTextLen": 1988
+  },
+  {
+    "route": "/activity",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/activity.png",
+    "bodyTextLen": 789
+  },
+  {
+    "route": "/faucet",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/faucet.png",
+    "bodyTextLen": 531
+  },
+  {
+    "route": "/testnet-guide",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/testnet-guide.png",
+    "bodyTextLen": 5660
+  },
+  {
+    "route": "/invite",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/invite.png",
+    "bodyTextLen": 1670
+  },
+  {
+    "route": "/portfolio",
+    "status": 200,
+    "shot": "tmp/review-iter9-screens/portfolio.png",
+    "bodyTextLen": 752
+  }
+]
