@@ -111,6 +111,55 @@ export function computeSpotPrice(
   return reserveBFormatted / reserveAFormatted
 }
 
+// ─── Pool health classifier (Task 0024) ───────────────────────────────────────
+
+/**
+ * Frontend defense against on-chain pool miscalibration on testnet.
+ *
+ * Some pools were observed returning reserves that imply absurd spot
+ * prices (e.g. 1e-6 G$ paired with 1e18 USDC → ~1e24 USDC per G$). The UI
+ * cannot fix the on-chain state, but it can refuse to render a usable
+ * trade surface for such pools, replace numeric fields with a placeholder,
+ * and steer users to the runbook in `docs/runbooks/pool-misconfigured.md`.
+ *
+ * Thresholds are intentionally loose so we never flag healthy heavy-
+ * liquidity pools as `misconfigured`:
+ *
+ *   - Spot price must fall in `[1e-9, 1e3]` (tokenB per 1 tokenA after
+ *     decimal-aware formatting). This admits realistic G$/USDC at ~1e-6
+ *     while flagging the observed 3000+ and 1e12+ pathologies.
+ *
+ * Inputs accept both `number` (the runtime type returned by
+ * `formatPoolAmount`) and `string` (convenient for fixture-driven tests
+ * and any future callers reading numeric strings off the wire).
+ *
+ * @returns `'ok'` (safe to render), `'misconfigured'` (block trading), or
+ *   `'unknown'` (reserves missing / non-numeric / zero — caller decides
+ *   whether to show loading state or fall back to `ok`).
+ */
+export type PoolHealth = 'ok' | 'misconfigured' | 'unknown'
+
+export function classifyPoolHealth(
+  reserveAFormatted: string | number | undefined,
+  reserveBFormatted: string | number | undefined,
+): PoolHealth {
+  const a = typeof reserveAFormatted === 'string' ? Number(reserveAFormatted) : reserveAFormatted
+  const b = typeof reserveBFormatted === 'string' ? Number(reserveBFormatted) : reserveBFormatted
+
+  if (a == null || b == null) return 'unknown'
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 'unknown'
+  if (a <= 0 || b <= 0) return 'unknown'
+
+  const spot = b / a
+  if (!Number.isFinite(spot) || spot <= 0) return 'unknown'
+
+  const SPOT_MIN = 1e-9
+  const SPOT_MAX = 1e3
+  if (spot < SPOT_MIN || spot > SPOT_MAX) return 'misconfigured'
+
+  return 'ok'
+}
+
 // ─── Hook: usePoolReserves ────────────────────────────────────────────────────
 
 /**
@@ -148,6 +197,15 @@ export function usePoolReserves(key: PoolKey) {
   // doc-comment above for the full reasoning.
   const spotPriceFormatted = computeSpotPrice(reserveAFormatted, reserveBFormatted)
 
+  // Pool health: refuse to render usable trade UX when on-chain reserves
+  // imply a nonsensical spot price (Task 0024). While reserves are still
+  // loading we report `unknown` rather than `ok` so the UI does not
+  // briefly render trade buttons before the guard kicks in.
+  const isLoading = loadingA || loadingB || loadingL
+  const health: PoolHealth = isLoading
+    ? 'unknown'
+    : classifyPoolHealth(reserveAFormatted, reserveBFormatted)
+
   return {
     reserveA: reserveA as bigint | undefined,
     reserveB: reserveB as bigint | undefined,
@@ -156,7 +214,8 @@ export function usePoolReserves(key: PoolKey) {
     reserveBFormatted,
     totalLiquidityFormatted,
     spotPriceFormatted,
-    isLoading: loadingA || loadingB || loadingL,
+    health,
+    isLoading,
     pool,
   }
 }
