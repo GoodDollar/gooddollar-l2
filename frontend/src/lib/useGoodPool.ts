@@ -139,6 +139,16 @@ export function computeSpotPrice(
  */
 export type PoolHealth = 'ok' | 'misconfigured' | 'unknown'
 
+/**
+ * Sanity bounds for a decimal-aware spot price (tokenB per 1 tokenA).
+ *
+ * Exported so other surfaces that consume pool-derived prices (notably
+ * `useOnChainMarketData` powering `/explore`) can share the same band and
+ * not re-define their own bounds. Task 0029.
+ */
+export const SPOT_MIN = 1e-9
+export const SPOT_MAX = 1e3
+
 export function classifyPoolHealth(
   reserveAFormatted: string | number | undefined,
   reserveBFormatted: string | number | undefined,
@@ -153,8 +163,6 @@ export function classifyPoolHealth(
   const spot = b / a
   if (!Number.isFinite(spot) || spot <= 0) return 'unknown'
 
-  const SPOT_MIN = 1e-9
-  const SPOT_MAX = 1e3
   if (spot < SPOT_MIN || spot > SPOT_MAX) return 'misconfigured'
 
   return 'ok'

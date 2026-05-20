@@ -4,13 +4,22 @@
  * useOnChainMarketData — live token market data from on-chain contracts + CoinGecko.
  *
  * Price source priority:
- *  1. On-chain (GoodLendPriceOracle for WETH/USDC; GD/USDC pool spot price for G$)
+ *  1. On-chain (GoodLendPriceOracle for WETH/USDC; G$/USDC pool reserves for G$)
  *  2. CoinGecko live prices (via usePriceFeeds, refreshes every 60s)
  *  3. FALLBACK_PRICES static constants
  *
  * On-chain supplemental data:
  *  - G$ circulating supply: GoodDollarToken.totalSupply()
  *  - G$ market cap: derived from supply × price
+ *
+ * IMPORTANT (task 0029): we deliberately do NOT call `SwapPoolGdUsdc.spotPrice()`
+ * directly. That view returns a raw 18-decimal ratio of tokenB-base-units per
+ * 1e18 tokenA-base-units; when tokenA (G$, 18d) and tokenB (USDC, 6d) have
+ * different decimals, `formatUnits(_, 18)` of that ratio produces a wildly
+ * wrong number (e.g. ~$1 trillion per G$ → $1e21 market cap on /explore).
+ * Instead we read decimal-aware reserves and derive the spot price via
+ * `computeSpotPrice` (USDC per 1 G$), then clamp with `[SPOT_MIN, SPOT_MAX]`
+ * and fall through to CoinGecko / FALLBACK when implausible.
  *
  * On-chain reads refresh every 30s. Falls back gracefully on RPC errors.
  */
@@ -24,6 +33,13 @@ import { CONTRACTS } from './chain'
 import { ERC20ABI, GoodPoolABI, GoodLendPriceOracleABI } from './abi'
 import type { TokenMarketData } from './marketData'
 import { generateSeededSparkline } from './sparklineSeed'
+import {
+  computeSpotPrice,
+  formatPoolAmount,
+  SPOT_MIN,
+  SPOT_MAX,
+  getPool,
+} from './useGoodPool'
 
 // ─── Token descriptions (static metadata) ────────────────────────────────────
 
@@ -51,29 +67,42 @@ const TOKEN_DESCRIPTIONS: Record<string, string> = {
 const ALL_SYMBOLS = Object.keys(FALLBACK_PRICES)
 
 // ─── On-chain contract reads ──────────────────────────────────────────────────
+//
+// We read decimal-aware reserves rather than `spotPrice()` for the G$/USDC
+// pool so the math is unambiguous and shares its sanity envelope with the
+// rest of the app via `computeSpotPrice` + `SPOT_MIN`/`SPOT_MAX`.
+//
+// Indices used below:
+//   [0] G$ totalSupply
+//   [1] G$/USDC pool reserveA (G$ side, 18d)
+//   [2] G$/USDC pool reserveB (USDC side, 6d)
+//   [3] WETH oracle price
+//   [4] USDC oracle price
+
+const GD_USDC_POOL = getPool('G$/USDC')
 
 const ON_CHAIN_CONTRACTS = [
-  // [0] G$ total supply (18 decimals) — GoodDollarToken
   {
     address: CONTRACTS.GoodDollarToken,
     abi: ERC20ABI,
     functionName: 'totalSupply' as const,
   },
-  // [1] G$/USDC pool spot price — returns USDC per G$ with 18-decimal precision
-  //     formatUnits(result, 18) → G$ price in USD (USDC ≈ $1)
   {
-    address: CONTRACTS.SwapPoolGdUsdc,
+    address: GD_USDC_POOL.address,
     abi: GoodPoolABI,
-    functionName: 'spotPrice' as const,
+    functionName: 'reserveA' as const,
   },
-  // [2] WETH USD price from GoodLend oracle (8 decimals, Aave-style)
+  {
+    address: GD_USDC_POOL.address,
+    abi: GoodPoolABI,
+    functionName: 'reserveB' as const,
+  },
   {
     address: CONTRACTS.GoodLendPriceOracle,
     abi: GoodLendPriceOracleABI,
     functionName: 'getAssetPrice' as const,
     args: [CONTRACTS.MockWETH] as const,
   },
-  // [3] USDC USD price from GoodLend oracle (8 decimals, Aave-style)
   {
     address: CONTRACTS.GoodLendPriceOracle,
     abi: GoodLendPriceOracleABI,
@@ -81,6 +110,31 @@ const ON_CHAIN_CONTRACTS = [
     args: [CONTRACTS.MockUSDC] as const,
   },
 ] as const
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Derive a USD price for G$ from raw G$/USDC pool reserves.
+ *
+ * Returns `null` when reserves are missing, zero, or when the implied
+ * spot price falls outside `[SPOT_MIN, SPOT_MAX]` — in which case the
+ * caller should fall through to CoinGecko / FALLBACK rather than render
+ * a nonsense headline price. Exported for unit testing.
+ */
+export function deriveGdUsdPriceFromReserves(
+  reserveARaw: bigint | undefined,
+  reserveBRaw: bigint | undefined,
+): number | null {
+  const reserveA = formatPoolAmount(reserveARaw, GD_USDC_POOL.tokenADecimals) // G$
+  const reserveB = formatPoolAmount(reserveBRaw, GD_USDC_POOL.tokenBDecimals) // USDC
+
+  const spot = computeSpotPrice(reserveA, reserveB) // USDC per 1 G$ ≈ USD per G$
+  if (spot == null) return null
+  if (!Number.isFinite(spot) || spot <= 0) return null
+  if (spot < SPOT_MIN || spot > SPOT_MAX) return null
+
+  return spot
+}
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -106,24 +160,28 @@ export function useOnChainMarketData(): {
       ? (onChainData[0].result as bigint)
       : undefined
 
-    const gdSpotPriceRaw = onChainData?.[1]?.status === 'success'
+    const gdReserveARaw = onChainData?.[1]?.status === 'success'
       ? (onChainData[1].result as bigint)
       : undefined
 
-    const wethOraclePriceRaw = onChainData?.[2]?.status === 'success'
+    const gdReserveBRaw = onChainData?.[2]?.status === 'success'
       ? (onChainData[2].result as bigint)
       : undefined
 
-    const usdcOraclePriceRaw = onChainData?.[3]?.status === 'success'
+    const wethOraclePriceRaw = onChainData?.[3]?.status === 'success'
       ? (onChainData[3].result as bigint)
+      : undefined
+
+    const usdcOraclePriceRaw = onChainData?.[4]?.status === 'success'
+      ? (onChainData[4].result as bigint)
       : undefined
 
     // ── Derive human-readable values ──────────────────────────────────────────
 
-    // G$ price: spot price from G$/USDC pool (tokenB/tokenA, 18-decimal fixed-point)
-    const gdPriceOnChain = gdSpotPriceRaw !== undefined && gdSpotPriceRaw > 0n
-      ? parseFloat(formatUnits(gdSpotPriceRaw, 18))
-      : null
+    // G$ price: derived from decimal-aware G$/USDC pool reserves, then
+    // sanity-bounded. `null` means "the pool is missing or pathological —
+    // fall through to CoinGecko / FALLBACK below."
+    const gdPriceOnChain = deriveGdUsdPriceFromReserves(gdReserveARaw, gdReserveBRaw)
 
     // WETH/USDC prices from GoodLend oracle (8 decimals, same as Chainlink)
     const wethPriceOnChain = wethOraclePriceRaw !== undefined && wethOraclePriceRaw > 0n
