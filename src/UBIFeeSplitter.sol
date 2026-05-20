@@ -49,6 +49,11 @@ contract UBIFeeSplitter is ReentrancyGuard {
     );
     event DAppRegistered(address indexed dApp, string name);
     event GoodDollarUpdated(address indexed oldAddr, address indexed newAddr);
+    /// @notice Emitted when admin rotates the protocol treasury address.
+    /// @dev Mirrors `GoodDollarUpdated` so SOC tooling can monitor governance
+    ///      rotations of the address that receives every protocol-share fee.
+    ///      See docs/security/ERROR-HANDLING-TRIAGE.md §3.4.
+    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     
     modifier onlyAdmin() {
         require(msg.sender == admin, "Not admin");
@@ -56,6 +61,14 @@ contract UBIFeeSplitter is ReentrancyGuard {
     }
     
     constructor(address _goodDollar, address _treasury, address _admin) {
+        // Defensive: a mis-deployed splitter with a zero treasury would
+        // silently route every protocol-share fee to address(0), burning
+        // funds-in-flight. A zero admin would permanently lock governance
+        // (`onlyAdmin` checks `msg.sender == admin`). Triage doc §3.4.
+        // Note: `_goodDollar == 0` is allowed at construction so deploy
+        // scripts that wire GDT post-hoc via `setGoodDollar` still work.
+        require(_treasury != address(0), "zero address");
+        require(_admin != address(0), "zero address");
         goodDollar = IGoodDollarToken(_goodDollar);
         protocolTreasury = _treasury;
         admin = _admin;
@@ -117,7 +130,13 @@ contract UBIFeeSplitter is ReentrancyGuard {
     }
     
     function setTreasury(address _treasury) external onlyAdmin {
+        // Defensive: a fat-fingered governance call must never silently
+        // route the protocol share to address(0). Triage doc §3.4 /
+        // Slither `missing-zero-check`.
+        require(_treasury != address(0), "zero address");
+        address oldTreasury = protocolTreasury;
         protocolTreasury = _treasury;
+        emit TreasuryUpdated(oldTreasury, _treasury);
     }
 
     function setUBIRecipient(address _ubiRecipient) external onlyAdmin {

@@ -213,6 +213,43 @@ contract UBIFeeSplitterTest is Test {
         splitter.setTreasury(alice);
     }
 
+    /// @notice Defensive: setTreasury(0) MUST revert ("zero address") so a
+    /// fat-fingered governance call can never silently route the protocol
+    /// share to address(0). Triage doc §3.4 / Slither `missing-zero-check`.
+    function test_setTreasury_RevertsOnZero() public {
+        vm.prank(admin);
+        vm.expectRevert("zero address");
+        splitter.setTreasury(address(0));
+        // And the existing treasury must be untouched.
+        assertEq(splitter.protocolTreasury(), treasury);
+    }
+
+    /// @notice setTreasury MUST emit `TreasuryUpdated(old, new)` so SOC
+    /// monitoring can react to governance changes. Mirrors `setGoodDollar`.
+    function test_setTreasury_EmitsTreasuryUpdated() public {
+        address newTreasury = makeAddr("newTreasury2");
+        vm.prank(admin);
+        vm.expectEmit(true, true, false, true);
+        emit UBIFeeSplitter.TreasuryUpdated(treasury, newTreasury);
+        splitter.setTreasury(newTreasury);
+    }
+
+    /// @notice Constructor MUST reject `_treasury == address(0)` — a
+    /// mis-deployed splitter would silently burn every protocol-share fee.
+    /// Triage doc §3.4 / Slither `missing-zero-check`.
+    function test_constructor_RevertsOnZeroTreasury() public {
+        vm.expectRevert("zero address");
+        new UBIFeeSplitter(address(token), address(0), admin);
+    }
+
+    /// @notice Constructor MUST reject `_admin == address(0)` — a zero
+    /// admin permanently locks all governance setters (`onlyAdmin` requires
+    /// `msg.sender == admin`, which `address(0)` can never satisfy).
+    function test_constructor_RevertsOnZeroAdmin() public {
+        vm.expectRevert("zero address");
+        new UBIFeeSplitter(address(token), treasury, address(0));
+    }
+
     function test_setUBIRecipient_ZeroAddress_Reverts() public {
         vm.prank(admin);
         vm.expectRevert("zero address");
