@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
@@ -8,8 +9,42 @@ import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { UBIContributionCard } from '@/components/UBIContributionCard'
-import { PartnershipIntegrationCard } from '@/components/PartnershipIntegrationCard'
+
+const DeferredStocksPortfolioImpactSection = dynamic(
+  () => import('./StocksPortfolioImpactSection').then((module) => module.StocksPortfolioImpactSection),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" aria-live="polite">
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-6">
+          <div className="space-y-3">
+            <div className="text-center text-gray-400 text-sm">
+              Connect wallet to see your UBI impact
+            </div>
+            <button
+              type="button"
+              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
+            >
+              Connect Wallet to View UBI Impact
+            </button>
+            <div className="animate-pulse space-y-2">
+              <div className="h-3 w-full bg-gray-700/60 rounded" />
+              <div className="h-3 w-5/6 bg-gray-700/60 rounded" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-6">
+          <div className="animate-pulse space-y-3">
+            <div className="h-4 w-44 bg-gray-700/60 rounded" />
+            <div className="h-8 w-32 bg-gray-700/60 rounded" />
+            <div className="h-3 w-5/6 bg-gray-700/60 rounded" />
+          </div>
+        </div>
+        <p className="sr-only">Loading impact insights…</p>
+      </div>
+    ),
+  },
+)
 
 function CollateralHealth({
   ratio,
@@ -194,18 +229,7 @@ export default function StocksPortfolioPage() {
         </div>
       </div>
 
-      {/* UBI Impact Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <UBIContributionCard
-          platform="stocks"
-          className="h-fit"
-        />
-        <PartnershipIntegrationCard
-          userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2}
-          compact={false}
-          className="h-fit"
-        />
-      </div>
+      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">

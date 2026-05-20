@@ -101,6 +101,17 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
   })
 
+  it('shows deferred impact section loading placeholders on first paint', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByText('Loading impact insights…')).toBeInTheDocument()
+  })
+
   it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {
     accountState.address = '0x1111111111111111111111111111111111111111'
     accountState.isConnected = true
