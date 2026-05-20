@@ -84,6 +84,29 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(text).not.toContain('$0.00 / $500.00 required')
   })
 
+  it('keeps neutral collateral status for ghost holdings with zero shares', () => {
+    holdingsState.holdings = [{
+      ticker: 'AAPL',
+      shares: 0,
+      avgCost: 0,
+      currentPrice: 200,
+      collateralDeposited: 0,
+      collateralRequired: 0,
+    }]
+    holdingsState.totalCollateral = 0
+    holdingsState.totalRequired = 500
+    holdingsState.healthRatio = 0
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+    const text = container.textContent || ''
+    expect(text).toContain('No open positions yet')
+    expect(text).not.toMatch(/Critical/)
+    expect(text).toContain('Collateral health will appear after your first trade')
+    expect(text).not.toContain('$0.00 / $500.00 required')
+  })
+
   it('shows a neutral dash for collateral health when ratio is 0 with no collateral', () => {
     holdingsState.holdings = []
     holdingsState.totalCollateral = 0
