@@ -142,6 +142,7 @@ test.describe('Stocks Journey', () => {
       '/stocks/%2520',
       '/stocks/%252520',
       '/stocks/%2F',
+      '/stocks/%252F..%252F%00',
       '/stocks/%252525252525',
       '/stocks/AAPL%00',
       '/stocks/%3Csvg%20onload%3Dalert(1)%3E',
@@ -158,6 +159,8 @@ test.describe('Stocks Journey', () => {
       expect(mainText).not.toContain('%2520')
       expect(mainText).not.toContain('%252520')
       expect(mainText).not.toContain('%2F')
+      expect(mainText).not.toContain('%252F')
+      expect(mainText).not.toContain('..')
       expect(mainText).not.toContain('%252525252525')
       expect(mainText).not.toContain('AAPL%00')
       expect(mainText).not.toContain('%3Csvg')

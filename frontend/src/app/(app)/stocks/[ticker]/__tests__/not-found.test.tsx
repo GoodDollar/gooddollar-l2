@@ -150,6 +150,17 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(text).not.toContain('%252525252525')
   })
 
+  it('does not leak double-encoded traversal payload (%252F..%252F%00) in error copy', () => {
+    currentParams = { ticker: '%252F..%252F%00' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('%252F')
+    expect(text).not.toContain('..')
+    expect(text).not.toContain('%00')
+  })
+
   it('does not leak mixed alphanumeric null-byte payload (AAPL%00) in error copy', () => {
     currentParams = { ticker: 'AAPL%00' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
