@@ -228,11 +228,16 @@
         "positions or empty state visible",
         "no 404/error shell"
       ],
-      "titlePattern": "Portfolio|Perps",
-      "mustContain": [
-        "Portfolio"
-      ]
-    },
+    "titlePattern": "Portfolio|Perps",
+    "mustContain": [
+      "Portfolio"
+    ],
+    "mustNotContain": [
+      "positions.length===0 ? (",
+      "=== 0 ?",
+      "):("
+    ]
+  },
     {
       "id": "lend",
       "name": "GoodLend",

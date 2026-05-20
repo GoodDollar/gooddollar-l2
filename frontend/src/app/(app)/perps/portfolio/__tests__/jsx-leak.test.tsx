@@ -47,6 +47,8 @@ describe('PerpsPortfolioPage — JSX ternary rendering (task 0004)', () => {
     expect(text).not.toContain('trades.length')
     expect(text).not.toContain('funding.length')
     expect(text).not.toContain('=== 0 ?')
+    expect(text).not.toContain('positions.length===0 ? (')
+    expect(text).not.toContain('):(')
   })
 
   it('shows empty state messages when arrays are empty', () => {
