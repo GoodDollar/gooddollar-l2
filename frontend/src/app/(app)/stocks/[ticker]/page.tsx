@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
@@ -9,6 +9,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { getAnalystOutlook } from '@/lib/stockInsights'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
@@ -16,6 +17,7 @@ import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainSto
 import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
+import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 
 const PriceChart = dynamic(
   () => import('@/components/PriceChart').then((m) => ({ default: m.PriceChart })),
@@ -273,6 +275,8 @@ export default function StockDetailPage() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
+  const [analystLoading, setAnalystLoading] = useState(true)
+  const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const chartMounted = useMounted()
@@ -282,6 +286,12 @@ export default function StockDetailPage() {
     return getChartData(stock.ticker, timeframe, stock.price)
   }, [stock, timeframe])
   const hasPosition = !!position && position.debtFloat > 0
+
+  useEffect(() => {
+    setAnalystLoading(true)
+    const timer = setTimeout(() => setAnalystLoading(false), 140)
+    return () => clearTimeout(timer)
+  }, [ticker])
 
   if (!stock) {
     return (
@@ -335,6 +345,12 @@ export default function StockDetailPage() {
           <div className="mb-4">
             <OracleStatusBadge variant="detail" symbol={stock.ticker} />
           </div>
+
+          <AnalystOutlookCard
+            currentPrice={stock.price}
+            outlook={analystOutlook}
+            isLoading={analystLoading}
+          />
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
             <div className="flex gap-1 mb-3">
