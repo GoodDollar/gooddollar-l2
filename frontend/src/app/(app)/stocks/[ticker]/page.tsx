@@ -17,6 +17,7 @@ import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { PriceChart } from '@/components/PriceChart'
+import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -285,11 +286,14 @@ export default function StockDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-baseline gap-3 mb-4">
+          <div className="flex items-baseline gap-3 mb-2">
             <span className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
             <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
             </span>
+          </div>
+          <div className="mb-4">
+            <OracleStatusBadge variant="detail" symbol={stock.ticker} />
           </div>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">

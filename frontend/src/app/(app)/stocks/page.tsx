@@ -6,6 +6,7 @@ import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
+import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
@@ -140,7 +141,7 @@ export default function StocksPage() {
         storageKey="gd-banner-dismissed-stocks"
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
         <input
           type="text"
           placeholder="Search stocks..."
@@ -148,6 +149,7 @@ export default function StocksPage() {
           onChange={e => setQuery(e.target.value)}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
         />
+        <OracleStatusBadge />
       </div>
 
       {/* Mobile card list (< sm) */}
