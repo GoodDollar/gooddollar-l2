@@ -18,6 +18,8 @@
 > Every previously-flagged HIGH/MEDIUM finding from the historical 2026-04-05 baseline has either been **fixed in production code across prior iterations** or **removed from scope by the now-canonical `slither.config.json` filter** (which excludes `lib/`, `script/`, `test/`, etc.). The rationale and per-bucket trace are documented in [`iter31-security-gate.md`](security/iter31-security-gate.md).
 >
 > The Foundry test suite is **green at the same commit**: [`docs/security/iter31/forge-test.txt`](security/iter31/forge-test.txt) records **1126 passed / 0 failed / 0 skipped** across 52 suites.
+>
+> For an error-handling and resilience view of the 354 LOW/INFO findings that fall under that axis (broken into 11 detectors, bucketed per `src/` area, with fix-now candidates and accept-and-document register), see [`docs/security/ERROR-HANDLING-TRIAGE.md`](security/ERROR-HANDLING-TRIAGE.md).
 
 ## Summary
 
