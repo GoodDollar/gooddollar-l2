@@ -227,8 +227,8 @@ export function OrderForm({ stock, position }: { stock: { ticker: string; price:
         )}
       </div>
 
-      {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && !sellGated && !amountTooLarge && (
-        <div className="mb-4 space-y-1.5 text-xs">
+      {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && !sellGated && !sellSharesExceedsBalance && !amountTooLarge && (
+        <div className="mb-4 space-y-1.5 text-xs" data-testid="stocks-cost-breakdown">
           <div className="flex justify-between text-gray-400">
             <span>Est. Shares</span>
             <span className="text-white truncate ml-2">{formatStockShares(shares)} {stock.ticker}</span>
