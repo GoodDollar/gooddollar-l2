@@ -142,7 +142,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
+    <form id="stock-order-form" onSubmit={handleSubmit} className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
       <div className="flex gap-2 mb-4">
         <button type="button" onClick={() => setSide('buy')}
           className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${side === 'buy' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-dark-50/50 text-gray-400 border border-transparent'}`}>
@@ -272,6 +272,7 @@ export default function StockDetailPage() {
     if (!stock) return []
     return getChartData(stock.ticker, timeframe, stock.price)
   }, [stock, timeframe])
+  const hasPosition = !!position && position.debtFloat > 0
 
   if (!stock) {
     return (
@@ -403,7 +404,7 @@ export default function StockDetailPage() {
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
-            {position && position.debtFloat > 0 ? (
+            {hasPosition ? (
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-2xl font-bold text-white tabular-nums">
@@ -439,23 +440,43 @@ export default function StockDetailPage() {
             )}
           </div>
 
-          <div className="mt-4 bg-dark-100/50 rounded-2xl border border-gray-700/10 p-4">
-            <p className="text-xs text-gray-500 mb-2">Also on GoodDollar</p>
-            <div className="flex flex-col gap-1.5">
-              <Link href="/explore" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
-                Explore crypto tokens
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
-              <Link href="/perps" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
-                Trade crypto perpetual futures
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
-              <Link href="/predict" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
-                Prediction markets
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
+          {hasPosition ? (
+            <div className="mt-4 bg-dark-100/50 rounded-2xl border border-gray-700/10 p-4">
+              <p className="text-xs text-gray-500 mb-2">Also on GoodDollar</p>
+              <div className="flex flex-col gap-1.5">
+                <Link href="/explore" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Explore crypto tokens
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <Link href="/perps" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Trade crypto perpetual futures
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <Link href="/predict" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Prediction markets
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-4 bg-dark-100/50 rounded-2xl border border-goodgreen/20 p-4">
+              <p className="text-xs text-gray-500 mb-2">Next steps in stocks</p>
+              <div className="flex flex-col gap-1.5">
+                <Link href={`/stocks/${stock.ticker}#stock-order-form`} className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors inline-flex items-center gap-1">
+                  Buy s{stock.ticker}
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <Link href="/stocks/portfolio" className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Open Stock Portfolio
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <Link href="/stocks" className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Browse Stocks
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

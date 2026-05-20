@@ -139,6 +139,7 @@ GoodDollar L2 is running as a persistent public devnet / alpha-testnet candidate
 - **2026-05-20 — Perps portfolio template-leak guard expansion (task 0039).** Extended route-registry E2E assertions plus unit-level leak checks so `/perps/portfolio` explicitly fails CI if raw JSX/template fragments (for example `positions.length===0 ? (` or `):(`) ever appear in rendered UI again.
 - **2026-05-20 — Stocks collateral-critical empty-state guard expansion (task 0040).** Added registry-level forbidden-copy checks for `/stocks/portfolio` and expanded unit coverage to enforce neutral empty-state collateral messaging while preserving `Critical` risk labels for real open-position scenarios.
 - **2026-05-20 — Stocks malformed URL decode-edge fallback hardening (task 0043).** Expanded `safe-route-normalizer` coverage for browser-normalized malformed ticker payloads (replacement-character variants such as `/stocks/�(�(` / `%EF%BF%BD(%EF%BF%BD(`) and rewired the normalizer to route these cases to `/stocks/UNKNOWN`, preventing raw decode-edge payloads from bypassing stocks recovery handling in Next runtime entry.
+- **2026-05-20 — Stocks detail empty-position journey polish (task 0046).** Reworked `/stocks/[ticker]` no-position next actions to stay within the stocks journey (`Buy s<TICKER>`, `Open Stock Portfolio`, `Browse Stocks`) instead of routing users to unrelated crypto/perps/predict pages, with regression tests covering CTA labels and link targets.
 
 ## Logo and Brand
 

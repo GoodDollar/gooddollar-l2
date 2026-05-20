@@ -199,4 +199,22 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.getByRole('heading', { name: 'AAPL' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
   })
+
+  it('shows stocks-focused next actions in empty-position state on valid detail pages', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const buyLink = screen.getByRole('link', { name: /Buy sAAPL/i })
+    const portfolioLink = screen.getByRole('link', { name: /Open Stock Portfolio/i })
+    const browseLink = screen.getByRole('link', { name: /Browse Stocks/i })
+
+    expect(buyLink.getAttribute('href')).toBe('/stocks/AAPL#stock-order-form')
+    expect(portfolioLink.getAttribute('href')).toBe('/stocks/portfolio')
+    expect(browseLink.getAttribute('href')).toBe('/stocks')
+
+    expect(screen.queryByRole('link', { name: /Explore crypto tokens/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Trade crypto perpetual futures/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Prediction markets/i })).toBeNull()
+  })
 })
