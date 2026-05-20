@@ -149,7 +149,7 @@ export default function StocksPage() {
           onChange={e => setQuery(e.target.value)}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
         />
-        <OracleStatusBadge />
+        <OracleStatusBadge useStocksFallback />
       </div>
 
       {/* Mobile card list (< sm) */}

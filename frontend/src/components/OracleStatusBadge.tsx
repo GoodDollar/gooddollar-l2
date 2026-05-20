@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { usePriceServiceStatus, getSessionLabel, getDominantSession } from '@/lib/usePriceServiceStatus'
+import { deriveStocksOracleHealth, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
 
 function formatAge(ms: number): string {
   if (ms < 1000) return 'just now'
@@ -14,12 +16,66 @@ type Variant = 'compact' | 'detail'
 interface OracleStatusBadgeProps {
   variant?: Variant
   symbol?: string
+  useStocksFallback?: boolean
 }
 
-export function OracleStatusBadge({ variant = 'compact', symbol }: OracleStatusBadgeProps) {
+export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = false }: OracleStatusBadgeProps) {
   const { status, error } = usePriceServiceStatus()
+  const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
+  const [fallbackLoading, setFallbackLoading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!useStocksFallback || status || !error) return
+
+    setFallbackLoading(true)
+    fetch('/api/status', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`status ${res.status}`)
+        const data = await res.json()
+        if (cancelled) return
+        setFallbackState(deriveStocksOracleHealth(data))
+      })
+      .catch(() => {
+        if (cancelled) return
+        setFallbackState('offline')
+      })
+      .finally(() => {
+        if (!cancelled) setFallbackLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [useStocksFallback, status, error])
 
   if (error || !status) {
+    if (useStocksFallback) {
+      if (fallbackLoading) {
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+            <span>Checking oracle...</span>
+          </div>
+        )
+      }
+      if (fallbackState === 'live') {
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            <span>Live</span>
+            <span className="text-gray-600">·</span>
+            <span>stocks-keeper</span>
+          </div>
+        )
+      }
+      if (fallbackState === 'degraded') {
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+            <span>Oracle degraded</span>
+          </div>
+        )
+      }
+    }
     return (
       <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
