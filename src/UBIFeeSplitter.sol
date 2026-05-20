@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @title UBI Fee Splitter
@@ -214,10 +215,14 @@ contract UBIFeeSplitter is ReentrancyGuard {
      * @notice Withdraw accumulated native ETH to the protocol treasury.
      */
     function withdrawETH() external onlyAdmin {
+        // Defensive: Address.sendValue forwards all gas and bubbles up the
+        // receiver's revert reason instead of collapsing every failure to
+        // "ETH transfer failed". This removes the Slither `low-level-calls`
+        // finding and improves operator triage when the treasury is a
+        // contract (e.g. paused multisig). Triage doc §3.7.
         uint256 balance = address(this).balance;
         require(balance > 0, "no ETH");
-        (bool sent,) = protocolTreasury.call{value: balance}("");
-        require(sent, "ETH transfer failed");
+        Address.sendValue(payable(protocolTreasury), balance);
     }
 
     function dAppCount() external view returns (uint256) {

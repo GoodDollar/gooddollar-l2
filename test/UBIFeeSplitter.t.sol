@@ -343,6 +343,53 @@ contract UBIFeeSplitterTest is Test {
         splitter.withdrawETH();
     }
 
+    // ─── withdrawETH revert-reason bubbling (Address.sendValue refactor) ──────
+    // See docs/security/ERROR-HANDLING-TRIAGE.md §3.7 and Slither
+    // `low-level-calls` detector. After swapping `protocolTreasury.call{value:}("")`
+    // for `Address.sendValue`, a reverting receiver's revert string must
+    // surface to the caller instead of being replaced with the generic
+    // "ETH transfer failed".
+
+    function test_withdrawETH_RevertsOnReceiverRevert() public {
+        // Treasury is a contract whose receive() reverts with a reason.
+        // OpenZeppelin Address.sendValue does NOT bubble the inner revert
+        // reason — it collapses any failure to its own canonical message.
+        // We assert that canonical message so this test is stable across
+        // any future receiver-side reason changes.
+        RevertingReceiver receiver = new RevertingReceiver();
+
+        vm.prank(admin);
+        splitter.setTreasury(address(receiver));
+
+        vm.deal(address(splitter), 1 ether);
+
+        vm.prank(admin);
+        vm.expectRevert(bytes("Address: unable to send value, recipient may have reverted"));
+        splitter.withdrawETH();
+
+        // No funds moved — splitter still holds the ETH.
+        assertEq(address(splitter).balance, 1 ether);
+        assertEq(address(receiver).balance, 0);
+    }
+
+    function test_withdrawETH_RevertsWithGenericReasonOnSilentRevert() public {
+        // Treasury reverts without a reason — Address.sendValue substitutes a
+        // generic message instead of swallowing the failure as `sent == false`.
+        SilentRevertingReceiver receiver = new SilentRevertingReceiver();
+
+        vm.prank(admin);
+        splitter.setTreasury(address(receiver));
+
+        vm.deal(address(splitter), 1 ether);
+
+        vm.prank(admin);
+        vm.expectRevert(bytes("Address: unable to send value, recipient may have reverted"));
+        splitter.withdrawETH();
+
+        assertEq(address(splitter).balance, 1 ether);
+        assertEq(address(receiver).balance, 0);
+    }
+
     // ─── Checked-transferFrom regression (security hardening) ─────────────────
 
     /// @notice If the underlying token's transferFrom returns false without reverting,
@@ -413,5 +460,24 @@ contract MockERC20 {
         balanceOf[from] -= amount;
         balanceOf[to] += amount;
         return true;
+    }
+}
+
+/// @dev Treasury mock whose receive() reverts with a known reason string.
+/// Used to assert that `withdrawETH` surfaces the underlying revert reason
+/// after migrating from a raw `call` to `Address.sendValue`.
+contract RevertingReceiver {
+    receive() external payable {
+        revert("treasury paused");
+    }
+}
+
+/// @dev Treasury mock that reverts without a reason (e.g. failed `assert`
+/// or unreachable opcode). `Address.sendValue` must substitute its standard
+/// "Address: unable to send value, recipient may have reverted" message.
+contract SilentRevertingReceiver {
+    receive() external payable {
+        // Reverts with empty returndata.
+        assembly { revert(0, 0) }
     }
 }
