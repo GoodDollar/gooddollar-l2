@@ -132,6 +132,7 @@ GoodDollar L2 is running as a persistent public devnet / alpha-testnet candidate
 - **2026-05-20 — Stocks portfolio empty-state collateral health fix (task 0032).** Updated the `/stocks/portfolio` collateral-health card to keep empty/disconnected users in a neutral onboarding state instead of showing a false `0% — Critical` risk alert, and added regression coverage for the `totalCollateral > 0` + `totalRequired = 0` boundary.
 - **2026-05-20 — Stocks first-time onboarding CTA and mobile trade affordance (task 0033).** Added a clear wallet-disconnected onboarding panel on `/stocks` with an explicit primary CTA plus a concise 3-step start path, and added a visible `Tap to trade` affordance on mobile stock cards to improve first-action discoverability.
 - **2026-05-20 — Perps portfolio JSX leak hardening (task 0034).** Refactored `/perps/portfolio` positions tab rendering into explicit precomputed branches to prevent ternary-source text leakage in the UI and keep empty/table states cleanly separated.
+- **2026-05-20 — Stocks portfolio collateral-state regression guard (task 0035).** Tightened `/stocks/portfolio` collateral health gating to require actual holdings before rendering risk tiers, so empty/disconnected states stay neutral even when stale required-collateral values are present.
 
 ## Logo and Brand
 

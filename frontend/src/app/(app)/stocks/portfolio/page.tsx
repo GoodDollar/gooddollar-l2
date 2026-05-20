@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
-import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
@@ -15,11 +14,13 @@ import { PartnershipIntegrationCard } from '@/components/PartnershipIntegrationC
 function CollateralHealth({
   ratio,
   totalRequired = 0,
+  hasPositions = false,
 }: {
   ratio: number
   totalRequired?: number
+  hasPositions?: boolean
 }) {
-  const hasRiskPosition = totalRequired > 0
+  const hasRiskPosition = hasPositions && totalRequired > 0
 
   if (!hasRiskPosition) {
     return (
@@ -152,7 +153,11 @@ export default function StocksPortfolioPage() {
           </div>
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <CollateralHealth ratio={summary.healthRatio} totalRequired={summary.totalRequired} />
+          <CollateralHealth
+            ratio={summary.healthRatio}
+            totalRequired={summary.totalRequired}
+            hasPositions={holdings.length > 0}
+          />
           <div className="hidden sm:block mt-2 text-xs text-gray-500">
             {summary.totalRequired > 0
               ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`

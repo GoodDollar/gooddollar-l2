@@ -56,6 +56,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
   })
 
   it('does NOT show "Critical" when there are no positions', () => {
+    holdingsState.holdings = []
     holdingsState.totalCollateral = 0
     holdingsState.totalRequired = 0
     holdingsState.healthRatio = 0
@@ -64,6 +65,20 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
+    expect(text).not.toMatch(/Critical/)
+  })
+
+  it('keeps neutral collateral status when no holdings exist even if required collateral is stale/non-zero', () => {
+    holdingsState.holdings = []
+    holdingsState.totalCollateral = 0
+    holdingsState.totalRequired = 500
+    holdingsState.healthRatio = 0
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+    const text = container.textContent || ''
+    expect(text).toContain('No open positions yet')
     expect(text).not.toMatch(/Critical/)
   })
 
