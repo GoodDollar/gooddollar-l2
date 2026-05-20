@@ -30,6 +30,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 - Stocks navigation links now opt out of eager prefetch in stocks section/detail contexts (section tabs, portfolio icon, and cross-route CTAs) to reduce non-essential background route fetch fan-out.
 - Stocks detail now includes an `Analyst Outlook` card (consensus, low/mean/high target context, and implied upside/downside) with explicit loading and unavailable-data fallbacks.
 - Stocks detail now includes a `News & Events` panel with per-ticker catalyst headlines, tags, source attribution, and empty/error fallbacks so users can keep context in-app.
+- Stocks detail sidebar now includes stocks-native discovery modules (`Related symbols` + `Daily movers`) so users can jump directly into adjacent opportunities without leaving the stocks flow.
 
 ### POC V1 live endpoints
 

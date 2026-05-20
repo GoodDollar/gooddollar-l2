@@ -18,8 +18,10 @@ import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainSto
 import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
+import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
+import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 
 const PriceChart = dynamic(
   () => import('@/components/PriceChart').then((m) => ({ default: m.PriceChart })),
@@ -289,6 +291,8 @@ export default function StockDetailPage() {
     return getChartData(stock.ticker, timeframe, stock.price)
   }, [stock, timeframe])
   const hasPosition = !!position && position.debtFloat > 0
+  const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
+  const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
 
   useEffect(() => {
     setAnalystLoading(true)
@@ -474,6 +478,12 @@ export default function StockDetailPage() {
               </div>
             )}
           </div>
+
+          <RelatedMoversPanel
+            currentTicker={stock.ticker}
+            related={relatedSymbols}
+            movers={topMovers}
+          />
 
           {hasPosition ? (
             <div className="mt-4 bg-dark-100/50 rounded-2xl border border-gray-700/10 p-4">
