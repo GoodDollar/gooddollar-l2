@@ -3,12 +3,14 @@
 import { useState, useMemo, memo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
+import { DEVNET_CHAIN_ID } from '@/lib/devnet'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -87,7 +89,9 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
 
 export default function StocksPage() {
   const router = useRouter()
-  const { address } = useAccount()
+  const { address, chainId } = useAccount()
+  const wrongChain = address !== undefined && chainId !== undefined && chainId !== DEVNET_CHAIN_ID
+  const showConnectBanner = !address || wrongChain
   const [query, setQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -143,20 +147,31 @@ export default function StocksPage() {
         storageKey="gd-banner-dismissed-stocks"
       />
 
-      {!address && (
+      {showConnectBanner && (
         <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
-              <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
+              <h2 className="text-base sm:text-lg font-semibold text-white">
+                {wrongChain ? 'Switch to GoodDollar L2 to Trade Stocks' : 'Connect Wallet to Trade Stocks'}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-300 mt-1">
+                {wrongChain
+                  ? 'Your wallet is connected to the wrong network. Switch to GoodDollar L2 to place your first trade.'
+                  : 'Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.'}
+              </p>
               <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
             </div>
-            <button
-              onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
-              className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
-            >
-              Connect Wallet to Trade Stocks
-            </button>
+            <ConnectButton.Custom>
+              {({ openConnectModal, openChainModal }) => (
+                <button
+                  type="button"
+                  onClick={wrongChain ? openChainModal : openConnectModal}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+                >
+                  {wrongChain ? 'Switch Network' : 'Connect Wallet to Trade Stocks'}
+                </button>
+              )}
+            </ConnectButton.Custom>
           </div>
         </div>
       )}

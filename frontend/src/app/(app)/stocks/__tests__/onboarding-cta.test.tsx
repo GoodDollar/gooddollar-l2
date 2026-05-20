@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import type React from 'react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const push = vi.fn()
@@ -18,6 +19,18 @@ vi.mock('wagmi', async (importOriginal) => {
     useAccount: () => walletState,
   }
 })
+
+// Stub RainbowKit's ConnectButton.Custom so tests don't require a real
+// RainbowKitProvider mounted. The render-prop receives no-op openers.
+vi.mock('@rainbow-me/rainbowkit', () => ({
+  ConnectButton: {
+    Custom: ({
+      children,
+    }: {
+      children: (args: { openConnectModal: () => void; openChainModal: () => void }) => React.ReactNode
+    }) => children({ openConnectModal: () => {}, openChainModal: () => {} }),
+  },
+}))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
   useOnChainStocks: () => ({
