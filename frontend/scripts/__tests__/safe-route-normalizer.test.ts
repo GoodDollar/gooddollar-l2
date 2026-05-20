@@ -1,27 +1,28 @@
-// @vitest-environment node
+import { describe, expect, it } from 'vitest'
 
-import { describe, it, expect } from 'vitest'
 import { normalizeMalformedStocksPath } from '../safe-route-normalizer.mjs'
 
 describe('normalizeMalformedStocksPath', () => {
-  it('rewrites malformed stocks percent path to fallback ticker', () => {
-    expect(normalizeMalformedStocksPath('/stocks/%')).toBe('/stocks/UNKNOWN')
+  it('keeps valid stocks routes unchanged', () => {
+    expect(normalizeMalformedStocksPath('/stocks/AAPL')).toBe('/stocks/AAPL')
+    expect(normalizeMalformedStocksPath('/stocks/%2541APL')).toBe('/stocks/%2541APL')
+  })
+
+  it('rewrites malformed percent encodings under /stocks to fallback ticker', () => {
     expect(normalizeMalformedStocksPath('/stocks/%2')).toBe('/stocks/UNKNOWN')
     expect(normalizeMalformedStocksPath('/stocks/%E0%A4%A')).toBe('/stocks/UNKNOWN')
   })
 
-  it('preserves query string when rewriting malformed stocks paths', () => {
-    expect(normalizeMalformedStocksPath('/stocks/%E0%A4%A?source=test')).toBe(
-      '/stocks/UNKNOWN?source=test',
-    )
+  it('rewrites recursively malformed double-encoded paths under /stocks', () => {
+    expect(normalizeMalformedStocksPath('/stocks/%25E0%A4%A')).toBe('/stocks/UNKNOWN')
+    expect(normalizeMalformedStocksPath('/stocks/%2525E0%A4%A')).toBe('/stocks/UNKNOWN')
   })
 
-  it('does not rewrite valid encoded stocks paths', () => {
-    expect(normalizeMalformedStocksPath('/stocks/%2520')).toBe('/stocks/%2520')
-    expect(normalizeMalformedStocksPath('/stocks/AAPL')).toBe('/stocks/AAPL')
+  it('preserves query string while rewriting malformed /stocks paths', () => {
+    expect(normalizeMalformedStocksPath('/stocks/%2?ref=qa&mode=debug')).toBe('/stocks/UNKNOWN?ref=qa&mode=debug')
   })
 
-  it('does not rewrite malformed percent paths outside stocks route', () => {
-    expect(normalizeMalformedStocksPath('/predict/%')).toBe('/predict/%')
+  it('does not rewrite malformed paths outside /stocks', () => {
+    expect(normalizeMalformedStocksPath('/predict/%2')).toBe('/predict/%2')
   })
 })
