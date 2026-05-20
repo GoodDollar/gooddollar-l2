@@ -32,6 +32,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 - Stocks detail now includes a `News & Events` panel with per-ticker catalyst headlines, tags, source attribution, and empty/error fallbacks so users can keep context in-app.
 - Stocks detail sidebar now includes stocks-native discovery modules (`Related symbols` + `Daily movers`) so users can jump directly into adjacent opportunities without leaving the stocks flow.
 - Stocks portfolio now defers heavy impact widgets behind a non-blocking skeleton and enforces a route bundle budget check; latest build reduced `/stocks/portfolio` First Load JS from ~410 kB to ~258 kB.
+- Stocks detail (`/stocks/[ticker]`) now distinguishes loading from not-found: while `useOnChainStocks().isLoading` is true the page renders a polished skeleton (`data-testid="stocks-detail-loading"`, `aria-busy`/`aria-live`) instead of flashing the `Stock Not Found` dead-end for known but not-yet-loaded tickers (e.g. JPM). The `Stock Not Found` recovery panel only renders once on-chain reads have completed and the ticker is still missing, eliminating a confusing UX regression on cold loads.
 
 ### POC V1 live endpoints
 
