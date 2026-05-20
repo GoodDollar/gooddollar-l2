@@ -136,7 +136,13 @@ test.describe('Stocks Journey', () => {
   })
 
   test('malformed ticker routes render UNKNOWN instead of encoded payload text', async ({ page }) => {
-    for (const route of ['/stocks/%20', '/stocks/%00', '/stocks/%2520']) {
+    for (const route of [
+      '/stocks/%20',
+      '/stocks/%00',
+      '/stocks/%2520',
+      '/stocks/%252520',
+      '/stocks/%3Csvg%20onload%3Dalert(1)%3E',
+    ]) {
       await page.goto(route)
       await page.waitForLoadState('networkidle')
 
@@ -147,6 +153,10 @@ test.describe('Stocks Journey', () => {
       expect(mainText).not.toContain('%20')
       expect(mainText).not.toContain('%00')
       expect(mainText).not.toContain('%2520')
+      expect(mainText).not.toContain('%252520')
+      expect(mainText).not.toContain('%3Csvg')
+      expect(mainText).not.toContain('onload')
+      expect(mainText).not.toContain('alert(1)')
     }
   })
 

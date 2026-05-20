@@ -165,6 +165,18 @@ describe('StockDetailPage — "Stock Not Found" ticker truncation', () => {
     expect(text).not.toContain('%20')
   })
 
+  it('normalizes triple-encoded whitespace ticker to UNKNOWN', () => {
+    currentParams = { ticker: '%252520' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/is not available/i)
+    const text = paragraph.textContent ?? ''
+    expect(text).toContain('UNKNOWN')
+    expect(text).not.toContain('%252520')
+    expect(text).not.toContain('%2520')
+    expect(text).not.toContain('%20')
+  })
+
   it('decodes double-encoded valid symbols before rendering fallback copy', () => {
     currentParams = { ticker: '%2541APL' } // double-encoded AAPL
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
