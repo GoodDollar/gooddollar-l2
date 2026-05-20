@@ -20,6 +20,10 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 
 POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candidate. The product app, public RPC, faucet, protocol pages, analytics, feedback path, Paperclip agent dashboard, Explorer / Blockscout, and 12 backend health services are online. Explorer was restored at `2026-05-19 07:54 UTC` after the Blockscout web/proxy containers had exited; it remains an alpha hardening watch item, but is no longer a public `502` blocker.
 
+### Recent UX polish (updated: 2026-05-20)
+
+- Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
+
 ### POC V1 live endpoints
 
 | Surface | Link | Status | Notes |

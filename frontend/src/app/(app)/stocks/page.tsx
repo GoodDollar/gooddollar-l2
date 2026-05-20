@@ -76,7 +76,7 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
       <td className="py-3 px-1 text-right w-20 hidden sm:table-cell">
         <button
           onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
-          className="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/10"
+          className="px-3 py-1 text-xs font-semibold rounded-lg bg-goodgreen/15 text-goodgreen hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
         >
           Trade
         </button>

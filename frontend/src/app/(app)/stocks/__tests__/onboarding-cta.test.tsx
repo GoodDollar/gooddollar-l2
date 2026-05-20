@@ -99,4 +99,19 @@ describe('StocksPage onboarding CTA', () => {
     // Ensure rendered "Tap to trade" badge still exists in constrained layout.
     expect(container.textContent).toContain('Tap to trade')
   })
+
+  it('keeps desktop Trade action visible without hover-only gating', () => {
+    walletState.address = undefined
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    const tradeButton = screen.getByRole('button', { name: 'Trade' })
+    expect(tradeButton).toBeInTheDocument()
+    expect(tradeButton.className).not.toContain('sm:opacity-0')
+    expect(tradeButton.className).not.toContain('group-hover:opacity-100')
+  })
 })
