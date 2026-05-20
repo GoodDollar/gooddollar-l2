@@ -7,6 +7,14 @@ export const runtime = 'nodejs'
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 const CACHE_TTL_MS = 60_000
 
+// Bound the in-memory cache so unique queries can't grow it without limit
+// (LRU-ish eviction via Map insertion order).
+const MAX_CACHE_ENTRIES = 16
+
+// Reject pathological requests early. The COINGECKO_IDS table has ~18 entries;
+// any sane caller will be well below this cap. This is a DoS guard.
+const MAX_SYMBOLS_PER_REQUEST = 50
+
 const COINGECKO_IDS: Record<string, string> = {
   ETH:   'ethereum',
   WETH:  'ethereum',
@@ -28,14 +36,32 @@ const COINGECKO_IDS: Record<string, string> = {
   MATIC: 'matic-network',
 }
 
-let cachedData: Record<string, unknown> | null = null
-let cacheTimestamp = 0
+interface CacheEntry {
+  data: Record<string, unknown>
+  timestamp: number
+}
+
+// Keyed cache: each distinct ID-basket gets its own slot. Prevents thrashing
+// between widget baskets (e.g. one component asking for ETH, another for USDC)
+// and prevents cross-key STALE leakage on upstream failures.
+const priceCache = new Map<string, CacheEntry>()
 
 function buildCacheKey(ids: string[]): string {
   return ids.slice().sort().join(',')
 }
 
-let lastCacheKey = ''
+function rememberInCache(key: string, data: Record<string, unknown>, now: number) {
+  // Refresh insertion order so this key becomes the most-recent.
+  priceCache.delete(key)
+  priceCache.set(key, { data, timestamp: now })
+
+  // Evict oldest entries while we're over capacity.
+  while (priceCache.size > MAX_CACHE_ENTRIES) {
+    const oldestKey = priceCache.keys().next().value
+    if (oldestKey === undefined) break
+    priceCache.delete(oldestKey)
+  }
+}
 
 async function handleGet(req: NextRequest) {
   const symbolsParam = req.nextUrl.searchParams.get('symbols')
@@ -47,6 +73,16 @@ async function handleGet(req: NextRequest) {
   }
 
   const symbols = symbolsParam.split(',').map(s => s.trim()).filter(Boolean)
+
+  if (symbols.length > MAX_SYMBOLS_PER_REQUEST) {
+    return NextResponse.json(
+      {
+        error: `Too many symbols (${symbols.length}); max ${MAX_SYMBOLS_PER_REQUEST} per request`,
+      },
+      { status: 400 },
+    )
+  }
+
   const ids = Array.from(new Set(symbols.map(s => COINGECKO_IDS[s]).filter(Boolean)))
 
   if (ids.length === 0) {
@@ -55,10 +91,11 @@ async function handleGet(req: NextRequest) {
 
   const cacheKey = buildCacheKey(ids)
   const now = Date.now()
-  const cacheHit = cachedData && cacheKey === lastCacheKey && now - cacheTimestamp < CACHE_TTL_MS
+  const cached = priceCache.get(cacheKey)
+  const isFresh = cached && now - cached.timestamp < CACHE_TTL_MS
 
-  if (cacheHit) {
-    return NextResponse.json(cachedData, {
+  if (cached && isFresh) {
+    return NextResponse.json(cached.data, {
       headers: { 'Cache-Control': 'public, max-age=60', 'X-Cache': 'HIT' },
     })
   }
@@ -84,18 +121,17 @@ async function handleGet(req: NextRequest) {
       )
     }
 
-    const data = await upstream.json()
+    const data = (await upstream.json()) as Record<string, unknown>
 
-    cachedData = data
-    cacheTimestamp = now
-    lastCacheKey = cacheKey
+    rememberInCache(cacheKey, data, now)
 
     return NextResponse.json(data, {
       headers: { 'Cache-Control': 'public, max-age=60', 'X-Cache': 'MISS' },
     })
   } catch (err) {
-    if (cachedData) {
-      return NextResponse.json(cachedData, {
+    // Only serve STALE for the *same* cache key — never cross-key.
+    if (cached) {
+      return NextResponse.json(cached.data, {
         headers: { 'Cache-Control': 'public, max-age=60', 'X-Cache': 'STALE' },
       })
     }
