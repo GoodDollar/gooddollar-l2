@@ -38,7 +38,7 @@
  */
 
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { execFileSync, spawnSync } from 'node:child_process'
 
 const TASK_ID = 'task 0087'
@@ -167,8 +167,8 @@ export async function postbuildReloadPm2({
       ].join('\n'),
     }
   }
-  const hasApp = Array.isArray(apps) && apps.some((a) => a?.name === pm2AppName)
-  if (!hasApp) {
+  const pm2App = Array.isArray(apps) ? apps.find((a) => a?.name === pm2AppName) : null
+  if (!pm2App) {
     return {
       exitCode: 0,
       message: [
@@ -179,7 +179,27 @@ export async function postbuildReloadPm2({
     }
   }
 
-  // --- 5. perform the actual reload ------------------------------------------
+  // --- 5. avoid reloading production from a detached worktree -----------------
+  // PM2 can only reload the app it already supervises. If an operator runs
+  // `npm run build` in an integration/lane worktree while production goodswap
+  // is registered, reloading that PM2 app would restart the production cwd and
+  // then compare this worktree's BUILD_ID against production HTML. That is both
+  // noisy (false buildid-sync failure) and risky (a test build should not touch
+  // prod). Only auto-reload when the current build cwd is the PM2 app cwd.
+  const pm2Cwd = pm2App?.pm2_env?.pm_cwd || pm2App?.pm2_env?.cwd || pm2App?.cwd
+  if (pm2Cwd && resolve(pm2Cwd) !== resolve(cwd)) {
+    return {
+      exitCode: 0,
+      message: [
+        `[postbuild-reload-pm2] ${pm2AppName} PM2 cwd differs from this build cwd — skipping reload.`,
+        `  pm2 cwd:   ${resolve(pm2Cwd)}`,
+        `  build cwd: ${resolve(cwd)}`,
+        '  This is expected for integration/lane worktree builds; deploy from the live app cwd to reload PM2.',
+      ].join('\n'),
+    }
+  }
+
+  // --- 6. perform the actual reload ------------------------------------------
   const reload = execFileImpl('pm2', ['reload', pm2AppName, '--update-env'])
   if (reload.status !== 0) {
     return {

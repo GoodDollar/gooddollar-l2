@@ -150,6 +150,41 @@ describe('postbuild-reload-pm2', () => {
     expect(result.message).toMatch(/skipping reload/i)
   })
 
+  it('PM2 goodswap cwd differs from this build cwd → exit 0 without touching production', async () => {
+    writeBuildId(tmp)
+
+    let reloadWasCalled = false
+    const result = await postbuildReloadPm2({
+      cwd: tmp,
+      env: {},
+      whichImpl: (bin) => (bin === 'pm2' ? '/usr/bin/pm2' : null),
+      execFileImpl: (cmd, args) => {
+        if (cmd === 'pm2' && args?.[0] === 'jlist') {
+          return {
+            status: 0,
+            stdout: JSON.stringify([
+              {
+                name: 'goodswap',
+                pid: 1234,
+                pm2_env: { status: 'online', pm_cwd: '/srv/goodswap/frontend' },
+              },
+            ]),
+            stderr: '',
+          }
+        }
+        if (cmd === 'pm2' && args?.[0] === 'reload') reloadWasCalled = true
+        throw new Error(`unexpected execFile call: ${cmd} ${args?.join(' ')}`)
+      },
+      spawnSyncImpl: () => { throw new Error('spawnSync should not be called') },
+      fetchImpl: () => { throw new Error('fetch should not be called') },
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(reloadWasCalled).toBe(false)
+    expect(result.message).toMatch(/cwd differs/i)
+    expect(result.message).toMatch(/skipping reload/i)
+  })
+
   it('.next/BUILD_ID missing → exit 1 with `task 0087` + `next build appears to have aborted` message', async () => {
     // No .next/BUILD_ID written.
     const result = await postbuildReloadPm2({
