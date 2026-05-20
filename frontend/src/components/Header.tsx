@@ -146,6 +146,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <Link
             href="/portfolio"
+            prefetch={false}
             aria-label="Portfolio"
             className={`p-2 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none ${isPortfolio ? 'text-white bg-dark-50' : 'text-gray-400 hover:text-white hover:bg-dark-50'}`}
           >

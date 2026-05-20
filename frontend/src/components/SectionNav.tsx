@@ -30,6 +30,7 @@ export function SectionNav({ tabs }: SectionNavProps) {
             <Link
               key={tab.href}
               href={tab.href}
+              prefetch={false}
               className={`shrink-0 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
                 active
                   ? 'text-white border-goodgreen'

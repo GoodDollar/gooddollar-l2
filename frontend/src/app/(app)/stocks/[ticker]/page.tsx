@@ -311,7 +311,7 @@ export default function StockDetailPage() {
 
   return (
     <div className="w-full max-w-5xl mx-auto">
-      <Link href="/stocks" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
+      <Link href="/stocks" prefetch={false} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
         <span>←</span> Back to Stocks
       </Link>
       <div className="flex flex-col lg:flex-row gap-6">
@@ -453,15 +453,15 @@ export default function StockDetailPage() {
             <div className="mt-4 bg-dark-100/50 rounded-2xl border border-gray-700/10 p-4">
               <p className="text-xs text-gray-500 mb-2">Also on GoodDollar</p>
               <div className="flex flex-col gap-1.5">
-                <Link href="/explore" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                <Link href="/explore" prefetch={false} className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
                   Explore crypto tokens
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Link>
-                <Link href="/perps" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                <Link href="/perps" prefetch={false} className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
                   Trade crypto perpetual futures
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Link>
-                <Link href="/predict" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                <Link href="/predict" prefetch={false} className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
                   Prediction markets
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Link>
@@ -471,15 +471,15 @@ export default function StockDetailPage() {
             <div className="mt-4 bg-dark-100/50 rounded-2xl border border-goodgreen/20 p-4">
               <p className="text-xs text-gray-500 mb-2">Next steps in stocks</p>
               <div className="flex flex-col gap-1.5">
-                <Link href={`/stocks/${stock.ticker}#stock-order-form`} className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors inline-flex items-center gap-1">
+                <Link href={`/stocks/${stock.ticker}#stock-order-form`} prefetch={false} className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors inline-flex items-center gap-1">
                   Buy s{stock.ticker}
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Link>
-                <Link href="/stocks/portfolio" className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                <Link href="/stocks/portfolio" prefetch={false} className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
                   Open Stock Portfolio
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Link>
-                <Link href="/stocks" className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                <Link href="/stocks" prefetch={false} className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
                   Browse Stocks
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Link>

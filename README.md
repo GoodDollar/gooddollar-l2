@@ -27,6 +27,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 - Perps portfolio empty state no longer leaks raw template fragments (for example `positions.length === 0 ? (`), restoring clean, production-grade empty-state rendering.
 - Perps portfolio positions-tab empty state now renders through a dedicated row component plus stricter leak assertions, adding another guard rail against template fragment regressions.
 - Stocks detail page now lazy-loads chart/oracle UI modules; latest build reduced `/stocks/[ticker]` First Load JS from ~386 kB to ~332 kB while preserving trading flow.
+- Stocks navigation links now opt out of eager prefetch in stocks section/detail contexts (section tabs, portfolio icon, and cross-route CTAs) to reduce non-essential background route fetch fan-out.
 
 ### POC V1 live endpoints
 
