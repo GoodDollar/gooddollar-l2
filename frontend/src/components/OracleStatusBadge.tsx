@@ -16,10 +16,18 @@ type Variant = 'compact' | 'detail'
 interface OracleStatusBadgeProps {
   variant?: Variant
   symbol?: string
+  /**
+   * When the primary quotes-status endpoint is unreachable, also probe
+   * `/api/status` and report "Live" if the stocks-keeper service is healthy.
+   * Defaults to `true` so every consumer (compact listing badges and the
+   * stock detail page) shares the same resilient behavior — opt out with
+   * `useStocksFallback={false}` for legacy call sites that need the strict
+   * primary-only path.
+   */
   useStocksFallback?: boolean
 }
 
-export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = false }: OracleStatusBadgeProps) {
+export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = true }: OracleStatusBadgeProps) {
   const { status, error } = usePriceServiceStatus()
   const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
   const [fallbackLoading, setFallbackLoading] = useState(false)

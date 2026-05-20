@@ -341,7 +341,7 @@ export default function StockDetailPage() {
             </span>
           </div>
           <div className="mb-4">
-            <OracleStatusBadge variant="detail" symbol={stock.ticker} />
+            <OracleStatusBadge variant="detail" symbol={stock.ticker} useStocksFallback />
           </div>
 
           <AnalystOutlookCard
