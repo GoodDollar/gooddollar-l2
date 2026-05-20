@@ -78,9 +78,9 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
-    expect(text).toContain('No open positions yet')
+    expect(text).toContain('Not active yet')
     expect(text).not.toMatch(/Critical/)
-    expect(text).toContain('Collateral health will appear after your first trade')
+    expect(text).toContain('Collateral health appears after you open a leveraged position')
     expect(text).not.toContain('$0.00 / $500.00 required')
   })
 
@@ -101,9 +101,9 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
-    expect(text).toContain('No open positions yet')
+    expect(text).toContain('Not active yet')
     expect(text).not.toMatch(/Critical/)
-    expect(text).toContain('Collateral health will appear after your first trade')
+    expect(text).toContain('Collateral health appears after you open a leveraged position')
     expect(text).not.toContain('$0.00 / $500.00 required')
   })
 

@@ -27,7 +27,7 @@ function CollateralHealth({
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 gap-0.5">
           <span className="text-[10px] sm:text-xs text-gray-400">Collateral Health</span>
-          <span className="text-[10px] sm:text-xs font-medium text-gray-500">No open positions yet</span>
+          <span className="text-[10px] sm:text-xs font-medium text-gray-500">Not active yet</span>
         </div>
         <div className="h-1.5 bg-dark-50 rounded-full overflow-hidden" />
       </div>
@@ -163,7 +163,7 @@ export default function StocksPortfolioPage() {
           <div className="hidden sm:block mt-2 text-xs text-gray-500">
             {hasRiskPosition
               ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`
-              : 'Collateral health will appear after your first trade'}
+              : 'Collateral health appears after you open a leveraged position'}
           </div>
         </div>
       </div>
