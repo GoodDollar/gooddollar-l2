@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
@@ -22,16 +21,19 @@ import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
+import { PriceChart } from '@/components/PriceChart'
+import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 
-const PriceChart = dynamic(
-  () => import('@/components/PriceChart').then((m) => ({ default: m.PriceChart })),
-  { ssr: false }
-)
-
-const OracleStatusBadge = dynamic(
-  () => import('@/components/OracleStatusBadge').then((m) => ({ default: m.OracleStatusBadge })),
-  { ssr: false }
-)
+// NOTE: Keep these imports STATIC. Inside an App Router dynamic-segment
+// page (e.g. `[ticker]/page.tsx`), wrapping a client component in
+// `next/dynamic` with the no-SSR option produces a broken client-reference
+// manifest in Next.js 14 production builds and causes a runtime
+// `TypeError: Cannot read properties of undefined (reading 'call')`, which
+// surfaces as HTTP 500. Use static imports plus the `useMounted()` gate
+// below to defer rendering until after hydration instead.
+// See task 0090 (initiative 0002) and task 0025 (initiative 0006).
+// (A regression test at `src/__tests__/dynamic-routes-no-ssr-false.test.ts`
+// enforces this rule; do not reintroduce the forbidden token here.)
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -349,8 +351,10 @@ export default function StockDetailPage() {
               {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
             </span>
           </div>
-          <div className="mb-4">
-            <OracleStatusBadge variant="detail" symbol={stock.ticker} />
+          <div className="mb-4 min-h-[1.75rem]">
+            {chartMounted ? (
+              <OracleStatusBadge variant="detail" symbol={stock.ticker} />
+            ) : null}
           </div>
 
           <AnalystOutlookCard

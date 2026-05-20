@@ -32,6 +32,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 - Stocks detail now includes a `News & Events` panel with per-ticker catalyst headlines, tags, source attribution, and empty/error fallbacks so users can keep context in-app.
 - Stocks detail sidebar now includes stocks-native discovery modules (`Related symbols` + `Daily movers`) so users can jump directly into adjacent opportunities without leaving the stocks flow.
 - Stocks portfolio now defers heavy impact widgets behind a non-blocking skeleton and enforces a route bundle budget check; latest build reduced `/stocks/portfolio` First Load JS from ~410 kB to ~258 kB.
+- Stocks detail page (`/stocks/[ticker]`) no longer uses `next/dynamic` with the no-SSR option for the price chart and oracle status badge; replaced with static imports gated by a `useMounted()` hydration guard. This prevents the App Router dynamic-segment client-reference manifest regression (HTTP 500 / `TypeError: Cannot read properties of undefined (reading 'call')`) and is enforced by `dynamic-routes-no-ssr-false.test.ts` (3/3 passing).
 
 ### POC V1 live endpoints
 
