@@ -1,8 +1,12 @@
 /**
  * Minimal HTTP health check server for daemon-style backend services.
  *
+ * CANONICAL SOURCE — copied into each service's src/healthServer.ts.
+ * After editing, run: bash backend/scripts/check-health-server-sync.sh
+ * to verify all copies match.
+ *
  * Usage:
- *   import { startHealthServer } from '../shared/healthServer';
+ *   import { startHealthServer } from './healthServer';
  *   startHealthServer({ name: 'swap-oracle', port: 9100 });
  *
  * GET /health → 200 { status, service, uptime, timestamp, chain? }

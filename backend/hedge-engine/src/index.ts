@@ -1,8 +1,10 @@
+import { ethers } from 'ethers';
 import { ExposureReader } from './exposure-reader';
 import { DeltaCalculator } from './delta-calculator';
 import { HedgeExecutor, EtoroAdapter } from './hedge-executor';
 import { HedgeEngine } from './engine';
 import { HedgeEngineConfig, StockSymbol } from './types';
+import { startHealthServer } from './healthServer';
 
 export { ExposureReader } from './exposure-reader';
 export { DeltaCalculator } from './delta-calculator';
@@ -77,10 +79,18 @@ async function main(): Promise<void> {
 
   const engine = new HedgeEngine(reader, calculator, executor, config);
 
+  const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+  const healthServer = startHealthServer({
+    name: 'hedge-engine',
+    port: parseInt(process.env.HEALTH_PORT ?? process.env.HEDGE_ENGINE_PORT ?? '9106', 10),
+    chainCheck: async () => Number(await provider.getBlockNumber()),
+  });
+
   const shutdown = () => {
     console.log('[HedgeEngine] Shutting down...');
     engine.stop();
-    process.exit(0);
+    healthServer.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000);
   };
 
   process.on('SIGINT', shutdown);

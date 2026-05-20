@@ -2,6 +2,7 @@ import { PriceWsClient } from './price-ws-client';
 import { QuoteBuffer } from './quote-buffer';
 import { OracleSubmitter } from './oracle-submitter';
 import { OracleSignerConfig, UpdateResult } from './types';
+import { startHealthServer } from './healthServer';
 
 export class OracleSignerService {
   private wsClient: PriceWsClient;
@@ -120,6 +121,11 @@ function loadConfig(): OracleSignerConfig {
 if (require.main === module) {
   const config = loadConfig();
   const service = new OracleSignerService(config);
+
+  startHealthServer({
+    name: 'oracle-signer',
+    port: parseInt(process.env.HEALTH_PORT ?? process.env.ORACLE_SIGNER_PORT ?? '9107', 10),
+  });
 
   service.start().catch(err => {
     console.error('[oracle-signer] Failed to start:', err);
