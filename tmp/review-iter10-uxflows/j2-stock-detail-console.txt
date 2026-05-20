@@ -1,0 +1,6 @@
+[log] Registering Service Worker...
+[log] Service Worker registered successfully: http://127.0.0.1:3100/
+[log] New Service Worker available
+[log] Registering Service Worker...
+[log] Service Worker registered successfully: http://127.0.0.1:3100/
+[log] New Service Worker available

@@ -9,7 +9,7 @@
     "route": "/explore",
     "status": 200,
     "shot": "tmp/review-iter9-screens/explore.png",
-    "bodyTextLen": 1719
+    "bodyTextLen": 1718
   },
   {
     "route": "/pool",
@@ -51,7 +51,7 @@
     "route": "/perps",
     "status": 200,
     "shot": "tmp/review-iter9-screens/perps.png",
-    "bodyTextLen": 1895
+    "bodyTextLen": 1894
   },
   {
     "route": "/perps/portfolio",
