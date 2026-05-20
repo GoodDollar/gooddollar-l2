@@ -144,6 +144,37 @@ describe('StockDetailPage — "Stock Not Found" ticker truncation', () => {
     expect(text).not.toContain('%20')
   })
 
+  it('normalizes URL-encoded null-byte ticker to UNKNOWN', () => {
+    currentParams = { ticker: '%00' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/is not available/i)
+    const text = paragraph.textContent ?? ''
+    expect(text).toContain('UNKNOWN')
+    expect(text).not.toContain('%00')
+  })
+
+  it('normalizes double-encoded whitespace ticker to UNKNOWN', () => {
+    currentParams = { ticker: '%2520' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/is not available/i)
+    const text = paragraph.textContent ?? ''
+    expect(text).toContain('UNKNOWN')
+    expect(text).not.toContain('%2520')
+    expect(text).not.toContain('%20')
+  })
+
+  it('decodes double-encoded valid symbols before rendering fallback copy', () => {
+    currentParams = { ticker: '%2541APL' } // double-encoded AAPL
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/is not available/i)
+    const text = paragraph.textContent ?? ''
+    expect(text).toContain('AAPL')
+    expect(text).not.toContain('%2541')
+  })
+
   it('does not leak encoded script-like payload in not-found copy', () => {
     currentParams = { ticker: '%3Cscript%3Ealert(1)%3C%2Fscript%3E' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)

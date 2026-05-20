@@ -135,6 +135,21 @@ test.describe('Stocks Journey', () => {
     await page.waitForURL(/\/stocks\/[A-Z]+/)
   })
 
+  test('malformed ticker routes render UNKNOWN instead of encoded payload text', async ({ page }) => {
+    for (const route of ['/stocks/%20', '/stocks/%00', '/stocks/%2520']) {
+      await page.goto(route)
+      await page.waitForLoadState('networkidle')
+
+      await expect(page.getByRole('heading', { name: 'Stock Not Found' })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('"UNKNOWN"', { exact: false })).toBeVisible()
+
+      const mainText = await page.locator('main').innerText()
+      expect(mainText).not.toContain('%20')
+      expect(mainText).not.toContain('%00')
+      expect(mainText).not.toContain('%2520')
+    }
+  })
+
   test('tester address is funded on devnet', async () => {
     const balance = await publicClient.getBalance({
       address: TESTER_ADDRESS as `0x${string}`,

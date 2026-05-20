@@ -50,13 +50,20 @@ const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 function normalizeTickerForError(rawTicker?: string): string {
   if (!rawTicker) return 'UNKNOWN'
 
+  // Decode up to 3 passes to handle nested encodings like `%2541APL`.
+  // Stop on invalid sequences and keep the last decodable value.
   let decoded = rawTicker
-  try {
-    decoded = decodeURIComponent(rawTicker)
-  } catch {
-    decoded = rawTicker
+  for (let i = 0; i < 3; i += 1) {
+    try {
+      const next = decodeURIComponent(decoded)
+      if (next === decoded) break
+      decoded = next
+    } catch {
+      break
+    }
   }
 
+  if (/[\u0000-\u001F\u007F]/.test(decoded)) return 'UNKNOWN'
   const normalized = decoded.trim().toUpperCase()
   if (!normalized) return 'UNKNOWN'
   if (!/^[A-Z0-9._-]+$/.test(normalized)) return 'UNKNOWN'
