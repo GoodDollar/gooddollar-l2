@@ -22,6 +22,11 @@ describe('normalizeMalformedStocksPath', () => {
     expect(normalizeMalformedStocksPath('/stocks/%2?ref=qa&mode=debug')).toBe('/stocks/UNKNOWN?ref=qa&mode=debug')
   })
 
+  it('rewrites replacement-character ticker payloads produced by browser URL normalization', () => {
+    expect(normalizeMalformedStocksPath('/stocks/�(�(')).toBe('/stocks/UNKNOWN')
+    expect(normalizeMalformedStocksPath('/stocks/%EF%BF%BD(%EF%BF%BD(')).toBe('/stocks/UNKNOWN')
+  })
+
   it('does not rewrite malformed paths outside /stocks', () => {
     expect(normalizeMalformedStocksPath('/predict/%2')).toBe('/predict/%2')
   })
