@@ -12,17 +12,19 @@ vi.mock('@/lib/useOnChainStocks', () => ({
   useOnChainStocks: () => ({ stocks: [], isLoading: false }),
 }))
 
+const holdingsState = {
+  holdings: [] as unknown[],
+  totalValue: 0,
+  unrealizedPnl: 0,
+  pnlPercent: 0,
+  totalCollateral: 0,
+  totalRequired: 0,
+  healthRatio: 0,
+  isLoading: false,
+}
+
 vi.mock('@/lib/useStockHoldings', () => ({
-  useStockHoldings: () => ({
-    holdings: [],
-    totalValue: 0,
-    unrealizedPnl: 0,
-    pnlPercent: 0,
-    totalCollateral: 0,
-    totalRequired: 0,
-    healthRatio: 0,
-    isLoading: false,
-  }),
+  useStockHoldings: () => holdingsState,
 }))
 
 vi.mock('@/lib/useStockTrades', () => ({
@@ -40,7 +42,24 @@ vi.mock('@/components/InfoBanner', () => ({
 import StocksPortfolioPage from '../page'
 
 describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () => {
+  it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {
+    holdingsState.totalCollateral = 250
+    holdingsState.totalRequired = 0
+    holdingsState.healthRatio = 0
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    const text = container.textContent || ''
+    expect(text).not.toMatch(/Critical/)
+  })
+
   it('does NOT show "Critical" when there are no positions', () => {
+    holdingsState.totalCollateral = 0
+    holdingsState.totalRequired = 0
+    holdingsState.healthRatio = 0
+
     const { container } = render(
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
@@ -49,6 +68,10 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
   })
 
   it('shows a neutral dash for collateral health when ratio is 0 with no collateral', () => {
+    holdingsState.totalCollateral = 0
+    holdingsState.totalRequired = 0
+    holdingsState.healthRatio = 0
+
     const { container } = render(
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
