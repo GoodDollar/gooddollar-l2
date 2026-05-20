@@ -2,10 +2,27 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
+const accountState = { address: undefined as `0x${string}` | undefined }
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(''),
   useParams: () => ({}),
+}))
+
+vi.mock('wagmi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('wagmi')>()
+  return {
+    ...actual,
+    useAccount: () => accountState,
+  }
+})
+
+vi.mock('@rainbow-me/rainbowkit', () => ({
+  ConnectButton: {
+    Custom: ({ children }: { children: (props: { openConnectModal: () => void }) => React.ReactNode }) =>
+      <>{children({ openConnectModal: vi.fn() })}</>,
+  },
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
@@ -42,7 +59,40 @@ vi.mock('@/components/InfoBanner', () => ({
 import StocksPortfolioPage from '../page'
 
 describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () => {
+  it('shows neutral disconnected summary placeholders instead of active $0 metrics', () => {
+    accountState.address = undefined
+    holdingsState.holdings = []
+    holdingsState.totalValue = 0
+    holdingsState.unrealizedPnl = 0
+    holdingsState.pnlPercent = 0
+    holdingsState.totalCollateral = 0
+    holdingsState.totalRequired = 0
+    holdingsState.healthRatio = 0
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByText('Total Value')).toBeInTheDocument()
+    expect(screen.getByText('Unrealized P&L')).toBeInTheDocument()
+    expect(screen.getByText('UBI Contributed')).toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Connect wallet to view collateral health')).toBeInTheDocument()
+    expect(screen.queryByText('0% — Critical')).not.toBeInTheDocument()
+  })
+
+  it('shows an actionable in-context connect CTA for disconnected users', () => {
+    accountState.address = undefined
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
+  })
+
   it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
     holdingsState.totalCollateral = 250
     holdingsState.totalRequired = 0
     holdingsState.healthRatio = 0
@@ -56,6 +106,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
   })
 
   it('does NOT show "Critical" when there are no positions', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
     holdingsState.holdings = []
     holdingsState.totalCollateral = 0
     holdingsState.totalRequired = 0
@@ -69,6 +120,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
   })
 
   it('keeps neutral collateral status when no holdings exist even if required collateral is stale/non-zero', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
     holdingsState.holdings = []
     holdingsState.totalCollateral = 0
     holdingsState.totalRequired = 500
@@ -85,6 +137,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
   })
 
   it('keeps neutral collateral status for ghost holdings with zero shares', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
     holdingsState.holdings = [{
       ticker: 'AAPL',
       shares: 0,
@@ -108,6 +161,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
   })
 
   it('shows a neutral dash for collateral health when ratio is 0 with no collateral', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
     holdingsState.holdings = []
     holdingsState.totalCollateral = 0
     holdingsState.totalRequired = 0
@@ -122,6 +176,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
   })
 
   it('still shows risk severity when positions exist and required collateral is non-zero', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
     holdingsState.holdings = [{
       ticker: 'AAPL',
       shares: 1,

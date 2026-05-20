@@ -122,6 +122,7 @@ export default function StocksPortfolioPage() {
   const { trades, isLoading: tradesLoading } = useStockTrades(address)
 
   const summary = { totalValue, unrealizedPnl, pnlPercent, totalCollateral, totalRequired, healthRatio }
+  const isDisconnected = !address
   const hasLivePositions = holdings.some((holding) => holding.shares > 0)
   const hasRiskPosition = hasLivePositions && summary.totalRequired > 0
   const isLoading = holdingsLoading || tradesLoading
@@ -138,33 +139,58 @@ export default function StocksPortfolioPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Value</div>
-          <div className="text-lg sm:text-xl font-bold text-white">{formatLargeNumber(summary.totalValue)}</div>
+          <div className={`text-lg sm:text-xl font-bold ${isDisconnected ? 'text-gray-500' : 'text-white'}`}>
+            {isDisconnected ? '—' : formatLargeNumber(summary.totalValue)}
+          </div>
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Unrealized P&L</div>
-          <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
-            <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
-          </div>
+          {isDisconnected ? (
+            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
+          ) : (
+            <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
+              <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
+            </div>
+          )}
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
-          <div className="text-lg sm:text-xl font-bold text-goodgreen">
-            {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
-            <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
-          </div>
+          {isDisconnected ? (
+            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
+          ) : (
+            <div className="text-lg sm:text-xl font-bold text-goodgreen">
+              {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
+              <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
+            </div>
+          )}
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <CollateralHealth
-            ratio={summary.healthRatio}
-            totalRequired={summary.totalRequired}
-            hasPositions={hasLivePositions}
-          />
-          <div className="hidden sm:block mt-2 text-xs text-gray-500">
-            {hasRiskPosition
-              ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`
-              : 'Collateral health appears after you open a leveraged position'}
-          </div>
+          {isDisconnected ? (
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 gap-0.5">
+                <span className="text-[10px] sm:text-xs text-gray-400">Collateral Health</span>
+                <span className="text-[10px] sm:text-xs font-medium text-gray-500">Connect wallet to view collateral health</span>
+              </div>
+              <div className="h-1.5 bg-dark-50 rounded-full overflow-hidden" />
+              <div className="hidden sm:block mt-2 text-xs text-gray-500">
+                Connect wallet to unlock collateral monitoring.
+              </div>
+            </div>
+          ) : (
+            <>
+              <CollateralHealth
+                ratio={summary.healthRatio}
+                totalRequired={summary.totalRequired}
+                hasPositions={hasLivePositions}
+              />
+              <div className="hidden sm:block mt-2 text-xs text-gray-500">
+                {hasRiskPosition
+                  ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`
+                  : 'Collateral health appears after you open a leveraged position'}
+              </div>
+            </>
+          )}
         </div>
       </div>
 

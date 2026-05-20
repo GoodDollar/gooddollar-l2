@@ -23,6 +23,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 ### Recent UX polish (updated: 2026-05-20)
 
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
+- Stocks portfolio disconnected state now shows neutral summary placeholders and an in-context `Connect Wallet to View UBI Impact` CTA instead of misleading active-risk framing.
 
 ### POC V1 live endpoints
 
