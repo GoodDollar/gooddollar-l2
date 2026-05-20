@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { methodNotAllowed } from '@/lib/api-error'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
@@ -108,3 +109,11 @@ async function handleGet(req: NextRequest) {
 }
 
 export const GET = withApiRateLimit(handleGet)
+
+// Reject unsupported methods with a structured JSON envelope (405).
+const ALLOWED = ['GET'] as const
+const reject = (req: NextRequest) => methodNotAllowed(req, [...ALLOWED])
+export const POST = reject
+export const PUT = reject
+export const DELETE = reject
+export const PATCH = reject
