@@ -248,13 +248,22 @@ export default function StocksPortfolioPage() {
         </TabsList>
 
         <TabsContent value="holdings">
-          {isLoading ? (
-            <div className="py-16 text-center">
+          {isDisconnected ? (
+            <div className="py-16 text-center" role="status">
+              <svg className="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7h18M3 12h18M3 17h18" />
+              </svg>
+              <p className="text-gray-400 text-sm mb-1">Connect your wallet to view holdings</p>
+              <p className="text-gray-600 text-xs mb-4">Your tokenized stock positions will appear here once you connect.</p>
+              <Link href="/stocks" className="text-goodgreen text-sm hover:underline">Browse Stocks</Link>
+            </div>
+          ) : isLoading ? (
+            <div className="py-16 text-center" role="status" aria-live="polite">
               <p className="text-gray-400 text-sm">Loading positions…</p>
             </div>
           ) : holdings.length === 0 ? (
             <div className="py-16 text-center">
-              <svg className="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
               <p className="text-gray-400 text-sm mb-1">No positions yet</p>
@@ -285,7 +294,16 @@ export default function StocksPortfolioPage() {
         </TabsContent>
 
         <TabsContent value="history">
-          {trades.length === 0 ? (
+          {isDisconnected ? (
+            <div className="py-16 text-center" role="status">
+              <p className="text-gray-400 text-sm mb-1">Connect your wallet to view trade history</p>
+              <p className="text-gray-600 text-xs">Past trades and PnL appear here after you connect.</p>
+            </div>
+          ) : tradesLoading ? (
+            <div className="py-16 text-center" role="status" aria-live="polite">
+              <p className="text-gray-400 text-sm">Loading trade history…</p>
+            </div>
+          ) : trades.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">No trade history</p>
             </div>

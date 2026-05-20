@@ -108,10 +108,16 @@ export function useStockHoldings(
     [data],
   )
 
+  // Only report loading while the user actually has data being fetched.
+  // When `userAddress` is undefined, neither the positions multicall nor any
+  // user-specific work is in flight, so the hook must report idle so the UI can
+  // render its disconnected/empty state instead of an indefinite spinner.
+  const isLoading = userAddress ? (positionsLoading || pricesLoading) : false
+
   return {
     holdings,
     ...summary,
     isLive,
-    isLoading: positionsLoading || pricesLoading,
+    isLoading,
   }
 }
