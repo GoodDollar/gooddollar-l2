@@ -15,6 +15,7 @@ import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
 import { computeSellGuards } from '@/lib/stocksOrderValidation'
+import { computeOrderSubmissionState } from '@/lib/stocksOrderSubmission'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
@@ -85,7 +86,6 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [amount, setAmount] = useState('')
   const [limitPrice, setLimitPrice] = useState('')
-  const [submitted, setSubmitted] = useState(false)
   const walletReady = useWalletReady()
   const { isConnected } = useAccount()
   const { mint, phase: mintPhase, error: mintError, isDeployed } = useMintSynthetic()
@@ -120,30 +120,31 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   const actionError = side === 'buy' ? mintError : redeemError
   const isPending = actionPhase === 'approving' || actionPhase === 'pending'
 
+  // Decide up-front whether this submission can actually hit the chain.
+  // Limit orders and undeployed networks must refuse politely instead of
+  // silently faking a "submitted" state. See task 0030.
+  const submission = computeOrderSubmissionState({ isDeployed, orderType })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || !hasValidPrice) return
     if (amountTooLarge) return
     if (sellDisabled) return
+    if (!submission.canSubmitOnChain) return
 
-    if (isDeployed && orderType === 'market') {
-      const amountNum = parseFloat(amount)
-      // Assume G$ ≈ $0.01 on devnet for collateral calculation.
-      // Route through toG$Wei (parseUnits) — never `Math.round(x * 1e18)`,
-      // which drifts by tens of millions of wei on realistic trade sizes.
-      const GD_PRICE_USD = 0.01
-      const collateralGD = amountNum / GD_PRICE_USD
-      const collateralWei = toG$Wei(collateralGD)
-      const sharesWei = toG$Wei(shares)
-      if (side === 'buy') {
-        await mint(stock.ticker, collateralWei, sharesWei)
-      } else {
-        // Redeem: burn shares and withdraw equivalent collateral
-        await redeem(stock.ticker, sharesWei, collateralWei)
-      }
+    const amountNum = parseFloat(amount)
+    // Assume G$ ≈ $0.01 on devnet for collateral calculation.
+    // Route through toG$Wei (parseUnits) — never `Math.round(x * 1e18)`,
+    // which drifts by tens of millions of wei on realistic trade sizes.
+    const GD_PRICE_USD = 0.01
+    const collateralGD = amountNum / GD_PRICE_USD
+    const collateralWei = toG$Wei(collateralGD)
+    const sharesWei = toG$Wei(shares)
+    if (side === 'buy') {
+      await mint(stock.ticker, collateralWei, sharesWei)
     } else {
-      setSubmitted(true)
-      setTimeout(() => setSubmitted(false), 3000)
+      // Redeem: burn shares and withdraw equivalent collateral
+      await redeem(stock.ticker, sharesWei, collateralWei)
     }
   }
 
@@ -168,6 +169,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
         <button type="button" onClick={() => setOrderType('limit')}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium ${orderType === 'limit' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
           Limit
+          <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-[9px] text-amber-300">Soon</span>
         </button>
       </div>
 
@@ -231,26 +233,31 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
       {actionError && (
         <p className="text-[10px] text-red-400 text-center truncate mb-2">{actionError}</p>
       )}
+      {submission.unsupportedMessage && (
+        <p role="status" className="text-amber-300 text-[10px] text-center mb-2">
+          {submission.unsupportedMessage}
+        </p>
+      )}
       {walletReady && sellGated ? (
         <button type="button" disabled
           className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-gray-400 cursor-not-allowed">
           No {stock.ticker} to sell
         </button>
       ) : walletReady ? (
-        <WalletGatedTradeButton hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance}>
-          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge}
+        <WalletGatedTradeButton hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance && submission.canSubmitOnChain}>
+          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || !submission.canSubmitOnChain}
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
-            {actionPhase === 'approving' ? 'Approving…' : actionPhase === 'pending' ? 'Confirming…' : actionPhase === 'done' ? 'Order Submitted!' : submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
+            {actionPhase === 'approving' ? 'Approving…' : actionPhase === 'pending' ? 'Confirming…' : actionPhase === 'done' ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge}
+        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || !submission.canSubmitOnChain}
           className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>
-          {submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
+          {`${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
         </button>
       )}
 
