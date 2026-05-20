@@ -122,6 +122,7 @@ export default function StocksPortfolioPage() {
   const { trades, isLoading: tradesLoading } = useStockTrades(address)
 
   const summary = { totalValue, unrealizedPnl, pnlPercent, totalCollateral, totalRequired, healthRatio }
+  const hasRiskPosition = holdings.length > 0 && summary.totalRequired > 0
   const isLoading = holdingsLoading || tradesLoading
 
   return (
@@ -159,7 +160,7 @@ export default function StocksPortfolioPage() {
             hasPositions={holdings.length > 0}
           />
           <div className="hidden sm:block mt-2 text-xs text-gray-500">
-            {summary.totalRequired > 0
+            {hasRiskPosition
               ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`
               : 'Collateral health will appear after your first trade'}
           </div>

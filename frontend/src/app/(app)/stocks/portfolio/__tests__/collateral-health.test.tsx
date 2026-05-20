@@ -80,6 +80,8 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     const text = container.textContent || ''
     expect(text).toContain('No open positions yet')
     expect(text).not.toMatch(/Critical/)
+    expect(text).toContain('Collateral health will appear after your first trade')
+    expect(text).not.toContain('$0.00 / $500.00 required')
   })
 
   it('shows a neutral dash for collateral health when ratio is 0 with no collateral', () => {
