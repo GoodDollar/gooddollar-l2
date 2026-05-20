@@ -72,7 +72,7 @@ export function Header() {
           <span className="text-lg font-semibold text-white">GoodDollar</span>
         </div>
 
-        <nav className="hidden 2xl:flex items-center gap-5 text-sm text-gray-400">
+        <nav aria-label="Primary" className="hidden 2xl:flex items-center gap-5 text-sm text-gray-400">
           <Link href="/" className={isSwap ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Swap</Link>
           <Link href="/explore" className={isExplore ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Explore</Link>
           <Link href="/pool" className={`flex items-center gap-1.5 ${isPool ? 'text-white font-medium' : 'hover:text-white transition-colors'}`}>
@@ -108,7 +108,7 @@ export function Header() {
           <Link href="/invite" className={isInvite ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Invite</Link>
         </nav>
 
-        <nav data-testid="condensed-nav" className="hidden lg:flex 2xl:hidden items-center gap-3 text-sm text-gray-400">
+        <nav data-testid="condensed-nav" aria-label="Primary condensed" className="hidden lg:flex 2xl:hidden items-center gap-3 text-sm text-gray-400">
           <Link href="/" className={isSwap ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Swap</Link>
           <Link href="/stocks" className={isStocks ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Stocks</Link>
           <Link href="/perps" className={isPerps ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Perps</Link>
@@ -181,7 +181,7 @@ export function Header() {
           data-testid="mobile-nav"
           className="lg:hidden border-t border-dark-50/50 bg-dark-100 backdrop-blur-md animate-in slide-in-from-top-2 duration-200 relative z-50"
         >
-          <nav className="flex flex-col px-4 py-3 gap-1">
+          <nav aria-label="Mobile" className="flex flex-col px-4 py-3 gap-1">
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}

@@ -21,7 +21,7 @@ export function UBIBanner() {
   }
 
   return (
-    <div className="w-full bg-goodgreen/[0.06] border-b border-goodgreen/10">
+    <div role="region" aria-label="UBI Impact" className="w-full bg-goodgreen/[0.06] border-b border-goodgreen/10">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-1.5">
         <p className="text-xs text-gray-300 flex-1 text-center">
           <span className="text-goodgreen mr-1.5">&#9829;</span>

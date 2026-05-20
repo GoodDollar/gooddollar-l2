@@ -216,3 +216,31 @@ describe('Header', () => {
     expect(hrefs).toContain('/testnet-guide')
   })
 })
+
+describe('Header a11y landmarks', () => {
+  it('labels every nav with a unique aria-label (closed mobile menu)', () => {
+    render(<Header />)
+    const navs = screen.getAllByRole('navigation')
+    const labels = navs.map(n => n.getAttribute('aria-label'))
+    // every nav must have a non-empty aria-label
+    expect(labels.every(l => l && l.length > 0)).toBe(true)
+    // all labels must be unique
+    expect(new Set(labels).size).toBe(labels.length)
+  })
+
+  it('labels every nav with a unique aria-label (open mobile menu)', () => {
+    render(<Header />)
+    fireEvent.click(screen.getByLabelText('Open menu'))
+    const navs = screen.getAllByRole('navigation')
+    const labels = navs.map(n => n.getAttribute('aria-label'))
+    expect(labels.every(l => l && l.length > 0)).toBe(true)
+    expect(new Set(labels).size).toBe(labels.length)
+  })
+
+  it('keeps data-testid="condensed-nav" on the condensed nav with an aria-label', () => {
+    render(<Header />)
+    const condensed = screen.getByTestId('condensed-nav')
+    expect(condensed.tagName.toLowerCase()).toBe('nav')
+    expect(condensed.getAttribute('aria-label')).toBeTruthy()
+  })
+})
