@@ -125,6 +125,7 @@ GoodDollar L2 is running as a persistent public devnet / alpha-testnet candidate
 - **2026-05-20 — Invalid ticker resilience hardening (task 0025).** The `/stocks/[ticker]` not-found state now normalizes malformed URL inputs to a safe `UNKNOWN` label, avoids leaking raw encoded payload strings (e.g. `%20`, encoded script-like fragments), and adds direct recovery links (`AAPL`, `MSFT`, `NVDA`) alongside `Back to Stocks`.
 - **2026-05-20 — Invalid ticker encoded-payload regression guard (task 0026).** Strengthened `/stocks/[ticker]` malformed-input normalization with multi-pass URL decoding and explicit control-character rejection, and expanded regression tests for `%00`, `%2520`, and double-encoded symbols so encoded payload text cannot leak into not-found copy.
 - **2026-05-20 — Malformed ticker leak follow-up coverage (task 0027).** Extended malformed-route regression coverage for `/stocks/[ticker]` to include `%252520` and encoded SVG payload probes in both unit and Playwright suites, locking in the `UNKNOWN` fallback and preventing future encoded-payload leakage in user-facing error copy.
+- **2026-05-20 — Encoded-valid ticker route normalization (task 0028).** Fixed `/stocks/[ticker]` boundary behavior so double/triple-encoded valid symbols (for example `%2541APL`, `%252541APL`) resolve to the real stock detail page instead of a false `Stock Not Found`, while preserving strict `UNKNOWN` fallback behavior for malformed payloads.
 
 ## Logo and Brand
 

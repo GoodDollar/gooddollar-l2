@@ -47,11 +47,8 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 
-function normalizeTickerForError(rawTicker?: string): string {
-  if (!rawTicker) return 'UNKNOWN'
-
-  // Decode up to 3 passes to handle nested encodings like `%2541APL`.
-  // Stop on invalid sequences and keep the last decodable value.
+function decodeTickerBounded(rawTicker?: string): string {
+  if (!rawTicker) return ''
   let decoded = rawTicker
   for (let i = 0; i < 3; i += 1) {
     try {
@@ -62,6 +59,17 @@ function normalizeTickerForError(rawTicker?: string): string {
       break
     }
   }
+  return decoded
+}
+
+function normalizeTickerForLookup(rawTicker?: string): string {
+  const decoded = decodeTickerBounded(rawTicker).trim().toUpperCase()
+  return decoded
+}
+
+function normalizeTickerForError(rawTicker?: string): string {
+  if (!rawTicker) return 'UNKNOWN'
+  const decoded = decodeTickerBounded(rawTicker)
 
   if (/[\u0000-\u001F\u007F]/.test(decoded)) return 'UNKNOWN'
   const normalized = decoded.trim().toUpperCase()
@@ -254,9 +262,10 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
 
 export default function StockDetailPage() {
   const params = useParams()
-  const ticker = (params.ticker as string)?.toUpperCase()
+  const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
+  const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks } = useOnChainStocks()
-  const stock = stocks.find(s => s.ticker === ticker?.toUpperCase())
+  const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
   // Defer chart render until after hydration to avoid SSR layout glitches
@@ -275,7 +284,7 @@ export default function StockDetailPage() {
     // scrollbar. Cap the visible form at 24 chars (real tickers are 1–5
     // chars) and keep the full raw value reachable via the title attribute
     // and the underlying URL.
-    const safeTicker = normalizeTickerForError(ticker)
+    const safeTicker = normalizeTickerForError(rawTicker)
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <h1 className="text-2xl font-bold text-white mb-3">Stock Not Found</h1>

@@ -160,6 +160,16 @@ test.describe('Stocks Journey', () => {
     }
   })
 
+  test('encoded valid ticker routes resolve to stock detail page', async ({ page }) => {
+    for (const route of ['/stocks/%41APL', '/stocks/%2541APL', '/stocks/%252541APL']) {
+      await page.goto(route)
+      await page.waitForLoadState('networkidle')
+
+      await expect(page.locator('h1', { hasText: 'AAPL' })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('heading', { name: 'Stock Not Found' })).toHaveCount(0)
+    }
+  })
+
   test('tester address is funded on devnet', async () => {
     const balance = await publicClient.getBalance({
       address: TESTER_ADDRESS as `0x${string}`,

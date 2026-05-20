@@ -4,6 +4,40 @@ import { TestWrapper } from '@/test-utils/wrapper'
 
 // Mutable param mock — each test sets `currentParams` before rendering.
 let currentParams: Record<string, string | undefined> = {}
+let currentStocks: Array<{
+  ticker: string
+  name: string
+  sector: string
+  price: number
+  change24h: number
+  marketCap: number
+  volume24h: number
+  high52w: number
+  low52w: number
+  sparkline7d: number[]
+  peRatio: number
+  eps: number
+  dividendYield: number
+  avgVolume: number
+  description?: string
+}> = []
+
+const makeStock = () => ({
+  ticker: 'AAPL',
+  name: 'Apple Inc.',
+  sector: 'Technology',
+  price: 190,
+  change24h: 1.2,
+  marketCap: 1000000000,
+  volume24h: 1000000,
+  high52w: 210,
+  low52w: 120,
+  sparkline7d: [1, 2, 3, 4, 5],
+  peRatio: 29.4,
+  eps: 6.4,
+  dividendYield: 0.52,
+  avgVolume: 850000,
+})
 
 vi.mock('next/navigation', () => ({
   useParams: () => currentParams,
@@ -27,7 +61,7 @@ vi.mock('@/lib/chartData', () => ({
 // Stocks list never contains any of the test tickers, so we always hit the
 // "Stock Not Found" branch.
 vi.mock('@/lib/useOnChainStocks', () => ({
-  useOnChainStocks: () => ({ stocks: [], isLive: false, isLoading: false }),
+  useOnChainStocks: () => ({ stocks: currentStocks, isLive: false, isLoading: false }),
 }))
 
 vi.mock('@/lib/useStocks', () => ({
@@ -52,6 +86,7 @@ import StockDetailPage from '../page'
 describe('StockDetailPage — "Stock Not Found" ticker truncation', () => {
   beforeEach(() => {
     currentParams = {}
+    currentStocks = []
   })
 
   // Long contiguous URL segments must not push the layout past the viewport.
@@ -208,5 +243,23 @@ describe('StockDetailPage — "Stock Not Found" ticker truncation', () => {
     expect(aapl.getAttribute('href')).toBe('/stocks/AAPL')
     expect(msft.getAttribute('href')).toBe('/stocks/MSFT')
     expect(nvda.getAttribute('href')).toBe('/stocks/NVDA')
+  })
+
+  it('resolves a double-encoded valid ticker to the stock detail page', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: '%2541APL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByRole('heading', { name: 'AAPL' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
+  })
+
+  it('resolves a triple-encoded valid ticker to the stock detail page', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: '%252541APL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByRole('heading', { name: 'AAPL' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
   })
 })
