@@ -103,3 +103,7 @@ scripts/report-to-paperclip.sh
 
 # Local JSON-on-disk stores for testnet (predict comments etc.)
 frontend/.data/
+
+# Symlinked workspace node_modules
+node_modules
+**/node_modules
