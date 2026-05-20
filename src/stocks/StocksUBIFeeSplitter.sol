@@ -72,6 +72,14 @@ contract StocksUBIFeeSplitter is IUBIFeeSplitter, ReentrancyGuard {
     event PartnerAdded(address indexed partner, uint256 impactShare);
     event PartnerRemoved(address indexed partner);
     event DailyUBIImpact(uint256 date, uint256 ubiAmount);
+    // Defensive governance events (task 0031 — mirrors UBIFeeSplitter task 0029)
+    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
+    event FeeBpsUpdated(
+        uint256 oldUbiBPS,
+        uint256 oldProtocolBPS,
+        uint256 newUbiBPS,
+        uint256 newProtocolBPS
+    );
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Not admin");
@@ -79,6 +87,12 @@ contract StocksUBIFeeSplitter is IUBIFeeSplitter, ReentrancyGuard {
     }
 
     constructor(address _goodDollar, address _treasury, address _admin) {
+        // Defensive zero-address checks on governance-critical addresses.
+        // _goodDollar is intentionally NOT checked here — setGoodDollar already
+        // permits later configuration and several test/deploy paths bootstrap
+        // the contract before the token address is finalised.
+        require(_treasury != address(0), "zero address");
+        require(_admin != address(0), "zero address");
         goodDollar = IGoodDollarToken(_goodDollar);
         protocolTreasury = _treasury;
         admin = _admin;
@@ -246,13 +260,18 @@ contract StocksUBIFeeSplitter is IUBIFeeSplitter, ReentrancyGuard {
 
     function setFeeSplit(uint256 _ubiBPS, uint256 _protocolBPS) external onlyAdmin {
         require(_ubiBPS + _protocolBPS <= 10000, "Exceeds 100%");
+        uint256 oldUbiBPS = ubiBPS;
+        uint256 oldProtocolBPS = protocolBPS;
         ubiBPS = _ubiBPS;
         protocolBPS = _protocolBPS;
+        emit FeeBpsUpdated(oldUbiBPS, oldProtocolBPS, _ubiBPS, _protocolBPS);
     }
 
     function setTreasury(address _treasury) external onlyAdmin {
         require(_treasury != address(0), "zero address");
+        address old = protocolTreasury;
         protocolTreasury = _treasury;
+        emit TreasuryUpdated(old, _treasury);
     }
 
     /// @notice Update the GoodDollar token address when redeployed
