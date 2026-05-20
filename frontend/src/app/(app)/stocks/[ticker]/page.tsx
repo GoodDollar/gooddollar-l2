@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
@@ -15,8 +16,16 @@ import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainSto
 import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
-import { PriceChart } from '@/components/PriceChart'
-import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+
+const PriceChart = dynamic(
+  () => import('@/components/PriceChart').then((m) => ({ default: m.PriceChart })),
+  { ssr: false }
+)
+
+const OracleStatusBadge = dynamic(
+  () => import('@/components/OracleStatusBadge').then((m) => ({ default: m.OracleStatusBadge })),
+  { ssr: false }
+)
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
