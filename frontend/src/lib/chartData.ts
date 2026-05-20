@@ -51,19 +51,97 @@ function generateOHLC(basePrice: number, config: TimeframeConfig, volatility: nu
   return data
 }
 
-const CHART_CACHE = new Map<string, Map<string, OHLCData[]>>()
-
 export type Timeframe = '1D' | '1W' | '1M' | '3M' | '1Y'
 
+interface LastCandleAnchor {
+  time: string | number
+  open: number
+  volume: number
+  // Multiplicative wick factors (≥ 0) used to derive high/low from
+  // max(open, close) and min(open, close). Frozen at first generation so
+  // the live-tracking last candle keeps a realistic, stable shape.
+  wickUp: number
+  wickDown: number
+  // Fallback close used if a non-finite or non-positive basePrice is passed.
+  lastValidClose: number
+}
+
+interface CachedSeries {
+  // Candles 0..N-2 — frozen history. Never mutated after first generation.
+  history: OHLCData[]
+  // Per-entry anchor used to recompute the right-most candle from the
+  // current live basePrice on every call.
+  anchor: LastCandleAnchor
+}
+
+const CHART_CACHE = new Map<string, Map<Timeframe, CachedSeries>>()
+
+function buildAnchorFromCandle(candle: OHLCData): LastCandleAnchor {
+  const hiBase = Math.max(candle.open, candle.close)
+  const loBase = Math.min(candle.open, candle.close)
+  // Recover the wick factors that produced this candle so we can reapply
+  // them when basePrice changes. Clamp to ≥ 0 so a degenerate generated
+  // candle (open === close, no wick) can't poison subsequent recomputes.
+  const wickUp = hiBase > 0 ? Math.max(0, candle.high / hiBase - 1) : 0
+  const wickDown = loBase > 0 ? Math.max(0, 1 - candle.low / loBase) : 0
+  return {
+    time: candle.time,
+    open: candle.open,
+    volume: candle.volume,
+    wickUp,
+    wickDown,
+    lastValidClose: candle.close,
+  }
+}
+
+function buildLastCandle(anchor: LastCandleAnchor, basePrice: number): OHLCData {
+  // Guard against NaN / Infinity / non-positive prices — keep the cached
+  // close so the chart never renders a corrupted candle.
+  const close = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : anchor.lastValidClose
+  const hiBase = Math.max(anchor.open, close)
+  const loBase = Math.min(anchor.open, close)
+  return {
+    time: anchor.time,
+    open: anchor.open,
+    high: hiBase * (1 + anchor.wickUp),
+    low: loBase * (1 - anchor.wickDown),
+    close,
+    volume: anchor.volume,
+  }
+}
+
 export function getChartData(symbol: string, timeframe: Timeframe, basePrice: number): OHLCData[] {
-  if (!CHART_CACHE.has(symbol)) {
-    CHART_CACHE.set(symbol, new Map())
+  let symbolCache = CHART_CACHE.get(symbol)
+  if (!symbolCache) {
+    symbolCache = new Map()
+    CHART_CACHE.set(symbol, symbolCache)
   }
-  const symbolCache = CHART_CACHE.get(symbol)!
-  if (!symbolCache.has(timeframe)) {
-    symbolCache.set(timeframe, generateOHLC(basePrice, TIMEFRAME_CONFIG[timeframe]))
+
+  let entry = symbolCache.get(timeframe)
+  if (!entry) {
+    // Use the current basePrice (when finite/positive) as the generation
+    // anchor so initial render of the right-most candle matches the live
+    // oracle price exactly. Otherwise fall back to 1 to keep generation
+    // deterministic-ish and non-degenerate.
+    const seedPrice = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : 1
+    const generated = generateOHLC(seedPrice, TIMEFRAME_CONFIG[timeframe])
+    const lastCandle = generated[generated.length - 1]
+    entry = {
+      history: generated.slice(0, -1),
+      anchor: buildAnchorFromCandle(lastCandle),
+    }
+    symbolCache.set(timeframe, entry)
   }
-  return symbolCache.get(timeframe)!
+
+  // Refresh the anchor's fallback close so a later invalid basePrice
+  // returns the most recent valid close, not a stale generation-time value.
+  if (Number.isFinite(basePrice) && basePrice > 0) {
+    entry.anchor.lastValidClose = basePrice
+  }
+
+  // Return a shallow copy so consumers (charts, memos) can't mutate the
+  // cached history and break stability across timeframe switches.
+  return [...entry.history, buildLastCandle(entry.anchor, basePrice)]
 }
 
 export interface ProbabilityPoint {
