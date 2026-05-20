@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -270,7 +270,6 @@ export default function StockDetailPage() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
-  const [analystLoading, setAnalystLoading] = useState(true)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
@@ -284,12 +283,6 @@ export default function StockDetailPage() {
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
-
-  useEffect(() => {
-    setAnalystLoading(true)
-    const timer = setTimeout(() => setAnalystLoading(false), 140)
-    return () => clearTimeout(timer)
-  }, [ticker])
 
   if (!stock && stocksLoading) {
     return (
@@ -376,7 +369,7 @@ export default function StockDetailPage() {
           <AnalystOutlookCard
             currentPrice={stock.price}
             outlook={analystOutlook}
-            isLoading={analystLoading}
+            isLoading={false}
           />
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
