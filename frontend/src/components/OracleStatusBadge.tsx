@@ -17,9 +17,21 @@ interface OracleStatusBadgeProps {
   variant?: Variant
   symbol?: string
   useStocksFallback?: boolean
+  /**
+   * When provided alongside `useStocksFallback`, indicates whether the
+   * on-chain stocks oracle is actually returning data. When `false`, the
+   * badge surfaces a "Demo data" state instead of misleading "Live", even
+   * if the off-chain `stocks-keeper` service reports healthy.
+   */
+  onChainReachable?: boolean
 }
 
-export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = false }: OracleStatusBadgeProps) {
+export function OracleStatusBadge({
+  variant = 'compact',
+  symbol,
+  useStocksFallback = false,
+  onChainReachable,
+}: OracleStatusBadgeProps) {
   const { status, error } = usePriceServiceStatus()
   const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
   const [fallbackLoading, setFallbackLoading] = useState(false)
@@ -34,7 +46,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         if (!res.ok) throw new Error(`status ${res.status}`)
         const data = await res.json()
         if (cancelled) return
-        setFallbackState(deriveStocksOracleHealth(data))
+        setFallbackState(deriveStocksOracleHealth(data, Date.now(), onChainReachable))
       })
       .catch(() => {
         if (cancelled) return
@@ -45,7 +57,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       })
 
     return () => { cancelled = true }
-  }, [useStocksFallback, status, error])
+  }, [useStocksFallback, status, error, onChainReachable])
 
   if (error || !status) {
     if (useStocksFallback) {
@@ -64,6 +76,19 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
             <span>Live</span>
             <span className="text-gray-600">·</span>
             <span>stocks-keeper</span>
+          </div>
+        )
+      }
+      if (fallbackState === 'fallback') {
+        return (
+          <div
+            className="inline-flex items-center gap-1.5 text-xs text-amber-300"
+            title="Off-chain stocks-keeper is healthy, but the on-chain StocksPriceOracle is unreachable. UI is showing demo data."
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span>Demo data</span>
+            <span className="text-amber-500/60">·</span>
+            <span>oracle unreachable</span>
           </div>
         )
       }

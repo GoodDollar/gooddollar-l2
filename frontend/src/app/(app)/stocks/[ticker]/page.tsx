@@ -277,7 +277,7 @@ export default function StockDetailPage() {
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
-  const { stocks } = useOnChainStocks()
+  const { stocks, isLive } = useOnChainStocks()
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
@@ -353,7 +353,12 @@ export default function StockDetailPage() {
           </div>
           <div className="mb-4 min-h-[1.75rem]">
             {chartMounted ? (
-              <OracleStatusBadge variant="detail" symbol={stock.ticker} />
+              <OracleStatusBadge
+                variant="detail"
+                symbol={stock.ticker}
+                useStocksFallback
+                onChainReachable={isLive}
+              />
             ) : null}
           </div>
 
@@ -443,6 +448,16 @@ export default function StockDetailPage() {
         </div>
 
         <div className="lg:w-80 shrink-0">
+          {!isLive && (
+            <aside
+              role="note"
+              className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200"
+              title="On-chain StocksPriceOracle is unreachable. Prices on this page are demo data."
+            >
+              <span className="font-semibold">Demo data:</span>{' '}
+              On-chain stocks oracle is not reachable. Prices are illustrative only and orders cannot settle.
+            </aside>
+          )}
           <OrderForm stock={stock} position={position} />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">

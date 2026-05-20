@@ -169,7 +169,7 @@ export default function StocksPage() {
           onChange={e => setQuery(e.target.value)}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
         />
-        <OracleStatusBadge useStocksFallback />
+        <OracleStatusBadge useStocksFallback onChainReachable={isLive} />
       </div>
 
       {/* Mobile card list (< sm) */}
@@ -253,7 +253,9 @@ export default function StocksPage() {
       </div>
 
       <p className="text-xs text-gray-600 text-center mt-4">
-        Prices sourced from on-chain oracle. Updated on every block.
+        {isLive
+          ? 'Prices sourced from on-chain oracle. Updated on every block.'
+          : 'Showing demo data — on-chain stocks oracle is not reachable. Prices below are illustrative only and cannot be traded.'}
       </p>
     </div>
   )
