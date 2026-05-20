@@ -21,6 +21,7 @@ import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
+import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 
@@ -363,8 +364,11 @@ export default function StockDetailPage() {
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-xs font-bold text-goodgreen">
               {stock.ticker.slice(0, 2)}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
+                <WatchlistStarButton ticker={stock.ticker} size="md" />
+              </div>
               <p className="text-sm text-gray-400">{stock.name} · {stock.sector}</p>
             </div>
           </div>

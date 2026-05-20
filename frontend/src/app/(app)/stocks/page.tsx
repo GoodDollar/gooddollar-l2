@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { useWatchlist } from '@/lib/useWatchlist'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
+import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -49,6 +51,9 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
       className={`group border-b border-gray-700/10 hover:bg-white/[0.04] cursor-pointer transition-colors ${idx % 2 === 1 ? 'bg-dark-50/15' : ''}`}
     >
       <td className="py-3 px-3 text-gray-500 text-right">{idx + 1}</td>
+      <td className="py-3 px-2 w-10">
+        <WatchlistStarButton ticker={stock.ticker} size="sm" />
+      </td>
       <td className="py-3 px-3">
         <div className="flex items-center gap-2.5">
           <StockIcon ticker={stock.ticker} />
@@ -85,13 +90,17 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
   )
 })
 
+type ListFilter = 'all' | 'watchlist'
+
 export default function StocksPage() {
   const router = useRouter()
   const { address } = useAccount()
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<ListFilter>('all')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+  const { watchlist, isWatched } = useWatchlist()
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -104,6 +113,9 @@ export default function StocksPage() {
 
   const filtered = useMemo(() => {
     let stocks = data
+    if (filter === 'watchlist') {
+      stocks = stocks.filter(s => isWatched(s.ticker))
+    }
     const trimmed = query.trim()
     if (trimmed) {
       const q = trimmed.toLowerCase()
@@ -115,7 +127,8 @@ export default function StocksPage() {
       const mul = sortDir === 'asc' ? 1 : -1
       return (a[sortField] - b[sortField]) * mul
     })
-  }, [data, query, sortField, sortDir])
+    // watchlist included so list re-filters when toggle changes
+  }, [data, query, sortField, sortDir, filter, isWatched, watchlist])
 
   const handleRowClick = useCallback((ticker: string) => {
     router.push(`/stocks/${ticker}`)
@@ -169,6 +182,44 @@ export default function StocksPage() {
           onChange={e => setQuery(e.target.value)}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
         />
+        <div
+          role="tablist"
+          aria-label="Stocks filter"
+          className="inline-flex items-center rounded-xl bg-dark-100 border border-gray-700/30 p-0.5 text-xs"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'all'}
+            onClick={() => setFilter('all')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              filter === 'all'
+                ? 'bg-goodgreen/15 text-goodgreen'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'watchlist'}
+            onClick={() => setFilter('watchlist')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-colors inline-flex items-center gap-1.5 ${
+              filter === 'watchlist'
+                ? 'bg-goodgreen/15 text-goodgreen'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <span aria-hidden="true">★</span>
+            <span>Watchlist</span>
+            {watchlist.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-md bg-white/10 text-[10px] font-semibold tabular-nums">
+                {watchlist.length}
+              </span>
+            )}
+          </button>
+        </div>
         <OracleStatusBadge useStocksFallback />
       </div>
 
@@ -176,8 +227,19 @@ export default function StocksPage() {
       <div className="sm:hidden space-y-2 mb-2">
         {filtered.length === 0 ? (
           <div className="py-12 text-center text-gray-500 bg-dark-100 rounded-2xl border border-gray-700/20">
-            No stocks match your search.{' '}
-            <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear</button>
+            {filter === 'watchlist' && watchlist.length === 0 ? (
+              <>
+                <div className="text-3xl mb-2" aria-hidden="true">☆</div>
+                <p className="text-sm">Your watchlist is empty.</p>
+                <p className="text-xs mt-1">Tap the star on any stock to add it.</p>
+                <button onClick={() => setFilter('all')} className="mt-3 text-goodgreen underline text-sm">Browse all stocks</button>
+              </>
+            ) : (
+              <>
+                No stocks match your search.{' '}
+                <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear</button>
+              </>
+            )}
           </div>
         ) : (
           filtered.map((stock) => (
@@ -186,6 +248,7 @@ export default function StocksPage() {
               onClick={() => handleRowClick(stock.ticker)}
               className="bg-dark-100 rounded-xl border border-gray-700/20 px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-dark-50/30 transition-colors active:scale-[0.99]"
             >
+              <WatchlistStarButton ticker={stock.ticker} size="sm" />
               <StockIcon ticker={stock.ticker} />
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
@@ -217,6 +280,9 @@ export default function StocksPage() {
             <thead>
               <tr className="border-b border-gray-700/30 text-gray-400 bg-dark-50/25">
                 <th scope="col" className="text-right py-3 px-3 font-semibold w-10">#</th>
+                <th scope="col" className="py-3 px-2 font-semibold w-10">
+                  <span className="sr-only">Watchlist</span>
+                </th>
                 <th scope="col" className="text-left py-3 px-3 font-semibold">Stock</th>
                 <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('price')}>
                   Price <SortArrow active={sortField === 'price'} dir={sortDir} />
@@ -237,9 +303,26 @@ export default function StocksPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-500">
-                    No stocks match your search.{' '}
-                    <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear</button>
+                  <td colSpan={9} className="py-12 text-center text-gray-500">
+                    {filter === 'watchlist' && watchlist.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="text-3xl" aria-hidden="true">☆</span>
+                        <p className="text-sm">Your watchlist is empty.</p>
+                        <p className="text-xs">Tap the star next to any stock to save it here.</p>
+                        <button
+                          type="button"
+                          onClick={() => setFilter('all')}
+                          className="mt-2 text-goodgreen underline text-sm"
+                        >
+                          Browse all stocks
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        No stocks match your search.{' '}
+                        <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ) : (
