@@ -188,7 +188,7 @@ address.
 | `yield`            | 9     | `yield/strategies/StablecoinStrategy.sol#54`, `yield/GoodVault.sol#438`, `yield/strategies/LendingStrategy.sol#56` |
 | `swap`             | 3     | `swap/LiFiBridgeAggregator.sol#153`, `swap/LiFiBridgeAggregator.sol#120` (×2) |
 | `stocks`           | 2     | `stocks/StocksUBIFeeSplitter.sol#81` (×2) — **fixed** in task `0031-security-speckit-stocksubifeesplitter-zero-address-checks-events` (ctor zero-checks on `_treasury` and `_admin`) |
-| `perps`            | 2     | `perps/PerpUBIFeeSplitter.sol#89` (×2) |
+| `perps`            | 2     | `perps/PerpUBIFeeSplitter.sol#89` (×2) — **fixed** in task `0032-security-speckit-perpubifeesplitter-zero-address-checks-events` (ctor zero-checks on `_treasury` and `_admin`) |
 | `stable`           | 2     | `stable/StableUBIFeeSplitter.sol#106` (×2) |
 | `predict`          | 2     | `predict/PredictUBIFeeSplitter.sol#73` (×2) |
 
@@ -391,7 +391,7 @@ silent re-pricing rather than a role transfer.
 | `swap`             | 2     | `swap/LimitOrderBook.sol#348`, `swap/LiFiBridgeAggregator.sol#148` |
 | `yield`            | 2     | `yield/VaultFactory.sol#115`, `yield/GoodVault.sol#419` |
 | `src/` root        | 2     | `UBIFeeSplitter.sol#113`, `AgentRegistry.sol#368` |
-| `perps`            | 1     | `perps/PerpUBIFeeSplitter.sol#234` |
+| `perps`            | 1     | `perps/PerpUBIFeeSplitter.sol#234` — **fixed** in task `0032-security-speckit-perpubifeesplitter-zero-address-checks-events` (now emits `FeeBpsUpdated` and `TreasuryUpdated`) |
 | `oracle`           | 1     | `oracle/SwapPriceOracle.sol#144` |
 | `stocks`           | 1     | `stocks/StocksUBIFeeSplitter.sol#247` — **fixed** in task `0031-security-speckit-stocksubifeesplitter-zero-address-checks-events` (now emits `FeeBpsUpdated` and `TreasuryUpdated`) |
 | `predict`          | 1     | `predict/PredictUBIFeeSplitter.sol#194` |
@@ -517,8 +517,12 @@ tests + threat note + risk write-up (per lane rule).
   zero-checks on `_treasury` and `_admin`, plus `setTreasury` already
   had a zero-check) in task
   `0031-security-speckit-stocksubifeesplitter-zero-address-checks-events`.
-  `PerpUBIFeeSplitter`, `StableUBIFeeSplitter`, `PredictUBIFeeSplitter`
-  still pending.
+  `PerpUBIFeeSplitter` ctor zero-checks on `_treasury` and `_admin` fixed in
+  task `0032-security-speckit-perpubifeesplitter-zero-address-checks-events`
+  (note: `_goodDollar` is intentionally NOT zero-checked at ctor for parity
+  with the other splitters — it is rotated post-deploy via `setGoodDollar`
+  in deploy scripts, and that setter already rejects `address(0)`).
+  `StableUBIFeeSplitter`, `PredictUBIFeeSplitter` still pending.
 
 ### 3.5 — `*UBIFeeSplitter` family — emit treasury / admin events
 - **Locations:** `src/{stocks,perps,stable,predict}/{Stocks,Perp,Stable,Predict}UBIFeeSplitter.sol` (8 setter sites)
@@ -538,9 +542,14 @@ tests + threat note + risk write-up (per lane rule).
   `TreasuryUpdated`) and `StocksUBIFeeSplitter.setFeeSplit` (now emits
   `FeeBpsUpdated`) fixed in task
   `0031-security-speckit-stocksubifeesplitter-zero-address-checks-events`.
-  `PerpUBIFeeSplitter`, `StableUBIFeeSplitter`, `PredictUBIFeeSplitter`
-  setter events still pending. `AdminTransferred` for any splitter
-  still pending (no contract currently exposes a setter for `admin`).
+  `PerpUBIFeeSplitter.setTreasury` (`TreasuryUpdated`) and
+  `PerpUBIFeeSplitter.setFeeSplit` (`FeeBpsUpdated`) fixed in task
+  `0032-security-speckit-perpubifeesplitter-zero-address-checks-events`
+  (event signatures are kept byte-for-byte identical across the splitter
+  family so the analytics indexer can decode all of them with one ABI
+  fragment). `StableUBIFeeSplitter`, `PredictUBIFeeSplitter` setter events
+  still pending. `AdminTransferred` for any splitter still pending (no
+  contract currently exposes a setter for `admin`).
 
 ### 3.6 — `UBIClaimV2.batchClaim` — `try/catch` per element + `ClaimSkipped` event
 - **Location:** `src/UBIClaimV2.sol#142` (`batchClaim`)
