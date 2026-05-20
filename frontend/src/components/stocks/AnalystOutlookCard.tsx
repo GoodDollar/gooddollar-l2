@@ -1,4 +1,4 @@
-import { calcUpsidePercent, type AnalystOutlook } from '@/lib/stockInsights'
+import { calcUpsidePercent, type AnalystOutlook, type AnalystRatingDistribution } from '@/lib/stockInsights'
 
 function ConsensusBadge({ consensus }: { consensus: AnalystOutlook['consensus'] }) {
   const colorMap = {
@@ -10,6 +10,103 @@ function ConsensusBadge({ consensus }: { consensus: AnalystOutlook['consensus'] 
     <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${colorMap[consensus]}`}>
       {consensus}
     </span>
+  )
+}
+
+type Bucket = {
+  key: keyof AnalystRatingDistribution
+  label: string
+  segmentClass: string
+  legendDotClass: string
+  legendLabelClass: string
+}
+
+const BUCKETS: Bucket[] = [
+  {
+    key: 'strongBuy',
+    label: 'Strong Buy',
+    segmentClass: 'bg-emerald-500',
+    legendDotClass: 'bg-emerald-500',
+    legendLabelClass: 'text-emerald-300',
+  },
+  {
+    key: 'buy',
+    label: 'Buy',
+    segmentClass: 'bg-green-400',
+    legendDotClass: 'bg-green-400',
+    legendLabelClass: 'text-green-300',
+  },
+  {
+    key: 'hold',
+    label: 'Hold',
+    segmentClass: 'bg-yellow-400',
+    legendDotClass: 'bg-yellow-400',
+    legendLabelClass: 'text-yellow-200',
+  },
+  {
+    key: 'sell',
+    label: 'Sell',
+    segmentClass: 'bg-orange-400',
+    legendDotClass: 'bg-orange-400',
+    legendLabelClass: 'text-orange-200',
+  },
+  {
+    key: 'strongSell',
+    label: 'Strong Sell',
+    segmentClass: 'bg-red-500',
+    legendDotClass: 'bg-red-500',
+    legendLabelClass: 'text-red-300',
+  },
+]
+
+function RatingDistributionBar({
+  ratings,
+  analystCount,
+}: {
+  ratings: AnalystRatingDistribution
+  analystCount: number
+}) {
+  const total = Math.max(1, analystCount)
+  return (
+    <div className="mt-3" data-testid="analyst-rating-distribution">
+      <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1.5">
+        <span>Based on {analystCount} analysts</span>
+        <span className="text-gray-500">Last 90 days</span>
+      </div>
+      <div
+        className="flex h-2 rounded-full overflow-hidden bg-dark-50/60 ring-1 ring-white/5"
+        role="img"
+        aria-label="Analyst ratings distribution"
+      >
+        {BUCKETS.map(bucket => {
+          const value = ratings[bucket.key]
+          const widthPct = (value / total) * 100
+          if (widthPct <= 0) return null
+          return (
+            <div
+              key={bucket.key}
+              className={`${bucket.segmentClass} h-full`}
+              style={{ width: `${widthPct}%` }}
+              title={`${bucket.label}: ${value}`}
+            />
+          )
+        })}
+      </div>
+      <ul className="mt-2.5 grid grid-cols-5 gap-1.5 text-[10px]">
+        {BUCKETS.map(bucket => {
+          const value = ratings[bucket.key]
+          return (
+            <li key={bucket.key} className="flex flex-col items-center text-center">
+              <span className={`w-2 h-2 rounded-full ${bucket.legendDotClass} mb-1`} aria-hidden="true" />
+              <span className={`font-semibold leading-tight ${bucket.legendLabelClass}`}>
+                {bucket.label}
+              </span>
+              <span className="text-gray-300 font-mono mt-0.5">{value}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 
@@ -67,7 +164,9 @@ export function AnalystOutlookCard({
             />
           </div>
 
-          <p className="mt-2 text-[11px] text-gray-500">Consensus snapshot as of {outlook.asOf}</p>
+          <RatingDistributionBar ratings={outlook.ratings} analystCount={outlook.analystCount} />
+
+          <p className="mt-3 text-[11px] text-gray-500">Consensus snapshot as of {outlook.asOf}</p>
         </div>
       )}
     </div>
