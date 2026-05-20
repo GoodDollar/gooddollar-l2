@@ -48,6 +48,7 @@ describe('PerpsPortfolioPage — JSX ternary rendering (task 0004)', () => {
     expect(text).not.toContain('funding.length')
     expect(text).not.toContain('=== 0 ?')
     expect(text).not.toContain('positions.length===0 ? (')
+    expect(text).not.toContain('positions.length === 0 ? (')
     expect(text).not.toContain('):(')
   })
 
@@ -67,5 +68,6 @@ describe('PerpsPortfolioPage — JSX ternary rendering (task 0004)', () => {
     expect(screen.getByRole('columnheader', { name: 'Pair' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Side' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'P&L' })).toBeInTheDocument()
+    expect(screen.getByTestId('perps-empty-positions-row')).toBeInTheDocument()
   })
 })

@@ -25,6 +25,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
 - Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with an in-context `Connect Wallet to View UBI Impact` CTA instead of misleading `0% — Critical` risk framing.
 - Perps portfolio empty state no longer leaks raw template fragments (for example `positions.length === 0 ? (`), restoring clean, production-grade empty-state rendering.
+- Perps portfolio positions-tab empty state now renders through a dedicated row component plus stricter leak assertions, adding another guard rail against template fragment regressions.
 
 ### POC V1 live endpoints
 

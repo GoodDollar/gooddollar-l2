@@ -113,6 +113,17 @@ function FundingRow({ payment }: { payment: FundingPayment }) {
   )
 }
 
+function EmptyPositionsRow() {
+  return (
+    <tr data-testid="perps-empty-positions-row">
+      <td colSpan={8} className="py-16 text-center">
+        <p className="text-gray-400 text-sm mb-1">No open positions</p>
+        <Link href="/perps" className="text-goodgreen text-sm hover:underline">Start Trading</Link>
+      </td>
+    </tr>
+  )
+}
+
 export default function PerpsPortfolioPage() {
   const { positions } = useOnChainPositions()
   const { pairs } = useOnChainPairs()
@@ -123,25 +134,16 @@ export default function PerpsPortfolioPage() {
 
   const totalPnl = positions.reduce((sum, p) => sum + p.unrealizedPnl, 0)
   const totalFunding = funding.reduce((sum, f) => sum + f.amount, 0)
-  let positionRows: React.ReactNode
-  if (positions.length === 0) {
-    positionRows = (
-      <tr>
-        <td colSpan={8} className="py-16 text-center">
-          <p className="text-gray-400 text-sm mb-1">No open positions</p>
-          <Link href="/perps" className="text-goodgreen text-sm hover:underline">Start Trading</Link>
-        </td>
-      </tr>
-    )
-  } else {
-    positionRows = positions.map((p, i) => (
+  const positionRows = useMemo(() => {
+    if (positions.length === 0) return <EmptyPositionsRow />
+    return positions.map((p, i) => (
       <PositionRow
         key={i}
         pos={p}
         marketId={BigInt(pairs.findIndex((pair) => pair.symbol === p.pair))}
       />
     ))
-  }
+  }, [pairs, positions])
 
   return (
     <ConnectWalletEmptyState
