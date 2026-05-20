@@ -205,7 +205,17 @@ export function OrderForm({ stock, position }: { stock: { ticker: string; price:
       {sellGated && (
         <div role="alert" aria-live="polite"
           className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-          You have no {stock.ticker} to sell. Switch to <span className="font-semibold">Buy</span> to open a position first.
+          You have no {stock.ticker} to sell. Switch to{' '}
+          <button
+            type="button"
+            onClick={() => setSide('buy')}
+            aria-label="Switch to Buy tab"
+            data-testid="stocks-sell-gated-switch-to-buy"
+            className="font-semibold underline underline-offset-2 decoration-amber-300/40 hover:decoration-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 rounded"
+          >
+            Buy
+          </button>{' '}
+          to open a position first.
         </div>
       )}
       {sellSharesExceedsBalance && (
