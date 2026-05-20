@@ -1,9 +1,35 @@
-export type {
-  NormalizedQuote,
-  SessionState,
-  EtoroAssetClass,
-} from '../../shared/quote-types';
-import type { NormalizedQuote } from '../../shared/quote-types';
+export type SessionState =
+  | 'pre-market'
+  | 'open'
+  | 'after-hours'
+  | 'closed'
+  | 'halted'
+  | 'unknown';
+
+export type EtoroAssetClass =
+  | 'equity'
+  | 'etf'
+  | 'crypto'
+  | 'forex'
+  | 'index'
+  | 'commodity'
+  | 'unknown';
+
+export interface NormalizedQuote {
+  source: 'etoro';
+  symbol: string;
+  instrumentId: string;
+  bid: number;
+  ask: number;
+  mid: number;
+  last: number;
+  timestamp: number;
+  sessionState: SessionState;
+  confidence: number;
+  assetClass?: EtoroAssetClass;
+  currency?: string;
+  stale: boolean;
+}
 
 export type EtoroMode = 'sandbox' | 'real';
 
@@ -26,7 +52,7 @@ export interface InstrumentMetadata {
   displayName: string;
   exchange: string;
   currency: string;
-  assetClass: import('../../shared/quote-types').EtoroAssetClass;
+  assetClass: EtoroAssetClass;
   minTradeSize: number;
   maxLeverage: number;
 }

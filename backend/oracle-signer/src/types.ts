@@ -1,7 +1,26 @@
-export type {
-  NormalizedQuote,
-  SessionState as SessionStateString,
-} from '../../shared/quote-types';
+export type SessionStateString =
+  | 'pre-market'
+  | 'open'
+  | 'after-hours'
+  | 'closed'
+  | 'halted'
+  | 'unknown';
+
+export interface NormalizedQuote {
+  source: 'etoro';
+  symbol: string;
+  instrumentId: string;
+  bid: number;
+  ask: number;
+  mid: number;
+  last: number;
+  timestamp: number;
+  sessionState: SessionStateString;
+  confidence: number;
+  assetClass?: string;
+  currency?: string;
+  stale: boolean;
+}
 
 /** On-chain session state enum (matches StockOracleV2.SessionState) */
 export enum SessionState {
