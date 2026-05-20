@@ -2,6 +2,7 @@
 
 import { useState, useMemo, memo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { Sparkline } from '@/components/Sparkline'
@@ -86,6 +87,7 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
 
 export default function StocksPage() {
   const router = useRouter()
+  const { address } = useAccount()
   const [query, setQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -141,6 +143,24 @@ export default function StocksPage() {
         storageKey="gd-banner-dismissed-stocks"
       />
 
+      {!address && (
+        <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
+              <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
+              <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
+            </div>
+            <button
+              onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
+              className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+            >
+              Connect Wallet to Trade Stocks
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
         <input
           type="text"
@@ -181,6 +201,9 @@ export default function StocksPage() {
                 <div className="text-xs font-medium">
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
                 </div>
+                <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
+                  Tap to trade
+                </span>
               </div>
             </div>
           ))
