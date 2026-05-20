@@ -1,8 +1,11 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
-const accountState = { address: undefined as `0x${string}` | undefined }
+const accountState = {
+  address: undefined as `0x${string}` | undefined,
+  isConnected: false,
+}
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -59,8 +62,14 @@ vi.mock('@/components/InfoBanner', () => ({
 import StocksPortfolioPage from '../page'
 
 describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () => {
+  beforeEach(() => {
+    accountState.address = undefined
+    accountState.isConnected = false
+  })
+
   it('shows neutral disconnected summary placeholders instead of active $0 metrics', () => {
     accountState.address = undefined
+    accountState.isConnected = false
     holdingsState.holdings = []
     holdingsState.totalValue = 0
     holdingsState.unrealizedPnl = 0
@@ -83,6 +92,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
 
   it('shows an actionable in-context connect CTA for disconnected users', () => {
     accountState.address = undefined
+    accountState.isConnected = false
 
     render(
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
@@ -93,6 +103,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
 
   it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {
     accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = true
     holdingsState.totalCollateral = 250
     holdingsState.totalRequired = 0
     holdingsState.healthRatio = 0
@@ -107,6 +118,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
 
   it('does NOT show "Critical" when there are no positions', () => {
     accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = true
     holdingsState.holdings = []
     holdingsState.totalCollateral = 0
     holdingsState.totalRequired = 0
@@ -121,6 +133,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
 
   it('keeps neutral collateral status when no holdings exist even if required collateral is stale/non-zero', () => {
     accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = true
     holdingsState.holdings = []
     holdingsState.totalCollateral = 0
     holdingsState.totalRequired = 500
@@ -138,6 +151,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
 
   it('keeps neutral collateral status for ghost holdings with zero shares', () => {
     accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = true
     holdingsState.holdings = [{
       ticker: 'AAPL',
       shares: 0,
@@ -162,6 +176,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
 
   it('shows a neutral dash for collateral health when ratio is 0 with no collateral', () => {
     accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = true
     holdingsState.holdings = []
     holdingsState.totalCollateral = 0
     holdingsState.totalRequired = 0
@@ -177,6 +192,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
 
   it('still shows risk severity when positions exist and required collateral is non-zero', () => {
     accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = true
     holdingsState.holdings = [{
       ticker: 'AAPL',
       shares: 1,
@@ -195,5 +211,28 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     const text = container.textContent || ''
     expect(text).toContain('0% — Critical')
     expect(text).toContain('$0.00 / $100.00 required')
+  })
+
+  it('keeps disconnected neutral state when address exists but wallet is not connected', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = false
+    holdingsState.holdings = [{
+      ticker: 'AAPL',
+      shares: 1,
+      avgCost: 100,
+      currentPrice: 100,
+      collateralDeposited: 0,
+      collateralRequired: 100,
+    }]
+    holdingsState.totalCollateral = 0
+    holdingsState.totalRequired = 100
+    holdingsState.healthRatio = 0
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+    const text = container.textContent || ''
+    expect(text).toContain('Connect wallet to view collateral health')
+    expect(text).not.toContain('0% — Critical')
   })
 })

@@ -108,7 +108,7 @@ function TradeRow({ trade }: { trade: TradeRecord }) {
 
 export default function StocksPortfolioPage() {
   const router = useRouter()
-  const { address } = useAccount()
+  const { address, isConnected } = useAccount()
   const {
     holdings,
     totalValue,
@@ -122,7 +122,7 @@ export default function StocksPortfolioPage() {
   const { trades, isLoading: tradesLoading } = useStockTrades(address)
 
   const summary = { totalValue, unrealizedPnl, pnlPercent, totalCollateral, totalRequired, healthRatio }
-  const isDisconnected = !address
+  const isDisconnected = !isConnected || !address
   const hasLivePositions = holdings.some((holding) => holding.shares > 0)
   const hasRiskPosition = hasLivePositions && summary.totalRequired > 0
   const isLoading = holdingsLoading || tradesLoading
