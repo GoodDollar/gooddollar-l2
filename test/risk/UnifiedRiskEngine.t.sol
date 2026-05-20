@@ -248,6 +248,8 @@ contract UnifiedRiskEngineTest is Test {
 
         vm.prank(admin);
         engine.setSymbolCap(AAPL, 500e18);
+        vm.prank(admin);
+        engine.registerSource(address(this));
 
         engine.checkRisk(AAPL, 200e18);
     }
@@ -258,6 +260,8 @@ contract UnifiedRiskEngineTest is Test {
 
         vm.prank(admin);
         engine.setSymbolCap(AAPL, 200e18);
+        vm.prank(admin);
+        engine.registerSource(address(this));
 
         // current = 100, additional = 200, projected = 300 > 200 cap
         vm.expectRevert(
@@ -274,9 +278,12 @@ contract UnifiedRiskEngineTest is Test {
     function test_checkRisk_revertsExceedingProtocolCap() public {
         aaplToken.setTotalSupply(900_000e18);
         amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
-        // current net = 900_000, additional = 200_000, projected = 1_100_000
-        // totalAbs with additional ≈ 900_000 + 1_100_000 = 2_000_000 > 1_000_000
 
+        vm.prank(admin);
+        engine.registerSource(address(this));
+
+        // current net = 900_000, additional = 200_000, projected = 1_100_000
+        // With fix: totalAbs = |1_100_000| = 1_100_000 > 1_000_000 cap
         vm.expectRevert(); // ProtocolCapExceeded
         engine.checkRisk(AAPL, 200_000e18);
     }
@@ -285,6 +292,9 @@ contract UnifiedRiskEngineTest is Test {
         aaplToken.setTotalSupply(100e18);
         amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
 
+        vm.prank(admin);
+        engine.registerSource(address(this));
+
         vm.expectEmit(true, false, false, true);
         emit UnifiedRiskEngine.ExposureChanged(AAPL, 300e18, block.timestamp);
 
@@ -292,6 +302,8 @@ contract UnifiedRiskEngineTest is Test {
     }
 
     function test_checkRisk_revertsWhenPaused() public {
+        vm.prank(admin);
+        engine.registerSource(address(this));
         vm.prank(admin);
         engine.setPaused(true);
 
@@ -305,6 +317,8 @@ contract UnifiedRiskEngineTest is Test {
 
         vm.prank(admin);
         engine.setProtocolCap(0);
+        vm.prank(admin);
+        engine.registerSource(address(this));
 
         engine.checkRisk(AAPL, 999_999_999e18);
     }
@@ -363,5 +377,233 @@ contract UnifiedRiskEngineTest is Test {
         vm.expectEmit(false, false, false, true);
         emit UnifiedRiskEngine.Paused(true);
         engine.setPaused(true);
+    }
+
+    // ─── Bug fix: protocol-cap double-counting ──────────────
+
+    function test_protocolCap_noDoubleCounting() public {
+        // Set up: AAPL has 800e18 net exposure (1000 supply - 200 AMM reserve)
+        aaplToken.setTotalSupply(1000e18);
+        // AMM reserve is 200e18 from setUp
+
+        // Set protocol cap to 900e18
+        vm.prank(admin);
+        engine.setProtocolCap(900e18);
+        vm.prank(admin);
+        engine.registerSource(address(this));
+
+        // Adding 50e18 should succeed: total = |800+50| = 850 < 900
+        // (With the old double-counting bug, total would be 800 + 850 = 1650 > 900)
+        engine.checkRisk(AAPL, 50e18);
+    }
+
+    function test_protocolCap_correctlyRejectsOverCap() public {
+        aaplToken.setTotalSupply(1000e18);
+
+        vm.prank(admin);
+        engine.setProtocolCap(900e18);
+        vm.prank(admin);
+        engine.registerSource(address(this));
+
+        // Adding 150e18 should fail: total = |800+150| = 950 > 900
+        vm.expectRevert();
+        engine.checkRisk(AAPL, 150e18);
+    }
+
+    function test_protocolCap_multiSymbol_correctTotal() public {
+        MockSyntheticAsset tslaToken = new MockSyntheticAsset();
+        factory.addAsset(TSLA, address(tslaToken));
+        amm.setPool(TSLA, address(tslaToken), TSLA, 0, 0, 0, false);
+
+        aaplToken.setTotalSupply(500e18);
+        // AAPL net = 500 - 200 = 300
+        tslaToken.setTotalSupply(400e18);
+        // TSLA net = 400 - 0 = 400
+        // totalAbs = |300| + |400| = 700
+
+        vm.prank(admin);
+        engine.setProtocolCap(800e18);
+        vm.prank(admin);
+        engine.registerSource(address(this));
+
+        // Adding 50 to AAPL: new AAPL net = 350, new totalAbs = 350 + 400 = 750 < 800
+        engine.checkRisk(AAPL, 50e18);
+    }
+
+    // ─── Source enforcement ─────────────────────────────────
+
+    function test_checkRisk_revertsUnregisteredSource() public {
+        aaplToken.setTotalSupply(0);
+        amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
+
+        // Don't register this contract as a source
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                UnifiedRiskEngine.SourceNotRegistered.selector,
+                address(this)
+            )
+        );
+        engine.checkRisk(AAPL, 1e18);
+    }
+
+    function test_checkRisk_registeredSourceCanCall() public {
+        aaplToken.setTotalSupply(0);
+        amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
+
+        vm.prank(admin);
+        engine.registerSource(address(this));
+
+        engine.checkRisk(AAPL, 1e18);
+    }
+
+    function test_checkRisk_adminCanCallDirectly() public {
+        aaplToken.setTotalSupply(0);
+        amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
+
+        vm.prank(admin);
+        engine.checkRisk(AAPL, 1e18);
+    }
+
+    // ─── Circuit breaker ────────────────────────────────────
+
+    function test_circuitBreaker_tripsOnRapidExposureSpike() public {
+        aaplToken.setTotalSupply(1000e18);
+        amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
+
+        vm.startPrank(admin);
+        engine.registerSource(address(this));
+        engine.setProtocolCap(0);
+        engine.setCircuitBreakerParams(2000, 300); // 20% threshold, 5 min window
+        engine.enableCircuitBreaker(true);
+        vm.stopPrank();
+
+        // snapshot = 1000e18, spike by >20%
+        aaplToken.setTotalSupply(1250e18);
+
+        // Triggering trade succeeds (passed caps) but auto-pauses for next call
+        vm.expectEmit(false, false, false, true);
+        emit UnifiedRiskEngine.CircuitBreakerTriggered(1000e18, 1300e18, 2000);
+        engine.checkRisk(AAPL, 50e18);
+
+        assertTrue(engine.paused(), "Engine should be paused after trip");
+    }
+
+    function test_circuitBreaker_doesNotTripUnderThreshold() public {
+        aaplToken.setTotalSupply(1000e18);
+        amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
+
+        vm.startPrank(admin);
+        engine.registerSource(address(this));
+        engine.setProtocolCap(0);
+        engine.setCircuitBreakerParams(2000, 300); // 20% threshold
+        engine.enableCircuitBreaker(true);
+        vm.stopPrank();
+
+        // snapshot = 1000e18, add 100e18 (10% change < 20% threshold)
+        engine.checkRisk(AAPL, 100e18);
+    }
+
+    function test_circuitBreaker_resetsAfterWindowElapses() public {
+        aaplToken.setTotalSupply(1000e18);
+        amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
+
+        vm.startPrank(admin);
+        engine.registerSource(address(this));
+        engine.setProtocolCap(0);
+        engine.setCircuitBreakerParams(2000, 300); // 20% threshold, 5 min
+        engine.enableCircuitBreaker(true);
+        vm.stopPrank();
+
+        // Advance past the window
+        vm.warp(block.timestamp + 301);
+
+        // Even a big change should pass because window elapsed → snapshot rotates
+        aaplToken.setTotalSupply(2000e18);
+        engine.checkRisk(AAPL, 100e18);
+
+        // Verify snapshot was updated
+        assertEq(engine.cbSnapshotExposure(), 2100e18);
+    }
+
+    function test_circuitBreaker_autoPausesEngine() public {
+        aaplToken.setTotalSupply(1000e18);
+        amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
+
+        vm.startPrank(admin);
+        engine.registerSource(address(this));
+        engine.setProtocolCap(0);
+        engine.setCircuitBreakerParams(1000, 300); // 10% threshold
+        engine.enableCircuitBreaker(true);
+        vm.stopPrank();
+
+        // Spike 15% → trips breaker (triggering call succeeds)
+        aaplToken.setTotalSupply(1150e18);
+        engine.checkRisk(AAPL, 0);
+
+        // Engine is now paused
+        assertTrue(engine.paused());
+
+        // Subsequent call reverts with IsPaused
+        vm.expectRevert(UnifiedRiskEngine.IsPaused.selector);
+        engine.checkRisk(AAPL, 0);
+    }
+
+    function test_circuitBreaker_adminReset() public {
+        aaplToken.setTotalSupply(1000e18);
+        amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
+
+        vm.startPrank(admin);
+        engine.registerSource(address(this));
+        engine.setProtocolCap(0);
+        engine.setCircuitBreakerParams(1000, 300);
+        engine.enableCircuitBreaker(true);
+        vm.stopPrank();
+
+        // Trip the breaker (triggering trade completes, pause set)
+        aaplToken.setTotalSupply(1200e18);
+        engine.checkRisk(AAPL, 0);
+
+        assertTrue(engine.paused());
+
+        // Admin resets
+        vm.prank(admin);
+        engine.resetCircuitBreaker();
+
+        assertFalse(engine.paused());
+        assertEq(engine.cbSnapshotExposure(), 1200e18);
+
+        // Should work again after reset
+        engine.checkRisk(AAPL, 0);
+    }
+
+    function test_circuitBreaker_disabledHasNoEffect() public {
+        aaplToken.setTotalSupply(1000e18);
+        amm.setPool(AAPL, address(aaplToken), AAPL, 0, 0, 0, false);
+
+        vm.startPrank(admin);
+        engine.registerSource(address(this));
+        engine.setProtocolCap(0);
+        engine.setCircuitBreakerParams(100, 300); // very tight 1% threshold
+        // Note: NOT enabling the circuit breaker
+        vm.stopPrank();
+
+        // Big spike should still pass since CB is disabled
+        aaplToken.setTotalSupply(5000e18);
+        engine.checkRisk(AAPL, 100e18);
+    }
+
+    function test_circuitBreaker_setParamsOnlyAdmin() public {
+        vm.expectRevert(UnifiedRiskEngine.NotAdmin.selector);
+        engine.setCircuitBreakerParams(2000, 300);
+    }
+
+    function test_circuitBreaker_enableOnlyAdmin() public {
+        vm.expectRevert(UnifiedRiskEngine.NotAdmin.selector);
+        engine.enableCircuitBreaker(true);
+    }
+
+    function test_circuitBreaker_resetOnlyAdmin() public {
+        vm.expectRevert(UnifiedRiskEngine.NotAdmin.selector);
+        engine.resetCircuitBreaker();
     }
 }

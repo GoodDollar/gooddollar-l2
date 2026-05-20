@@ -591,6 +591,46 @@ contract GoodLendPool {
     }
 
     /**
+     * @notice Total USD value of a user's collateral across all reserves (8-decimal USD).
+     *         Implements IClearingHouseLend for ClearingHouse cross-margin integration.
+     */
+    function getUserCollateralValue(address user) external view returns (uint256 totalCollateralUSD) {
+        for (uint256 i = 0; i < reservesList.length; i++) {
+            address asset = reservesList[i];
+            if (!reserves[asset].isActive) continue;
+
+            uint256 price = oracle.getAssetPrice(asset);
+            if (price == 0) continue;
+
+            uint256 liqIdx = getLiquidityIndex(asset);
+            uint256 balance = _gTokenBalance(asset, user, liqIdx);
+            if (balance > 0) {
+                totalCollateralUSD += (balance * price) / (10 ** reserves[asset].decimals);
+            }
+        }
+    }
+
+    /**
+     * @notice Total USD value of a user's debt across all reserves (8-decimal USD).
+     *         Implements IClearingHouseLend for ClearingHouse cross-margin integration.
+     */
+    function getUserDebtValue(address user) external view returns (uint256 totalDebtUSD) {
+        for (uint256 i = 0; i < reservesList.length; i++) {
+            address asset = reservesList[i];
+            if (!reserves[asset].isActive) continue;
+
+            uint256 price = oracle.getAssetPrice(asset);
+            if (price == 0) continue;
+
+            uint256 borIdx = getBorrowIndex(asset);
+            uint256 debt = _debtBalance(asset, user, borIdx);
+            if (debt > 0) {
+                totalDebtUSD += (debt * price) / (10 ** reserves[asset].decimals);
+            }
+        }
+    }
+
+    /**
      * @notice Get current liquidity index for an asset (used by gToken).
      */
     function getLiquidityIndex(address asset) public view returns (uint256) {

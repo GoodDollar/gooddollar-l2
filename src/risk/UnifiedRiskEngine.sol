@@ -64,6 +64,7 @@ contract UnifiedRiskEngine {
     error ProtocolCapExceeded(uint256 current, uint256 cap);
     error SourceNotRegistered(address source);
     error IsPaused();
+    
 
     // ─── Events ─────────────────────────────────────────────────
 
@@ -72,6 +73,9 @@ contract UnifiedRiskEngine {
     event ProtocolCapUpdated(uint256 cap);
     event ExposureSourceRegistered(address indexed source);
     event Paused(bool state);
+    event CircuitBreakerTriggered(uint256 oldExposure, uint256 newExposure, uint256 thresholdBps);
+    event CircuitBreakerConfigUpdated(uint256 thresholdBps, uint256 windowSeconds);
+    event CircuitBreakerReset(uint256 snapshotExposure, uint256 timestamp);
 
     // ─── State ──────────────────────────────────────────────────
 
@@ -91,6 +95,23 @@ contract UnifiedRiskEngine {
     /// whitelisted callers allowed to invoke `checkRisk`
     mapping(address => bool) public registeredSources;
 
+    // ─── Circuit Breaker ─────────────────────────────────────────
+
+    /// Max % change in total exposure per window before auto-pause (in BPS, e.g., 2000 = 20%)
+    uint256 public cbThresholdBps;
+
+    /// Time window for rate-of-change check (seconds)
+    uint256 public cbWindowSeconds;
+
+    /// Snapshot of total abs exposure at last window reset
+    uint256 public cbSnapshotExposure;
+
+    /// Timestamp of last snapshot
+    uint256 public cbSnapshotTimestamp;
+
+    /// Whether the circuit breaker is enabled
+    bool public cbEnabled;
+
     // ─── Modifiers ──────────────────────────────────────────────
 
     modifier onlyAdmin() {
@@ -100,6 +121,12 @@ contract UnifiedRiskEngine {
 
     modifier whenNotPaused() {
         if (paused) revert IsPaused();
+        _;
+    }
+
+    modifier onlyRegisteredSource() {
+        if (!registeredSources[msg.sender] && msg.sender != admin)
+            revert SourceNotRegistered(msg.sender);
         _;
     }
 
@@ -136,7 +163,7 @@ contract UnifiedRiskEngine {
     function checkRisk(
         bytes32 symbol,
         int256 additionalExposure
-    ) external whenNotPaused {
+    ) external onlyRegisteredSource whenNotPaused {
         int256 currentNet = getNetExposure(symbol);
         int256 projected = currentNet + additionalExposure;
 
@@ -147,12 +174,15 @@ contract UnifiedRiskEngine {
             revert ExposureLimitExceeded(symbol, absProjected, cap);
         }
 
-        if (protocolCap > 0) {
-            uint256 totalAbs = _totalAbsExposure() + absProjected;
-            if (totalAbs > protocolCap) {
-                revert ProtocolCapExceeded(totalAbs, protocolCap);
-            }
+        uint256 absCurrentNet = currentNet >= 0 ? uint256(currentNet) : uint256(-currentNet);
+        uint256 currentTotalAbs = _totalAbsExposure();
+        uint256 projectedTotalAbs = currentTotalAbs - absCurrentNet + absProjected;
+
+        if (protocolCap > 0 && projectedTotalAbs > protocolCap) {
+            revert ProtocolCapExceeded(projectedTotalAbs, protocolCap);
         }
+
+        _checkCircuitBreaker(projectedTotalAbs);
 
         emit ExposureChanged(symbol, projected, block.timestamp);
     }
@@ -207,6 +237,32 @@ contract UnifiedRiskEngine {
         emit ExposureSourceRegistered(source);
     }
 
+    function setCircuitBreakerParams(uint256 thresholdBps, uint256 windowSeconds) external onlyAdmin {
+        cbThresholdBps = thresholdBps;
+        cbWindowSeconds = windowSeconds;
+        emit CircuitBreakerConfigUpdated(thresholdBps, windowSeconds);
+    }
+
+    function enableCircuitBreaker(bool enabled) external onlyAdmin {
+        cbEnabled = enabled;
+        if (enabled) {
+            cbSnapshotExposure = _totalAbsExposure();
+            cbSnapshotTimestamp = block.timestamp;
+        }
+    }
+
+    /**
+     * @notice Reset the circuit breaker after investigation.
+     *         Unpauses the engine and takes a fresh exposure snapshot.
+     */
+    function resetCircuitBreaker() external onlyAdmin {
+        paused = false;
+        cbSnapshotExposure = _totalAbsExposure();
+        cbSnapshotTimestamp = block.timestamp;
+        emit CircuitBreakerReset(cbSnapshotExposure, block.timestamp);
+        emit Paused(false);
+    }
+
     // ─── Internal helpers ───────────────────────────────────────
 
     /**
@@ -239,6 +295,38 @@ contract UnifiedRiskEngine {
             }
         }
         return net;
+    }
+
+    /**
+     * @dev Check circuit breaker: if exposure changed by more than cbThresholdBps
+     *      since the last snapshot within the current window, auto-pause.
+     *      If the window has elapsed, rotate the snapshot.
+     */
+    function _checkCircuitBreaker(uint256 projectedTotalAbs) internal {
+        if (!cbEnabled || cbThresholdBps == 0) return;
+
+        uint256 elapsed = block.timestamp - cbSnapshotTimestamp;
+
+        if (elapsed >= cbWindowSeconds) {
+            cbSnapshotExposure = projectedTotalAbs;
+            cbSnapshotTimestamp = block.timestamp;
+            return;
+        }
+
+        uint256 snapshot = cbSnapshotExposure;
+        if (snapshot == 0) return;
+
+        uint256 delta = projectedTotalAbs > snapshot
+            ? projectedTotalAbs - snapshot
+            : snapshot - projectedTotalAbs;
+
+        uint256 changeBps = (delta * 10_000) / snapshot;
+
+        if (changeBps > cbThresholdBps) {
+            paused = true;
+            emit CircuitBreakerTriggered(snapshot, projectedTotalAbs, cbThresholdBps);
+            emit Paused(true);
+        }
     }
 
     function _totalAbsExposure() internal view returns (uint256) {

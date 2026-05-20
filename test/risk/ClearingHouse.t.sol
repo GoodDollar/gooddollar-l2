@@ -449,4 +449,37 @@ contract ClearingHouseTest is Test {
         // health = 950 * 10000 / 190 = 50000
         assertTrue(health > 10_000);
     }
+
+    // ─── Zero oracle price guards ───────────────────────────
+
+    function test_ADL_revert_zeroOraclePrice() public {
+        bytes32 TSLA_KEY = keccak256(abi.encodePacked("TSLA"));
+        perpEngine.addMarket(TSLA_KEY, "TSLA", 800);
+        // Deliberately do NOT set oracle price for TSLA_KEY → defaults to 0
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(ClearingHouse.OraclePriceZero.selector, TSLA_KEY)
+        );
+        ch.autoDeleverage(1, 5e18);
+    }
+
+    function test_health_revert_zeroOraclePrice_withPosition() public {
+        // Alice has an open position but oracle price is 0
+        perpEngine.setPosition(0, alice, 10e18, 170_00000000, 500e18);
+        oracle.setPrice(AAPL_KEY, 0, block.timestamp);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ClearingHouse.OraclePriceZero.selector, AAPL_KEY)
+        );
+        ch.getCrossMarginHealth(alice);
+    }
+
+    function test_health_noPosition_zeroOracle_ok() public {
+        // No position for alice — zero oracle price should not cause revert
+        oracle.setPrice(AAPL_KEY, 0, block.timestamp);
+
+        uint256 health = ch.getCrossMarginHealth(alice);
+        assertEq(health, type(uint256).max, "No positions = max health regardless of oracle");
+    }
 }

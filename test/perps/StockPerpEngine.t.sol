@@ -501,6 +501,123 @@ contract StockPerpEngineTest is Test {
     }
 
     // ═══════════════════════════════════════════
+    // Add / Remove Margin
+    // ═══════════════════════════════════════════
+
+    function test_addMargin_increasesMargin() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        uint256 vaultBefore = vault.balances(alice);
+
+        vm.prank(alice);
+        engine.addMargin(aaplMarketId, 5_000e18);
+
+        (,,,, uint256 posMargin,,) = engine.positions(alice, aaplMarketId);
+        assertEq(posMargin, 15_000e18);
+        assertEq(vault.balances(alice), vaultBefore - 5_000e18);
+    }
+
+    function test_addMargin_revert_noPosition() public {
+        vm.prank(alice);
+        vm.expectRevert(StockPerpEngine.NoOpenPosition.selector);
+        engine.addMargin(aaplMarketId, 5_000e18);
+    }
+
+    function test_addMargin_revert_zeroAmount() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        vm.prank(alice);
+        vm.expectRevert(StockPerpEngine.ZeroAmount.selector);
+        engine.addMargin(aaplMarketId, 0);
+    }
+
+    function test_addMargin_revert_insufficientBalance() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        uint256 remaining = vault.balances(alice);
+        vm.prank(alice);
+        vm.expectRevert();
+        engine.addMargin(aaplMarketId, remaining + 1);
+    }
+
+    function test_addMargin_revert_whenPaused() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        vm.prank(admin);
+        engine.setPaused(true);
+
+        vm.prank(alice);
+        vm.expectRevert(StockPerpEngine.IsPaused.selector);
+        engine.addMargin(aaplMarketId, 5_000e18);
+    }
+
+    function test_removeMargin_decreasesMargin() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        uint256 vaultBefore = vault.balances(alice);
+
+        vm.prank(alice);
+        engine.removeMargin(aaplMarketId, 2_000e18);
+
+        (,,,, uint256 posMargin,,) = engine.positions(alice, aaplMarketId);
+        assertEq(posMargin, 8_000e18);
+        assertEq(vault.balances(alice), vaultBefore + 2_000e18);
+    }
+
+    function test_removeMargin_revert_belowMaintenance() public {
+        // 5x leverage: size 50k, margin 10k → margin ratio = 2000 bps
+        // maintenance = 500 bps → need at least 2500 G$ margin to stay above
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        // Try to remove 8000 → leaving 2000 → ratio = 2000/50000 * 10000 = 400 < 500
+        vm.prank(alice);
+        vm.expectRevert();
+        engine.removeMargin(aaplMarketId, 8_000e18);
+    }
+
+    function test_removeMargin_revert_exceedsMargin() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        engine.removeMargin(aaplMarketId, 10_001e18);
+    }
+
+    function test_removeMargin_revert_noPosition() public {
+        vm.prank(alice);
+        vm.expectRevert(StockPerpEngine.NoOpenPosition.selector);
+        engine.removeMargin(aaplMarketId, 1_000e18);
+    }
+
+    function test_removeMargin_revert_zeroAmount() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        vm.prank(alice);
+        vm.expectRevert(StockPerpEngine.ZeroAmount.selector);
+        engine.removeMargin(aaplMarketId, 0);
+    }
+
+    function test_removeMargin_revert_whenPaused() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        vm.prank(admin);
+        engine.setPaused(true);
+
+        vm.prank(alice);
+        vm.expectRevert(StockPerpEngine.IsPaused.selector);
+        engine.removeMargin(aaplMarketId, 1_000e18);
+    }
+
+    // ═══════════════════════════════════════════
     // Multiple markets
     // ═══════════════════════════════════════════
 
@@ -526,5 +643,79 @@ contract StockPerpEngineTest is Test {
         (bool tslaOpen,,,,,,) = engine.positions(alice, tslaId);
         assertTrue(aaplOpen);
         assertTrue(tslaOpen);
+    }
+
+    // ═══════════════════════════════════════════
+    // Zero oracle price guards
+    // ═══════════════════════════════════════════
+
+    function test_openPosition_revert_zeroMarkPrice() public {
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+    }
+
+    function test_openPosition_revert_zeroIndexPrice() public {
+        oracle.setPrice(aaplIndexKey, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplIndexKey)
+        );
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+    }
+
+    function test_closePosition_revert_zeroExitPrice() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.closePosition(aaplMarketId);
+    }
+
+    function test_liquidate_revert_zeroExitPrice() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 100_000e18, true, 10_000e18);
+
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.liquidate(alice, aaplMarketId);
+    }
+
+    function test_unrealizedPnL_revert_zeroOracle() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.unrealizedPnL(alice, aaplMarketId);
+    }
+
+    function test_marginRatio_revert_zeroOracle() public {
+        vm.prank(alice);
+        engine.openPosition(aaplMarketId, 50_000e18, true, 10_000e18);
+
+        oracle.setPrice(aaplMarkKey, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(StockPerpEngine.OraclePriceZero.selector, aaplMarkKey)
+        );
+        engine.marginRatio(alice, aaplMarketId);
     }
 }
