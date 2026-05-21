@@ -414,6 +414,7 @@ export function StockDetailContent() {
   const oracleGuard = useStocksOracleGuard(stock?.ticker)
   const syncGuard = useSymbolSyncGuard(stock?.ticker, 'amm')
   const { isConnected } = useAccount()
+  const oracleLimited = oracleGuard.health !== 'live'
   const tradeReady = isConnected && oracleGuard.health === 'live' && syncGuard.allowRiskIncrease
 
   if (!stock && stocksLoading) {
@@ -709,37 +710,46 @@ export function StockDetailContent() {
             </div>
           ) : (
             <div className="mt-4 bg-dark-100/50 rounded-2xl border border-goodgreen/20 p-4">
-              <p className="text-xs text-gray-500 mb-2">Next steps in stocks</p>
+              <p className="text-xs text-gray-500 mb-2">
+                {oracleLimited ? 'Next steps while oracle recovers' : 'Next steps in stocks'}
+              </p>
               <div className="flex flex-col gap-1.5">
-                <Link href={`/stocks/${stock.ticker}#stock-order-form`} prefetch={false} className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors inline-flex items-center gap-1">
-                  Buy s{stock.ticker}
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </Link>
+                {oracleLimited ? (
+                  <Link href={`/stocks/${stock.ticker}#stock-order-form`} prefetch={false} className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors inline-flex items-center gap-1">
+                    Connect wallet
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </Link>
+                ) : (
+                  <Link href={`/stocks/${stock.ticker}#stock-order-form`} prefetch={false} className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors inline-flex items-center gap-1">
+                    Buy s{stock.ticker}
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </Link>
+                )}
+                {oracleLimited ? (
+                  <Link href="/stocks" prefetch={false} className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                    Browse trade-ready stocks
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </Link>
+                ) : (
+                  <Link href="/stocks" prefetch={false} className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                    Browse Stocks
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </Link>
+                )}
                 <Link href="/stocks/portfolio" prefetch={false} className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
                   Open Stock Portfolio
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </Link>
-                <Link href="/stocks" prefetch={false} className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
-                  Browse Stocks
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Link>
               </div>
             </div>
           )}
 
-          {oracleGuard.health !== 'live' && (
+          {oracleLimited && (
             <div className="mt-4 bg-amber-500/10 rounded-2xl border border-amber-500/30 p-4">
               <p className="text-xs text-amber-200 mb-2">Trading is currently limited on this symbol.</p>
-              <div className="flex flex-col gap-1.5">
-                <Link href="/stocks" prefetch={false} className="text-xs text-amber-100 hover:text-white transition-colors inline-flex items-center gap-1">
-                  Browse trade-ready stocks
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </Link>
-                <Link href="/stocks/portfolio" prefetch={false} className="text-xs text-amber-100 hover:text-white transition-colors inline-flex items-center gap-1">
-                  Open Stock Portfolio
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </Link>
-              </div>
+              <p className="text-[11px] text-amber-100/90">
+                Connect your wallet now and use the next-steps links above while trade submission is paused.
+              </p>
             </div>
           )}
         </div>

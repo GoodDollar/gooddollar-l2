@@ -99,4 +99,13 @@ describe('StockDetailPage wallet gate + oracle guard', () => {
     expect(await screen.findByRole('button', { name: /Connect Wallet to Trade/i })).toBeTruthy()
     expect(await screen.findByText(/Trading is temporarily limited due to oracle health/i)).toBeTruthy()
   })
+
+  it('deduplicates right-rail next-step links in oracle-limited disconnected state', async () => {
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(await screen.findByText(/Next steps while oracle recovers/i)).toBeTruthy()
+    expect(await screen.findByRole('link', { name: /Browse trade-ready stocks/i })).toBeTruthy()
+    expect(await screen.findByRole('link', { name: /Connect wallet/i })).toBeTruthy()
+    expect(screen.getAllByRole('link', { name: /Open Stock Portfolio/i })).toHaveLength(1)
+  })
 })
