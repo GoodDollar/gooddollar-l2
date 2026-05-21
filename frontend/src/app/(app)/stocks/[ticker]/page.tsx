@@ -88,27 +88,27 @@ export default function StockDetailPage() {
   const chartMounted = useMounted()
 
   const chartData = useMemo(() => {
-    if (!stock) return []
+    if (!stock || !chartMounted) return []
     return getChartData(stock.ticker, timeframe, stock.price)
-  }, [stock, timeframe])
+  }, [chartMounted, stock, timeframe])
   const dayRange = useMemo(() => {
-    if (!stock) return null
+    if (!stock || !chartMounted) return null
     const intraday = getChartData(stock.ticker, '1D', stock.price)
     if (intraday.length === 0) return null
     const low = intraday.reduce((acc, candle) => Math.min(acc, candle.low), Number.POSITIVE_INFINITY)
     const high = intraday.reduce((acc, candle) => Math.max(acc, candle.high), Number.NEGATIVE_INFINITY)
     if (!Number.isFinite(low) || !Number.isFinite(high)) return null
     return { low, high }
-  }, [stock])
+  }, [chartMounted, stock])
   const performanceSummary = useMemo(() => {
-    if (chartData.length < 2) return null
+    if (!chartMounted || chartData.length < 2) return null
     const firstClose = chartData[0]?.close ?? 0
     const lastClose = chartData[chartData.length - 1]?.close ?? 0
     if (!Number.isFinite(firstClose) || firstClose <= 0 || !Number.isFinite(lastClose)) return null
     const changeAbs = lastClose - firstClose
     const changePct = (changeAbs / firstClose) * 100
     return { changeAbs, changePct, label: TIMEFRAME_LABEL[timeframe] }
-  }, [chartData, timeframe])
+  }, [chartData, chartMounted, timeframe])
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])

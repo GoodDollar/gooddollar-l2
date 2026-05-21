@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks detail hydration now stays SSR/client-consistent for initial chart-derived metrics (performance summary + day range), removing hydration mismatch/Suspense fallback rerenders that were degrading first-load stability on `/stocks/[ticker]`.
 - Stocks detail now includes an in-page `Switch symbol` control (desktop inline + mobile toggle) so users can jump directly between tickers without returning to the markets table.
 - Stocks detail chart now shows a prominent timeframe performance summary (for example `+/-X.XX% Past 3 Months`) that updates as users switch timeframe tabs.
 - Stocks detail quote header now includes explicit market context (`USD`, source, freshness) and Key Statistics now includes an intraday `Day Range` row with graceful fallback when data is unavailable.
