@@ -1,15 +1,18 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const push = vi.fn()
+const replace = vi.fn()
 const walletState = { address: undefined as `0x${string}` | undefined }
 const stocksState = { isLive: true }
 const mountedState = { mounted: true }
+const searchParamsState = { value: '' }
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push }),
-  useSearchParams: () => new URLSearchParams(''),
+  useRouter: () => ({ push, replace }),
+  usePathname: () => '/stocks',
+  useSearchParams: () => new URLSearchParams(searchParamsState.value),
   useParams: () => ({}),
 }))
 
@@ -90,6 +93,14 @@ vi.mock('@/lib/useOnChainStocks', () => ({
 import StocksPage from '../page'
 
 describe('StocksPage search resilience', () => {
+  beforeEach(() => {
+    push.mockClear()
+    replace.mockClear()
+    mountedState.mounted = true
+    stocksState.isLive = true
+    searchParamsState.value = ''
+  })
+
   it('keeps search input non-interactive until mounted to avoid pre-hydration drop', () => {
     mountedState.mounted = false
 
@@ -100,6 +111,22 @@ describe('StocksPage search resilience', () => {
     )
 
     expect(screen.getByPlaceholderText('Search stocks...')).toBeDisabled()
+  })
+
+  it('hydrates search, filters, and sort from URL query params', () => {
+    searchParamsState.value = 'search=NV&sector=Technology&cap=mega&momentum=gainers&liquidity=active&sortField=price&sortDir=asc'
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>,
+    )
+
+    expect((screen.getByPlaceholderText('Search stocks...') as HTMLInputElement).value).toBe('NV')
+    expect((screen.getByLabelText('Filter by sector') as HTMLSelectElement).value).toBe('Technology')
+    expect((screen.getByLabelText('Filter by market cap') as HTMLSelectElement).value).toBe('mega')
+    expect((screen.getByLabelText('Filter by momentum') as HTMLSelectElement).value).toBe('gainers')
+    expect((screen.getByLabelText('Filter by liquidity') as HTMLSelectElement).value).toBe('active')
   })
 
   it('shows no-results state for nonsense search once mounted', () => {
@@ -186,5 +213,32 @@ describe('StocksPage search resilience', () => {
     expect(screen.queryByRole('button', { name: /Sector: Healthcare/i })).toBeNull()
     expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
     expect(screen.getAllByText('MSFT').length).toBeGreaterThan(0)
+  })
+
+  it('preserves active screener query params when previewing a ticker', () => {
+    stocksState.isLive = false
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Search stocks...'), { target: { value: 'AAPL' } })
+    fireEvent.change(screen.getByLabelText('Filter by sector'), { target: { value: 'Technology' } })
+    fireEvent.change(screen.getByLabelText('Filter by market cap'), { target: { value: 'mega' } })
+    fireEvent.change(screen.getByLabelText('Filter by momentum'), { target: { value: 'gainers' } })
+    fireEvent.change(screen.getByLabelText('Filter by liquidity'), { target: { value: 'active' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /Preview AAPL — demo data/i }))
+
+    expect(push).toHaveBeenCalled()
+    const pushed = push.mock.calls.at(-1)?.[0] as string
+    expect(pushed).toContain('/stocks/AAPL?')
+    expect(pushed).toContain('search=AAPL')
+    expect(pushed).toContain('sector=Technology')
+    expect(pushed).toContain('cap=mega')
+    expect(pushed).toContain('momentum=gainers')
+    expect(pushed).toContain('liquidity=active')
   })
 })

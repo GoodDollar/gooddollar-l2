@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, memo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, memo, useCallback, useEffect } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
@@ -10,6 +10,10 @@ import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { useMounted } from '@/lib/useMounted'
+import {
+  parseStocksScreenerState,
+  serializeStocksScreenerState,
+} from './screenerQueryState'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -110,15 +114,21 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, onRowClick }: Stoc
 
 export default function StocksPage() {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { address } = useAccount()
   const mounted = useMounted()
-  const [query, setQuery] = useState('')
-  const [sortField, setSortField] = useState<SortField>('marketCap')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [sectorFilter, setSectorFilter] = useState<string>('all')
-  const [capFilter, setCapFilter] = useState<CapFilter>('all')
-  const [momentumFilter, setMomentumFilter] = useState<MomentumFilter>('all')
-  const [liquidityFilter, setLiquidityFilter] = useState<LiquidityFilter>('all')
+  const initialScreenerState = useMemo(
+    () => parseStocksScreenerState(searchParams),
+    [searchParams],
+  )
+  const [query, setQuery] = useState(initialScreenerState.query)
+  const [sortField, setSortField] = useState<SortField>(initialScreenerState.sortField)
+  const [sortDir, setSortDir] = useState<SortDir>(initialScreenerState.sortDir)
+  const [sectorFilter, setSectorFilter] = useState<string>(initialScreenerState.sectorFilter)
+  const [capFilter, setCapFilter] = useState<CapFilter>(initialScreenerState.capFilter)
+  const [momentumFilter, setMomentumFilter] = useState<MomentumFilter>(initialScreenerState.momentumFilter)
+  const [liquidityFilter, setLiquidityFilter] = useState<LiquidityFilter>(initialScreenerState.liquidityFilter)
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
 
   const sectors = useMemo(() => (
@@ -168,6 +178,25 @@ export default function StocksPage() {
   const activeFilterCount = Number(sectorFilter !== 'all') + Number(capFilter !== 'all') + Number(momentumFilter !== 'all') + Number(liquidityFilter !== 'all')
   const hasSearchQuery = query.trim().length > 0
   const hasActiveFilters = activeFilterCount > 0
+  const screenerQueryString = useMemo(() => {
+    return serializeStocksScreenerState({
+      query,
+      sortField,
+      sortDir,
+      sectorFilter,
+      capFilter,
+      momentumFilter,
+      liquidityFilter,
+    }).toString()
+  }, [query, sortField, sortDir, sectorFilter, capFilter, momentumFilter, liquidityFilter])
+
+  useEffect(() => {
+    const current = searchParams.toString()
+    if (current === screenerQueryString) return
+
+    const nextUrl = screenerQueryString ? `${pathname}?${screenerQueryString}` : pathname
+    router.replace(nextUrl, { scroll: false })
+  }, [pathname, router, screenerQueryString, searchParams])
 
   const clearAllFilters = () => {
     setSectorFilter('all')
@@ -197,9 +226,14 @@ export default function StocksPage() {
         ? 'Clear search'
         : null
 
+  const pushTickerRoute = useCallback((ticker: string) => {
+    const next = screenerQueryString ? `/stocks/${ticker}?${screenerQueryString}` : `/stocks/${ticker}`
+    router.push(next)
+  }, [router, screenerQueryString])
+
   const handleRowClick = useCallback((ticker: string) => {
-    router.push(`/stocks/${ticker}`)
-  }, [router])
+    pushTickerRoute(ticker)
+  }, [pushTickerRoute])
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -233,7 +267,7 @@ export default function StocksPage() {
                 <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
               </div>
               <button
-                onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
+                onClick={() => pushTickerRoute(data[0]?.ticker || 'AAPL')}
                 className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
               >
                 Connect Wallet to Trade Stocks
@@ -257,7 +291,7 @@ export default function StocksPage() {
                 <p className="text-[11px] sm:text-xs text-gray-400 mt-2">Preview a stock to see the trade UI. Trading will unlock once the oracle is reachable.</p>
               </div>
               <button
-                onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
+                onClick={() => pushTickerRoute(data[0]?.ticker || 'AAPL')}
                 className="shrink-0 px-4 py-2.5 rounded-xl bg-dark-100 text-gray-200 border border-gray-700/40 font-semibold text-sm hover:bg-dark-50/40 transition"
                 aria-label="Preview stocks demo"
               >
