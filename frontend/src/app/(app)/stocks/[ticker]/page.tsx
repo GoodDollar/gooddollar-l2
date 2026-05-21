@@ -26,6 +26,8 @@ import { RebalanceSyncPanel } from '@/components/stocks/RebalanceSyncPanel'
 import { OracleUnavailableBanner } from '@/components/stocks/OracleUnavailableBanner'
 import { RebalanceErrorBoundary } from '@/components/stocks/RebalanceErrorBoundary'
 import { ExposureNettingPanel } from '@/components/stocks/ExposureNettingPanel'
+import { AmmTradingPanel } from '@/components/stocks/AmmTradingPanel'
+import { getMarketHoursState } from '@/lib/ammPricing'
 import {
   type SymbolExposureSummary,
   aggregateExposure,
@@ -161,6 +163,7 @@ export default function StockDetailPage() {
     () => computePortfolioDelta(exposureSummaries),
     [exposureSummaries],
   )
+  const marketState = useMemo(() => getMarketHoursState(new Date()), [])
   const timeframeTabRefs = useRef<Record<Timeframe, HTMLButtonElement | null>>({
     '1D': null,
     '1W': null,
@@ -507,6 +510,15 @@ export default function StockDetailPage() {
               portfolioDelta={portfolioDelta}
             />
           )}
+
+          <AmmTradingPanel
+            oraclePrice={stock.price}
+            inventoryLong={stock.volume24h * 0.6}
+            inventoryShort={stock.volume24h * 0.4}
+            poolLiquidity={stock.volume24h * 2}
+            marketState={marketState}
+            ticker={stock.ticker}
+          />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
