@@ -11,6 +11,7 @@ import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
+import { MarketSessionBadge } from '@/components/stocks/MarketSessionBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { useMounted } from '@/lib/useMounted'
 import {
@@ -280,7 +281,10 @@ export default function StocksPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Tokenized Stocks</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold text-white">Tokenized Stocks</h1>
+              <MarketSessionBadge />
+            </div>
             <p className="text-sm text-gray-400">Trade synthetic equities 24/7 with fractional shares. Every trade funds UBI.</p>
           </div>
         </div>
