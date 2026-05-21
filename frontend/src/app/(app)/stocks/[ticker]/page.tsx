@@ -91,6 +91,7 @@ export default function StockDetailPage() {
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
   const [symbolQuery, setSymbolQuery] = useState('')
+  const [symbolError, setSymbolError] = useState('')
   const [showMobileSwitcher, setShowMobileSwitcher] = useState(false)
   const [analystLoading, setAnalystLoading] = useState(true)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
@@ -181,12 +182,23 @@ export default function StockDetailPage() {
     return () => clearTimeout(timer)
   }, [ticker])
 
+  useEffect(() => {
+    if (!symbolError) return
+    const timer = setTimeout(() => setSymbolError(''), 3000)
+    return () => clearTimeout(timer)
+  }, [symbolError])
+
   function navigateToSymbol(raw: string) {
     const q = raw.trim().toUpperCase()
     if (!q) return
     const selected = switchableSymbols.find((s) => s.ticker === q || s.name.toUpperCase() === q)
       ?? switchableSymbols.find((s) => s.ticker.startsWith(q) || s.name.toUpperCase().startsWith(q))
-    if (!selected || selected.ticker === ticker) return
+    if (!selected) {
+      setSymbolError(`"${q}" not found — try a valid ticker`)
+      return
+    }
+    if (selected.ticker === ticker) return
+    setSymbolError('')
     router.push(`/stocks/${selected.ticker}`)
     setSymbolQuery('')
     setShowMobileSwitcher(false)
@@ -262,7 +274,7 @@ export default function StockDetailPage() {
                 type="text"
                 value={symbolQuery}
                 list="stock-symbol-switch-options"
-                onChange={(e) => setSymbolQuery(e.target.value)}
+                onChange={(e) => { setSymbolQuery(e.target.value); setSymbolError('') }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
@@ -281,6 +293,9 @@ export default function StockDetailPage() {
                 Go
               </button>
             </div>
+            {symbolError && !showMobileSwitcher && (
+              <p className="text-red-400/80 text-xs mt-1 hidden sm:block">{symbolError}</p>
+            )}
             <div className="sm:hidden">
               <button
                 type="button"
@@ -290,29 +305,34 @@ export default function StockDetailPage() {
                 Switch Symbol
               </button>
               {showMobileSwitcher && (
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={symbolQuery}
-                    list="stock-symbol-switch-options"
-                    onChange={(e) => setSymbolQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        navigateToSymbol(symbolQuery)
-                      }
-                    }}
-                    placeholder="Type ticker"
-                    aria-label="Switch stock symbol mobile"
-                    className="flex-1 rounded-lg border border-gray-700/40 bg-dark-50/60 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-goodgreen/60 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => navigateToSymbol(symbolQuery)}
-                    className="rounded-lg bg-goodgreen/20 px-3 py-2 text-xs font-semibold text-goodgreen"
-                  >
-                    Go
-                  </button>
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={symbolQuery}
+                      list="stock-symbol-switch-options"
+                      onChange={(e) => { setSymbolQuery(e.target.value); setSymbolError('') }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          navigateToSymbol(symbolQuery)
+                        }
+                      }}
+                      placeholder="Type ticker"
+                      aria-label="Switch stock symbol mobile"
+                      className="flex-1 rounded-lg border border-gray-700/40 bg-dark-50/60 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-goodgreen/60 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => navigateToSymbol(symbolQuery)}
+                      className="rounded-lg bg-goodgreen/20 px-3 py-2 text-xs font-semibold text-goodgreen"
+                    >
+                      Go
+                    </button>
+                  </div>
+                  {symbolError && (
+                    <p className="text-red-400/80 text-xs mt-1">{symbolError}</p>
+                  )}
                 </div>
               )}
             </div>
