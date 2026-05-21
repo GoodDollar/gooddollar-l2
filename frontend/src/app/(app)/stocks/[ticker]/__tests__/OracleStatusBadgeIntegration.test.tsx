@@ -74,6 +74,40 @@ describe('Stock detail page OracleStatusBadge integration', () => {
     expect(screen.queryByText('Oracle offline')).not.toBeInTheDocument()
   })
 
+  it('does not flash Oracle offline before fallback health resolves (rapid route churn guard)', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+
+    let resolveFetch: ((value: Response) => void) | null = null
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+
+    render(<OracleStatusBadge variant="detail" symbol="AAPL" useStocksFallback />)
+
+    expect(screen.getByText('Checking oracle...')).toBeInTheDocument()
+    expect(screen.queryByText('Oracle offline')).not.toBeInTheDocument()
+
+    resolveFetch?.(
+      new Response(
+        JSON.stringify({
+          overall: 'healthy',
+          services: [{ name: 'stocks-keeper', status: 'ok', lastChecked: new Date().toISOString() }],
+        }),
+        { status: 200 },
+      ),
+    )
+
+    await waitFor(() => expect(screen.getByText('Live')).toBeInTheDocument())
+    expect(screen.queryByText('Oracle offline')).not.toBeInTheDocument()
+  })
+
   it('still surfaces Oracle offline when both the primary quote status and stocks-keeper fallback fail', async () => {
     vi.mocked(usePriceServiceStatus).mockReturnValue({
       status: null,

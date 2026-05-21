@@ -20,7 +20,7 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 
 POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candidate. The product app, public RPC, faucet, protocol pages, analytics, feedback path, Paperclip agent dashboard, Explorer / Blockscout, and 12 backend health services are online. Explorer was restored at `2026-05-19 07:54 UTC` after the Blockscout web/proxy containers had exited; it remains an alpha hardening watch item, but is no longer a public `502` blocker.
 
-### Recent UX polish (updated: 2026-05-20)
+### Recent UX polish (updated: 2026-05-21)
 
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
 - Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with an in-context `Connect Wallet to View UBI Impact` CTA instead of misleading `0% — Critical` risk framing.
@@ -32,6 +32,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 - Stocks detail now includes a `News & Events` panel with per-ticker catalyst headlines, tags, source attribution, and empty/error fallbacks so users can keep context in-app.
 - Stocks detail sidebar now includes stocks-native discovery modules (`Related symbols` + `Daily movers`) so users can jump directly into adjacent opportunities without leaving the stocks flow.
 - Stocks portfolio now defers heavy impact widgets behind a non-blocking skeleton and enforces a route bundle budget check; latest build reduced `/stocks/portfolio` First Load JS from ~410 kB to ~258 kB.
+- Stocks detail oracle badge now avoids false `Oracle offline` states during rapid ticker hops (for example AAPL → MSFT → AAPL) by showing an explicit `Checking oracle...` transitional state until fallback health resolves.
 
 ### POC V1 live endpoints
 
