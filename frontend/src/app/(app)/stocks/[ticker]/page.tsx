@@ -22,6 +22,7 @@ import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
+import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
@@ -387,6 +388,21 @@ export default function StockDetailPage() {
     }
   }, [activeTab, searchParams])
 
+  useEffect(() => {
+    const rawTab = searchParams.get('tab')
+    if (rawTab === null) return
+    const canonicalTab = parseTickerTab(rawTab)
+    if (rawTab === canonicalTab) return
+    const nextParams = new URLSearchParams(searchParams.toString())
+    if (canonicalTab === 'overview') {
+      nextParams.delete('tab')
+    } else {
+      nextParams.set('tab', canonicalTab)
+    }
+    const next = nextParams.toString()
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams])
+
   const handleTabChange = (nextTab: TickerTab) => {
     setActiveTab(nextTab)
     const nextParams = new URLSearchParams(searchParams.toString())
@@ -430,6 +446,7 @@ export default function StockDetailPage() {
       <Link href="/stocks" prefetch={false} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
         <span>←</span> Back to Stocks
       </Link>
+      <WalletConnectConfigWarning className="mb-4" />
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-4">

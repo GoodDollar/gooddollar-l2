@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
+let currentSearchParams = ''
+const replace = vi.fn()
 let chartPoints: Array<{ time: string; open: number; high: number; low: number; close: number; volume: number }> = []
 let currentStocks: Array<{
   ticker: string
@@ -42,8 +44,8 @@ const makeStock = () => ({
 vi.mock('next/navigation', () => ({
   useParams: () => currentParams,
   usePathname: () => '/stocks/AAPL',
-  useSearchParams: () => new URLSearchParams(''),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(currentSearchParams),
+  useRouter: () => ({ push: vi.fn(), replace }),
 }))
 
 vi.mock('next/link', () => ({
@@ -83,6 +85,8 @@ import StockDetailPage from '../page'
 describe('StockDetailPage invalid ticker messaging hardening', () => {
   beforeEach(() => {
     currentParams = {}
+    currentSearchParams = ''
+    replace.mockReset()
     chartPoints = []
     currentStocks = []
   })
@@ -229,6 +233,17 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.queryByRole('link', { name: /Explore crypto tokens/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /Trade crypto perpetual futures/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /Prediction markets/i })).toBeNull()
+  })
+
+  it('normalizes invalid tab query params to canonical fallback URL', async () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    currentSearchParams = 'tab=unknown'
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith('/stocks/AAPL', { scroll: false })
+    })
   })
 
   it('renders analysis section with trend fallback when chart data is unavailable', () => {
