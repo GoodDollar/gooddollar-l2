@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
@@ -79,6 +79,36 @@ const DeferredRelatedMoversPanel = dynamic(
     ),
   },
 )
+
+function useBelowFoldActivation() {
+  const [isActive, setIsActive] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (isActive) return
+    const node = ref.current
+    if (!node) return
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsActive(true)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsActive(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '240px 0px' },
+    )
+    observer.observe(node)
+
+    return () => observer.disconnect()
+  }, [isActive])
+
+  return [isActive, ref] as const
+}
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -344,6 +374,8 @@ export default function StockDetailPage() {
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
+  const [showNewsPanel, newsPanelRef] = useBelowFoldActivation()
+  const [showRelatedPanel, relatedPanelRef] = useBelowFoldActivation()
 
   useEffect(() => {
     setAnalystLoading(true)
@@ -507,12 +539,25 @@ export default function StockDetailPage() {
             </div>
           )}
 
-          <DeferredNewsEventsPanel
-            ticker={stock.ticker}
-            isLoading={newsLoading}
-            error={newsError}
-            items={newsItems}
-          />
+          <div ref={newsPanelRef}>
+            {showNewsPanel ? (
+              <DeferredNewsEventsPanel
+                ticker={stock.ticker}
+                isLoading={newsLoading}
+                error={newsError}
+                items={newsItems}
+              />
+            ) : (
+              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4 animate-pulse">
+                <div className="h-4 w-28 bg-dark-50 rounded mb-3" />
+                <div className="space-y-2.5">
+                  <div className="h-3 w-full bg-dark-50 rounded" />
+                  <div className="h-3 w-5/6 bg-dark-50 rounded" />
+                  <div className="h-3 w-3/4 bg-dark-50 rounded" />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div
@@ -559,11 +604,24 @@ export default function StockDetailPage() {
             )}
           </div>
 
-          <DeferredRelatedMoversPanel
-            currentTicker={stock.ticker}
-            related={relatedSymbols}
-            movers={topMovers}
-          />
+          <div ref={relatedPanelRef}>
+            {showRelatedPanel ? (
+              <DeferredRelatedMoversPanel
+                currentTicker={stock.ticker}
+                related={relatedSymbols}
+                movers={topMovers}
+              />
+            ) : (
+              <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5 animate-pulse">
+                <div className="h-4 w-36 bg-dark-50 rounded mb-3" />
+                <div className="space-y-2">
+                  <div className="h-9 w-full bg-dark-50 rounded-lg" />
+                  <div className="h-9 w-full bg-dark-50 rounded-lg" />
+                  <div className="h-9 w-full bg-dark-50 rounded-lg" />
+                </div>
+              </div>
+            )}
+          </div>
 
           {hasPosition ? (
             <div className="mt-4 bg-dark-100/50 rounded-2xl border border-gray-700/10 p-4">

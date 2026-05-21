@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks detail now gates below-the-fold `News & Events` and `Related symbols / Daily movers` modules behind viewport-triggered activation so their chunks are not fetched on initial `/stocks/[ticker]` load.
 - Stocks oracle fallback status checks now use shared in-flight + short-lived cache dedupe, preventing repeated `/api/status` bursts during fast `Markets`/`Portfolio` navigation while preserving `Live`/`degraded`/`offline` badge behavior.
 - Stocks performance checks now include dedicated route bundle budgets for `/stocks`, `/stocks/[ticker]`, and `/stocks/portfolio`, and the disconnected onboarding panel + oracle badge on `/stocks` are deferred so discovery UI renders before non-critical wallet/status modules.
 - Stocks portfolio empty-state impact cards now use balanced full-height composition on desktop/mobile so disconnected layouts no longer show an unfinished dead-space gap between top cards and the holdings section.
