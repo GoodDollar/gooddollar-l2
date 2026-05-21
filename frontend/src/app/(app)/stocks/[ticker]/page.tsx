@@ -28,6 +28,7 @@ import { PriceChart } from '@/components/PriceChart'
 import { DepthChart } from '@/components/stocks/DepthChart'
 import { StockMarketData } from '@/components/stocks/StockMarketData'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { StockStatsBar } from '@/components/stocks/StockStatsBar'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
 // NOTE: Keep these imports STATIC. Inside an App Router dynamic-segment
@@ -585,6 +586,8 @@ export default function StockDetailPage() {
               />
             ) : null}
           </div>
+
+          <StockStatsBar stock={stock} />
 
           <AnalystOutlookCard
             currentPrice={stock.price}
