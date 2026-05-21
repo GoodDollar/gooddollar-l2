@@ -61,6 +61,7 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 }
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
+type PeerMetric = 'change24h' | 'marketCap' | 'peRatio'
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
@@ -281,6 +282,8 @@ export default function StockDetailPage() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
+  const [analysisExpanded, setAnalysisExpanded] = useState(true)
+  const [peerMetric, setPeerMetric] = useState<PeerMetric>('change24h')
   const [analystLoading, setAnalystLoading] = useState(true)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
@@ -295,6 +298,25 @@ export default function StockDetailPage() {
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
+  const peerCandidates = useMemo(() => {
+    if (!stock) return []
+    const directPeers = relatedSymbols.length > 0 ? relatedSymbols : topMovers.filter((candidate) => candidate.ticker !== stock.ticker)
+    return directPeers.slice(0, 5)
+  }, [relatedSymbols, stock, topMovers])
+  const trendSummary = useMemo(() => {
+    if (!chartData.length) return null
+    const first = chartData[0]?.close ?? 0
+    const last = chartData[chartData.length - 1]?.close ?? 0
+    if (first <= 0 || last <= 0) return null
+    const changePct = ((last - first) / first) * 100
+    let signal: 'Bullish' | 'Neutral' | 'Bearish' = 'Neutral'
+    if (changePct > 2) signal = 'Bullish'
+    if (changePct < -2) signal = 'Bearish'
+    const high = Math.max(...chartData.map((point) => point.high))
+    const low = Math.min(...chartData.map((point) => point.low))
+    const spreadPct = first > 0 ? ((high - low) / first) * 100 : 0
+    return { signal, changePct, spreadPct }
+  }, [chartData])
 
   useEffect(() => {
     setAnalystLoading(true)
@@ -431,6 +453,97 @@ export default function StockDetailPage() {
               </div>
             </div>
           </div>
+
+          <section className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4" aria-labelledby="analysis-heading">
+            <div className="flex items-center justify-between gap-2">
+              <h2 id="analysis-heading" className="text-sm font-semibold text-white">Analysis</h2>
+              <button
+                type="button"
+                className="text-xs text-gray-400 hover:text-white transition-colors"
+                onClick={() => setAnalysisExpanded((open) => !open)}
+                aria-expanded={analysisExpanded}
+              >
+                {analysisExpanded ? 'Collapse' : 'Expand'}
+              </button>
+            </div>
+            {analysisExpanded && (
+              <div className="mt-4 space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Valuation</div>
+                    <div className="mt-1 text-sm font-medium text-white">P/E {stock.peRatio.toFixed(1)}x</div>
+                  </div>
+                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Profitability</div>
+                    <div className={`mt-1 text-sm font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>EPS ${stock.eps.toFixed(2)}</div>
+                  </div>
+                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Income</div>
+                    <div className="mt-1 text-sm font-medium text-white">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}% yield` : 'No dividend'}</div>
+                  </div>
+                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Liquidity</div>
+                    <div className="mt-1 text-sm font-medium text-white">{formatLargeNumber(stock.avgVolume).replace('$', '')} avg vol</div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300">Peer Compare</h3>
+                    <div className="flex flex-wrap gap-1">
+                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'change24h' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('change24h')}>24h%</button>
+                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'marketCap' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('marketCap')}>Mkt Cap</button>
+                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'peRatio' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('peRatio')}>P/E</button>
+                    </div>
+                  </div>
+                  {peerCandidates.length === 0 ? (
+                    <p className="text-xs text-gray-500">Peer data unavailable right now.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {peerCandidates
+                        .toSorted((a, b) => (b[peerMetric] - a[peerMetric]))
+                        .map((peer) => (
+                          <div key={peer.ticker} className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2 text-xs">
+                            <Link href={`/stocks/${peer.ticker}`} className="font-medium text-white hover:text-goodgreen transition-colors">{peer.ticker}</Link>
+                            {peerMetric === 'change24h' && (
+                              <span className={peer.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                {peer.change24h >= 0 ? '+' : ''}{peer.change24h.toFixed(2)}%
+                              </span>
+                            )}
+                            {peerMetric === 'marketCap' && <span className="text-gray-200">{formatLargeNumber(peer.marketCap)}</span>}
+                            {peerMetric === 'peRatio' && <span className="text-gray-200">{peer.peRatio.toFixed(1)}x</span>}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300 mb-2">Trend Summary</h3>
+                  {!trendSummary ? (
+                    <p className="text-xs text-gray-500">Trend signal unavailable while chart data loads.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
+                        <div className="text-gray-500">Signal</div>
+                        <div className={`mt-1 font-semibold ${trendSummary.signal === 'Bullish' ? 'text-green-400' : trendSummary.signal === 'Bearish' ? 'text-red-400' : 'text-gray-200'}`}>{trendSummary.signal}</div>
+                      </div>
+                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
+                        <div className="text-gray-500">{timeframe} move</div>
+                        <div className={`mt-1 font-semibold ${trendSummary.changePct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {trendSummary.changePct >= 0 ? '+' : ''}{trendSummary.changePct.toFixed(2)}%
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
+                        <div className="text-gray-500">Range spread</div>
+                        <div className="mt-1 font-semibold text-gray-200">{trendSummary.spreadPct.toFixed(2)}%</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
 
           {stock.description && (
             <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">

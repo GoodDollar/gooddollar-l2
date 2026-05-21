@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
+let chartPoints: Array<{ time: string; open: number; high: number; low: number; close: number; volume: number }> = []
 let currentStocks: Array<{
   ticker: string
   name: string
@@ -54,7 +55,7 @@ vi.mock('@/components/PriceChart', () => ({
 }))
 
 vi.mock('@/lib/chartData', () => ({
-  getChartData: () => [],
+  getChartData: () => chartPoints,
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
@@ -80,6 +81,7 @@ import StockDetailPage from '../page'
 describe('StockDetailPage invalid ticker messaging hardening', () => {
   beforeEach(() => {
     currentParams = {}
+    chartPoints = []
     currentStocks = []
   })
 
@@ -216,5 +218,50 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.queryByRole('link', { name: /Explore crypto tokens/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /Trade crypto perpetual futures/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /Prediction markets/i })).toBeNull()
+  })
+
+  it('renders analysis section with trend fallback when chart data is unavailable', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByRole('heading', { name: /Analysis/i })).toBeTruthy()
+    expect(screen.getByText(/Trend signal unavailable while chart data loads/i)).toBeTruthy()
+    expect(screen.getByText(/P\/E 29.4x/i)).toBeTruthy()
+  })
+
+  it('supports peer metric switching in analysis section', () => {
+    currentStocks = [
+      makeStock(),
+      {
+        ...makeStock(),
+        ticker: 'MSFT',
+        name: 'Microsoft',
+        sector: 'Technology',
+        marketCap: 2800000000000,
+        peRatio: 35.2,
+      },
+      {
+        ...makeStock(),
+        ticker: 'NVDA',
+        name: 'NVIDIA',
+        sector: 'Technology',
+        marketCap: 2500000000000,
+        peRatio: 44.5,
+      },
+    ]
+    chartPoints = [
+      { time: '2026-05-01', open: 180, high: 182, low: 178, close: 180, volume: 1_000_000 },
+      { time: '2026-05-02', open: 180, high: 189, low: 179, close: 188, volume: 1_300_000 },
+      { time: '2026-05-03', open: 188, high: 193, low: 186, close: 191, volume: 1_500_000 },
+    ]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mkt Cap' }))
+    expect(screen.getAllByText('MSFT').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'P/E' }))
+    expect(screen.getAllByText('NVDA').length).toBeGreaterThan(0)
   })
 })
