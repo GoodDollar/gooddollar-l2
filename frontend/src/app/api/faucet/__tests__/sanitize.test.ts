@@ -77,11 +77,8 @@ describe('sanitizeFaucetError', () => {
   it('is robust to non-string input', () => {
     // The route catches `unknown` errors, so the helper should not throw
     // even if called with a non-string.
-    // @ts-expect-error — testing runtime resilience
     expect(sanitizeFaucetError(undefined)).toMatch(FIXED_MSG)
-    // @ts-expect-error — testing runtime resilience
     expect(sanitizeFaucetError(null)).toMatch(FIXED_MSG)
-    // @ts-expect-error — testing runtime resilience
     expect(sanitizeFaucetError(42)).toMatch(FIXED_MSG)
   })
 })
@@ -121,11 +118,8 @@ describe('shortenAddress', () => {
   })
 
   it('returns "unknown" when passed null/undefined/non-string', () => {
-    // @ts-expect-error — testing runtime resilience
     expect(shortenAddress(undefined)).toBe('unknown')
-    // @ts-expect-error — testing runtime resilience
     expect(shortenAddress(null)).toBe('unknown')
-    // @ts-expect-error — testing runtime resilience
     expect(shortenAddress(0x123)).toBe('unknown')
   })
 })

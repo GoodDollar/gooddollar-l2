@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { NextRequest } from 'next/server'
 
 const VALID_PRIVKEY = '0x' + 'a'.repeat(64)
 
@@ -35,7 +36,7 @@ function makeRequest(body: BodyInit | null, contentType = 'application/json') {
     method: 'POST',
     headers: { 'content-type': contentType },
     body,
-  })
+  }) as unknown as NextRequest
 }
 
 describe('POST /api/faucet — boundary errors', () => {

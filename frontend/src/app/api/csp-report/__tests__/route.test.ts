@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { NextRequest } from 'next/server'
 import { POST } from '../route'
 
 function makeRequest(body: unknown, contentType = 'application/csp-report') {
@@ -6,7 +7,7 @@ function makeRequest(body: unknown, contentType = 'application/csp-report') {
     method: 'POST',
     headers: { 'Content-Type': contentType },
     body: JSON.stringify(body),
-  })
+  }) as unknown as NextRequest
 }
 
 describe('POST /api/csp-report', () => {
@@ -69,7 +70,7 @@ describe('POST /api/csp-report', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/csp-report' },
         body: 'not json',
-      }),
+      }) as unknown as NextRequest,
     )
 
     expect(res.status).toBe(204)

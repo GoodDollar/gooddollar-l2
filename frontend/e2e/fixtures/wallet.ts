@@ -23,18 +23,23 @@ const BROWSER_RPC_URL = '/api/rpc'
  * `eth_accounts` / `eth_requestAccounts` with the tester address, and
  * handles `eth_chainId` / `wallet_switchEthereumChain` locally.
  */
-export async function injectMockWallet(page: Page) {
+type MockWalletOptions = {
+  chainId?: number
+}
+
+export async function injectMockWallet(page: Page, options: MockWalletOptions = {}) {
   await page.addInitScript(
     ({ address, chainId, rpcUrl }) => {
-      const chainHex = `0x${chainId.toString(16)}`
+      let activeChainId = chainId
+      const toChainHex = (id: number) => `0x${id.toString(16)}`
 
       const listeners: Record<string, Array<(...args: unknown[]) => void>> = {}
 
       const mockEthereum = {
         isMetaMask: true,
         selectedAddress: address,
-        chainId: chainHex,
-        networkVersion: String(chainId),
+        chainId: toChainHex(activeChainId),
+        networkVersion: String(activeChainId),
         _isMock: true,
 
         on(event: string, fn: (...args: unknown[]) => void) {
@@ -70,14 +75,15 @@ export async function injectMockWallet(page: Page) {
               return [address]
 
             case 'eth_chainId':
-              return chainHex
+              return toChainHex(activeChainId)
 
             case 'net_version':
-              return String(chainId)
+              return String(activeChainId)
 
             case 'wallet_switchEthereumChain': {
-              // Record the call so E2E tests can assert wrong-chain recovery
-              // attempted the canonical EIP-3326 wallet switch flow.
+              // Record and apply the call so wrong-chain recovery tests can
+              // assert both the canonical EIP-3326 request and EIP-1193
+              // `chainChanged` notification that dApps depend on.
               const w = window as unknown as {
                 __switchEthereumChainCalls?: unknown[]
               }
@@ -85,6 +91,16 @@ export async function injectMockWallet(page: Page) {
                 w.__switchEthereumChainCalls = []
               }
               w.__switchEthereumChainCalls.push(params)
+
+              const requestedChainId = (
+                params?.[0] as { chainId?: string } | undefined
+              )?.chainId
+              if (requestedChainId) {
+                activeChainId = Number.parseInt(requestedChainId, 16)
+                mockEthereum.chainId = requestedChainId
+                mockEthereum.networkVersion = String(activeChainId)
+                mockEthereum.emit('chainChanged', requestedChainId)
+              }
               return null
             }
 
@@ -170,7 +186,7 @@ export async function injectMockWallet(page: Page) {
       window.addEventListener('eip6963:requestProvider', announceProvider)
       announceProvider()
     },
-    { address: TESTER_ADDRESS, chainId: CHAIN_ID, rpcUrl: BROWSER_RPC_URL },
+    { address: TESTER_ADDRESS, chainId: options.chainId ?? CHAIN_ID, rpcUrl: BROWSER_RPC_URL },
   )
 }
 

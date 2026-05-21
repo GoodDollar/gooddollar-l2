@@ -103,3 +103,12 @@ scripts/report-to-paperclip.sh
 
 # Local JSON-on-disk stores for testnet (predict comments etc.)
 frontend/.data/
+
+# TypeScript can emit JS/declaration artifacts next to cross-package source
+# when a backend package imports a file outside its rootDir. Keep accidental
+# quote-type build outputs out of source control; canonical quote types live
+# inside each package root.
+/backend/shared/quote-types.js
+/backend/shared/quote-types.js.map
+/backend/shared/quote-types.d.ts
+/backend/shared/quote-types.d.ts.map

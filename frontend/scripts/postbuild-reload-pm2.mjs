@@ -38,7 +38,7 @@
  */
 
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { execFileSync, spawnSync } from 'node:child_process'
 
 const TASK_ID = 'task 0087'
@@ -108,6 +108,7 @@ export async function postbuildReloadPm2({
   livePort = 3100,
   healthPollMs = 200,
   healthTimeoutMs = 10000,
+  buildIdSyncTimeoutMs = 10000,
 } = {}) {
   // --- 1. honour the explicit opt-out ----------------------------------------
   if (env.SKIP_PM2_RELOAD === '1') {
@@ -167,14 +168,31 @@ export async function postbuildReloadPm2({
       ].join('\n'),
     }
   }
-  const hasApp = Array.isArray(apps) && apps.some((a) => a?.name === pm2AppName)
-  if (!hasApp) {
+  const app = Array.isArray(apps) ? apps.find((a) => a?.name === pm2AppName) : null
+  if (!app) {
     return {
       exitCode: 0,
       message: [
         `[postbuild-reload-pm2] ${pm2AppName} not registered with PM2 — skipping reload.`,
         `  (run \`pm2 start pm2-ecosystem.config.js\` once to register; until then this`,
         '   build does not need a reload — set SKIP_PM2_RELOAD=1 to silence)',
+      ].join('\n'),
+    }
+  }
+
+  // If a developer or autobuilder is compiling a detached worktree, do not
+  // reload the live PM2 app registered from the production checkout. Reloading
+  // across cwd boundaries can make the live site serve stale or unrelated
+  // artifacts and was the root cause of the integration buildid-sync failure.
+  const appCwd = app?.pm2_env?.pm_cwd
+  if (typeof appCwd === 'string' && resolve(appCwd) !== resolve(cwd)) {
+    return {
+      exitCode: 0,
+      message: [
+        `[postbuild-reload-pm2] ${pm2AppName} is registered from a different cwd — skipping reload.`,
+        `  build cwd: ${resolve(cwd)}`,
+        `  PM2 cwd:   ${resolve(appCwd)}`,
+        '  This is expected for detached integration/lane worktrees.',
       ].join('\n'),
     }
   }
@@ -225,17 +243,28 @@ export async function postbuildReloadPm2({
   }
 
   // --- 7. PROVE the rollover took effect via existing buildid-sync check -----
+  // PM2 reload can return before the replacement Next.js worker is the one
+  // answering :3100. A one-shot buildid probe raced the old worker in the
+  // overnight gate: health was 200, but the live HTML still carried the prior
+  // BUILD_ID for a moment. Treat BUILD_ID parity as the readiness condition and
+  // poll it until the new worker is observably serving the fresh build.
   const syncScript = join(cwd, 'scripts', 'check-buildid-sync.mjs')
-  const sync = spawnSyncImpl('node', [syncScript, '--strict'], {
-    cwd,
-    env: { ...env, NEXT_LIVE_URL: liveUrl },
-  })
+  const syncDeadline = Date.now() + buildIdSyncTimeoutMs
+  let sync = null
+  do {
+    sync = spawnSyncImpl('node', [syncScript, '--strict'], {
+      cwd,
+      env: { ...env, NEXT_LIVE_URL: liveUrl },
+    })
+    if (sync.status === 0) break
+    if (Date.now() < syncDeadline) await sleep(healthPollMs)
+  } while (Date.now() < syncDeadline)
   if (sync.status !== 0) {
     const blob = [sync.stdout, sync.stderr].filter(Boolean).join('\n').trim()
     return {
       exitCode: 1,
       message: [
-        `[postbuild-reload-pm2] FAIL (${TASK_ID}): buildid-sync check failed after reload.`,
+        `[postbuild-reload-pm2] FAIL (${TASK_ID}): buildid-sync check did not pass within ${buildIdSyncTimeoutMs}ms after reload.`,
         blob || '  (no sync output)',
         '  the PM2 process did not pick up the new BUILD_ID.',
         `  ${TRACKING}`,

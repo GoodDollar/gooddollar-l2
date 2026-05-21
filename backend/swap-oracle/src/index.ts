@@ -27,7 +27,7 @@ const RPC_URL = process.env.L2_RPC_URL ?? 'http://localhost:8545';
 const OPERATOR_KEY = process.env.OPERATOR_PRIVATE_KEY ??
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 const ORACLE_ADDRESS = process.env.SWAP_ORACLE_ADDRESS ??
-  '0xde2bd2ffea002b8e84adea96e5976af664115e2c';
+  '0x40a42baf86fc821f972ad2ac878729063ceef403';
 const INTERVAL_MS = parseInt(process.env.UPDATE_INTERVAL_MS ?? '60000', 10);
 const DEVIATION_THRESHOLD_BPS = parseInt(process.env.DEVIATION_BPS ?? '10', 10); // 0.1% min change to update
 
@@ -40,24 +40,19 @@ interface TokenMapping {
 
 const TOKENS: TokenMapping[] = [
   {
-    address: process.env.GDOLLAR_ADDRESS ?? '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+    address: process.env.GDOLLAR_ADDRESS ?? '0x5fbdb2315678afecb367f032d93f642f64180aa3',
     coingeckoId: 'gooddollar',
     symbol: 'G$',
   },
   {
-    address: process.env.WETH_ADDRESS ?? '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+    address: process.env.WETH_ADDRESS ?? '0x8f86403a4de0bb5791fa46b8e795c547942fe4cf',
     coingeckoId: 'ethereum',
     symbol: 'WETH',
   },
   {
-    address: process.env.USDC_ADDRESS ?? '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+    address: process.env.USDC_ADDRESS ?? '0x0e801d84fa97b50751dbf25036d067dcf18858bf',
     coingeckoId: 'usd-coin',
     symbol: 'USDC',
-  },
-  {
-    address: process.env.WBTC_ADDRESS ?? '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
-    coingeckoId: 'wrapped-bitcoin',
-    symbol: 'WBTC',
   },
 ];
 

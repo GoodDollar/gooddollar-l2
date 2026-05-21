@@ -1,0 +1,26 @@
+{
+  "name": "@goodchain/etoro-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript SDK wrapping eToro REST and WebSocket APIs for GoodChain",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.14.0",
+    "@types/ws": "^8.5.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.5.0"
+  }
+}
