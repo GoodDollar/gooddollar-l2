@@ -31,4 +31,15 @@ describe('UBIBanner', () => {
     expect(screen.queryByText(/distributed to/)).not.toBeInTheDocument()
     expect(mockStorage['ubi-banner-dismissed']).toBe('true')
   })
+
+  it('exposes a UBI impact landmark region after mount', async () => {
+    render(<UBIBanner />)
+    // Wait for the banner content to mount
+    await screen.findByText(/distributed to/)
+    // Should be inside a landmark with role="region" and a useful label
+    const region = screen.getByRole('region', { name: /UBI/i })
+    expect(region).toBeInTheDocument()
+    // The dismiss button must remain queryable by its existing aria-label
+    expect(screen.getByLabelText('Dismiss UBI banner')).toBeInTheDocument()
+  })
 })

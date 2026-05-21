@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const push = vi.fn()
+const openConnectModal = vi.fn()
 const walletState = { address: undefined as `0x${string}` | undefined }
 
 vi.mock('next/navigation', () => ({
@@ -18,6 +20,13 @@ vi.mock('wagmi', async (importOriginal) => {
     useAccount: () => walletState,
   }
 })
+
+vi.mock('@rainbow-me/rainbowkit', () => ({
+  ConnectButton: {
+    Custom: ({ children }: { children: (args: { openConnectModal: () => void }) => unknown }) =>
+      children({ openConnectModal }),
+  },
+}))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
   useOnChainStocks: () => ({
@@ -48,6 +57,26 @@ vi.mock('@/lib/useOnChainStocks', () => ({
 import StocksPage from '../page'
 
 describe('StocksPage onboarding CTA', () => {
+  it('opens wallet connect modal from onboarding CTA and keeps browse as a separate action', async () => {
+    walletState.address = undefined
+    openConnectModal.mockClear()
+    push.mockClear()
+
+    const user = userEvent.setup()
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Connect Wallet to Trade Stocks' }))
+    expect(openConnectModal).toHaveBeenCalledTimes(1)
+    expect(push).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Browse a Starter Stock' }))
+    expect(push).toHaveBeenCalledWith('/stocks/AAPL')
+  })
+
   it('shows first-time onboarding CTA when wallet is disconnected', () => {
     walletState.address = undefined
 
@@ -82,18 +111,19 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    const tickerNodes = screen.getAllByText('AAPL')
-    const row = tickerNodes[0]?.closest('div[class*="bg-dark-100"]')
+    const tapBadges = screen.getAllByText('Tap to trade')
+    const row = tapBadges[0]?.closest('div[class*="bg-dark-100"]')
     expect(row).toBeTruthy()
 
     const rightColumn = row?.querySelector('div.text-right')
     expect(rightColumn?.className).toContain('w-[96px]')
     expect(rightColumn?.className).toContain('shrink-0')
 
-    const price = screen.getAllByText('$218.27')[0]
+    const rowScope = within(row as HTMLElement)
+    const price = rowScope.getByText('$218.27')
     expect(price.className).toContain('whitespace-nowrap')
 
-    const name = screen.getAllByText('sAAPL')[0]
+    const name = rowScope.getByText('sAAPL')
     expect(name.className).toContain('max-w-[84px]')
 
     // Ensure rendered "Tap to trade" badge still exists in constrained layout.

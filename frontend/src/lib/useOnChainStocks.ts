@@ -54,7 +54,7 @@ const KNOWN_TICKERS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 
 
 // ─── Read all stock listings + prices from chain ─────────────────────────────
 
-export function useOnChainStocks(): { stocks: Stock[]; isLoading: boolean; isLive: boolean } {
+export function useOnChainStocks(): { stocks: Stock[]; isLoading: boolean; isLive: boolean; refetch: () => void } {
   // Read prices for all known tickers from StocksPriceOracle
   const priceContracts = useMemo(() => {
     if (!ORACLE) return []
@@ -66,7 +66,7 @@ export function useOnChainStocks(): { stocks: Stock[]; isLoading: boolean; isLiv
     }))
   }, [])
 
-  const { data: priceData, isLoading } = useReadContracts({
+  const { data: priceData, isLoading, refetch } = useReadContracts({
     contracts: priceContracts,
     query: { enabled: priceContracts.length > 0, refetchInterval: 30_000 },
   })
@@ -105,7 +105,7 @@ export function useOnChainStocks(): { stocks: Stock[]; isLoading: boolean; isLiv
   }, [priceData])
 
   const finalStocks = stocks.length > 0 ? stocks : FALLBACK_STOCKS
-  return { stocks: finalStocks, isLoading, isLive: stocks.length > 0 }
+  return { stocks: finalStocks, isLoading, isLive: stocks.length > 0, refetch }
 }
 
 // ─── Read user's on-chain portfolio (CollateralVault positions) ──────────────

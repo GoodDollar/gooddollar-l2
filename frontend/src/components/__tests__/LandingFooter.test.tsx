@@ -39,4 +39,17 @@ describe('LandingFooter', () => {
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     }
   })
+
+  it('labels its nav with a unique aria-label distinct from header nav', () => {
+    render(<LandingFooter />)
+    const navs = screen.getAllByRole('navigation')
+    // Footer should expose exactly one nav landmark
+    expect(navs.length).toBeGreaterThanOrEqual(1)
+    for (const nav of navs) {
+      const label = nav.getAttribute('aria-label')
+      expect(label).toBeTruthy()
+      // Footer nav label should reference footer/site to be distinct from header
+      expect(label?.toLowerCase()).toMatch(/footer|site/)
+    }
+  })
 })

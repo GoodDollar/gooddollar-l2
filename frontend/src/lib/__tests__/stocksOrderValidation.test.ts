@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { computeSellGuards } from '../stocksOrderValidation'
+import { computeSellGuards, isLimitDisabledOnChain } from '../stocksOrderValidation'
 
 describe('computeSellGuards — buy side', () => {
   it('returns all-clear on the buy side regardless of position', () => {
@@ -143,5 +143,31 @@ describe('computeSellGuards — connected, with position', () => {
       sharesRequested: 0,
     })
     expect(zero.sellSharesExceedsBalance).toBe(false)
+  })
+})
+
+describe('isLimitDisabledOnChain', () => {
+  it('returns true when contracts are deployed and order type is limit', () => {
+    const out = isLimitDisabledOnChain({ isDeployed: true, orderType: 'limit' })
+    expect(out.disabled).toBe(true)
+    expect(out.reason).toBe('limit-not-supported-on-chain')
+  })
+
+  it('returns false when order type is market, even if deployed', () => {
+    const out = isLimitDisabledOnChain({ isDeployed: true, orderType: 'market' })
+    expect(out.disabled).toBe(false)
+    expect(out.reason).toBeNull()
+  })
+
+  it('returns false when contracts are not deployed (devnet stub flow stays usable)', () => {
+    const out = isLimitDisabledOnChain({ isDeployed: false, orderType: 'limit' })
+    expect(out.disabled).toBe(false)
+    expect(out.reason).toBeNull()
+  })
+
+  it('returns false when not deployed AND market', () => {
+    const out = isLimitDisabledOnChain({ isDeployed: false, orderType: 'market' })
+    expect(out.disabled).toBe(false)
+    expect(out.reason).toBeNull()
   })
 })

@@ -16,18 +16,28 @@ type Variant = 'compact' | 'detail'
 interface OracleStatusBadgeProps {
   variant?: Variant
   symbol?: string
+  /**
+   * When the primary quotes-status endpoint is unreachable, also probe
+   * `/api/status` and report "Live" if the stocks-keeper service is healthy.
+   * Defaults to `true` so every consumer (compact listing badges and the
+   * stock detail page) shares the same resilient behavior — opt out with
+   * `useStocksFallback={false}` for legacy call sites that need the strict
+   * primary-only path.
+   */
   useStocksFallback?: boolean
 }
 
-export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = false }: OracleStatusBadgeProps) {
+export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = true }: OracleStatusBadgeProps) {
   const { status, error } = usePriceServiceStatus()
   const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
   const [fallbackLoading, setFallbackLoading] = useState(false)
+  const [fallbackReady, setFallbackReady] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     if (!useStocksFallback || status || !error) return
 
+    setFallbackReady(false)
     setFallbackLoading(true)
     fetch('/api/status', { cache: 'no-store' })
       .then(async (res) => {
@@ -41,7 +51,10 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         setFallbackState('offline')
       })
       .finally(() => {
-        if (!cancelled) setFallbackLoading(false)
+        if (!cancelled) {
+          setFallbackLoading(false)
+          setFallbackReady(true)
+        }
       })
 
     return () => { cancelled = true }
@@ -49,7 +62,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
 
   if (error || !status) {
     if (useStocksFallback) {
-      if (fallbackLoading) {
+      if (fallbackLoading || !fallbackReady) {
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
             <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />

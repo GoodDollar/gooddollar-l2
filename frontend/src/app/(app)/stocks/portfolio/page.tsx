@@ -4,6 +4,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
@@ -153,8 +154,10 @@ export default function StocksPortfolioPage() {
     totalRequired,
     healthRatio,
     isLoading: holdingsLoading,
+    isError: holdingsError,
+    refetch: refetchHoldings,
   } = useStockHoldings(address)
-  const { trades, isLoading: tradesLoading } = useStockTrades(address)
+  const { trades, isLoading: tradesLoading, isError: tradesError, refetch: refetchTrades } = useStockTrades(address)
 
   const summary = { totalValue, unrealizedPnl, pnlPercent, totalCollateral, totalRequired, healthRatio }
   const isDisconnected = !isConnected || !address
@@ -169,6 +172,29 @@ export default function StocksPortfolioPage() {
     >
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
+
+      {isDisconnected && (
+        <section
+          className="bg-dark-100 rounded-2xl border border-goodgreen/25 p-5 mb-6"
+          data-testid="stocks-portfolio-disconnected-hero"
+        >
+          <h2 className="text-lg font-semibold text-white mb-1">Connect wallet to view holdings and history</h2>
+          <p className="text-sm text-gray-400 mb-4">
+            Track your stock positions, unrealized P&amp;L, and trade history once your wallet is connected.
+          </p>
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <button
+                type="button"
+                onClick={openConnectModal}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
+              >
+                Connect Wallet to View Holdings &amp; History
+              </button>
+            )}
+          </ConnectButton.Custom>
+        </section>
+      )}
 
       {/* Portfolio Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
@@ -229,7 +255,9 @@ export default function StocksPortfolioPage() {
         </div>
       </div>
 
-      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
+      <div className={isDisconnected ? 'opacity-80' : undefined}>
+        <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
+      </div>
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">
@@ -248,13 +276,41 @@ export default function StocksPortfolioPage() {
         </TabsList>
 
         <TabsContent value="holdings">
-          {isLoading ? (
-            <div className="py-16 text-center">
+          {isDisconnected ? (
+            <div className="py-16 text-center" role="status">
+              <svg className="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7h18M3 12h18M3 17h18" />
+              </svg>
+              <p className="text-gray-400 text-sm mb-1">Connect your wallet to view holdings</p>
+              <p className="text-gray-600 text-xs mb-4">Your tokenized stock positions will appear here once you connect.</p>
+              <Link href="/stocks" className="text-goodgreen text-sm hover:underline">Browse Stocks</Link>
+            </div>
+          ) : isLoading ? (
+            <div className="py-16 text-center" role="status" aria-live="polite">
               <p className="text-gray-400 text-sm">Loading positions…</p>
+            </div>
+          ) : holdingsError ? (
+            <div className="mx-4 my-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4" role="alert">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-200">Unable to load positions</p>
+                  <p className="text-xs text-red-300/70 mt-0.5">Your holdings couldn&apos;t be retrieved. This may be a temporary network issue.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => refetchHoldings()}
+                  className="shrink-0 px-3 py-1.5 text-xs font-medium text-red-200 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
             </div>
           ) : holdings.length === 0 ? (
             <div className="py-16 text-center">
-              <svg className="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
               <p className="text-gray-400 text-sm mb-1">No positions yet</p>
@@ -285,7 +341,35 @@ export default function StocksPortfolioPage() {
         </TabsContent>
 
         <TabsContent value="history">
-          {trades.length === 0 ? (
+          {isDisconnected ? (
+            <div className="py-16 text-center" role="status">
+              <p className="text-gray-400 text-sm mb-1">Connect your wallet to view trade history</p>
+              <p className="text-gray-600 text-xs">Past trades and PnL appear here after you connect.</p>
+            </div>
+          ) : tradesLoading ? (
+            <div className="py-16 text-center" role="status" aria-live="polite">
+              <p className="text-gray-400 text-sm">Loading trade history…</p>
+            </div>
+          ) : tradesError ? (
+            <div className="mx-4 my-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4" role="alert">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-200">Unable to load trade history</p>
+                  <p className="text-xs text-red-300/70 mt-0.5">Your trade history couldn&apos;t be retrieved. This may be a temporary network issue.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => refetchTrades()}
+                  className="shrink-0 px-3 py-1.5 text-xs font-medium text-red-200 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          ) : trades.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">No trade history</p>
             </div>

@@ -11,7 +11,7 @@ export function LandingFooter() {
         <p className="text-xs text-gray-500">
           Powered by GoodDollar L2
         </p>
-        <nav className="flex items-center gap-4">
+        <nav aria-label="Footer" className="flex items-center gap-4">
           {links.map((link) => (
             <a
               key={link.label}

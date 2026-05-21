@@ -1,67 +1,62 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import dynamic from 'next/dynamic'
-import { useAccount } from 'wagmi'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { useBlockNumber } from 'wagmi'
 
 import Link from 'next/link'
-import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
+import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
-import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { getChartData, type Timeframe } from '@/lib/chartData'
-import { useWalletReady } from '@/lib/WalletReadyContext'
-import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
-import { computeSellGuards } from '@/lib/stocksOrderValidation'
-import { toG$Wei } from '@/lib/gDollarAmount'
+import { useStockPosition } from '@/lib/useStocks'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
+import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
+import { StockOrderForm } from '@/components/stocks/StockOrderForm'
+import { StockOrderFormFallback } from '@/components/stocks/StockOrderFormFallback'
+import { PriceChart } from '@/components/PriceChart'
+import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { usePriceServiceStatus, getConsecutiveFailures } from '@/lib/usePriceServiceStatus'
+import { RebalanceSyncPanel } from '@/components/stocks/RebalanceSyncPanel'
+import { OracleUnavailableBanner } from '@/components/stocks/OracleUnavailableBanner'
+import { RebalanceErrorBoundary } from '@/components/stocks/RebalanceErrorBoundary'
+import { ExposureNettingPanel } from '@/components/stocks/ExposureNettingPanel'
+import { AmmTradingPanel } from '@/components/stocks/AmmTradingPanel'
+import { getMarketHoursState } from '@/lib/ammPricing'
+import {
+  type SymbolExposureSummary,
+  aggregateExposure,
+  classifyResidual,
+  computePortfolioDelta,
+} from '@/lib/exposureNetting'
+import { StockResearchHub } from '@/components/stocks/StockResearchHub'
+import { buildSymbolRebalanceStatus, evaluateRebalanceGuard } from '@/lib/stocksRebalanceInvariant'
 
-const PriceChart = dynamic(
-  () => import('@/components/PriceChart').then((m) => ({ default: m.PriceChart })),
-  { ssr: false }
-)
-
-const OracleStatusBadge = dynamic(
-  () => import('@/components/OracleStatusBadge').then((m) => ({ default: m.OracleStatusBadge })),
-  { ssr: false }
-)
-
-function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
-  const { isConnected } = useAccount()
-  if (!isConnected) {
-    return (
-      <ConnectButton.Custom>
-        {({ openConnectModal }) => (
-          <button type="button" onClick={openConnectModal}
-            className="w-full py-3 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors">
-            Connect Wallet to Trade
-          </button>
-        )}
-      </ConnectButton.Custom>
-    )
-  }
-  if (!hasAmount) {
-    return (
-      <button type="button" disabled
-        className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-gray-400 cursor-not-allowed">
-        Enter Amount
-      </button>
-    )
-  }
-  return <>{children}</>
+const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'ALL']
+const TIMEFRAME_LABEL: Record<Timeframe, string> = {
+  '1D': 'Past Day',
+  '1W': 'Past Week',
+  '1M': 'Past Month',
+  '3M': 'Past 3 Months',
+  '6M': 'Past 6 Months',
+  '1Y': 'Past Year',
+  '5Y': 'Past 5 Years',
+  'ALL': 'All Time',
 }
-
-const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
+const RESERVED_SUBPATHS: Record<string, string> = {
+  MARKETS: '/stocks',
+  EXPOSURE: '/stocks',
+  TRADE: '/stocks',
+  SETTINGS: '/stocks',
+}
 
 function decodeTickerBounded(rawTicker?: string): string {
   if (!rawTicker) return ''
@@ -89,216 +84,160 @@ function normalizeTickerForLookup(rawTicker?: string): string {
   return normalized
 }
 
-function OrderForm({ stock, position }: { stock: { ticker: string; price: number }; position: OnChainStockPosition | null }) {
-  const [side, setSide] = useState<'buy' | 'sell'>('buy')
-  const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
-  const [amount, setAmount] = useState('')
-  const [limitPrice, setLimitPrice] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-  const walletReady = useWalletReady()
-  const { isConnected } = useAccount()
-  const { mint, phase: mintPhase, error: mintError, isDeployed } = useMintSynthetic()
-  const { redeem, phase: redeemPhase, error: redeemError } = useRedeemSynthetic()
-
-  const parsedLimitPrice = parseFloat(limitPrice)
-  const limitPriceInvalid = orderType === 'limit' && limitPrice !== '' && (isNaN(parsedLimitPrice) || parsedLimitPrice <= 0)
-  const hasValidPrice = orderType === 'market' || parsedLimitPrice > 0
-  const effectivePrice = orderType === 'limit' && parsedLimitPrice > 0 ? parsedLimitPrice : (orderType === 'limit' ? 0 : stock.price)
-  const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
-  const fee = amount ? parseFloat(amount) * 0.001 : 0
-  const ubiFee = fee * 0.2
-  // Sanity-cap the Amount (USD) input so the summary cannot advertise
-  // implausibly large notional values (e.g. $1T phantom orders) and so
-  // we never submit an order the chain would just revert. See task 0058.
-  const parsedAmount = parseFloat(amount)
-  const amountTooLarge = !!amount && Number.isFinite(parsedAmount) && parsedAmount > MAX_STOCK_ORDER_USD
-  const hasAmount = !!amount && parsedAmount > 0 && !amountTooLarge
-
-  // Sell-side balance gating: when a user is on the Sell tab we must not
-  // let them attempt to burn more sToken debt than they actually minted —
-  // the on-chain `burn` call would revert with poor UX. See task 0057.
-  const { sellGated, sellSharesExceedsBalance, balanceShares } = computeSellGuards({
-    side,
-    isConnected,
-    debtFloat: position?.debtFloat ?? null,
-    sharesRequested: shares,
-  })
-  const sellDisabled = sellGated || sellSharesExceedsBalance
-
-  const actionPhase = side === 'buy' ? mintPhase : redeemPhase
-  const actionError = side === 'buy' ? mintError : redeemError
-  const isPending = actionPhase === 'approving' || actionPhase === 'pending'
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || !hasValidPrice) return
-    if (amountTooLarge) return
-    if (sellDisabled) return
-
-    if (isDeployed && orderType === 'market') {
-      const amountNum = parseFloat(amount)
-      // Assume G$ ≈ $0.01 on devnet for collateral calculation.
-      // Route through toG$Wei (parseUnits) — never `Math.round(x * 1e18)`,
-      // which drifts by tens of millions of wei on realistic trade sizes.
-      const GD_PRICE_USD = 0.01
-      const collateralGD = amountNum / GD_PRICE_USD
-      const collateralWei = toG$Wei(collateralGD)
-      const sharesWei = toG$Wei(shares)
-      if (side === 'buy') {
-        await mint(stock.ticker, collateralWei, sharesWei)
-      } else {
-        // Redeem: burn shares and withdraw equivalent collateral
-        await redeem(stock.ticker, sharesWei, collateralWei)
-      }
-    } else {
-      setSubmitted(true)
-      setTimeout(() => setSubmitted(false), 3000)
-    }
-  }
-
-  return (
-    <form id="stock-order-form" onSubmit={handleSubmit} className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
-      <div className="flex gap-2 mb-4">
-        <button type="button" onClick={() => setSide('buy')}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${side === 'buy' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-dark-50/50 text-gray-400 border border-transparent'}`}>
-          Buy
-        </button>
-        <button type="button" onClick={() => setSide('sell')}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${side === 'sell' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-dark-50/50 text-gray-400 border border-transparent'}`}>
-          Sell
-        </button>
-      </div>
-
-      <div className="flex gap-2 mb-4">
-        <button type="button" onClick={() => setOrderType('market')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${orderType === 'market' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-          Market
-        </button>
-        <button type="button" onClick={() => setOrderType('limit')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${orderType === 'limit' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-          Limit
-        </button>
-      </div>
-
-      {orderType === 'limit' && (
-        <div className="mb-3">
-          <label className="text-xs text-gray-400 mb-1 block">Limit Price</label>
-          <input type="text" inputMode="decimal" placeholder="0.00" value={limitPrice} onChange={e => setLimitPrice(sanitizeNumericInput(e.target.value))}
-            className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${limitPriceInvalid ? 'border-red-500/50' : 'border-gray-700/30'}`} />
-          {limitPriceInvalid && (
-            <p className="text-red-400 text-[10px] mt-1">Price must be greater than 0</p>
-          )}
-        </div>
-      )}
-
-      {sellGated && (
-        <div role="alert" aria-live="polite"
-          className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-          You have no {stock.ticker} to sell. Switch to <span className="font-semibold">Buy</span> to open a position first.
-        </div>
-      )}
-      {sellSharesExceedsBalance && (
-        <div role="alert" aria-live="polite"
-          className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-          You only hold {balanceShares.toFixed(4)} {stock.ticker}. Reduce the amount to sell.
-        </div>
-      )}
-
-      <div className="mb-3">
-        <label className="text-xs text-gray-400 mb-1 block">Amount (USD)</label>
-        <input type="text" inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
-          aria-invalid={sellSharesExceedsBalance || amountTooLarge || undefined}
-          className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${sellSharesExceedsBalance || amountTooLarge ? 'border-red-500/50' : 'border-gray-700/30'}`} />
-        {amountTooLarge && (
-          <p className="text-red-400 text-[10px] mt-1">
-            Max order is ${MAX_STOCK_ORDER_USD.toLocaleString('en-US')} per trade. Split larger orders into multiple smaller ones.
-          </p>
-        )}
-      </div>
-
-      {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && !sellGated && !amountTooLarge && (
-        <div className="mb-4 space-y-1.5 text-xs">
-          <div className="flex justify-between text-gray-400">
-            <span>Est. Shares</span>
-            <span className="text-white truncate ml-2">{formatStockShares(shares)} {stock.ticker}</span>
-          </div>
-          <div className="flex justify-between text-gray-400">
-            <span>Price</span>
-            <span className="text-white truncate ml-2">{formatStockPrice(effectivePrice)}</span>
-          </div>
-          <div className="flex justify-between text-gray-400">
-            <span>Fee (0.1%)</span>
-            <span className="text-white truncate ml-2">{formatTradeAmount(fee)}</span>
-          </div>
-          <div className="flex justify-between text-goodgreen/80">
-            <span>→ UBI Pool (20%)</span>
-            <span className="truncate ml-2">{formatTradeAmount(ubiFee)}</span>
-          </div>
-        </div>
-      )}
-
-      {actionError && (
-        <p className="text-[10px] text-red-400 text-center truncate mb-2">{actionError}</p>
-      )}
-      {walletReady && sellGated ? (
-        <button type="button" disabled
-          className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-gray-400 cursor-not-allowed">
-          No {stock.ticker} to sell
-        </button>
-      ) : walletReady ? (
-        <WalletGatedTradeButton hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance}>
-          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge}
-            className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-              side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
-            }`}>
-            {actionPhase === 'approving' ? 'Approving…' : actionPhase === 'pending' ? 'Confirming…' : actionPhase === 'done' ? 'Order Submitted!' : submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
-          </button>
-        </WalletGatedTradeButton>
-      ) : (
-        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge}
-          className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-            side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
-          }`}>
-          {submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
-        </button>
-      )}
-
-      <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-goodgreen">
-        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-        <span>0.1% fee → 20% funds UBI</span>
-      </div>
-    </form>
-  )
-}
-
 export default function StockDetailPage() {
+  const router = useRouter()
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks } = useOnChainStocks()
+  const { status: oracleStatus, error: oracleError, refresh: oracleRefresh } = usePriceServiceStatus()
+  const { data: chainBlock } = useBlockNumber({ watch: true })
+  const currentBlock = chainBlock ? Number(chainBlock) : null
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
+  const [symbolQuery, setSymbolQuery] = useState('')
+  const [symbolError, setSymbolError] = useState('')
+  const [showMobileSwitcher, setShowMobileSwitcher] = useState(false)
   const [analystLoading, setAnalystLoading] = useState(true)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
-  const chartMounted = useMounted()
+  const mounted = useMounted()
 
   const chartData = useMemo(() => {
-    if (!stock) return []
+    if (!stock || !mounted) return []
     return getChartData(stock.ticker, timeframe, stock.price)
-  }, [stock, timeframe])
+  }, [mounted, stock, timeframe])
+  const dayRange = useMemo(() => {
+    if (!stock || !mounted) return null
+    const intraday = getChartData(stock.ticker, '1D', stock.price)
+    if (intraday.length === 0) return null
+    const low = intraday.reduce((acc, candle) => Math.min(acc, candle.low), Number.POSITIVE_INFINITY)
+    const high = intraday.reduce((acc, candle) => Math.max(acc, candle.high), Number.NEGATIVE_INFINITY)
+    if (!Number.isFinite(low) || !Number.isFinite(high)) return null
+    return { low, high }
+  }, [mounted, stock])
+  const performanceSummary = useMemo(() => {
+    if (!mounted || chartData.length < 2) return null
+    const firstClose = chartData[0]?.close ?? 0
+    const lastClose = chartData[chartData.length - 1]?.close ?? 0
+    if (!Number.isFinite(firstClose) || firstClose <= 0 || !Number.isFinite(lastClose)) return null
+    const changeAbs = lastClose - firstClose
+    const changePct = (changeAbs / firstClose) * 100
+    return { changeAbs, changePct, label: TIMEFRAME_LABEL[timeframe] }
+  }, [chartData, mounted, timeframe])
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
+  const switchableSymbols = useMemo(
+    () => stocks.map((s) => ({ ticker: s.ticker, name: s.name })),
+    [stocks],
+  )
+  const filteredSymbols = useMemo(() => {
+    const q = symbolQuery.trim().toUpperCase()
+    if (!q) return switchableSymbols.slice(0, 8)
+    return switchableSymbols
+      .filter((s) => s.ticker.includes(q) || s.name.toUpperCase().includes(q))
+      .slice(0, 8)
+  }, [symbolQuery, switchableSymbols])
+  const symbolRebalanceStatus = useMemo(
+    () => buildSymbolRebalanceStatus(ticker, oracleStatus),
+    [oracleStatus, ticker],
+  )
+  const rebalanceGuard = useMemo(
+    () => evaluateRebalanceGuard(symbolRebalanceStatus, currentBlock),
+    [symbolRebalanceStatus, currentBlock],
+  )
+  const riskBlockReason = rebalanceGuard.blocked ? rebalanceGuard.reasons[0] ?? 'Sync required' : null
+
+  const exposureSummaries: SymbolExposureSummary[] = useMemo(() => {
+    if (!position || position.debtFloat <= 0 || !stock) return []
+    const positionUsd = position.debtFloat * stock.price
+    const exposures = [{ product: 'amm' as const, sizeUsd: positionUsd, direction: 'long' as const }]
+    const agg = aggregateExposure(exposures)
+    const gross = agg.grossLongUsd + agg.grossShortUsd
+    return [{
+      symbol: stock.ticker,
+      ...agg,
+      classification: classifyResidual(agg.netExposureUsd, gross),
+      byProduct: exposures,
+    }]
+  }, [position, stock])
+
+  const portfolioDelta = useMemo(
+    () => computePortfolioDelta(exposureSummaries),
+    [exposureSummaries],
+  )
+  const marketState = useMemo(() => getMarketHoursState(new Date()), [])
+  const timeframeTabRefs = useRef<Record<Timeframe, HTMLButtonElement | null>>({
+    '1D': null,
+    '1W': null,
+    '1M': null,
+    '3M': null,
+    '6M': null,
+    '1Y': null,
+    '5Y': null,
+    ALL: null,
+  })
 
   useEffect(() => {
     setAnalystLoading(true)
     const timer = setTimeout(() => setAnalystLoading(false), 140)
     return () => clearTimeout(timer)
   }, [ticker])
+
+  useEffect(() => {
+    if (!symbolError) return
+    const timer = setTimeout(() => setSymbolError(''), 3000)
+    return () => clearTimeout(timer)
+  }, [symbolError])
+
+  const reservedRedirect = RESERVED_SUBPATHS[ticker]
+  useEffect(() => {
+    if (reservedRedirect) router.replace(reservedRedirect)
+  }, [reservedRedirect, router])
+
+  function navigateToSymbol(raw: string) {
+    const q = raw.trim().toUpperCase()
+    if (!q) return
+    const selected = switchableSymbols.find((s) => s.ticker === q || s.name.toUpperCase() === q)
+      ?? switchableSymbols.find((s) => s.ticker.startsWith(q) || s.name.toUpperCase().startsWith(q))
+    if (!selected) {
+      setSymbolError(`"${q}" not found — try a valid ticker`)
+      return
+    }
+    if (selected.ticker === ticker) return
+    setSymbolError('')
+    router.push(`/stocks/${selected.ticker}`)
+    setSymbolQuery('')
+    setShowMobileSwitcher(false)
+  }
+
+  function moveTimeframeSelection(current: Timeframe, direction: 'next' | 'prev' | 'start' | 'end') {
+    const currentIndex = TIMEFRAMES.findIndex((tf) => tf === current)
+    if (currentIndex === -1) return
+
+    let targetIndex = currentIndex
+    if (direction === 'next') targetIndex = (currentIndex + 1) % TIMEFRAMES.length
+    if (direction === 'prev') targetIndex = (currentIndex - 1 + TIMEFRAMES.length) % TIMEFRAMES.length
+    if (direction === 'start') targetIndex = 0
+    if (direction === 'end') targetIndex = TIMEFRAMES.length - 1
+
+    const nextTimeframe = TIMEFRAMES[targetIndex]
+    if (!nextTimeframe) return
+    setTimeframe(nextTimeframe)
+    timeframeTabRefs.current[nextTimeframe]?.focus()
+  }
+
+  if (reservedRedirect) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-sm text-gray-400 animate-pulse">Redirecting…</p>
+      </div>
+    )
+  }
 
   if (!stock) {
     return (
@@ -337,10 +276,90 @@ export default function StockDetailPage() {
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-xs font-bold text-goodgreen">
               {stock.ticker.slice(0, 2)}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
+                <WatchlistStarButton ticker={stock.ticker} size="md" />
+              </div>
               <p className="text-sm text-gray-400">{stock.name} · {stock.sector}</p>
             </div>
+          </div>
+
+          <div className="mb-4">
+            <div className="hidden sm:flex items-center gap-2">
+              <label htmlFor="stock-symbol-switcher" className="text-xs text-gray-400">Switch symbol</label>
+              <input
+                id="stock-symbol-switcher"
+                type="text"
+                value={symbolQuery}
+                list="stock-symbol-switch-options"
+                onChange={(e) => { setSymbolQuery(e.target.value); setSymbolError('') }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    navigateToSymbol(symbolQuery)
+                  }
+                }}
+                placeholder="Type ticker or company"
+                aria-label="Switch stock symbol"
+                className="flex-1 max-w-sm rounded-lg border border-gray-700/40 bg-dark-50/60 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-goodgreen/60 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => navigateToSymbol(symbolQuery)}
+                className="rounded-lg bg-goodgreen/20 px-3 py-2 text-xs font-semibold text-goodgreen hover:bg-goodgreen/30 transition-colors"
+              >
+                Go
+              </button>
+            </div>
+            {symbolError && !showMobileSwitcher && (
+              <p className="text-red-400/80 text-xs mt-1 hidden sm:block">{symbolError}</p>
+            )}
+            <div className="sm:hidden">
+              <button
+                type="button"
+                onClick={() => setShowMobileSwitcher((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-lg border border-goodgreen/30 bg-dark-50/50 px-3 py-2 text-xs font-semibold text-goodgreen"
+              >
+                Switch Symbol
+              </button>
+              {showMobileSwitcher && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={symbolQuery}
+                      list="stock-symbol-switch-options"
+                      onChange={(e) => { setSymbolQuery(e.target.value); setSymbolError('') }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          navigateToSymbol(symbolQuery)
+                        }
+                      }}
+                      placeholder="Type ticker"
+                      aria-label="Switch stock symbol mobile"
+                      className="flex-1 rounded-lg border border-gray-700/40 bg-dark-50/60 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-goodgreen/60 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => navigateToSymbol(symbolQuery)}
+                      className="rounded-lg bg-goodgreen/20 px-3 py-2 text-xs font-semibold text-goodgreen"
+                    >
+                      Go
+                    </button>
+                  </div>
+                  {symbolError && (
+                    <p className="text-red-400/80 text-xs mt-1">{symbolError}</p>
+                  )}
+                </div>
+              )}
+            </div>
+            <datalist id="stock-symbol-switch-options">
+              {filteredSymbols.map((s) => (
+                <option key={s.ticker} value={s.ticker}>{s.name}</option>
+              ))}
+            </datalist>
           </div>
 
           <div className="flex items-baseline gap-3 mb-2">
@@ -349,8 +368,11 @@ export default function StockDetailPage() {
               {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
             </span>
           </div>
+          <div className="mb-2 text-xs text-gray-500">
+            USD · Oracle source: stocks-keeper · Updated live
+          </div>
           <div className="mb-4">
-            <OracleStatusBadge variant="detail" symbol={stock.ticker} />
+            <OracleStatusBadge variant="detail" symbol={stock.ticker} useStocksFallback />
           </div>
 
           <AnalystOutlookCard
@@ -360,15 +382,64 @@ export default function StockDetailPage() {
           />
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
-            <div className="flex gap-1 mb-3">
-              {TIMEFRAMES.map(tf => (
-                <button key={tf} onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-                  {tf}
-                </button>
-              ))}
+            {performanceSummary && (
+              <div className="mb-3 flex items-baseline gap-2">
+                <span
+                  className={`text-xl font-semibold tabular-nums ${
+                    performanceSummary.changePct >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}
+                >
+                  {performanceSummary.changePct >= 0 ? '+' : ''}
+                  {performanceSummary.changePct.toFixed(2)}%
+                </span>
+                <span className="text-sm text-gray-400">{performanceSummary.label}</span>
+              </div>
+            )}
+            <div
+              className="mb-3 flex flex-nowrap gap-1 overflow-x-auto pb-1 whitespace-nowrap sm:flex-wrap sm:overflow-visible sm:pb-0"
+              role="tablist"
+              aria-label="Chart timeframe"
+            >
+              {TIMEFRAMES.map(tf => {
+                const isActive = timeframe === tf
+                return (
+                  <button
+                    key={tf}
+                    ref={(node) => {
+                      timeframeTabRefs.current[tf] = node
+                    }}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    tabIndex={isActive ? 0 : -1}
+                    onClick={() => setTimeframe(tf)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'ArrowRight') {
+                        event.preventDefault()
+                        moveTimeframeSelection(tf, 'next')
+                      } else if (event.key === 'ArrowLeft') {
+                        event.preventDefault()
+                        moveTimeframeSelection(tf, 'prev')
+                      } else if (event.key === 'Home') {
+                        event.preventDefault()
+                        moveTimeframeSelection(tf, 'start')
+                      } else if (event.key === 'End') {
+                        event.preventDefault()
+                        moveTimeframeSelection(tf, 'end')
+                      }
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
+                      isActive
+                        ? 'bg-goodgreen/15 text-goodgreen ring-1 ring-goodgreen/30'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {tf}
+                  </button>
+                )
+              })}
             </div>
-            {chartMounted ? (
+            {mounted ? (
               <PriceChart data={chartData} height={350} />
             ) : (
               <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
@@ -397,6 +468,12 @@ export default function StockDetailPage() {
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
                 <div className="text-white font-medium">{formatStockPrice(stock.low52w)}</div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs mb-0.5">Day Range</div>
+                <div className="text-white font-medium">
+                  {dayRange ? `${formatStockPrice(dayRange.low)} - ${formatStockPrice(dayRange.high)}` : 'N/A'}
+                </div>
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
@@ -430,6 +507,13 @@ export default function StockDetailPage() {
             </div>
           )}
 
+          <StockResearchHub
+            ticker={stock.ticker}
+            companyName={stock.name}
+            sector={stock.sector}
+            summary={stock.description}
+          />
+
           <NewsEventsPanel
             ticker={stock.ticker}
             isLoading={newsLoading}
@@ -439,7 +523,41 @@ export default function StockDetailPage() {
         </div>
 
         <div className="lg:w-80 shrink-0">
-          <OrderForm stock={stock} position={position} />
+          {mounted ? (
+            <StockOrderForm stock={stock} position={position} riskBlockReason={riskBlockReason} />
+          ) : (
+            <StockOrderFormFallback />
+          )}
+
+          <OracleUnavailableBanner
+            error={oracleError}
+            consecutiveFailures={getConsecutiveFailures()}
+            onRetry={oracleRefresh}
+          />
+
+          <RebalanceErrorBoundary>
+            <RebalanceSyncPanel
+              status={symbolRebalanceStatus}
+              guard={rebalanceGuard}
+              currentBlock={currentBlock}
+            />
+          </RebalanceErrorBoundary>
+
+          {hasPosition && (
+            <ExposureNettingPanel
+              summaries={exposureSummaries}
+              portfolioDelta={portfolioDelta}
+            />
+          )}
+
+          <AmmTradingPanel
+            oraclePrice={stock.price}
+            inventoryLong={stock.volume24h * 0.6}
+            inventoryShort={stock.volume24h * 0.4}
+            poolLiquidity={stock.volume24h * 2}
+            marketState={marketState}
+            ticker={stock.ticker}
+          />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>

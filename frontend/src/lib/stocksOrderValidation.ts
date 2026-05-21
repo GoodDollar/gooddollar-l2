@@ -84,3 +84,48 @@ export function computeSellGuards(input: SellGuardsInput): SellGuardsResult {
 
   return { hasPosition, balanceShares, sellGated, sellSharesExceedsBalance }
 }
+
+/**
+ * isLimitDisabledOnChain — gate the Limit-order tab when on-chain.
+ *
+ * Background: `OrderForm.handleSubmit` only calls `mint()` / `redeem()`
+ * when `isDeployed && orderType === 'market'`. The `else` branch silently
+ * flashes a success toast for 3 s — meaning a connected user who picks
+ * Limit on devnet/L2 thinks their order placed but nothing reaches the
+ * vault. Until a real on-chain limit-order book exists, gate the entire
+ * Limit tab behind this helper:
+ *
+ *   - render an informational banner explaining the limitation,
+ *   - keep the Submit button disabled,
+ *   - short-circuit `handleSubmit` so no fake-success toast fires.
+ *
+ * On devnet stubs (`isDeployed === false`) the original mock-success
+ * flow is preserved so the demo path remains usable.
+ */
+export type StocksOrderType = 'market' | 'limit'
+
+export interface LimitDisabledInput {
+  /** True when the on-chain contracts (Synthetics/Vault) are wired up. */
+  isDeployed: boolean
+  /** Currently selected order type. */
+  orderType: StocksOrderType
+}
+
+export interface LimitDisabledResult {
+  /** True when the Submit button + handleSubmit branch must be blocked. */
+  disabled: boolean
+  /**
+   * Stable machine-readable reason for telemetry, banner copy lookup,
+   * and test assertions. `null` when not disabled.
+   */
+  reason: 'limit-not-supported-on-chain' | null
+}
+
+const ALLOWED: LimitDisabledResult = { disabled: false, reason: null }
+
+export function isLimitDisabledOnChain(input: LimitDisabledInput): LimitDisabledResult {
+  if (input.isDeployed && input.orderType === 'limit') {
+    return { disabled: true, reason: 'limit-not-supported-on-chain' }
+  }
+  return ALLOWED
+}

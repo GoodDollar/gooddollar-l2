@@ -20,18 +20,31 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 
 POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candidate. The product app, public RPC, faucet, protocol pages, analytics, feedback path, Paperclip agent dashboard, Explorer / Blockscout, and 12 backend health services are online. Explorer was restored at `2026-05-19 07:54 UTC` after the Blockscout web/proxy containers had exited; it remains an alpha hardening watch item, but is no longer a public `502` blocker.
 
-### Recent UX polish (updated: 2026-05-20)
+### Recent UX polish (updated: 2026-05-21)
 
+- Stocks markets now renders a search-aware watchlist empty state when filters combine to zero results (for example `Watchlist` + query `AAPL`), replacing misleading generic empty-watchlist copy with contextual `No watchlist stocks match "<query>"` messaging and a `Clear search` recovery action.
+- Stocks markets discovery shelf loaders now use valid status semantics (`role="status"` + polite live updates) instead of invalid `aria-label`-only `div` markup, removing repeated `aria-prohibited-attr` accessibility console errors during `/stocks` loading states.
+- Stocks detail tab controls now support robust keyboard navigation (`ArrowLeft/ArrowRight/Home/End`) across both chart timeframes and the Research Hub, with roving tab focus/selection semantics to keep ticker analysis flows accessible without pointer input.
+- Stocks detail now includes a `Rebalance Sync` panel that surfaces oracle snapshot block, per-product sync blocks (AMM/perps/predict/lend/yield), two-block proof state, and divergence thresholds, with a fail-safe risk-stop banner/CTA gate that blocks order submission when same-block sync invariants are not met.
+- Stocks oracle health polling now uses same-origin `/api/oracle/status` proxying instead of browser-direct `localhost:9300` requests, removing repeated `ERR_CONNECTION_REFUSED` failures in stocks detail/watchlist flows when local keeper ports are unavailable.
+- Stocks detail hydration now stays SSR/client-consistent for initial chart-derived metrics (performance summary + day range), removing hydration mismatch/Suspense fallback rerenders that were degrading first-load stability on `/stocks/[ticker]`.
+- Stocks detail now includes an in-page `Switch symbol` control (desktop inline + mobile toggle) so users can jump directly between tickers without returning to the markets table.
+- Stocks detail chart now shows a prominent timeframe performance summary (for example `+/-X.XX% Past 3 Months`) that updates as users switch timeframe tabs.
+- Stocks detail quote header now includes explicit market context (`USD`, source, freshness) and Key Statistics now includes an intraday `Day Range` row with graceful fallback when data is unavailable.
+- Stocks detail now shows an explicit first-load trade-panel fallback (`Preparing trade panel…`) with stable Buy/Sell/control structure instead of unlabeled blank skeleton blocks before controls hydrate.
+- Stocks markets disconnected onboarding CTA now performs a true wallet-connect action (opens connect modal) instead of routing to a ticker page, with a separate secondary button to browse a starter stock.
+- Stocks detail chart timeframe controls now stay in a single horizontal rail on mobile (scrollable chips instead of wrapped rows), avoiding orphaned options like `ALL` dropping to a second line.
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
-- Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with an in-context `Connect Wallet to View UBI Impact` CTA instead of misleading `0% — Critical` risk framing.
+- Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with a portfolio-first `Connect Wallet to View Holdings & History` primary CTA while UBI-impact modules remain secondary.
 - Perps portfolio empty state no longer leaks raw template fragments (for example `positions.length === 0 ? (`), restoring clean, production-grade empty-state rendering.
 - Perps portfolio positions-tab empty state now renders through a dedicated row component plus stricter leak assertions, adding another guard rail against template fragment regressions.
 - Stocks detail page now lazy-loads chart/oracle UI modules; latest build reduced `/stocks/[ticker]` First Load JS from ~386 kB to ~332 kB while preserving trading flow.
-- Stocks navigation links now opt out of eager prefetch in stocks section/detail contexts (section tabs, portfolio icon, and cross-route CTAs) to reduce non-essential background route fetch fan-out.
+- Stocks header/navigation now disables eager route prefetch to keep stocks-first loading focused; latest production capture reduced `/stocks` requests from `60` to `44` and `/stocks/[ticker]` from `66` to `45`, while eliminating background `_rsc` fan-out and unrelated perps/predict/lend chunk preloads during initial stocks render.
 - Stocks detail now includes an `Analyst Outlook` card (consensus, low/mean/high target context, and implied upside/downside) with explicit loading and unavailable-data fallbacks.
 - Stocks detail now includes a `News & Events` panel with per-ticker catalyst headlines, tags, source attribution, and empty/error fallbacks so users can keep context in-app.
 - Stocks detail sidebar now includes stocks-native discovery modules (`Related symbols` + `Daily movers`) so users can jump directly into adjacent opportunities without leaving the stocks flow.
 - Stocks portfolio now defers heavy impact widgets behind a non-blocking skeleton and enforces a route bundle budget check; latest build reduced `/stocks/portfolio` First Load JS from ~410 kB to ~258 kB.
+- Stocks detail oracle badge now avoids false `Oracle offline` states during rapid ticker hops (for example AAPL → MSFT → AAPL) by showing an explicit `Checking oracle...` transitional state until fallback health resolves.
 
 ### POC V1 live endpoints
 

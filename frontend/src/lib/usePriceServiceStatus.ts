@@ -23,10 +23,12 @@ export interface OracleStatusState {
   error: string | null
 }
 
-const PRICE_SERVICE_URL =
-  process.env.NEXT_PUBLIC_PRICE_SERVICE_URL || 'http://localhost:9300'
+const ORACLE_STATUS_URL =
+  process.env.NEXT_PUBLIC_ORACLE_STATUS_URL || '/api/oracle/status'
 
 const POLL_INTERVAL_MS = 10_000
+
+export const MAX_RETRIES = 3
 
 type Subscriber = (state: OracleStatusState) => void
 
@@ -35,6 +37,7 @@ interface StatusStore {
   subscribers: Set<Subscriber>
   intervalId: ReturnType<typeof setInterval> | null
   inFlight: boolean
+  consecutiveFailures: number
 }
 
 const store: StatusStore = {
@@ -42,10 +45,39 @@ const store: StatusStore = {
   subscribers: new Set(),
   intervalId: null,
   inFlight: false,
+  consecutiveFailures: 0,
+}
+
+export function getConsecutiveFailures(): number {
+  return store.consecutiveFailures
 }
 
 function notify(): void {
   for (const sub of store.subscribers) sub(store.state)
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+export async function fetchWithRetry(
+  url: string,
+  retries = MAX_RETRIES,
+): Promise<PriceServiceStatus> {
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+      if (!res.ok) throw new Error(`Status endpoint returned ${res.status}`)
+      return (await res.json()) as PriceServiceStatus
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      if (attempt < retries) {
+        await delay(2 ** (attempt + 1) * 1000)
+      }
+    }
+  }
+  throw lastError!
 }
 
 async function fetchStatus(): Promise<void> {
@@ -54,13 +86,11 @@ async function fetchStatus(): Promise<void> {
 
   store.inFlight = true
   try {
-    const res = await fetch(`${PRICE_SERVICE_URL}/status/quotes`, {
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!res.ok) throw new Error(`Status endpoint returned ${res.status}`)
-    const data: PriceServiceStatus = await res.json()
+    const data = await fetchWithRetry(ORACLE_STATUS_URL)
+    store.consecutiveFailures = 0
     store.state = { status: data, isLoading: false, error: null }
   } catch (err) {
+    store.consecutiveFailures++
     store.state = {
       ...store.state,
       isLoading: false,
@@ -86,7 +116,7 @@ function stopPolling(): void {
   }
 }
 
-export function usePriceServiceStatus(): OracleStatusState {
+export function usePriceServiceStatus(): OracleStatusState & { refresh: () => void } {
   const [snapshot, setSnapshot] = useState<OracleStatusState>(store.state)
 
   useEffect(() => {
@@ -106,7 +136,7 @@ export function usePriceServiceStatus(): OracleStatusState {
     }
   }, [])
 
-  return snapshot
+  return { ...snapshot, refresh: () => void fetchStatus() }
 }
 
 export function getSessionLabel(state: string): string {

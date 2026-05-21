@@ -11,8 +11,8 @@ vi.mock('../ActivityButton', () => ({
 }))
 
 vi.mock('next/link', () => ({
-  default: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
-    <a href={href} className={className}>{children}</a>
+  default: ({ href, children, className, prefetch }: { href: string; children: React.ReactNode; className?: string; prefetch?: boolean }) => (
+    <a href={href} className={className} data-prefetch={String(prefetch)}>{children}</a>
   ),
 }))
 
@@ -214,5 +214,41 @@ describe('Header', () => {
     const hrefs = Array.from(mobileNav.querySelectorAll('a')).map(l => l.getAttribute('href'))
     expect(hrefs).toContain('/faucet')
     expect(hrefs).toContain('/testnet-guide')
+  })
+
+  it('disables Link prefetch for header navigation links', () => {
+    render(<Header />)
+    const stockNav = document.querySelector('a[href="/stocks"]')
+    const perpsNav = document.querySelector('a[href="/perps"]')
+    expect(stockNav).toHaveAttribute('data-prefetch', 'false')
+    expect(perpsNav).toHaveAttribute('data-prefetch', 'false')
+  })
+})
+
+describe('Header a11y landmarks', () => {
+  it('labels every nav with a unique aria-label (closed mobile menu)', () => {
+    render(<Header />)
+    const navs = screen.getAllByRole('navigation')
+    const labels = navs.map(n => n.getAttribute('aria-label'))
+    // every nav must have a non-empty aria-label
+    expect(labels.every(l => l && l.length > 0)).toBe(true)
+    // all labels must be unique
+    expect(new Set(labels).size).toBe(labels.length)
+  })
+
+  it('labels every nav with a unique aria-label (open mobile menu)', () => {
+    render(<Header />)
+    fireEvent.click(screen.getByLabelText('Open menu'))
+    const navs = screen.getAllByRole('navigation')
+    const labels = navs.map(n => n.getAttribute('aria-label'))
+    expect(labels.every(l => l && l.length > 0)).toBe(true)
+    expect(new Set(labels).size).toBe(labels.length)
+  })
+
+  it('keeps data-testid="condensed-nav" on the condensed nav with an aria-label', () => {
+    render(<Header />)
+    const condensed = screen.getByTestId('condensed-nav')
+    expect(condensed.tagName.toLowerCase()).toBe('nav')
+    expect(condensed.getAttribute('aria-label')).toBeTruthy()
   })
 })

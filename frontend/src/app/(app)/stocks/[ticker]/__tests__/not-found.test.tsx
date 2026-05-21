@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
+const routerPush = vi.fn()
+const mockChartData = vi.fn(() => [])
 let currentStocks: Array<{
   ticker: string
   name: string
@@ -21,7 +24,12 @@ let currentStocks: Array<{
   description?: string
 }> = []
 
-const makeStock = () => ({
+const makeStock = (overrides: Partial<{
+  ticker: string
+  name: string
+  sector: string
+  price: number
+}> = {}) => ({
   ticker: 'AAPL',
   name: 'Apple Inc.',
   sector: 'Technology',
@@ -36,11 +44,12 @@ const makeStock = () => ({
   eps: 6.4,
   dividendYield: 0.52,
   avgVolume: 850000,
+  ...overrides,
 })
 
 vi.mock('next/navigation', () => ({
   useParams: () => currentParams,
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPush }),
 }))
 
 vi.mock('next/link', () => ({
@@ -54,7 +63,7 @@ vi.mock('@/components/PriceChart', () => ({
 }))
 
 vi.mock('@/lib/chartData', () => ({
-  getChartData: () => [],
+  getChartData: (...args: unknown[]) => mockChartData(...args),
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
@@ -81,6 +90,9 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
   beforeEach(() => {
     currentParams = {}
     currentStocks = []
+    routerPush.mockReset()
+    mockChartData.mockReset()
+    mockChartData.mockImplementation(() => [])
   })
 
   it('renders a generic not-found message without echoing plain invalid ticker input', () => {
@@ -216,5 +228,104 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.queryByRole('link', { name: /Explore crypto tokens/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /Trade crypto perpetual futures/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /Prediction markets/i })).toBeNull()
+  })
+
+  it('renders timeframe controls in a single-row horizontal rail to avoid mobile wrapping', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const tablist = screen.getByRole('tablist', { name: /chart timeframe/i })
+    expect(tablist.className).toContain('overflow-x-auto')
+    expect(tablist.className).toContain('flex-nowrap')
+  })
+
+  it('supports quick symbol switching from the detail page via keyboard Enter', () => {
+    currentStocks = [makeStock(), makeStock({ ticker: 'NVDA', name: 'NVIDIA Corp.' })]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const switchInput = screen.getByLabelText('Switch stock symbol')
+    fireEvent.change(switchInput, { target: { value: 'NVDA' } })
+    fireEvent.keyDown(switchInput, { key: 'Enter' })
+
+    expect(routerPush).toHaveBeenCalledWith('/stocks/NVDA')
+  })
+
+  it('shows a mobile switcher trigger and navigates on Go', () => {
+    currentStocks = [makeStock(), makeStock({ ticker: 'MSFT', name: 'Microsoft Corp.' })]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch Symbol' }))
+    const mobileInput = screen.getByLabelText('Switch stock symbol mobile')
+    fireEvent.change(mobileInput, { target: { value: 'MSFT' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[1])
+
+    expect(routerPush).toHaveBeenCalledWith('/stocks/MSFT')
+  })
+
+  it('renders a timeframe performance summary and updates label/value when tabs change', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    mockChartData.mockImplementation((_symbol: string, timeframe: string, basePrice: number) => {
+      if (timeframe === '3M') return [{ close: 100, open: 100, high: 101, low: 99, volume: 1, time: 1 }, { close: 110, open: 100, high: 111, low: 99, volume: 1, time: 2 }]
+      if (timeframe === '1D') return [{ close: 200, open: 200, high: 201, low: 199, volume: 1, time: 1 }, { close: 190, open: 200, high: 201, low: 189, volume: 1, time: 2 }]
+      return [{ close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 1 }, { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 2 }]
+    })
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByText('+10.00%')).toBeTruthy()
+    expect(screen.getByText('Past 3 Months')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('tab', { name: '1D' }))
+
+    expect(screen.getByText('-5.00%')).toBeTruthy()
+    expect(screen.getByText('Past Day')).toBeTruthy()
+  })
+
+  it('supports arrow-key navigation for chart timeframe tabs', async () => {
+    const user = userEvent.setup()
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    mockChartData.mockImplementation((_symbol: string, timeframe: string, basePrice: number) => {
+      if (timeframe === '3M') return [{ close: 100, open: 100, high: 101, low: 99, volume: 1, time: 1 }, { close: 110, open: 100, high: 111, low: 99, volume: 1, time: 2 }]
+      if (timeframe === '6M') return [{ close: 200, open: 200, high: 201, low: 199, volume: 1, time: 1 }, { close: 160, open: 200, high: 201, low: 159, volume: 1, time: 2 }]
+      return [{ close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 1 }, { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 2 }]
+    })
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const threeMonthTab = screen.getByRole('tab', { name: '3M' })
+    threeMonthTab.focus()
+    await user.keyboard('{ArrowRight}')
+
+    expect(screen.getByRole('tab', { name: '6M' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('-20.00%')).toBeTruthy()
+    expect(screen.getByText('Past 6 Months')).toBeTruthy()
+  })
+
+  it('shows quote context metadata and day range in key statistics', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    mockChartData.mockImplementation((_symbol: string, timeframe: string, basePrice: number) => {
+      if (timeframe === '1D') {
+        return [
+          { close: 198, open: 197, high: 201, low: 190, volume: 1, time: 1 },
+          { close: 200, open: 198, high: 200.5, low: 194, volume: 1, time: 2 },
+        ]
+      }
+      return [
+        { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 1 },
+        { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 2 },
+      ]
+    })
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByText('USD · Oracle source: stocks-keeper · Updated live')).toBeTruthy()
+    expect(screen.getByText('Day Range')).toBeTruthy()
+    expect(screen.getByText('$190.00 - $201.00')).toBeTruthy()
   })
 })
