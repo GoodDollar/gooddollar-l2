@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import { useBlockNumber } from 'wagmi'
 
 import Link from 'next/link'
@@ -18,6 +17,7 @@ import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
+import { StockOrderForm } from '@/components/stocks/StockOrderForm'
 import { StockOrderFormFallback } from '@/components/stocks/StockOrderFormFallback'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
@@ -40,13 +40,6 @@ const TIMEFRAME_LABEL: Record<Timeframe, string> = {
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
-const StockOrderForm = dynamic(
-  () => import('@/components/stocks/StockOrderForm').then((mod) => mod.StockOrderForm),
-  {
-    ssr: false,
-    loading: () => <StockOrderFormFallback />,
-  },
-)
 
 function decodeTickerBounded(rawTicker?: string): string {
   if (!rawTicker) return ''
@@ -93,30 +86,30 @@ export default function StockDetailPage() {
   const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
-  const chartMounted = useMounted()
+  const mounted = useMounted()
 
   const chartData = useMemo(() => {
-    if (!stock || !chartMounted) return []
+    if (!stock || !mounted) return []
     return getChartData(stock.ticker, timeframe, stock.price)
-  }, [chartMounted, stock, timeframe])
+  }, [mounted, stock, timeframe])
   const dayRange = useMemo(() => {
-    if (!stock || !chartMounted) return null
+    if (!stock || !mounted) return null
     const intraday = getChartData(stock.ticker, '1D', stock.price)
     if (intraday.length === 0) return null
     const low = intraday.reduce((acc, candle) => Math.min(acc, candle.low), Number.POSITIVE_INFINITY)
     const high = intraday.reduce((acc, candle) => Math.max(acc, candle.high), Number.NEGATIVE_INFINITY)
     if (!Number.isFinite(low) || !Number.isFinite(high)) return null
     return { low, high }
-  }, [chartMounted, stock])
+  }, [mounted, stock])
   const performanceSummary = useMemo(() => {
-    if (!chartMounted || chartData.length < 2) return null
+    if (!mounted || chartData.length < 2) return null
     const firstClose = chartData[0]?.close ?? 0
     const lastClose = chartData[chartData.length - 1]?.close ?? 0
     if (!Number.isFinite(firstClose) || firstClose <= 0 || !Number.isFinite(lastClose)) return null
     const changeAbs = lastClose - firstClose
     const changePct = (changeAbs / firstClose) * 100
     return { changeAbs, changePct, label: TIMEFRAME_LABEL[timeframe] }
-  }, [chartData, chartMounted, timeframe])
+  }, [chartData, mounted, timeframe])
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
@@ -376,7 +369,7 @@ export default function StockDetailPage() {
                 )
               })}
             </div>
-            {chartMounted ? (
+            {mounted ? (
               <PriceChart data={chartData} height={350} />
             ) : (
               <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
@@ -460,7 +453,11 @@ export default function StockDetailPage() {
         </div>
 
         <div className="lg:w-80 shrink-0">
-          <StockOrderForm stock={stock} position={position} riskBlockReason={riskBlockReason} />
+          {mounted ? (
+            <StockOrderForm stock={stock} position={position} riskBlockReason={riskBlockReason} />
+          ) : (
+            <StockOrderFormFallback />
+          )}
 
           <RebalanceSyncPanel
             status={symbolRebalanceStatus}
