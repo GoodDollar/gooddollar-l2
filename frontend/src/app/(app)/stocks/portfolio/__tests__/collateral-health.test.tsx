@@ -61,13 +61,13 @@ vi.mock('@/components/InfoBanner', () => ({
 
 import StocksPortfolioPage from '../page'
 
-describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () => {
+describe('StocksPortfolioPage — disconnected guidance and collateral states', () => {
   beforeEach(() => {
     accountState.address = undefined
     accountState.isConnected = false
   })
 
-  it('shows neutral disconnected summary placeholders instead of active $0 metrics', () => {
+  it('shows a guided disconnected portfolio setup card instead of metric placeholders', () => {
     accountState.address = undefined
     accountState.isConnected = false
     holdingsState.holdings = []
@@ -82,11 +82,12 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    expect(screen.getByText('Total Value')).toBeInTheDocument()
-    expect(screen.getByText('Unrealized P&L')).toBeInTheDocument()
-    expect(screen.getByText('UBI Contributed')).toBeInTheDocument()
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText('Connect wallet to view collateral health')).toBeInTheDocument()
+    expect(screen.getByText('Start your stock portfolio')).toBeInTheDocument()
+    expect(screen.getByText('Connect your wallet to unlock portfolio value, collateral health, and UBI contribution tracking.')).toBeInTheDocument()
+    expect(screen.getByText('Connect wallet')).toBeInTheDocument()
+    expect(screen.getByText('Review live metrics')).toBeInTheDocument()
+    expect(screen.getByText('Track impact and holdings')).toBeInTheDocument()
+    expect(screen.queryByText('Total Value')).not.toBeInTheDocument()
     expect(screen.queryByText('0% — Critical')).not.toBeInTheDocument()
   })
 
@@ -98,10 +99,10 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Connect Wallet to Unlock Portfolio' })).toBeInTheDocument()
   })
 
-  it('shows deferred impact section loading placeholders on first paint', () => {
+  it('hides impact loading placeholders when in guided disconnected mode', () => {
     accountState.address = undefined
     accountState.isConnected = false
 
@@ -109,7 +110,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    expect(screen.getByText('Loading impact insights…')).toBeInTheDocument()
+    expect(screen.queryByText('Loading impact insights…')).not.toBeInTheDocument()
   })
 
   it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {
@@ -243,7 +244,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
-    expect(text).toContain('Connect wallet to view collateral health')
+    expect(text).toContain('Start your stock portfolio')
     expect(text).not.toContain('0% — Critical')
   })
 })

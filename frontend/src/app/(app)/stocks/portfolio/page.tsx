@@ -175,51 +175,57 @@ export default function StocksPortfolioPage() {
       {isDisconnected && !walletConnectConfigured && (
         <WalletConnectNotice className="mb-4" />
       )}
-
-      {/* Portfolio Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Value</div>
-          <div className={`text-lg sm:text-xl font-bold ${isDisconnected ? 'text-gray-500' : 'text-white'}`}>
-            {isDisconnected ? '—' : formatLargeNumber(summary.totalValue)}
+      {isDisconnected ? (
+        <section
+          data-testid="stocks-portfolio-disconnected-hero"
+          className="mb-6 rounded-2xl border border-goodgreen/20 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5 p-5 sm:p-6"
+        >
+          <h2 className="text-lg sm:text-xl font-semibold text-white">Start your stock portfolio</h2>
+          <p className="mt-2 text-sm text-gray-200">
+            Connect your wallet to unlock portfolio value, collateral health, and UBI contribution tracking.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-gray-700/30 bg-dark-100/55 px-3 py-2 text-xs text-gray-200">Connect wallet</div>
+            <div className="rounded-xl border border-gray-700/30 bg-dark-100/55 px-3 py-2 text-xs text-gray-200">Review live metrics</div>
+            <div className="rounded-xl border border-gray-700/30 bg-dark-100/55 px-3 py-2 text-xs text-gray-200">Track impact and holdings</div>
           </div>
-        </div>
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Unrealized P&L</div>
-          {isDisconnected ? (
-            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
-          ) : (
-            <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
-              <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
-            </div>
-          )}
-        </div>
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
-          {isDisconnected ? (
-            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
-          ) : (
-            <div className="text-lg sm:text-xl font-bold text-goodgreen">
-              {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
-              <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
-            </div>
-          )}
-        </div>
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          {isDisconnected ? (
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 gap-0.5">
-                <span className="text-[10px] sm:text-xs text-gray-400">Collateral Health</span>
-                <span className="text-[10px] sm:text-xs font-medium text-gray-500">Connect wallet to view collateral health</span>
-              </div>
-              <div className="h-1.5 bg-dark-50 rounded-full overflow-hidden" />
-              <div className="hidden sm:block mt-2 text-xs text-gray-500">
-                Connect wallet to unlock collateral monitoring.
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className="px-4 py-2.5 rounded-xl bg-goodgreen text-[#031615] font-semibold text-sm hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
+            >
+              Connect Wallet to Unlock Portfolio
+            </button>
+            <Link href="/stocks" className="text-sm text-goodgreen hover:text-[#22c5b6] transition-colors">
+              Browse Stocks First
+            </Link>
+          </div>
+        </section>
+      ) : (
+        <>
+          {/* Portfolio Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
+            <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+              <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Value</div>
+              <div className={`text-lg sm:text-xl font-bold ${isDisconnected ? 'text-gray-500' : 'text-white'}`}>
+                {isDisconnected ? '—' : formatLargeNumber(summary.totalValue)}
               </div>
             </div>
-          ) : (
-            <>
+            <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+              <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Unrealized P&L</div>
+              <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
+                <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
+              </div>
+            </div>
+            <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+              <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
+              <div className="text-lg sm:text-xl font-bold text-goodgreen">
+                {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
+                <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
+              </div>
+            </div>
+            <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
               <CollateralHealth
                 ratio={summary.healthRatio}
                 totalRequired={summary.totalRequired}
@@ -230,12 +236,12 @@ export default function StocksPortfolioPage() {
                   ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`
                   : 'Collateral health appears after you open a leveraged position'}
               </div>
-            </>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
 
-      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
+          <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
+        </>
+      )}
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">
