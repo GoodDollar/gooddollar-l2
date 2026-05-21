@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-05-21T08:56:26.616Z",
+  "symbolRows": [
+    {
+      "symbol": "AAPL",
+      "blockWindow": "1200->1201",
+      "maxDivergenceBps": 1,
+      "staleProducts": "none",
+      "stopReasons": "none",
+      "status": "PASS"
+    },
+    {
+      "symbol": "TSLA",
+      "blockWindow": "1200->1201",
+      "maxDivergenceBps": 20,
+      "staleProducts": "amm",
+      "stopReasons": "STALE_PROPAGATION,SECRET_LEAKAGE",
+      "status": "FAIL"
+    }
+  ],
+  "stopMatrix": {
+    "divergenceAbove0_5Pct": false,
+    "stalePropagation": true,
+    "secretLeakage": true
+  }
+}
