@@ -76,4 +76,60 @@ describe('StockOrderFormAdvanced', () => {
     const form = document.querySelector('form')
     expect(form).toBeDefined()
   })
+
+  it('shows warning when TP is below current price on Buy side', async () => {
+    render(<StockOrderFormAdvanced {...defaultProps} />)
+    const amountInput = screen.getByPlaceholderText('0.00')
+    await userEvent.type(amountInput, '100')
+
+    const tpSlButton = screen.getByText(/TP \/ SL/i)
+    await userEvent.click(tpSlButton)
+
+    const tpInput = screen.getByLabelText(/take profit/i)
+    await userEvent.type(tpInput, '150')
+
+    expect(screen.getByText(/take profit should be above/i)).toBeDefined()
+  })
+
+  it('shows warning when SL is above current price on Buy side', async () => {
+    render(<StockOrderFormAdvanced {...defaultProps} />)
+    const amountInput = screen.getByPlaceholderText('0.00')
+    await userEvent.type(amountInput, '100')
+
+    const tpSlButton = screen.getByText(/TP \/ SL/i)
+    await userEvent.click(tpSlButton)
+
+    const slInput = screen.getByLabelText(/stop loss/i)
+    await userEvent.type(slInput, '200')
+
+    expect(screen.getByText(/stop loss should be below/i)).toBeDefined()
+  })
+
+  it('shows warning when slippage exceeds 5%', async () => {
+    render(<StockOrderFormAdvanced {...defaultProps} />)
+    const advButton = screen.getByText(/advanced options/i)
+    await userEvent.click(advButton)
+
+    const slippageInput = screen.getByLabelText(/slippage/i)
+    await userEvent.clear(slippageInput)
+    await userEvent.type(slippageInput, '10')
+
+    expect(screen.getByText(/high slippage/i)).toBeDefined()
+  })
+
+  it('disables submit when slippage exceeds 50%', async () => {
+    render(<StockOrderFormAdvanced {...defaultProps} />)
+    const advButton = screen.getByText(/advanced options/i)
+    await userEvent.click(advButton)
+
+    const slippageInput = screen.getByLabelText(/slippage/i)
+    await userEvent.clear(slippageInput)
+    await userEvent.type(slippageInput, '60')
+
+    const amountInput = screen.getByPlaceholderText('0.00')
+    await userEvent.type(amountInput, '100')
+
+    const submitBtn = screen.getByRole('button', { name: /buy aapl/i })
+    expect(submitBtn).toHaveProperty('disabled', true)
+  })
 })

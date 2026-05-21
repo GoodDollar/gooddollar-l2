@@ -72,6 +72,26 @@ export function StockOrderFormAdvanced({ ticker, price, onSubmit }: StockOrderFo
     return false
   }, [orderType, side, triggerPrice, limitPrice])
 
+  const tpWrongSide = useMemo(() => {
+    const tpVal = parsePositive(tp)
+    if (tpVal === null || price <= 0) return false
+    if (side === 'buy' && tpVal <= price) return true
+    if (side === 'sell' && tpVal >= price) return true
+    return false
+  }, [tp, price, side])
+
+  const slWrongSide = useMemo(() => {
+    const slVal = parsePositive(sl)
+    if (slVal === null || price <= 0) return false
+    if (side === 'buy' && slVal >= price) return true
+    if (side === 'sell' && slVal <= price) return true
+    return false
+  }, [sl, price, side])
+
+  const parsedSlippage = parseFloat(slippage) || 0
+  const slippageWarning = parsedSlippage > 5 && parsedSlippage <= 50
+  const slippageExcessive = parsedSlippage > 50
+
   const effectivePrice = orderType === 'market' ? price : (parsedLimitPrice > 0 ? parsedLimitPrice : 0)
   const shares = effectivePrice > 0 ? parsedAmount / effectivePrice : 0
   const fee = parsedAmount * 0.001
@@ -90,7 +110,7 @@ export function StockOrderFormAdvanced({ ticker, price, onSubmit }: StockOrderFo
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault()
-    if (limitPriceInvalid || triggerPriceInvalid || triggerWrongSide || limitVsTriggerWrong) return
+    if (limitPriceInvalid || triggerPriceInvalid || triggerWrongSide || limitVsTriggerWrong || slippageExcessive) return
     onSubmit?.({
       side,
       orderType,
@@ -150,8 +170,14 @@ export function StockOrderFormAdvanced({ ticker, price, onSubmit }: StockOrderFo
                 <input id="slippage-input" type="text" inputMode="decimal" value={slippage}
                   aria-label="Slippage Tolerance"
                   onChange={e => setSlippage(sanitizeNumericInput(e.target.value))}
-                  className="flex-1 px-2 py-1 rounded bg-dark-50 border border-gray-700/30 text-white text-[10px] outline-none focus-visible:ring-1 focus-visible:ring-goodgreen/50 min-w-0" />
+                  className={`flex-1 px-2 py-1 rounded bg-dark-50 border text-white text-[10px] outline-none focus-visible:ring-1 focus-visible:ring-goodgreen/50 min-w-0 ${slippageExcessive ? 'border-red-500/50' : slippageWarning ? 'border-yellow-500/50' : 'border-gray-700/30'}`} />
               </div>
+              {slippageWarning && (
+                <p className="text-yellow-400 text-[10px] mt-1">High slippage — you may receive a worse price</p>
+              )}
+              {slippageExcessive && (
+                <p className="text-red-400 text-[10px] mt-1">Slippage too high — maximum 50%</p>
+              )}
             </div>
           </div>
         )}
@@ -245,8 +271,13 @@ export function StockOrderFormAdvanced({ ticker, price, onSubmit }: StockOrderFo
                 placeholder={side === 'buy' ? (price * 1.1).toFixed(2) : (price * 0.9).toFixed(2)}
                 value={tp}
                 onChange={e => setTp(sanitizeNumericInput(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/30 text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50" />
-              {tpPnl !== null && (
+                className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${tpWrongSide ? 'border-yellow-500/50' : 'border-gray-700/30'}`} />
+              {tpWrongSide && (
+                <p className="text-yellow-400 text-[10px] mt-1">
+                  {side === 'buy' ? 'Take profit should be above current price' : 'Take profit should be below current price'}
+                </p>
+              )}
+              {tpPnl !== null && !tpWrongSide && (
                 <p className={`text-[10px] mt-1 ${tpPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   Est. Profit: {tpPnl >= 0 ? '+' : ''}${tpPnl.toFixed(2)}
                 </p>
@@ -259,8 +290,13 @@ export function StockOrderFormAdvanced({ ticker, price, onSubmit }: StockOrderFo
                 placeholder={side === 'buy' ? (price * 0.95).toFixed(2) : (price * 1.05).toFixed(2)}
                 value={sl}
                 onChange={e => setSl(sanitizeNumericInput(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/30 text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50" />
-              {slPnl !== null && (
+                className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${slWrongSide ? 'border-yellow-500/50' : 'border-gray-700/30'}`} />
+              {slWrongSide && (
+                <p className="text-yellow-400 text-[10px] mt-1">
+                  {side === 'buy' ? 'Stop loss should be below current price' : 'Stop loss should be above current price'}
+                </p>
+              )}
+              {slPnl !== null && !slWrongSide && (
                 <p className={`text-[10px] mt-1 ${slPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   Est. Loss: {slPnl >= 0 ? '+' : ''}${slPnl.toFixed(2)}
                 </p>
@@ -272,7 +308,7 @@ export function StockOrderFormAdvanced({ ticker, price, onSubmit }: StockOrderFo
 
       {/* Submit */}
       <button type="submit"
-        disabled={parsedAmount <= 0 || limitPriceInvalid || triggerPriceInvalid || triggerWrongSide || limitVsTriggerWrong}
+        disabled={parsedAmount <= 0 || limitPriceInvalid || triggerPriceInvalid || triggerWrongSide || limitVsTriggerWrong || slippageExcessive}
         className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
           side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
         }`}>
