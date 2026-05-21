@@ -118,7 +118,7 @@ describe('AgentDetailPage', () => {
     })
     render(<AgentDetailPage />)
     expect(screen.getByText('Fee & UBI Breakdown')).toBeDefined()
-    expect(screen.getByText('→ UBI Pool (20%)')).toBeDefined()
+    expect(screen.getByText('→ UBI Pool (33%)')).toBeDefined()
   })
 
   it('renders protocol breakdown cards', () => {

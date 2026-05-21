@@ -58,7 +58,7 @@ const products = [
   },
   {
     name: "GoodStable",
-    description: "Mint gUSD stablecoin by locking collateral. 20% of fees fund UBI.",
+    description: "Mint gUSD stablecoin by locking collateral. 33% of fees fund UBI.",
     href: "/stable",
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">

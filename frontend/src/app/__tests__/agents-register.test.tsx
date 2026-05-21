@@ -144,7 +144,7 @@ describe('RegisterAgentPage', () => {
   it('shows how it works section', () => {
     render(<RegisterAgentPage />)
     expect(screen.getByText('How it works')).toBeDefined()
-    expect(screen.getByText(/20% goes to fund UBI/)).toBeDefined()
+    expect(screen.getByText(/33% goes to fund UBI/)).toBeDefined()
   })
 
   it('links back to leaderboard', () => {

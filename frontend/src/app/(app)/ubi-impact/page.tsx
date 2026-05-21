@@ -129,7 +129,7 @@ function FeeFlowViz({ protocols, totalFees, totalUBI }: {
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
       <h2 className="text-lg font-semibold text-white mb-4">💧 Fee → UBI Flow</h2>
       <p className="text-sm text-zinc-400 mb-6">
-        Every protocol fee is split: 20% funds Universal Basic Income for verified humans worldwide.
+        Every protocol fee is split: 33% funds Universal Basic Income for verified humans worldwide.
       </p>
 
       <div className="space-y-3">
@@ -354,7 +354,7 @@ export default function UBIImpactPage() {
       <InfoBanner
         storageKey="ubi-impact-info"
         title="UBI Fee Routing"
-        description="GoodDollar L2 routes 20% of all protocol fees to the UBI pool. This dashboard tracks every protocol's contribution in real-time, directly from the UBIRevenueTracker contract."
+        description="GoodDollar L2 routes 33% of all protocol fees to the UBI pool. This dashboard tracks every protocol's contribution in real-time, directly from the UBIRevenueTracker contract."
       />
 
       {showHardError ? (
@@ -367,7 +367,7 @@ export default function UBIImpactPage() {
           <h2 className="text-lg font-semibold text-white mb-2">No fees recorded yet</h2>
           <p className="text-sm text-zinc-400 max-w-md mx-auto">
             No protocol fees have been collected on this chain yet. As soon as users start swapping,
-            trading, or borrowing, 20% of every fee will route here and feed UBI.
+            trading, or borrowing, 33% of every fee will route here and feed UBI.
           </p>
         </div>
       ) : (
@@ -387,7 +387,7 @@ export default function UBIImpactPage() {
                 label="Total Fees Collected"
                 value={`${dashboard.totalFeesFormatted} G$`}
                 sub={`${dashboard.ubiPercentage.toFixed(1)}% → UBI`}
-                tooltip="Derived from UBIFeeSplitter.totalUBIFunded() / totalFeesCollected(). The on-chain split is 20% UBI / 40% protocol / 40% dApp (ubiBPS = 2000)."
+                tooltip="Derived from UBIFeeSplitter.totalUBIFunded() / totalFeesCollected(). The on-chain split is 33% UBI / 33.5% protocol / 33.5% dApp (ubiBPS = 3300)."
               />
               <StatCard
                 label="Fee-Generating Txs"

@@ -282,7 +282,7 @@ export default function RegisterAgentPage() {
         <ul className="text-xs text-gray-500 space-y-1.5">
           <li className="flex gap-2"><span>1.</span> Register your agent address on-chain</li>
           <li className="flex gap-2"><span>2.</span> Your agent trades via the SDK (swaps, perps, predict, lend, stocks)</li>
-          <li className="flex gap-2"><span>3.</span> Every trade generates fees — 20% goes to fund UBI</li>
+          <li className="flex gap-2"><span>3.</span> Every trade generates fees — 33% goes to fund UBI</li>
           <li className="flex gap-2"><span>4.</span> Climb the leaderboard by contributing the most UBI</li>
         </ul>
         <div className="pt-2 border-t border-gray-700/10">

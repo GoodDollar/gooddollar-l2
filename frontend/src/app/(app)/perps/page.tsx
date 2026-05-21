@@ -512,7 +512,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
             <div className="flex justify-between text-gray-400"><span>Margin</span><span className="text-white truncate ml-2">{formatPerpsPrice(marginRequired)}</span></div>
             <div className="flex justify-between text-gray-400"><span>Liq. Price</span><span className="text-yellow-400 truncate ml-2">{formatPerpsPrice(liqPrice)}</span></div>
             <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.10%' : '0.02%'})</span><span className="text-white truncate ml-2">{formatLargeValue(fee)}</span></div>
-            <div className="flex justify-between text-goodgreen/80"><span>→ UBI (20%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
+            <div className="flex justify-between text-goodgreen/80"><span>→ UBI (33%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
             {tpPnl !== 0 && !tpInvalid && (
               <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className="truncate ml-2"><PriceDisplay value={tpPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>
             )}
@@ -551,7 +551,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
 
       <div className="flex items-center justify-center gap-1.5 text-[10px] text-goodgreen">
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-        <span>Fees → 20% funds UBI</span>
+        <span>Fees → 33% funds UBI</span>
       </div>
     </form>
   )

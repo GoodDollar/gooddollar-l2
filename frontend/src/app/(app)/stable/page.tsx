@@ -417,7 +417,7 @@ function ProtocolStats() {
     <div className="grid grid-cols-3 gap-3 mb-6">
       {[
         { label: 'Total gUSD Supply', value: supplyDisplay, sub: 'live from devnet' },
-        { label: 'UBI Fees Routed',   value: '20%',         sub: 'of stability fees' },
+        { label: 'UBI Fees Routed',   value: '33%',         sub: 'of stability fees' },
         { label: 'Min. Ratio',        value: '101–200%',    sub: 'depends on collateral' },
       ].map(s => (
         <div key={s.label} className="rounded-xl bg-dark-100 border border-dark-50/50 px-4 py-3 text-center">
@@ -451,7 +451,7 @@ export default function StablePage() {
         </div>
         <p className="text-sm text-gray-500 max-w-xl">
           Lock WETH, G$, or USDC to mint gUSD — a decentralised stablecoin backed by overcollateralized vaults.
-          20% of stability fees fund the UBI pool.
+          33% of stability fees fund the UBI pool.
         </p>
       </div>
 

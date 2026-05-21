@@ -14,7 +14,7 @@ describe('HowItWorks', () => {
   it('renders step descriptions', () => {
     render(<HowItWorks />)
     expect(screen.getByText(/Swap tokens, trade stocks/i)).toBeInTheDocument()
-    expect(screen.getByText(/20% of every trading fee/i)).toBeInTheDocument()
+    expect(screen.getByText(/33% of every trading fee/i)).toBeInTheDocument()
     expect(screen.getByText(/verified humans worldwide/i)).toBeInTheDocument()
   })
 
