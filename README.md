@@ -22,6 +22,8 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks now includes a `Drift & Rebalance` dashboard that surfaces per-symbol oracle block, last synced block, block skew, divergence, and a live risk gate (`Open`/`Stopped`) so operators can detect stale propagation before order flow increases risk.
+- Added a stocks rebalance invariant status API at `/api/stocks/rebalance-status` and buy-side sync gating on `/stocks/[ticker]`: risk-increasing orders are paused when symbol sync lags the current block or stop conditions fire (divergence > 0.5%, stale propagation, cross-product block mismatch, leakage sentinel).
 - Stocks ticker routing now normalizes encoded trailing delimiters (for example `/stocks/AAPL%2F`) to recover valid symbols instead of showing a false `Stock Not Found` shell on malformed shared links.
 - Stocks pages now use route-aware feedback-control positioning plus reserved right/bottom safe-area spacing on `/stocks` and `/stocks/portfolio`, so floating feedback UI no longer obscures market/news/table content.
 - Stocks mobile discovery now uses a clearer top-viewport hierarchy with a dedicated filter shell and tuned spacing between header, context banners, intelligence, and screening controls.

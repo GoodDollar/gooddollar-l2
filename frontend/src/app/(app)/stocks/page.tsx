@@ -5,10 +5,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { MarketIntelligencePanel } from '@/components/stocks/MarketIntelligencePanel'
+import { StocksRebalanceDashboard } from '@/components/stocks/StocksRebalanceDashboard'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { useMounted } from '@/lib/useMounted'
 import {
@@ -49,10 +51,11 @@ interface StockRowProps {
   stock: Stock
   idx: number
   isLive: boolean
+  canIncreaseRisk: boolean
   onRowClick: (ticker: string) => void
 }
 
-const StockRow = memo(function StockRow({ stock, idx, isLive, onRowClick }: StockRowProps) {
+const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, onRowClick }: StockRowProps) {
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -84,7 +87,7 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, onRowClick }: Stoc
         <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
       </td>
       <td className="py-3 px-1 text-right w-24 hidden sm:table-cell">
-        {isLive ? (
+        {isLive && canIncreaseRisk ? (
           <button
             onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
             className="px-3 py-1 text-xs font-semibold rounded-lg bg-goodgreen/15 text-goodgreen hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
@@ -102,7 +105,7 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, onRowClick }: Stoc
             <button
               onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
               className="px-3 py-1 text-xs font-semibold rounded-lg bg-dark-100 text-gray-300 border border-gray-700/40 hover:bg-dark-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/50"
-              aria-label={`Preview ${stock.ticker} — demo data`}
+              aria-label={`Preview ${stock.ticker} — ${(isLive && !canIncreaseRisk) ? 'sync pending' : 'demo data'}`}
             >
               Preview
             </button>
@@ -131,6 +134,9 @@ export default function StocksPage() {
   const [momentumFilter, setMomentumFilter] = useState<MomentumFilter>(initialScreenerState.momentumFilter)
   const [liquidityFilter, setLiquidityFilter] = useState<LiquidityFilter>(initialScreenerState.liquidityFilter)
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+  const rebalanceSymbols = useMemo(() => data.map((stock) => stock.ticker), [data])
+  const { data: rebalanceStatus, isLoading: rebalanceLoading, error: rebalanceError, bySymbol: rebalanceBySymbol } =
+    useStocksRebalanceStatus(rebalanceSymbols)
 
   const sectors = useMemo(() => (
     Array.from(new Set(data.map((stock) => stock.sector).filter(Boolean))).sort((a, b) => a.localeCompare(b))
@@ -367,6 +373,13 @@ export default function StocksPage() {
         </div>
         <OracleStatusBadge useStocksFallback onChainReachable={isLive} />
       </div>
+      <div className="mb-4">
+        <StocksRebalanceDashboard
+          symbols={rebalanceStatus?.symbols ?? []}
+          isLoading={rebalanceLoading}
+          error={rebalanceError}
+        />
+      </div>
 
       {activeFilterCount > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -429,17 +442,19 @@ export default function StocksPage() {
                 <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
                 </div>
-                {isLive ? (
+                {isLive && (rebalanceBySymbol[stock.ticker]?.riskIncreaseAllowed ?? true) ? (
                   <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
                     Tap to trade
                   </span>
                 ) : (
                   <span
                     className="inline-flex mt-1 items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-50/40 text-gray-300 border border-gray-700/40"
-                    aria-label="Demo data — preview only"
+                    aria-label={(isLive && rebalanceBySymbol[stock.ticker] && !rebalanceBySymbol[stock.ticker].riskIncreaseAllowed)
+                      ? 'Sync pending — preview only'
+                      : 'Demo data — preview only'}
                   >
                     <span className="px-1 py-0 rounded bg-yellow-500/10 text-yellow-400 text-[9px] border border-yellow-500/20">
-                      Demo
+                      {isLive ? 'Sync' : 'Demo'}
                     </span>
                     Tap to preview
                   </span>
@@ -488,7 +503,14 @@ export default function StocksPage() {
                 </tr>
               ) : (
                 filtered.map((stock, idx) => (
-                  <StockRow key={stock.ticker} stock={stock} idx={idx} isLive={isLive} onRowClick={handleRowClick} />
+                  <StockRow
+                    key={stock.ticker}
+                    stock={stock}
+                    idx={idx}
+                    isLive={isLive}
+                    canIncreaseRisk={rebalanceBySymbol[stock.ticker]?.riskIncreaseAllowed ?? true}
+                    onRowClick={handleRowClick}
+                  />
                 ))
               )}
             </tbody>

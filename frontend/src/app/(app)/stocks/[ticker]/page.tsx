@@ -8,6 +8,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
@@ -99,7 +100,17 @@ function formatEventDate(offsetDays: number): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function OrderForm({ stock, position }: { stock: { ticker: string; price: number }; position: OnChainStockPosition | null }) {
+function OrderForm({
+  stock,
+  position,
+  riskIncreaseAllowed,
+  riskStopReasons,
+}: {
+  stock: { ticker: string; price: number }
+  position: OnChainStockPosition | null
+  riskIncreaseAllowed: boolean
+  riskStopReasons: string[]
+}) {
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [amount, setAmount] = useState('')
@@ -138,12 +149,15 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   const actionPhase = side === 'buy' ? mintPhase : redeemPhase
   const actionError = side === 'buy' ? mintError : redeemError
   const isPending = actionPhase === 'approving' || actionPhase === 'pending'
+  const buyBlockedBySync = side === 'buy' && !riskIncreaseAllowed
+  const buySyncReason = riskStopReasons.length > 0 ? riskStopReasons.join(', ') : 'stale_propagation'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || !hasValidPrice) return
     if (amountTooLarge) return
     if (sellDisabled) return
+    if (side === 'buy' && !riskIncreaseAllowed) return
 
     if (isDeployed && orderType === 'market') {
       const amountNum = parseFloat(amount)
@@ -213,6 +227,12 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
           You only hold {balanceShares.toFixed(4)} {stock.ticker}. Reduce the amount to sell.
         </div>
       )}
+      {buyBlockedBySync && (
+        <div role="alert" aria-live="polite"
+          className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          Risk-increasing orders are paused until symbol sync reaches the current block ({buySyncReason}).
+        </div>
+      )}
 
       <div className="mb-3">
         <label className="text-xs text-gray-400 mb-1 block">Amount (USD)</label>
@@ -257,7 +277,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
         </button>
       ) : walletReady ? (
         <WalletGatedTradeButton hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance}>
-          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge}
+          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || buyBlockedBySync}
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
@@ -265,7 +285,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge}
+        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || buyBlockedBySync}
           className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>
@@ -289,6 +309,10 @@ export default function StockDetailPage() {
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks, isLive } = useOnChainStocks()
+  const { bySymbol: rebalanceBySymbol } = useStocksRebalanceStatus(ticker ? [ticker] : [])
+  const tickerRebalance = ticker ? rebalanceBySymbol[ticker] : undefined
+  const riskIncreaseAllowed = tickerRebalance?.riskIncreaseAllowed ?? true
+  const riskStopReasons = tickerRebalance?.stopReasons ?? []
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
@@ -684,7 +708,12 @@ export default function StockDetailPage() {
               On-chain stocks oracle is not reachable. Prices are illustrative only and orders cannot settle.
             </aside>
           )}
-          <OrderForm stock={stock} position={position} />
+          <OrderForm
+            stock={stock}
+            position={position}
+            riskIncreaseAllowed={riskIncreaseAllowed}
+            riskStopReasons={riskStopReasons}
+          />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
