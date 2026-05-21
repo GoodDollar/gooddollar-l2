@@ -383,7 +383,10 @@ export default function StockDetailPage() {
         <span>←</span> Back to Stocks
       </Link>
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-1 min-w-0 order-2 lg:order-1">
+        <div
+          data-testid="stocks-detail-main-column"
+          className="flex-1 min-w-0"
+        >
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-xs font-bold text-goodgreen">
               {stock.ticker.slice(0, 2)}
@@ -512,7 +515,10 @@ export default function StockDetailPage() {
           />
         </div>
 
-        <div className="lg:w-80 shrink-0 order-1 lg:order-2">
+        <div
+          data-testid="stocks-detail-side-column"
+          className="lg:w-80 shrink-0"
+        >
           <OrderForm stock={stock} position={position} />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
