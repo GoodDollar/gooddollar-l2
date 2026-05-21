@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, memo, useCallback } from 'react'
+import { useState, useMemo, memo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
@@ -119,6 +119,8 @@ export default function StocksPage() {
   const router = useRouter()
   const { address } = useAccount()
   const walletConnectConfigured = isWalletConnectConfigured()
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const stocksTableRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -155,6 +157,15 @@ export default function StocksPage() {
     router.push(`/stocks/${ticker}`)
   }, [router])
 
+  const handleOnboardingCta = useCallback(() => {
+    if (!walletConnectConfigured) {
+      stocksTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      searchInputRef.current?.focus()
+      return
+    }
+    router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)
+  }, [walletConnectConfigured, router, data])
+
   return (
     <div className="w-full max-w-5xl mx-auto">
       <div className="mb-6">
@@ -189,10 +200,10 @@ export default function StocksPage() {
               )}
             </div>
             <button
-              onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
+              onClick={handleOnboardingCta}
               className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-[#031615] font-semibold text-sm hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
             >
-              {walletConnectConfigured ? 'Connect Wallet to Trade Stocks' : 'Browse Stocks to Prepare Trade'}
+              {walletConnectConfigured ? 'Open Featured Stock to Start Trading' : 'Browse Stocks to Prepare Trade'}
             </button>
           </div>
         </div>
@@ -200,6 +211,7 @@ export default function StocksPage() {
 
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
         <input
+          ref={searchInputRef}
           type="text"
           placeholder="Search stocks..."
           value={query}
@@ -248,7 +260,7 @@ export default function StocksPage() {
       </div>
 
       {/* Desktop table (sm+) */}
-      <div className="hidden sm:block bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
+      <div ref={stocksTableRef} className="hidden sm:block bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
