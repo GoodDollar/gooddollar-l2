@@ -246,4 +246,26 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(text).toContain('Connect wallet to view collateral health')
     expect(text).not.toContain('0% — Critical')
   })
+
+  it('uses readable disconnected collateral helper typography for responsive cards', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+    holdingsState.holdings = []
+    holdingsState.totalValue = 0
+    holdingsState.unrealizedPnl = 0
+    holdingsState.pnlPercent = 0
+    holdingsState.totalCollateral = 0
+    holdingsState.totalRequired = 0
+    holdingsState.healthRatio = 0
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    const primaryHelper = screen.getByText('Connect wallet to view collateral health')
+    const secondaryHelper = screen.getByText('Connect wallet to unlock collateral monitoring.')
+
+    expect(primaryHelper.className).toContain('leading-relaxed')
+    expect(secondaryHelper.className).toContain('leading-relaxed')
+  })
 })

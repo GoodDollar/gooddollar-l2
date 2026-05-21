@@ -171,14 +171,14 @@ export default function StocksPortfolioPage() {
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
 
       {/* Portfolio Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6 items-stretch">
+        <div className="h-full bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Value</div>
           <div className={`text-lg sm:text-xl font-bold ${isDisconnected ? 'text-gray-500' : 'text-white'}`}>
             {isDisconnected ? '—' : formatLargeNumber(summary.totalValue)}
           </div>
         </div>
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+        <div className="h-full bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Unrealized P&L</div>
           {isDisconnected ? (
             <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
@@ -189,7 +189,7 @@ export default function StocksPortfolioPage() {
             </div>
           )}
         </div>
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+        <div className="h-full bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
           {isDisconnected ? (
             <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
@@ -200,15 +200,17 @@ export default function StocksPortfolioPage() {
             </div>
           )}
         </div>
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+        <div className="h-full bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           {isDisconnected ? (
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 gap-0.5">
+            <div className="flex h-full flex-col">
+              <div className="mb-1.5 sm:mb-2">
                 <span className="text-[10px] sm:text-xs text-gray-400">Collateral Health</span>
-                <span className="text-[10px] sm:text-xs font-medium text-gray-500">Connect wallet to view collateral health</span>
+                <span className="mt-1 block text-[10px] sm:text-xs font-medium text-gray-500 leading-relaxed sm:max-w-[18ch]">
+                  Connect wallet to view collateral health
+                </span>
               </div>
               <div className="h-1.5 bg-dark-50 rounded-full overflow-hidden" />
-              <div className="hidden sm:block mt-2 text-xs text-gray-500">
+              <div className="hidden sm:block mt-2 text-xs text-gray-500 leading-relaxed">
                 Connect wallet to unlock collateral monitoring.
               </div>
             </div>
