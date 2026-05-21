@@ -311,6 +311,11 @@ export default function StocksPage() {
     router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)
   }, [router, data])
 
+  const handleTryAnotherConnector = useCallback(() => {
+    setProgress(prev => markStocksOnboardingStep(prev, 'connectIntent'))
+    handlePrepareBrowse()
+  }, [handlePrepareBrowse])
+
   const retryInSeconds = useMemo(() => {
     if (!nextRetryAt) return null
     return Math.max(0, Math.ceil((nextRetryAt - retryNow) / 1000))
@@ -376,6 +381,7 @@ export default function StocksPage() {
           <DeferredStocksOnboardingCard
             onPrepareBrowse={handlePrepareBrowse}
             onStartTrading={handleStartTrading}
+            onTryAnotherConnector={handleTryAnotherConnector}
           />
           <StocksOnboardingChecklist progress={progress} className="mb-4" />
         </>

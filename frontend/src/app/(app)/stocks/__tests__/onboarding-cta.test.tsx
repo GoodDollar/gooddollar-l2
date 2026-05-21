@@ -103,6 +103,27 @@ describe('StocksPage onboarding CTA', () => {
     expect(screen.getByRole('button', { name: 'Hide connection options' })).toBeInTheDocument()
   })
 
+  it('keeps Try Another Connector in stocks onboarding context and shows fallback guidance', async () => {
+    walletState.address = undefined
+    push.mockClear()
+    scrollIntoView.mockClear()
+    const user = userEvent.setup()
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'More connection options' }))
+    await user.click(screen.getByRole('button', { name: 'Try Another Connector' }))
+
+    expect(push).not.toHaveBeenCalled()
+    expect(scrollIntoView).toHaveBeenCalled()
+    expect(screen.getByText(/Additional connectors are currently unavailable/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Search stocks...')).toHaveFocus()
+  })
+
   it('renders explicit three-step first-time journey copy in the hero card', async () => {
     walletState.address = undefined
 

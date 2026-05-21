@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks onboarding now keeps `Try Another Connector` inside `/stocks` context (no ticker redirect), and shows explicit fallback guidance when additional connectors are unavailable.
 - Stocks Markets now surfaces quote-status outages with a visible degraded-data warning (`Market data may be stale`), retry CTA, and auto-retry countdown so users are explicitly warned when oracle-status infra is unavailable.
 - Stocks Markets now renders a dedicated no-results recovery state for unmatched searches with query echo, `Clear search`, and quick ticker shortcuts (`Try AAPL`, etc.) instead of a low-signal inline fallback message.
 - Next runtime dev mode now isolates build artifacts into `.next.dev` by default, preventing `next build` from clobbering live dev chunks/CSS and avoiding the unstyled stocks-shell failure mode during first-load QA.

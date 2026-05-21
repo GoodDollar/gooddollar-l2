@@ -7,11 +7,13 @@ import { StocksConnectFallbackRail } from '@/components/stocks/StocksConnectFall
 interface StocksOnboardingCardProps {
   onPrepareBrowse: () => void
   onStartTrading: () => void
+  onTryAnotherConnector: () => void
 }
 
 export function StocksOnboardingCard({
   onPrepareBrowse,
   onStartTrading,
+  onTryAnotherConnector,
 }: StocksOnboardingCardProps) {
   const walletConnectConfigured = isWalletConnectConfigured()
   const showDisconnectedFunnel = !walletConnectConfigured
@@ -39,7 +41,7 @@ export function StocksOnboardingCard({
               <WalletConnectNotice className="mt-3" />
               <StocksConnectFallbackRail
                 onUseInBrowserWallet={onStartTrading}
-                onTryAnotherConnector={onStartTrading}
+                onTryAnotherConnector={onTryAnotherConnector}
                 onContinueReadOnly={onPrepareBrowse}
               />
             </>

@@ -16,6 +16,7 @@ export function StocksConnectFallbackRail({
   continueLabel = 'Continue in Read-only Mode',
 }: StocksConnectFallbackRailProps) {
   const [showMoreOptions, setShowMoreOptions] = useState(false)
+  const [showUnavailableHint, setShowUnavailableHint] = useState(false)
 
   return (
     <div className="mt-3 rounded-xl border border-goodgreen/25 bg-goodgreen/5 p-3">
@@ -56,11 +57,22 @@ export function StocksConnectFallbackRail({
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={onTryAnotherConnector}
+            onClick={() => {
+              setShowUnavailableHint(true)
+              onTryAnotherConnector()
+            }}
             className="rounded-lg border border-gray-600/70 bg-dark-100/70 px-3 py-2 text-xs font-semibold text-gray-200 hover:border-goodgreen/50 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/60"
           >
             Try Another Connector
           </button>
+          {showUnavailableHint && (
+            <p
+              role="status"
+              className="text-[11px] text-amber-200"
+            >
+              Additional connectors are currently unavailable. Use In-browser Wallet or continue in read-only mode.
+            </p>
+          )}
         </div>
       )}
     </div>
