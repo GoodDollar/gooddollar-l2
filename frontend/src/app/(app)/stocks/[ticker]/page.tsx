@@ -42,6 +42,8 @@ import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerT
 // (A regression test at `src/__tests__/dynamic-routes-no-ssr-false.test.ts`
 // enforces this rule; do not reintroduce the forbidden token here.)
 
+const RESERVED_STOCK_SUBROUTES = new Set(['markets', 'portfolio'])
+
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
   if (!isConnected) {
@@ -448,6 +450,7 @@ export default function StockDetailPage() {
   const searchParams = useSearchParams()
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
+  const isReservedSubroute = !!rawTicker && RESERVED_STOCK_SUBROUTES.has(rawTicker.toLowerCase())
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks, isLive } = useOnChainStocks()
   const { bySymbol: rebalanceBySymbol } = useStocksRebalanceStatus(ticker ? [ticker] : [])
@@ -538,6 +541,12 @@ export default function StockDetailPage() {
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
   }, [pathname, router, searchParams])
 
+  useEffect(() => {
+    if (isReservedSubroute) {
+      router.replace('/stocks')
+    }
+  }, [isReservedSubroute, router])
+
   const handleTabChange = (nextTab: TickerTab) => {
     setActiveTab(nextTab)
     const nextParams = new URLSearchParams(searchParams.toString())
@@ -548,6 +557,14 @@ export default function StockDetailPage() {
     }
     const next = nextParams.toString()
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+  }
+
+  if (isReservedSubroute) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-goodgreen border-t-transparent" />
+      </div>
+    )
   }
 
   if (!stock) {
