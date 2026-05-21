@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks wallet surfaces now suppress the noisy MetaMask SDK async-storage resolution warning by aliasing `@react-native-async-storage/async-storage` to a browser-safe no-op in Next webpack config, keeping console/e2e logs clean while preserving wallet connector UX.
 - Stocks portfolio collateral-health summary card now uses responsive helper typography and spacing (`leading-relaxed`, stacked helper copy, stretched metric-card alignment) so disconnected-state guidance no longer appears cramped/clipped on tablet and desktop.
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
 - Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with an in-context `Connect Wallet to View UBI Impact` CTA instead of misleading `0% — Critical` risk framing.

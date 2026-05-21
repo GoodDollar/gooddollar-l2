@@ -156,6 +156,14 @@ describe('config builder — branches on NEXT_PUBLIC_WC_PROJECT_ID', () => {
     expect(ids).toContain('walletConnect')
   })
 
+  it('valid WC branch avoids MetaMask SDK connector ids that pull problematic async-storage dependency', async () => {
+    const validId = '0123456789abcdef0123456789abcdef'
+    const mod = await loadWagmiWithEnv(validId)
+    const ids = connectorIds(mod)
+    expect(ids).not.toContain('metaMask')
+    expect(ids).not.toContain('metaMaskSDK')
+  })
+
   it('exposes config.chains containing the gooddollarL2 chain in both branches', async () => {
     const invalid = await loadWagmiWithEnv(undefined)
     expect(invalid.config.chains.length).toBeGreaterThanOrEqual(1)

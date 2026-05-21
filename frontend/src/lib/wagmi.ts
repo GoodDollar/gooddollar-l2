@@ -1,10 +1,11 @@
 'use client'
 
-import { connectorsForWallets, getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { connectorsForWallets } from '@rainbow-me/rainbowkit'
 import {
   coinbaseWallet,
   injectedWallet,
   safeWallet,
+  walletConnectWallet,
 } from '@rainbow-me/rainbowkit/wallets'
 import { createConfig } from 'wagmi'
 import { http } from 'viem'
@@ -158,12 +159,27 @@ function buildNoWcConfig() {
   })
 }
 
-export const config = isValidWcProjectId
-  ? getDefaultConfig({
+function buildWcConfig() {
+  const connectors = connectorsForWallets(
+    [
+      {
+        groupName: 'Wallets',
+        wallets: [injectedWallet, coinbaseWallet, walletConnectWallet, safeWallet],
+      },
+    ],
+    {
       appName: 'GoodDollar',
       projectId: validatedWcProjectId,
-      chains: [gooddollarL2],
-      ssr: true,
-      transports,
-    })
+    },
+  )
+  return createConfig({
+    chains: [gooddollarL2],
+    connectors,
+    ssr: true,
+    transports,
+  })
+}
+
+export const config = isValidWcProjectId
+  ? buildWcConfig()
   : buildNoWcConfig()
