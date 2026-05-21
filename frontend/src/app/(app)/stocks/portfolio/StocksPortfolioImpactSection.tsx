@@ -5,17 +5,16 @@ import { PartnershipIntegrationCard } from '@/components/PartnershipIntegrationC
 
 export function StocksPortfolioImpactSection({ userUBIContribution }: { userUBIContribution: number }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" data-testid="stocks-impact-section">
+    <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch gap-6 mb-6" data-testid="stocks-impact-section">
       <UBIContributionCard
         platform="stocks"
-        className="h-fit"
+        className="h-full"
       />
       <PartnershipIntegrationCard
         userUBIContribution={userUBIContribution}
         compact={false}
-        className="h-fit"
+        className="h-full"
       />
     </div>
   )
 }
-
