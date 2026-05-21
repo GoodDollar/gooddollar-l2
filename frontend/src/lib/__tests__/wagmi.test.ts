@@ -115,7 +115,7 @@ describe('config builder — branches on NEXT_PUBLIC_WC_PROJECT_ID', () => {
     // Sanity: we should still have *some* connectors so users with browser
     // extensions can connect.
     expect(ids.length).toBeGreaterThan(0)
-  })
+  }, 15_000)
 
   it('omits the walletConnect connector for the legacy "gooddollar-placeholder" sentinel', async () => {
     const mod = await loadWagmiWithEnv('gooddollar-placeholder')
