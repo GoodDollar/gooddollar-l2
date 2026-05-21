@@ -6,12 +6,14 @@ import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { getDailyMovers, getMarketAnalysisPicks, getTrendingStocks } from '@/lib/stockDiscovery'
 import { useWatchlist } from '@/lib/useWatchlist'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
+import { StocksDiscoveryShelves } from '@/components/stocks/StocksDiscoveryShelves'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -130,6 +132,9 @@ export default function StocksPage() {
     })
     // watchlist included so list re-filters when toggle changes
   }, [data, query, sortField, sortDir, filter, isWatched])
+  const dailyMovers = useMemo(() => getDailyMovers(data, 5), [data])
+  const trendingStocks = useMemo(() => getTrendingStocks(data, 5), [data])
+  const marketAnalysisPicks = useMemo(() => getMarketAnalysisPicks(data, 5), [data])
 
   const handleRowClick = useCallback((ticker: string) => {
     router.push(`/stocks/${ticker}`)
@@ -188,6 +193,13 @@ export default function StocksPage() {
           </div>
         </div>
       )}
+
+      <StocksDiscoveryShelves
+        isLoading={isLoading}
+        dailyMovers={dailyMovers}
+        trending={trendingStocks}
+        analysisPicks={marketAnalysisPicks}
+      />
 
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
         <input
