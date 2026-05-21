@@ -125,3 +125,6 @@ frontend/tsconfig.tsbuildinfo
 
 # Local generated review artifacts
 frontend/.next.review/
+
+# Local generated review artifacts
+frontend/*.png

@@ -6,3 +6,8 @@ node_modules/
 .next.dev/
 # Watchdog runtime event log — see ecosystem.watchdog.config.cjs (task 0029)
 .autobuilder-logs/
+
+# Local generated review artifacts
+.next.review/
+*.png
+tsconfig.tsbuildinfo
