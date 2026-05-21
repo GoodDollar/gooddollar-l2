@@ -108,6 +108,8 @@ function formatCalendarDate(dateInput: Date | string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
+type StockOrderType = 'market' | 'limit' | 'stop-limit'
+
 function OrderForm({
   stock,
   position,
@@ -120,19 +122,29 @@ function OrderForm({
   riskStopReasons: string[]
 }) {
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
-  const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
+  const [orderType, setOrderType] = useState<StockOrderType>('market')
   const [amount, setAmount] = useState('')
   const [limitPrice, setLimitPrice] = useState('')
+  const [triggerPrice, setTriggerPrice] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [showTpSl, setShowTpSl] = useState(false)
+  const [tp, setTp] = useState('')
+  const [sl, setSl] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [slippage, setSlippage] = useState('0.5')
   const walletReady = useWalletReady()
   const { isConnected } = useAccount()
   const { mint, phase: mintPhase, error: mintError, isDeployed } = useMintSynthetic()
   const { redeem, phase: redeemPhase, error: redeemError } = useRedeemSynthetic()
 
   const parsedLimitPrice = parseFloat(limitPrice)
-  const limitPriceInvalid = orderType === 'limit' && limitPrice !== '' && (isNaN(parsedLimitPrice) || parsedLimitPrice <= 0)
+  const parsedTriggerPrice = parseFloat(triggerPrice)
+  const limitPriceInvalid = orderType !== 'market' && limitPrice !== '' && (isNaN(parsedLimitPrice) || parsedLimitPrice <= 0)
+  const triggerPriceInvalid = orderType === 'stop-limit' && triggerPrice !== '' && (isNaN(parsedTriggerPrice) || parsedTriggerPrice <= 0)
   const hasValidPrice = orderType === 'market' || parsedLimitPrice > 0
-  const effectivePrice = orderType === 'limit' && parsedLimitPrice > 0 ? parsedLimitPrice : (orderType === 'limit' ? 0 : stock.price)
+  const effectivePrice = orderType !== 'market' && parsedLimitPrice > 0 ? parsedLimitPrice : (orderType !== 'market' ? 0 : stock.price)
+  const parsedTp = parseFloat(tp) || 0
+  const parsedSl = parseFloat(sl) || 0
   const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
   const fee = amount ? parseFloat(amount) * 0.001 : 0
   const ubiFee = fee * 0.2
@@ -162,7 +174,7 @@ function OrderForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || !hasValidPrice) return
+    if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || triggerPriceInvalid || !hasValidPrice) return
     if (amountTooLarge) return
     if (sellDisabled) return
     if (side === 'buy' && !riskIncreaseAllowed) return
@@ -201,18 +213,59 @@ function OrderForm({
         </button>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <button type="button" onClick={() => setOrderType('market')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${orderType === 'market' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-          Market
-        </button>
-        <button type="button" onClick={() => setOrderType('limit')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${orderType === 'limit' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-          Limit
-        </button>
+      <div className="flex gap-1 mb-4">
+        {(['market', 'limit', 'stop-limit'] as StockOrderType[]).map(ot => (
+          <button key={ot} type="button" onClick={() => setOrderType(ot)}
+            className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${orderType === ot ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+            {ot}
+          </button>
+        ))}
       </div>
 
-      {orderType === 'limit' && (
+      {/* Advanced Options */}
+      <div className="mb-3">
+        <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}
+          className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-1">
+          {showAdvanced ? '▾' : '▸'} Advanced Options
+          {!showAdvanced && slippage !== '0.5' && (
+            <span className="text-[10px] text-gray-600 ml-1">Slippage {slippage}%</span>
+          )}
+        </button>
+        {showAdvanced && (
+          <div className="mt-2">
+            <label className="text-xs text-gray-400 mb-1 block">Slippage Tolerance (%)</label>
+            <div className="flex gap-1.5">
+              {['0.1', '0.5', '1.0'].map(val => (
+                <button key={val} type="button" onClick={() => setSlippage(val)}
+                  className={`px-2 py-1 rounded text-[10px] font-medium transition-colors ${slippage === val ? 'bg-goodgreen/15 text-goodgreen' : 'bg-dark-50 text-gray-400 hover:text-white'}`}>
+                  {val}%
+                </button>
+              ))}
+              <input type="text" inputMode="decimal" value={slippage}
+                aria-label="Slippage Tolerance"
+                onChange={e => setSlippage(sanitizeNumericInput(e.target.value))}
+                className="flex-1 px-2 py-1 rounded bg-dark-50 border border-gray-700/30 text-white text-[10px] outline-none focus-visible:ring-1 focus-visible:ring-goodgreen/50 min-w-0" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Trigger Price (stop-limit only) */}
+      {orderType === 'stop-limit' && (
+        <div className="mb-3">
+          <label className="text-xs text-gray-400 mb-1 block">Trigger Price</label>
+          <input type="text" inputMode="decimal" placeholder={stock.price.toFixed(2)} value={triggerPrice}
+            aria-label="Trigger Price"
+            onChange={e => setTriggerPrice(sanitizeNumericInput(e.target.value))}
+            className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${triggerPriceInvalid ? 'border-red-500/50' : 'border-gray-700/30'}`} />
+          {triggerPriceInvalid && (
+            <p className="text-red-400 text-[10px] mt-1">Price must be greater than 0</p>
+          )}
+        </div>
+      )}
+
+      {/* Limit Price (for limit and stop-limit) */}
+      {orderType !== 'market' && (
         <div className="mb-3">
           <label className="text-xs text-gray-400 mb-1 block">Limit Price</label>
           <input type="text" inputMode="decimal" placeholder="0.00" value={limitPrice} onChange={e => setLimitPrice(sanitizeNumericInput(e.target.value))}
@@ -275,6 +328,59 @@ function OrderForm({
         </div>
       )}
 
+      {/* TP / SL */}
+      <div className="mb-3">
+        <button type="button" onClick={() => setShowTpSl(!showTpSl)}
+          className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-1">
+          {showTpSl ? '▾' : '▸'} TP / SL
+          {(tp || sl) && !showTpSl && (
+            <span className="text-[10px] text-gray-600 ml-1">
+              {tp ? `TP $${parsedTp.toFixed(2)}` : ''}{tp && sl ? ' / ' : ''}{sl ? `SL $${parsedSl.toFixed(2)}` : ''}
+            </span>
+          )}
+        </button>
+        {showTpSl && (
+          <div className="space-y-2 mt-2">
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Take Profit</label>
+              <input type="text" inputMode="decimal"
+                aria-label="Take Profit"
+                placeholder={side === 'buy' ? (stock.price * 1.1).toFixed(2) : (stock.price * 0.9).toFixed(2)}
+                value={tp}
+                onChange={e => setTp(sanitizeNumericInput(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/30 text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50" />
+              {parsedTp > 0 && shares > 0 && effectivePrice > 0 && (() => {
+                const diff = side === 'buy' ? parsedTp - effectivePrice : effectivePrice - parsedTp
+                const pnl = diff * shares
+                return (
+                  <p className={`text-[10px] mt-1 ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    Est. Profit: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                  </p>
+                )
+              })()}
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Stop Loss</label>
+              <input type="text" inputMode="decimal"
+                aria-label="Stop Loss"
+                placeholder={side === 'buy' ? (stock.price * 0.95).toFixed(2) : (stock.price * 1.05).toFixed(2)}
+                value={sl}
+                onChange={e => setSl(sanitizeNumericInput(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/30 text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50" />
+              {parsedSl > 0 && shares > 0 && effectivePrice > 0 && (() => {
+                const diff = side === 'buy' ? parsedSl - effectivePrice : effectivePrice - parsedSl
+                const pnl = diff * shares
+                return (
+                  <p className={`text-[10px] mt-1 ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    Est. Loss: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                  </p>
+                )
+              })()}
+            </div>
+          </div>
+        )}
+      </div>
+
       {actionError && (
         <p className="text-[10px] text-red-400 text-center truncate mb-2">{actionError}</p>
       )}
@@ -285,7 +391,7 @@ function OrderForm({
         </button>
       ) : walletReady ? (
         <WalletGatedTradeButton hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance}>
-          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || buyBlockedBySync}
+          <button type="submit" disabled={limitPriceInvalid || triggerPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || buyBlockedBySync}
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
@@ -293,7 +399,7 @@ function OrderForm({
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || buyBlockedBySync}
+        <button type="submit" disabled={!hasAmount || limitPriceInvalid || triggerPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || buyBlockedBySync}
           className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>
