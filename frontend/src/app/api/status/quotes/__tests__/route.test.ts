@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { NextRequest } from 'next/server'
 
 import { GET } from '../route'
+
+const dummyReq = new NextRequest('http://localhost/api/status/quotes')
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -21,7 +24,7 @@ describe('GET /api/status/quotes', () => {
       ),
     )
 
-    const res = await GET()
+    const res = await GET(dummyReq)
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.healthy).toBe(true)
@@ -36,7 +39,7 @@ describe('GET /api/status/quotes', () => {
   it('returns 502 when upstream returns non-OK status', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('bad gateway', { status: 500 }))
 
-    const res = await GET()
+    const res = await GET(dummyReq)
     expect(res.status).toBe(502)
     const data = await res.json()
     expect(data.error).toContain('error')
@@ -45,7 +48,7 @@ describe('GET /api/status/quotes', () => {
   it('returns degraded fallback when upstream is unreachable', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ECONNREFUSED'))
 
-    const res = await GET()
+    const res = await GET(dummyReq)
     expect(res.status).toBe(503)
     const data = await res.json()
     expect(data.error).toContain('unavailable')

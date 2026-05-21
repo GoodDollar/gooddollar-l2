@@ -30,7 +30,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => mockUseParams(),
 }))
 
-const mockUseOnChainStocks = vi.fn(() => ({
+const mockUseOnChainStocks = vi.fn((): { stocks: import('@/lib/stockData').Stock[]; isLoading: boolean; isLive: boolean } => ({
   stocks: [],
   isLoading: true,
   isLive: false,

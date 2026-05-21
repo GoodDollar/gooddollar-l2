@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { NextRequest } from 'next/server'
 import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -28,7 +29,7 @@ async function loadHandler() {
 }
 
 function makeRequest(body: BodyInit | null, headers: Record<string, string> = {}) {
-  return new Request('http://localhost/api/feedback', {
+  return new NextRequest('http://localhost/api/feedback', {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body,

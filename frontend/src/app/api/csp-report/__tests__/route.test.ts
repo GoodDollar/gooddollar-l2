@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { NextRequest } from 'next/server'
 import { POST } from '../route'
 
 function makeRequest(body: unknown, contentType = 'application/csp-report') {
-  return new Request('http://localhost/api/csp-report', {
+  return new NextRequest('http://localhost/api/csp-report', {
     method: 'POST',
     headers: { 'Content-Type': contentType },
     body: JSON.stringify(body),
@@ -65,7 +66,7 @@ describe('POST /api/csp-report', () => {
 
   it('returns 204 even for malformed body', async () => {
     const res = await POST(
-      new Request('http://localhost/api/csp-report', {
+      new NextRequest('http://localhost/api/csp-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/csp-report' },
         body: 'not json',
