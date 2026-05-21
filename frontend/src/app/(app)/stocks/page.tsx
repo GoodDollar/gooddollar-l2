@@ -2,6 +2,7 @@
 
 import { useState, useMemo, memo, useCallback, useEffect } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
@@ -9,8 +10,6 @@ import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
-import { MarketIntelligencePanel } from '@/components/stocks/MarketIntelligencePanel'
-import { StocksRebalanceDashboard } from '@/components/stocks/StocksRebalanceDashboard'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { useMounted } from '@/lib/useMounted'
@@ -24,6 +23,34 @@ type SortDir = 'asc' | 'desc'
 type CapFilter = 'all' | 'mega' | 'large' | 'mid'
 type MomentumFilter = 'all' | 'gainers' | 'losers'
 type LiquidityFilter = 'all' | 'active' | 'quiet'
+
+const MarketIntelligencePanel = dynamic(
+  () => import('@/components/stocks/MarketIntelligencePanel').then((mod) => mod.MarketIntelligencePanel),
+  {
+    loading: () => (
+      <section
+        aria-label="Loading market intelligence"
+        className="mb-4 rounded-2xl border border-gray-700/20 bg-dark-100 p-4 text-sm text-gray-400"
+      >
+        Loading market intelligence...
+      </section>
+    ),
+  },
+)
+
+const StocksRebalanceDashboard = dynamic(
+  () => import('@/components/stocks/StocksRebalanceDashboard').then((mod) => mod.StocksRebalanceDashboard),
+  {
+    loading: () => (
+      <section
+        aria-label="Loading rebalance diagnostics"
+        className="rounded-2xl border border-gray-700/20 bg-dark-100 p-4 text-sm text-gray-400"
+      >
+        Loading rebalance diagnostics...
+      </section>
+    ),
+  },
+)
 
 function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return (
