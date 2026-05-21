@@ -37,6 +37,17 @@ describe('deriveStocksOracleHealth', () => {
     expect(state).toBe('degraded')
   })
 
+  it('returns auth when stocks-keeper reports unauthorized/auth state', () => {
+    const state = deriveStocksOracleHealth({
+      overall: 'degraded',
+      services: [
+        { name: 'stocks-keeper', status: 'unauthorized', lastChecked: '2026-05-20T07:29:50.000Z' },
+      ],
+    }, now)
+
+    expect(state).toBe('auth')
+  })
+
   it('returns offline when stocks-keeper service is missing', () => {
     const state = deriveStocksOracleHealth({ overall: 'healthy', services: [] }, now)
     expect(state).toBe('offline')
@@ -93,4 +104,3 @@ describe('deriveStocksOracleHealth', () => {
     })
   })
 })
-

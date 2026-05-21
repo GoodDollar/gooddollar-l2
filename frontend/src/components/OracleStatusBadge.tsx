@@ -33,6 +33,7 @@ export function OracleStatusBadge({
   onChainReachable,
 }: OracleStatusBadgeProps) {
   const { status, error } = usePriceServiceStatus()
+  const hasAuthError = /\b(401|403)\b/.test(error ?? '')
   const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
   const [fallbackLoading, setFallbackLoading] = useState(false)
 
@@ -43,13 +44,23 @@ export function OracleStatusBadge({
     setFallbackLoading(true)
     fetch('/api/status', { cache: 'no-store' })
       .then(async (res) => {
-        if (!res.ok) throw new Error(`status ${res.status}`)
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            if (!cancelled) setFallbackState('auth')
+            return
+          }
+          throw new Error(`status ${res.status}`)
+        }
         const data = await res.json()
         if (cancelled) return
         setFallbackState(deriveStocksOracleHealth(data, Date.now(), onChainReachable))
       })
-      .catch(() => {
+      .catch((err) => {
         if (cancelled) return
+        if (err instanceof Error && /\b(401|403)\b/.test(err.message)) {
+          setFallbackState('auth')
+          return
+        }
         setFallbackState('offline')
       })
       .finally(() => {
@@ -61,6 +72,16 @@ export function OracleStatusBadge({
 
   if (error || !status) {
     if (useStocksFallback) {
+      if (hasAuthError || fallbackState === 'auth') {
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-red-300" title="Upstream stock status endpoint returned unauthorized (401/403). Check credentials/session configuration.">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+            <span>Auth required</span>
+            <span className="text-red-500/60">·</span>
+            <span>stocks status 401</span>
+          </div>
+        )
+      }
       if (fallbackLoading) {
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">

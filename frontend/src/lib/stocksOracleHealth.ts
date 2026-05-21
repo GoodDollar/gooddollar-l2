@@ -1,4 +1,4 @@
-export type StocksOracleHealth = 'live' | 'degraded' | 'offline' | 'fallback'
+export type StocksOracleHealth = 'live' | 'degraded' | 'offline' | 'fallback' | 'auth'
 
 interface StatusService {
   name?: string
@@ -23,6 +23,7 @@ export function deriveStocksOracleHealth(
 
   const service = data.services.find((s) => s?.name === 'stocks-keeper')
   if (!service) return 'offline'
+  if (service.status === 'auth' || service.status === 'unauthorized') return 'auth'
   if (service.status !== 'ok') return 'degraded'
 
   if (!service.lastChecked) return liveOrFallback(onChainReachable)
@@ -38,4 +39,3 @@ export function deriveStocksOracleHealth(
 function liveOrFallback(onChainReachable?: boolean): StocksOracleHealth {
   return onChainReachable === false ? 'fallback' : 'live'
 }
-
