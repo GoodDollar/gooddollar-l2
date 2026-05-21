@@ -91,6 +91,15 @@ export default function StockDetailPage() {
     if (!stock) return []
     return getChartData(stock.ticker, timeframe, stock.price)
   }, [stock, timeframe])
+  const dayRange = useMemo(() => {
+    if (!stock) return null
+    const intraday = getChartData(stock.ticker, '1D', stock.price)
+    if (intraday.length === 0) return null
+    const low = intraday.reduce((acc, candle) => Math.min(acc, candle.low), Number.POSITIVE_INFINITY)
+    const high = intraday.reduce((acc, candle) => Math.max(acc, candle.high), Number.NEGATIVE_INFINITY)
+    if (!Number.isFinite(low) || !Number.isFinite(high)) return null
+    return { low, high }
+  }, [stock])
   const performanceSummary = useMemo(() => {
     if (chartData.length < 2) return null
     const firstClose = chartData[0]?.close ?? 0
@@ -253,6 +262,9 @@ export default function StockDetailPage() {
               {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
             </span>
           </div>
+          <div className="mb-2 text-xs text-gray-500">
+            USD · Oracle source: stocks-keeper · Updated live
+          </div>
           <div className="mb-4">
             <OracleStatusBadge variant="detail" symbol={stock.ticker} useStocksFallback />
           </div>
@@ -331,6 +343,12 @@ export default function StockDetailPage() {
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
                 <div className="text-white font-medium">{formatStockPrice(stock.low52w)}</div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs mb-0.5">Day Range</div>
+                <div className="text-white font-medium">
+                  {dayRange ? `${formatStockPrice(dayRange.low)} - ${formatStockPrice(dayRange.high)}` : 'N/A'}
+                </div>
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">24h Change</div>

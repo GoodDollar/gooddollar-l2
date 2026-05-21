@@ -283,4 +283,27 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.getByText('-5.00%')).toBeTruthy()
     expect(screen.getByText('Past Day')).toBeTruthy()
   })
+
+  it('shows quote context metadata and day range in key statistics', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    mockChartData.mockImplementation((_symbol: string, timeframe: string, basePrice: number) => {
+      if (timeframe === '1D') {
+        return [
+          { close: 198, open: 197, high: 201, low: 190, volume: 1, time: 1 },
+          { close: 200, open: 198, high: 200.5, low: 194, volume: 1, time: 2 },
+        ]
+      }
+      return [
+        { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 1 },
+        { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 2 },
+      ]
+    })
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByText('USD · Oracle source: stocks-keeper · Updated live')).toBeTruthy()
+    expect(screen.getByText('Day Range')).toBeTruthy()
+    expect(screen.getByText('$190.00 - $201.00')).toBeTruthy()
+  })
 })
