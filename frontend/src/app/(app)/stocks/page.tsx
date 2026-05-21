@@ -289,7 +289,7 @@ export default function StocksPage() {
       <div className="mb-4 sm:mb-5">
         <InfoBanner
           title="How Tokenized Stocks Work"
-          description="Synthetic stock tokens track real equity prices via Chainlink oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 20% of fees to UBI."
+          description="Synthetic stock tokens track real equity prices via StockOracleV2 multi-signer oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 33% of fees to UBI."
           storageKey="gd-banner-dismissed-stocks"
         />
       </div>

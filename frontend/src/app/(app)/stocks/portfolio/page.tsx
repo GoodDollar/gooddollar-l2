@@ -394,7 +394,7 @@ export default function StocksPortfolioPage() {
             <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
           ) : (
             <div className="text-lg sm:text-xl font-bold text-goodgreen">
-              {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
+              {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.33)}
               <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
             </div>
           )}
@@ -577,7 +577,7 @@ export default function StocksPortfolioPage() {
         </section>
       )}
 
-      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
+      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.33} />
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">
