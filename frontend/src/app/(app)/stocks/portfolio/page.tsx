@@ -10,6 +10,7 @@ import { useStockTrades } from '@/lib/useStockTrades'
 import { isWalletConnectConfigured } from '@/lib/walletConnectReadiness'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
+import { StocksConnectFallbackRail } from '@/components/stocks/StocksConnectFallbackRail'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const DeferredStocksPortfolioImpactSection = dynamic(
@@ -173,7 +174,15 @@ export default function StocksPortfolioPage() {
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
       {isDisconnected && !walletConnectConfigured && (
-        <WalletConnectNotice className="mb-4" />
+        <>
+          <WalletConnectNotice className="mb-3" />
+          <StocksConnectFallbackRail
+            onUseInBrowserWallet={() => router.push('/stocks/AAPL')}
+            onTryAnotherConnector={() => router.push('/stocks/AAPL')}
+            onContinueReadOnly={() => router.push('/stocks')}
+            continueLabel="Continue in Read-only Mode"
+          />
+        </>
       )}
       {isDisconnected ? (
         <section

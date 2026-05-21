@@ -66,6 +66,9 @@ describe('StocksPage onboarding CTA', () => {
 
     expect(await screen.findByRole('button', { name: 'Browse Stocks to Prepare Trade' })).toBeInTheDocument()
     expect(screen.getByText(/Mobile wallet QR connections are temporarily unavailable/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Use In-browser Wallet' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try Another Connector' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continue in Read-only Mode' })).toBeInTheDocument()
     expect(screen.getByText('Tap to trade')).toBeInTheDocument()
   })
 

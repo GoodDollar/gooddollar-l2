@@ -2,6 +2,7 @@
 
 import { isWalletConnectConfigured } from '@/lib/walletConnectReadiness'
 import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
+import { StocksConnectFallbackRail } from '@/components/stocks/StocksConnectFallbackRail'
 
 interface StocksOnboardingCardProps {
   onPrepareBrowse: () => void
@@ -29,7 +30,14 @@ export function StocksOnboardingCard({
             </div>
           </div>
           {!walletConnectConfigured && (
-            <WalletConnectNotice className="mt-3" />
+            <>
+              <WalletConnectNotice className="mt-3" />
+              <StocksConnectFallbackRail
+                onUseInBrowserWallet={onStartTrading}
+                onTryAnotherConnector={onStartTrading}
+                onContinueReadOnly={onPrepareBrowse}
+              />
+            </>
           )}
         </div>
         <button
