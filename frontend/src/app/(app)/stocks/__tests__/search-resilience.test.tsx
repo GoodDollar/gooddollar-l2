@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const push = vi.fn()
@@ -115,7 +115,7 @@ describe('StocksPage search resilience', () => {
     fireEvent.change(input, { target: { value: 'ZZZ_NOT_REAL_123' } })
 
     expect(screen.getAllByText(/No stocks match your search/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('button', { name: /clear/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /clear search/i }).length).toBeGreaterThan(0)
   })
 
   it('applies sector and momentum filters, then clears all', () => {
@@ -135,6 +135,55 @@ describe('StocksPage search resilience', () => {
     expect(screen.queryAllByText('MSFT').length).toBe(0)
 
     fireEvent.click(screen.getByRole('button', { name: /Clear all filters/i }))
+    expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('MSFT').length).toBeGreaterThan(0)
+  })
+
+  it('clears filters from empty-state action when zero results are caused by filters only', () => {
+    mountedState.mounted = true
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>,
+    )
+
+    fireEvent.change(screen.getByLabelText('Filter by sector'), { target: { value: 'Healthcare' } })
+    fireEvent.change(screen.getByLabelText('Filter by market cap'), { target: { value: 'mega' } })
+
+    expect(screen.getAllByText(/No stocks match your current filters/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /Clear filters/i }).length).toBeGreaterThan(0)
+
+    const table = screen.getByRole('table')
+    fireEvent.click(within(table).getByRole('button', { name: /Clear filters/i }))
+
+    expect(screen.queryByRole('button', { name: /Sector: Healthcare/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Cap: mega/i })).toBeNull()
+    expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('MSFT').length).toBeGreaterThan(0)
+  })
+
+  it('clears both search and filters from empty-state action when both are active', () => {
+    mountedState.mounted = true
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>,
+    )
+
+    const input = screen.getByPlaceholderText('Search stocks...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'AAPL' } })
+    fireEvent.change(screen.getByLabelText('Filter by sector'), { target: { value: 'Healthcare' } })
+
+    expect(screen.getAllByText(/No stocks match your search and filters/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /Clear search & filters/i }).length).toBeGreaterThan(0)
+
+    const table = screen.getByRole('table')
+    fireEvent.click(within(table).getByRole('button', { name: /Clear search & filters/i }))
+
+    expect(input.value).toBe('')
+    expect(screen.queryByRole('button', { name: /Sector: Healthcare/i })).toBeNull()
     expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
     expect(screen.getAllByText('MSFT').length).toBeGreaterThan(0)
   })

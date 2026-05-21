@@ -166,6 +166,8 @@ export default function StocksPage() {
   }, [data, query, sortField, sortDir, sectorFilter, capFilter, momentumFilter, liquidityFilter])
 
   const activeFilterCount = Number(sectorFilter !== 'all') + Number(capFilter !== 'all') + Number(momentumFilter !== 'all') + Number(liquidityFilter !== 'all')
+  const hasSearchQuery = query.trim().length > 0
+  const hasActiveFilters = activeFilterCount > 0
 
   const clearAllFilters = () => {
     setSectorFilter('all')
@@ -173,6 +175,27 @@ export default function StocksPage() {
     setMomentumFilter('all')
     setLiquidityFilter('all')
   }
+
+  const clearEmptyStateConstraints = () => {
+    if (hasSearchQuery) setQuery('')
+    if (hasActiveFilters) clearAllFilters()
+  }
+
+  const emptyStateMessage = hasSearchQuery && hasActiveFilters
+    ? 'No stocks match your search and filters.'
+    : hasActiveFilters
+      ? 'No stocks match your current filters.'
+      : hasSearchQuery
+        ? 'No stocks match your search.'
+        : 'No stocks available right now.'
+
+  const emptyStateActionLabel = hasSearchQuery && hasActiveFilters
+    ? 'Clear search & filters'
+    : hasActiveFilters
+      ? 'Clear filters'
+      : hasSearchQuery
+        ? 'Clear search'
+        : null
 
   const handleRowClick = useCallback((ticker: string) => {
     router.push(`/stocks/${ticker}`)
@@ -333,8 +356,12 @@ export default function StocksPage() {
       <div className="sm:hidden space-y-2 mb-2">
         {filtered.length === 0 ? (
           <div className="py-12 text-center text-gray-500 bg-dark-100 rounded-2xl border border-gray-700/20">
-            No stocks match your search.{' '}
-            <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear</button>
+            {emptyStateMessage}{' '}
+            {emptyStateActionLabel && (
+              <button onClick={clearEmptyStateConstraints} className="text-goodgreen underline">
+                {emptyStateActionLabel}
+              </button>
+            )}
           </div>
         ) : (
           filtered.map((stock) => (
@@ -407,8 +434,12 @@ export default function StocksPage() {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-gray-500">
-                    No stocks match your search.{' '}
-                    <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear</button>
+                    {emptyStateMessage}{' '}
+                    {emptyStateActionLabel && (
+                      <button onClick={clearEmptyStateConstraints} className="text-goodgreen underline">
+                        {emptyStateActionLabel}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (

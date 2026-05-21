@@ -24,6 +24,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 - Stocks oracle badge now surfaces explicit auth failures (`Auth required · stocks status 401`) when status dependencies return 401/403, instead of collapsing credential issues into generic offline/demo messaging.
 - Stocks list search now guards against pre-hydration input loss: the search box is disabled until client mount, preventing fast-typing races where nonsense queries appeared to be ignored before React hydration completed.
+- Stocks markets empty-state recovery is now cause-aware: when zero results come from filters (or search + filters), the inline empty-state action clears the active constraints instead of only clearing search text.
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
 - Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with an in-context `Connect Wallet to View UBI Impact` CTA instead of misleading `0% — Critical` risk framing.
 - Perps portfolio empty state no longer leaks raw template fragments (for example `positions.length === 0 ? (`), restoring clean, production-grade empty-state rendering.
