@@ -38,6 +38,7 @@ npm run dev     # http://localhost:3100
 - ✅ USD fiat equivalents on all amounts
 - ✅ Recent activity panel (localStorage)
 - ✅ Mobile responsive + keyboard accessible
+- ✅ Context-aware 404 recovery CTA for stocks deep-link failures
 - ✅ Lazy-loaded wallet providers
 - ✅ Memoized components for performance
 - ✅ SVG token logos for all 18 tokens
