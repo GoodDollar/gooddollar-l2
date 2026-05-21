@@ -51,6 +51,7 @@ describe('drift dashboard rows', () => {
 
     expect(row.health).toBe('lagging')
     expect(row.products.perps.status).toBe('lagging')
+    expect(row.stopReason).toContain('oracle is 450')
   })
 
   it('shows stopped when divergence is above 0.5%', () => {
@@ -75,4 +76,3 @@ describe('drift dashboard rows', () => {
     expect(row.stopReason).toContain('stale')
   })
 })
-

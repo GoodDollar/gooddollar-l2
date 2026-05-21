@@ -38,10 +38,8 @@ export function deriveDriftRow(quote: QuoteStatus, now = Date.now()): DriftRow {
         stopReason = gate.reason
         break
       }
-      if (health !== 'stopped') {
-        health = 'lagging'
-        stopReason = gate.reason
-      }
+      health = 'lagging'
+      stopReason = gate.reason
     }
   }
 
@@ -67,4 +65,3 @@ export function deriveDriftRows(status: PriceServiceStatus | null, now = Date.no
   if (!status?.quotes?.length) return []
   return status.quotes.map((q) => deriveDriftRow(q, now))
 }
-

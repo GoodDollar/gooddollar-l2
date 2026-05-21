@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks drift dashboard health-state transition logic now compiles cleanly in production builds after removing an unreachable `health !== 'stopped'` branch in `deriveDriftRow`; added regression assertion coverage in `frontend/src/lib/__tests__/driftDashboard.test.ts` and re-validated `frontend` build green.
 - Stocks/perps risk-taking actions now enforce a symbol-sync invariant keyed to oracle block snapshots: quote-status payloads include per-symbol `oracleBlock` + per-product `lastSyncedBlock`, and order submission is blocked when stale propagation, >0.5% divergence, or lagging sync is detected (`frontend/src/lib/symbolSyncInvariant.ts`, `frontend/src/lib/useSymbolSyncGuard.ts`).
 - Test dashboard now includes a stock drift monitor table with per-symbol oracle block, per-product sync blocks (AMM/perps/predict/lend/yield), divergence (bps), and `Synced`/`Lagging`/`Stopped` badges to surface two-block propagation health and stop-rule state.
 - Stocks market rows now normalize first-glance identity (ticker + human display name + `Token s<TICKER>` tag) and use explicit desktop CTA copy/labels (`View details`, `Trade now`) so research-to-action intent is clearer for disconnected and connected users.
