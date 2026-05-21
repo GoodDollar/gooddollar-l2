@@ -24,6 +24,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 - Stocks pages now use route-aware feedback-control positioning plus reserved right/bottom safe-area spacing on `/stocks` and `/stocks/portfolio`, so floating feedback UI no longer obscures market/news/table content.
 - Stocks mobile discovery now uses a clearer top-viewport hierarchy with a dedicated filter shell and tuned spacing between header, context banners, intelligence, and screening controls.
+- Stocks section tabs now use compact mobile sizing (`text-xs`, reduced horizontal padding, tighter vertical rhythm) to reduce top-of-screen crowding while preserving desktop tab density.
 - Stocks deep-link reliability now includes a framework-level redirect from `/stocks/markets` to `/stocks`, preventing users from landing on a misleading stock-not-found shell when opening shared markets URLs.
 - Stocks markets now includes a new `Market Intelligence` strip (Top Movers, Upcoming Earnings, News Flow) with explicit demo labeling and ticker drill-in links so users can discover catalysts without leaving `/stocks`.
 - Stocks detail now supports URL-persisted research tabs (`Overview`, `Fundamentals`, `Events`), so users can deep-link into diligence context (`?tab=fundamentals`) and keep tab state through browser navigation.
