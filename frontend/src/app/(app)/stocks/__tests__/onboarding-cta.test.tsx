@@ -69,6 +69,21 @@ describe('StocksPage onboarding CTA', () => {
     expect(screen.getByText('Tap to trade')).toBeInTheDocument()
   })
 
+  it('renders explicit three-step first-time journey copy in the hero card', async () => {
+    walletState.address = undefined
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    expect(await screen.findByText('How to start')).toBeInTheDocument()
+    expect(screen.getByText('1. Connect wallet')).toBeInTheDocument()
+    expect(screen.getByText('2. Choose a stock')).toBeInTheDocument()
+    expect(screen.getByText('3. Place your first trade')).toBeInTheDocument()
+  })
+
   it('hides first-time onboarding CTA when wallet is connected', () => {
     walletState.address = '0x1111111111111111111111111111111111111111'
 

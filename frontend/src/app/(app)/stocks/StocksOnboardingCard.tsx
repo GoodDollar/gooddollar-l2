@@ -20,7 +20,14 @@ export function StocksOnboardingCard({
         <div>
           <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
           <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
-          <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
+          <div className="mt-2">
+            <p className="text-[11px] sm:text-xs font-medium text-goodgreen">How to start</p>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              <span className="rounded-full border border-gray-600/60 bg-dark-100/60 px-2 py-0.5 text-[11px] text-gray-200">1. Connect wallet</span>
+              <span className="rounded-full border border-gray-600/60 bg-dark-100/60 px-2 py-0.5 text-[11px] text-gray-200">2. Choose a stock</span>
+              <span className="rounded-full border border-gray-600/60 bg-dark-100/60 px-2 py-0.5 text-[11px] text-gray-200">3. Place your first trade</span>
+            </div>
+          </div>
           {!walletConnectConfigured && (
             <WalletConnectNotice className="mt-3" />
           )}
