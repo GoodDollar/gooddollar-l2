@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
@@ -45,6 +46,34 @@ const DeferredStocksPortfolioImpactSection = dynamic(
     ),
   },
 )
+
+type TrendRange = '1D' | '1W' | '1M'
+type AllocationMode = 'value' | 'shares'
+
+function buildTrendPoints(totalValue: number, unrealizedPnl: number, range: TrendRange): number[] {
+  const points = range === '1D' ? 12 : range === '1W' ? 14 : 30
+  const costBasis = Math.max(0, totalValue - unrealizedPnl)
+  const start = totalValue <= 0 ? 0 : Math.max(0, costBasis * 0.92)
+  const end = Math.max(0, totalValue)
+  if (points <= 1) return [end]
+  return Array.from({ length: points }, (_, idx) => {
+    const progress = idx / (points - 1)
+    const curve = 0.55 + Math.sin(progress * Math.PI) * 0.15
+    return start + (end - start) * progress * curve + (end - start) * (1 - curve) * progress
+  })
+}
+
+function sparklinePath(values: number[], width: number, height: number): string {
+  if (values.length === 0) return ''
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = Math.max(max - min, 1)
+  return values.map((value, index) => {
+    const x = (index / Math.max(values.length - 1, 1)) * width
+    const y = height - ((value - min) / range) * height
+    return `${index === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`
+  }).join(' ')
+}
 
 function CollateralHealth({
   ratio,
@@ -155,12 +184,48 @@ export default function StocksPortfolioPage() {
     isLoading: holdingsLoading,
   } = useStockHoldings(address)
   const { trades, isLoading: tradesLoading } = useStockTrades(address)
+  const [trendRange, setTrendRange] = useState<TrendRange>('1W')
+  const [allocationMode, setAllocationMode] = useState<AllocationMode>('value')
 
   const summary = { totalValue, unrealizedPnl, pnlPercent, totalCollateral, totalRequired, healthRatio }
   const isDisconnected = !isConnected || !address
   const hasLivePositions = holdings.some((holding) => holding.shares > 0)
   const hasRiskPosition = hasLivePositions && summary.totalRequired > 0
   const isLoading = holdingsLoading || tradesLoading
+  const allocationRows = useMemo(() => {
+    const total = holdings.reduce((sum, holding) => {
+      return sum + (allocationMode === 'value' ? holding.shares * holding.currentPrice : holding.shares)
+    }, 0)
+    if (total <= 0) return []
+    return holdings
+      .map((holding) => {
+        const amount = allocationMode === 'value' ? holding.shares * holding.currentPrice : holding.shares
+        const pct = (amount / total) * 100
+        const pnl = (holding.currentPrice - holding.avgCost) * holding.shares
+        return { ticker: holding.ticker, amount, pct, pnl }
+      })
+      .toSorted((a, b) => b.pct - a.pct)
+      .slice(0, 5)
+  }, [allocationMode, holdings])
+
+  const trendValues = useMemo(() => {
+    return buildTrendPoints(summary.totalValue, summary.unrealizedPnl, trendRange)
+  }, [summary.totalValue, summary.unrealizedPnl, trendRange])
+  const trendPath = useMemo(() => sparklinePath(trendValues, 100, 32), [trendValues])
+
+  const topContributors = useMemo(() => {
+    return holdings
+      .map((holding) => {
+        const pnl = (holding.currentPrice - holding.avgCost) * holding.shares
+        return {
+          ticker: holding.ticker,
+          pnl,
+          value: holding.shares * holding.currentPrice,
+        }
+      })
+      .toSorted((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
+      .slice(0, 4)
+  }, [holdings])
 
   return (
     <ConnectWalletEmptyState
@@ -227,6 +292,79 @@ export default function StocksPortfolioPage() {
             </>
           )}
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+        <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h2 className="text-sm font-semibold text-white">Allocation</h2>
+            <div className="flex items-center gap-1 rounded-lg bg-dark-50/60 border border-gray-700/20 p-1">
+              <button type="button" onClick={() => setAllocationMode('value')} className={`px-2 py-1 rounded text-[11px] ${allocationMode === 'value' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>Value</button>
+              <button type="button" onClick={() => setAllocationMode('shares')} className={`px-2 py-1 rounded text-[11px] ${allocationMode === 'shares' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>Shares</button>
+            </div>
+          </div>
+          {allocationRows.length === 0 ? (
+            <p className="text-xs text-gray-500">Connect wallet and open a position to see allocation mix.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {allocationRows.map((row) => (
+                <div key={row.ticker}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-gray-200">{row.ticker}</span>
+                    <span className="text-gray-400">{row.pct.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-dark-50 overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-goodgreen/90 to-cyan-400/70" style={{ width: `${Math.min(100, row.pct)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h2 className="text-sm font-semibold text-white">Performance Trend</h2>
+            <div className="flex items-center gap-1">
+              {(['1D', '1W', '1M'] as TrendRange[]).map((range) => (
+                <button key={range} type="button" onClick={() => setTrendRange(range)} className={`px-2 py-1 rounded text-[11px] ${trendRange === range ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>{range}</button>
+              ))}
+            </div>
+          </div>
+          {isDisconnected || trendValues.length === 0 ? (
+            <p className="text-xs text-gray-500">Connect wallet to load portfolio performance history.</p>
+          ) : (
+            <div className="space-y-2">
+              <svg viewBox="0 0 100 32" role="img" aria-label={`${trendRange} portfolio performance`} className="w-full h-20 rounded-lg border border-gray-700/20 bg-dark-50/30">
+                <path d={trendPath} fill="none" stroke="#19f39f" strokeWidth="1.8" />
+              </svg>
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>{trendRange} basis</span>
+                <span className={summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                  {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
+                </span>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4">
+          <h2 className="text-sm font-semibold text-white mb-2">Top Contributors</h2>
+          {topContributors.length === 0 ? (
+            <p className="text-xs text-gray-500">No contributors yet. Start trading to unlock attribution insights.</p>
+          ) : (
+            <div className="space-y-2">
+              {topContributors.map((contributor) => (
+                <div key={contributor.ticker} className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-50/20 p-2 text-xs">
+                  <span className="text-gray-200">{contributor.ticker}</span>
+                  <span className={contributor.pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    {contributor.pnl >= 0 ? '+' : ''}{formatStockPrice(contributor.pnl)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
       <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />

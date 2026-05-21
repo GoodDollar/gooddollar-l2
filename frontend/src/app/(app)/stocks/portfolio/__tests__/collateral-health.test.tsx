@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const accountState = {
@@ -245,5 +245,31 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     const text = container.textContent || ''
     expect(text).toContain('Connect wallet to view collateral health')
     expect(text).not.toContain('0% — Critical')
+  })
+
+  it('renders portfolio analytics blocks and supports range/allocation toggles', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = true
+    holdingsState.holdings = [
+      { ticker: 'AAPL', shares: 2, avgCost: 180, currentPrice: 200, collateralDeposited: 0, collateralRequired: 0 },
+      { ticker: 'MSFT', shares: 1, avgCost: 350, currentPrice: 330, collateralDeposited: 0, collateralRequired: 0 },
+    ]
+    holdingsState.totalValue = 730
+    holdingsState.unrealizedPnl = 10
+    holdingsState.pnlPercent = 1.4
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByRole('heading', { name: 'Allocation' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Performance Trend' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Top Contributors' })).toBeInTheDocument()
+    expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Shares' }))
+    fireEvent.click(screen.getByRole('button', { name: '1M' }))
+
+    expect(screen.getByRole('img', { name: /1M portfolio performance/i })).toBeInTheDocument()
   })
 })
