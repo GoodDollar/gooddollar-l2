@@ -26,7 +26,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 - Stocks markets disconnected onboarding CTA now performs a true wallet-connect action (opens connect modal) instead of routing to a ticker page, with a separate secondary button to browse a starter stock.
 - Stocks detail chart timeframe controls now stay in a single horizontal rail on mobile (scrollable chips instead of wrapped rows), avoiding orphaned options like `ALL` dropping to a second line.
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
-- Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with an in-context `Connect Wallet to View UBI Impact` CTA instead of misleading `0% — Critical` risk framing.
+- Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with a portfolio-first `Connect Wallet to View Holdings & History` primary CTA while UBI-impact modules remain secondary.
 - Perps portfolio empty state no longer leaks raw template fragments (for example `positions.length === 0 ? (`), restoring clean, production-grade empty-state rendering.
 - Perps portfolio positions-tab empty state now renders through a dedicated row component plus stricter leak assertions, adding another guard rail against template fragment regressions.
 - Stocks detail page now lazy-loads chart/oracle UI modules; latest build reduced `/stocks/[ticker]` First Load JS from ~386 kB to ~332 kB while preserving trading flow.

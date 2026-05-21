@@ -90,7 +90,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(screen.queryByText('0% — Critical')).not.toBeInTheDocument()
   })
 
-  it('shows an actionable in-context connect CTA for disconnected users', () => {
+  it('shows a portfolio-first primary connect CTA for disconnected users', () => {
     accountState.address = undefined
     accountState.isConnected = false
 
@@ -98,7 +98,8 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
+    expect(screen.getByText('Connect wallet to view holdings and history')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Connect Wallet to View Holdings & History' })).toBeInTheDocument()
   })
 
   it('shows deferred impact section loading placeholders on first paint', () => {

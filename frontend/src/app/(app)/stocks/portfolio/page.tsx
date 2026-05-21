@@ -4,6 +4,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
@@ -170,6 +171,29 @@ export default function StocksPortfolioPage() {
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
 
+      {isDisconnected && (
+        <section
+          className="bg-dark-100 rounded-2xl border border-goodgreen/25 p-5 mb-6"
+          data-testid="stocks-portfolio-disconnected-hero"
+        >
+          <h2 className="text-lg font-semibold text-white mb-1">Connect wallet to view holdings and history</h2>
+          <p className="text-sm text-gray-400 mb-4">
+            Track your stock positions, unrealized P&amp;L, and trade history once your wallet is connected.
+          </p>
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <button
+                type="button"
+                onClick={openConnectModal}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
+              >
+                Connect Wallet to View Holdings &amp; History
+              </button>
+            )}
+          </ConnectButton.Custom>
+        </section>
+      )}
+
       {/* Portfolio Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
@@ -229,7 +253,9 @@ export default function StocksPortfolioPage() {
         </div>
       </div>
 
-      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
+      <div className={isDisconnected ? 'opacity-80' : undefined}>
+        <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
+      </div>
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">
