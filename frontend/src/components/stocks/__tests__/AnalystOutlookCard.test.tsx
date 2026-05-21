@@ -24,6 +24,10 @@ describe('AnalystOutlookCard', () => {
           targetMean: 230,
           targetHigh: 260,
           asOf: 'May 2026',
+          analystCount: 41,
+          ratingDistribution: { buy: 79, hold: 18, sell: 3 },
+          revisionTrend: 'Up',
+          source: 'Street consensus aggregate',
         }}
       />
     )
@@ -31,5 +35,9 @@ describe('AnalystOutlookCard', () => {
     expect(screen.getByText('Bullish')).toBeInTheDocument()
     expect(screen.getByText(/\+15\.0%/)).toBeInTheDocument()
     expect(screen.getByText(/\$230\.00/)).toBeInTheDocument()
+    expect(screen.getByText('41')).toBeInTheDocument()
+    expect(screen.getByText(/Buy 79% · Hold 18% · Sell 3%/)).toBeInTheDocument()
+    expect(screen.getByText('90d trend: Up')).toBeInTheDocument()
+    expect(screen.getByText(/Source: Street consensus aggregate/)).toBeInTheDocument()
   })
 })

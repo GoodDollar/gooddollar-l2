@@ -13,6 +13,20 @@ function ConsensusBadge({ consensus }: { consensus: AnalystOutlook['consensus'] 
   )
 }
 
+function TrendBadge({ trend }: { trend: AnalystOutlook['revisionTrend'] }) {
+  const styleMap = {
+    Up: 'text-green-300 bg-green-500/15 border-green-500/30',
+    Flat: 'text-sky-300 bg-sky-500/15 border-sky-500/30',
+    Down: 'text-amber-300 bg-amber-500/15 border-amber-500/30',
+  } as const
+
+  return (
+    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${styleMap[trend]}`}>
+      90d trend: {trend}
+    </span>
+  )
+}
+
 export function AnalystOutlookCard({
   currentPrice,
   outlook,
@@ -67,7 +81,25 @@ export function AnalystOutlookCard({
             />
           </div>
 
-          <p className="mt-2 text-[11px] text-gray-500">Consensus snapshot as of {outlook.asOf}</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+            <div className="rounded-lg border border-gray-700/30 bg-dark-50/40 p-2">
+              <p className="text-gray-400">Analysts</p>
+              <p className="mt-1 text-sm font-semibold text-white">{outlook.analystCount}</p>
+            </div>
+            <div className="rounded-lg border border-gray-700/30 bg-dark-50/40 p-2">
+              <p className="text-gray-400">Ratings</p>
+              <p className="mt-1 text-white">
+                Buy {outlook.ratingDistribution.buy}% · Hold {outlook.ratingDistribution.hold}% · Sell {outlook.ratingDistribution.sell}%
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-2.5">
+            <TrendBadge trend={outlook.revisionTrend} />
+          </div>
+          <p className="mt-2 text-[11px] text-gray-500">
+            Consensus snapshot as of {outlook.asOf} · Source: {outlook.source}
+          </p>
         </div>
       )}
     </div>
