@@ -23,6 +23,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 ### Recent UX polish (updated: 2026-05-21)
 
 - Feedback CTA now uses stocks-route-aware positioning and compact desktop labeling on `/stocks*`, reducing right-edge visual crowding while keeping the control accessible.
+- Stocks Markets, Portfolio, and Detail routes now use a wider desktop shell (`max-w-6xl` + `2xl:max-w-[84rem]`) to reduce dead-right gutter space and improve horizontal balance.
 - Stocks portfolio disconnected hero now routes both primary and fallback connect CTAs through the wallet connector modal, so first-time users are no longer blocked by a no-op `Connect Wallet to Unlock Portfolio` action.
 - Stocks onboarding now keeps `Try Another Connector` inside `/stocks` context (no ticker redirect), and shows explicit fallback guidance when additional connectors are unavailable.
 - Stocks Markets now surfaces quote-status outages with a visible degraded-data warning (`Market data may be stale`), retry CTA, and auto-retry countdown so users are explicitly warned when oracle-status infra is unavailable.

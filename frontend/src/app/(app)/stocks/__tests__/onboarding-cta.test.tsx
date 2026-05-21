@@ -231,4 +231,18 @@ describe('StocksPage onboarding CTA', () => {
     expect(scrollIntoView).toHaveBeenCalled()
     expect(screen.getByPlaceholderText('Search stocks...')).toHaveFocus()
   })
+
+  it('uses widened desktop shell container for balanced stocks canvas', () => {
+    walletState.address = undefined
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    const shell = screen.getByTestId('stocks-page-shell')
+    expect(shell.className).toContain('max-w-6xl')
+    expect(shell.className).toContain('2xl:max-w-[84rem]')
+  })
 })

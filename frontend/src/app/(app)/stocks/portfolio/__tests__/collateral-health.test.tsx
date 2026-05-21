@@ -121,6 +121,19 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
     expect(screen.getByTestId('stocks-onboarding-checklist')).toBeInTheDocument()
   })
 
+  it('uses widened desktop shell container for balanced portfolio canvas', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    const shell = screen.getByTestId('stocks-portfolio-shell')
+    expect(shell.className).toContain('max-w-6xl')
+    expect(shell.className).toContain('2xl:max-w-[84rem]')
+  })
+
   it('opens connect modal from primary and fallback connect CTAs', () => {
     accountState.address = undefined
     accountState.isConnected = false

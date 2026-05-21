@@ -198,7 +198,7 @@ export default function StocksPortfolioPage() {
       title="Connect to View Stocks"
       description="Connect your wallet to view your tokenized stock holdings and trade history."
     >
-    <div className="w-full max-w-5xl mx-auto">
+    <div data-testid="stocks-portfolio-shell" className="w-full max-w-6xl 2xl:max-w-[84rem] mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
       {isDisconnected && !walletConnectConfigured && !progress.exploredMarkets && (
         <>

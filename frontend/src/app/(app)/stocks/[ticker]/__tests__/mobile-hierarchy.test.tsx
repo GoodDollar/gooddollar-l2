@@ -111,4 +111,12 @@ describe('StockDetailPage mobile hierarchy order', () => {
     expect(mainColumn.className).not.toContain('order-2')
     expect(sideColumn.className).not.toContain('order-1')
   })
+
+  it('uses widened desktop shell container for balanced detail-page canvas', () => {
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const shell = screen.getByTestId('stocks-detail-shell')
+    expect(shell.className).toContain('max-w-6xl')
+    expect(shell.className).toContain('2xl:max-w-[84rem]')
+  })
 })

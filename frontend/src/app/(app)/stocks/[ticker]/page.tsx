@@ -455,7 +455,7 @@ export default function StockDetailPage() {
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
+    <div data-testid="stocks-detail-shell" className="w-full max-w-6xl 2xl:max-w-[84rem] mx-auto">
       <Link href="/stocks" prefetch={false} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
         <span>←</span> Back to Stocks
       </Link>
