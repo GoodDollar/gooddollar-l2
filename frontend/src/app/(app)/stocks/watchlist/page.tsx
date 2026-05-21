@@ -81,7 +81,7 @@ export default function StocksWatchlistPage() {
   const watched = useMemo(() => {
     return data.filter((s) => isWatched(s.ticker))
     // re-evaluate when the watchlist itself changes
-  }, [data, isWatched, watchlist])
+  }, [data, isWatched])
 
   const handleRowClick = useCallback((ticker: string) => {
     push(`/stocks/${ticker}`)

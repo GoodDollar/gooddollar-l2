@@ -129,7 +129,7 @@ export default function StocksPage() {
       return (a[sortField] - b[sortField]) * mul
     })
     // watchlist included so list re-filters when toggle changes
-  }, [data, query, sortField, sortDir, filter, isWatched, watchlist])
+  }, [data, query, sortField, sortDir, filter, isWatched])
 
   const handleRowClick = useCallback((ticker: string) => {
     router.push(`/stocks/${ticker}`)

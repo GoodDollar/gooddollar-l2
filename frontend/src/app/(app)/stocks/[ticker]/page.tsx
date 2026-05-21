@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
@@ -15,7 +16,6 @@ import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
-import { StockOrderForm } from '@/components/stocks/StockOrderForm'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
@@ -24,6 +24,20 @@ const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'ALL'
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
+const StockOrderForm = dynamic(
+  () => import('@/components/stocks/StockOrderForm').then((mod) => mod.StockOrderForm),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 animate-pulse">
+        <div className="h-4 w-20 rounded bg-dark-50/70 mb-3" />
+        <div className="h-10 rounded-xl bg-dark-50/60 mb-2" />
+        <div className="h-10 rounded-xl bg-dark-50/40 mb-3" />
+        <div className="h-10 rounded-xl bg-dark-50/50" />
+      </div>
+    ),
+  },
+)
 
 function decodeTickerBounded(rawTicker?: string): string {
   if (!rawTicker) return ''
