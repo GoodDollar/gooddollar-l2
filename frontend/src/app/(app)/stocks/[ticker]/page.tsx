@@ -696,28 +696,28 @@ export default function StockDetailPage() {
             <>
               <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
                 <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  <div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">Market Cap</div>
-                    <div className="text-white font-medium">{formatLargeNumber(stock.marketCap)}</div>
+                    <div className="text-white font-medium truncate">{formatLargeNumber(stock.marketCap)}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
-                    <div className="text-white font-medium">{formatLargeNumber(stock.volume24h)}</div>
+                    <div className="text-white font-medium truncate">{formatLargeNumber(stock.volume24h)}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">Sector</div>
-                    <div className="text-white font-medium">{stock.sector}</div>
+                    <div className="text-white font-medium truncate">{stock.sector}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">52W High</div>
-                    <div className="text-white font-medium">{formatStockPrice(stock.high52w)}</div>
+                    <div className="text-white font-medium truncate">{formatStockPrice(stock.high52w)}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
-                    <div className="text-white font-medium">{formatStockPrice(stock.low52w)}</div>
+                    <div className="text-white font-medium truncate">{formatStockPrice(stock.low52w)}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
                     <div className={`font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
