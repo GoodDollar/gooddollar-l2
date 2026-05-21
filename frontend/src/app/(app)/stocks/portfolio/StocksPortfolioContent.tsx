@@ -231,6 +231,23 @@ export function StocksPortfolioContent() {
         </div>
       </div>
 
+      {isDisconnected && (
+        <div className="mb-6 rounded-2xl border border-goodgreen/25 bg-goodgreen/5 px-4 py-4 sm:px-5">
+          <p className="text-sm font-semibold text-white">No wallet connected yet.</p>
+          <p className="mt-1 text-xs sm:text-sm text-gray-300">
+            You can browse markets first, then connect when you are ready to trade.
+          </p>
+          <div className="mt-3">
+            <Link
+              href="/stocks"
+              className="inline-flex items-center justify-center rounded-xl border border-goodgreen/40 bg-dark-50/40 px-3 py-2 text-xs sm:text-sm font-semibold text-goodgreen hover:bg-goodgreen/10 transition-colors"
+            >
+              Browse Stock Markets
+            </Link>
+          </div>
+        </div>
+      )}
+
       <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">

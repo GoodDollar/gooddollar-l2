@@ -59,7 +59,7 @@ vi.mock('@/components/InfoBanner', () => ({
   InfoBanner: () => null,
 }))
 
-import StocksPortfolioPage from '../page'
+import { StocksPortfolioContent } from '../StocksPortfolioContent'
 
 describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () => {
   beforeEach(() => {
@@ -79,7 +79,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
 
     expect(screen.getByText('Total Value')).toBeInTheDocument()
@@ -95,10 +95,24 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     accountState.isConnected = false
 
     render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
 
     expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
+  })
+
+  it('shows disconnected dual-path guidance with a browse-markets action', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+    )
+
+    expect(screen.getByText('No wallet connected yet.')).toBeInTheDocument()
+    expect(screen.getByText(/browse markets first, then connect when you are ready to trade/i)).toBeInTheDocument()
+    const browseLink = screen.getByRole('link', { name: 'Browse Stock Markets' })
+    expect(browseLink.getAttribute('href')).toBe('/stocks')
   })
 
   it('shows deferred impact section loading placeholders on first paint', () => {
@@ -106,7 +120,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     accountState.isConnected = false
 
     render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
 
     expect(screen.getByText('Loading impact insights…')).toBeInTheDocument()
@@ -120,7 +134,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
 
     const text = container.textContent || ''
@@ -136,7 +150,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).not.toMatch(/Critical/)
@@ -151,7 +165,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Not active yet')
@@ -176,7 +190,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Not active yet')
@@ -194,7 +208,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Collateral Health')
@@ -217,7 +231,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('0% — Critical')
@@ -240,7 +254,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Connect wallet to view collateral health')
@@ -259,7 +273,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
 
     const primaryHelper = screen.getByText('Connect wallet to view collateral health')
