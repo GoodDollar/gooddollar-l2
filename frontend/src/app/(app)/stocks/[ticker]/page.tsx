@@ -22,6 +22,7 @@ import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
+import { StockAccountPanel } from '@/components/stocks/StockAccountPanel'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { PriceChart } from '@/components/PriceChart'
 import { StockMarketData } from '@/components/stocks/StockMarketData'
@@ -884,6 +885,8 @@ export default function StockDetailPage() {
               </div>
             )}
           </div>
+
+          <StockAccountPanel />
 
           <RelatedMoversPanel
             currentTicker={stock.ticker}
