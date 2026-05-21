@@ -28,6 +28,21 @@ const stock = (ticker: string, change24h: number, volume24h: number, marketCap: 
 })
 
 describe('StocksDiscoveryShelves', () => {
+  it('uses valid loading semantics for shelf skeletons', () => {
+    render(
+      <StocksDiscoveryShelves
+        isLoading
+        dailyMovers={[]}
+        trending={[]}
+        analysisPicks={[]}
+      />,
+    )
+
+    expect(screen.getByRole('status', { name: /daily movers loading/i })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: /trending stocks loading/i })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: /market analysis loading/i })).toBeInTheDocument()
+  })
+
   it('renders discovery shelves and ticker links when data is present', () => {
     render(
       <StocksDiscoveryShelves

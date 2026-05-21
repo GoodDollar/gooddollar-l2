@@ -18,7 +18,12 @@ function Shelf({ title, subtitle, items, isLoading }: ShelfProps) {
       </div>
 
       {isLoading ? (
-        <div className="space-y-2" aria-label={`${title} loading`}>
+        <div
+          className="space-y-2"
+          role="status"
+          aria-live="polite"
+          aria-label={`${title} loading`}
+        >
           {Array.from({ length: 3 }).map((_, idx) => (
             <div key={`${title}-skeleton-${idx}`} className="h-11 rounded-lg bg-dark-50/50 animate-pulse" />
           ))}
