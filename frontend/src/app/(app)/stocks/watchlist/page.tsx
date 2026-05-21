@@ -74,13 +74,12 @@ const WatchlistRow = memo(function WatchlistRow({ stock, idx, onRowClick }: Watc
 export default function StocksWatchlistPage() {
   const router = useRouter()
   const { push, refresh } = router
-  const { stocks: data, isLoading } = useOnChainStocks()
+  const { stocks: data, isLoading, isLive, refetch } = useOnChainStocks()
   const { watchlist, isWatched } = useWatchlist()
   const [loadingTooLong, setLoadingTooLong] = useState(false)
 
   const watched = useMemo(() => {
     return data.filter((s) => isWatched(s.ticker))
-    // re-evaluate when the watchlist itself changes
   }, [data, isWatched])
 
   const handleRowClick = useCallback((ticker: string) => {
@@ -110,7 +109,7 @@ export default function StocksWatchlistPage() {
           <div>
             <h1 className="text-2xl font-bold text-white">Watchlist</h1>
             <p className="text-sm text-gray-400">
-              Stocks you’re tracking. Saved locally on this device — connect a wallet to trade them.
+              Stocks you&apos;re tracking. Saved locally on this device — connect a wallet to trade them.
             </p>
           </div>
         </div>
@@ -162,88 +161,109 @@ export default function StocksWatchlistPage() {
             </Link>
           </div>
         </div>
-      ) : isEmpty ? (
-        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 px-6 py-12 text-center">
-          <div className="text-5xl mb-3" aria-hidden="true">☆</div>
-          <h2 className="text-lg font-semibold text-white mb-1">Your watchlist is empty</h2>
-          <p className="text-sm text-gray-400 mb-4">
-            Tap the star next to any stock to save it here. It’s a fast way to keep an eye on the names you care about.
-          </p>
-          <Link
-            href="/stocks"
-            prefetch={false}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
-          >
-            Browse all stocks
-            <span aria-hidden="true">→</span>
-          </Link>
-        </div>
       ) : (
         <>
-          {/* Mobile card list (< sm) */}
-          <div className="sm:hidden space-y-2 mb-2">
-            {watched.map((stock) => (
-              <div
-                key={stock.ticker}
-                onClick={() => handleRowClick(stock.ticker)}
-                className="bg-dark-100 rounded-xl border border-gray-700/20 px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-dark-50/30 transition-colors active:scale-[0.99]"
+          {!isLive && (
+            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3" role="status">
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <p className="flex-1 text-sm text-amber-200">Showing cached prices — live oracle data unavailable</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="shrink-0 px-3 py-1.5 text-xs font-medium text-amber-200 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+          )}
+          {isEmpty ? (
+            <div className="bg-dark-100 rounded-2xl border border-gray-700/20 px-6 py-12 text-center">
+              <div className="text-5xl mb-3" aria-hidden="true">☆</div>
+              <h2 className="text-lg font-semibold text-white mb-1">Your watchlist is empty</h2>
+              <p className="text-sm text-gray-400 mb-4">
+                Tap the star next to any stock to save it here. It&apos;s a fast way to keep an eye on the names you care about.
+              </p>
+              <Link
+                href="/stocks"
+                prefetch={false}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
               >
-                <WatchlistStarButton ticker={stock.ticker} size="sm" />
-                <StockIcon ticker={stock.ticker} />
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-white text-sm truncate max-w-[52px]">{stock.ticker}</span>
-                    <span className="text-gray-500 text-xs truncate max-w-[84px]">{stock.name}</span>
+                Browse all stocks
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* Mobile card list */}
+              <div className="sm:hidden space-y-2 mb-2">
+                {watched.map((stock) => (
+                  <div
+                    key={stock.ticker}
+                    onClick={() => handleRowClick(stock.ticker)}
+                    className="bg-dark-100 rounded-xl border border-gray-700/20 px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-dark-50/30 transition-colors active:scale-[0.99]"
+                  >
+                    <WatchlistStarButton ticker={stock.ticker} size="sm" />
+                    <StockIcon ticker={stock.ticker} />
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-white text-sm truncate max-w-[52px]">{stock.ticker}</span>
+                        <span className="text-gray-500 text-xs truncate max-w-[84px]">{stock.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 w-[96px]">
+                      <p className="text-white font-medium text-sm whitespace-nowrap">{formatStockPrice(stock.price)}</p>
+                      <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
+                        <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
+                      </div>
+                      <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
+                        Tap to trade
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
-                  </div>
-                </div>
-                <div className="text-right shrink-0 w-[96px]">
-                  <p className="text-white font-medium text-sm whitespace-nowrap">{formatStockPrice(stock.price)}</p>
-                  <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
-                    <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
-                  </div>
-                  <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
-                    Tap to trade
-                  </span>
+                ))}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden sm:block bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-700/30 text-gray-400 bg-dark-50/25">
+                        <th scope="col" className="text-right py-3 px-3 font-semibold w-10">#</th>
+                        <th scope="col" className="py-3 px-2 font-semibold w-10">
+                          <span className="sr-only">Watchlist</span>
+                        </th>
+                        <th scope="col" className="text-left py-3 px-3 font-semibold">Stock</th>
+                        <th scope="col" className="text-right py-3 px-3 font-semibold">Price</th>
+                        <th scope="col" className="text-right py-3 px-3 font-semibold">24h Change</th>
+                        <th scope="col" className="text-right py-3 px-3 font-semibold hidden sm:table-cell">Volume</th>
+                        <th scope="col" className="text-right py-3 px-3 font-semibold hidden md:table-cell">Market Cap</th>
+                        <th scope="col" className="py-3 px-2 font-semibold hidden sm:table-cell">7d Trend</th>
+                        <th scope="col" className="py-3 px-1 font-semibold hidden sm:table-cell" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {watched.map((stock, idx) => (
+                        <WatchlistRow
+                          key={stock.ticker}
+                          stock={stock}
+                          idx={idx}
+                          onRowClick={handleRowClick}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Desktop table (sm+) */}
-          <div className="hidden sm:block bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-700/30 text-gray-400 bg-dark-50/25">
-                    <th scope="col" className="text-right py-3 px-3 font-semibold w-10">#</th>
-                    <th scope="col" className="py-3 px-2 font-semibold w-10">
-                      <span className="sr-only">Watchlist</span>
-                    </th>
-                    <th scope="col" className="text-left py-3 px-3 font-semibold">Stock</th>
-                    <th scope="col" className="text-right py-3 px-3 font-semibold">Price</th>
-                    <th scope="col" className="text-right py-3 px-3 font-semibold">24h Change</th>
-                    <th scope="col" className="text-right py-3 px-3 font-semibold hidden sm:table-cell">Volume</th>
-                    <th scope="col" className="text-right py-3 px-3 font-semibold hidden md:table-cell">Market Cap</th>
-                    <th scope="col" className="py-3 px-2 font-semibold hidden sm:table-cell">7d Trend</th>
-                    <th scope="col" className="py-3 px-1 font-semibold hidden sm:table-cell" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {watched.map((stock, idx) => (
-                    <WatchlistRow
-                      key={stock.ticker}
-                      stock={stock}
-                      idx={idx}
-                      onRowClick={handleRowClick}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            </>
+          )}
         </>
       )}
     </div>
