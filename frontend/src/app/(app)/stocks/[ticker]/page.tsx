@@ -16,6 +16,7 @@ import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
 import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { computeOrderSubmissionState } from '@/lib/stocksOrderSubmission'
+import { computeLimitPriceFieldState } from '@/lib/stocksLimitPriceField'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
@@ -91,9 +92,12 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   const { mint, phase: mintPhase, error: mintError, isDeployed } = useMintSynthetic()
   const { redeem, phase: redeemPhase, error: redeemError } = useRedeemSynthetic()
 
+  const { limitPriceMissing, limitPriceInvalid, hasValidPrice } = computeLimitPriceFieldState({
+    orderType,
+    limitPrice,
+    amount,
+  })
   const parsedLimitPrice = parseFloat(limitPrice)
-  const limitPriceInvalid = orderType === 'limit' && limitPrice !== '' && (isNaN(parsedLimitPrice) || parsedLimitPrice <= 0)
-  const hasValidPrice = orderType === 'market' || parsedLimitPrice > 0
   const effectivePrice = orderType === 'limit' && parsedLimitPrice > 0 ? parsedLimitPrice : (orderType === 'limit' ? 0 : stock.price)
   const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
   const fee = amount ? parseFloat(amount) * 0.001 : 0
@@ -175,11 +179,17 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
 
       {orderType === 'limit' && (
         <div className="mb-3">
-          <label className="text-xs text-gray-400 mb-1 block">Limit Price</label>
-          <input type="text" inputMode="decimal" placeholder="0.00" value={limitPrice} onChange={e => setLimitPrice(sanitizeNumericInput(e.target.value))}
+          <label htmlFor="limit-price-input" className="text-xs text-gray-400 mb-1 block">Limit Price</label>
+          <input id="limit-price-input" type="text" inputMode="decimal" placeholder="0.00" value={limitPrice}
+            onChange={e => setLimitPrice(sanitizeNumericInput(e.target.value))}
+            aria-invalid={limitPriceInvalid || undefined}
+            aria-describedby={limitPriceInvalid ? 'limit-price-error' : limitPriceMissing ? 'limit-price-hint' : undefined}
             className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${limitPriceInvalid ? 'border-red-500/50' : 'border-gray-700/30'}`} />
           {limitPriceInvalid && (
-            <p className="text-red-400 text-[10px] mt-1">Price must be greater than 0</p>
+            <p id="limit-price-error" className="text-red-400 text-[10px] mt-1">Price must be greater than 0</p>
+          )}
+          {limitPriceMissing && (
+            <p id="limit-price-hint" className="text-gray-400 text-[10px] mt-1">Enter a limit price</p>
           )}
         </div>
       )}
