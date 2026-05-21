@@ -51,6 +51,12 @@ const TIMEFRAME_LABEL: Record<Timeframe, string> = {
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
+const RESERVED_SUBPATHS: Record<string, string> = {
+  MARKETS: '/stocks',
+  EXPOSURE: '/stocks',
+  TRADE: '/stocks',
+  SETTINGS: '/stocks',
+}
 
 function decodeTickerBounded(rawTicker?: string): string {
   if (!rawTicker) return ''
@@ -188,6 +194,11 @@ export default function StockDetailPage() {
     return () => clearTimeout(timer)
   }, [symbolError])
 
+  const reservedRedirect = RESERVED_SUBPATHS[ticker]
+  useEffect(() => {
+    if (reservedRedirect) router.replace(reservedRedirect)
+  }, [reservedRedirect, router])
+
   function navigateToSymbol(raw: string) {
     const q = raw.trim().toUpperCase()
     if (!q) return
@@ -218,6 +229,14 @@ export default function StockDetailPage() {
     if (!nextTimeframe) return
     setTimeframe(nextTimeframe)
     timeframeTabRefs.current[nextTimeframe]?.focus()
+  }
+
+  if (reservedRedirect) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-sm text-gray-400 animate-pulse">Redirecting…</p>
+      </div>
+    )
   }
 
   if (!stock) {
