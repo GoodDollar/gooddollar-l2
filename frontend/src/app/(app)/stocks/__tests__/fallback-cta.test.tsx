@@ -8,6 +8,7 @@ const stocksState = { isLive: true }
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
+  usePathname: () => '/stocks',
   useSearchParams: () => new URLSearchParams(''),
   useParams: () => ({}),
 }))

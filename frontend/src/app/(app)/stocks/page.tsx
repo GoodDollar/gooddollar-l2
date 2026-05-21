@@ -8,6 +8,7 @@ import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { MarketIntelligencePanel } from '@/components/stocks/MarketIntelligencePanel'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { useMounted } from '@/lib/useMounted'
 import {
@@ -301,6 +302,13 @@ export default function StocksPage() {
           </div>
         )
       )}
+
+      <MarketIntelligencePanel
+        stocks={data}
+        isLive={isLive}
+        isLoading={isLoading}
+        onSelectTicker={pushTickerRoute}
+      />
 
       <div className="mb-3 flex flex-col lg:flex-row lg:items-center gap-2 sm:gap-3">
         <input
