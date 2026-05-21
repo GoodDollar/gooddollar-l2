@@ -38,6 +38,7 @@ const frontendRoot = resolve(__dirname, '..')
 
 const configPath = resolve(frontendRoot, 'playwright.config.ts')
 const nextConfigPath = resolve(frontendRoot, 'next.config.js')
+const runtimeServerPath = resolve(frontendRoot, 'scripts', 'next-runtime-server.mjs')
 const gitignorePath = resolve(frontendRoot, '.gitignore')
 
 const errors = []
@@ -111,6 +112,22 @@ if (!existsSync(gitignorePath)) {
     errors.push(
       '.gitignore does NOT include `.next.e2e/`.\n' +
         '       Playwright build artifacts must not be committed.',
+    )
+  }
+}
+
+// 5: next-runtime-server dev mode must not write to production `.next/`
+if (!existsSync(runtimeServerPath)) {
+  errors.push(`next-runtime-server.mjs not found at ${runtimeServerPath}`)
+} else {
+  const runtimeServer = readFileSync(runtimeServerPath, 'utf8')
+  const hasDevIsolationGuard =
+    /if\s*\(\s*dev\s*&&\s*!process\.env\.NEXT_DIST_DIR\s*\)\s*\{[\s\S]*NEXT_DIST_DIR[\s\S]*\.next\.runtime-dev/.test(runtimeServer)
+  if (!hasDevIsolationGuard) {
+    errors.push(
+      'scripts/next-runtime-server.mjs does NOT isolate dev artifacts from production `.next/`.\n' +
+        '       Add a dev-mode guard that defaults `NEXT_DIST_DIR` to `.next.runtime-dev`\n' +
+        '       when callers do not provide one.',
     )
   }
 }

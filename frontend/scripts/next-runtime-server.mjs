@@ -29,6 +29,11 @@ function parseCliArgs(argv) {
 }
 
 const { dev, port } = parseCliArgs(process.argv.slice(2))
+
+if (dev && !process.env.NEXT_DIST_DIR) {
+  process.env.NEXT_DIST_DIR = '.next.runtime-dev'
+}
+
 const app = next({ dev, hostname: '0.0.0.0', port })
 const handle = app.getRequestHandler()
 
