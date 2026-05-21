@@ -27,6 +27,10 @@ describe('GET /api/status/quotes', () => {
     expect(data.healthy).toBe(true)
     expect(data.freshCount).toBe(9)
     expect(data.totalCount).toBe(10)
+    expect(typeof data.currentOracleBlock).toBe('number')
+    expect(data.quotes[0].symbol).toBe('AAPL')
+    expect(typeof data.quotes[0].oracleBlock).toBe('number')
+    expect(data.quotes[0].productSync.amm.lastSyncedBlock).toBe(data.quotes[0].oracleBlock)
   })
 
   it('returns 502 when upstream returns non-OK status', async () => {

@@ -7,6 +7,9 @@ export interface QuoteStatus {
   lastUpdateMs: number
   sessionState: string
   confidence: number
+  oracleBlock?: number
+  divergenceBps?: number
+  productSync?: Partial<Record<'amm' | 'perps' | 'prediction' | 'lend' | 'yield', { lastSyncedBlock: number; value?: number }>>
 }
 
 export interface PriceServiceStatus {

@@ -22,6 +22,7 @@ import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { useStocksOracleGuard } from '@/lib/useStocksOracleGuard'
+import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
 import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/walletCapabilities'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 
@@ -172,6 +173,8 @@ function OrderForm({
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [amount, setAmount] = useState('')
   const [limitPrice, setLimitPrice] = useState('')
+  const syncGuard = useSymbolSyncGuard(stock.ticker, 'amm')
+  const syncBlocked = !syncGuard.allowRiskIncrease
   const walletReady = useWalletReady()
   const { isConnected } = useAccount()
   const { mint, phase: mintPhase, error: mintError, isDeployed } = useMintSynthetic()
@@ -219,7 +222,7 @@ function OrderForm({
     if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || !hasValidPrice) return
     if (amountTooLarge) return
     if (sellDisabled) return
-    if (oracleTradeBlocked) return
+    if (oracleTradeBlocked || syncBlocked) return
     if (!submission.canSubmitOnChain) return
 
     const amountNum = parseFloat(amount)
@@ -299,6 +302,13 @@ function OrderForm({
           {oracleBlockReason && <div className="mt-1 text-amber-200/90">{oracleBlockReason}</div>}
         </div>
       )}
+      {syncBlocked && (
+        <div role="alert" aria-live="polite"
+          className="mb-3 rounded-xl border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+          <div className="font-medium text-red-100">Risk-increasing actions are blocked until symbol sync catches up.</div>
+          {syncGuard.reason && <div className="mt-1 text-red-200/90">{syncGuard.reason}</div>}
+        </div>
+      )}
 
       <div className="mb-3">
         <label className="text-xs text-gray-400 mb-1 block">Amount (USD)</label>
@@ -348,10 +358,10 @@ function OrderForm({
         </button>
       ) : walletReady ? (
         <WalletGatedTradeButton
-          hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance && submission.canSubmitOnChain && !oracleTradeBlocked}
-          oracleTradeBlocked={oracleTradeBlocked}
+          hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance && submission.canSubmitOnChain && !oracleTradeBlocked && !syncBlocked}
+          oracleTradeBlocked={oracleTradeBlocked || syncBlocked}
         >
-          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || !submission.canSubmitOnChain || oracleTradeBlocked}
+          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || !submission.canSubmitOnChain || oracleTradeBlocked || syncBlocked}
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
@@ -359,7 +369,7 @@ function OrderForm({
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || !submission.canSubmitOnChain || oracleTradeBlocked}
+        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || !submission.canSubmitOnChain || oracleTradeBlocked || syncBlocked}
           className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>
@@ -397,8 +407,9 @@ export function StockDetailContent() {
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
   const oracleGuard = useStocksOracleGuard(stock?.ticker)
+  const syncGuard = useSymbolSyncGuard(stock?.ticker, 'amm')
   const { isConnected } = useAccount()
-  const tradeReady = isConnected && oracleGuard.health === 'live'
+  const tradeReady = isConnected && oracleGuard.health === 'live' && syncGuard.allowRiskIncrease
 
   if (!stock && stocksLoading) {
     return (
@@ -491,6 +502,12 @@ export function StockDetailContent() {
               {oracleGuard.reason && (
                 <p className="mt-1 text-xs text-amber-100/90">{oracleGuard.reason}</p>
               )}
+            </div>
+          )}
+          {oracleGuard.health === 'live' && !syncGuard.allowRiskIncrease && (
+            <div role="alert" className="mb-4 rounded-2xl border border-red-500/35 bg-red-500/10 px-4 py-3">
+              <p className="text-sm font-semibold text-red-200">Symbol sync is behind the current oracle block.</p>
+              {syncGuard.reason && <p className="mt-1 text-xs text-red-100/90">{syncGuard.reason}</p>}
             </div>
           )}
 
@@ -597,6 +614,12 @@ export function StockDetailContent() {
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-300">2b. Symbol sync on current block</span>
+                <span className={`px-2 py-0.5 rounded-full ${syncGuard.allowRiskIncrease ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                  {syncGuard.allowRiskIncrease ? 'Done' : 'Blocked'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-gray-300">3. Submit order</span>
                 <span className={`px-2 py-0.5 rounded-full ${tradeReady ? 'bg-green-500/20 text-green-300' : 'bg-gray-700/40 text-gray-300'}`}>
                   {tradeReady ? 'Ready' : 'Waiting'}
@@ -613,8 +636,8 @@ export function StockDetailContent() {
           <OrderForm
             stock={stock}
             position={position}
-            oracleTradeBlocked={oracleGuard.health !== 'live'}
-            oracleBlockReason={oracleGuard.reason}
+            oracleTradeBlocked={oracleGuard.health !== 'live' || !syncGuard.allowRiskIncrease}
+            oracleBlockReason={oracleGuard.reason ?? syncGuard.reason}
           />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
