@@ -19,6 +19,7 @@ import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainSto
 import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
+import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
 
@@ -170,7 +171,15 @@ function normalizeTickerForLookup(rawTicker?: string): string {
   return normalized
 }
 
-function OrderForm({ stock, position }: { stock: { ticker: string; price: number }; position: OnChainStockPosition | null }) {
+function OrderForm({
+  stock,
+  position,
+  tradeBlockedReason,
+}: {
+  stock: { ticker: string; price: number }
+  position: OnChainStockPosition | null
+  tradeBlockedReason: string | null
+}) {
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [amount, setAmount] = useState('')
@@ -194,6 +203,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   const parsedAmount = parseFloat(amount)
   const amountTooLarge = !!amount && Number.isFinite(parsedAmount) && parsedAmount > MAX_STOCK_ORDER_USD
   const hasAmount = !!amount && parsedAmount > 0 && !amountTooLarge
+  const tradeBlocked = !!tradeBlockedReason
 
   // Sell-side balance gating: when a user is on the Sell tab we must not
   // let them attempt to burn more sToken debt than they actually minted —
@@ -212,6 +222,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (tradeBlocked) return
     if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || !hasValidPrice) return
     if (amountTooLarge) return
     if (sellDisabled) return
@@ -240,31 +251,42 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   return (
     <form id="stock-order-form" onSubmit={handleSubmit} className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
       <div className="flex gap-2 mb-4">
-        <button type="button" onClick={() => setSide('buy')}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${side === 'buy' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-dark-50/50 text-gray-400 border border-transparent'}`}>
+        <button type="button" onClick={() => setSide('buy')} disabled={tradeBlocked}
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${side === 'buy' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-dark-50/50 text-gray-400 border border-transparent'}`}>
           Buy
         </button>
-        <button type="button" onClick={() => setSide('sell')}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${side === 'sell' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-dark-50/50 text-gray-400 border border-transparent'}`}>
+        <button type="button" onClick={() => setSide('sell')} disabled={tradeBlocked}
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${side === 'sell' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-dark-50/50 text-gray-400 border border-transparent'}`}>
           Sell
         </button>
       </div>
 
       <div className="flex gap-2 mb-4">
-        <button type="button" onClick={() => setOrderType('market')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${orderType === 'market' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+        <button type="button" onClick={() => setOrderType('market')} disabled={tradeBlocked}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed ${orderType === 'market' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
           Market
         </button>
-        <button type="button" onClick={() => setOrderType('limit')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${orderType === 'limit' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+        <button type="button" onClick={() => setOrderType('limit')} disabled={tradeBlocked}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed ${orderType === 'limit' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
           Limit
         </button>
       </div>
 
+      {tradeBlocked && (
+        <div
+          data-testid="stocks-trade-oracle-guard"
+          role="alert"
+          aria-live="polite"
+          className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300"
+        >
+          {tradeBlockedReason}
+        </div>
+      )}
+
       {orderType === 'limit' && (
         <div className="mb-3">
           <label className="text-xs text-gray-400 mb-1 block">Limit Price</label>
-          <input type="text" inputMode="decimal" placeholder="0.00" value={limitPrice} onChange={e => setLimitPrice(sanitizeNumericInput(e.target.value))}
+          <input type="text" inputMode="decimal" placeholder="0.00" value={limitPrice} onChange={e => setLimitPrice(sanitizeNumericInput(e.target.value))} disabled={tradeBlocked}
             className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${limitPriceInvalid ? 'border-red-500/50' : 'border-gray-700/30'}`} />
           {limitPriceInvalid && (
             <p className="text-red-400 text-[10px] mt-1">Price must be greater than 0</p>
@@ -287,7 +309,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
 
       <div className="mb-3">
         <label className="text-xs text-gray-400 mb-1 block">Amount (USD)</label>
-        <input type="text" inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(sanitizeNumericInput(e.target.value))}
+        <input type="text" inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(sanitizeNumericInput(e.target.value))} disabled={tradeBlocked}
           aria-invalid={sellSharesExceedsBalance || amountTooLarge || undefined}
           className={`w-full px-3 py-2.5 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${sellSharesExceedsBalance || amountTooLarge ? 'border-red-500/50' : 'border-gray-700/30'}`} />
         {amountTooLarge && (
@@ -297,7 +319,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
         )}
       </div>
 
-      {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && !sellGated && !amountTooLarge && (
+      {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && !sellGated && !amountTooLarge && !tradeBlocked && (
         <div className="mb-4 space-y-1.5 text-xs">
           <div className="flex justify-between text-gray-400">
             <span>Est. Shares</span>
@@ -321,7 +343,12 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
       {actionError && (
         <p className="text-[10px] text-red-400 text-center truncate mb-2">{actionError}</p>
       )}
-      {walletReady && sellGated ? (
+      {tradeBlocked ? (
+        <button type="button" disabled data-testid="stocks-trade-paused-button"
+          className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-gray-400 cursor-not-allowed">
+          Trading paused - oracle offline
+        </button>
+      ) : walletReady && sellGated ? (
         <button type="button" disabled
           className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-gray-400 cursor-not-allowed">
           No {stock.ticker} to sell
@@ -358,6 +385,7 @@ export default function StockDetailPage() {
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks } = useOnChainStocks()
   const stock = stocks.find(s => s.ticker === ticker)
+  const { status: priceServiceStatus, error: priceServiceError } = usePriceServiceStatus()
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
   const [analystLoading, setAnalystLoading] = useState(true)
@@ -376,6 +404,23 @@ export default function StockDetailPage() {
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
   const [showNewsPanel, newsPanelRef] = useBelowFoldActivation()
   const [showRelatedPanel, relatedPanelRef] = useBelowFoldActivation()
+  const quoteStatus = useMemo(() => {
+    if (!stock || !priceServiceStatus) return null
+    return priceServiceStatus.quotes.find((q) => q.symbol === stock.ticker) ?? null
+  }, [stock, priceServiceStatus])
+  const tradeBlockedReason = useMemo(() => {
+    if (!stock) return null
+    if (priceServiceError || !priceServiceStatus) {
+      return 'Trading is paused while oracle status is offline.'
+    }
+    if (!quoteStatus) {
+      return `Trading is paused while oracle data for ${stock.ticker} is unavailable.`
+    }
+    if (quoteStatus.lastUpdateMs > 60_000) {
+      return 'Trading is paused while oracle data is stale.'
+    }
+    return null
+  }, [stock, priceServiceError, priceServiceStatus, quoteStatus])
 
   useEffect(() => {
     setAnalystLoading(true)
@@ -564,7 +609,7 @@ export default function StockDetailPage() {
           data-testid="stocks-detail-side-column"
           className="lg:w-80 shrink-0"
         >
-          <OrderForm stock={stock} position={position} />
+          <OrderForm stock={stock} position={position} tradeBlockedReason={tradeBlockedReason} />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>

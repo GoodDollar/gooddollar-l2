@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks detail trade form now fail-safes when oracle health is offline, stale, or missing for the active ticker, showing a clear paused-state warning and disabling order interactions until quote health recovers.
 - Stocks onboarding hero now includes an explicit `How to start` 3-step sequence (`Connect wallet` -> `Choose a stock` -> `Place your first trade`) so first-time users can orient before scanning dense market data.
 - Stocks portfolio now renders a guided disconnected setup hero with one dominant CTA (`Connect Wallet to Unlock Portfolio`) and hides placeholder metric cards until wallet connection, reducing first-time empty-dashboard confusion.
 - Stocks detail now gates below-the-fold `News & Events` and `Related symbols / Daily movers` modules behind viewport-triggered activation so their chunks are not fetched on initial `/stocks/[ticker]` load.
