@@ -20,9 +20,6 @@ import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
-import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
-import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
-import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
 
 const PriceChart = dynamic(
@@ -33,6 +30,54 @@ const PriceChart = dynamic(
 const OracleStatusBadge = dynamic(
   () => import('@/components/OracleStatusBadge').then((m) => ({ default: m.OracleStatusBadge })),
   { ssr: false }
+)
+
+const DeferredAnalystOutlookCard = dynamic(
+  () => import('@/components/stocks/AnalystOutlookCard').then((m) => ({ default: m.AnalystOutlookCard })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="mb-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-4 sm:p-5 animate-pulse">
+        <div className="h-3 w-32 bg-dark-50 rounded mb-3" />
+        <div className="h-8 w-28 bg-dark-50 rounded mb-2" />
+        <div className="h-2.5 w-full bg-dark-50 rounded" />
+      </div>
+    ),
+  },
+)
+
+const DeferredNewsEventsPanel = dynamic(
+  () => import('@/components/stocks/NewsEventsPanel').then((m) => ({ default: m.NewsEventsPanel })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4 animate-pulse">
+        <div className="h-4 w-28 bg-dark-50 rounded mb-3" />
+        <div className="space-y-2.5">
+          <div className="h-3 w-full bg-dark-50 rounded" />
+          <div className="h-3 w-5/6 bg-dark-50 rounded" />
+          <div className="h-3 w-3/4 bg-dark-50 rounded" />
+        </div>
+      </div>
+    ),
+  },
+)
+
+const DeferredRelatedMoversPanel = dynamic(
+  () => import('@/components/stocks/RelatedMoversPanel').then((m) => ({ default: m.RelatedMoversPanel })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5 animate-pulse">
+        <div className="h-4 w-36 bg-dark-50 rounded mb-3" />
+        <div className="space-y-2">
+          <div className="h-9 w-full bg-dark-50 rounded-lg" />
+          <div className="h-9 w-full bg-dark-50 rounded-lg" />
+          <div className="h-9 w-full bg-dark-50 rounded-lg" />
+        </div>
+      </div>
+    ),
+  },
 )
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
@@ -359,7 +404,7 @@ export default function StockDetailPage() {
             <OracleStatusBadge variant="detail" symbol={stock.ticker} />
           </div>
 
-          <AnalystOutlookCard
+          <DeferredAnalystOutlookCard
             currentPrice={stock.price}
             outlook={analystOutlook}
             isLoading={analystLoading}
@@ -459,7 +504,7 @@ export default function StockDetailPage() {
             </div>
           )}
 
-          <NewsEventsPanel
+          <DeferredNewsEventsPanel
             ticker={stock.ticker}
             isLoading={newsLoading}
             error={newsError}
@@ -508,7 +553,7 @@ export default function StockDetailPage() {
             )}
           </div>
 
-          <RelatedMoversPanel
+          <DeferredRelatedMoversPanel
             currentTicker={stock.ticker}
             related={relatedSymbols}
             movers={topMovers}
