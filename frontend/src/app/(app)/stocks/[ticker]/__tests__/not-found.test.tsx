@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
+const routerPush = vi.fn()
 let currentStocks: Array<{
   ticker: string
   name: string
@@ -21,7 +22,12 @@ let currentStocks: Array<{
   description?: string
 }> = []
 
-const makeStock = () => ({
+const makeStock = (overrides: Partial<{
+  ticker: string
+  name: string
+  sector: string
+  price: number
+}> = {}) => ({
   ticker: 'AAPL',
   name: 'Apple Inc.',
   sector: 'Technology',
@@ -36,11 +42,12 @@ const makeStock = () => ({
   eps: 6.4,
   dividendYield: 0.52,
   avgVolume: 850000,
+  ...overrides,
 })
 
 vi.mock('next/navigation', () => ({
   useParams: () => currentParams,
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPush }),
 }))
 
 vi.mock('next/link', () => ({
@@ -81,6 +88,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
   beforeEach(() => {
     currentParams = {}
     currentStocks = []
+    routerPush.mockReset()
   })
 
   it('renders a generic not-found message without echoing plain invalid ticker input', () => {
@@ -226,5 +234,30 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     const tablist = screen.getByRole('tablist', { name: /chart timeframe/i })
     expect(tablist.className).toContain('overflow-x-auto')
     expect(tablist.className).toContain('flex-nowrap')
+  })
+
+  it('supports quick symbol switching from the detail page via keyboard Enter', () => {
+    currentStocks = [makeStock(), makeStock({ ticker: 'NVDA', name: 'NVIDIA Corp.' })]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const switchInput = screen.getByLabelText('Switch stock symbol')
+    fireEvent.change(switchInput, { target: { value: 'NVDA' } })
+    fireEvent.keyDown(switchInput, { key: 'Enter' })
+
+    expect(routerPush).toHaveBeenCalledWith('/stocks/NVDA')
+  })
+
+  it('shows a mobile switcher trigger and navigates on Go', () => {
+    currentStocks = [makeStock(), makeStock({ ticker: 'MSFT', name: 'Microsoft Corp.' })]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch Symbol' }))
+    const mobileInput = screen.getByLabelText('Switch stock symbol mobile')
+    fireEvent.change(mobileInput, { target: { value: 'MSFT' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[1])
+
+    expect(routerPush).toHaveBeenCalledWith('/stocks/MSFT')
   })
 })

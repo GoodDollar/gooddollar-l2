@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
 import Link from 'next/link'
@@ -60,6 +60,7 @@ function normalizeTickerForLookup(rawTicker?: string): string {
 }
 
 export default function StockDetailPage() {
+  const router = useRouter()
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
@@ -67,6 +68,8 @@ export default function StockDetailPage() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
+  const [symbolQuery, setSymbolQuery] = useState('')
+  const [showMobileSwitcher, setShowMobileSwitcher] = useState(false)
   const [analystLoading, setAnalystLoading] = useState(true)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
@@ -81,12 +84,34 @@ export default function StockDetailPage() {
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
+  const switchableSymbols = useMemo(
+    () => stocks.map((s) => ({ ticker: s.ticker, name: s.name })),
+    [stocks],
+  )
+  const filteredSymbols = useMemo(() => {
+    const q = symbolQuery.trim().toUpperCase()
+    if (!q) return switchableSymbols.slice(0, 8)
+    return switchableSymbols
+      .filter((s) => s.ticker.includes(q) || s.name.toUpperCase().includes(q))
+      .slice(0, 8)
+  }, [symbolQuery, switchableSymbols])
 
   useEffect(() => {
     setAnalystLoading(true)
     const timer = setTimeout(() => setAnalystLoading(false), 140)
     return () => clearTimeout(timer)
   }, [ticker])
+
+  function navigateToSymbol(raw: string) {
+    const q = raw.trim().toUpperCase()
+    if (!q) return
+    const selected = switchableSymbols.find((s) => s.ticker === q || s.name.toUpperCase() === q)
+      ?? switchableSymbols.find((s) => s.ticker.startsWith(q) || s.name.toUpperCase().startsWith(q))
+    if (!selected || selected.ticker === ticker) return
+    router.push(`/stocks/${selected.ticker}`)
+    setSymbolQuery('')
+    setShowMobileSwitcher(false)
+  }
 
   if (!stock) {
     return (
@@ -132,6 +157,75 @@ export default function StockDetailPage() {
               </div>
               <p className="text-sm text-gray-400">{stock.name} · {stock.sector}</p>
             </div>
+          </div>
+
+          <div className="mb-4">
+            <div className="hidden sm:flex items-center gap-2">
+              <label htmlFor="stock-symbol-switcher" className="text-xs text-gray-400">Switch symbol</label>
+              <input
+                id="stock-symbol-switcher"
+                type="text"
+                value={symbolQuery}
+                list="stock-symbol-switch-options"
+                onChange={(e) => setSymbolQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    navigateToSymbol(symbolQuery)
+                  }
+                }}
+                placeholder="Type ticker or company"
+                aria-label="Switch stock symbol"
+                className="flex-1 max-w-sm rounded-lg border border-gray-700/40 bg-dark-50/60 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-goodgreen/60 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => navigateToSymbol(symbolQuery)}
+                className="rounded-lg bg-goodgreen/20 px-3 py-2 text-xs font-semibold text-goodgreen hover:bg-goodgreen/30 transition-colors"
+              >
+                Go
+              </button>
+            </div>
+            <div className="sm:hidden">
+              <button
+                type="button"
+                onClick={() => setShowMobileSwitcher((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-lg border border-goodgreen/30 bg-dark-50/50 px-3 py-2 text-xs font-semibold text-goodgreen"
+              >
+                Switch Symbol
+              </button>
+              {showMobileSwitcher && (
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={symbolQuery}
+                    list="stock-symbol-switch-options"
+                    onChange={(e) => setSymbolQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        navigateToSymbol(symbolQuery)
+                      }
+                    }}
+                    placeholder="Type ticker"
+                    aria-label="Switch stock symbol mobile"
+                    className="flex-1 rounded-lg border border-gray-700/40 bg-dark-50/60 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-goodgreen/60 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => navigateToSymbol(symbolQuery)}
+                    className="rounded-lg bg-goodgreen/20 px-3 py-2 text-xs font-semibold text-goodgreen"
+                  >
+                    Go
+                  </button>
+                </div>
+              )}
+            </div>
+            <datalist id="stock-symbol-switch-options">
+              {filteredSymbols.map((s) => (
+                <option key={s.ticker} value={s.ticker}>{s.name}</option>
+              ))}
+            </datalist>
           </div>
 
           <div className="flex items-baseline gap-3 mb-2">

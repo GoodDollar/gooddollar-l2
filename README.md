@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks detail now includes an in-page `Switch symbol` control (desktop inline + mobile toggle) so users can jump directly between tickers without returning to the markets table.
 - Stocks detail now shows an explicit first-load trade-panel fallback (`Preparing trade panel…`) with stable Buy/Sell/control structure instead of unlabeled blank skeleton blocks before controls hydrate.
 - Stocks markets disconnected onboarding CTA now performs a true wallet-connect action (opens connect modal) instead of routing to a ticker page, with a separate secondary button to browse a starter stock.
 - Stocks detail chart timeframe controls now stay in a single horizontal rail on mobile (scrollable chips instead of wrapped rows), avoiding orphaned options like `ALL` dropping to a second line.
