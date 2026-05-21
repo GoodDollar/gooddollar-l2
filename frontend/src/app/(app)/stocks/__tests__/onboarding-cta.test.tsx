@@ -71,7 +71,7 @@ describe('StocksPage onboarding CTA', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Connect Wallet to Trade Stocks' })).toBeInTheDocument()
-    expect(screen.getByText('Tap to trade')).toBeInTheDocument()
+    expect(screen.getByText('Tap to view')).toBeInTheDocument()
     expect(
       screen.getByText(/Mobile wallet connectors are unavailable in this environment/i),
     ).toBeInTheDocument()
@@ -112,11 +112,11 @@ describe('StocksPage onboarding CTA', () => {
     const name = screen.getAllByText('sAAPL')[0]
     expect(name.className).toContain('max-w-[84px]')
 
-    // Ensure rendered "Tap to trade" badge still exists in constrained layout.
-    expect(container.textContent).toContain('Tap to trade')
+    // Ensure rendered "Tap to view" badge still exists in constrained layout.
+    expect(container.textContent).toContain('Tap to view')
   })
 
-  it('keeps desktop Trade action visible without hover-only gating', () => {
+  it('uses View action label on desktop table when disconnected', () => {
     walletState.address = undefined
 
     render(
@@ -125,9 +125,18 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    const tradeButton = screen.getByRole('button', { name: 'Trade' })
-    expect(tradeButton).toBeInTheDocument()
-    expect(tradeButton.className).not.toContain('sm:opacity-0')
-    expect(tradeButton.className).not.toContain('group-hover:opacity-100')
+    expect(screen.getByRole('button', { name: 'View' })).toBeInTheDocument()
+  })
+
+  it('uses Trade action label on desktop table when connected', () => {
+    walletState.address = '0x1111111111111111111111111111111111111111'
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    expect(screen.getByRole('button', { name: 'Trade' })).toBeInTheDocument()
   })
 })

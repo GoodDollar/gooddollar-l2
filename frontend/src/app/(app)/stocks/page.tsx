@@ -43,9 +43,10 @@ interface StockRowProps {
   stock: Stock
   idx: number
   onRowClick: (ticker: string) => void
+  actionLabel: 'Trade' | 'View'
 }
 
-const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProps) {
+const StockRow = memo(function StockRow({ stock, idx, onRowClick, actionLabel }: StockRowProps) {
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -81,7 +82,7 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
           onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
           className="px-3 py-1 text-xs font-semibold rounded-lg bg-goodgreen/15 text-goodgreen hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
         >
-          Trade
+          {actionLabel}
         </button>
       </td>
     </tr>
@@ -97,6 +98,7 @@ export default function StocksPage() {
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+  const marketActionLabel: 'Trade' | 'View' = showConnectBanner ? 'View' : 'Trade'
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -192,6 +194,11 @@ export default function StocksPage() {
         />
         <OracleStatusBadge useStocksFallback />
       </div>
+      {showConnectBanner && (
+        <p className="mb-4 text-[11px] sm:text-xs text-gray-400">
+          Not connected yet: select any stock to view details, then connect wallet to place a trade.
+        </p>
+      )}
 
       {/* Mobile card list (< sm) */}
       <div className="sm:hidden space-y-2 mb-2">
@@ -223,7 +230,7 @@ export default function StocksPage() {
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
                 </div>
                 <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
-                  Tap to trade
+                  {showConnectBanner ? 'Tap to view' : 'Tap to trade'}
                 </span>
               </div>
             </div>
@@ -265,7 +272,7 @@ export default function StocksPage() {
                 </tr>
               ) : (
                 filtered.map((stock, idx) => (
-                  <StockRow key={stock.ticker} stock={stock} idx={idx} onRowClick={handleRowClick} />
+                  <StockRow key={stock.ticker} stock={stock} idx={idx} onRowClick={handleRowClick} actionLabel={marketActionLabel} />
                 ))
               )}
             </tbody>
