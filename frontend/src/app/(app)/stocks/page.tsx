@@ -9,6 +9,7 @@ import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
+import { useMounted } from '@/lib/useMounted'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -107,6 +108,7 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, onRowClick }: Stoc
 export default function StocksPage() {
   const router = useRouter()
   const { address } = useAccount()
+  const mounted = useMounted()
   const [query, setQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -213,7 +215,8 @@ export default function StocksPage() {
           placeholder="Search stocks..."
           value={query}
           onChange={e => setQuery(e.target.value)}
-          className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
+          disabled={!mounted}
+          className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30 disabled:opacity-70 disabled:cursor-not-allowed"
         />
         <OracleStatusBadge useStocksFallback onChainReachable={isLive} />
       </div>
