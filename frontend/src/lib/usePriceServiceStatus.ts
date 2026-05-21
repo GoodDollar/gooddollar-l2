@@ -23,8 +23,17 @@ export interface OracleStatusState {
   error: string | null
 }
 
-const PRICE_SERVICE_URL =
-  process.env.NEXT_PUBLIC_PRICE_SERVICE_URL || 'http://localhost:9300'
+function sanitizeBaseUrl(url: string): string {
+  return url.replace(/\/+$/, '')
+}
+
+export function resolvePriceStatusEndpoint(explicitBaseUrl?: string): string {
+  const baseUrl = (explicitBaseUrl ?? process.env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? '').trim()
+  if (!baseUrl) return '/api/status/quotes'
+  return `${sanitizeBaseUrl(baseUrl)}/status/quotes`
+}
+
+const PRICE_STATUS_ENDPOINT = resolvePriceStatusEndpoint()
 
 const POLL_INTERVAL_MS = 10_000
 
@@ -54,7 +63,7 @@ async function fetchStatus(): Promise<void> {
 
   store.inFlight = true
   try {
-    const res = await fetch(`${PRICE_SERVICE_URL}/status/quotes`, {
+    const res = await fetch(PRICE_STATUS_ENDPOINT, {
       signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) throw new Error(`Status endpoint returned ${res.status}`)
