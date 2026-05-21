@@ -157,11 +157,16 @@ export function AmmTradingPanel({
       <div className="mb-2">
         <input
           type="number"
+          min="0"
+          step="any"
           placeholder="Order size (USD)"
           value={orderSize}
           onChange={(e) => setOrderSize(e.target.value)}
           className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-cyan-500/50 focus:outline-none"
         />
+        {orderSize !== '' && orderSizeNum <= 0 && (
+          <p className="text-red-400/80 text-xs mt-1">Enter a positive order amount</p>
+        )}
       </div>
 
       {/* Price impact */}
@@ -198,9 +203,9 @@ export function AmmTradingPanel({
       {/* Trade button */}
       <button
         type="button"
-        disabled={tradingDisabled}
+        disabled={tradingDisabled || orderSizeNum <= 0}
         className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-colors ${
-          tradingDisabled
+          tradingDisabled || orderSizeNum <= 0
             ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
             : side === 'buy'
               ? 'bg-green-600 hover:bg-green-500 text-white'
