@@ -1,4 +1,4 @@
-import { calcUpsidePercent, type AnalystOutlook, type AnalystRatingDistribution } from '@/lib/stockInsights'
+import { calcUpsidePercent, type AnalystOutlook } from '@/lib/stockInsights'
 
 function ConsensusBadge({ consensus }: { consensus: AnalystOutlook['consensus'] }) {
   const colorMap = {
@@ -13,100 +13,17 @@ function ConsensusBadge({ consensus }: { consensus: AnalystOutlook['consensus'] 
   )
 }
 
-type Bucket = {
-  key: keyof AnalystRatingDistribution
-  label: string
-  segmentClass: string
-  legendDotClass: string
-  legendLabelClass: string
-}
+function TrendBadge({ trend }: { trend: AnalystOutlook['revisionTrend'] }) {
+  const styleMap = {
+    Up: 'text-green-300 bg-green-500/15 border-green-500/30',
+    Flat: 'text-sky-300 bg-sky-500/15 border-sky-500/30',
+    Down: 'text-amber-300 bg-amber-500/15 border-amber-500/30',
+  } as const
 
-const BUCKETS: Bucket[] = [
-  {
-    key: 'strongBuy',
-    label: 'Strong Buy',
-    segmentClass: 'bg-emerald-500',
-    legendDotClass: 'bg-emerald-500',
-    legendLabelClass: 'text-emerald-300',
-  },
-  {
-    key: 'buy',
-    label: 'Buy',
-    segmentClass: 'bg-green-400',
-    legendDotClass: 'bg-green-400',
-    legendLabelClass: 'text-green-300',
-  },
-  {
-    key: 'hold',
-    label: 'Hold',
-    segmentClass: 'bg-yellow-400',
-    legendDotClass: 'bg-yellow-400',
-    legendLabelClass: 'text-yellow-200',
-  },
-  {
-    key: 'sell',
-    label: 'Sell',
-    segmentClass: 'bg-orange-400',
-    legendDotClass: 'bg-orange-400',
-    legendLabelClass: 'text-orange-200',
-  },
-  {
-    key: 'strongSell',
-    label: 'Strong Sell',
-    segmentClass: 'bg-red-500',
-    legendDotClass: 'bg-red-500',
-    legendLabelClass: 'text-red-300',
-  },
-]
-
-function RatingDistributionBar({
-  ratings,
-  analystCount,
-}: {
-  ratings: AnalystRatingDistribution
-  analystCount: number
-}) {
-  const total = Math.max(1, analystCount)
   return (
-    <div className="mt-3" data-testid="analyst-rating-distribution">
-      <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1.5">
-        <span>Based on {analystCount} analysts</span>
-        <span className="text-gray-500">Last 90 days</span>
-      </div>
-      <div
-        className="flex h-2 rounded-full overflow-hidden bg-dark-50/60 ring-1 ring-white/5"
-        role="img"
-        aria-label="Analyst ratings distribution"
-      >
-        {BUCKETS.map(bucket => {
-          const value = ratings[bucket.key]
-          const widthPct = (value / total) * 100
-          if (widthPct <= 0) return null
-          return (
-            <div
-              key={bucket.key}
-              className={`${bucket.segmentClass} h-full`}
-              style={{ width: `${widthPct}%` }}
-              title={`${bucket.label}: ${value}`}
-            />
-          )
-        })}
-      </div>
-      <ul className="mt-2.5 grid grid-cols-5 gap-1.5 text-[10px]">
-        {BUCKETS.map(bucket => {
-          const value = ratings[bucket.key]
-          return (
-            <li key={bucket.key} className="flex flex-col items-center text-center">
-              <span className={`w-2 h-2 rounded-full ${bucket.legendDotClass} mb-1`} aria-hidden="true" />
-              <span className={`font-semibold leading-tight ${bucket.legendLabelClass}`}>
-                {bucket.label}
-              </span>
-              <span className="text-gray-300 font-mono mt-0.5">{value}</span>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
+    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${styleMap[trend]}`}>
+      90d trend: {trend}
+    </span>
   )
 }
 
@@ -139,26 +56,16 @@ export function AnalystOutlookCard({
         </div>
       ) : (
         <div>
-          {(() => {
-            const upsidePercent = calcUpsidePercent(currentPrice, outlook.targetMean)
-            const targetDelta = outlook.targetMean - currentPrice
-            const targetDeltaLabel = `${targetDelta >= 0 ? '+' : '-'}$${Math.abs(targetDelta).toFixed(2)}`
-            return (
-              <>
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-[11px] text-gray-400">Target Mean</p>
               <p className="text-2xl font-bold text-white">${outlook.targetMean.toFixed(2)}</p>
             </div>
-            <div className={`text-sm font-semibold ${upsidePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {upsidePercent >= 0 ? '+' : ''}
-              {upsidePercent.toFixed(1)}%
+            <div className={`text-sm font-semibold ${calcUpsidePercent(currentPrice, outlook.targetMean) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {calcUpsidePercent(currentPrice, outlook.targetMean) >= 0 ? '+' : ''}
+              {calcUpsidePercent(currentPrice, outlook.targetMean).toFixed(1)}%
             </div>
           </div>
-
-          <p className={`mt-1 text-xs ${targetDelta >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-            {targetDeltaLabel} vs live
-          </p>
 
           <div className="mt-2.5 flex items-center justify-between text-xs text-gray-400">
             <span>Low ${outlook.targetLow.toFixed(2)}</span>
@@ -174,18 +81,25 @@ export function AnalystOutlookCard({
             />
           </div>
 
-          <RatingDistributionBar ratings={outlook.ratings} analystCount={outlook.analystCount} />
-
-          <div className="mt-3 grid gap-1 text-[11px] text-gray-400">
-            <p>Confidence: <span className="text-gray-200">{outlook.confidence || 'Unavailable'}</span></p>
-            <p>Source: <span className="text-gray-200">{outlook.source || 'Unavailable'}</span></p>
-            <p>Refreshed: <span className="text-gray-200">{outlook.refreshedAt || 'Unavailable'}</span></p>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+            <div className="rounded-lg border border-gray-700/30 bg-dark-50/40 p-2">
+              <p className="text-gray-400">Analysts</p>
+              <p className="mt-1 text-sm font-semibold text-white">{outlook.analystCount}</p>
+            </div>
+            <div className="rounded-lg border border-gray-700/30 bg-dark-50/40 p-2">
+              <p className="text-gray-400">Ratings</p>
+              <p className="mt-1 text-white">
+                Buy {outlook.ratingDistribution.buy}% · Hold {outlook.ratingDistribution.hold}% · Sell {outlook.ratingDistribution.sell}%
+              </p>
+            </div>
           </div>
 
-          <p className="mt-3 text-[11px] text-gray-500">Consensus snapshot as of {outlook.asOf}</p>
-              </>
-            )
-          })()}
+          <div className="mt-2.5">
+            <TrendBadge trend={outlook.revisionTrend} />
+          </div>
+          <p className="mt-2 text-[11px] text-gray-500">
+            Consensus snapshot as of {outlook.asOf} · Source: {outlook.source}
+          </p>
         </div>
       )}
     </div>

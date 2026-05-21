@@ -81,12 +81,35 @@ contract PerpUBIFeeSplitter is IFeeSplitterPerp, ReentrancyGuard {
     event DailyDerivativesImpact(uint256 date, uint256 ubiAmount);
     event MonthlyTargetUpdated(uint256 oldTarget, uint256 newTarget);
 
+    // ─ Governance events (mirrored across UBIFeeSplitter / StocksUBIFeeSplitter / PerpUBIFeeSplitter) ─
+    //
+    // Signatures must stay byte-for-byte identical across the splitter family
+    // so the analytics indexer can decode all of them with one ABI fragment.
+    // See:
+    //   .autobuilder/initiatives/0006-etoro-synthetic-stocks-100/tasks/0029-*.md (UBIFeeSplitter)
+    //   .autobuilder/initiatives/0006-etoro-synthetic-stocks-100/tasks/0031-*.md (StocksUBIFeeSplitter)
+    //   .autobuilder/initiatives/0006-etoro-synthetic-stocks-100/tasks/0032-*.md (this contract)
+    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
+    event FeeBpsUpdated(
+        uint256 oldUbiBPS,
+        uint256 oldProtocolBPS,
+        uint256 newUbiBPS,
+        uint256 newProtocolBPS
+    );
+
     modifier onlyAdmin() {
         require(msg.sender == admin, "Not admin");
         _;
     }
 
     constructor(address _goodDollar, address _treasury, address _admin) {
+        // _goodDollar intentionally NOT zero-checked here for parity with
+        // UBIFeeSplitter / StocksUBIFeeSplitter: the token is rotated via
+        // setGoodDollar() at deploy time, and that setter already enforces
+        // a non-zero address. Forcing it here would break the existing
+        // multi-step deploy scripts under script/.
+        require(_treasury != address(0), "zero address");
+        require(_admin != address(0), "zero address");
         goodDollarToken = IGoodDollarToken(_goodDollar);
         protocolTreasury = _treasury;
         admin = _admin;
@@ -233,13 +256,18 @@ contract PerpUBIFeeSplitter is IFeeSplitterPerp, ReentrancyGuard {
 
     function setFeeSplit(uint256 _ubiBPS, uint256 _protocolBPS) external onlyAdmin {
         require(_ubiBPS + _protocolBPS <= 10000, "Exceeds 100%");
+        uint256 oldUbi = ubiBPS;
+        uint256 oldProtocol = protocolBPS;
         ubiBPS = _ubiBPS;
         protocolBPS = _protocolBPS;
+        emit FeeBpsUpdated(oldUbi, oldProtocol, _ubiBPS, _protocolBPS);
     }
 
     function setTreasury(address _treasury) external onlyAdmin {
         require(_treasury != address(0), "zero address");
+        address oldTreasury = protocolTreasury;
         protocolTreasury = _treasury;
+        emit TreasuryUpdated(oldTreasury, _treasury);
     }
 
     function setMonthlyTarget(uint256 _target) external onlyAdmin {

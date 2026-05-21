@@ -24,6 +24,7 @@ export interface OracleStatusState {
   status: PriceServiceStatus | null
   isLoading: boolean
   error: string | null
+  nextRetryAt: number | null
 }
 
 function sanitizeBaseUrl(url: string): string {
@@ -39,6 +40,8 @@ export function resolvePriceStatusEndpoint(explicitBaseUrl?: string): string {
 const PRICE_STATUS_ENDPOINT = resolvePriceStatusEndpoint()
 
 const POLL_INTERVAL_MS = 10_000
+const FAILURE_BACKOFF_BASE_MS = 15_000
+const FAILURE_BACKOFF_MAX_MS = 120_000
 
 type Subscriber = (state: OracleStatusState) => void
 
@@ -47,22 +50,27 @@ interface StatusStore {
   subscribers: Set<Subscriber>
   intervalId: ReturnType<typeof setInterval> | null
   inFlight: boolean
+  failureCount: number
+  cooldownUntil: number
 }
 
 const store: StatusStore = {
-  state: { status: null, isLoading: true, error: null },
+  state: { status: null, isLoading: true, error: null, nextRetryAt: null },
   subscribers: new Set(),
   intervalId: null,
   inFlight: false,
+  failureCount: 0,
+  cooldownUntil: 0,
 }
 
 function notify(): void {
   for (const sub of store.subscribers) sub(store.state)
 }
 
-async function fetchStatus(): Promise<void> {
+async function fetchStatus(force = false): Promise<void> {
   if (store.inFlight) return
   if (typeof document !== 'undefined' && document.hidden) return
+  if (!force && Date.now() < store.cooldownUntil) return
 
   store.inFlight = true
   try {
@@ -71,12 +79,21 @@ async function fetchStatus(): Promise<void> {
     })
     if (!res.ok) throw new Error(`Status endpoint returned ${res.status}`)
     const data: PriceServiceStatus = await res.json()
-    store.state = { status: data, isLoading: false, error: null }
+    store.failureCount = 0
+    store.cooldownUntil = 0
+    store.state = { status: data, isLoading: false, error: null, nextRetryAt: null }
   } catch (err) {
+    store.failureCount += 1
+    const backoffMs = Math.min(
+      FAILURE_BACKOFF_MAX_MS,
+      FAILURE_BACKOFF_BASE_MS * (2 ** Math.max(0, store.failureCount - 1)),
+    )
+    store.cooldownUntil = Date.now() + backoffMs
     store.state = {
       ...store.state,
       isLoading: false,
       error: err instanceof Error ? err.message : 'Oracle status unavailable',
+      nextRetryAt: store.cooldownUntil,
     }
   } finally {
     store.inFlight = false
@@ -132,6 +149,10 @@ export function getSessionLabel(state: string): string {
   }
 }
 
+export async function refreshPriceServiceStatus(force = true): Promise<void> {
+  await fetchStatus(force)
+}
+
 export function getDominantSession(quotes: QuoteStatus[]): string {
   if (quotes.length === 0) return 'unknown'
   const counts = new Map<string, number>()
@@ -147,4 +168,16 @@ export function getDominantSession(quotes: QuoteStatus[]): string {
     }
   }
   return dominant
+}
+
+export function __resetPriceServiceStatusStoreForTests(): void {
+  if (store.intervalId !== null) {
+    clearInterval(store.intervalId)
+  }
+  store.state = { status: null, isLoading: true, error: null, nextRetryAt: null }
+  store.subscribers.clear()
+  store.intervalId = null
+  store.inFlight = false
+  store.failureCount = 0
+  store.cooldownUntil = 0
 }

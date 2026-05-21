@@ -1,0 +1,72 @@
+{
+  "symbols": {
+    "AAPL": [
+      {
+        "symbol": "AAPL",
+        "currentBlock": 1200,
+        "normalizedQuotePriceE8": "21827000000",
+        "oraclePriceE8": "21830000000",
+        "oracleBlock": 1200,
+        "riskAction": { "id": "open-perp", "riskIncreasing": true },
+        "products": {
+          "amm": { "lastSyncedBlock": 1200, "oracleBlock": 1200 },
+          "perps": { "lastSyncedBlock": 1200, "oracleBlock": 1200 },
+          "prediction": { "lastSyncedBlock": 1200, "oracleBlock": 1200 },
+          "lend": { "lastSyncedBlock": 1200, "oracleBlock": 1200 },
+          "yield": { "lastSyncedBlock": 1200, "oracleBlock": 1200 }
+        },
+        "debugLogs": ["sync ok"]
+      },
+      {
+        "symbol": "AAPL",
+        "currentBlock": 1201,
+        "normalizedQuotePriceE8": "21829000000",
+        "oraclePriceE8": "21831000000",
+        "oracleBlock": 1201,
+        "riskAction": { "id": "open-perp", "riskIncreasing": true },
+        "products": {
+          "amm": { "lastSyncedBlock": 1201, "oracleBlock": 1201 },
+          "perps": { "lastSyncedBlock": 1201, "oracleBlock": 1201 },
+          "prediction": { "lastSyncedBlock": 1201, "oracleBlock": 1201 },
+          "lend": { "lastSyncedBlock": 1201, "oracleBlock": 1201 },
+          "yield": { "lastSyncedBlock": 1201, "oracleBlock": 1201 }
+        },
+        "debugLogs": ["sync ok"]
+      }
+    ],
+    "TSLA": [
+      {
+        "symbol": "TSLA",
+        "currentBlock": 1200,
+        "normalizedQuotePriceE8": "10000000000",
+        "oraclePriceE8": "10020000000",
+        "oracleBlock": 1200,
+        "riskAction": { "id": "open-lend", "riskIncreasing": true },
+        "products": {
+          "amm": { "lastSyncedBlock": 1200, "oracleBlock": 1200 },
+          "perps": { "lastSyncedBlock": 1200, "oracleBlock": 1200 },
+          "prediction": { "lastSyncedBlock": 1200, "oracleBlock": 1200 },
+          "lend": { "lastSyncedBlock": 1200, "oracleBlock": 1200 },
+          "yield": { "lastSyncedBlock": 1200, "oracleBlock": 1200 }
+        },
+        "debugLogs": ["sync ok"]
+      },
+      {
+        "symbol": "TSLA",
+        "currentBlock": 1201,
+        "normalizedQuotePriceE8": "10010000000",
+        "oraclePriceE8": "10010000000",
+        "oracleBlock": 1201,
+        "riskAction": { "id": "open-lend", "riskIncreasing": true },
+        "products": {
+          "amm": { "lastSyncedBlock": 1200, "oracleBlock": 1200 },
+          "perps": { "lastSyncedBlock": 1201, "oracleBlock": 1201 },
+          "prediction": { "lastSyncedBlock": 1201, "oracleBlock": 1201 },
+          "lend": { "lastSyncedBlock": 1201, "oracleBlock": 1201 },
+          "yield": { "lastSyncedBlock": 1201, "oracleBlock": 1201 }
+        },
+        "debugLogs": ["warn stale", "API_KEY=leak"]
+      }
+    ]
+  }
+}

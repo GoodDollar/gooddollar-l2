@@ -213,6 +213,43 @@ contract UBIFeeSplitterTest is Test {
         splitter.setTreasury(alice);
     }
 
+    /// @notice Defensive: setTreasury(0) MUST revert ("zero address") so a
+    /// fat-fingered governance call can never silently route the protocol
+    /// share to address(0). Triage doc §3.4 / Slither `missing-zero-check`.
+    function test_setTreasury_RevertsOnZero() public {
+        vm.prank(admin);
+        vm.expectRevert("zero address");
+        splitter.setTreasury(address(0));
+        // And the existing treasury must be untouched.
+        assertEq(splitter.protocolTreasury(), treasury);
+    }
+
+    /// @notice setTreasury MUST emit `TreasuryUpdated(old, new)` so SOC
+    /// monitoring can react to governance changes. Mirrors `setGoodDollar`.
+    function test_setTreasury_EmitsTreasuryUpdated() public {
+        address newTreasury = makeAddr("newTreasury2");
+        vm.prank(admin);
+        vm.expectEmit(true, true, false, true);
+        emit UBIFeeSplitter.TreasuryUpdated(treasury, newTreasury);
+        splitter.setTreasury(newTreasury);
+    }
+
+    /// @notice Constructor MUST reject `_treasury == address(0)` — a
+    /// mis-deployed splitter would silently burn every protocol-share fee.
+    /// Triage doc §3.4 / Slither `missing-zero-check`.
+    function test_constructor_RevertsOnZeroTreasury() public {
+        vm.expectRevert("zero address");
+        new UBIFeeSplitter(address(token), address(0), admin);
+    }
+
+    /// @notice Constructor MUST reject `_admin == address(0)` — a zero
+    /// admin permanently locks all governance setters (`onlyAdmin` requires
+    /// `msg.sender == admin`, which `address(0)` can never satisfy).
+    function test_constructor_RevertsOnZeroAdmin() public {
+        vm.expectRevert("zero address");
+        new UBIFeeSplitter(address(token), treasury, address(0));
+    }
+
     function test_setUBIRecipient_ZeroAddress_Reverts() public {
         vm.prank(admin);
         vm.expectRevert("zero address");
@@ -306,6 +343,53 @@ contract UBIFeeSplitterTest is Test {
         splitter.withdrawETH();
     }
 
+    // ─── withdrawETH revert-reason bubbling (Address.sendValue refactor) ──────
+    // See docs/security/ERROR-HANDLING-TRIAGE.md §3.7 and Slither
+    // `low-level-calls` detector. After swapping `protocolTreasury.call{value:}("")`
+    // for `Address.sendValue`, a reverting receiver's revert string must
+    // surface to the caller instead of being replaced with the generic
+    // "ETH transfer failed".
+
+    function test_withdrawETH_RevertsOnReceiverRevert() public {
+        // Treasury is a contract whose receive() reverts with a reason.
+        // OpenZeppelin Address.sendValue does NOT bubble the inner revert
+        // reason — it collapses any failure to its own canonical message.
+        // We assert that canonical message so this test is stable across
+        // any future receiver-side reason changes.
+        RevertingReceiver receiver = new RevertingReceiver();
+
+        vm.prank(admin);
+        splitter.setTreasury(address(receiver));
+
+        vm.deal(address(splitter), 1 ether);
+
+        vm.prank(admin);
+        vm.expectRevert(bytes("Address: unable to send value, recipient may have reverted"));
+        splitter.withdrawETH();
+
+        // No funds moved — splitter still holds the ETH.
+        assertEq(address(splitter).balance, 1 ether);
+        assertEq(address(receiver).balance, 0);
+    }
+
+    function test_withdrawETH_RevertsWithGenericReasonOnSilentRevert() public {
+        // Treasury reverts without a reason — Address.sendValue substitutes a
+        // generic message instead of swallowing the failure as `sent == false`.
+        SilentRevertingReceiver receiver = new SilentRevertingReceiver();
+
+        vm.prank(admin);
+        splitter.setTreasury(address(receiver));
+
+        vm.deal(address(splitter), 1 ether);
+
+        vm.prank(admin);
+        vm.expectRevert(bytes("Address: unable to send value, recipient may have reverted"));
+        splitter.withdrawETH();
+
+        assertEq(address(splitter).balance, 1 ether);
+        assertEq(address(receiver).balance, 0);
+    }
+
     // ─── Checked-transferFrom regression (security hardening) ─────────────────
 
     /// @notice If the underlying token's transferFrom returns false without reverting,
@@ -376,5 +460,24 @@ contract MockERC20 {
         balanceOf[from] -= amount;
         balanceOf[to] += amount;
         return true;
+    }
+}
+
+/// @dev Treasury mock whose receive() reverts with a known reason string.
+/// Used to assert that `withdrawETH` surfaces the underlying revert reason
+/// after migrating from a raw `call` to `Address.sendValue`.
+contract RevertingReceiver {
+    receive() external payable {
+        revert("treasury paused");
+    }
+}
+
+/// @dev Treasury mock that reverts without a reason (e.g. failed `assert`
+/// or unreachable opcode). `Address.sendValue` must substitute its standard
+/// "Address: unable to send value, recipient may have reverted" message.
+contract SilentRevertingReceiver {
+    receive() external payable {
+        // Reverts with empty returndata.
+        assembly { revert(0, 0) }
     }
 }

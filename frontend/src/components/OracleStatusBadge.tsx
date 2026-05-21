@@ -17,23 +17,42 @@ interface OracleStatusBadgeProps {
   variant?: Variant
   symbol?: string
   useStocksFallback?: boolean
-  /**
-   * When provided alongside `useStocksFallback`, indicates whether the
-   * on-chain stocks oracle is actually returning data. When `false`, the
-   * badge surfaces a "Demo data" state instead of misleading "Live", even
-   * if the off-chain `stocks-keeper` service reports healthy.
-   */
-  onChainReachable?: boolean
 }
 
-export function OracleStatusBadge({
-  variant = 'compact',
-  symbol,
-  useStocksFallback = false,
-  onChainReachable,
-}: OracleStatusBadgeProps) {
+const FALLBACK_STATUS_TTL_MS = 30_000
+
+let fallbackCache: { value: StocksOracleHealth; expiresAt: number } | null = null
+let fallbackInFlight: Promise<StocksOracleHealth> | null = null
+
+async function resolveStocksFallbackStatus(): Promise<StocksOracleHealth> {
+  const now = Date.now()
+  if (fallbackCache && fallbackCache.expiresAt > now) {
+    return fallbackCache.value
+  }
+  if (fallbackInFlight) {
+    return fallbackInFlight
+  }
+
+  fallbackInFlight = fetch('/api/status', { cache: 'no-store' })
+    .then(async (res) => {
+      if (!res.ok) throw new Error(`status ${res.status}`)
+      const data = await res.json()
+      return deriveStocksOracleHealth(data)
+    })
+    .catch(() => 'offline' as const)
+    .then((value) => {
+      fallbackCache = { value, expiresAt: Date.now() + FALLBACK_STATUS_TTL_MS }
+      return value
+    })
+    .finally(() => {
+      fallbackInFlight = null
+    })
+
+  return fallbackInFlight
+}
+
+export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = false }: OracleStatusBadgeProps) {
   const { status, error } = usePriceServiceStatus()
-  const hasAuthError = /\b(401|403)\b/.test(error ?? '')
   const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
   const [fallbackLoading, setFallbackLoading] = useState(false)
 
@@ -42,46 +61,20 @@ export function OracleStatusBadge({
     if (!useStocksFallback || status || !error) return
 
     setFallbackLoading(true)
-    fetch('/api/status', { cache: 'no-store' })
-      .then(async (res) => {
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            if (!cancelled) setFallbackState('auth')
-            return
-          }
-          throw new Error(`status ${res.status}`)
-        }
-        const data = await res.json()
+    resolveStocksFallbackStatus()
+      .then((nextState) => {
         if (cancelled) return
-        setFallbackState(deriveStocksOracleHealth(data, Date.now(), onChainReachable))
-      })
-      .catch((err) => {
-        if (cancelled) return
-        if (err instanceof Error && /\b(401|403)\b/.test(err.message)) {
-          setFallbackState('auth')
-          return
-        }
-        setFallbackState('offline')
+        setFallbackState(nextState)
       })
       .finally(() => {
         if (!cancelled) setFallbackLoading(false)
       })
 
     return () => { cancelled = true }
-  }, [useStocksFallback, status, error, onChainReachable])
+  }, [useStocksFallback, status, error])
 
   if (error || !status) {
     if (useStocksFallback) {
-      if (hasAuthError || fallbackState === 'auth') {
-        return (
-          <div className="inline-flex items-center gap-1.5 text-xs text-red-300" title="Upstream stock status endpoint returned unauthorized (401/403). Check credentials/session configuration.">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-            <span>Auth required</span>
-            <span className="text-red-500/60">·</span>
-            <span>stocks status 401</span>
-          </div>
-        )
-      }
       if (fallbackLoading) {
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
@@ -97,19 +90,6 @@ export function OracleStatusBadge({
             <span>Live</span>
             <span className="text-gray-600">·</span>
             <span>stocks-keeper</span>
-          </div>
-        )
-      }
-      if (fallbackState === 'fallback') {
-        return (
-          <div
-            className="inline-flex items-center gap-1.5 text-xs text-amber-300"
-            title="Off-chain stocks-keeper is healthy, but the on-chain StocksPriceOracle is unreachable. UI is showing demo data."
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <span>Demo data</span>
-            <span className="text-amber-500/60">·</span>
-            <span>oracle unreachable</span>
           </div>
         )
       }
@@ -195,4 +175,9 @@ export function OracleStatusBadge({
       )}
     </div>
   )
+}
+
+export function __resetOracleStatusFallbackForTests(): void {
+  fallbackCache = null
+  fallbackInFlight = null
 }

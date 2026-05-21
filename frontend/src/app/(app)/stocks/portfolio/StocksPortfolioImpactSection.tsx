@@ -23,7 +23,7 @@ export function StocksPortfolioImpactSection({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" data-testid="stocks-impact-section">
+    <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch gap-6 mb-6" data-testid="stocks-impact-section">
       <UBIContributionCard
         platform="stocks"
         className="h-full"

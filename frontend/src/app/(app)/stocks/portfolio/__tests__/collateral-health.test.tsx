@@ -6,13 +6,10 @@ const accountState = {
   address: undefined as `0x${string}` | undefined,
   isConnected: false,
 }
-const searchParamsState = { value: '' }
-const replace = vi.fn()
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace }),
-  usePathname: () => '/stocks/portfolio',
-  useSearchParams: () => new URLSearchParams(searchParamsState.value),
+  useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(''),
   useParams: () => ({}),
 }))
 
@@ -24,10 +21,12 @@ vi.mock('wagmi', async (importOriginal) => {
   }
 })
 
+const openConnectModal = vi.fn()
+
 vi.mock('@rainbow-me/rainbowkit', () => ({
   ConnectButton: {
     Custom: ({ children }: { children: (props: { openConnectModal: () => void }) => React.ReactNode }) =>
-      <>{children({ openConnectModal: vi.fn() })}</>,
+      <>{children({ openConnectModal })}</>,
   },
 }))
 
@@ -50,8 +49,13 @@ vi.mock('@/lib/useStockHoldings', () => ({
   useStockHoldings: () => holdingsState,
 }))
 
+const tradesState = {
+  trades: [] as unknown[],
+  isLoading: false,
+}
+
 vi.mock('@/lib/useStockTrades', () => ({
-  useStockTrades: () => ({ trades: [], isLoading: false }),
+  useStockTrades: () => tradesState,
 }))
 
 vi.mock('@/components/ConnectWalletEmptyState', () => ({
@@ -64,15 +68,17 @@ vi.mock('@/components/InfoBanner', () => ({
 
 import StocksPortfolioPage from '../page'
 
-describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () => {
+describe('StocksPortfolioPage — disconnected guidance and collateral states', () => {
   beforeEach(() => {
     accountState.address = undefined
     accountState.isConnected = false
-    searchParamsState.value = ''
-    replace.mockReset()
+    holdingsState.isLoading = false
+    tradesState.isLoading = false
+    openConnectModal.mockReset()
+    window.sessionStorage.clear()
   })
 
-  it('shows neutral disconnected summary placeholders instead of active $0 metrics', () => {
+  it('shows a guided disconnected portfolio setup card instead of metric placeholders', () => {
     accountState.address = undefined
     accountState.isConnected = false
     holdingsState.holdings = []
@@ -87,11 +93,15 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    expect(screen.getByText('Total Value')).toBeInTheDocument()
-    expect(screen.getByText('Unrealized P&L')).toBeInTheDocument()
-    expect(screen.getByText('UBI Contributed')).toBeInTheDocument()
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText('Connect wallet to view collateral health')).toBeInTheDocument()
+    expect(screen.getByText('Start your stock portfolio')).toBeInTheDocument()
+    expect(screen.getByText('Connect your wallet to unlock portfolio value, collateral health, and UBI contribution tracking.')).toBeInTheDocument()
+    expect(screen.getByText('Connect wallet')).toBeInTheDocument()
+    expect(screen.getByText('Review live metrics')).toBeInTheDocument()
+    expect(screen.getByText('Track impact and holdings')).toBeInTheDocument()
+    expect(screen.getByText('Market benchmark preview')).toBeInTheDocument()
+    expect(screen.getByText('Portfolio health preview')).toBeInTheDocument()
+    expect(screen.getByText('Today\'s synthetic movers (read-only preview)')).toBeInTheDocument()
+    expect(screen.queryByText('Total Value')).not.toBeInTheDocument()
     expect(screen.queryByText('0% — Critical')).not.toBeInTheDocument()
   })
 
@@ -103,45 +113,15 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
-    expect(screen.getByText(/Mobile wallet connectors are unavailable in this environment/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Connect Wallet to Unlock Portfolio' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Connect with In-browser Wallet' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continue in Read-only Mode' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'More connection options' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try Another Connector' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('stocks-onboarding-checklist')).toBeInTheDocument()
   })
 
-  it('uses a full-height themed wrapper so mobile layout does not fall back to unstyled background gaps', () => {
-    accountState.address = undefined
-    accountState.isConnected = false
-
-    const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
-    )
-
-    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
-    expect(wrapper).toBeTruthy()
-    expect(wrapper?.className).toContain('min-h-screen')
-    expect(wrapper?.className).toContain('bg-dark-200')
-  })
-
-  it('normalizes unsupported query params to canonical portfolio URL', () => {
-    searchParamsState.value = 'tab=bad'
-
-    render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
-    )
-
-    expect(replace).toHaveBeenCalledWith('/stocks/portfolio', { scroll: false })
-  })
-
-  it('drops unsupported params but preserves valid benchmark query', () => {
-    searchParamsState.value = 'tab=bad&benchmark=QQQ'
-
-    render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
-    )
-
-    expect(replace).toHaveBeenCalledWith('/stocks/portfolio?benchmark=QQQ', { scroll: false })
-  })
-
-  it('shows deferred impact section loading placeholders on first paint', () => {
+  it('uses widened desktop shell container for balanced portfolio canvas', () => {
     accountState.address = undefined
     accountState.isConnected = false
 
@@ -149,10 +129,12 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    expect(screen.getByText('Loading impact insights…')).toBeInTheDocument()
+    const shell = screen.getByTestId('stocks-portfolio-shell')
+    expect(shell.className).toContain('max-w-6xl')
+    expect(shell.className).toContain('2xl:max-w-[84rem]')
   })
 
-  it('prioritizes a single onboarding path for disconnected first-time users', () => {
+  it('opens connect modal from primary and fallback connect CTAs', () => {
     accountState.address = undefined
     accountState.isConnected = false
 
@@ -160,9 +142,56 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    expect(screen.getByRole('heading', { name: /Get started in 3 steps/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Connect Wallet to Start Portfolio' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Portfolio Diagnostics' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet to Unlock Portfolio' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Connect with In-browser Wallet' }))
+
+    expect(openConnectModal).toHaveBeenCalledTimes(2)
+  })
+
+  it('suppresses duplicate fallback rail once markets exploration is already recorded', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+    window.sessionStorage.setItem(
+      'gd-stocks-onboarding-progress',
+      JSON.stringify({
+        exploredMarkets: true,
+        openedStockDetail: false,
+        connectIntent: false,
+      }),
+    )
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.queryByText('Connection fallback options')).not.toBeInTheDocument()
+    expect(screen.getByTestId('stocks-onboarding-checklist')).toBeInTheDocument()
+  })
+
+  it('hides impact loading placeholders when in guided disconnected mode', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.queryByText('Loading impact insights…')).not.toBeInTheDocument()
+    expect(screen.getByText('Connect wallet to unlock your holdings timeline')).toBeInTheDocument()
+  })
+
+  it('prioritizes disconnected holdings messaging over transient loading text', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+    holdingsState.isLoading = true
+    tradesState.isLoading = true
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByText('Connect wallet to unlock your holdings timeline')).toBeInTheDocument()
+    expect(screen.queryByText('Loading positions…')).not.toBeInTheDocument()
   })
 
   it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {
@@ -296,47 +325,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
       <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
-    expect(text).toContain('Connect wallet to view collateral health')
+    expect(text).toContain('Start your stock portfolio')
     expect(text).not.toContain('0% — Critical')
-  })
-
-  it('renders portfolio analytics blocks and supports range/allocation toggles', () => {
-    accountState.address = '0x1111111111111111111111111111111111111111'
-    accountState.isConnected = true
-    holdingsState.holdings = [
-      { ticker: 'AAPL', shares: 2, avgCost: 180, currentPrice: 200, collateralDeposited: 0, collateralRequired: 0 },
-      { ticker: 'MSFT', shares: 1, avgCost: 350, currentPrice: 330, collateralDeposited: 0, collateralRequired: 0 },
-    ]
-    holdingsState.totalValue = 730
-    holdingsState.unrealizedPnl = 10
-    holdingsState.pnlPercent = 1.4
-
-    render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
-    )
-
-    expect(screen.getByRole('heading', { name: 'Allocation' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Performance Trend' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Top Contributors' })).toBeInTheDocument()
-    expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Shares' }))
-    fireEvent.click(screen.getAllByRole('button', { name: '1M' })[0]!)
-
-    expect(screen.getByRole('img', { name: /1M portfolio performance/i })).toBeInTheDocument()
-  })
-
-  it('reserves right/bottom safe area on stocks portfolio for floating feedback controls', () => {
-    accountState.address = undefined
-    accountState.isConnected = false
-
-    const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
-    )
-
-    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
-    expect(wrapper).toBeTruthy()
-    expect(wrapper?.className).toContain('pb-24')
-    expect(wrapper?.className).toContain('md:pr-24')
   })
 })

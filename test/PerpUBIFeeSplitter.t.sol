@@ -9,12 +9,26 @@ import "../src/GoodDollarToken.sol";
 /// @notice Comprehensive test coverage for perpetual futures UBI fee routing,
 ///         analytics, gas overhead validation, and integration points.
 contract PerpUBIFeeSplitterTest is Test {
+    // Mirror governance events from PerpUBIFeeSplitter so vm.expectEmit can match them.
+    // Signatures must be byte-for-byte identical to those declared in the contract under test
+    // (and identical to those shipped on UBIFeeSplitter task 0029 and StocksUBIFeeSplitter task 0031
+    // for cross-splitter ABI compatibility on the analytics indexer).
+    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
+    event FeeBpsUpdated(
+        uint256 oldUbiBPS,
+        uint256 oldProtocolBPS,
+        uint256 newUbiBPS,
+        uint256 newProtocolBPS
+    );
+
     GoodDollarToken goodDollar;
     PerpUBIFeeSplitter splitter;
 
     address admin = makeAddr("admin");
     address oracle = makeAddr("oracle");
     address treasury = makeAddr("treasury");
+    address newTreasury = makeAddr("newTreasury");
+    address attacker = makeAddr("attacker");
     address perpEngine = makeAddr("perpEngine");
     address trader1 = makeAddr("trader1");
     address trader2 = makeAddr("trader2");
@@ -423,5 +437,80 @@ contract PerpUBIFeeSplitterTest is Test {
 
         assertGt(day2, day1, "Day should have incremented");
         assertEq(amount2, expectedDay1UBI, "Day 2 should reset to single trade amount");
+    }
+
+    // ─── Governance hardening: ctor zero-address checks + setter events ──────
+    //
+    // Mirrors the test patterns shipped in:
+    //   - task 0029 (UBIFeeSplitter ctor + setTreasury zero-address checks + TreasuryUpdated event)
+    //   - task 0031 (StocksUBIFeeSplitter ctor zero-checks + TreasuryUpdated/FeeBpsUpdated events)
+    // Ported to PerpUBIFeeSplitter for splitter-family parity. See:
+    //   .autobuilder/initiatives/0006-etoro-synthetic-stocks-100/tasks/0032-*.md
+
+    // ─ Constructor zero-address checks ────────────────────────────────────
+
+    function test_Constructor_RevertsOnZeroTreasury() public {
+        vm.expectRevert(bytes("zero address"));
+        new PerpUBIFeeSplitter(address(goodDollar), address(0), admin);
+    }
+
+    function test_Constructor_RevertsOnZeroAdmin() public {
+        vm.expectRevert(bytes("zero address"));
+        new PerpUBIFeeSplitter(address(goodDollar), treasury, address(0));
+    }
+
+    function test_Constructor_SucceedsWithValidAddresses() public {
+        PerpUBIFeeSplitter s = new PerpUBIFeeSplitter(
+            address(goodDollar),
+            treasury,
+            admin
+        );
+        assertEq(s.protocolTreasury(), treasury, "treasury not stored");
+        assertEq(s.admin(), admin, "admin not stored");
+    }
+
+    // ─ setTreasury event + regressions ────────────────────────────────────
+
+    function test_setTreasury_RevertsOnZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert(bytes("zero address"));
+        splitter.setTreasury(address(0));
+    }
+
+    function test_setTreasury_EmitsTreasuryUpdated() public {
+        vm.prank(admin);
+        vm.expectEmit(true, true, false, true);
+        emit TreasuryUpdated(treasury, newTreasury);
+        splitter.setTreasury(newTreasury);
+        assertEq(
+            splitter.protocolTreasury(),
+            newTreasury,
+            "treasury not rotated"
+        );
+    }
+
+    function test_setTreasury_RevertsForNonAdmin() public {
+        vm.prank(attacker);
+        vm.expectRevert(bytes("Not admin"));
+        splitter.setTreasury(newTreasury);
+    }
+
+    // ─ setFeeSplit event + regressions ────────────────────────────────────
+
+    function test_setFeeSplit_EmitsFeeBpsUpdated() public {
+        uint256 oldUbi = splitter.ubiBPS();
+        uint256 oldProtocol = splitter.protocolBPS();
+        vm.prank(admin);
+        vm.expectEmit(false, false, false, true);
+        emit FeeBpsUpdated(oldUbi, oldProtocol, 6000, 3000);
+        splitter.setFeeSplit(6000, 3000);
+        assertEq(splitter.ubiBPS(), 6000, "ubiBPS not updated");
+        assertEq(splitter.protocolBPS(), 3000, "protocolBPS not updated");
+    }
+
+    function test_setFeeSplit_RevertsForNonAdmin() public {
+        vm.prank(attacker);
+        vm.expectRevert(bytes("Not admin"));
+        splitter.setFeeSplit(6000, 3000);
     }
 }

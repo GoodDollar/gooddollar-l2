@@ -2,28 +2,30 @@
 
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useMemo, useState, useEffect } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
-import { computePerformanceStats } from '@/lib/computePerformanceStats'
+import { isWalletConnectConfigured } from '@/lib/walletConnectReadiness'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
-import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
-import { PortfolioPnLChart } from '@/components/stocks/PortfolioPnLChart'
-import { AllocationDonut } from '@/components/stocks/AllocationDonut'
-import { PerformanceStatsPanel } from '@/components/stocks/PerformanceStatsPanel'
+import { StocksOnboardingChecklist } from '@/components/stocks/StocksOnboardingChecklist'
+import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
+import { StocksConnectFallbackRail } from '@/components/stocks/StocksConnectFallbackRail'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  buildBenchmarkSeries,
-  buildContributionRows,
-  calcMaxDrawdownPct,
-  calcVolatilityPct,
-  parseBenchmarkId,
-  type BenchmarkId,
-} from './portfolioDiagnostics'
+  markStocksOnboardingStep,
+  readStocksOnboardingProgress,
+  type StocksOnboardingProgress,
+} from '@/lib/stocksOnboardingProgress'
+
+const PRECONNECT_BENCHMARKS = [
+  { ticker: 'NVDA', move: '+3.2%', volume: '$310.0M' },
+  { ticker: 'AAPL', move: '+1.3%', volume: '$62.0M' },
+  { ticker: 'TSLA', move: '-2.1%', volume: '$95.0M' },
+] as const
 
 const DeferredStocksPortfolioImpactSection = dynamic(
   () => import('./StocksPortfolioImpactSection').then((module) => module.StocksPortfolioImpactSection),
@@ -38,7 +40,7 @@ const DeferredStocksPortfolioImpactSection = dynamic(
             </div>
             <button
               type="button"
-              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
+              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-[#031615] hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
             >
               Connect Wallet to View UBI Impact
             </button>
@@ -60,34 +62,6 @@ const DeferredStocksPortfolioImpactSection = dynamic(
     ),
   },
 )
-
-type TrendRange = '1W' | '1M' | '3M' | '1Y'
-type AllocationMode = 'value' | 'shares'
-
-function buildTrendPoints(totalValue: number, unrealizedPnl: number, range: TrendRange): number[] {
-  const points = range === '1W' ? 14 : range === '1M' ? 30 : range === '3M' ? 45 : 60
-  const costBasis = Math.max(0, totalValue - unrealizedPnl)
-  const start = totalValue <= 0 ? 0 : Math.max(0, costBasis * 0.92)
-  const end = Math.max(0, totalValue)
-  if (points <= 1) return [end]
-  return Array.from({ length: points }, (_, idx) => {
-    const progress = idx / (points - 1)
-    const curve = 0.55 + Math.sin(progress * Math.PI) * 0.15
-    return start + (end - start) * progress * curve + (end - start) * (1 - curve) * progress
-  })
-}
-
-function sparklinePath(values: number[], width: number, height: number): string {
-  if (values.length === 0) return ''
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = Math.max(max - min, 1)
-  return values.map((value, index) => {
-    const x = (index / Math.max(values.length - 1, 1)) * width
-    const y = height - ((value - min) / range) * height
-    return `${index === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`
-  }).join(' ')
-}
 
 function CollateralHealth({
   ratio,
@@ -130,35 +104,6 @@ function CollateralHealth({
   )
 }
 
-function PortfolioOnboardingCard() {
-  return (
-    <section className="mb-6 rounded-2xl border border-goodgreen/30 bg-gradient-to-br from-goodgreen/12 via-cyan-500/8 to-dark-100 p-4 sm:p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-white">Get started in 3 steps</h2>
-          <p className="mt-1 text-sm text-gray-300">Connect your wallet once, open your first stock position, then track performance and UBI impact here.</p>
-          <ol className="mt-3 space-y-1.5 text-xs text-gray-300">
-            <li><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-goodgreen/40 bg-goodgreen/10 text-[11px] font-semibold text-goodgreen">1</span>Connect wallet</li>
-            <li><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-600 bg-dark-50 text-[11px] font-semibold text-gray-300">2</span>Open your first stock position</li>
-            <li><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-600 bg-dark-50 text-[11px] font-semibold text-gray-300">3</span>Track risk, P&amp;L, and UBI contribution</li>
-          </ol>
-        </div>
-        <ConnectButton.Custom>
-          {({ openConnectModal }) => (
-            <button
-              type="button"
-              onClick={openConnectModal}
-              className="w-full rounded-xl bg-goodgreen px-4 py-3 text-sm font-semibold text-black transition-colors hover:bg-goodgreen/90 lg:w-auto"
-            >
-              Connect Wallet to Start Portfolio
-            </button>
-          )}
-        </ConnectButton.Custom>
-      </div>
-    </section>
-  )
-}
-
 function HoldingRow({ holding, onClick }: { holding: PortfolioHolding; onClick: () => void }) {
   const stockName: string | null = null // on-chain doesn't store display names
   const value = holding.shares * holding.currentPrice
@@ -193,21 +138,18 @@ function HoldingRow({ holding, onClick }: { holding: PortfolioHolding; onClick: 
 
 function TradeRow({ trade }: { trade: TradeRecord }) {
   const date = new Date(trade.timestamp)
-  const total = trade.shares * trade.price
   return (
-    <tr className="border-b border-gray-700/10 hover:bg-dark-50/30 transition-colors">
-      <td className="py-3 px-3 text-sm text-white font-medium">{trade.ticker}</td>
+    <tr className="border-b border-gray-700/10">
+      <td className="py-3 px-3 text-sm text-white">{trade.ticker}</td>
       <td className="py-3 px-3 text-sm">
         <span className={`px-2 py-0.5 rounded text-xs font-medium ${trade.side === 'buy' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
           {trade.side.toUpperCase()}
         </span>
       </td>
-      <td className="py-3 px-3 text-right text-gray-300 text-sm">{trade.shares.toFixed(4)}</td>
+      <td className="py-3 px-3 text-right text-gray-300 text-sm">{trade.shares.toFixed(2)}</td>
       <td className="py-3 px-3 text-right text-white text-sm">{formatStockPrice(trade.price)}</td>
-      <td className="py-3 px-3 text-right text-gray-300 text-sm hidden md:table-cell">{formatStockPrice(total)}</td>
       <td className="py-3 px-3 text-right text-gray-400 text-sm hidden sm:table-cell">
-        <div className="text-xs">{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-        <div className="text-[10px] text-gray-600">{date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+        {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
       </td>
       <td className={`py-3 px-3 text-right text-sm font-medium ${trade.pnl > 0 ? 'text-green-400' : trade.pnl < 0 ? 'text-red-400' : 'text-gray-500'}`}>
         {trade.pnl !== 0 ? `${trade.pnl > 0 ? '+' : ''}${formatStockPrice(trade.pnl)}` : '—'}
@@ -218,9 +160,13 @@ function TradeRow({ trade }: { trade: TradeRecord }) {
 
 export default function StocksPortfolioPage() {
   const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
   const { address, isConnected } = useAccount()
+  const [progress, setProgress] = useState<StocksOnboardingProgress>({
+    exploredMarkets: false,
+    openedStockDetail: false,
+    connectIntent: false,
+  })
+  const walletConnectConfigured = isWalletConnectConfigured()
   const {
     holdings,
     totalValue,
@@ -232,131 +178,19 @@ export default function StocksPortfolioPage() {
     isLoading: holdingsLoading,
   } = useStockHoldings(address)
   const { trades, isLoading: tradesLoading } = useStockTrades(address)
-  const [trendRange, setTrendRange] = useState<TrendRange>('1M')
-  const [benchmark, setBenchmark] = useState<BenchmarkId>(() => parseBenchmarkId(searchParams.get('benchmark')))
-  const [allocationMode, setAllocationMode] = useState<AllocationMode>('value')
 
   const summary = { totalValue, unrealizedPnl, pnlPercent, totalCollateral, totalRequired, healthRatio }
   const isDisconnected = !isConnected || !address
   const hasLivePositions = holdings.some((holding) => holding.shares > 0)
   const hasRiskPosition = hasLivePositions && summary.totalRequired > 0
   const isLoading = holdingsLoading || tradesLoading
-  const allocationRows = useMemo(() => {
-    const total = holdings.reduce((sum, holding) => {
-      return sum + (allocationMode === 'value' ? holding.shares * holding.currentPrice : holding.shares)
-    }, 0)
-    if (total <= 0) return []
-    return holdings
-      .map((holding) => {
-        const amount = allocationMode === 'value' ? holding.shares * holding.currentPrice : holding.shares
-        const pct = (amount / total) * 100
-        const pnl = (holding.currentPrice - holding.avgCost) * holding.shares
-        return { ticker: holding.ticker, amount, pct, pnl }
-      })
-      .toSorted((a, b) => b.pct - a.pct)
-      .slice(0, 5)
-  }, [allocationMode, holdings])
-
-  const trendValues = useMemo(() => {
-    return buildTrendPoints(summary.totalValue, summary.unrealizedPnl, trendRange)
-  }, [summary.totalValue, summary.unrealizedPnl, trendRange])
-  const trendPath = useMemo(() => sparklinePath(trendValues, 100, 32), [trendValues])
-  const benchmarkValues = useMemo(() => buildBenchmarkSeries(trendValues[0] ?? 100, trendValues.length || 30, benchmark), [benchmark, trendValues])
-  const benchmarkPath = useMemo(() => sparklinePath(benchmarkValues, 100, 32), [benchmarkValues])
-  const benchmarkDeltaPct = useMemo(() => {
-    if (benchmarkValues.length < 2) return 0
-    const first = benchmarkValues[0] ?? 0
-    const last = benchmarkValues[benchmarkValues.length - 1] ?? 0
-    if (first <= 0) return 0
-    return ((last - first) / first) * 100
-  }, [benchmarkValues])
-  const portfolioDeltaPct = useMemo(() => {
-    if (trendValues.length < 2) return 0
-    const first = trendValues[0] ?? 0
-    const last = trendValues[trendValues.length - 1] ?? 0
-    if (first <= 0) return 0
-    return ((last - first) / first) * 100
-  }, [trendValues])
-  const maxDrawdownPct = useMemo(() => calcMaxDrawdownPct(trendValues), [trendValues])
-  const volatilityPct = useMemo(() => calcVolatilityPct(trendValues), [trendValues])
-  const concentrationPct = useMemo(() => (allocationRows[0]?.pct ?? 0), [allocationRows])
-  const contributionRows = useMemo(() => buildContributionRows(holdings).slice(0, 5), [holdings])
-
-  const topContributors = useMemo(() => {
-    return holdings
-      .map((holding) => {
-        const pnl = (holding.currentPrice - holding.avgCost) * holding.shares
-        return {
-          ticker: holding.ticker,
-          pnl,
-          value: holding.shares * holding.currentPrice,
-        }
-      })
-      .toSorted((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
-      .slice(0, 4)
-  }, [holdings])
-
-  const performanceStats = useMemo(() => computePerformanceStats(trades), [trades])
-
-  const donutSegments = useMemo(() => {
-    const total = holdings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0)
-    if (total <= 0) return []
-    return holdings
-      .map(h => ({ ticker: h.ticker, pct: ((h.shares * h.currentPrice) / total) * 100 }))
-      .filter(s => s.pct > 0)
-      .toSorted((a, b) => b.pct - a.pct)
-  }, [holdings])
 
   useEffect(() => {
-    const fromQuery = parseBenchmarkId(searchParams.get('benchmark'))
-    if (fromQuery !== benchmark) {
-      setBenchmark(fromQuery)
-      return
-    }
+    setProgress(readStocksOnboardingProgress())
+  }, [])
 
-    if (typeof window !== 'undefined') {
-      const persisted = parseBenchmarkId(window.localStorage.getItem('stocks-portfolio-benchmark'))
-      if (!searchParams.get('benchmark') && persisted !== benchmark) {
-        setBenchmark(persisted)
-      }
-    }
-  }, [benchmark, searchParams])
-
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString())
-    let changed = false
-
-    for (const key of Array.from(params.keys())) {
-      if (key !== 'benchmark') {
-        params.delete(key)
-        changed = true
-      }
-    }
-
-    const rawBenchmark = params.get('benchmark')
-    if (rawBenchmark !== null) {
-      const normalizedBenchmark = parseBenchmarkId(rawBenchmark)
-      if (normalizedBenchmark !== rawBenchmark) {
-        params.set('benchmark', normalizedBenchmark)
-        changed = true
-      }
-    }
-
-    if (!changed) return
-
-    const next = params.toString()
-    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
-  }, [pathname, router, searchParams])
-
-  const handleBenchmarkChange = (nextBenchmark: BenchmarkId) => {
-    setBenchmark(nextBenchmark)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('stocks-portfolio-benchmark', nextBenchmark)
-    }
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('benchmark', nextBenchmark)
-    const next = params.toString()
-    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+  const markConnectIntent = () => {
+    setProgress((prev) => markStocksOnboardingStep(prev, 'connectIntent'))
   }
 
   return (
@@ -364,55 +198,130 @@ export default function StocksPortfolioPage() {
       title="Connect to View Stocks"
       description="Connect your wallet to view your tokenized stock holdings and trade history."
     >
-    <div className="w-full max-w-5xl mx-auto min-h-screen bg-dark-200 pb-24 md:pr-24">
+    <div data-testid="stocks-portfolio-shell" className="w-full max-w-6xl 2xl:max-w-[84rem] mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
-      {isDisconnected && <PortfolioOnboardingCard />}
-      {isDisconnected && <WalletConnectConfigWarning className="mb-4" />}
-
-      {/* Portfolio Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Value</div>
-          <div className={`text-lg sm:text-xl font-bold ${isDisconnected ? 'text-gray-500' : 'text-white'}`}>
-            {isDisconnected ? '—' : formatLargeNumber(summary.totalValue)}
+      {isDisconnected && !walletConnectConfigured && !progress.exploredMarkets && (
+        <>
+          <WalletConnectNotice className="mb-3" />
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <StocksConnectFallbackRail
+                onUseInBrowserWallet={() => {
+                  markConnectIntent()
+                  openConnectModal()
+                }}
+                onTryAnotherConnector={() => {
+                  markConnectIntent()
+                  openConnectModal()
+                }}
+                onContinueReadOnly={() => {
+                  setProgress(prev => markStocksOnboardingStep(prev, 'exploredMarkets'))
+                  router.push('/stocks')
+                }}
+                continueLabel="Continue in Read-only Mode"
+              />
+            )}
+          </ConnectButton.Custom>
+        </>
+      )}
+      {isDisconnected ? (
+        <section
+          data-testid="stocks-portfolio-disconnected-hero"
+          className="mb-6 rounded-2xl border border-goodgreen/20 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5 p-5 sm:p-6"
+        >
+          <h2 className="text-lg sm:text-xl font-semibold text-white">Start your stock portfolio</h2>
+          <p className="mt-2 text-sm text-gray-200">
+            Connect your wallet to unlock portfolio value, collateral health, and UBI contribution tracking.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-gray-700/30 bg-dark-100/55 px-3 py-2 text-xs text-gray-200">Connect wallet</div>
+            <div className="rounded-xl border border-gray-700/30 bg-dark-100/55 px-3 py-2 text-xs text-gray-200">Review live metrics</div>
+            <div className="rounded-xl border border-gray-700/30 bg-dark-100/55 px-3 py-2 text-xs text-gray-200">Track impact and holdings</div>
           </div>
-        </div>
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Unrealized P&L</div>
-          {isDisconnected ? (
-            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
-          ) : (
-            <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
-              <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
-            </div>
-          )}
-        </div>
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
-          {isDisconnected ? (
-            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
-          ) : (
-            <div className="text-lg sm:text-xl font-bold text-goodgreen">
-              {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.33)}
-              <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
-            </div>
-          )}
-        </div>
-        <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          {isDisconnected ? (
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 gap-0.5">
-                <span className="text-[10px] sm:text-xs text-gray-400">Collateral Health</span>
-                <span className="text-[10px] sm:text-xs font-medium text-gray-500">Connect wallet to view collateral health</span>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button
+                  type="button"
+                  onClick={() => {
+                    markConnectIntent()
+                    openConnectModal()
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-goodgreen text-[#031615] font-semibold text-sm hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
+                >
+                  Connect Wallet to Unlock Portfolio
+                </button>
+              )}
+            </ConnectButton.Custom>
+            <Link
+              href="/stocks"
+              onClick={() => setProgress(prev => markStocksOnboardingStep(prev, 'exploredMarkets'))}
+              className="text-sm text-goodgreen hover:text-[#22c5b6] transition-colors"
+            >
+              Browse Stocks First
+            </Link>
+          </div>
+          <StocksOnboardingChecklist progress={progress} className="mt-4" />
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-2" data-testid="stocks-portfolio-preconnect-preview">
+            <div className="rounded-xl border border-gray-700/25 bg-dark-100/70 p-3">
+              <p className="text-xs font-semibold text-white">Market benchmark preview</p>
+              <p className="mt-1 text-[11px] text-gray-400">Today&apos;s synthetic movers (read-only preview)</p>
+              <div className="mt-2.5 space-y-1.5">
+                {PRECONNECT_BENCHMARKS.map((entry) => (
+                  <div key={entry.ticker} className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-50/45 px-2 py-1.5 text-xs">
+                    <span className="text-gray-200">{entry.ticker}</span>
+                    <span className={entry.move.startsWith('-') ? 'text-red-300' : 'text-green-300'}>{entry.move}</span>
+                    <span className="text-gray-400">{entry.volume}</span>
+                  </div>
+                ))}
               </div>
-              <div className="h-1.5 bg-dark-50 rounded-full overflow-hidden" />
-              <div className="hidden sm:block mt-2 text-xs text-gray-500">
-                Connect wallet to unlock collateral monitoring.
+            </div>
+            <div className="rounded-xl border border-gray-700/25 bg-dark-100/70 p-3">
+              <p className="text-xs font-semibold text-white">Portfolio health preview</p>
+              <p className="mt-1 text-[11px] text-gray-400">Sample values to show what unlocks after connect</p>
+              <div className="mt-2.5 grid grid-cols-3 gap-2 text-xs">
+                <div className="rounded-lg border border-gray-700/25 bg-dark-50/45 p-2">
+                  <p className="text-gray-400">Value</p>
+                  <p className="mt-1 text-white">$4,320</p>
+                </div>
+                <div className="rounded-lg border border-gray-700/25 bg-dark-50/45 p-2">
+                  <p className="text-gray-400">P&L</p>
+                  <p className="mt-1 text-green-300">+6.4%</p>
+                </div>
+                <div className="rounded-lg border border-gray-700/25 bg-dark-50/45 p-2">
+                  <p className="text-gray-400">UBI impact</p>
+                  <p className="mt-1 text-goodgreen">$2.59</p>
+                </div>
               </div>
             </div>
-          ) : (
-            <>
+          </div>
+        </section>
+      ) : (
+        <>
+          {/* Portfolio Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
+            <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+              <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Value</div>
+              <div className={`text-lg sm:text-xl font-bold ${isDisconnected ? 'text-gray-500' : 'text-white'}`}>
+                {isDisconnected ? '—' : formatLargeNumber(summary.totalValue)}
+              </div>
+            </div>
+            <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+              <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Unrealized P&L</div>
+              <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
+                <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
+              </div>
+            </div>
+            <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
+              <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
+              <div className="text-lg sm:text-xl font-bold text-goodgreen">
+                {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
+                <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
+              </div>
+            </div>
+            <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
               <CollateralHealth
                 ratio={summary.healthRatio}
                 totalRequired={summary.totalRequired}
@@ -423,161 +332,12 @@ export default function StocksPortfolioPage() {
                   ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`
                   : 'Collateral health appears after you open a leveraged position'}
               </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {!isDisconnected ? (
-      <>
-      <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4 mb-6">
-        <PortfolioPnLChart
-          values={trendValues}
-          range={trendRange}
-          onRangeChange={setTrendRange}
-          currentValue={summary.totalValue}
-          unrealizedPnl={summary.unrealizedPnl}
-          height={200}
-        />
-      </section>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-        <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4 flex flex-col items-center justify-center">
-          <h2 className="text-sm font-semibold text-white mb-3 self-start">Allocation</h2>
-          <AllocationDonut segments={donutSegments} size={140} />
-        </section>
-
-        <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4">
-          <h2 className="text-sm font-semibold text-white mb-3">Performance Stats</h2>
-          <PerformanceStatsPanel stats={performanceStats} />
-        </section>
-
-        <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4">
-          <h2 className="text-sm font-semibold text-white mb-2">Top Contributors</h2>
-          {topContributors.length === 0 ? (
-            <p className="text-xs text-gray-500">No contributors yet. Start trading to unlock attribution insights.</p>
-          ) : (
-            <div className="space-y-2">
-              {topContributors.map((contributor) => (
-                <div key={contributor.ticker} className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-50/20 p-2 text-xs">
-                  <span className="text-gray-200">{contributor.ticker}</span>
-                  <span className={contributor.pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                    {contributor.pnl >= 0 ? '+' : ''}{formatStockPrice(contributor.pnl)}
-                  </span>
-                </div>
-              ))}
             </div>
-          )}
-        </section>
-      </div>
-
-      <section className="mb-6 rounded-2xl border border-gray-700/20 bg-dark-100 p-4 sm:p-5">
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-sm font-semibold text-white">Portfolio Diagnostics</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
-              {(['1W', '1M', '3M', '1Y'] as TrendRange[]).map((range) => (
-                <button key={`diag-${range}`} type="button" onClick={() => setTrendRange(range)} className={`rounded px-2 py-1 text-[11px] ${trendRange === range ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-                  {range}
-                </button>
-              ))}
-            </div>
-            <select
-              aria-label="Benchmark selector"
-              value={benchmark}
-              onChange={(event) => handleBenchmarkChange(parseBenchmarkId(event.target.value))}
-              className="rounded-lg border border-gray-700/30 bg-dark-50/40 px-2 py-1 text-xs text-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
-            >
-              <option value="SPY">S&P proxy (SPY)</option>
-              <option value="QQQ">Nasdaq proxy (QQQ)</option>
-              <option value="DIA">Dow proxy (DIA)</option>
-            </select>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">Benchmark</h3>
-            {isDisconnected ? (
-              <p className="text-xs text-gray-500">Connect wallet to compare portfolio vs benchmark.</p>
-            ) : (
-              <>
-                <svg viewBox="0 0 100 32" role="img" aria-label={`${trendRange} portfolio vs benchmark`} className="mb-2 h-20 w-full rounded-lg border border-gray-700/20 bg-dark-100/60">
-                  <path d={trendPath} fill="none" stroke="#19f39f" strokeWidth="1.8" />
-                  <path d={benchmarkPath} fill="none" stroke="#6b7280" strokeWidth="1.4" strokeDasharray="3 2" />
-                </svg>
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Portfolio</span>
-                    <span className={portfolioDeltaPct >= 0 ? 'text-green-400' : 'text-red-400'}>{portfolioDeltaPct >= 0 ? '+' : ''}{portfolioDeltaPct.toFixed(2)}%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">{benchmark}</span>
-                    <span className={benchmarkDeltaPct >= 0 ? 'text-green-400' : 'text-red-400'}>{benchmarkDeltaPct >= 0 ? '+' : ''}{benchmarkDeltaPct.toFixed(2)}%</span>
-                  </div>
-                </div>
-              </>
-            )}
-          </article>
-
-          <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">Risk</h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/60 px-2.5 py-2">
-                <span className="text-gray-400">Max drawdown</span>
-                <span className="text-white">{isDisconnected ? '—' : `${maxDrawdownPct.toFixed(2)}%`}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/60 px-2.5 py-2">
-                <span className="text-gray-400">Volatility</span>
-                <span className="text-white">{isDisconnected ? '—' : `${volatilityPct.toFixed(2)}%`}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/60 px-2.5 py-2">
-                <span className="text-gray-400">Concentration</span>
-                <span className="text-white">{isDisconnected ? '—' : `${concentrationPct.toFixed(1)}% top position`}</span>
-              </div>
-            </div>
-          </article>
-
-          <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">Contribution</h3>
-            {contributionRows.length === 0 ? (
-              <p className="text-xs text-gray-500">Open positions to unlock contribution analytics.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {contributionRows.map((row) => (
-                  <div key={`diag-${row.ticker}`} className="grid grid-cols-3 items-center rounded-lg border border-gray-700/20 bg-dark-100/60 px-2 py-1.5 text-xs">
-                    <span className="text-gray-200">{row.ticker}</span>
-                    <span className="text-gray-400 text-right">{row.weightPct.toFixed(1)}%</span>
-                    <span className={`text-right ${row.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{row.pnl >= 0 ? '+' : ''}{formatStockPrice(row.pnl)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </article>
-        </div>
-      </section>
-      </>
-      ) : (
-        <section className="mb-6 rounded-2xl border border-gray-700/20 bg-dark-100 p-4 sm:p-5">
-          <h2 className="text-sm font-semibold text-white">What unlocks after connect</h2>
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3 text-xs text-gray-300">
-              <div className="mb-1 text-goodgreen">Live holdings</div>
-              Real position values, allocation mix, and unrealized P&amp;L.
-            </article>
-            <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3 text-xs text-gray-300">
-              <div className="mb-1 text-goodgreen">Risk diagnostics</div>
-              Collateral health, drawdown, volatility, and benchmark comparison.
-            </article>
-            <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3 text-xs text-gray-300">
-              <div className="mb-1 text-goodgreen">UBI impact</div>
-              Contribution insights tied to your stock activity.
-            </article>
-          </div>
-        </section>
+          <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
+        </>
       )}
-
-      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.33} />
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">
@@ -596,7 +356,13 @@ export default function StocksPortfolioPage() {
         </TabsList>
 
         <TabsContent value="holdings">
-          {isLoading ? (
+          {isDisconnected ? (
+            <div className="py-16 text-center">
+              <p className="text-gray-300 text-sm mb-1">Connect wallet to unlock your holdings timeline</p>
+              <p className="text-gray-500 text-xs mb-4">Preview cards above show the metrics you will get after connection.</p>
+              <Link href="/stocks" className="text-goodgreen text-sm hover:underline">Browse Stocks</Link>
+            </div>
+          ) : isLoading ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">Loading positions…</p>
             </div>
@@ -633,7 +399,12 @@ export default function StocksPortfolioPage() {
         </TabsContent>
 
         <TabsContent value="history">
-          {trades.length === 0 ? (
+          {isDisconnected ? (
+            <div className="py-16 text-center">
+              <p className="text-gray-300 text-sm mb-1">Connect wallet to unlock trade history and UBI impact timeline</p>
+              <p className="text-gray-500 text-xs">You can keep exploring markets before connecting.</p>
+            </div>
+          ) : trades.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">No trade history</p>
             </div>
@@ -646,7 +417,6 @@ export default function StocksPortfolioPage() {
                     <th className="text-left py-2.5 px-3 font-semibold">Side</th>
                     <th className="text-right py-2.5 px-3 font-semibold">Shares</th>
                     <th className="text-right py-2.5 px-3 font-semibold">Price</th>
-                    <th className="text-right py-2.5 px-3 font-semibold hidden md:table-cell">Total</th>
                     <th className="text-right py-2.5 px-3 font-semibold hidden sm:table-cell">Date</th>
                     <th className="text-right py-2.5 px-3 font-semibold">P&L</th>
                   </tr>

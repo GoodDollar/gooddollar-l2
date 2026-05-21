@@ -1,13 +1,20 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-utils/wrapper'
+import { STOCKS_ONBOARDING_PROGRESS_KEY } from '@/lib/stocksOnboardingProgress'
 
 const push = vi.fn()
+const scrollIntoView = vi.fn()
 const walletState = { address: undefined as `0x${string}` | undefined }
+
+Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  value: scrollIntoView,
+  writable: true,
+})
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
-  usePathname: () => '/stocks',
   useSearchParams: () => new URLSearchParams(''),
   useParams: () => ({}),
 }))
@@ -49,7 +56,7 @@ vi.mock('@/lib/useOnChainStocks', () => ({
 import StocksPage from '../page'
 
 describe('StocksPage onboarding CTA', () => {
-  it('shows first-time onboarding CTA when wallet is disconnected', () => {
+  it('shows shared disconnected journey checklist on markets', async () => {
     walletState.address = undefined
 
     render(
@@ -58,9 +65,78 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByRole('button', { name: 'Connect Wallet to Trade Stocks' })).toBeInTheDocument()
+    expect(await screen.findByTestId('stocks-onboarding-checklist')).toBeInTheDocument()
+    expect(screen.getByText('Explore markets')).toBeInTheDocument()
+    expect(screen.getByText('Open stock detail')).toBeInTheDocument()
+    expect(screen.getByText('Connect wallet and place first order')).toBeInTheDocument()
+  })
+
+  it('shows first-time onboarding CTA when wallet is disconnected', async () => {
+    walletState.address = undefined
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    expect(await screen.findByRole('button', { name: 'Connect with In-browser Wallet' })).toBeInTheDocument()
+    expect(screen.getByText(/Mobile wallet QR connections are temporarily unavailable/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continue in Read-only Mode' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'More connection options' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try Another Connector' })).not.toBeInTheDocument()
     expect(screen.getByText('Tap to trade')).toBeInTheDocument()
-    expect(screen.getByText(/Mobile wallet connectors are unavailable in this environment/i)).toBeInTheDocument()
+  })
+
+  it('reveals non-primary connector actions only after expanding options', async () => {
+    walletState.address = undefined
+    const user = userEvent.setup()
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'More connection options' }))
+    expect(screen.getByRole('button', { name: 'Try Another Connector' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hide connection options' })).toBeInTheDocument()
+  })
+
+  it('keeps Try Another Connector in stocks onboarding context and shows fallback guidance', async () => {
+    walletState.address = undefined
+    push.mockClear()
+    scrollIntoView.mockClear()
+    const user = userEvent.setup()
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'More connection options' }))
+    await user.click(screen.getByRole('button', { name: 'Try Another Connector' }))
+
+    expect(push).not.toHaveBeenCalled()
+    expect(scrollIntoView).toHaveBeenCalled()
+    expect(screen.getByText(/Additional connectors are currently unavailable/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Search stocks...')).toHaveFocus()
+  })
+
+  it('renders explicit three-step first-time journey copy in the hero card', async () => {
+    walletState.address = undefined
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    expect(await screen.findByText('How to start')).toBeInTheDocument()
+    expect(screen.getByText('1. Connect wallet')).toBeInTheDocument()
+    expect(screen.getByText('2. Choose a stock')).toBeInTheDocument()
+    expect(screen.getByText('3. Place your first trade')).toBeInTheDocument()
   })
 
   it('hides first-time onboarding CTA when wallet is connected', () => {
@@ -84,8 +160,8 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    const tradeHint = screen.getByText('Tap to trade')
-    const row = tradeHint.closest('div[class*="bg-dark-100"]')
+    const tapBadge = screen.getByText('Tap to trade')
+    const row = tapBadge.closest('div[class*="bg-dark-100"]')
     expect(row).toBeTruthy()
 
     const rightColumn = row?.querySelector('div.text-right')
@@ -117,54 +193,56 @@ describe('StocksPage onboarding CTA', () => {
     expect(tradeButton.className).not.toContain('group-hover:opacity-100')
   })
 
-  it('reserves right/bottom safe area on stocks markets page for floating feedback controls', () => {
+  it('marks stock-detail step in session progress when Trade is selected', async () => {
     walletState.address = undefined
+    push.mockClear()
+    window.sessionStorage.clear()
+    const user = userEvent.setup()
 
-    const { container } = render(
+    render(
       <TestWrapper>
         <StocksPage />
       </TestWrapper>
     )
 
-    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
-    expect(wrapper).toBeTruthy()
-    expect(wrapper?.className).toContain('pb-24')
-    expect(wrapper?.className).toContain('md:pr-24')
+    await user.click(screen.getByRole('button', { name: 'Trade' }))
+    const progressRaw = window.sessionStorage.getItem(STOCKS_ONBOARDING_PROGRESS_KEY)
+    expect(progressRaw).toBeTruthy()
+    const progress = JSON.parse(progressRaw || '{}')
+    expect(progress.openedStockDetail).toBe(true)
+    expect(push).toHaveBeenCalledWith('/stocks/AAPL')
   })
 
-  it('uses mobile-first filter shell spacing for clearer top-viewport hierarchy', () => {
+  it('keeps read-only CTA in browse context when wallet connect is unavailable', async () => {
     walletState.address = undefined
+    push.mockClear()
+    scrollIntoView.mockClear()
+    const user = userEvent.setup()
 
-    const { container } = render(
+    render(
       <TestWrapper>
         <StocksPage />
       </TestWrapper>
     )
 
-    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
-    expect(wrapper).toBeTruthy()
-    expect(wrapper?.className).toContain('space-y-5')
+    await user.click(await screen.findByRole('button', { name: 'Continue in Read-only Mode' }))
 
-    const searchInput = screen.getByPlaceholderText('Search stocks...')
-    const filterShell = searchInput.closest('div.mb-4')
-    expect(filterShell).toBeTruthy()
-    expect(filterShell?.className).toContain('rounded-2xl')
-    expect(filterShell?.className).toContain('bg-dark-100/35')
-    expect(filterShell?.className).toContain('p-3')
+    expect(push).not.toHaveBeenCalled()
+    expect(scrollIntoView).toHaveBeenCalled()
+    expect(screen.getByPlaceholderText('Search stocks...')).toHaveFocus()
   })
 
-  it('uses a full-height page wrapper so mobile viewports keep continuous themed background', () => {
+  it('uses widened desktop shell container for balanced stocks canvas', () => {
     walletState.address = undefined
 
-    const { container } = render(
+    render(
       <TestWrapper>
         <StocksPage />
       </TestWrapper>
     )
 
-    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
-    expect(wrapper).toBeTruthy()
-    expect(wrapper?.className).toContain('min-h-screen')
-    expect(wrapper?.className).toContain('bg-dark-200')
+    const shell = screen.getByTestId('stocks-page-shell')
+    expect(shell.className).toContain('max-w-6xl')
+    expect(shell.className).toContain('2xl:max-w-[84rem]')
   })
 })
