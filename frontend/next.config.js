@@ -167,6 +167,15 @@ const nextConfig = {
       ...config.resolve.fallback,
       'porto/internal': false,
     }
+
+    // @metamask/sdk references a React Native storage adapter that is not
+    // required for our browser wallet flows; resolving it to false avoids
+    // repeated "Module not found" warning noise in dev/e2e logs.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@react-native-async-storage/async-storage': false,
+    }
+
     config.externals.push('pino-pretty', 'lokijs', 'encoding')
     return config
   },

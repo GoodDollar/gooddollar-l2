@@ -135,6 +135,22 @@ test.describe('Stocks Journey', () => {
     await page.waitForURL(/\/stocks\/[A-Z]+/)
   })
 
+  test('stocks section nav navigates to portfolio route', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'Desktop budget guard')
+
+    await page.goto('/stocks/portfolio')
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('heading', { name: 'Stock Portfolio' })).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('markets to stock detail navigation renders trade form', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'Desktop budget guard')
+
+    await page.goto('/stocks/AAPL')
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('form#stock-order-form')).toBeVisible({ timeout: 20_000 })
+  })
+
   test('malformed ticker routes render generic safe copy without encoded payload text', async ({ page }) => {
     for (const route of [
       '/stocks/%20',

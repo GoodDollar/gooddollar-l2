@@ -20,6 +20,7 @@ import dynamic from 'next/dynamic'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { PriceDisplay } from '@/components/ui/price-display'
 import { AmountInput } from '@/components/ui/amount-input'
+import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
 
 function WalletGatedTradeButton({ hasSize, exceedsMargin, children }: { hasSize: boolean; exceedsMargin: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -224,6 +225,8 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const walletReady = useWalletReady()
   const { address } = useAccount()
   const { openPosition, phase: perpPhase, error: perpError, isDeployed } = useOpenPosition()
+  const syncGuard = useSymbolSyncGuard(pair.baseAsset, 'perps')
+  const syncBlocked = !syncGuard.allowRiskIncrease
   const walletG$Result = useReadContract({
     address: CONTRACTS.GoodDollarToken,
     abi: ERC20ABI,
@@ -315,7 +318,8 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
       limitPriceInvalid ||
       triggerPriceInvalid ||
       stopLimitCheck.triggerWrongSide ||
-      stopLimitCheck.limitVsTriggerWrong
+      stopLimitCheck.limitVsTriggerWrong ||
+      syncBlocked
     ) return
 
     if (isDeployed && orderType === 'market') {
@@ -526,10 +530,15 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
       {perpError && (
         <p className="text-[10px] text-red-400 text-center truncate">{perpError}</p>
       )}
+      {syncBlocked && (
+        <p className="text-[10px] text-red-400 text-center">
+          {syncGuard.reason ?? 'Risk-increasing action blocked until symbol sync reaches current oracle block.'}
+        </p>
+      )}
       {walletReady ? (
         <WalletGatedTradeButton hasSize={sizeNum > 0} exceedsMargin={exceedsMargin}>
           <button type="submit"
-            disabled={exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || perpPhase === 'approving' || perpPhase === 'pending'}
+            disabled={exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || perpPhase === 'approving' || perpPhase === 'pending' || syncBlocked}
             className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'long' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
@@ -537,7 +546,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={sizeNum <= 0 || exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice}
+        <button type="submit" disabled={sizeNum <= 0 || exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || syncBlocked}
           className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'long' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>

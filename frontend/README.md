@@ -41,6 +41,7 @@ npm run dev     # http://localhost:3100
 - ✅ Lazy-loaded wallet providers
 - ✅ Memoized components for performance
 - ✅ SVG token logos for all 18 tokens
+- ✅ Stocks detail keeps in-panel wallet onboarding visible even when oracle trade guard is active
 
 ## Build & Deploy
 

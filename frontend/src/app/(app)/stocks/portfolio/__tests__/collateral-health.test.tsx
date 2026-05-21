@@ -59,7 +59,7 @@ vi.mock('@/components/InfoBanner', () => ({
   InfoBanner: () => null,
 }))
 
-import StocksPortfolioPage from '../page'
+import { StocksPortfolioContent } from '../StocksPortfolioContent'
 
 describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () => {
   beforeEach(() => {
@@ -79,7 +79,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
 
     expect(screen.getByText('Total Value')).toBeInTheDocument()
@@ -95,11 +95,39 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     accountState.isConnected = false
 
     render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
 
     expect(screen.getByText('Connect wallet to view holdings and history')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Connect Wallet to View Holdings & History' })).toBeInTheDocument()
+  })
+
+  it('shows disconnected dual-path guidance with a browse-markets action', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+    )
+
+    expect(screen.getByText('No wallet connected yet.')).toBeInTheDocument()
+    expect(screen.getByText(/browse markets first, then connect when you are ready to trade/i)).toBeInTheDocument()
+    const browseLink = screen.getByRole('link', { name: 'Browse Stock Markets' })
+    expect(browseLink.getAttribute('href')).toBe('/stocks')
+  })
+
+  it('elevates disconnected primary actions into a single prominent action group', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+    )
+
+    const actions = screen.getByTestId('stocks-disconnected-primary-actions')
+    expect(actions.className).toContain('sm:flex-row')
+    expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Browse Stock Markets' })).toBeInTheDocument()
   })
 
   it('shows deferred impact section loading placeholders on first paint', () => {
@@ -107,7 +135,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     accountState.isConnected = false
 
     render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
 
     expect(screen.getByText('Loading impact insights…')).toBeInTheDocument()
@@ -121,7 +149,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
 
     const text = container.textContent || ''
@@ -137,7 +165,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).not.toMatch(/Critical/)
@@ -152,7 +180,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Not active yet')
@@ -177,7 +205,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Not active yet')
@@ -195,7 +223,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Collateral Health')
@@ -218,7 +246,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('0% — Critical')
@@ -241,10 +269,32 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Connect wallet to view collateral health')
     expect(text).not.toContain('0% — Critical')
+  })
+
+  it('uses readable disconnected collateral helper typography for responsive cards', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+    holdingsState.holdings = []
+    holdingsState.totalValue = 0
+    holdingsState.unrealizedPnl = 0
+    holdingsState.pnlPercent = 0
+    holdingsState.totalCollateral = 0
+    holdingsState.totalRequired = 0
+    holdingsState.healthRatio = 0
+
+    render(
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+    )
+
+    const primaryHelper = screen.getByText('Connect wallet to view collateral health')
+    const secondaryHelper = screen.getByText('Connect wallet to unlock collateral monitoring.')
+
+    expect(primaryHelper.className).toContain('leading-relaxed')
+    expect(secondaryHelper.className).toContain('leading-relaxed')
   })
 })

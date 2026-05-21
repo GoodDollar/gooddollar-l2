@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server'
 import { GET } from '../route'
+
+const dummyReq = new NextRequest('http://localhost/api/status')
 
 const MOCK_STATUS = {
   overall: 'degraded',
@@ -18,17 +20,13 @@ beforeEach(() => {
   vi.restoreAllMocks()
 })
 
-function makeRequest(): NextRequest {
-  return new Request('http://localhost/api/status') as unknown as NextRequest
-}
-
 describe('GET /api/status', () => {
   it('returns aggregated status when aggregator is reachable', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify(MOCK_STATUS), { status: 200, headers: { 'Content-Type': 'application/json' } }),
     )
 
-    const res = await GET(makeRequest())
+    const res = await GET(dummyReq)
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.overall).toBe('degraded')
@@ -41,7 +39,7 @@ describe('GET /api/status', () => {
       new Response('Internal Server Error', { status: 500 }),
     )
 
-    const res = await GET(makeRequest())
+    const res = await GET(dummyReq)
     expect(res.status).toBe(502)
     const data = await res.json()
     expect(data.error).toContain('error')
@@ -50,7 +48,7 @@ describe('GET /api/status', () => {
   it('returns 503 when aggregator is unreachable', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ECONNREFUSED'))
 
-    const res = await GET(makeRequest())
+    const res = await GET(dummyReq)
     expect(res.status).toBe(503)
     const data = await res.json()
     expect(data.error).toContain('unreachable')

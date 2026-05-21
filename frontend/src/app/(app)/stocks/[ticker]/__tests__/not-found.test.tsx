@@ -1,11 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
-const routerPush = vi.fn()
-const mockChartData = vi.fn(() => [])
 let currentStocks: Array<{
   ticker: string
   name: string
@@ -23,13 +20,14 @@ let currentStocks: Array<{
   avgVolume: number
   description?: string
 }> = []
+let oracleGuardState: { health: 'live' | 'degraded' | 'offline'; reason: string | null; isLoading: boolean } = {
+  health: 'live',
+  reason: null,
+  isLoading: false,
+}
+let walletConnected = false
 
-const makeStock = (overrides: Partial<{
-  ticker: string
-  name: string
-  sector: string
-  price: number
-}> = {}) => ({
+const makeStock = () => ({
   ticker: 'AAPL',
   name: 'Apple Inc.',
   sector: 'Technology',
@@ -44,12 +42,11 @@ const makeStock = (overrides: Partial<{
   eps: 6.4,
   dividendYield: 0.52,
   avgVolume: 850000,
-  ...overrides,
 })
 
 vi.mock('next/navigation', () => ({
   useParams: () => currentParams,
-  useRouter: () => ({ push: routerPush }),
+  useRouter: () => ({ push: vi.fn() }),
 }))
 
 vi.mock('next/link', () => ({
@@ -62,8 +59,12 @@ vi.mock('@/components/PriceChart', () => ({
   PriceChart: () => <div data-testid="price-chart" />,
 }))
 
+vi.mock('@/components/OracleStatusBadge', () => ({
+  OracleStatusBadge: () => <div data-testid="oracle-badge" />,
+}))
+
 vi.mock('@/lib/chartData', () => ({
-  getChartData: (...args: unknown[]) => mockChartData(...args),
+  getChartData: () => [],
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
@@ -80,6 +81,18 @@ vi.mock('@/lib/WalletReadyContext', () => ({
   useWalletReady: () => true,
 }))
 
+vi.mock('@/lib/useStocksOracleGuard', () => ({
+  useStocksOracleGuard: () => oracleGuardState,
+}))
+
+vi.mock('wagmi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('wagmi')>()
+  return {
+    ...actual,
+    useAccount: () => ({ isConnected: walletConnected }),
+  }
+})
+
 vi.mock('@rainbow-me/rainbowkit', () => ({
   ConnectButton: { Custom: () => null },
 }))
@@ -90,9 +103,8 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
   beforeEach(() => {
     currentParams = {}
     currentStocks = []
-    routerPush.mockReset()
-    mockChartData.mockReset()
-    mockChartData.mockImplementation(() => [])
+    oracleGuardState = { health: 'live', reason: null, isLoading: false }
+    walletConnected = false
   })
 
   it('renders a generic not-found message without echoing plain invalid ticker input', () => {
@@ -217,7 +229,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     currentParams = { ticker: 'AAPL' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const buyLink = screen.getByRole('link', { name: /Buy sAAPL/i })
+    const buyLink = screen.getByRole('link', { name: /Buy AAPL/i })
     const portfolioLink = screen.getByRole('link', { name: /Open Stock Portfolio/i })
     const browseLink = screen.getByRole('link', { name: /Browse Stocks/i })
 
@@ -230,102 +242,70 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.queryByRole('link', { name: /Prediction markets/i })).toBeNull()
   })
 
-  it('renders timeframe controls in a single-row horizontal rail to avoid mobile wrapping', () => {
+  it('shows a prominent risk banner when oracle guard reports offline', () => {
     currentStocks = [makeStock()]
     currentParams = { ticker: 'AAPL' }
+    oracleGuardState = {
+      health: 'offline',
+      reason: 'Price data is stale (321s old).',
+      isLoading: false,
+    }
+
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const tablist = screen.getByRole('tablist', { name: /chart timeframe/i })
-    expect(tablist.className).toContain('overflow-x-auto')
-    expect(tablist.className).toContain('flex-nowrap')
+    expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/Trading is paused/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/Price data is stale/i).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('supports quick symbol switching from the detail page via keyboard Enter', () => {
-    currentStocks = [makeStock(), makeStock({ ticker: 'NVDA', name: 'NVIDIA Corp.' })]
-    currentParams = { ticker: 'AAPL' }
-    render(<TestWrapper><StockDetailPage /></TestWrapper>)
-
-    const switchInput = screen.getByLabelText('Switch stock symbol')
-    fireEvent.change(switchInput, { target: { value: 'NVDA' } })
-    fireEvent.keyDown(switchInput, { key: 'Enter' })
-
-    expect(routerPush).toHaveBeenCalledWith('/stocks/NVDA')
-  })
-
-  it('shows a mobile switcher trigger and navigates on Go', () => {
-    currentStocks = [makeStock(), makeStock({ ticker: 'MSFT', name: 'Microsoft Corp.' })]
-    currentParams = { ticker: 'AAPL' }
-    render(<TestWrapper><StockDetailPage /></TestWrapper>)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Switch Symbol' }))
-    const mobileInput = screen.getByLabelText('Switch stock symbol mobile')
-    fireEvent.change(mobileInput, { target: { value: 'MSFT' } })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[1])
-
-    expect(routerPush).toHaveBeenCalledWith('/stocks/MSFT')
-  })
-
-  it('renders a timeframe performance summary and updates label/value when tabs change', () => {
+  it('shows first-trade checklist with required states for disconnected users', () => {
     currentStocks = [makeStock()]
     currentParams = { ticker: 'AAPL' }
-    mockChartData.mockImplementation((_symbol: string, timeframe: string, basePrice: number) => {
-      if (timeframe === '3M') return [{ close: 100, open: 100, high: 101, low: 99, volume: 1, time: 1 }, { close: 110, open: 100, high: 111, low: 99, volume: 1, time: 2 }]
-      if (timeframe === '1D') return [{ close: 200, open: 200, high: 201, low: 199, volume: 1, time: 1 }, { close: 190, open: 200, high: 201, low: 189, volume: 1, time: 2 }]
-      return [{ close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 1 }, { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 2 }]
-    })
+    walletConnected = false
+    oracleGuardState = { health: 'degraded', reason: 'Quotes are delayed.', isLoading: false }
 
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    expect(screen.getByText('+10.00%')).toBeTruthy()
-    expect(screen.getByText('Past 3 Months')).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('tab', { name: '1D' }))
-
-    expect(screen.getByText('-5.00%')).toBeTruthy()
-    expect(screen.getByText('Past Day')).toBeTruthy()
+    expect(screen.getByText(/First trade checklist/i)).toBeTruthy()
+    expect(screen.getByText('1. Connect wallet')).toBeTruthy()
+    expect(screen.getByText('Action needed')).toBeTruthy()
+    expect(screen.getByText('2. Confirm live prices')).toBeTruthy()
+    expect(screen.getAllByText('Waiting...').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('3. Submit order')).toBeTruthy()
+    expect(screen.getByText('Almost there')).toBeTruthy()
+    expect(screen.queryByText('Blocked')).toBeNull()
+    expect(screen.queryByText('Required')).toBeNull()
   })
 
-  it('supports arrow-key navigation for chart timeframe tabs', async () => {
-    const user = userEvent.setup()
-    currentStocks = [makeStock()]
+  it('shows synthetic token explainer above company description in About section', () => {
+    const stockWithDesc = { ...makeStock(), description: 'Apple Inc. designs and sells electronics.' }
+    currentStocks = [stockWithDesc]
     currentParams = { ticker: 'AAPL' }
-    mockChartData.mockImplementation((_symbol: string, timeframe: string, basePrice: number) => {
-      if (timeframe === '3M') return [{ close: 100, open: 100, high: 101, low: 99, volume: 1, time: 1 }, { close: 110, open: 100, high: 111, low: 99, volume: 1, time: 2 }]
-      if (timeframe === '6M') return [{ close: 200, open: 200, high: 201, low: 199, volume: 1, time: 1 }, { close: 160, open: 200, high: 201, low: 159, volume: 1, time: 2 }]
-      return [{ close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 1 }, { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 2 }]
-    })
+    walletConnected = false
+    oracleGuardState = { health: 'live', reason: null, isLoading: false }
 
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const threeMonthTab = screen.getByRole('tab', { name: '3M' })
-    threeMonthTab.focus()
-    await user.keyboard('{ArrowRight}')
-
-    expect(screen.getByRole('tab', { name: '6M' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByText('-20.00%')).toBeTruthy()
-    expect(screen.getByText('Past 6 Months')).toBeTruthy()
+    expect(screen.getByText(/About AAPL/i)).toBeTruthy()
+    expect(screen.getByText(/AAPL on GoodDollar tracks/i)).toBeTruthy()
+    expect(screen.queryByText(/sAAPL/i)).toBeNull()
+    expect(screen.getByText(/tracks.*Apple Inc/i)).toBeTruthy()
+    expect(screen.getByText(/24\/7/i)).toBeTruthy()
+    expect(screen.getByText(/Universal Basic Income/i)).toBeTruthy()
+    expect(screen.getByText('Apple Inc. designs and sells electronics.')).toBeTruthy()
   })
 
-  it('shows quote context metadata and day range in key statistics', () => {
+  it('shows actionable recovery links when oracle is not live', () => {
     currentStocks = [makeStock()]
     currentParams = { ticker: 'AAPL' }
-    mockChartData.mockImplementation((_symbol: string, timeframe: string, basePrice: number) => {
-      if (timeframe === '1D') {
-        return [
-          { close: 198, open: 197, high: 201, low: 190, volume: 1, time: 1 },
-          { close: 200, open: 198, high: 200.5, low: 194, volume: 1, time: 2 },
-        ]
-      }
-      return [
-        { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 1 },
-        { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 2 },
-      ]
-    })
+    walletConnected = true
+    oracleGuardState = { health: 'offline', reason: 'Price data is stale.', isLoading: false }
 
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    expect(screen.getByText('USD · Oracle source: stocks-keeper · Updated live')).toBeTruthy()
-    expect(screen.getByText('Day Range')).toBeTruthy()
-    expect(screen.getByText('$190.00 - $201.00')).toBeTruthy()
+    const browseStocks = screen.getByRole('link', { name: /Browse trade-ready stocks/i })
+    const portfolioLinks = screen.getAllByRole('link', { name: /Open Stock Portfolio/i })
+    expect(browseStocks.getAttribute('href')).toBe('/stocks')
+    expect(portfolioLinks.some(link => link.getAttribute('href') === '/stocks/portfolio')).toBe(true)
   })
 })

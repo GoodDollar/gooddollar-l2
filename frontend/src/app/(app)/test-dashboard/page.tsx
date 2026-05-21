@@ -12,6 +12,8 @@ import {
   type TestResult,
   type ContractStats,
 } from '@/lib/useTestRegistry'
+import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
+import { deriveDriftRows, type DriftHealth } from '@/lib/driftDashboard'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -217,6 +219,66 @@ function GasTrend({ results }: { results: TestResult[] }) {
   )
 }
 
+function driftBadgeClasses(health: DriftHealth): string {
+  if (health === 'synced') return 'bg-green-500/15 text-green-300 border-green-500/30'
+  if (health === 'lagging') return 'bg-amber-500/15 text-amber-200 border-amber-500/30'
+  return 'bg-red-500/15 text-red-200 border-red-500/30'
+}
+
+function driftLabel(health: DriftHealth): string {
+  if (health === 'synced') return 'Synced'
+  if (health === 'lagging') return 'Lagging'
+  return 'Stopped'
+}
+
+function DriftDashboardPanel({ rows, loading }: { rows: ReturnType<typeof deriveDriftRows>; loading: boolean }) {
+  if (loading) {
+    return <div className="h-24 bg-dark-100 rounded animate-pulse" />
+  }
+  if (rows.length === 0) {
+    return <p className="text-gray-500 text-sm py-4 text-center">No symbol drift data yet.</p>
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-gray-400 border-b border-dark-50/40">
+            <th className="text-left py-2 pr-3">Symbol</th>
+            <th className="text-right py-2 px-2">Oracle Block</th>
+            <th className="text-right py-2 px-2">AMM</th>
+            <th className="text-right py-2 px-2">Perps</th>
+            <th className="text-right py-2 px-2">Predict</th>
+            <th className="text-right py-2 px-2">Lend</th>
+            <th className="text-right py-2 px-2">Yield</th>
+            <th className="text-right py-2 px-2">Div (bps)</th>
+            <th className="text-right py-2 pl-2">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.symbol} className="border-b border-dark-50/30">
+              <td className="py-2 pr-3 font-semibold text-white">{row.symbol}</td>
+              <td className="py-2 px-2 text-right text-gray-300 font-mono">{row.oracleBlock}</td>
+              <td className="py-2 px-2 text-right text-gray-300 font-mono">{row.products.amm.lastSyncedBlock}</td>
+              <td className="py-2 px-2 text-right text-gray-300 font-mono">{row.products.perps.lastSyncedBlock}</td>
+              <td className="py-2 px-2 text-right text-gray-300 font-mono">{row.products.prediction.lastSyncedBlock}</td>
+              <td className="py-2 px-2 text-right text-gray-300 font-mono">{row.products.lend.lastSyncedBlock}</td>
+              <td className="py-2 px-2 text-right text-gray-300 font-mono">{row.products.yield.lastSyncedBlock}</td>
+              <td className="py-2 px-2 text-right text-gray-300">{row.divergenceBps}</td>
+              <td className="py-2 pl-2 text-right">
+                <span className={`inline-flex px-2 py-0.5 rounded border ${driftBadgeClasses(row.health)}`}>
+                  {driftLabel(row.health)}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type Tab = 'overview' | 'log'
@@ -225,9 +287,11 @@ export default function TestDashboardPage() {
   const [filterTester, setFilterTester] = useState<string>('')
 
   const { results, isLoading } = useTestResults(200)
+  const { status: quoteStatus, isLoading: quoteLoading } = usePriceServiceStatus()
   const recentResults = useRecentResults(results)
   const coverageStats = useContractCoverage(results)
   const testerStats = useTesterActivity(results)
+  const driftRows = useMemo(() => deriveDriftRows(quoteStatus), [quoteStatus])
 
   const displayResults = useMemo(() => {
     if (!filterTester) return results
@@ -309,6 +373,14 @@ export default function TestDashboardPage() {
                 <GasTrend results={results} />
               )}
               <p className="text-xs text-gray-500 mt-2">Green = pass · Red = fail · Height = relative gas used</p>
+            </div>
+
+            <div className="bg-dark-50 rounded-xl p-4">
+              <h2 className="text-sm font-medium text-gray-300 mb-3">Stock Drift Dashboard</h2>
+              <DriftDashboardPanel rows={driftRows} loading={quoteLoading} />
+              <p className="text-xs text-gray-500 mt-2">
+                P0 stop states: divergence &gt; 0.5%, stale propagation, or lagging product sync block.
+              </p>
             </div>
           </div>
 

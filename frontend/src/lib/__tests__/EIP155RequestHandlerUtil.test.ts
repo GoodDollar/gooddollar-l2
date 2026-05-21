@@ -28,7 +28,7 @@ describe('EIP155RequestHandlerUtil Security Validation', () => {
         to: CONTRACTS.GoodDollarToken,
         value: parseEther('0.001'), // Small value
         gas: 50_000n, // Reasonable gas
-        data: '0xa9059cbb' as `0x${string}`, // transfer method signature
+        data: '0xa9059cbb' as const,
       }
 
       const result = await validateTransaction(lowRiskTransaction, TEST_USER_ADDRESS)
@@ -43,7 +43,7 @@ describe('EIP155RequestHandlerUtil Security Validation', () => {
         to: '0x1234567890123456789012345678901234567890' as const,
         value: parseEther('5.0'), // Above MAX_ETH_VALUE (1 ETH)
         gas: 21_000n,
-        data: '0x' as `0x${string}`,
+        data: '0x' as const,
       }
 
       const result = await validateTransaction(highValueTransaction, TEST_USER_ADDRESS)
@@ -59,7 +59,7 @@ describe('EIP155RequestHandlerUtil Security Validation', () => {
         to: CONTRACTS.GoodDollarToken,
         value: 0n,
         gas: 750_000n, // Above MAX_GAS_LIMIT (500k)
-        data: '0xa9059cbb' as `0x${string}`,
+        data: '0xa9059cbb' as const,
       }
 
       const result = await validateTransaction(highGasTransaction, TEST_USER_ADDRESS)
@@ -74,7 +74,7 @@ describe('EIP155RequestHandlerUtil Security Validation', () => {
         to: '0x9999999999999999999999999999999999999999' as const,
         value: parseEther('0.1'),
         gas: 100_000n,
-        data: '0xa9059cbb' as `0x${string}`,
+        data: '0xa9059cbb' as const,
       }
 
       const result = await validateTransaction(unverifiedContractTransaction, TEST_USER_ADDRESS)
@@ -121,7 +121,7 @@ describe('EIP155RequestHandlerUtil Security Validation', () => {
         to: '0xinvalid' as any,
         value: parseEther('0.1'),
         gas: 21_000n,
-        data: '0x' as `0x${string}`,
+        data: '0x' as const,
       }
 
       const result = await validateTransaction(invalidTransaction, TEST_USER_ADDRESS)
@@ -184,7 +184,7 @@ describe('EIP155RequestHandlerUtil Security Validation', () => {
         to: '0x9999999999999999999999999999999999999999' as const,
         value: 0n,
         gas: 10_000_000n, // Extremely high gas limit
-        data: '0xa9059cbb' as `0x${string}`,
+        data: '0xa9059cbb' as const,
       }
 
       const result = await validateTransaction(gasGriefingAttack, TEST_USER_ADDRESS)
@@ -200,7 +200,7 @@ describe('EIP155RequestHandlerUtil Security Validation', () => {
         to: '0x9999999999999999999999999999999999999999' as const,
         value: parseEther('10'), // Large amount
         gas: 21_000n,
-        data: '0x' as `0x${string}`,
+        data: '0x' as const,
       }
 
       const result = await validateTransaction(valueDrainAttack, TEST_USER_ADDRESS)
@@ -215,7 +215,7 @@ describe('EIP155RequestHandlerUtil Security Validation', () => {
         to: '0x9999999999999999999999999999999999999999' as const,
         value: parseEther('0.5'),
         gas: 300_000n,
-        data: '0xa9059cbb' as `0x${string}`,
+        data: '0xa9059cbb' as const,
       }
 
       const result = await validateTransaction(riskyTransaction, TEST_USER_ADDRESS)

@@ -6,17 +6,13 @@ const TABS = [
   {
     label: 'Markets',
     href: '/stocks',
-    match: (p: string) =>
-      p.startsWith('/stocks') && p !== '/stocks/portfolio' && p !== '/stocks/watchlist',
-  },
-  {
-    label: 'Watchlist',
-    href: '/stocks/watchlist',
-    match: (p: string) => p === '/stocks/watchlist',
+    prefetch: false,
+    match: (p: string) => p.startsWith('/stocks') && p !== '/stocks/portfolio',
   },
   {
     label: 'Portfolio',
     href: '/stocks/portfolio',
+    prefetch: false,
     match: (p: string) => p === '/stocks/portfolio',
   },
 ]

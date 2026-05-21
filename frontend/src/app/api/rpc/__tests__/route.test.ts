@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server'
 import { POST } from '../route'
 
 const MOCK_RPC_RESPONSE = JSON.stringify({
@@ -13,11 +13,11 @@ beforeEach(() => {
 })
 
 function makeRequest(body: unknown): NextRequest {
-  return new Request('http://localhost/api/rpc', {
+  return new NextRequest('http://localhost/api/rpc', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  }) as unknown as NextRequest
+  })
 }
 
 describe('POST /api/rpc', () => {
@@ -39,11 +39,11 @@ describe('POST /api/rpc', () => {
   })
 
   it('returns 400 for unparseable body', async () => {
-    const req = new Request('http://localhost/api/rpc', {
+    const req = new NextRequest('http://localhost/api/rpc', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: 'not json',
-    }) as unknown as NextRequest
+    })
     const res = await POST(req)
     expect(res.status).toBe(400)
     const data = await res.json()
