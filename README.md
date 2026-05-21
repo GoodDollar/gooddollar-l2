@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks mobile zero-results state now uses a dedicated touch-friendly `Clear search` button (instead of a tiny inline link), improving recovery for long/unmatched queries; covered by `src/app/(app)/stocks/__tests__/mobile-empty-state-clear-action.test.tsx`.
 - Stocks section tabs (`Markets`, `Portfolio`) now explicitly disable eager Next.js prefetch and are covered by a regression test (`src/app/(app)/stocks/__tests__/stocks-section-nav-prefetch.test.tsx`), preventing background prefetch fan-out from triggering stocks-portfolio route/data warmups before user intent.
 - Stocks routes now defer heavy page modules behind dynamic client chunks, cutting route-specific bundles from multi-MB to ~160 KB each (`/stocks/portfolio` page chunk `4162KB -> 158KB`, `/stocks/[ticker]` page chunk `8748KB -> 161KB`) and improving first-render responsiveness while preserving the same UI flow.
 - Stocks markets oracle badge now avoids false-positive `Live` state when quote-status checks fail (`/api/status/quotes` non-2xx/network failure), and instead shows a degraded status cue aligned with stock-detail risk language.

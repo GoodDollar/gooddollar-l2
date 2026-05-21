@@ -204,9 +204,15 @@ export default function StocksPage() {
       {/* Mobile card list (< sm) */}
       <div className="sm:hidden space-y-2 mb-2">
         {filtered.length === 0 ? (
-          <div className="py-12 text-center text-gray-500 bg-dark-100 rounded-2xl border border-gray-700/20">
-            No stocks match your search.{' '}
-            <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear</button>
+          <div className="py-10 px-4 text-center bg-dark-100 rounded-2xl border border-gray-700/20">
+            <p className="text-gray-400 text-sm">No stocks match your search.</p>
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="mt-4 inline-flex min-h-11 items-center justify-center px-5 rounded-xl bg-goodgreen/15 text-goodgreen font-semibold text-sm border border-goodgreen/30 hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            >
+              Clear search
+            </button>
           </div>
         ) : (
           filtered.map((stock) => (
