@@ -103,9 +103,10 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
     )
 
     expect(screen.getByRole('button', { name: 'Connect Wallet to Unlock Portfolio' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Use In-browser Wallet' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Try Another Connector' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Connect with In-browser Wallet' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Continue in Read-only Mode' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'More connection options' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try Another Connector' })).not.toBeInTheDocument()
   })
 
   it('hides impact loading placeholders when in guided disconnected mode', () => {

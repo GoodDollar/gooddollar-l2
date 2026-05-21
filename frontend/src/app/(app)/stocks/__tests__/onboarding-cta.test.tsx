@@ -64,12 +64,27 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    expect(await screen.findByRole('button', { name: 'Browse Stocks to Prepare Trade' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Connect with In-browser Wallet' })).toBeInTheDocument()
     expect(screen.getByText(/Mobile wallet QR connections are temporarily unavailable/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Use In-browser Wallet' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Try Another Connector' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Continue in Read-only Mode' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'More connection options' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try Another Connector' })).not.toBeInTheDocument()
     expect(screen.getByText('Tap to trade')).toBeInTheDocument()
+  })
+
+  it('reveals non-primary connector actions only after expanding options', async () => {
+    walletState.address = undefined
+    const user = userEvent.setup()
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'More connection options' }))
+    expect(screen.getByRole('button', { name: 'Try Another Connector' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hide connection options' })).toBeInTheDocument()
   })
 
   it('renders explicit three-step first-time journey copy in the hero card', async () => {
@@ -141,7 +156,7 @@ describe('StocksPage onboarding CTA', () => {
     expect(tradeButton.className).not.toContain('group-hover:opacity-100')
   })
 
-  it('keeps "Browse Stocks" CTA in browse context when wallet connect is unavailable', async () => {
+  it('keeps read-only CTA in browse context when wallet connect is unavailable', async () => {
     walletState.address = undefined
     push.mockClear()
     scrollIntoView.mockClear()
@@ -153,7 +168,7 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    await user.click(await screen.findByRole('button', { name: 'Browse Stocks to Prepare Trade' }))
+    await user.click(await screen.findByRole('button', { name: 'Continue in Read-only Mode' }))
 
     expect(push).not.toHaveBeenCalled()
     expect(scrollIntoView).toHaveBeenCalled()
