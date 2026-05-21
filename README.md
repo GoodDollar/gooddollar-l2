@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks Markets now renders a dedicated no-results recovery state for unmatched searches with query echo, `Clear search`, and quick ticker shortcuts (`Try AAPL`, etc.) instead of a low-signal inline fallback message.
 - Next runtime dev mode now isolates build artifacts into `.next.dev` by default, preventing `next build` from clobbering live dev chunks/CSS and avoiding the unstyled stocks-shell failure mode during first-load QA.
 - Stocks detail trade form now fail-safes when oracle health is offline, stale, or missing for the active ticker, showing a clear paused-state warning and disabling order interactions until quote health recovers.
 - Stocks detail `Analyst Outlook` now includes analyst sample size, buy/hold/sell distribution, 90d target-revision trend, and explicit source metadata instead of a single-point target snapshot.

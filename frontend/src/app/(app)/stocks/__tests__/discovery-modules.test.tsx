@@ -150,4 +150,25 @@ describe('StocksPage discovery modules', () => {
     await user.click(within(moversPanel as HTMLElement).getByRole('button', { name: /^NVDA/ }))
     expect(push).toHaveBeenCalledWith('/stocks/NVDA')
   })
+
+  it('renders a no-results recovery state for unmatched search queries', async () => {
+    walletState.address = undefined
+    const user = userEvent.setup()
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    await user.type(screen.getByPlaceholderText('Search stocks...'), 'ZZZ-no-match')
+
+    expect(screen.getAllByText(/No matches for/i).length).toBeGreaterThan(0)
+    const clearButtons = screen.getAllByRole('button', { name: /Clear search/i })
+    expect(clearButtons.length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /Try AAPL/i }).length).toBeGreaterThan(0)
+
+    await user.click(clearButtons[0])
+    expect((screen.getByPlaceholderText('Search stocks...') as HTMLInputElement).value).toBe('')
+  })
 })

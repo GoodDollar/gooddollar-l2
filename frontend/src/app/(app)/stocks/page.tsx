@@ -78,6 +78,46 @@ function StockIcon({ ticker }: { ticker: string }) {
   )
 }
 
+interface StocksNoResultsProps {
+  query: string
+  suggestions: string[]
+  onClear: () => void
+  onSelectTicker: (ticker: string) => void
+}
+
+function StocksNoResults({ query, suggestions, onClear, onSelectTicker }: StocksNoResultsProps) {
+  return (
+    <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/[0.06] px-5 py-8 text-center">
+      <p className="text-sm font-semibold text-yellow-200">
+        No matches for “{query}”
+      </p>
+      <p className="mt-2 text-xs text-yellow-100/80">
+        Check spelling or try one of the popular tickers below.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={onClear}
+          className="px-3 py-1.5 rounded-lg border border-yellow-300/40 text-xs font-semibold text-yellow-100 hover:bg-yellow-300/10 transition-colors"
+        >
+          Clear search
+        </button>
+        {suggestions.map((ticker) => (
+          <button
+            key={ticker}
+            type="button"
+            onClick={() => onSelectTicker(ticker)}
+            className="px-3 py-1.5 rounded-lg bg-goodgreen/15 text-xs font-semibold text-goodgreen hover:bg-goodgreen/25 transition-colors"
+            aria-label={`Try ${ticker}`}
+          >
+            Try {ticker}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 interface SortableHeaderProps {
   label: string
   field: SortField
@@ -237,6 +277,12 @@ export default function StocksPage() {
       return (aVal - bVal) * mul
     })
   }, [data, sectorFilter, query, sortField, sortDir])
+  const trimmedQuery = query.trim()
+  const showNoResults = trimmedQuery.length > 0 && filtered.length === 0
+  const noResultsSuggestions = useMemo(
+    () => data.slice(0, 3).map((stock) => stock.ticker),
+    [data],
+  )
 
   const handleRowClick = useCallback((ticker: string) => {
     if (!address) {
@@ -369,7 +415,7 @@ export default function StocksPage() {
           onChange={e => setQuery(e.target.value)}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
         />
-        {query.trim() && (
+        {trimmedQuery && (
           <button
             type="button"
             onClick={() => setQuery('')}
@@ -383,11 +429,13 @@ export default function StocksPage() {
 
       {/* Mobile card list (< sm) */}
       <div className="sm:hidden space-y-2 mb-2">
-        {filtered.length === 0 ? (
-          <div className="py-12 text-center text-gray-500 bg-dark-100 rounded-2xl border border-gray-700/20">
-            No stocks match your search.{' '}
-            <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear</button>
-          </div>
+        {showNoResults ? (
+          <StocksNoResults
+            query={trimmedQuery}
+            suggestions={noResultsSuggestions}
+            onClear={() => setQuery('')}
+            onSelectTicker={(ticker) => setQuery(ticker)}
+          />
         ) : (
           filtered.map((stock) => (
             <div
@@ -467,8 +515,12 @@ export default function StocksPage() {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-gray-500">
-                    No stocks match your search.{' '}
-                    <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear</button>
+                    <StocksNoResults
+                      query={trimmedQuery}
+                      suggestions={noResultsSuggestions}
+                      onClear={() => setQuery('')}
+                      onSelectTicker={(ticker) => setQuery(ticker)}
+                    />
                   </td>
                 </tr>
               ) : (
