@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 
-import { OracleStatusBadge } from '../OracleStatusBadge'
+import { OracleStatusBadge, __resetOracleStatusFallbackForTests } from '../OracleStatusBadge'
 
 vi.mock('@/lib/usePriceServiceStatus', () => ({
   usePriceServiceStatus: vi.fn(),
@@ -14,6 +14,7 @@ const { usePriceServiceStatus } = await import('@/lib/usePriceServiceStatus')
 describe('OracleStatusBadge stocks fallback', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    __resetOracleStatusFallbackForTests()
   })
 
   it('shows Live with stocks fallback when quote status is unavailable but stocks-keeper is healthy', async () => {
@@ -48,5 +49,37 @@ describe('OracleStatusBadge stocks fallback', () => {
     render(<OracleStatusBadge useStocksFallback />)
     await waitFor(() => expect(screen.getByText('Oracle offline')).toBeInTheDocument())
   })
-})
 
+  it('dedupes fallback status fetches while a request is in flight', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+
+    const pending = new Promise<Response>((resolve) => {
+      setTimeout(() => {
+        resolve(
+          new Response(
+            JSON.stringify({
+              overall: 'healthy',
+              services: [{ name: 'stocks-keeper', status: 'ok', lastChecked: new Date().toISOString() }],
+            }),
+            { status: 200 },
+          ),
+        )
+      }, 0)
+    })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending as unknown as Promise<Response>)
+
+    render(
+      <>
+        <OracleStatusBadge useStocksFallback />
+        <OracleStatusBadge useStocksFallback />
+      </>,
+    )
+
+    await waitFor(() => expect(screen.getAllByText('Live').length).toBeGreaterThan(0))
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+})

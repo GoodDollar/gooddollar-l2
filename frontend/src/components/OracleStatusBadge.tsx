@@ -19,6 +19,38 @@ interface OracleStatusBadgeProps {
   useStocksFallback?: boolean
 }
 
+const FALLBACK_STATUS_TTL_MS = 30_000
+
+let fallbackCache: { value: StocksOracleHealth; expiresAt: number } | null = null
+let fallbackInFlight: Promise<StocksOracleHealth> | null = null
+
+async function resolveStocksFallbackStatus(): Promise<StocksOracleHealth> {
+  const now = Date.now()
+  if (fallbackCache && fallbackCache.expiresAt > now) {
+    return fallbackCache.value
+  }
+  if (fallbackInFlight) {
+    return fallbackInFlight
+  }
+
+  fallbackInFlight = fetch('/api/status', { cache: 'no-store' })
+    .then(async (res) => {
+      if (!res.ok) throw new Error(`status ${res.status}`)
+      const data = await res.json()
+      return deriveStocksOracleHealth(data)
+    })
+    .catch(() => 'offline' as const)
+    .then((value) => {
+      fallbackCache = { value, expiresAt: Date.now() + FALLBACK_STATUS_TTL_MS }
+      return value
+    })
+    .finally(() => {
+      fallbackInFlight = null
+    })
+
+  return fallbackInFlight
+}
+
 export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = false }: OracleStatusBadgeProps) {
   const { status, error } = usePriceServiceStatus()
   const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
@@ -29,16 +61,10 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     if (!useStocksFallback || status || !error) return
 
     setFallbackLoading(true)
-    fetch('/api/status', { cache: 'no-store' })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`status ${res.status}`)
-        const data = await res.json()
+    resolveStocksFallbackStatus()
+      .then((nextState) => {
         if (cancelled) return
-        setFallbackState(deriveStocksOracleHealth(data))
-      })
-      .catch(() => {
-        if (cancelled) return
-        setFallbackState('offline')
+        setFallbackState(nextState)
       })
       .finally(() => {
         if (!cancelled) setFallbackLoading(false)
@@ -149,4 +175,9 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       )}
     </div>
   )
+}
+
+export function __resetOracleStatusFallbackForTests(): void {
+  fallbackCache = null
+  fallbackInFlight = null
 }
