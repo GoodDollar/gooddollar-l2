@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-05-21T08:56:26.616Z",
+  "fixture": "docs/security/iter36/rebalance-fixture.json",
+  "symbols": {
+    "AAPL": {
+      "ok": true,
+      "blockResults": [
+        {
+          "symbol": "AAPL",
+          "block": 1200,
+          "divergenceBps": 1,
+          "ok": true,
+          "failures": [],
+          "stopReasons": []
+        },
+        {
+          "symbol": "AAPL",
+          "block": 1201,
+          "divergenceBps": 0,
+          "ok": true,
+          "failures": [],
+          "stopReasons": []
+        }
+      ],
+      "stopReasons": []
+    },
+    "TSLA": {
+      "ok": false,
+      "blockResults": [
+        {
+          "symbol": "TSLA",
+          "block": 1200,
+          "divergenceBps": 20,
+          "ok": true,
+          "failures": [],
+          "stopReasons": []
+        },
+        {
+          "symbol": "TSLA",
+          "block": 1201,
+          "divergenceBps": 0,
+          "ok": false,
+          "failures": [
+            "TSLA:amm stale sync 1200 < 1201",
+            "TSLA:amm blocks risk-increasing action open-lend",
+            "TSLA:amm oracleBlock 1200 != canonical 1201",
+            "TSLA: secret leakage marker found in debug logs"
+          ],
+          "stopReasons": [
+            "STALE_PROPAGATION",
+            "SECRET_LEAKAGE"
+          ]
+        }
+      ],
+      "stopReasons": [
+        "STALE_PROPAGATION",
+        "SECRET_LEAKAGE"
+      ]
+    }
+  },
+  "overallOk": false,
+  "stopReasons": [
+    "STALE_PROPAGATION",
+    "SECRET_LEAKAGE"
+  ]
+}
