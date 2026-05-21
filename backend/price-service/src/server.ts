@@ -9,6 +9,12 @@ export function createServer(
   const app = express();
   const cfg = { ...DEFAULT_CONFIG, ...config };
 
+  app.use((_req: Request, res: Response, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+  });
   app.use(express.json());
 
   app.get('/health', (_req: Request, res: Response) => {
@@ -56,6 +62,39 @@ export function createServer(
   app.get('/quotes/fresh/all', (_req: Request, res: Response) => {
     const fresh = cache.getFresh();
     res.json({ quotes: fresh, count: fresh.length, timestamp: Date.now() });
+  });
+
+  app.get('/status/quotes', (_req: Request, res: Response) => {
+    const now = Date.now();
+    const all = cache.getAll();
+    const quotes: Array<{
+      symbol: string;
+      lastUpdateMs: number;
+      sessionState: string;
+      confidence: number;
+    }> = [];
+
+    let freshCount = 0;
+    for (const [symbol, entry] of all) {
+      const age = now - entry.cachedAt;
+      quotes.push({
+        symbol,
+        lastUpdateMs: age,
+        sessionState: entry.quote.sessionState,
+        confidence: entry.quote.confidence,
+      });
+      if (!entry.quote.stale && entry.filterResult.accepted) {
+        freshCount++;
+      }
+    }
+
+    res.json({
+      healthy: freshCount > 0 || all.size === 0,
+      freshCount,
+      totalCount: all.size,
+      quotes,
+      timestamp: now,
+    });
   });
 
   return app;

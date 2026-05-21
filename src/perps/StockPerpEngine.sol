@@ -97,6 +97,8 @@ contract StockPerpEngine is ReentrancyGuard {
         uint256 indexed marketId, uint256 sizeReduced, uint256 exitPrice
     );
     event ConfigUpdated(uint256 indexed marketId);
+    event MarginAdded(address indexed trader, uint256 indexed marketId, uint256 amount);
+    event MarginRemoved(address indexed trader, uint256 indexed marketId, uint256 amount);
 
     // ─── Errors ───
 
@@ -112,6 +114,7 @@ contract StockPerpEngine is ReentrancyGuard {
     error MaxOIExceeded(uint256 current, uint256 max);
     error PositionHealthy(uint256 marginRatio, uint256 threshold);
     error TransferFailed();
+    error OraclePriceZero(bytes32 key);
 
     // ─── Modifiers ───
 
@@ -225,6 +228,8 @@ contract StockPerpEngine is ReentrancyGuard {
 
         uint256 markPrice = oracle.getPriceByKey(m.oracleKey);
         uint256 indexPrice = oracle.getPriceByKey(m.indexOracleKey);
+        _requireNonZeroPrice(m.oracleKey, markPrice);
+        _requireNonZeroPrice(m.indexOracleKey, indexPrice);
         funding.applyFunding(marketId, markPrice, indexPrice);
 
         pos.isOpen = true;
@@ -255,10 +260,64 @@ contract StockPerpEngine is ReentrancyGuard {
         Market storage m = markets[marketId];
         uint256 exitPrice = oracle.getPriceByKey(m.oracleKey);
         uint256 indexPrice = oracle.getPriceByKey(m.indexOracleKey);
+        _requireNonZeroPrice(m.oracleKey, exitPrice);
+        _requireNonZeroPrice(m.indexOracleKey, indexPrice);
         funding.applyFunding(marketId, exitPrice, indexPrice);
 
         (int256 pnl, int256 fundPay) = _settlePnL(msg.sender, marketId, exitPrice);
         _closePosition(msg.sender, marketId, pos.size, pnl, fundPay, exitPrice);
+    }
+
+    // ─── Margin Management ───
+
+    /**
+     * @notice Add margin to an existing position to improve its health.
+     * @param marketId Market containing the position
+     * @param amount   G$ amount to add (debited from vault balance)
+     */
+    function addMargin(uint256 marketId, uint256 amount) external whenNotPaused nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        Position storage pos = positions[msg.sender][marketId];
+        if (!pos.isOpen) revert NoOpenPosition();
+
+        vault.debit(msg.sender, amount);
+        pos.margin += amount;
+
+        emit MarginAdded(msg.sender, marketId, amount);
+    }
+
+    /**
+     * @notice Remove excess margin from a position. Reverts if the removal
+     *         would drop the margin ratio below the maintenance threshold.
+     * @param marketId Market containing the position
+     * @param amount   G$ amount to remove (credited to vault balance)
+     */
+    function removeMargin(uint256 marketId, uint256 amount) external whenNotPaused nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        Position storage pos = positions[msg.sender][marketId];
+        if (!pos.isOpen) revert NoOpenPosition();
+        if (amount > pos.margin) revert InsufficientMargin(pos.margin, amount);
+
+        Market storage m = markets[marketId];
+        uint256 currentPrice = oracle.getPriceByKey(m.oracleKey);
+        _requireNonZeroPrice(m.oracleKey, currentPrice);
+
+        int256 pnl = _calcPnL(pos, currentPrice);
+        int256 size = pos.isLong ? int256(pos.size) : -int256(pos.size);
+        int256 fundPay = funding.accruedFunding(size, pos.entryFundingIdx, marketId);
+
+        int256 remainingAfter = int256(pos.margin) - int256(amount) + pnl - fundPay;
+        uint256 postRatio = remainingAfter > 0
+            ? (uint256(remainingAfter) * BPS) / pos.size
+            : 0;
+
+        if (postRatio < m.config.maintenanceMarginBps)
+            revert InsufficientMargin(uint256(postRatio), m.config.maintenanceMarginBps);
+
+        pos.margin -= amount;
+        vault.credit(msg.sender, amount);
+
+        emit MarginRemoved(msg.sender, marketId, amount);
     }
 
     // ─── Partial Liquidation ───
@@ -274,6 +333,8 @@ contract StockPerpEngine is ReentrancyGuard {
         Market storage m = markets[marketId];
         uint256 exitPrice = oracle.getPriceByKey(m.oracleKey);
         uint256 indexPrice = oracle.getPriceByKey(m.indexOracleKey);
+        _requireNonZeroPrice(m.oracleKey, exitPrice);
+        _requireNonZeroPrice(m.indexOracleKey, indexPrice);
         funding.applyFunding(marketId, exitPrice, indexPrice);
 
         (int256 pnl, int256 fundPay) = _settlePnL(trader, marketId, exitPrice);
@@ -329,6 +390,7 @@ contract StockPerpEngine is ReentrancyGuard {
         Position storage pos = positions[trader][marketId];
         if (!pos.isOpen) return 0;
         uint256 price = oracle.getPriceByKey(markets[marketId].oracleKey);
+        _requireNonZeroPrice(markets[marketId].oracleKey, price);
         int256 rawPnL = _calcPnL(pos, price);
         int256 size = pos.isLong ? int256(pos.size) : -int256(pos.size);
         int256 fundPay = funding.accruedFunding(size, pos.entryFundingIdx, marketId);
@@ -339,6 +401,7 @@ contract StockPerpEngine is ReentrancyGuard {
         Position storage pos = positions[trader][marketId];
         if (!pos.isOpen) return type(uint256).max;
         uint256 price = oracle.getPriceByKey(markets[marketId].oracleKey);
+        _requireNonZeroPrice(markets[marketId].oracleKey, price);
         int256 rawPnL = _calcPnL(pos, price);
         int256 size = pos.isLong ? int256(pos.size) : -int256(pos.size);
         int256 fundPay = funding.accruedFunding(size, pos.entryFundingIdx, marketId);
@@ -354,6 +417,10 @@ contract StockPerpEngine is ReentrancyGuard {
     }
 
     // ─── Internals ───
+
+    function _requireNonZeroPrice(bytes32 key, uint256 price) internal pure {
+        if (price == 0) revert OraclePriceZero(key);
+    }
 
     function _calcPnL(Position storage pos, uint256 currentPrice) internal view returns (int256) {
         int256 priceDelta = int256(currentPrice) - int256(pos.entryPrice);

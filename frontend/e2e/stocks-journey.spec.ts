@@ -135,6 +135,61 @@ test.describe('Stocks Journey', () => {
     await page.waitForURL(/\/stocks\/[A-Z]+/)
   })
 
+  test('malformed ticker routes render generic safe copy without encoded payload text', async ({ page }) => {
+    for (const route of [
+      '/stocks/%20',
+      '/stocks/%00',
+      '/stocks/%2520',
+      '/stocks/%252520',
+      '/stocks/%2F',
+      '/stocks/%252F..%252F%00',
+      '/stocks/%252525252525',
+      '/stocks/AAPL%00',
+      '/stocks/%3Csvg%20onload%3Dalert(1)%3E',
+    ]) {
+      await page.goto(route)
+      await page.waitForLoadState('networkidle')
+
+      await expect(page.getByRole('heading', { name: 'Stock Not Found' })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('This stock symbol is not available.', { exact: true })).toBeVisible()
+
+      const mainText = await page.locator('main').innerText()
+      expect(mainText).not.toContain('%20')
+      expect(mainText).not.toContain('%00')
+      expect(mainText).not.toContain('%2520')
+      expect(mainText).not.toContain('%252520')
+      expect(mainText).not.toContain('%2F')
+      expect(mainText).not.toContain('%252F')
+      expect(mainText).not.toContain('..')
+      expect(mainText).not.toContain('%252525252525')
+      expect(mainText).not.toContain('AAPL%00')
+      expect(mainText).not.toContain('%3Csvg')
+      expect(mainText).not.toContain('onload')
+      expect(mainText).not.toContain('alert(1)')
+    }
+  })
+
+  test('encoded valid ticker routes resolve to stock detail page', async ({ page }) => {
+    for (const route of ['/stocks/%41APL', '/stocks/%2541APL', '/stocks/%252541APL']) {
+      await page.goto(route)
+      await page.waitForLoadState('networkidle')
+
+      await expect(page.locator('h1', { hasText: 'AAPL' })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('heading', { name: 'Stock Not Found' })).toHaveCount(0)
+    }
+  })
+
+  test('malformed percent-encoding routes render branded stocks recovery UI', async ({ page }) => {
+    for (const route of ['/stocks/%', '/stocks/%2', '/stocks/%E0%A4%A']) {
+      await page.goto(route)
+      await page.waitForLoadState('networkidle')
+
+      await expect(page.getByRole('heading', { name: 'Stock Not Found' })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('This stock symbol is not available.', { exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Back to Stocks' })).toBeVisible()
+    }
+  })
+
   test('tester address is funded on devnet', async () => {
     const balance = await publicClient.getBalance({
       address: TESTER_ADDRESS as `0x${string}`,

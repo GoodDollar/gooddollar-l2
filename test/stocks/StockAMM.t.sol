@@ -232,6 +232,146 @@ contract StockAMMTest is Test {
         vm.expectRevert(StockAMM.NotAdmin.selector);
         amm.createPool("TSLA", makeAddr("sTSLA"));
     }
+
+    // ─── Zero oracle price guard tests ──────────────────────────
+
+    function test_buyStock_revert_zeroOraclePrice() public {
+        _seedPool(50_000 ether);
+
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, false);
+        // Remove the manual price flag — oracle will revert with FeedNotFound
+        // Instead, create a pool with no oracle price set
+        vm.prank(admin);
+        amm.createPool("GHOST", makeAddr("sGHOST"));
+
+        // No oracle price set for GHOST — oracle reverts, but we want AMM to also guard
+        // Test with a different approach: set manual price to 0 with active=true
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, true);
+
+        vm.startPrank(trader);
+        gd.approve(address(amm), 1_000 ether);
+        vm.expectRevert(); // ZeroPrice from oracle or OraclePriceZero from AMM
+        amm.buyStock("AAPL", 1_000 ether, 0);
+        vm.stopPrank();
+    }
+
+    function test_sellStock_revert_zeroOraclePrice() public {
+        _seedPool(50_000 ether);
+
+        // Buy stock first at valid price
+        vm.startPrank(trader);
+        gd.approve(address(amm), 1_000 ether);
+        uint256 bought = amm.buyStock("AAPL", 1_000 ether, 0);
+        vm.stopPrank();
+
+        // Set oracle price to 0
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, true);
+
+        vm.startPrank(trader);
+        sAAPL.approve(address(amm), bought);
+        vm.expectRevert(); // ZeroPrice from oracle or OraclePriceZero from AMM
+        amm.sellStock("AAPL", bought, 0);
+        vm.stopPrank();
+    }
+
+    function test_getQuoteBuy_revert_zeroOraclePrice() public {
+        _seedPool(50_000 ether);
+
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, true);
+
+        vm.expectRevert();
+        amm.getQuoteBuy("AAPL", 1_000 ether);
+    }
+
+    function test_getQuoteSell_revert_zeroOraclePrice() public {
+        _seedPool(50_000 ether);
+
+        vm.prank(admin);
+        oracle.setManualPrice("AAPL", 0, true);
+
+        vm.expectRevert();
+        amm.getQuoteSell("AAPL", 1 ether);
+    }
+
+    // ─── LP fee accounting tests ───────────────────────────────
+
+    function test_buyStock_lp_fee_accrues_to_reserve() public {
+        _seedPool(50_000 ether);
+
+        bytes32 key = keccak256(abi.encodePacked("AAPL"));
+        (, , uint256 reserveBefore, , ,) = amm.pools(key);
+
+        uint256 gDollarIn = 1_000 ether;
+        uint256 fee = (gDollarIn * 30) / 10_000; // 0.30%
+        uint256 ubiFee = (fee * 10) / 30;         // 1/3 to UBI
+        uint256 expectedReserveIncrease = gDollarIn - ubiFee;
+
+        vm.startPrank(trader);
+        gd.approve(address(amm), gDollarIn);
+        amm.buyStock("AAPL", gDollarIn, 0);
+        vm.stopPrank();
+
+        (, , uint256 reserveAfter, , ,) = amm.pools(key);
+        assertEq(reserveAfter - reserveBefore, expectedReserveIncrease,
+            "Reserve should increase by gDollarIn minus only the UBI fee");
+    }
+
+    function test_sellStock_lp_fee_accrues_to_reserve() public {
+        _seedPool(50_000 ether);
+
+        // Buy some stock first
+        vm.startPrank(trader);
+        gd.approve(address(amm), 10_000 ether);
+        uint256 bought = amm.buyStock("AAPL", 10_000 ether, 0);
+        vm.stopPrank();
+
+        bytes32 key = keccak256(abi.encodePacked("AAPL"));
+
+        // Sell it back
+        vm.startPrank(trader);
+        sAAPL.approve(address(amm), bought);
+        amm.sellStock("AAPL", bought, 0);
+        vm.stopPrank();
+
+        (, , uint256 reserveAfter, , ,) = amm.pools(key);
+        uint256 contractBalance = gd.balanceOf(address(amm));
+        assertGe(contractBalance, reserveAfter,
+            "Contract G$ balance must be >= gDollarReserve (no trapped tokens)");
+        // Stronger: the difference should be small (just rounding)
+        assertLe(contractBalance - reserveAfter, 1,
+            "Contract balance and reserve should match (no trapped LP fees)");
+    }
+
+    function test_lp_earns_fee_yield() public {
+        _seedPool(50_000 ether);
+
+        bytes32 key = keccak256(abi.encodePacked("AAPL"));
+
+        // Execute many trades to generate fees
+        for (uint256 i; i < 5; ++i) {
+            vm.startPrank(trader);
+            gd.approve(address(amm), 5_000 ether);
+            uint256 bought = amm.buyStock("AAPL", 5_000 ether, 0);
+            sAAPL.approve(address(amm), bought);
+            amm.sellStock("AAPL", bought, 0);
+            vm.stopPrank();
+        }
+
+        // LP removes all liquidity
+        uint256 shares = amm.lpShares(key, lp);
+        vm.prank(lp);
+        amm.removeLiquidity("AAPL", shares);
+
+        uint256 lpBalance = gd.balanceOf(lp);
+        // LP started with 100k, deposited 50k, so had 50k remaining.
+        // After withdrawal, should have > 50k + 50k = 100k due to earned fees.
+        assertGt(lpBalance, 100_000 ether,
+            "LP should earn positive yield from trading fees");
+    }
 }
 
 /// @dev Minimal ERC-20 mock for G$

@@ -2,6 +2,7 @@ import { PriceWsClient } from './price-ws-client';
 import { QuoteBuffer } from './quote-buffer';
 import { OracleSubmitter } from './oracle-submitter';
 import { OracleSignerConfig, UpdateResult } from './types';
+import { startHealthServer } from './healthServer';
 
 export class OracleSignerService {
   private wsClient: PriceWsClient;
@@ -15,7 +16,7 @@ export class OracleSignerService {
   constructor(config: OracleSignerConfig) {
     this.config = config;
     this.buffer = new QuoteBuffer(config.minDeviationBps);
-    this.submitter = new OracleSubmitter(config.rpcUrl, config.oracleAddress, config.signerKey);
+    this.submitter = new OracleSubmitter(config.rpcUrl, config.oracleAddress, config.signerKey, config.txTimeoutMs);
     this.wsClient = new PriceWsClient(config.priceServiceUrl, (quote) => {
       if (config.symbols.length === 0 || config.symbols.includes(quote.symbol)) {
         this.buffer.update(quote);
@@ -109,6 +110,7 @@ function loadConfig(): OracleSignerConfig {
     signerKey,
     updateIntervalMs: parseInt(process.env.ORACLE_UPDATE_INTERVAL || '5000', 10),
     minDeviationBps: parseInt(process.env.ORACLE_MIN_DEVIATION || '10', 10),
+    txTimeoutMs: parseInt(process.env.ORACLE_TX_TIMEOUT || '60000', 10),
     symbols: (process.env.ORACLE_SYMBOLS || 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ,NFLX')
       .split(',')
       .map(s => s.trim())
@@ -119,6 +121,11 @@ function loadConfig(): OracleSignerConfig {
 if (require.main === module) {
   const config = loadConfig();
   const service = new OracleSignerService(config);
+
+  startHealthServer({
+    name: 'oracle-signer',
+    port: parseInt(process.env.HEALTH_PORT ?? process.env.ORACLE_SIGNER_PORT ?? '9107', 10),
+  });
 
   service.start().catch(err => {
     console.error('[oracle-signer] Failed to start:', err);

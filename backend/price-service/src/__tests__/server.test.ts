@@ -107,4 +107,46 @@ describe('REST Server', () => {
       expect(body.quotes[0].symbol).toBe('AAPL');
     });
   });
+
+  describe('GET /status/quotes', () => {
+    it('returns healthy status with fresh quotes', async () => {
+      cache.clear();
+      cache.update(makeQuote({ symbol: 'AAPL', sessionState: 'open', confidence: 92 }));
+      cache.update(makeQuote({ symbol: 'TSLA', sessionState: 'pre-market', confidence: 75 }));
+      const res = await fetch(`${baseUrl}/status/quotes`);
+      const body = (await res.json()) as {
+        healthy: boolean;
+        freshCount: number;
+        totalCount: number;
+        quotes: Array<{ symbol: string; lastUpdateMs: number; sessionState: string; confidence: number }>;
+        timestamp: number;
+      };
+      expect(res.status).toBe(200);
+      expect(body.healthy).toBe(true);
+      expect(body.freshCount).toBe(2);
+      expect(body.totalCount).toBe(2);
+      expect(body.quotes).toHaveLength(2);
+      const aapl = body.quotes.find(q => q.symbol === 'AAPL');
+      expect(aapl).toBeDefined();
+      expect(aapl!.sessionState).toBe('open');
+      expect(aapl!.confidence).toBe(92);
+      expect(aapl!.lastUpdateMs).toBeGreaterThanOrEqual(0);
+      expect(body.timestamp).toBeGreaterThan(0);
+    });
+
+    it('returns healthy when cache is empty', async () => {
+      cache.clear();
+      const res = await fetch(`${baseUrl}/status/quotes`);
+      const body = (await res.json()) as { healthy: boolean; freshCount: number; totalCount: number };
+      expect(res.status).toBe(200);
+      expect(body.healthy).toBe(true);
+      expect(body.freshCount).toBe(0);
+      expect(body.totalCount).toBe(0);
+    });
+
+    it('includes CORS headers', async () => {
+      const res = await fetch(`${baseUrl}/status/quotes`);
+      expect(res.headers.get('access-control-allow-origin')).toBe('*');
+    });
+  });
 });

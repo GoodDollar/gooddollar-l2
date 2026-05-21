@@ -113,6 +113,17 @@ function FundingRow({ payment }: { payment: FundingPayment }) {
   )
 }
 
+function EmptyPositionsRow() {
+  return (
+    <tr data-testid="perps-empty-positions-row">
+      <td colSpan={8} className="py-16 text-center">
+        <p className="text-gray-400 text-sm mb-1">No open positions</p>
+        <Link href="/perps" className="text-goodgreen text-sm hover:underline">Start Trading</Link>
+      </td>
+    </tr>
+  )
+}
+
 export default function PerpsPortfolioPage() {
   const { positions } = useOnChainPositions()
   const { pairs } = useOnChainPairs()
@@ -123,6 +134,16 @@ export default function PerpsPortfolioPage() {
 
   const totalPnl = positions.reduce((sum, p) => sum + p.unrealizedPnl, 0)
   const totalFunding = funding.reduce((sum, f) => sum + f.amount, 0)
+  const positionRows = useMemo(() => {
+    if (positions.length === 0) return <EmptyPositionsRow />
+    return positions.map((p, i) => (
+      <PositionRow
+        key={i}
+        pos={p}
+        marketId={BigInt(pairs.findIndex((pair) => pair.symbol === p.pair))}
+      />
+    ))
+  }, [pairs, positions])
 
   return (
     <ConnectWalletEmptyState
@@ -184,42 +205,27 @@ export default function PerpsPortfolioPage() {
         </TabsList>
 
         <TabsContent value="positions">
-          positions.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-gray-400 text-sm mb-1">No open positions</p>
-              <Link href="/perps" className="text-goodgreen text-sm hover:underline">Start Trading</Link>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-700/30 text-gray-400">
-                    <th className="text-left py-2 px-3 font-semibold">Pair</th>
-                    <th className="text-left py-2 px-3 font-semibold">Side</th>
-                    <th className="text-right py-2 px-3 font-semibold">Size</th>
-                    <th className="text-right py-2 px-3 font-semibold hidden sm:table-cell">Entry</th>
-                    <th className="text-right py-2 px-3 font-semibold">Mark</th>
-                    <th className="text-right py-2 px-3 font-semibold">P&L</th>
-                    <th className="text-right py-2 px-3 font-semibold hidden sm:table-cell">Liq.</th>
-                    <th className="text-right py-2 px-3 font-semibold"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {positions.map((p, i) => (
-                    <PositionRow
-                      key={i}
-                      pos={p}
-                      marketId={BigInt(pairs.findIndex(pair => pair.symbol === p.pair))}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-700/30 text-gray-400">
+                  <th className="text-left py-2 px-3 font-semibold">Pair</th>
+                  <th className="text-left py-2 px-3 font-semibold">Side</th>
+                  <th className="text-right py-2 px-3 font-semibold">Size</th>
+                  <th className="text-right py-2 px-3 font-semibold hidden sm:table-cell">Entry</th>
+                  <th className="text-right py-2 px-3 font-semibold">Mark</th>
+                  <th className="text-right py-2 px-3 font-semibold">P&L</th>
+                  <th className="text-right py-2 px-3 font-semibold hidden sm:table-cell">Liq.</th>
+                  <th className="text-right py-2 px-3 font-semibold"></th>
+                </tr>
+              </thead>
+              <tbody>{positionRows}</tbody>
+            </table>
+          </div>
         </TabsContent>
 
         <TabsContent value="orders">
-          orders.length === 0 ? (
+          {orders.length === 0 ? (
             <div className="py-16 text-center"><p className="text-gray-400 text-sm">No pending orders</p></div>
           ) : (
             <div className="overflow-x-auto">
@@ -239,11 +245,11 @@ export default function PerpsPortfolioPage() {
                 </tbody>
               </table>
             </div>
-          )
+          )}
         </TabsContent>
 
         <TabsContent value="history">
-          trades.length === 0 ? (
+          {trades.length === 0 ? (
             <div className="py-16 text-center"><p className="text-gray-400 text-sm">No trade history</p></div>
           ) : (
             <div className="overflow-x-auto">
@@ -265,11 +271,11 @@ export default function PerpsPortfolioPage() {
                 </tbody>
               </table>
             </div>
-          )
+          )}
         </TabsContent>
 
         <TabsContent value="funding">
-          funding.length === 0 ? (
+          {funding.length === 0 ? (
             <div className="py-16 text-center"><p className="text-gray-400 text-sm">No funding payments</p></div>
           ) : (
             <div className="overflow-x-auto">
@@ -287,7 +293,7 @@ export default function PerpsPortfolioPage() {
                 </tbody>
               </table>
             </div>
-          )
+          )}
         </TabsContent>
       </Tabs>
     </div>

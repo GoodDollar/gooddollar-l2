@@ -126,11 +126,15 @@
         "positions or empty state visible",
         "no 404/error shell"
       ],
-      "titlePattern": "Portfolio|Stocks",
-      "mustContain": [
-        "Portfolio"
-      ]
-    },
+    "titlePattern": "Portfolio|Stocks",
+    "mustContain": [
+      "Portfolio"
+    ],
+    "mustNotContain": [
+      "0% — Critical",
+      "0% - Critical"
+    ]
+  },
     {
       "id": "predict",
       "name": "GoodPredict",
@@ -228,11 +232,16 @@
         "positions or empty state visible",
         "no 404/error shell"
       ],
-      "titlePattern": "Portfolio|Perps",
-      "mustContain": [
-        "Portfolio"
-      ]
-    },
+    "titlePattern": "Portfolio|Perps",
+    "mustContain": [
+      "Portfolio"
+    ],
+    "mustNotContain": [
+      "positions.length===0 ? (",
+      "=== 0 ?",
+      "):("
+    ]
+  },
     {
       "id": "lend",
       "name": "GoodLend",
@@ -472,6 +481,40 @@
       "mustContain": [
         "Testnet",
         "Scenario"
+      ]
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics Dashboard",
+      "route": "/analytics",
+      "kind": "analytics",
+      "owner": "Infra",
+      "critical": false,
+      "assertions": [
+        "analytics dashboard renders",
+        "service health and protocol metrics visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Analytics|Dashboard",
+      "mustContain": [
+        "Analytics"
+      ]
+    },
+    {
+      "id": "invite",
+      "name": "Invite Testers",
+      "route": "/invite",
+      "kind": "community",
+      "owner": "Community",
+      "critical": false,
+      "assertions": [
+        "invite page renders",
+        "invitation template visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Invite|Tester",
+      "mustContain": [
+        "Invite"
       ]
     }
   ]

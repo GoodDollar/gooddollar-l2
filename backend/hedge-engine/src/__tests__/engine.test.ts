@@ -74,8 +74,9 @@ describe('HedgeEngine', () => {
     expect(mockReader.getAllExposures).toHaveBeenCalledWith(['AAPL', 'TSLA']);
     expect(mockExecutor.fetchPositions).toHaveBeenCalled();
     expect(mockExecutor.executeAll).toHaveBeenCalled();
-    expect(snapshot.exposures).toHaveLength(2);
-    expect(snapshot.hedgesExecuted).toHaveLength(2);
+    expect(snapshot).not.toBeNull();
+    expect(snapshot!.exposures).toHaveLength(2);
+    expect(snapshot!.hedgesExecuted).toHaveLength(2);
   });
 
   it('stores last snapshot', async () => {
@@ -106,5 +107,56 @@ describe('HedgeEngine', () => {
     engine.start();
     expect(engine.isRunning()).toBe(true);
     engine.stop();
+  });
+
+  it('skips concurrent tick when previous tick is still in-flight', async () => {
+    let resolveExposures: (value: OnChainExposure[]) => void;
+    const slowExposures = new Promise<OnChainExposure[]>((resolve) => {
+      resolveExposures = resolve;
+    });
+
+    mockReader.getAllExposures.mockReturnValue(slowExposures as any);
+
+    const config = makeConfig();
+    const engine = new HedgeEngine(mockReader, calculator, mockExecutor, config);
+
+    const tick1 = engine.tick();
+    const tick2Result = await engine.tick();
+
+    expect(tick2Result).toBeNull();
+    expect(mockReader.getAllExposures).toHaveBeenCalledTimes(1);
+
+    resolveExposures!([makeExposure('AAPL', 10000), makeExposure('TSLA', -8000)]);
+    const tick1Result = await tick1;
+    expect(tick1Result).not.toBeNull();
+    expect(tick1Result!.exposures).toHaveLength(2);
+  });
+
+  it('allows next tick after previous completes', async () => {
+    const config = makeConfig();
+    const engine = new HedgeEngine(mockReader, calculator, mockExecutor, config);
+
+    const first = await engine.tick();
+    expect(first).not.toBeNull();
+
+    const second = await engine.tick();
+    expect(second).not.toBeNull();
+    expect(mockReader.getAllExposures).toHaveBeenCalledTimes(2);
+  });
+
+  it('releases tick lock even when tick throws', async () => {
+    mockReader.getAllExposures.mockRejectedValueOnce(new Error('RPC down'));
+
+    const config = makeConfig();
+    const engine = new HedgeEngine(mockReader, calculator, mockExecutor, config);
+
+    await expect(engine.tick()).rejects.toThrow('RPC down');
+
+    mockReader.getAllExposures.mockResolvedValue([
+      makeExposure('AAPL', 10000),
+      makeExposure('TSLA', -8000),
+    ]);
+    const snap = await engine.tick();
+    expect(snap).not.toBeNull();
   });
 });

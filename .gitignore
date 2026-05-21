@@ -112,3 +112,10 @@ frontend/.data/
 /backend/shared/quote-types.js.map
 /backend/shared/quote-types.d.ts
 /backend/shared/quote-types.d.ts.map
+
+# Symlinked workspace node_modules
+node_modules
+**/node_modules
+
+# Local review screenshots / throwaway scripts
+tmp/

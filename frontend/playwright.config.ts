@@ -50,7 +50,7 @@ export default defineConfig({
   webServer: process.env.SKIP_DEV_SERVER
     ? undefined
     : {
-        command: `npx next dev -p ${e2ePort}`,
+        command: `node scripts/next-runtime-server.mjs --dev -p ${e2ePort}`,
         env: {
           NEXT_DIST_DIR: '.next.e2e',
         },

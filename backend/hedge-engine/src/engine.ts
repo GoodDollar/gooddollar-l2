@@ -23,6 +23,7 @@ export class HedgeEngine {
   private readonly config: HedgeEngineConfig;
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
+  private tickInProgress = false;
 
   private lastSnapshot: ReconciliationSnapshot | null = null;
 
@@ -38,29 +39,39 @@ export class HedgeEngine {
     this.config = config;
   }
 
-  async tick(): Promise<ReconciliationSnapshot> {
-    const exposures = await this.reader.getAllExposures(this.config.symbols);
-    const etoroPositions = await this.executor.fetchPositions();
+  async tick(): Promise<ReconciliationSnapshot | null> {
+    if (this.tickInProgress) {
+      console.warn('[HedgeEngine] Tick skipped — previous tick still in progress');
+      return null;
+    }
 
-    const orders = this.calculator.calculate(exposures, etoroPositions);
-    const hedgesExecuted: HedgeResult[] = orders.length
-      ? await this.executor.executeAll(orders)
-      : [];
+    this.tickInProgress = true;
+    try {
+      const exposures = await this.reader.getAllExposures(this.config.symbols);
+      const etoroPositions = await this.executor.fetchPositions();
 
-    const residuals = this.calculator.getResiduals(exposures, etoroPositions);
+      const orders = this.calculator.calculate(exposures, etoroPositions);
+      const hedgesExecuted: HedgeResult[] = orders.length
+        ? await this.executor.executeAll(orders)
+        : [];
 
-    const snapshot: ReconciliationSnapshot = {
-      timestamp: Date.now(),
-      exposures,
-      etoroPositions,
-      hedgesExecuted,
-      residuals,
-    };
+      const residuals = this.calculator.getResiduals(exposures, etoroPositions);
 
-    this.lastSnapshot = snapshot;
-    this.logSnapshot(snapshot);
+      const snapshot: ReconciliationSnapshot = {
+        timestamp: Date.now(),
+        exposures,
+        etoroPositions,
+        hedgesExecuted,
+        residuals,
+      };
 
-    return snapshot;
+      this.lastSnapshot = snapshot;
+      this.logSnapshot(snapshot);
+
+      return snapshot;
+    } finally {
+      this.tickInProgress = false;
+    }
   }
 
   start(): void {

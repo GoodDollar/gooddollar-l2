@@ -135,7 +135,7 @@ export function createEtoroClient(
 export { loadCredentialsFromEnv, redactCredentials } from './auth';
 export { RateLimiter } from './rate-limiter';
 export { AuditLogger } from './audit-logger';
-export { MarketDataModule } from './market-data';
+export { MarketDataModule, computeConfidence } from './market-data';
 export { TradingModule } from './trading';
 export { AccountModule } from './account';
 export type * from './types';

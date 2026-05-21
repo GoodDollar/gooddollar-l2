@@ -559,4 +559,60 @@ contract GoodLendTest is Test {
         vm.expectRevert("GoodLendPool: not admin");
         pool.setReserveActive(address(usdc), false);
     }
+
+    // ═══════════════════════════════════════════
+    // getUserCollateralValue / getUserDebtValue
+    // ═══════════════════════════════════════════
+
+    function test_getUserCollateralValue_noPosition_returnsZero() public view {
+        uint256 val = pool.getUserCollateralValue(alice);
+        assertEq(val, 0);
+    }
+
+    function test_getUserDebtValue_noDebt_returnsZero() public view {
+        uint256 val = pool.getUserDebtValue(alice);
+        assertEq(val, 0);
+    }
+
+    function test_getUserCollateralValue_matchesAccountData() public {
+        vm.prank(alice);
+        pool.supply(address(usdc), 10_000e6);
+
+        uint256 collateral = pool.getUserCollateralValue(alice);
+        (, uint256 totalCollateralUSD,) = pool.getUserAccountData(alice);
+
+        assertEq(collateral, totalCollateralUSD);
+    }
+
+    function test_getUserDebtValue_matchesAccountData() public {
+        // Alice supplies WETH as collateral
+        vm.prank(alice);
+        pool.supply(address(weth), 10e18);
+
+        // Bob supplies USDC so there's liquidity to borrow
+        vm.prank(bob);
+        pool.supply(address(usdc), 50_000e6);
+
+        // Alice borrows USDC
+        vm.prank(alice);
+        pool.borrow(address(usdc), 5_000e6);
+
+        uint256 debt = pool.getUserDebtValue(alice);
+        (,, uint256 totalDebtUSD) = pool.getUserAccountData(alice);
+
+        assertEq(debt, totalDebtUSD);
+    }
+
+    function test_getUserCollateralValue_multipleAssets() public {
+        vm.prank(alice);
+        pool.supply(address(usdc), 10_000e6);
+
+        vm.prank(alice);
+        pool.supply(address(weth), 5e18);
+
+        uint256 collateral = pool.getUserCollateralValue(alice);
+        // 10_000 USDC * $1 = $10,000 + 5 WETH * $2000 = $10,000 → total $20,000
+        // In 8-decimal USD: 20_000 * 1e8 = 2_000_000_000_000
+        assertEq(collateral, 20_000e8);
+    }
 }

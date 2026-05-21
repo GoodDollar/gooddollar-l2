@@ -2,10 +2,12 @@
 
 import { useState, useMemo, memo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
+import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
@@ -74,7 +76,7 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
       <td className="py-3 px-1 text-right w-20 hidden sm:table-cell">
         <button
           onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
-          className="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/10"
+          className="px-3 py-1 text-xs font-semibold rounded-lg bg-goodgreen/15 text-goodgreen hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
         >
           Trade
         </button>
@@ -85,6 +87,7 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
 
 export default function StocksPage() {
   const router = useRouter()
+  const { address } = useAccount()
   const [query, setQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -140,7 +143,25 @@ export default function StocksPage() {
         storageKey="gd-banner-dismissed-stocks"
       />
 
-      <div className="mb-4">
+      {!address && (
+        <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
+              <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
+              <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
+            </div>
+            <button
+              onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
+              className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+            >
+              Connect Wallet to Trade Stocks
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
         <input
           type="text"
           placeholder="Search stocks..."
@@ -148,6 +169,7 @@ export default function StocksPage() {
           onChange={e => setQuery(e.target.value)}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
         />
+        <OracleStatusBadge useStocksFallback />
       </div>
 
       {/* Mobile card list (< sm) */}
@@ -165,20 +187,23 @@ export default function StocksPage() {
               className="bg-dark-100 rounded-xl border border-gray-700/20 px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-dark-50/30 transition-colors active:scale-[0.99]"
             >
               <StockIcon ticker={stock.ticker} />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-white text-sm">{stock.ticker}</span>
-                  <span className="text-gray-500 text-xs truncate">{stock.name}</span>
+                  <span className="font-semibold text-white text-sm truncate max-w-[52px]">{stock.ticker}</span>
+                  <span className="text-gray-500 text-xs truncate max-w-[84px]">{stock.name}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
                 </div>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-white font-medium text-sm">{formatStockPrice(stock.price)}</p>
-                <div className="text-xs font-medium">
+              <div className="text-right shrink-0 w-[96px]">
+                <p className="text-white font-medium text-sm whitespace-nowrap">{formatStockPrice(stock.price)}</p>
+                <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
                 </div>
+                <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
+                  Tap to trade
+                </span>
               </div>
             </div>
           ))

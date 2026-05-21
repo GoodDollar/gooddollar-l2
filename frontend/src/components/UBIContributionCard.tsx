@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { PriceDisplay } from "@/components/ui/price-display"
 import { PercentageChange } from "@/components/ui/percentage-change"
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
 import { useUserUBIContribution } from '@/lib/useUserUBIContribution'
 import { Heart, TrendingUp, Users, Sparkles } from 'lucide-react'
@@ -33,10 +34,21 @@ export function UBIContributionCard({
   if (!address) {
     return (
       <Card className={`bg-dark-100 border-gray-700/20 ${className}`}>
-        <CardContent className="p-6">
-          <div className="text-center text-gray-400">
+        <CardContent className="p-6 space-y-3">
+          <div className="text-center text-gray-400 text-sm">
             Connect wallet to see your UBI impact
           </div>
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <button
+                type="button"
+                onClick={openConnectModal}
+                className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
+              >
+                Connect Wallet to View UBI Impact
+              </button>
+            )}
+          </ConnectButton.Custom>
         </CardContent>
       </Card>
     )

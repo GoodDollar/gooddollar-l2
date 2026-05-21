@@ -168,8 +168,8 @@ export async function postbuildReloadPm2({
       ].join('\n'),
     }
   }
-  const app = Array.isArray(apps) ? apps.find((a) => a?.name === pm2AppName) : null
-  if (!app) {
+  const pm2App = Array.isArray(apps) ? apps.find((a) => a?.name === pm2AppName) : null
+  if (!pm2App) {
     return {
       exitCode: 0,
       message: [
@@ -180,24 +180,27 @@ export async function postbuildReloadPm2({
     }
   }
 
-  // If a developer or autobuilder is compiling a detached worktree, do not
-  // reload the live PM2 app registered from the production checkout. Reloading
-  // across cwd boundaries can make the live site serve stale or unrelated
-  // artifacts and was the root cause of the integration buildid-sync failure.
-  const appCwd = app?.pm2_env?.pm_cwd
-  if (typeof appCwd === 'string' && resolve(appCwd) !== resolve(cwd)) {
+  // --- 5. avoid reloading production from a detached worktree -----------------
+  // PM2 can only reload the app it already supervises. If an operator runs
+  // `npm run build` in an integration/lane worktree while production goodswap
+  // is registered, reloading that PM2 app would restart the production cwd and
+  // then compare this worktree's BUILD_ID against production HTML. That is both
+  // noisy (false buildid-sync failure) and risky (a test build should not touch
+  // prod). Only auto-reload when the current build cwd is the PM2 app cwd.
+  const pm2Cwd = pm2App?.pm2_env?.pm_cwd || pm2App?.pm2_env?.cwd || pm2App?.cwd
+  if (pm2Cwd && resolve(pm2Cwd) !== resolve(cwd)) {
     return {
       exitCode: 0,
       message: [
-        `[postbuild-reload-pm2] ${pm2AppName} is registered from a different cwd — skipping reload.`,
+        `[postbuild-reload-pm2] ${pm2AppName} PM2 cwd differs from this build cwd — skipping reload.`,
+        `  pm2 cwd:   ${resolve(pm2Cwd)}`,
         `  build cwd: ${resolve(cwd)}`,
-        `  PM2 cwd:   ${resolve(appCwd)}`,
-        '  This is expected for detached integration/lane worktrees.',
+        '  This is expected for integration/lane worktree builds; deploy from the live app cwd to reload PM2.',
       ].join('\n'),
     }
   }
 
-  // --- 5. perform the actual reload ------------------------------------------
+  // --- 6. perform the actual reload ------------------------------------------
   const reload = execFileImpl('pm2', ['reload', pm2AppName, '--update-env'])
   if (reload.status !== 0) {
     return {

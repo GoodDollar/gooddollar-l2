@@ -1,4 +1,10 @@
-export type EtoroMode = 'sandbox' | 'real';
+export type SessionState =
+  | 'pre-market'
+  | 'open'
+  | 'after-hours'
+  | 'closed'
+  | 'halted'
+  | 'unknown';
 
 export type EtoroAssetClass =
   | 'equity'
@@ -8,27 +14,6 @@ export type EtoroAssetClass =
   | 'index'
   | 'commodity'
   | 'unknown';
-
-export type SessionState =
-  | 'pre-market'
-  | 'open'
-  | 'after-hours'
-  | 'closed'
-  | 'halted'
-  | 'unknown';
-
-export interface EtoroCredentials {
-  apiKey: string;
-  apiSecret: string;
-  baseUrl: string;
-  mode: EtoroMode;
-}
-
-export interface EtoroClientConfig {
-  credentials: EtoroCredentials;
-  timeoutMs?: number;
-  userAgent?: string;
-}
 
 export interface NormalizedQuote {
   source: 'etoro';
@@ -41,9 +26,24 @@ export interface NormalizedQuote {
   timestamp: number;
   sessionState: SessionState;
   confidence: number;
-  assetClass: EtoroAssetClass;
-  currency: string;
+  assetClass?: EtoroAssetClass;
+  currency?: string;
   stale: boolean;
+}
+
+export type EtoroMode = 'sandbox' | 'real';
+
+export interface EtoroCredentials {
+  apiKey: string;
+  apiSecret: string;
+  baseUrl: string;
+  mode: EtoroMode;
+}
+
+export interface EtoroClientConfig {
+  credentials: EtoroCredentials;
+  timeoutMs?: number;
+  userAgent?: string;
 }
 
 export interface InstrumentMetadata {

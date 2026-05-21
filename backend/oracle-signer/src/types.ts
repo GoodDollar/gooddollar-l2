@@ -1,15 +1,28 @@
+export type SessionStateString =
+  | 'pre-market'
+  | 'open'
+  | 'after-hours'
+  | 'closed'
+  | 'halted'
+  | 'unknown';
+
 export interface NormalizedQuote {
+  source: 'etoro';
   symbol: string;
-  instrumentId: number;
+  instrumentId: string;
   bid: number;
   ask: number;
   mid: number;
   last: number;
   timestamp: number;
-  sessionState: 'open' | 'pre-market' | 'after-hours' | 'closed' | 'halted';
+  sessionState: SessionStateString;
   confidence: number;
+  assetClass?: string;
+  currency?: string;
+  stale: boolean;
 }
 
+/** On-chain session state enum (matches StockOracleV2.SessionState) */
 export enum SessionState {
   Open = 0,
   PreMarket = 1,
@@ -26,6 +39,7 @@ export interface OracleSignerConfig {
   updateIntervalMs: number;
   minDeviationBps: number;
   symbols: string[];
+  txTimeoutMs: number;
 }
 
 export interface PendingUpdate {

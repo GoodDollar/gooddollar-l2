@@ -10,6 +10,7 @@
 
 import * as http from 'http';
 import { parseHealthStatus } from './parseHealthStatus';
+import { buildStatusJson, updateStatuses, type ServiceStatus } from './statusBuilder';
 
 const PORT = parseInt(process.env.PORT ?? '9200', 10);
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS ?? '15000', 10);
@@ -33,19 +34,10 @@ const SERVICES: ServiceConfig[] = [
   { name: 'bridge-keeper',     url: `http://localhost:${process.env.BRIDGE_KEEPER_PORT ?? '3006'}/health` },
   { name: 'perps',             url: `http://localhost:${process.env.PERPS_PORT ?? '8082'}/health` },
   { name: 'predict',           url: `http://localhost:${process.env.PREDICT_PORT ?? '3040'}/health` },
+  { name: 'hedge-engine',      url: `http://localhost:${process.env.HEDGE_ENGINE_PORT ?? '9106'}/health` },
+  { name: 'oracle-signer',    url: `http://localhost:${process.env.ORACLE_SIGNER_PORT ?? '9107'}/health` },
 ];
 
-interface ServiceStatus {
-  name: string;
-  status: 'ok' | 'degraded' | 'error' | 'timeout' | 'unreachable';
-  latencyMs: number;
-  uptime?: number;
-  chainBlock?: number;
-  error?: string;
-  lastChecked: string;
-}
-
-let cachedStatuses: ServiceStatus[] = [];
 const startedAt = Date.now();
 
 async function checkService(svc: ServiceConfig): Promise<ServiceStatus> {
@@ -94,24 +86,12 @@ async function checkService(svc: ServiceConfig): Promise<ServiceStatus> {
 }
 
 async function pollAll(): Promise<void> {
-  cachedStatuses = await Promise.all(SERVICES.map(checkService));
-  const operational = cachedStatuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
+  const statuses = await Promise.all(SERVICES.map(checkService));
+  updateStatuses(statuses);
+  const operational = statuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
   console.log(
     `[status] ${operational}/${SERVICES.length} services operational @ ${new Date().toISOString()}`,
   );
-}
-
-function buildStatusJson() {
-  const ok = cachedStatuses.filter(s => s.status === 'ok').length;
-  const operational = cachedStatuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
-  return {
-    overall: operational === SERVICES.length ? (ok === SERVICES.length ? 'healthy' : 'degraded') : operational > 0 ? 'degraded' : 'down',
-    healthy: operational,
-    total: SERVICES.length,
-    aggregatorUptime: Math.floor((Date.now() - startedAt) / 1000),
-    timestamp: new Date().toISOString(),
-    services: cachedStatuses,
-  };
 }
 
 const server = http.createServer((req, res) => {
@@ -119,7 +99,7 @@ const server = http.createServer((req, res) => {
   res.setHeader('Content-Type', 'application/json');
 
   if (req.url === '/status.json' && req.method === 'GET') {
-    const status = buildStatusJson();
+    const status = buildStatusJson(SERVICES.length);
     const code = status.overall === 'down' ? 503 : 200;
     res.writeHead(code);
     res.end(JSON.stringify(status, null, 2));
@@ -151,11 +131,20 @@ async function main() {
   console.log('╚══════════════════════════════════════════════╝');
 
   await pollAll();
-  setInterval(pollAll, POLL_INTERVAL_MS);
+  const pollTimer = setInterval(pollAll, POLL_INTERVAL_MS);
 
   server.listen(PORT, () => {
     console.log(`[status-aggregator] Serving at http://localhost:${PORT}/status.json`);
   });
+
+  const shutdown = () => {
+    console.log('[status-aggregator] Shutting down...');
+    clearInterval(pollTimer);
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 main().catch(err => {

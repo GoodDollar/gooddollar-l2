@@ -1,18 +1,74 @@
 'use client'
 
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
-import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { UBIContributionCard } from '@/components/UBIContributionCard'
-import { PartnershipIntegrationCard } from '@/components/PartnershipIntegrationCard'
 
-function CollateralHealth({ ratio }: { ratio: number }) {
+const DeferredStocksPortfolioImpactSection = dynamic(
+  () => import('./StocksPortfolioImpactSection').then((module) => module.StocksPortfolioImpactSection),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" aria-live="polite">
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-6">
+          <div className="space-y-3">
+            <div className="text-center text-gray-400 text-sm">
+              Connect wallet to see your UBI impact
+            </div>
+            <button
+              type="button"
+              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
+            >
+              Connect Wallet to View UBI Impact
+            </button>
+            <div className="animate-pulse space-y-2">
+              <div className="h-3 w-full bg-gray-700/60 rounded" />
+              <div className="h-3 w-5/6 bg-gray-700/60 rounded" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-6">
+          <div className="animate-pulse space-y-3">
+            <div className="h-4 w-44 bg-gray-700/60 rounded" />
+            <div className="h-8 w-32 bg-gray-700/60 rounded" />
+            <div className="h-3 w-5/6 bg-gray-700/60 rounded" />
+          </div>
+        </div>
+        <p className="sr-only">Loading impact insights…</p>
+      </div>
+    ),
+  },
+)
+
+function CollateralHealth({
+  ratio,
+  totalRequired = 0,
+  hasPositions = false,
+}: {
+  ratio: number
+  totalRequired?: number
+  hasPositions?: boolean
+}) {
+  const hasRiskPosition = hasPositions && totalRequired > 0
+
+  if (!hasRiskPosition) {
+    return (
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 gap-0.5">
+          <span className="text-[10px] sm:text-xs text-gray-400">Collateral Health</span>
+          <span className="text-[10px] sm:text-xs font-medium text-gray-500">Not active yet</span>
+        </div>
+        <div className="h-1.5 bg-dark-50 rounded-full overflow-hidden" />
+      </div>
+    )
+  }
+
   const color = ratio >= 150 ? 'text-green-400' : ratio >= 120 ? 'text-yellow-400' : 'text-red-400'
   const bgColor = ratio >= 150 ? 'bg-green-400' : ratio >= 120 ? 'bg-yellow-400' : 'bg-red-400'
   const label = ratio >= 150 ? 'Healthy' : ratio >= 120 ? 'At Risk' : 'Critical'
@@ -87,7 +143,7 @@ function TradeRow({ trade }: { trade: TradeRecord }) {
 
 export default function StocksPortfolioPage() {
   const router = useRouter()
-  const { address } = useAccount()
+  const { address, isConnected } = useAccount()
   const {
     holdings,
     totalValue,
@@ -101,6 +157,9 @@ export default function StocksPortfolioPage() {
   const { trades, isLoading: tradesLoading } = useStockTrades(address)
 
   const summary = { totalValue, unrealizedPnl, pnlPercent, totalCollateral, totalRequired, healthRatio }
+  const isDisconnected = !isConnected || !address
+  const hasLivePositions = holdings.some((holding) => holding.shares > 0)
+  const hasRiskPosition = hasLivePositions && summary.totalRequired > 0
   const isLoading = holdingsLoading || tradesLoading
 
   return (
@@ -115,42 +174,62 @@ export default function StocksPortfolioPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Value</div>
-          <div className="text-lg sm:text-xl font-bold text-white">{formatLargeNumber(summary.totalValue)}</div>
+          <div className={`text-lg sm:text-xl font-bold ${isDisconnected ? 'text-gray-500' : 'text-white'}`}>
+            {isDisconnected ? '—' : formatLargeNumber(summary.totalValue)}
+          </div>
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Unrealized P&L</div>
-          <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
-            <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
-          </div>
+          {isDisconnected ? (
+            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
+          ) : (
+            <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
+              <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
+            </div>
+          )}
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
-          <div className="text-lg sm:text-xl font-bold text-goodgreen">
-            {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
-            <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
-          </div>
+          {isDisconnected ? (
+            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
+          ) : (
+            <div className="text-lg sm:text-xl font-bold text-goodgreen">
+              {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
+              <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
+            </div>
+          )}
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          <CollateralHealth ratio={summary.healthRatio} />
-          <div className="hidden sm:block mt-2 text-xs text-gray-500">
-            {formatStockPrice(summary.totalCollateral)} / {formatStockPrice(summary.totalRequired)} required
-          </div>
+          {isDisconnected ? (
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 gap-0.5">
+                <span className="text-[10px] sm:text-xs text-gray-400">Collateral Health</span>
+                <span className="text-[10px] sm:text-xs font-medium text-gray-500">Connect wallet to view collateral health</span>
+              </div>
+              <div className="h-1.5 bg-dark-50 rounded-full overflow-hidden" />
+              <div className="hidden sm:block mt-2 text-xs text-gray-500">
+                Connect wallet to unlock collateral monitoring.
+              </div>
+            </div>
+          ) : (
+            <>
+              <CollateralHealth
+                ratio={summary.healthRatio}
+                totalRequired={summary.totalRequired}
+                hasPositions={hasLivePositions}
+              />
+              <div className="hidden sm:block mt-2 text-xs text-gray-500">
+                {hasRiskPosition
+                  ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`
+                  : 'Collateral health appears after you open a leveraged position'}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* UBI Impact Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <UBIContributionCard
-          platform="stocks"
-          className="h-fit"
-        />
-        <PartnershipIntegrationCard
-          userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2}
-          compact={false}
-          className="h-fit"
-        />
-      </div>
+      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">

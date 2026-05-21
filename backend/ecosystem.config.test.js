@@ -12,11 +12,12 @@ const fs = require('fs');
 const config = require('./ecosystem.config.js');
 const addresses = require('../op-stack/addresses.json').contracts;
 
-const REQUIRED_SERVICES = [
+const BACKEND_SERVICES = [
   'activity-reporter',
   'bridge-keeper',
   'goodswap',
   'harvest-keeper',
+  'hedge-engine',
   'indexer',
   'liquidator',
   'monitor',
@@ -29,6 +30,7 @@ const REQUIRED_SERVICES = [
 ];
 
 const FRONTEND_SERVICES = new Set(['goodswap']);
+const ALL_SERVICES = [...BACKEND_SERVICES, ...FRONTEND_SERVICES];
 
 function assert(cond, msg) {
   if (!cond) {
@@ -40,15 +42,17 @@ function assert(cond, msg) {
 }
 
 assert(Array.isArray(config.apps), 'config.apps is an array');
-assert(config.apps.length === REQUIRED_SERVICES.length,
-  `config.apps has ${REQUIRED_SERVICES.length} entries (got ${config.apps.length})`);
+assert(config.apps.length === ALL_SERVICES.length,
+  `config.apps has ${ALL_SERVICES.length} entries (got ${config.apps.length})`);
 
 const names = config.apps.map((a) => a.name);
-for (const svc of REQUIRED_SERVICES) {
+for (const svc of ALL_SERVICES) {
   assert(names.includes(svc), `service "${svc}" is present`);
 }
 
 for (const app of config.apps) {
+  const isBackend = BACKEND_SERVICES.includes(app.name);
+
   assert(typeof app.script === 'string' && app.script.length > 0,
     `${app.name}: script is set`);
   const scriptBase = app.cwd || __dirname;
@@ -66,7 +70,8 @@ for (const app of config.apps) {
     `${app.name}: log_date_format set (got ${app.log_date_format})`);
   assert(app.watch === false, `${app.name}: watch is disabled`);
   assert(typeof app.env === 'object' && app.env !== null, `${app.name}: env block present`);
-  if (!FRONTEND_SERVICES.has(app.name)) {
+
+  if (isBackend) {
     assert(typeof app.env.L2_RPC_URL === 'string' && app.env.L2_RPC_URL.length > 0,
       `${app.name}: L2_RPC_URL set`);
     assert(typeof app.env.CHAIN_ID === 'string' && app.env.CHAIN_ID.length > 0,

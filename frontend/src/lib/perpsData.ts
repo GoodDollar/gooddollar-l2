@@ -100,6 +100,7 @@ const PRICE_TIERS: [number, string][] = [
 ]
 
 export function formatPerpsPrice(price: number): string {
+  if (price === 0) return '$0.00'
   const abs = Math.abs(price)
   const sign = price < 0 ? '-' : ''
   for (const [threshold, suffix] of PRICE_TIERS) {

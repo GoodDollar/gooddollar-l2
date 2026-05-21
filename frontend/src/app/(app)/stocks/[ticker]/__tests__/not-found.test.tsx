@@ -2,8 +2,41 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
-// Mutable param mock — each test sets `currentParams` before rendering.
 let currentParams: Record<string, string | undefined> = {}
+let currentStocks: Array<{
+  ticker: string
+  name: string
+  sector: string
+  price: number
+  change24h: number
+  marketCap: number
+  volume24h: number
+  high52w: number
+  low52w: number
+  sparkline7d: number[]
+  peRatio: number
+  eps: number
+  dividendYield: number
+  avgVolume: number
+  description?: string
+}> = []
+
+const makeStock = () => ({
+  ticker: 'AAPL',
+  name: 'Apple Inc.',
+  sector: 'Technology',
+  price: 190,
+  change24h: 1.2,
+  marketCap: 1000000000,
+  volume24h: 1000000,
+  high52w: 210,
+  low52w: 120,
+  sparkline7d: [1, 2, 3, 4, 5],
+  peRatio: 29.4,
+  eps: 6.4,
+  dividendYield: 0.52,
+  avgVolume: 850000,
+})
 
 vi.mock('next/navigation', () => ({
   useParams: () => currentParams,
@@ -24,10 +57,8 @@ vi.mock('@/lib/chartData', () => ({
   getChartData: () => [],
 }))
 
-// Stocks list never contains any of the test tickers, so we always hit the
-// "Stock Not Found" branch.
 vi.mock('@/lib/useOnChainStocks', () => ({
-  useOnChainStocks: () => ({ stocks: [], isLive: false, isLoading: false }),
+  useOnChainStocks: () => ({ stocks: currentStocks, isLive: false, isLoading: false }),
 }))
 
 vi.mock('@/lib/useStocks', () => ({
@@ -40,97 +71,150 @@ vi.mock('@/lib/WalletReadyContext', () => ({
   useWalletReady: () => true,
 }))
 
-// Keep `wagmi` real so TestWrapper's provider works; the page only calls
-// `useAccount()`, which safely returns the disconnected state. Stub
-// rainbowkit so it doesn't blow up trying to connect to anything in jsdom.
 vi.mock('@rainbow-me/rainbowkit', () => ({
   ConnectButton: { Custom: () => null },
 }))
 
 import StockDetailPage from '../page'
 
-describe('StockDetailPage — "Stock Not Found" ticker truncation', () => {
+describe('StockDetailPage invalid ticker messaging hardening', () => {
   beforeEach(() => {
     currentParams = {}
+    currentStocks = []
   })
 
-  // Long contiguous URL segments must not push the layout past the viewport.
-  // 500 'A's is the same probe used in the original Explore fix (task 0054).
-  const longTicker = 'A'.repeat(500)
-
-  it('renders the not-found state without crashing on an empty-ish ticker', () => {
-    // params.ticker is undefined when the route segment is somehow missing;
-    // the component uppercases the result and ends up with undefined, so we
-    // simulate that here. The render must not throw.
-    currentParams = {}
-    expect(() =>
-      render(<TestWrapper><StockDetailPage /></TestWrapper>)
-    ).not.toThrow()
+  it('renders a generic not-found message without echoing plain invalid ticker input', () => {
+    currentParams = { ticker: 'NOTAREALSTOCK' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
     expect(screen.getByRole('heading', { name: /Stock Not Found/i })).toBeTruthy()
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    expect(paragraph).toBeTruthy()
+    expect(paragraph.textContent).not.toContain('NOTAREALSTOCK')
   })
 
-  it('renders short tickers (e.g. AAPL) verbatim — no ellipsis, no overflow', () => {
-    currentParams = { ticker: 'aapl' } // exercises the .toUpperCase() path
+  it('does not leak encoded whitespace payload (%20) in error copy', () => {
+    currentParams = { ticker: '%20' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const paragraph = screen.getByText(/is not available/i)
-    expect(paragraph.textContent).toContain('AAPL')
-    expect(paragraph.textContent).not.toContain('…')
-  })
-
-  it('truncates a 25-character ticker (just over the 24-char cap)', () => {
-    const justOverCap = 'B'.repeat(25)
-    currentParams = { ticker: justOverCap }
-    render(<TestWrapper><StockDetailPage /></TestWrapper>)
-
-    const paragraph = screen.getByText(/is not available/i)
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
     const text = paragraph.textContent ?? ''
-    expect(text).toContain('…')
-    expect(text).not.toContain(justOverCap) // full string never appears
-
-    // The span carries the raw value in its `title=` attribute so screen
-    // readers and hover tooltips still expose it.
-    const span = paragraph.querySelector('span[title]')
-    expect(span).not.toBeNull()
-    expect(span?.getAttribute('title')).toBe(justOverCap)
+    expect(text).not.toContain('%20')
   })
 
-  it('truncates a 500-character ticker and exposes the raw value via title', () => {
-    currentParams = { ticker: longTicker }
+  it('does not leak encoded null-byte payload (%00) in error copy', () => {
+    currentParams = { ticker: '%00' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const paragraph = screen.getByText(/is not available/i)
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
     const text = paragraph.textContent ?? ''
-    // Visible body of the paragraph is bounded.
-    expect(text.length).toBeLessThan(120)
-    expect(text).toContain('…')
-    // The full 500-char run must not appear in the rendered text.
-    expect(text.includes(longTicker)).toBe(false)
-
-    const span = paragraph.querySelector('span[title]')
-    expect(span).not.toBeNull()
-    expect(span?.getAttribute('title')).toBe(longTicker)
+    expect(text).not.toContain('%00')
   })
 
-  it('applies break-all + max-w-md so any remaining contiguous run still wraps', () => {
-    currentParams = { ticker: longTicker }
+  it('does not leak double-encoded whitespace payload (%2520) in error copy', () => {
+    currentParams = { ticker: '%2520' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const paragraph = screen.getByText(/is not available/i)
-    // These two classes together prevent the 24 leading 'A's (before the
-    // ellipsis) from extending past the card and producing a horizontal
-    // scrollbar on the whole document.
-    expect(paragraph.className).toMatch(/break-all/)
-    expect(paragraph.className).toMatch(/max-w-/)
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('%2520')
+    expect(text).not.toContain('%20')
   })
 
-  it('still renders the "Back to Stocks" affordance regardless of ticker length', () => {
-    currentParams = { ticker: longTicker }
+  it('does not leak encoded script-like payload (%3Csvg...) in error copy', () => {
+    currentParams = { ticker: '%3Csvg%20onload%3Dalert(1)%3E' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const link = screen.getByRole('link', { name: /Back to Stocks/i })
-    expect(link).toBeTruthy()
-    expect(link.getAttribute('href')).toBe('/stocks')
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('%3C')
+    expect(text).not.toContain('SVG')
+    expect(text).not.toContain('ALERT')
+  })
+
+  it('does not leak encoded slash payload (%2F) in error copy', () => {
+    currentParams = { ticker: '%2F' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('%2F')
+  })
+
+  it('does not leak repeated percent-encoded payload (%252525252525) in error copy', () => {
+    currentParams = { ticker: '%252525252525' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('%252525252525')
+  })
+
+  it('does not leak double-encoded traversal payload (%252F..%252F%00) in error copy', () => {
+    currentParams = { ticker: '%252F..%252F%00' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('%252F')
+    expect(text).not.toContain('..')
+    expect(text).not.toContain('%00')
+  })
+
+  it('does not leak mixed alphanumeric null-byte payload (AAPL%00) in error copy', () => {
+    currentParams = { ticker: 'AAPL%00' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const paragraph = screen.getByText(/This stock symbol is not available\./i)
+    const text = paragraph.textContent ?? ''
+    expect(text).not.toContain('AAPL%00')
+  })
+
+  it('still provides quick recovery links', () => {
+    currentParams = { ticker: 'NOTAREALSTOCK' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const aapl = screen.getByRole('link', { name: 'AAPL' })
+    const msft = screen.getByRole('link', { name: 'MSFT' })
+    const nvda = screen.getByRole('link', { name: 'NVDA' })
+    expect(aapl.getAttribute('href')).toBe('/stocks/AAPL')
+    expect(msft.getAttribute('href')).toBe('/stocks/MSFT')
+    expect(nvda.getAttribute('href')).toBe('/stocks/NVDA')
+  })
+
+  it('resolves valid lowercase ticker to stock detail page', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'aapl' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByRole('heading', { name: 'AAPL' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
+  })
+
+  it('resolves double-encoded valid ticker to stock detail page', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: '%2541APL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByRole('heading', { name: 'AAPL' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
+  })
+
+  it('shows stocks-focused next actions in empty-position state on valid detail pages', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const buyLink = screen.getByRole('link', { name: /Buy sAAPL/i })
+    const portfolioLink = screen.getByRole('link', { name: /Open Stock Portfolio/i })
+    const browseLink = screen.getByRole('link', { name: /Browse Stocks/i })
+
+    expect(buyLink.getAttribute('href')).toBe('/stocks/AAPL#stock-order-form')
+    expect(portfolioLink.getAttribute('href')).toBe('/stocks/portfolio')
+    expect(browseLink.getAttribute('href')).toBe('/stocks')
+
+    expect(screen.queryByRole('link', { name: /Explore crypto tokens/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Trade crypto perpetual futures/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Prediction markets/i })).toBeNull()
   })
 })

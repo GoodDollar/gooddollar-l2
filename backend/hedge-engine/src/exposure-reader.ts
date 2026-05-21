@@ -39,6 +39,19 @@ export class ExposureReader {
   }
 
   async getAllExposures(symbols: StockSymbol[]): Promise<OnChainExposure[]> {
-    return Promise.all(symbols.map((s) => this.getExposure(s)));
+    const settled = await Promise.allSettled(symbols.map((s) => this.getExposure(s)));
+    const exposures: OnChainExposure[] = [];
+
+    for (let i = 0; i < settled.length; i++) {
+      const result = settled[i];
+      if (result.status === 'fulfilled') {
+        exposures.push(result.value);
+      } else {
+        const errMsg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+        console.warn(`[ExposureReader] Failed to read exposure for ${symbols[i]}:`, errMsg);
+      }
+    }
+
+    return exposures;
   }
 }

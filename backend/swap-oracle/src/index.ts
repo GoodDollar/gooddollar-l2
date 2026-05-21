@@ -31,8 +31,7 @@ const ORACLE_ADDRESS = process.env.SWAP_ORACLE_ADDRESS ??
 const INTERVAL_MS = parseInt(process.env.UPDATE_INTERVAL_MS ?? '60000', 10);
 const DEVIATION_THRESHOLD_BPS = parseInt(process.env.DEVIATION_BPS ?? '10', 10); // 0.1% min change to update
 
-// Token mapping: on-chain address → CoinGecko ID
-interface TokenMapping {
+export interface TokenMapping {
   address: string;
   coingeckoId: string;
   symbol: string;
@@ -65,9 +64,25 @@ const ORACLE_ABI = [
   'function admin() external view returns (address)',
 ];
 
+// ─── Price Sanity ────────────────────────────────────────────────────────────
+
+const MAX_CRYPTO_PRICE_USD = parseFloat(process.env.MAX_CRYPTO_PRICE_USD ?? '1000000');
+
+export function isPriceSane(symbol: string, priceUsd: number): boolean {
+  if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
+    logger.error({ symbol, priceUsd }, 'Price rejected: zero, negative, or non-finite');
+    return false;
+  }
+  if (priceUsd > MAX_CRYPTO_PRICE_USD) {
+    logger.error({ symbol, priceUsd, max: MAX_CRYPTO_PRICE_USD }, 'Price rejected: exceeds maximum bound');
+    return false;
+  }
+  return true;
+}
+
 // ─── Price Fetcher ───────────────────────────────────────────────────────────
 
-interface PriceResult {
+export interface PriceResult {
   token: TokenMapping;
   priceUsd: number;
   priceChainlink: bigint; // 8-decimal format
@@ -77,7 +92,7 @@ interface PriceResult {
  * Fetch crypto prices from CoinGecko free API.
  * Rate limit: 10-30 calls/minute (free tier).
  */
-async function fetchPrices(tokens: TokenMapping[]): Promise<PriceResult[]> {
+export async function fetchPrices(tokens: TokenMapping[]): Promise<PriceResult[]> {
   const ids = tokens.map(t => t.coingeckoId).join(',');
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`;
 
@@ -96,7 +111,9 @@ async function fetchPrices(tokens: TokenMapping[]): Promise<PriceResult[]> {
         continue;
       }
       const priceUsd = entry.usd as number;
-      // Convert to 8-decimal Chainlink format
+      if (!isPriceSane(token.symbol, priceUsd)) {
+        continue;
+      }
       const priceChainlink = BigInt(Math.round(priceUsd * 1e8));
 
       results.push({ token, priceUsd, priceChainlink });
@@ -110,21 +127,22 @@ async function fetchPrices(tokens: TokenMapping[]): Promise<PriceResult[]> {
 
 // ─── Oracle Updater ──────────────────────────────────────────────────────────
 
-let lastPrices = new Map<string, bigint>();
+export let lastPrices = new Map<string, bigint>();
 
-/**
- * Check if a price has deviated enough to warrant an on-chain update.
- */
-function hasDeviatedEnough(address: string, newPrice: bigint): boolean {
+export function resetLastPrices(): void {
+  lastPrices = new Map<string, bigint>();
+}
+
+export function hasDeviatedEnough(address: string, newPrice: bigint, thresholdBps: number = DEVIATION_THRESHOLD_BPS): boolean {
   const old = lastPrices.get(address);
   if (!old) return true; // first price always updates
 
   const diff = newPrice > old ? newPrice - old : old - newPrice;
   const bps = (diff * 10_000n) / old;
-  return bps >= BigInt(DEVIATION_THRESHOLD_BPS);
+  return bps >= BigInt(thresholdBps);
 }
 
-async function updateOnChain(
+export async function updateOnChain(
   oracle: ethers.Contract,
   results: PriceResult[],
 ): Promise<void> {
@@ -189,7 +207,7 @@ async function main() {
   const wallet = new ethers.Wallet(OPERATOR_KEY, provider);
   const oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, wallet);
 
-  startHealthServer({
+  const healthServer = startHealthServer({
     name: 'swap-oracle',
     port: parseInt(process.env.HEALTH_PORT ?? '9100', 10),
     chainCheck: async () => Number(await provider.getBlockNumber()),
@@ -233,11 +251,22 @@ async function main() {
   await tick();
 
   // Then on interval
-  setInterval(tick, INTERVAL_MS);
+  const intervalId = setInterval(tick, INTERVAL_MS);
   logger.info(`Price keeper running, updating every ${INTERVAL_MS / 1000}s`);
+
+  const shutdown = () => {
+    logger.info('Shutting down...');
+    clearInterval(intervalId);
+    healthServer.close();
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
-main().catch(err => {
-  logger.fatal({ err }, 'Fatal error');
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    logger.fatal({ err }, 'Fatal error');
+    process.exit(1);
+  });
+}

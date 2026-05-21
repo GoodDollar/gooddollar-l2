@@ -1,22 +1,37 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { getAnalystOutlook } from '@/lib/stockInsights'
+import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
-import { truncateMiddle } from '@/lib/strings'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
 import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
-import { PriceChart } from '@/components/PriceChart'
+import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
+import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
+import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
+import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
+
+const PriceChart = dynamic(
+  () => import('@/components/PriceChart').then((m) => ({ default: m.PriceChart })),
+  { ssr: false }
+)
+
+const OracleStatusBadge = dynamic(
+  () => import('@/components/OracleStatusBadge').then((m) => ({ default: m.OracleStatusBadge })),
+  { ssr: false }
+)
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -44,6 +59,35 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 }
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
+const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
+const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
+const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
+
+function decodeTickerBounded(rawTicker?: string): string {
+  if (!rawTicker) return ''
+  let decoded = rawTicker
+  for (let i = 0; i < 3; i += 1) {
+    try {
+      const next = decodeURIComponent(decoded)
+      if (next === decoded) break
+      decoded = next
+    } catch {
+      break
+    }
+  }
+  return decoded
+}
+
+function normalizeTickerForLookup(rawTicker?: string): string {
+  const decoded = decodeTickerBounded(rawTicker)
+  if (decoded.length > 64) return ''
+  if (UNSAFE_TICKER_PATTERN.test(decoded)) return ''
+  const normalized = decoded.trim().toUpperCase()
+  if (!normalized) return ''
+  if (UNSAFE_TICKER_PATTERN.test(normalized)) return ''
+  if (!SAFE_TICKER_PATTERN.test(normalized)) return ''
+  return normalized
+}
 
 function OrderForm({ stock, position }: { stock: { ticker: string; price: number }; position: OnChainStockPosition | null }) {
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
@@ -113,7 +157,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
+    <form id="stock-order-form" onSubmit={handleSubmit} className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
       <div className="flex gap-2 mb-4">
         <button type="button" onClick={() => setSide('buy')}
           className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${side === 'buy' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-dark-50/50 text-gray-400 border border-transparent'}`}>
@@ -229,11 +273,15 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
 
 export default function StockDetailPage() {
   const params = useParams()
-  const ticker = (params.ticker as string)?.toUpperCase()
+  const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
+  const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks } = useOnChainStocks()
-  const stock = stocks.find(s => s.ticker === ticker?.toUpperCase())
+  const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
+  const [analystLoading, setAnalystLoading] = useState(true)
+  const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
+  const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const chartMounted = useMounted()
@@ -242,35 +290,45 @@ export default function StockDetailPage() {
     if (!stock) return []
     return getChartData(stock.ticker, timeframe, stock.price)
   }, [stock, timeframe])
+  const hasPosition = !!position && position.debtFloat > 0
+  const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
+  const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
+
+  useEffect(() => {
+    setAnalystLoading(true)
+    const timer = setTimeout(() => setAnalystLoading(false), 140)
+    return () => clearTimeout(timer)
+  }, [ticker])
 
   if (!stock) {
-    // Defensive layout bound: a user-controlled URL segment like
-    // /stocks/<500 'A's> would otherwise render verbatim into the body and
-    // push the layout past the viewport, creating a site-wide horizontal
-    // scrollbar. Cap the visible form at 24 chars (real tickers are 1–5
-    // chars) and keep the full raw value reachable via the title attribute
-    // and the underlying URL.
-    const safeTicker = ticker ?? ''
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <h1 className="text-2xl font-bold text-white mb-3">Stock Not Found</h1>
-        <p className="text-sm text-gray-400 mb-6 max-w-md break-all">
-          The ticker{' '}
-          <span className="font-mono text-white" title={safeTicker}>
-            &quot;{truncateMiddle(safeTicker, 24)}&quot;
-          </span>{' '}
-          is not available.
+        <p className="text-sm text-gray-400 mb-6 max-w-md">
+          This stock symbol is not available.
         </p>
         <Link href="/stocks" className="px-6 py-3 rounded-xl bg-goodgreen text-black font-semibold hover:bg-goodgreen-600 transition-colors">
           Back to Stocks
         </Link>
+        <div className="mt-5 flex items-center gap-2 text-xs text-gray-400">
+          <span>Try:</span>
+          {INVALID_TICKER_RECOVERY.map(symbol => (
+            <Link
+              key={symbol}
+              href={`/stocks/${symbol}`}
+              className="px-2.5 py-1 rounded-lg border border-gray-700/40 bg-dark-50/40 text-gray-200 hover:text-white hover:border-goodgreen/40 transition-colors"
+            >
+              {symbol}
+            </Link>
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
     <div className="w-full max-w-5xl mx-auto">
-      <Link href="/stocks" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
+      <Link href="/stocks" prefetch={false} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
         <span>←</span> Back to Stocks
       </Link>
       <div className="flex flex-col lg:flex-row gap-6">
@@ -285,12 +343,21 @@ export default function StockDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-baseline gap-3 mb-4">
+          <div className="flex items-baseline gap-3 mb-2">
             <span className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
             <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
             </span>
           </div>
+          <div className="mb-4">
+            <OracleStatusBadge variant="detail" symbol={stock.ticker} />
+          </div>
+
+          <AnalystOutlookCard
+            currentPrice={stock.price}
+            outlook={analystOutlook}
+            isLoading={analystLoading}
+          />
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
             <div className="flex gap-1 mb-3">
@@ -362,6 +429,13 @@ export default function StockDetailPage() {
               <p className="text-sm text-gray-400 leading-relaxed">{stock.description}</p>
             </div>
           )}
+
+          <NewsEventsPanel
+            ticker={stock.ticker}
+            isLoading={newsLoading}
+            error={newsError}
+            items={newsItems}
+          />
         </div>
 
         <div className="lg:w-80 shrink-0">
@@ -369,7 +443,7 @@ export default function StockDetailPage() {
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
-            {position && position.debtFloat > 0 ? (
+            {hasPosition ? (
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-2xl font-bold text-white tabular-nums">
@@ -405,23 +479,49 @@ export default function StockDetailPage() {
             )}
           </div>
 
-          <div className="mt-4 bg-dark-100/50 rounded-2xl border border-gray-700/10 p-4">
-            <p className="text-xs text-gray-500 mb-2">Also on GoodDollar</p>
-            <div className="flex flex-col gap-1.5">
-              <Link href="/explore" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
-                Explore crypto tokens
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
-              <Link href="/perps" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
-                Trade crypto perpetual futures
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
-              <Link href="/predict" className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
-                Prediction markets
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
+          <RelatedMoversPanel
+            currentTicker={stock.ticker}
+            related={relatedSymbols}
+            movers={topMovers}
+          />
+
+          {hasPosition ? (
+            <div className="mt-4 bg-dark-100/50 rounded-2xl border border-gray-700/10 p-4">
+              <p className="text-xs text-gray-500 mb-2">Also on GoodDollar</p>
+              <div className="flex flex-col gap-1.5">
+                <Link href="/explore" prefetch={false} className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Explore crypto tokens
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <Link href="/perps" prefetch={false} className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Trade crypto perpetual futures
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <Link href="/predict" prefetch={false} className="text-xs text-gray-400 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Prediction markets
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-4 bg-dark-100/50 rounded-2xl border border-goodgreen/20 p-4">
+              <p className="text-xs text-gray-500 mb-2">Next steps in stocks</p>
+              <div className="flex flex-col gap-1.5">
+                <Link href={`/stocks/${stock.ticker}#stock-order-form`} prefetch={false} className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors inline-flex items-center gap-1">
+                  Buy s{stock.ticker}
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <Link href="/stocks/portfolio" prefetch={false} className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Open Stock Portfolio
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <Link href="/stocks" prefetch={false} className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
+                  Browse Stocks
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
