@@ -14,6 +14,8 @@ interface TimeframeConfig {
 }
 
 const TIMEFRAME_CONFIG: Record<Timeframe, TimeframeConfig> = {
+  '1H': { points: 60, intervalMs: 60_000, useTimestamp: true },
+  '4H': { points: 42, intervalMs: 14_400_000, useTimestamp: true },
   '1D': { points: 24, intervalMs: 3_600_000, useTimestamp: true },
   '1W': { points: 28, intervalMs: 6 * 3_600_000, useTimestamp: true },
   '1M': { points: 30, intervalMs: 86_400_000, useTimestamp: false },
@@ -53,7 +55,26 @@ function generateOHLC(basePrice: number, config: TimeframeConfig, volatility: nu
 
 const CHART_CACHE = new Map<string, Map<string, OHLCData[]>>()
 
-export type Timeframe = '1D' | '1W' | '1M' | '3M' | '1Y'
+export type Timeframe = '1H' | '4H' | '1D' | '1W' | '1M' | '3M' | '1Y'
+
+export interface SMAPoint {
+  time: string | number
+  value: number
+}
+
+export function computeSMA(data: OHLCData[], period: number): SMAPoint[] {
+  if (data.length < period) return []
+  const result: SMAPoint[] = []
+  let sum = 0
+  for (let i = 0; i < data.length; i++) {
+    sum += data[i].close
+    if (i >= period) sum -= data[i - period].close
+    if (i >= period - 1) {
+      result.push({ time: data[i].time, value: sum / period })
+    }
+  }
+  return result
+}
 
 export function getChartData(symbol: string, timeframe: Timeframe, basePrice: number): OHLCData[] {
   if (!CHART_CACHE.has(symbol)) {

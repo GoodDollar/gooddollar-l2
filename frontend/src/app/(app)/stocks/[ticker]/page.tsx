@@ -64,7 +64,7 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
   return <>{children}</>
 }
 
-const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
+const TIMEFRAMES: Timeframe[] = ['1H', '4H', '1D', '1W', '1M', '3M', '1Y']
 type PeerMetric = 'change24h' | 'marketCap' | 'peRatio'
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
