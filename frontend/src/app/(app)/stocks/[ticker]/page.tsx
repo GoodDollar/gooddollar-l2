@@ -24,6 +24,7 @@ import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { PriceChart } from '@/components/PriceChart'
+import { StockMarketData } from '@/components/stocks/StockMarketData'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
@@ -737,6 +738,8 @@ export default function StockDetailPage() {
             riskIncreaseAllowed={riskIncreaseAllowed}
             riskStopReasons={riskStopReasons}
           />
+
+          <StockMarketData markPrice={stock.price} />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
