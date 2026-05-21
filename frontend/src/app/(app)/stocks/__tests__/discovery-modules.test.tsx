@@ -5,6 +5,13 @@ import { TestWrapper } from '@/test-utils/wrapper'
 
 const push = vi.fn()
 const walletState = { address: undefined as `0x${string}` | undefined }
+const refreshPriceServiceStatus = vi.fn(async () => {})
+const priceStatusState = {
+  status: { healthy: true, freshCount: 1, totalCount: 1, quotes: [], timestamp: 1716286200000 },
+  isLoading: false,
+  error: null as string | null,
+  nextRetryAt: null as number | null,
+}
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
@@ -97,6 +104,15 @@ vi.mock('@/lib/useOnChainStocks', () => ({
   }),
 }))
 
+vi.mock('@/lib/usePriceServiceStatus', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/usePriceServiceStatus')>()
+  return {
+    ...actual,
+    usePriceServiceStatus: () => priceStatusState,
+    refreshPriceServiceStatus: (...args: unknown[]) => refreshPriceServiceStatus(...args),
+  }
+})
+
 import StocksPage from '../page'
 
 describe('StocksPage discovery modules', () => {
@@ -170,5 +186,29 @@ describe('StocksPage discovery modules', () => {
 
     await user.click(clearButtons[0])
     expect((screen.getByPlaceholderText('Search stocks...') as HTMLInputElement).value).toBe('')
+  })
+
+  it('shows degraded quote-status warning with manual retry action', async () => {
+    walletState.address = undefined
+    const user = userEvent.setup()
+    refreshPriceServiceStatus.mockClear()
+    priceStatusState.error = 'offline'
+    priceStatusState.nextRetryAt = Date.now() + 30_000
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    expect(screen.getByTestId('stocks-price-status-degraded')).toBeInTheDocument()
+    expect(screen.getByText(/Market data may be stale/i)).toBeInTheDocument()
+    expect(screen.getByText(/Auto-retry in/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Retry now/i }))
+    expect(refreshPriceServiceStatus).toHaveBeenCalled()
+
+    priceStatusState.error = null
+    priceStatusState.nextRetryAt = null
   })
 })

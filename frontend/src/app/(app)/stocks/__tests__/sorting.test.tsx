@@ -5,6 +5,12 @@ import { TestWrapper } from '@/test-utils/wrapper'
 
 const push = vi.fn()
 const walletState = { address: undefined as `0x${string}` | undefined }
+const priceStatusState = {
+  status: { healthy: true, freshCount: 1, totalCount: 1, quotes: [], timestamp: 1716286200000 },
+  isLoading: false,
+  error: null as string | null,
+  nextRetryAt: null as number | null,
+}
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
@@ -79,6 +85,15 @@ vi.mock('@/lib/useOnChainStocks', () => ({
     isLive: true,
   }),
 }))
+
+vi.mock('@/lib/usePriceServiceStatus', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/usePriceServiceStatus')>()
+  return {
+    ...actual,
+    usePriceServiceStatus: () => priceStatusState,
+    refreshPriceServiceStatus: vi.fn(async () => {}),
+  }
+})
 
 import StocksPage from '../page'
 

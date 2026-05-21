@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { refreshPriceServiceStatus, usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
 import {
   markStocksOnboardingStep,
   readStocksOnboardingProgress,
@@ -206,6 +207,8 @@ export default function StocksPage() {
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+  const { status: priceStatus, error: priceStatusError, nextRetryAt } = usePriceServiceStatus()
+  const [retryNow, setRetryNow] = useState(Date.now())
 
   useEffect(() => {
     setProgress(readStocksOnboardingProgress())
@@ -232,6 +235,14 @@ export default function StocksPage() {
     }
     window.sessionStorage.removeItem(STOCKS_SEARCH_STORAGE_KEY)
   }, [query])
+
+  useEffect(() => {
+    if (!priceStatusError || !nextRetryAt) return
+    const intervalId = window.setInterval(() => {
+      setRetryNow(Date.now())
+    }, 1000)
+    return () => window.clearInterval(intervalId)
+  }, [priceStatusError, nextRetryAt])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -300,6 +311,17 @@ export default function StocksPage() {
     router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)
   }, [router, data])
 
+  const retryInSeconds = useMemo(() => {
+    if (!nextRetryAt) return null
+    return Math.max(0, Math.ceil((nextRetryAt - retryNow) / 1000))
+  }, [nextRetryAt, retryNow])
+
+  const lastSuccessfulLabel = useMemo(() => {
+    const ts = priceStatus?.timestamp
+    if (!ts) return null
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }, [priceStatus])
+
   return (
     <div className="w-full max-w-5xl mx-auto">
       <div className="mb-6">
@@ -321,6 +343,33 @@ export default function StocksPage() {
         description="Synthetic stock tokens track real equity prices via Chainlink oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 20% of fees to UBI."
         storageKey="gd-banner-dismissed-stocks"
       />
+
+      {priceStatusError && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-amber-100"
+          data-testid="stocks-price-status-degraded"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold">Market data may be stale</p>
+              <p className="mt-1 text-xs text-amber-100/85">
+                Quote status service is temporarily unavailable. Use extra caution before placing trades.
+                {lastSuccessfulLabel ? ` Last successful refresh: ${lastSuccessfulLabel}.` : ''}
+                {retryInSeconds !== null ? ` Auto-retry in ~${retryInSeconds}s.` : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { void refreshPriceServiceStatus(true) }}
+              className="self-start rounded-lg border border-amber-200/40 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-300/10 transition-colors"
+            >
+              Retry now
+            </button>
+          </div>
+        </div>
+      )}
 
       {!address && (
         <>

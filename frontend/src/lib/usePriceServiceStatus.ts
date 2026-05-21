@@ -21,6 +21,7 @@ export interface OracleStatusState {
   status: PriceServiceStatus | null
   isLoading: boolean
   error: string | null
+  nextRetryAt: number | null
 }
 
 const PRICE_SERVICE_URL =
@@ -42,7 +43,7 @@ interface StatusStore {
 }
 
 const store: StatusStore = {
-  state: { status: null, isLoading: true, error: null },
+  state: { status: null, isLoading: true, error: null, nextRetryAt: null },
   subscribers: new Set(),
   intervalId: null,
   inFlight: false,
@@ -54,10 +55,10 @@ function notify(): void {
   for (const sub of store.subscribers) sub(store.state)
 }
 
-async function fetchStatus(): Promise<void> {
+async function fetchStatus(force = false): Promise<void> {
   if (store.inFlight) return
   if (typeof document !== 'undefined' && document.hidden) return
-  if (Date.now() < store.cooldownUntil) return
+  if (!force && Date.now() < store.cooldownUntil) return
 
   store.inFlight = true
   try {
@@ -68,7 +69,7 @@ async function fetchStatus(): Promise<void> {
     const data: PriceServiceStatus = await res.json()
     store.failureCount = 0
     store.cooldownUntil = 0
-    store.state = { status: data, isLoading: false, error: null }
+    store.state = { status: data, isLoading: false, error: null, nextRetryAt: null }
   } catch (err) {
     store.failureCount += 1
     const backoffMs = Math.min(
@@ -80,6 +81,7 @@ async function fetchStatus(): Promise<void> {
       ...store.state,
       isLoading: false,
       error: err instanceof Error ? err.message : 'Oracle status unavailable',
+      nextRetryAt: store.cooldownUntil,
     }
   } finally {
     store.inFlight = false
@@ -135,6 +137,10 @@ export function getSessionLabel(state: string): string {
   }
 }
 
+export async function refreshPriceServiceStatus(force = true): Promise<void> {
+  await fetchStatus(force)
+}
+
 export function getDominantSession(quotes: QuoteStatus[]): string {
   if (quotes.length === 0) return 'unknown'
   const counts = new Map<string, number>()
@@ -156,7 +162,7 @@ export function __resetPriceServiceStatusStoreForTests(): void {
   if (store.intervalId !== null) {
     clearInterval(store.intervalId)
   }
-  store.state = { status: null, isLoading: true, error: null }
+  store.state = { status: null, isLoading: true, error: null, nextRetryAt: null }
   store.subscribers.clear()
   store.intervalId = null
   store.inFlight = false
