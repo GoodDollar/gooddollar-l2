@@ -347,6 +347,8 @@ export default function StockDetailPage() {
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
   const oracleGuard = useStocksOracleGuard(stock?.ticker)
+  const { isConnected } = useAccount()
+  const tradeReady = isConnected && oracleGuard.health === 'live'
 
   if (!stock && stocksLoading) {
     return (
@@ -528,6 +530,36 @@ export default function StockDetailPage() {
         </div>
 
         <div className="lg:w-80 shrink-0">
+          <div className="mb-4 bg-dark-100 rounded-2xl border border-goodgreen/20 p-4">
+            <p className="text-xs font-semibold text-goodgreen mb-2">Start here</p>
+            <h3 className="text-sm font-semibold text-white mb-3">First trade checklist</h3>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-300">1. Connect wallet</span>
+                <span className={`px-2 py-0.5 rounded-full ${isConnected ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                  {isConnected ? 'Done' : 'Required'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-300">2. Confirm oracle is live</span>
+                <span className={`px-2 py-0.5 rounded-full ${oracleGuard.health === 'live' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                  {oracleGuard.health === 'live' ? 'Done' : 'Blocked'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-300">3. Submit order</span>
+                <span className={`px-2 py-0.5 rounded-full ${tradeReady ? 'bg-green-500/20 text-green-300' : 'bg-gray-700/40 text-gray-300'}`}>
+                  {tradeReady ? 'Ready' : 'Waiting'}
+                </span>
+              </div>
+            </div>
+            {!tradeReady && (
+              <p className="mt-3 text-[11px] text-gray-400">
+                If trading is blocked, browse other stocks or check your portfolio while oracle health recovers.
+              </p>
+            )}
+          </div>
+
           <OrderForm
             stock={stock}
             position={position}
@@ -611,6 +643,22 @@ export default function StockDetailPage() {
                 </Link>
                 <Link href="/stocks" prefetch={false} className="text-xs text-gray-300 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
                   Browse Stocks
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {oracleGuard.health !== 'live' && (
+            <div className="mt-4 bg-amber-500/10 rounded-2xl border border-amber-500/30 p-4">
+              <p className="text-xs text-amber-200 mb-2">Trading is currently limited on this symbol.</p>
+              <div className="flex flex-col gap-1.5">
+                <Link href="/stocks" prefetch={false} className="text-xs text-amber-100 hover:text-white transition-colors inline-flex items-center gap-1">
+                  Browse trade-ready stocks
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <Link href="/stocks/portfolio" prefetch={false} className="text-xs text-amber-100 hover:text-white transition-colors inline-flex items-center gap-1">
+                  Open Stock Portfolio
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Link>
               </div>

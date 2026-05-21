@@ -154,6 +154,7 @@ export default function StocksPage() {
         <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
+              <p className="text-[11px] uppercase tracking-wide text-goodgreen/90 mb-1">Start here</p>
               <h2 className="text-base sm:text-lg font-semibold text-white">
                 {wrongChain ? 'Switch to GoodDollar L2 to Trade Stocks' : 'Connect Wallet to Trade Stocks'}
               </h2>

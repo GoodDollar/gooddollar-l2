@@ -25,6 +25,7 @@ let oracleGuardState: { health: 'live' | 'degraded' | 'offline'; reason: string 
   reason: null,
   isLoading: false,
 }
+let walletConnected = false
 
 const makeStock = () => ({
   ticker: 'AAPL',
@@ -84,6 +85,14 @@ vi.mock('@/lib/useStocksOracleGuard', () => ({
   useStocksOracleGuard: () => oracleGuardState,
 }))
 
+vi.mock('wagmi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('wagmi')>()
+  return {
+    ...actual,
+    useAccount: () => ({ isConnected: walletConnected }),
+  }
+})
+
 vi.mock('@rainbow-me/rainbowkit', () => ({
   ConnectButton: { Custom: () => null },
 }))
@@ -95,6 +104,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     currentParams = {}
     currentStocks = []
     oracleGuardState = { health: 'live', reason: null, isLoading: false }
+    walletConnected = false
   })
 
   it('renders a generic not-found message without echoing plain invalid ticker input', () => {
@@ -246,5 +256,36 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/Oracle is offline\. Trading is paused for safety\./i)).toBeTruthy()
     expect(screen.getAllByText(/Quote is stale/i).length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows first-trade checklist with required states for disconnected users', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    walletConnected = false
+    oracleGuardState = { health: 'degraded', reason: 'Quotes are delayed.', isLoading: false }
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByText(/First trade checklist/i)).toBeTruthy()
+    expect(screen.getByText('1. Connect wallet')).toBeTruthy()
+    expect(screen.getByText('Required')).toBeTruthy()
+    expect(screen.getByText('2. Confirm oracle is live')).toBeTruthy()
+    expect(screen.getByText('Blocked')).toBeTruthy()
+    expect(screen.getByText('3. Submit order')).toBeTruthy()
+    expect(screen.getByText('Waiting')).toBeTruthy()
+  })
+
+  it('shows actionable recovery links when oracle is not live', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    walletConnected = true
+    oracleGuardState = { health: 'offline', reason: 'Quote stale.', isLoading: false }
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const browseStocks = screen.getByRole('link', { name: /Browse trade-ready stocks/i })
+    const portfolioLinks = screen.getAllByRole('link', { name: /Open Stock Portfolio/i })
+    expect(browseStocks.getAttribute('href')).toBe('/stocks')
+    expect(portfolioLinks.some(link => link.getAttribute('href') === '/stocks/portfolio')).toBe(true)
   })
 })
