@@ -358,7 +358,7 @@ export default function YieldPage() {
       <InfoBanner
         storageKey="yield-info"
         title="ERC-4626 Yield Vaults"
-        description="ERC-4626 vaults auto-compound yield from lending and stability pools. 20% of profits fund Universal Basic Income."
+        description="ERC-4626 vaults auto-compound yield from lending and stability pools. 33% of profits fund Universal Basic Income."
       />
 
       {/* Global stats */}
