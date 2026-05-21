@@ -4,6 +4,7 @@ import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
 const routerPush = vi.fn()
+const mockChartData = vi.fn(() => [])
 let currentStocks: Array<{
   ticker: string
   name: string
@@ -61,7 +62,7 @@ vi.mock('@/components/PriceChart', () => ({
 }))
 
 vi.mock('@/lib/chartData', () => ({
-  getChartData: () => [],
+  getChartData: (...args: unknown[]) => mockChartData(...args),
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
@@ -89,6 +90,8 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     currentParams = {}
     currentStocks = []
     routerPush.mockReset()
+    mockChartData.mockReset()
+    mockChartData.mockImplementation(() => [])
   })
 
   it('renders a generic not-found message without echoing plain invalid ticker input', () => {
@@ -259,5 +262,25 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[1])
 
     expect(routerPush).toHaveBeenCalledWith('/stocks/MSFT')
+  })
+
+  it('renders a timeframe performance summary and updates label/value when tabs change', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    mockChartData.mockImplementation((_symbol: string, timeframe: string, basePrice: number) => {
+      if (timeframe === '3M') return [{ close: 100, open: 100, high: 101, low: 99, volume: 1, time: 1 }, { close: 110, open: 100, high: 111, low: 99, volume: 1, time: 2 }]
+      if (timeframe === '1D') return [{ close: 200, open: 200, high: 201, low: 199, volume: 1, time: 1 }, { close: 190, open: 200, high: 201, low: 189, volume: 1, time: 2 }]
+      return [{ close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 1 }, { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 2 }]
+    })
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByText('+10.00%')).toBeTruthy()
+    expect(screen.getByText('Past 3 Months')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('tab', { name: '1D' }))
+
+    expect(screen.getByText('-5.00%')).toBeTruthy()
+    expect(screen.getByText('Past Day')).toBeTruthy()
   })
 })

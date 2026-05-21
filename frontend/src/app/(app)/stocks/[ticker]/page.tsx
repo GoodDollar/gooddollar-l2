@@ -22,6 +22,16 @@ import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'ALL']
+const TIMEFRAME_LABEL: Record<Timeframe, string> = {
+  '1D': 'Past Day',
+  '1W': 'Past Week',
+  '1M': 'Past Month',
+  '3M': 'Past 3 Months',
+  '6M': 'Past 6 Months',
+  '1Y': 'Past Year',
+  '5Y': 'Past 5 Years',
+  'ALL': 'All Time',
+}
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
@@ -81,6 +91,15 @@ export default function StockDetailPage() {
     if (!stock) return []
     return getChartData(stock.ticker, timeframe, stock.price)
   }, [stock, timeframe])
+  const performanceSummary = useMemo(() => {
+    if (chartData.length < 2) return null
+    const firstClose = chartData[0]?.close ?? 0
+    const lastClose = chartData[chartData.length - 1]?.close ?? 0
+    if (!Number.isFinite(firstClose) || firstClose <= 0 || !Number.isFinite(lastClose)) return null
+    const changeAbs = lastClose - firstClose
+    const changePct = (changeAbs / firstClose) * 100
+    return { changeAbs, changePct, label: TIMEFRAME_LABEL[timeframe] }
+  }, [chartData, timeframe])
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
@@ -245,6 +264,19 @@ export default function StockDetailPage() {
           />
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
+            {performanceSummary && (
+              <div className="mb-3 flex items-baseline gap-2">
+                <span
+                  className={`text-xl font-semibold tabular-nums ${
+                    performanceSummary.changePct >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}
+                >
+                  {performanceSummary.changePct >= 0 ? '+' : ''}
+                  {performanceSummary.changePct.toFixed(2)}%
+                </span>
+                <span className="text-sm text-gray-400">{performanceSummary.label}</span>
+              </div>
+            )}
             <div
               className="mb-3 flex flex-nowrap gap-1 overflow-x-auto pb-1 whitespace-nowrap sm:flex-wrap sm:overflow-visible sm:pb-0"
               role="tablist"
