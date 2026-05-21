@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks detail chart timeframe controls now stay in a single horizontal rail on mobile (scrollable chips instead of wrapped rows), avoiding orphaned options like `ALL` dropping to a second line.
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
 - Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with an in-context `Connect Wallet to View UBI Impact` CTA instead of misleading `0% — Critical` risk framing.
 - Perps portfolio empty state no longer leaks raw template fragments (for example `positions.length === 0 ? (`), restoring clean, production-grade empty-state rendering.

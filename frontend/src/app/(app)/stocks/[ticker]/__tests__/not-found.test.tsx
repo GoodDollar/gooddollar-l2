@@ -217,4 +217,14 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.queryByRole('link', { name: /Trade crypto perpetual futures/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /Prediction markets/i })).toBeNull()
   })
+
+  it('renders timeframe controls in a single-row horizontal rail to avoid mobile wrapping', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const tablist = screen.getByRole('tablist', { name: /chart timeframe/i })
+    expect(tablist.className).toContain('overflow-x-auto')
+    expect(tablist.className).toContain('flex-nowrap')
+  })
 })

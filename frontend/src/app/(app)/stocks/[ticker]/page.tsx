@@ -144,7 +144,7 @@ export default function StockDetailPage() {
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
             <div
-              className="flex flex-wrap gap-1 gap-y-2 mb-3"
+              className="mb-3 flex flex-nowrap gap-1 overflow-x-auto pb-1 whitespace-nowrap sm:flex-wrap sm:overflow-visible sm:pb-0"
               role="tablist"
               aria-label="Chart timeframe"
             >
