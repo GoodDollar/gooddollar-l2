@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-utils/wrapper'
@@ -88,6 +88,10 @@ function getDesktopRows() {
 }
 
 describe('StocksPage sorting behavior', () => {
+  beforeEach(() => {
+    window.sessionStorage.clear()
+  })
+
   it('reorders rows by volume and toggles direction on repeated clicks', async () => {
     walletState.address = undefined
     const user = userEvent.setup()
@@ -127,5 +131,43 @@ describe('StocksPage sorting behavior', () => {
     const rows = getDesktopRows()
     expect(rows).toHaveLength(1)
     expect(within(rows[0]).getByText('AAPL')).toBeInTheDocument()
+  })
+
+  it('hydrates search query from session storage and keeps filtered state on mount', async () => {
+    walletState.address = undefined
+    window.sessionStorage.setItem('gd-stocks-market-search', 'NVDA')
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    const input = await screen.findByPlaceholderText('Search stocks...') as HTMLInputElement
+    expect(input.value).toBe('NVDA')
+
+    const rows = getDesktopRows()
+    expect(rows).toHaveLength(1)
+    expect(within(rows[0]).getByText('NVDA')).toBeInTheDocument()
+  })
+
+  it('clears persisted query when the Clear action is used', async () => {
+    walletState.address = undefined
+    const user = userEvent.setup()
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    await user.type(screen.getByPlaceholderText('Search stocks...'), 'AAPL')
+    expect(window.sessionStorage.getItem('gd-stocks-market-search')).toBe('AAPL')
+
+    await user.click(screen.getByRole('button', { name: 'Clear' }))
+
+    const input = screen.getByPlaceholderText('Search stocks...') as HTMLInputElement
+    expect(input.value).toBe('')
+    expect(window.sessionStorage.getItem('gd-stocks-market-search')).toBeNull()
   })
 })

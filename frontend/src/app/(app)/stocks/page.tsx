@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, memo, useCallback, useRef } from 'react'
+import { useState, useMemo, memo, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
@@ -12,6 +12,7 @@ import { PercentageChange } from '@/components/ui/percentage-change'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
+const STOCKS_SEARCH_STORAGE_KEY = 'gd-stocks-market-search'
 
 const DeferredOracleStatusBadge = dynamic(
   () => import('@/components/OracleStatusBadge').then((module) => ({ default: module.OracleStatusBadge })),
@@ -153,6 +154,22 @@ export default function StocksPage() {
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+
+  useEffect(() => {
+    const savedQuery = window.sessionStorage.getItem(STOCKS_SEARCH_STORAGE_KEY)
+    if (savedQuery && savedQuery.trim()) {
+      setQuery(savedQuery)
+    }
+  }, [])
+
+  useEffect(() => {
+    const trimmed = query.trim()
+    if (trimmed) {
+      window.sessionStorage.setItem(STOCKS_SEARCH_STORAGE_KEY, query)
+      return
+    }
+    window.sessionStorage.removeItem(STOCKS_SEARCH_STORAGE_KEY)
+  }, [query])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -324,6 +341,15 @@ export default function StocksPage() {
           onChange={e => setQuery(e.target.value)}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
         />
+        {query.trim() && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="self-start sm:self-auto text-xs text-goodgreen hover:text-goodgreen/80 transition-colors"
+          >
+            Clear
+          </button>
+        )}
         <DeferredOracleStatusBadge useStocksFallback />
       </div>
 
