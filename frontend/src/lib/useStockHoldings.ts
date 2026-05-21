@@ -37,6 +37,8 @@ export interface StockHoldingsState {
   /** true when at least one position was read from the chain */
   isLive: boolean
   isLoading: boolean
+  isError: boolean
+  refetch: () => void
 }
 
 export function useStockHoldings(
@@ -55,7 +57,7 @@ export function useStockHoldings(
     }))
   }, [userAddress, tickers])
 
-  const { data, isLoading: positionsLoading } = useReadContracts({
+  const { data, isLoading: positionsLoading, isError, refetch } = useReadContracts({
     contracts,
     query: {
       enabled: contracts.length > 0,
@@ -119,5 +121,7 @@ export function useStockHoldings(
     ...summary,
     isLive,
     isLoading,
+    isError,
+    refetch,
   }
 }

@@ -41,6 +41,7 @@ export interface StockTradesState {
   trades: TradeRecord[]
   isLoading: boolean
   isError: boolean
+  refetch: () => void
 }
 
 export function useStockTrades(
@@ -153,5 +154,6 @@ export function useStockTrades(
     trades: result.data ?? [],
     isLoading: result.isLoading,
     isError: result.isError,
+    refetch: result.refetch,
   }
 }
