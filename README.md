@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks deep-link reliability now includes a framework-level redirect from `/stocks/markets` to `/stocks`, preventing users from landing on a misleading stock-not-found shell when opening shared markets URLs.
 - Stocks markets now includes a new `Market Intelligence` strip (Top Movers, Upcoming Earnings, News Flow) with explicit demo labeling and ticker drill-in links so users can discover catalysts without leaving `/stocks`.
 - Stocks detail now supports URL-persisted research tabs (`Overview`, `Fundamentals`, `Events`), so users can deep-link into diligence context (`?tab=fundamentals`) and keep tab state through browser navigation.
 - Stocks portfolio now includes a `Portfolio Diagnostics` section with benchmark-vs-portfolio comparison, risk metrics (max drawdown, volatility, concentration), and contribution tables, with benchmark choice persisted via URL + local storage.

@@ -113,6 +113,11 @@ const nextConfig = {
         destination: '/',
         permanent: false, // 307 — preserves prior semantics
       },
+      {
+        source: '/stocks/markets',
+        destination: '/stocks',
+        permanent: false,
+      },
     ]
   },
 

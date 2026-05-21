@@ -28,4 +28,18 @@ describe('Swap route redirect', () => {
       permanent: false, // 307, matches prior semantics
     })
   })
+
+  it('routes /stocks/markets → /stocks via next.config.js for stable deep-links', async () => {
+    expect(nextConfig.redirects).toBeTypeOf('function')
+
+    const redirects = await nextConfig.redirects!()
+    const stocksMarketsRedirect = redirects.find((r: Redirect) => r.source === '/stocks/markets')
+
+    expect(stocksMarketsRedirect).toBeDefined()
+    expect(stocksMarketsRedirect).toMatchObject({
+      source: '/stocks/markets',
+      destination: '/stocks',
+      permanent: false,
+    })
+  })
 })
