@@ -35,9 +35,18 @@ export function MarketIntelligencePanel({
 
   const movers = useMemo(() => {
     if (stocks.length === 0) return []
-    const sorted = [...stocks].sort((a, b) => b.change24h - a.change24h)
-    const selected = mode === 'gainers' ? sorted.slice(0, 5) : sorted.slice(-5).reverse()
-    return selected
+
+    if (mode === 'gainers') {
+      return [...stocks]
+        .filter((stock) => stock.change24h >= 0)
+        .sort((a, b) => b.change24h - a.change24h)
+        .slice(0, 5)
+    }
+
+    return [...stocks]
+      .filter((stock) => stock.change24h < 0)
+      .sort((a, b) => a.change24h - b.change24h)
+      .slice(0, 5)
   }, [mode, stocks])
 
   const earnings = useMemo(() => {

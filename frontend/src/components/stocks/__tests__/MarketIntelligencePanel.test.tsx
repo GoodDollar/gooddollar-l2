@@ -38,6 +38,23 @@ const stocks: Stock[] = [
     dividendYield: 0,
     avgVolume: 82_000_000,
   },
+  {
+    ticker: 'META',
+    name: 'Meta',
+    sector: 'Technology',
+    description: 'Meta',
+    price: 512.01,
+    change24h: 0.6,
+    volume24h: 28_000_000,
+    marketCap: 1_290_000_000_000,
+    high52w: 560,
+    low52w: 350,
+    sparkline7d: [495, 500, 505, 512],
+    peRatio: 26,
+    eps: 12.4,
+    dividendYield: 0.3,
+    avgVolume: 24_000_000,
+  },
 ]
 
 describe('MarketIntelligencePanel', () => {
@@ -61,6 +78,22 @@ describe('MarketIntelligencePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Losers' }))
     fireEvent.click(screen.getByRole('button', { name: /TSLA-2.60%/i }))
     expect(onSelectTicker).toHaveBeenCalledWith('TSLA')
+  })
+
+  it('keeps losers list strictly negative and gainers strictly non-negative', () => {
+    render(
+      <MarketIntelligencePanel stocks={stocks} isLive isLoading={false} onSelectTicker={vi.fn()} />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Losers' }))
+    expect(screen.getByRole('button', { name: /TSLA-2.60%/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /AAPL\+1.80%/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /META\+0.60%/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gainers' }))
+    expect(screen.getByRole('button', { name: /AAPL\+1.80%/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /META\+0.60%/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /TSLA-2.60%/i })).not.toBeInTheDocument()
   })
 
   it('renders explicit empty states when no data is available', () => {
