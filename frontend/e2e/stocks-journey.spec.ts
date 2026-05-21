@@ -9,7 +9,7 @@ test.describe('Stocks Journey', () => {
 
   test('stocks page loads with Tokenized Stocks heading', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     const heading = page.locator('h1', { hasText: 'Tokenized Stocks' })
     await expect(heading).toBeVisible({ timeout: 10_000 })
@@ -20,7 +20,7 @@ test.describe('Stocks Journey', () => {
 
   test('info banner explains how tokenized stocks work', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -30,7 +30,7 @@ test.describe('Stocks Journey', () => {
 
   test('search input is present with placeholder', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -40,7 +40,7 @@ test.describe('Stocks Journey', () => {
 
   test('stock table shows column headers', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -51,7 +51,7 @@ test.describe('Stocks Journey', () => {
 
   test('stock table shows volume and market cap columns', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -61,7 +61,7 @@ test.describe('Stocks Journey', () => {
 
   test('stock table has 7d trend column', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -70,7 +70,7 @@ test.describe('Stocks Journey', () => {
 
   test('stock rows display with trade button on hover area', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -80,7 +80,7 @@ test.describe('Stocks Journey', () => {
 
   test('search filters stocks by ticker', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -92,7 +92,7 @@ test.describe('Stocks Journey', () => {
 
   test('no results shows empty state with clear button', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -105,7 +105,7 @@ test.describe('Stocks Journey', () => {
 
   test('clicking sort headers changes sort direction', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -116,7 +116,7 @@ test.describe('Stocks Journey', () => {
 
   test('oracle price source disclaimer is shown', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -125,7 +125,7 @@ test.describe('Stocks Journey', () => {
 
   test('clicking stock row navigates to detail page', async ({ page }) => {
     await page.goto('/stocks')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
@@ -164,7 +164,7 @@ test.describe('Stocks Journey', () => {
       '/stocks/%3Csvg%20onload%3Dalert(1)%3E',
     ]) {
       await page.goto(route)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
 
       await expect(page.getByRole('heading', { name: 'Stock Not Found' })).toBeVisible({ timeout: 10_000 })
       await expect(page.getByText('This stock symbol is not available.', { exact: true })).toBeVisible()
@@ -188,7 +188,7 @@ test.describe('Stocks Journey', () => {
   test('encoded valid ticker routes resolve to stock detail page', async ({ page }) => {
     for (const route of ['/stocks/%41APL', '/stocks/%2541APL', '/stocks/%252541APL']) {
       await page.goto(route)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
 
       await expect(page.locator('h1', { hasText: 'AAPL' })).toBeVisible({ timeout: 10_000 })
       await expect(page.getByRole('heading', { name: 'Stock Not Found' })).toHaveCount(0)
@@ -198,7 +198,7 @@ test.describe('Stocks Journey', () => {
   test('malformed percent-encoding routes render branded stocks recovery UI', async ({ page }) => {
     for (const route of ['/stocks/%', '/stocks/%2', '/stocks/%E0%A4%A']) {
       await page.goto(route)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
 
       await expect(page.getByRole('heading', { name: 'Stock Not Found' })).toBeVisible({ timeout: 10_000 })
       await expect(page.getByText('This stock symbol is not available.', { exact: true })).toBeVisible()

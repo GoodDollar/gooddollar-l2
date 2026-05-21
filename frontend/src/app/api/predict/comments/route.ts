@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { recoverMessageAddress } from 'viem'
+import { methodNotAllowed } from '@/lib/api-error'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 import {
   addComment,
@@ -220,3 +221,10 @@ async function handlePost(request: NextRequest) {
 
 export const GET = withApiRateLimit(handleGet)
 export const POST = withApiRateLimit(handlePost)
+
+// Reject unsupported methods with a structured JSON envelope (405).
+const ALLOWED = ['GET', 'POST'] as const
+const reject = (req: NextRequest) => methodNotAllowed(req, [...ALLOWED])
+export const PUT = reject
+export const DELETE = reject
+export const PATCH = reject

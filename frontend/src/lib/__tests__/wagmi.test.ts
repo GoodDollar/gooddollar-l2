@@ -207,6 +207,7 @@ const WAGMI_DEV_HELP_MSG =
 
 interface ReownWindow extends Window {
   __reownConsoleFilterInstalled?: boolean
+  __wagmiMissingProjectIdWarned?: boolean
 }
 
 describe('Reown console filter — installs on both branches', () => {
@@ -223,6 +224,7 @@ describe('Reown console filter — installs on both branches', () => {
     // resets in jsdom — clear it so each test exercises a fresh
     // install of the filter.
     delete (window as ReownWindow).__reownConsoleFilterInstalled
+    delete (window as ReownWindow).__wagmiMissingProjectIdWarned
 
     originalWarn = console.warn
     originalError = console.error
@@ -238,6 +240,7 @@ describe('Reown console filter — installs on both branches', () => {
     vi.unstubAllEnvs()
     vi.resetModules()
     delete (window as ReownWindow).__reownConsoleFilterInstalled
+    delete (window as ReownWindow).__wagmiMissingProjectIdWarned
   })
 
   it('valid projectId branch: suppresses the [Reown Config] warning', async () => {
@@ -287,6 +290,21 @@ describe('Reown console filter — installs on both branches', () => {
     // are asserting still reaches the spy.
     const errorCalls = errorSpy.mock.calls.map((c) => String(c[0]))
     expect(errorCalls.some((s) => s.includes('NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid'))).toBe(true)
+  })
+
+  it('invalid projectId branch: emits developer-help warning only once across re-imports', async () => {
+    await loadWagmiWithEnv(undefined)
+    const firstCount = errorSpy.mock.calls.filter((c) =>
+      String(c[0]).includes('NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid'),
+    ).length
+    expect(firstCount).toBe(1)
+
+    // Keep the window flag and re-import; warning should not repeat.
+    await loadWagmiWithEnv(undefined)
+    const secondCount = errorSpy.mock.calls.filter((c) =>
+      String(c[0]).includes('NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid'),
+    ).length
+    expect(secondCount).toBe(1)
   })
 
   it('invalid projectId branch: developer-help message must NOT match the suppression regexes', async () => {

@@ -1,20 +1,18 @@
 'use client'
 
-import { connectorsForWallets } from '@rainbow-me/rainbowkit'
+import { connectorsForWallets, getDefaultConfig } from '@rainbow-me/rainbowkit'
 import {
   coinbaseWallet,
   injectedWallet,
   safeWallet,
-  walletConnectWallet,
 } from '@rainbow-me/rainbowkit/wallets'
 import { createConfig } from 'wagmi'
 import { http } from 'viem'
 import { gooddollarL2 } from './chain'
 import { validateWcProjectId } from './wagmi-helpers'
-import { isWalletConnectEnabled, walletConnectProjectId } from './walletCapabilities'
+import { isWalletConnectConfigured, validatedWcProjectId } from './walletConnectConfig'
 
-const validatedWcProjectId = walletConnectProjectId
-const isValidWcProjectId = isWalletConnectEnabled
+const isValidWcProjectId = isWalletConnectConfigured
 
 // Scoped console filter for Reown / WalletConnect noise.
 //
@@ -51,7 +49,10 @@ const isValidWcProjectId = isWalletConnectEnabled
 // console methods on top of themselves.
 function installReownConsoleFilter(): void {
   if (typeof window === 'undefined') return
-  const w = window as unknown as { __reownConsoleFilterInstalled?: boolean }
+  const w = window as unknown as {
+    __reownConsoleFilterInstalled?: boolean
+    __wagmiMissingProjectIdWarned?: boolean
+  }
   if (w.__reownConsoleFilterInstalled) return
   w.__reownConsoleFilterInstalled = true
 
@@ -86,19 +87,22 @@ function installReownConsoleFilter(): void {
 installReownConsoleFilter()
 
 if (typeof window !== 'undefined' && !isValidWcProjectId) {
-  // Developer-help message. Intentionally NOT matched by the
-  // reownAllowlistRe / reownConfigRe patterns above — it must
-  // remain visible so contributors know why mobile wallet flows
-  // are missing in dev when no WalletConnect project ID is set.
-  console.error(
-    '[wagmi] NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid.\n' +
-    'Mobile wallet connections (Rainbow, MetaMask Mobile, Trust Wallet, etc.) will NOT work.\n' +
-    'Register a project at https://cloud.walletconnect.com and add NEXT_PUBLIC_WC_PROJECT_ID to your .env.local'
-  )
+  const w = window as unknown as { __wagmiMissingProjectIdWarned?: boolean }
+  if (!w.__wagmiMissingProjectIdWarned) {
+    w.__wagmiMissingProjectIdWarned = true
+    // Developer-help message. Intentionally NOT matched by the
+    // reownAllowlistRe / reownConfigRe patterns above — it must
+    // remain visible so contributors know why mobile wallet flows
+    // are missing in dev when no WalletConnect project ID is set.
+    console.error(
+      '[wagmi] NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid.\n' +
+      'Mobile wallet connections (Rainbow, MetaMask Mobile, Trust Wallet, etc.) will NOT work.\n' +
+      'Register a project at https://cloud.walletconnect.com and add NEXT_PUBLIC_WC_PROJECT_ID to your .env.local'
+    )
+  }
 }
 
 export { validateWcProjectId } from './wagmi-helpers'
-export { isWalletConnectEnabled } from './walletCapabilities'
 
 // HTTP transport shared by both config branches. JSON-RPC batching at
 // the transport layer coalesces requests inside a small time window
@@ -159,27 +163,12 @@ function buildNoWcConfig() {
   })
 }
 
-function buildWcConfig() {
-  const connectors = connectorsForWallets(
-    [
-      {
-        groupName: 'Wallets',
-        wallets: [injectedWallet, coinbaseWallet, walletConnectWallet, safeWallet],
-      },
-    ],
-    {
+export const config = isValidWcProjectId
+  ? getDefaultConfig({
       appName: 'GoodDollar',
       projectId: validatedWcProjectId,
-    },
-  )
-  return createConfig({
-    chains: [gooddollarL2],
-    connectors,
-    ssr: true,
-    transports,
-  })
-}
-
-export const config = isValidWcProjectId
-  ? buildWcConfig()
+      chains: [gooddollarL2],
+      ssr: true,
+      transports,
+    })
   : buildNoWcConfig()

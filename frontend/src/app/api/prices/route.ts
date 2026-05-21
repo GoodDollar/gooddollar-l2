@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { apiError, methodNotAllowed } from '@/lib/api-error'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 const CACHE_TTL_MS = 60_000
-
-// Bound the in-memory cache so unique queries can't grow it without limit
-// (LRU-ish eviction via Map insertion order).
-const MAX_CACHE_ENTRIES = 16
-
-// Reject pathological requests early. The COINGECKO_IDS table has ~18 entries;
-// any sane caller will be well below this cap. This is a DoS guard.
-const MAX_SYMBOLS_PER_REQUEST = 50
 
 const COINGECKO_IDS: Record<string, string> = {
   ETH:   'ethereum',
@@ -36,32 +29,16 @@ const COINGECKO_IDS: Record<string, string> = {
   MATIC: 'matic-network',
 }
 
-interface CacheEntry {
-  data: Record<string, unknown>
-  timestamp: number
-}
+const SUPPORTED_SYMBOLS = Object.keys(COINGECKO_IDS)
 
-// Keyed cache: each distinct ID-basket gets its own slot. Prevents thrashing
-// between widget baskets (e.g. one component asking for ETH, another for USDC)
-// and prevents cross-key STALE leakage on upstream failures.
-const priceCache = new Map<string, CacheEntry>()
+let cachedData: Record<string, unknown> | null = null
+let cacheTimestamp = 0
 
 function buildCacheKey(ids: string[]): string {
   return ids.slice().sort().join(',')
 }
 
-function rememberInCache(key: string, data: Record<string, unknown>, now: number) {
-  // Refresh insertion order so this key becomes the most-recent.
-  priceCache.delete(key)
-  priceCache.set(key, { data, timestamp: now })
-
-  // Evict oldest entries while we're over capacity.
-  while (priceCache.size > MAX_CACHE_ENTRIES) {
-    const oldestKey = priceCache.keys().next().value
-    if (oldestKey === undefined) break
-    priceCache.delete(oldestKey)
-  }
-}
+let lastCacheKey = ''
 
 async function handleGet(req: NextRequest) {
   const symbolsParam = req.nextUrl.searchParams.get('symbols')
@@ -72,32 +49,61 @@ async function handleGet(req: NextRequest) {
     )
   }
 
-  const symbols = symbolsParam.split(',').map(s => s.trim()).filter(Boolean)
-
-  if (symbols.length > MAX_SYMBOLS_PER_REQUEST) {
-    return NextResponse.json(
-      {
-        error: `Too many symbols (${symbols.length}); max ${MAX_SYMBOLS_PER_REQUEST} per request`,
-      },
-      { status: 400 },
-    )
+  // Preserve original order + de-duplicate while remembering which requested
+  // symbols are not mapped to a Coingecko id.
+  const requested: string[] = []
+  const seen = new Set<string>()
+  for (const raw of symbolsParam.split(',')) {
+    const s = raw.trim()
+    if (!s || seen.has(s)) continue
+    seen.add(s)
+    requested.push(s)
   }
+  const unknownSymbols = requested.filter((s) => !COINGECKO_IDS[s])
+  const knownSymbols = requested.filter((s) => COINGECKO_IDS[s])
+  const ids = Array.from(new Set(knownSymbols.map((s) => COINGECKO_IDS[s])))
 
-  const ids = Array.from(new Set(symbols.map(s => COINGECKO_IDS[s]).filter(Boolean)))
-
+  // All requested symbols are unmapped → reject loudly so callers don't
+  // silently render undefined prices. (Task 0027 contract.)
   if (ids.length === 0) {
-    return NextResponse.json({}, { headers: { 'Cache-Control': 'public, max-age=60' } })
+    return apiError(
+      400,
+      'no_supported_symbols',
+      `No supported symbols in request. Requested: ${requested.join(', ')}`,
+      {
+        path: req.nextUrl.pathname,
+        method: req.method,
+        requested,
+        unknownSymbols,
+        supported_sample: SUPPORTED_SYMBOLS.slice(0, 12),
+      },
+    )
   }
 
   const cacheKey = buildCacheKey(ids)
   const now = Date.now()
-  const cached = priceCache.get(cacheKey)
-  const isFresh = cached && now - cached.timestamp < CACHE_TTL_MS
+  const cacheHit =
+    cachedData && cacheKey === lastCacheKey && now - cacheTimestamp < CACHE_TTL_MS
 
-  if (cached && isFresh) {
-    return NextResponse.json(cached.data, {
-      headers: { 'Cache-Control': 'public, max-age=60', 'X-Cache': 'HIT' },
+  // Build the legacy-shape envelope (keeps `body[id]` available for existing
+  // callers) plus the new diagnostic fields.
+  const envelope = (
+    prices: Record<string, unknown>,
+    extraHeaders: Record<string, string>,
+  ) => {
+    const body: Record<string, unknown> = {
+      ...prices,
+      prices,
+      requested,
+      unknownSymbols,
+    }
+    return NextResponse.json(body, {
+      headers: { 'Cache-Control': 'public, max-age=60', ...extraHeaders },
     })
+  }
+
+  if (cacheHit) {
+    return envelope(cachedData as Record<string, unknown>, { 'X-Cache': 'HIT' })
   }
 
   try {
@@ -123,17 +129,14 @@ async function handleGet(req: NextRequest) {
 
     const data = (await upstream.json()) as Record<string, unknown>
 
-    rememberInCache(cacheKey, data, now)
+    cachedData = data
+    cacheTimestamp = now
+    lastCacheKey = cacheKey
 
-    return NextResponse.json(data, {
-      headers: { 'Cache-Control': 'public, max-age=60', 'X-Cache': 'MISS' },
-    })
+    return envelope(data, { 'X-Cache': 'MISS' })
   } catch (err) {
-    // Only serve STALE for the *same* cache key — never cross-key.
-    if (cached) {
-      return NextResponse.json(cached.data, {
-        headers: { 'Cache-Control': 'public, max-age=60', 'X-Cache': 'STALE' },
-      })
+    if (cachedData) {
+      return envelope(cachedData as Record<string, unknown>, { 'X-Cache': 'STALE' })
     }
 
     return NextResponse.json(
@@ -144,3 +147,11 @@ async function handleGet(req: NextRequest) {
 }
 
 export const GET = withApiRateLimit(handleGet)
+
+// Reject unsupported methods with a structured JSON envelope (405).
+const ALLOWED = ['GET'] as const
+const reject = (req: NextRequest) => methodNotAllowed(req, [...ALLOWED])
+export const POST = reject
+export const PUT = reject
+export const DELETE = reject
+export const PATCH = reject

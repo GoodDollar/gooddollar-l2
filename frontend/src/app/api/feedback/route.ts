@@ -28,6 +28,7 @@ import {
   type ConsoleEntry,
   type FeedbackPayload,
 } from '@/lib/feedbackContext'
+import { methodNotAllowed } from '@/lib/api-error'
 import { getRealIp } from '@/lib/rate-limit'
 import { redactDeep } from '@/lib/redactSecrets'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
@@ -188,3 +189,11 @@ async function handlePost(request: NextRequest): Promise<Response> {
 }
 
 export const POST = withApiRateLimit(handlePost)
+
+// Reject unsupported methods with a structured JSON envelope (405).
+const ALLOWED = ['POST'] as const
+const reject = (req: NextRequest) => methodNotAllowed(req, [...ALLOWED])
+export const GET = reject
+export const PUT = reject
+export const DELETE = reject
+export const PATCH = reject

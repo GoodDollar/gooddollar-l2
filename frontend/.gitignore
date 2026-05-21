@@ -9,3 +9,6 @@ node_modules/
 
 # Local TypeScript/review artifacts
 tsconfig.tsbuildinfo
+
+# Local generated review artifacts
+.next.review/

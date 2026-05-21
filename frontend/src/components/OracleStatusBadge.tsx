@@ -16,65 +16,108 @@ type Variant = 'compact' | 'detail'
 interface OracleStatusBadgeProps {
   variant?: Variant
   symbol?: string
-  /**
-   * When the primary quotes-status endpoint is unreachable, also probe
-   * `/api/status` and report "Live" if the stocks-keeper service is healthy.
-   * Defaults to `true` so every consumer (compact listing badges and the
-   * stock detail page) shares the same resilient behavior — opt out with
-   * `useStocksFallback={false}` for legacy call sites that need the strict
-   * primary-only path.
-   */
   useStocksFallback?: boolean
+  /**
+   * When provided alongside `useStocksFallback`, indicates whether the
+   * on-chain stocks oracle is actually returning data. When `false`, the
+   * badge surfaces a "Demo data" state instead of misleading "Live", even
+   * if the off-chain `stocks-keeper` service reports healthy.
+   */
+  onChainReachable?: boolean
 }
 
-export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = true }: OracleStatusBadgeProps) {
+export function OracleStatusBadge({
+  variant = 'compact',
+  symbol,
+  useStocksFallback = false,
+  onChainReachable,
+}: OracleStatusBadgeProps) {
   const { status, error } = usePriceServiceStatus()
+  const hasAuthError = /\b(401|403)\b/.test(error ?? '')
   const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
   const [fallbackLoading, setFallbackLoading] = useState(false)
-  const [fallbackReady, setFallbackReady] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     if (!useStocksFallback || status || !error) return
 
-    setFallbackReady(false)
     setFallbackLoading(true)
     fetch('/api/status', { cache: 'no-store' })
       .then(async (res) => {
-        if (!res.ok) throw new Error(`status ${res.status}`)
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            if (!cancelled) setFallbackState('auth')
+            return
+          }
+          throw new Error(`status ${res.status}`)
+        }
         const data = await res.json()
         if (cancelled) return
-        setFallbackState(deriveStocksOracleHealth(data))
+        setFallbackState(deriveStocksOracleHealth(data, Date.now(), onChainReachable))
       })
-      .catch(() => {
+      .catch((err) => {
         if (cancelled) return
+        if (err instanceof Error && /\b(401|403)\b/.test(err.message)) {
+          setFallbackState('auth')
+          return
+        }
         setFallbackState('offline')
       })
       .finally(() => {
-        if (!cancelled) {
-          setFallbackLoading(false)
-          setFallbackReady(true)
-        }
+        if (!cancelled) setFallbackLoading(false)
       })
 
     return () => { cancelled = true }
-  }, [useStocksFallback, status, error])
+  }, [useStocksFallback, status, error, onChainReachable])
 
   if (error || !status) {
     if (useStocksFallback) {
-      if (fallbackLoading || !fallbackReady) {
+      if (hasAuthError || fallbackState === 'auth') {
         return (
-          <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-            <span>Checking prices...</span>
+          <div className="inline-flex items-center gap-1.5 text-xs text-red-300" title="Upstream stock status endpoint returned unauthorized (401/403). Check credentials/session configuration.">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+            <span>Auth required</span>
+            <span className="text-red-500/60">·</span>
+            <span>stocks status 401</span>
           </div>
         )
       }
-      if (fallbackState === 'live' || fallbackState === 'degraded') {
+      if (fallbackLoading) {
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+            <span>Checking oracle...</span>
+          </div>
+        )
+      }
+      if (fallbackState === 'live') {
+        return (
+          <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            <span>Live</span>
+            <span className="text-gray-600">·</span>
+            <span>stocks-keeper</span>
+          </div>
+        )
+      }
+      if (fallbackState === 'fallback') {
+        return (
+          <div
+            className="inline-flex items-center gap-1.5 text-xs text-amber-300"
+            title="Off-chain stocks-keeper is healthy, but the on-chain StocksPriceOracle is unreachable. UI is showing demo data."
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span>Demo data</span>
+            <span className="text-amber-500/60">·</span>
+            <span>oracle unreachable</span>
+          </div>
+        )
+      }
+      if (fallbackState === 'degraded') {
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-            <span>Prices delayed</span>
+            <span>Oracle degraded</span>
           </div>
         )
       }
@@ -82,7 +125,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     return (
       <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-        <span>Prices offline</span>
+        <span>Oracle offline</span>
       </div>
     )
   }
@@ -95,7 +138,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       return (
         <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
           <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-          <span>No price data for {symbol}</span>
+          <span>No oracle data for {symbol}</span>
         </div>
       )
     }

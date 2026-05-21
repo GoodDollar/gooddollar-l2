@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import type React from 'react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const push = vi.fn()
@@ -8,6 +7,7 @@ const walletState = { address: undefined as `0x${string}` | undefined }
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
+  usePathname: () => '/stocks',
   useSearchParams: () => new URLSearchParams(''),
   useParams: () => ({}),
 }))
@@ -19,18 +19,6 @@ vi.mock('wagmi', async (importOriginal) => {
     useAccount: () => walletState,
   }
 })
-
-// Stub RainbowKit's ConnectButton.Custom so tests don't require a real
-// RainbowKitProvider mounted. The render-prop receives no-op openers.
-vi.mock('@rainbow-me/rainbowkit', () => ({
-  ConnectButton: {
-    Custom: ({
-      children,
-    }: {
-      children: (args: { openConnectModal: () => void; openChainModal: () => void }) => React.ReactNode
-    }) => children({ openConnectModal: () => {}, openChainModal: () => {} }),
-  },
-}))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
   useOnChainStocks: () => ({
@@ -71,10 +59,8 @@ describe('StocksPage onboarding CTA', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Connect Wallet to Trade Stocks' })).toBeInTheDocument()
-    expect(screen.getByText('Tap for details')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Mobile wallet connectors are unavailable in this environment/i),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Tap to trade')).toBeInTheDocument()
+    expect(screen.getByText(/Mobile wallet connectors are unavailable in this environment/i)).toBeInTheDocument()
   })
 
   it('hides first-time onboarding CTA when wallet is connected', () => {
@@ -98,8 +84,8 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    const tickerNodes = screen.getAllByText('AAPL')
-    const row = tickerNodes[0]?.closest('div[class*="bg-dark-100"]')
+    const tradeHint = screen.getByText('Tap to trade')
+    const row = tradeHint.closest('div[class*="bg-dark-100"]')
     expect(row).toBeTruthy()
 
     const rightColumn = row?.querySelector('div.text-right')
@@ -109,14 +95,14 @@ describe('StocksPage onboarding CTA', () => {
     const price = screen.getAllByText('$218.27')[0]
     expect(price.className).toContain('whitespace-nowrap')
 
-    const name = screen.getAllByText('Apple synthetic')[0]
-    expect(name.className).toContain('max-w-[120px]')
+    const name = screen.getAllByText('sAAPL')[0]
+    expect(name.className).toContain('max-w-[84px]')
 
-    // Ensure rendered "Tap for details" badge still exists in constrained layout.
-    expect(container.textContent).toContain('Tap for details')
+    // Ensure rendered "Tap to trade" badge still exists in constrained layout.
+    expect(container.textContent).toContain('Tap to trade')
   })
 
-  it('uses View details action label on desktop table when disconnected', () => {
+  it('keeps desktop Trade action visible without hover-only gating', () => {
     walletState.address = undefined
 
     render(
@@ -125,22 +111,13 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByRole('button', { name: 'View details for AAPL' })).toBeInTheDocument()
+    const tradeButton = screen.getByRole('button', { name: 'Trade' })
+    expect(tradeButton).toBeInTheDocument()
+    expect(tradeButton.className).not.toContain('sm:opacity-0')
+    expect(tradeButton.className).not.toContain('group-hover:opacity-100')
   })
 
-  it('uses Trade now action label on desktop table when connected', () => {
-    walletState.address = '0x1111111111111111111111111111111111111111'
-
-    render(
-      <TestWrapper>
-        <StocksPage />
-      </TestWrapper>
-    )
-
-    expect(screen.getByRole('button', { name: 'Trade now for AAPL' })).toBeInTheDocument()
-  })
-
-  it('does not show "Token s{ticker}" jargon in stock rows', () => {
+  it('reserves right/bottom safe area on stocks markets page for floating feedback controls', () => {
     walletState.address = undefined
 
     const { container } = render(
@@ -149,7 +126,45 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    expect(container.textContent).not.toContain('Token sAAPL')
-    expect(container.textContent).not.toContain('Token s')
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('pb-24')
+    expect(wrapper?.className).toContain('md:pr-24')
+  })
+
+  it('uses mobile-first filter shell spacing for clearer top-viewport hierarchy', () => {
+    walletState.address = undefined
+
+    const { container } = render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('space-y-5')
+
+    const searchInput = screen.getByPlaceholderText('Search stocks...')
+    const filterShell = searchInput.closest('div.mb-4')
+    expect(filterShell).toBeTruthy()
+    expect(filterShell?.className).toContain('rounded-2xl')
+    expect(filterShell?.className).toContain('bg-dark-100/35')
+    expect(filterShell?.className).toContain('p-3')
+  })
+
+  it('uses a full-height page wrapper so mobile viewports keep continuous themed background', () => {
+    walletState.address = undefined
+
+    const { container } = render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('min-h-screen')
+    expect(wrapper?.className).toContain('bg-dark-200')
   })
 })

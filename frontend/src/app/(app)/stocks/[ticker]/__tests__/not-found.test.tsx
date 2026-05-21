@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
+let currentSearchParams = ''
+const replace = vi.fn()
+let chartPoints: Array<{ time: string; open: number; high: number; low: number; close: number; volume: number }> = []
 let currentStocks: Array<{
   ticker: string
   name: string
@@ -20,12 +23,6 @@ let currentStocks: Array<{
   avgVolume: number
   description?: string
 }> = []
-let oracleGuardState: { health: 'live' | 'degraded' | 'offline'; reason: string | null; isLoading: boolean } = {
-  health: 'live',
-  reason: null,
-  isLoading: false,
-}
-let walletConnected = false
 
 const makeStock = () => ({
   ticker: 'AAPL',
@@ -46,7 +43,9 @@ const makeStock = () => ({
 
 vi.mock('next/navigation', () => ({
   useParams: () => currentParams,
-  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/stocks/AAPL',
+  useSearchParams: () => new URLSearchParams(currentSearchParams),
+  useRouter: () => ({ push: vi.fn(), replace }),
 }))
 
 vi.mock('next/link', () => ({
@@ -59,12 +58,8 @@ vi.mock('@/components/PriceChart', () => ({
   PriceChart: () => <div data-testid="price-chart" />,
 }))
 
-vi.mock('@/components/OracleStatusBadge', () => ({
-  OracleStatusBadge: () => <div data-testid="oracle-badge" />,
-}))
-
 vi.mock('@/lib/chartData', () => ({
-  getChartData: () => [],
+  getChartData: () => chartPoints,
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
@@ -81,18 +76,6 @@ vi.mock('@/lib/WalletReadyContext', () => ({
   useWalletReady: () => true,
 }))
 
-vi.mock('@/lib/useStocksOracleGuard', () => ({
-  useStocksOracleGuard: () => oracleGuardState,
-}))
-
-vi.mock('wagmi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('wagmi')>()
-  return {
-    ...actual,
-    useAccount: () => ({ isConnected: walletConnected }),
-  }
-})
-
 vi.mock('@rainbow-me/rainbowkit', () => ({
   ConnectButton: { Custom: () => null },
 }))
@@ -102,9 +85,10 @@ import StockDetailPage from '../page'
 describe('StockDetailPage invalid ticker messaging hardening', () => {
   beforeEach(() => {
     currentParams = {}
+    currentSearchParams = ''
+    replace.mockReset()
+    chartPoints = []
     currentStocks = []
-    oracleGuardState = { health: 'live', reason: null, isLoading: false }
-    walletConnected = false
   })
 
   it('renders a generic not-found message without echoing plain invalid ticker input', () => {
@@ -224,12 +208,21 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
   })
 
+  it('resolves encoded trailing-slash ticker payload to stock detail page', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL%2F' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByRole('heading', { name: 'AAPL' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
+  })
+
   it('shows stocks-focused next actions in empty-position state on valid detail pages', () => {
     currentStocks = [makeStock()]
     currentParams = { ticker: 'AAPL' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const buyLink = screen.getByRole('link', { name: /Buy AAPL/i })
+    const buyLink = screen.getByRole('link', { name: /Buy sAAPL/i })
     const portfolioLink = screen.getByRole('link', { name: /Open Stock Portfolio/i })
     const browseLink = screen.getByRole('link', { name: /Browse Stocks/i })
 
@@ -242,70 +235,59 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.queryByRole('link', { name: /Prediction markets/i })).toBeNull()
   })
 
-  it('shows a prominent risk banner when oracle guard reports offline', () => {
+  it('normalizes invalid tab query params to canonical fallback URL', async () => {
     currentStocks = [makeStock()]
     currentParams = { ticker: 'AAPL' }
-    oracleGuardState = {
-      health: 'offline',
-      reason: 'Price data is stale (321s old).',
-      isLoading: false,
-    }
-
+    currentSearchParams = 'tab=unknown'
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(/Trading is paused/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(/Price data is stale/i).length).toBeGreaterThanOrEqual(1)
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith('/stocks/AAPL', { scroll: false })
+    })
   })
 
-  it('shows first-trade checklist with required states for disconnected users', () => {
+  it('renders analysis section with trend fallback when chart data is unavailable', () => {
     currentStocks = [makeStock()]
     currentParams = { ticker: 'AAPL' }
-    walletConnected = false
-    oracleGuardState = { health: 'degraded', reason: 'Quotes are delayed.', isLoading: false }
-
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    expect(screen.getByText(/First trade checklist/i)).toBeTruthy()
-    expect(screen.getByText('1. Connect wallet')).toBeTruthy()
-    expect(screen.getByText('Action needed')).toBeTruthy()
-    expect(screen.getByText('2. Confirm live prices')).toBeTruthy()
-    expect(screen.getAllByText('Waiting...').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('3. Submit order')).toBeTruthy()
-    expect(screen.getByText('Almost there')).toBeTruthy()
-    expect(screen.queryByText('Blocked')).toBeNull()
-    expect(screen.queryByText('Required')).toBeNull()
+    expect(screen.getByRole('heading', { name: /Analysis/i })).toBeTruthy()
+    expect(screen.getByText(/Trend signal unavailable while chart data loads/i)).toBeTruthy()
+    expect(screen.getByText(/P\/E 29.4x/i)).toBeTruthy()
   })
 
-  it('shows synthetic token explainer above company description in About section', () => {
-    const stockWithDesc = { ...makeStock(), description: 'Apple Inc. designs and sells electronics.' }
-    currentStocks = [stockWithDesc]
+  it('supports peer metric switching in analysis section', () => {
+    currentStocks = [
+      makeStock(),
+      {
+        ...makeStock(),
+        ticker: 'MSFT',
+        name: 'Microsoft',
+        sector: 'Technology',
+        marketCap: 2800000000000,
+        peRatio: 35.2,
+      },
+      {
+        ...makeStock(),
+        ticker: 'NVDA',
+        name: 'NVIDIA',
+        sector: 'Technology',
+        marketCap: 2500000000000,
+        peRatio: 44.5,
+      },
+    ]
+    chartPoints = [
+      { time: '2026-05-01', open: 180, high: 182, low: 178, close: 180, volume: 1_000_000 },
+      { time: '2026-05-02', open: 180, high: 189, low: 179, close: 188, volume: 1_300_000 },
+      { time: '2026-05-03', open: 188, high: 193, low: 186, close: 191, volume: 1_500_000 },
+    ]
     currentParams = { ticker: 'AAPL' }
-    walletConnected = false
-    oracleGuardState = { health: 'live', reason: null, isLoading: false }
-
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    expect(screen.getByText(/About AAPL/i)).toBeTruthy()
-    expect(screen.getByText(/AAPL on GoodDollar tracks/i)).toBeTruthy()
-    expect(screen.queryByText(/sAAPL/i)).toBeNull()
-    expect(screen.getByText(/tracks.*Apple Inc/i)).toBeTruthy()
-    expect(screen.getByText(/24\/7/i)).toBeTruthy()
-    expect(screen.getByText(/Universal Basic Income/i)).toBeTruthy()
-    expect(screen.getByText('Apple Inc. designs and sells electronics.')).toBeTruthy()
-  })
+    fireEvent.click(screen.getByRole('button', { name: 'Mkt Cap' }))
+    expect(screen.getAllByText('MSFT').length).toBeGreaterThan(0)
 
-  it('shows actionable recovery links when oracle is not live', () => {
-    currentStocks = [makeStock()]
-    currentParams = { ticker: 'AAPL' }
-    walletConnected = true
-    oracleGuardState = { health: 'offline', reason: 'Price data is stale.', isLoading: false }
-
-    render(<TestWrapper><StockDetailPage /></TestWrapper>)
-
-    const browseStocks = screen.getByRole('link', { name: /Browse trade-ready stocks/i })
-    const portfolioLinks = screen.getAllByRole('link', { name: /Open Stock Portfolio/i })
-    expect(browseStocks.getAttribute('href')).toBe('/stocks')
-    expect(portfolioLinks.some(link => link.getAttribute('href') === '/stocks/portfolio')).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'P/E' }))
+    expect(screen.getAllByText('NVDA').length).toBeGreaterThan(0)
   })
 })

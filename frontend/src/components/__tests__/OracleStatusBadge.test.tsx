@@ -16,7 +16,7 @@ describe('OracleStatusBadge stocks fallback', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows Prices delayed when quote status is unavailable even if stocks-keeper is healthy', async () => {
+  it('shows Live with stocks fallback when quote status is unavailable but stocks-keeper is healthy', async () => {
     vi.mocked(usePriceServiceStatus).mockReturnValue({
       status: null,
       isLoading: false,
@@ -33,11 +33,11 @@ describe('OracleStatusBadge stocks fallback', () => {
     )
 
     render(<OracleStatusBadge useStocksFallback />)
-    await waitFor(() => expect(screen.getByText('Prices delayed')).toBeInTheDocument())
-    expect(screen.queryByText('Live')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Live')).toBeInTheDocument())
+    expect(screen.getByText('stocks-keeper')).toBeInTheDocument()
   })
 
-  it('shows Prices offline when quote status is unavailable and fallback status fails', async () => {
+  it('shows Oracle offline when quote status is unavailable and fallback status fails', async () => {
     vi.mocked(usePriceServiceStatus).mockReturnValue({
       status: null,
       isLoading: false,
@@ -46,6 +46,33 @@ describe('OracleStatusBadge stocks fallback', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'))
 
     render(<OracleStatusBadge useStocksFallback />)
-    await waitFor(() => expect(screen.getByText('Prices offline')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Oracle offline')).toBeInTheDocument())
+  })
+
+  it('shows auth-required state when quote-status endpoint fails with 401', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'Status endpoint returned 401',
+    })
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'))
+
+    render(<OracleStatusBadge useStocksFallback />)
+    await waitFor(() => expect(screen.getByText('Auth required')).toBeInTheDocument())
+    expect(screen.getByText('stocks status 401')).toBeInTheDocument()
+  })
+
+  it('shows auth-required state when fallback /api/status returns 401', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+    )
+
+    render(<OracleStatusBadge useStocksFallback />)
+    await waitFor(() => expect(screen.getByText('Auth required')).toBeInTheDocument())
   })
 })

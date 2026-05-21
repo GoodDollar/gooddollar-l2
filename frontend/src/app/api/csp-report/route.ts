@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { methodNotAllowed } from '@/lib/api-error'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
@@ -33,3 +34,12 @@ async function handlePost(request: NextRequest) {
 }
 
 export const POST = withApiRateLimit(handlePost)
+
+// Reject unsupported methods with a structured JSON envelope (405).
+// Without these handlers Next.js would return its default HTML 405 page.
+const ALLOWED = ['POST'] as const
+const reject = (req: NextRequest) => methodNotAllowed(req, [...ALLOWED])
+export const GET = reject
+export const PUT = reject
+export const DELETE = reject
+export const PATCH = reject

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -13,25 +13,61 @@ import {
   parsePoolAmount,
   type PoolKey,
   type PoolMeta,
+  type PoolHealth,
 } from '@/lib/useGoodPool'
 import { formatAmount } from '@/lib/format'
+
+// Task 0024: route users hitting a misconfigured pool to the operator
+// runbook so they can see the known-bad reserve snapshot and the (out-of-
+// lane) remediation path instead of staring at `—` placeholders.
+const POOL_RUNBOOK_PATH = '/docs/runbooks/pool-misconfigured.md'
 
 // ─── Pool Stats Card ──────────────────────────────────────────────────────────
 
 function PoolStatsCard({
   pool,
   onSelect,
+  onHealthChange,
 }: {
   pool: PoolMeta
   onSelect: (key: PoolKey) => void
+  onHealthChange?: (key: PoolKey, health: PoolHealth) => void
 }) {
-  const { reserveAFormatted, reserveBFormatted, totalLiquidityFormatted, spotPriceFormatted, isLoading } =
-    usePoolReserves(pool.key)
+  const {
+    reserveAFormatted,
+    reserveBFormatted,
+    totalLiquidityFormatted,
+    spotPriceFormatted,
+    health,
+    isLoading,
+  } = usePoolReserves(pool.key)
   const { address } = useAccount()
   const { userLpFormatted, sharePercent } = useUserLiquidity(pool.key, address)
 
+  // Task 0024: lift the resolved health value up to the page so the page can
+  // (a) render a single banner summarising affected pools and (b) refuse to
+  // open the Manage modal even if some future code path bypasses the local
+  // disabled-button check.
+  useEffect(() => {
+    onHealthChange?.(pool.key, health)
+  }, [pool.key, health, onHealthChange])
+
+  // Task 0024: refuse to render usable trade UX when on-chain reserves imply
+  // a nonsensical spot price. Replace numbers with `—`, surface a badge, and
+  // disable the Manage button so the user cannot drill into the modal and
+  // sign a self-griefing swap.
+  const isMisconfigured = health === 'misconfigured'
+
   return (
-    <div className="bg-dark-100 border border-gray-700/40 rounded-2xl p-5 flex flex-col gap-4">
+    <div
+      className={
+        isMisconfigured
+          ? 'bg-dark-100 border border-red-500/40 rounded-2xl p-5 flex flex-col gap-4'
+          : 'bg-dark-100 border border-gray-700/40 rounded-2xl p-5 flex flex-col gap-4'
+      }
+      data-pool-key={pool.key}
+      data-pool-health={health}
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -44,13 +80,31 @@ function PoolStatsCard({
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">{pool.key}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-white">{pool.key}</p>
+              {isMisconfigured && (
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/40"
+                  title="Pool reserves appear misconfigured. Trading is disabled."
+                  aria-label="Pool is misconfigured. Trading is disabled."
+                >
+                  Misconfigured
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-500">{pool.feeBps / 100}% fee · {pool.ubiBps / 100}% UBI</p>
           </div>
         </div>
         <button
-          onClick={() => onSelect(pool.key)}
-          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/10 transition-colors"
+          onClick={() => !isMisconfigured && onSelect(pool.key)}
+          disabled={isMisconfigured}
+          aria-disabled={isMisconfigured}
+          title={isMisconfigured ? 'Pool reserves appear misconfigured. Trading is disabled.' : undefined}
+          className={
+            isMisconfigured
+              ? 'text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-700/30 text-gray-500 cursor-not-allowed'
+              : 'text-xs font-medium px-3 py-1.5 rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/10 transition-colors'
+          }
         >
           Manage
         </button>
@@ -61,13 +115,13 @@ function PoolStatsCard({
         <div className="bg-dark-50 rounded-xl p-3">
           <p className="text-xs text-gray-500 mb-0.5">{pool.tokenASymbol} Reserve</p>
           <p className="text-sm font-semibold text-white">
-            {isLoading ? '…' : formatAmount(reserveAFormatted)}
+            {isMisconfigured ? '—' : isLoading ? '…' : formatAmount(reserveAFormatted)}
           </p>
         </div>
         <div className="bg-dark-50 rounded-xl p-3">
           <p className="text-xs text-gray-500 mb-0.5">{pool.tokenBSymbol} Reserve</p>
           <p className="text-sm font-semibold text-white">
-            {isLoading ? '…' : formatAmount(reserveBFormatted)}
+            {isMisconfigured ? '—' : isLoading ? '…' : formatAmount(reserveBFormatted)}
           </p>
         </div>
       </div>
@@ -77,19 +131,41 @@ function PoolStatsCard({
         <span>
           Price:{' '}
           <span className="text-white">
-            {spotPriceFormatted != null
-              ? `1 ${pool.tokenASymbol} = ${formatAmount(spotPriceFormatted)} ${pool.tokenBSymbol}`
-              : '—'}
+            {isMisconfigured
+              ? '—'
+              : spotPriceFormatted != null
+                ? `1 ${pool.tokenASymbol} = ${formatAmount(spotPriceFormatted)} ${pool.tokenBSymbol}`
+                : '—'}
           </span>
         </span>
         <span>
           LP tokens:{' '}
-          <span className="text-white">{isLoading ? '…' : formatAmount(totalLiquidityFormatted)}</span>
+          <span className="text-white">
+            {isMisconfigured ? '—' : isLoading ? '…' : formatAmount(totalLiquidityFormatted)}
+          </span>
         </span>
       </div>
 
-      {/* User position (only if connected) */}
-      {address && userLpFormatted > 0 && (
+      {/* Per-card runbook hint */}
+      {isMisconfigured && (
+        <p className="text-[11px] text-red-300/90 border-t border-red-500/20 pt-3">
+          On-chain reserves look misconfigured for this pool. Trading is disabled until an
+          operator re-seeds the pool. See the{' '}
+          <a
+            href={POOL_RUNBOOK_PATH}
+            className="underline hover:text-red-200"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            pool-misconfigured runbook
+          </a>
+          .
+        </p>
+      )}
+
+      {/* User position (only if connected, and only when the pool is healthy
+          enough to trust LP balances) */}
+      {!isMisconfigured && address && userLpFormatted > 0 && (
         <div className="bg-goodgreen/5 border border-goodgreen/20 rounded-xl p-3 flex items-center justify-between">
           <span className="text-xs text-gray-400">Your position</span>
           <span className="text-xs font-medium text-goodgreen">
@@ -370,6 +446,45 @@ export default function PoolPage() {
   const { isConnected } = useAccount()
   const [selectedPool, setSelectedPool] = useState<PoolKey | null>(null)
 
+  // Task 0024: aggregate health from each PoolStatsCard so we can render a
+  // single page-level banner when any pool is misconfigured. We use a callback
+  // (state-lifting via callback) instead of calling `usePoolReserves` again in
+  // the parent — that would re-fetch chain data and would also force
+  // `POOL_LIST.map` to call hooks, which `eslint-react-hooks` forbids.
+  const [healthByKey, setHealthByKey] = useState<Record<string, PoolHealth>>({})
+  const handleHealthChange = useCallback((key: PoolKey, health: PoolHealth) => {
+    setHealthByKey(prev => (prev[key] === health ? prev : { ...prev, [key]: health }))
+  }, [])
+
+  const misconfiguredKeys = useMemo(
+    () =>
+      POOL_LIST
+        .map(p => p.key)
+        .filter((k): k is PoolKey => healthByKey[k] === 'misconfigured'),
+    [healthByKey],
+  )
+
+  // Defence in depth: refuse to open the Manage modal for a pool whose reserves
+  // look broken, even if the disabled-button check is bypassed somehow.
+  const handleSelectPool = useCallback(
+    (key: PoolKey) => {
+      if (healthByKey[key] === 'misconfigured') return
+      setSelectedPool(key)
+    },
+    [healthByKey],
+  )
+
+  // If the selected pool flips to misconfigured while the modal is open
+  // (e.g. a fresh reserves read returns extreme values), close the modal.
+  useEffect(() => {
+    if (selectedPool && healthByKey[selectedPool] === 'misconfigured') {
+      setSelectedPool(null)
+    }
+  }, [selectedPool, healthByKey])
+
+  const safeSelectedPool =
+    selectedPool && healthByKey[selectedPool] !== 'misconfigured' ? selectedPool : null
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Page header */}
@@ -386,6 +501,62 @@ export default function PoolPage() {
         <div className="mb-6 p-4 bg-dark-100 border border-gray-700/30 rounded-2xl flex items-center justify-between">
           <p className="text-sm text-gray-400">Connect wallet to manage liquidity</p>
           <ConnectButton accountStatus="avatar" showBalance={false} chainStatus="none" />
+        </div>
+      )}
+
+      {/* Task 0024: page-level misconfigured pool warning */}
+      {misconfiguredKeys.length > 0 && (
+        <div
+          role="alert"
+          data-testid="pool-misconfigured-banner"
+          className="mb-6 p-4 bg-red-500/10 border border-red-500/40 rounded-2xl"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-red-500/20 flex-shrink-0 flex items-center justify-center">
+              <svg
+                className="w-4 h-4 text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"
+                />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-300">
+                {misconfiguredKeys.length === 1
+                  ? '1 pool is misconfigured'
+                  : `${misconfiguredKeys.length} pools are misconfigured`}
+              </p>
+              <p className="mt-1 text-xs text-red-200/80">
+                On-chain reserves imply an out-of-range spot price. Trading is
+                disabled until reserves are reseeded. See the{' '}
+                <a
+                  href={POOL_RUNBOOK_PATH}
+                  className="underline hover:text-red-100"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  pool runbook
+                </a>{' '}
+                for recovery steps.
+              </p>
+              {misconfiguredKeys.length > 0 && (
+                <p className="mt-2 text-[11px] uppercase tracking-wide text-red-200/60">
+                  Affected:{' '}
+                  <span className="font-mono text-red-200/90">
+                    {misconfiguredKeys.join(', ')}
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -406,13 +577,18 @@ export default function PoolPage() {
       {/* Pool list */}
       <div className="flex flex-col gap-4">
         {POOL_LIST.map(pool => (
-          <PoolStatsCard key={pool.key} pool={pool} onSelect={setSelectedPool} />
+          <PoolStatsCard
+            key={pool.key}
+            pool={pool}
+            onSelect={handleSelectPool}
+            onHealthChange={handleHealthChange}
+          />
         ))}
       </div>
 
-      {/* Pool manager modal */}
-      {selectedPool && (
-        <PoolManager poolKey={selectedPool} onClose={() => setSelectedPool(null)} />
+      {/* Pool manager modal — guarded against misconfigured pools */}
+      {safeSelectedPool && (
+        <PoolManager poolKey={safeSelectedPool} onClose={() => setSelectedPool(null)} />
       )}
     </div>
   )

@@ -1,15 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const accountState = {
   address: undefined as `0x${string}` | undefined,
   isConnected: false,
 }
+const searchParamsState = { value: '' }
+const replace = vi.fn()
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(''),
+  useRouter: () => ({ push: vi.fn(), replace }),
+  usePathname: () => '/stocks/portfolio',
+  useSearchParams: () => new URLSearchParams(searchParamsState.value),
   useParams: () => ({}),
 }))
 
@@ -59,12 +62,14 @@ vi.mock('@/components/InfoBanner', () => ({
   InfoBanner: () => null,
 }))
 
-import { StocksPortfolioContent } from '../StocksPortfolioContent'
+import StocksPortfolioPage from '../page'
 
 describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () => {
   beforeEach(() => {
     accountState.address = undefined
     accountState.isConnected = false
+    searchParamsState.value = ''
+    replace.mockReset()
   })
 
   it('shows neutral disconnected summary placeholders instead of active $0 metrics', () => {
@@ -79,7 +84,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
     expect(screen.getByText('Total Value')).toBeInTheDocument()
@@ -90,44 +95,50 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(screen.queryByText('0% — Critical')).not.toBeInTheDocument()
   })
 
-  it('shows a portfolio-first primary connect CTA for disconnected users', () => {
+  it('shows an actionable in-context connect CTA for disconnected users', () => {
     accountState.address = undefined
     accountState.isConnected = false
 
     render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    expect(screen.getByText('Connect wallet to view holdings and history')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Connect Wallet to View Holdings & History' })).toBeInTheDocument()
-  })
-
-  it('shows disconnected dual-path guidance with a browse-markets action', () => {
-    accountState.address = undefined
-    accountState.isConnected = false
-
-    render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
-    )
-
-    expect(screen.getByText('No wallet connected yet.')).toBeInTheDocument()
-    expect(screen.getByText(/browse markets first, then connect when you are ready to trade/i)).toBeInTheDocument()
-    const browseLink = screen.getByRole('link', { name: 'Browse Stock Markets' })
-    expect(browseLink.getAttribute('href')).toBe('/stocks')
-  })
-
-  it('elevates disconnected primary actions into a single prominent action group', () => {
-    accountState.address = undefined
-    accountState.isConnected = false
-
-    render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
-    )
-
-    const actions = screen.getByTestId('stocks-disconnected-primary-actions')
-    expect(actions.className).toContain('sm:flex-row')
     expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Browse Stock Markets' })).toBeInTheDocument()
+    expect(screen.getByText(/Mobile wallet connectors are unavailable in this environment/i)).toBeInTheDocument()
+  })
+
+  it('uses a full-height themed wrapper so mobile layout does not fall back to unstyled background gaps', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('min-h-screen')
+    expect(wrapper?.className).toContain('bg-dark-200')
+  })
+
+  it('normalizes unsupported query params to canonical portfolio URL', () => {
+    searchParamsState.value = 'tab=bad'
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(replace).toHaveBeenCalledWith('/stocks/portfolio', { scroll: false })
+  })
+
+  it('drops unsupported params but preserves valid benchmark query', () => {
+    searchParamsState.value = 'tab=bad&benchmark=QQQ'
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(replace).toHaveBeenCalledWith('/stocks/portfolio?benchmark=QQQ', { scroll: false })
   })
 
   it('shows deferred impact section loading placeholders on first paint', () => {
@@ -135,10 +146,23 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     accountState.isConnected = false
 
     render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
     expect(screen.getByText('Loading impact insights…')).toBeInTheDocument()
+  })
+
+  it('prioritizes a single onboarding path for disconnected first-time users', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByRole('heading', { name: /Get started in 3 steps/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Connect Wallet to Start Portfolio' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Portfolio Diagnostics' })).not.toBeInTheDocument()
   })
 
   it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {
@@ -149,7 +173,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
     const text = container.textContent || ''
@@ -165,7 +189,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).not.toMatch(/Critical/)
@@ -180,7 +204,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Not active yet')
@@ -205,7 +229,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Not active yet')
@@ -223,7 +247,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Collateral Health')
@@ -246,7 +270,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('0% — Critical')
@@ -269,32 +293,50 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     holdingsState.healthRatio = 0
 
     const { container } = render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
     const text = container.textContent || ''
     expect(text).toContain('Connect wallet to view collateral health')
     expect(text).not.toContain('0% — Critical')
   })
 
-  it('uses readable disconnected collateral helper typography for responsive cards', () => {
-    accountState.address = undefined
-    accountState.isConnected = false
-    holdingsState.holdings = []
-    holdingsState.totalValue = 0
-    holdingsState.unrealizedPnl = 0
-    holdingsState.pnlPercent = 0
-    holdingsState.totalCollateral = 0
-    holdingsState.totalRequired = 0
-    holdingsState.healthRatio = 0
+  it('renders portfolio analytics blocks and supports range/allocation toggles', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = true
+    holdingsState.holdings = [
+      { ticker: 'AAPL', shares: 2, avgCost: 180, currentPrice: 200, collateralDeposited: 0, collateralRequired: 0 },
+      { ticker: 'MSFT', shares: 1, avgCost: 350, currentPrice: 330, collateralDeposited: 0, collateralRequired: 0 },
+    ]
+    holdingsState.totalValue = 730
+    holdingsState.unrealizedPnl = 10
+    holdingsState.pnlPercent = 1.4
 
     render(
-      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
     )
 
-    const primaryHelper = screen.getByText('Connect wallet to view collateral health')
-    const secondaryHelper = screen.getByText('Connect wallet to unlock collateral monitoring.')
+    expect(screen.getByRole('heading', { name: 'Allocation' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Performance Trend' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Top Contributors' })).toBeInTheDocument()
+    expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
 
-    expect(primaryHelper.className).toContain('leading-relaxed')
-    expect(secondaryHelper.className).toContain('leading-relaxed')
+    fireEvent.click(screen.getByRole('button', { name: 'Shares' }))
+    fireEvent.click(screen.getAllByRole('button', { name: '1M' })[0]!)
+
+    expect(screen.getByRole('img', { name: /1M portfolio performance/i })).toBeInTheDocument()
+  })
+
+  it('reserves right/bottom safe area on stocks portfolio for floating feedback controls', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('pb-24')
+    expect(wrapper?.className).toContain('md:pr-24')
   })
 })

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { parsePoolAmount, formatPoolAmount, getPool, POOL_LIST, computeSpotPrice } from '@/lib/useGoodPool'
+import {
+  parsePoolAmount,
+  formatPoolAmount,
+  getPool,
+  POOL_LIST,
+  computeSpotPrice,
+  classifyPoolHealth,
+} from '@/lib/useGoodPool'
 
 describe('parsePoolAmount', () => {
   it('parses 18-decimal amount', () => {
@@ -149,6 +156,96 @@ describe('computeSpotPrice', () => {
   it('returns 0 if reserveB is 0 and reserveA is positive', () => {
     // Degenerate "no tokenB" liquidity — price is mathematically 0.
     expect(computeSpotPrice(1000, 0)).toBe(0)
+  })
+})
+
+// Task 0024: Pool-health classifier guarding the /pool page against
+// on-chain miscalibration on testnet. The contract returns reserves that
+// imply an absurd spot price (e.g. 1e12 USDC per G$) for some pools, which
+// previously rendered as `0 G$` / `$NaN` and let users sign self-griefing
+// swaps. The classifier is a pure helper consumed by usePoolReserves and
+// the pool page UI; thresholds are intentionally loose to avoid false
+// positives on heavy-liquidity pools like (100M G$, 100 USDC) where the
+// realistic spot is 1e-6.
+describe('classifyPoolHealth', () => {
+  it("returns 'unknown' when reserveA is undefined", () => {
+    expect(classifyPoolHealth(undefined, '1000')).toBe('unknown')
+  })
+
+  it("returns 'unknown' when reserveB is undefined", () => {
+    expect(classifyPoolHealth('1000', undefined)).toBe('unknown')
+  })
+
+  it("returns 'unknown' when both reserves are undefined", () => {
+    expect(classifyPoolHealth(undefined, undefined)).toBe('unknown')
+  })
+
+  it("returns 'unknown' when reserveA is zero (no liquidity to assess)", () => {
+    expect(classifyPoolHealth('0', '0')).toBe('unknown')
+  })
+
+  it("returns 'unknown' when reserveA is zero but reserveB is positive", () => {
+    expect(classifyPoolHealth('0', '1000')).toBe('unknown')
+  })
+
+  it("returns 'unknown' when inputs are non-numeric", () => {
+    expect(classifyPoolHealth('abc', 'def')).toBe('unknown')
+  })
+
+  it("returns 'unknown' when reserveA is negative", () => {
+    expect(classifyPoolHealth('-1000', '1000')).toBe('unknown')
+  })
+
+  it("returns 'ok' for balanced 1:1 reserves", () => {
+    expect(classifyPoolHealth('1000', '1000')).toBe('ok')
+  })
+
+  it("returns 'ok' for realistic G$/USDC heavy liquidity (100M G$, 100 USDC, spot=1e-6)", () => {
+    // Mirrors the documented healthy shape in the computeSpotPrice suite
+    // above. MUST NOT be flagged, or every realistic G$/USDC pool gets
+    // a MISCONFIGURED badge and disabled trade actions.
+    expect(classifyPoolHealth('100000000', '100')).toBe('ok')
+  })
+
+  it("returns 'ok' for realistic G$/WETH (100 G$, 1 WETH, spot=0.01)", () => {
+    expect(classifyPoolHealth('100', '1')).toBe('ok')
+  })
+
+  it("returns 'misconfigured' for observed G$/USDC bug (1e-6 G$ vs 1e18 USDC)", () => {
+    // On-chain miscalibration: spot collapses to ~1e24, far above any
+    // plausible USDC-per-G$ rate.
+    expect(classifyPoolHealth('0.000001', '1e18')).toBe('misconfigured')
+  })
+
+  it("returns 'misconfigured' for observed G$/WETH bug (1000 G$ vs 3M WETH, spot=3000)", () => {
+    // Spot of 3000 WETH per G$ is physically nonsensical (≥ $1e10 per G$).
+    expect(classifyPoolHealth('1000', '3000000')).toBe('misconfigured')
+  })
+
+  it("returns 'misconfigured' for observed WETH/USDC bug (3e-6 WETH vs 1e18 USDC)", () => {
+    expect(classifyPoolHealth('0.000003', '1e18')).toBe('misconfigured')
+  })
+
+  it("accepts number inputs (matches formatPoolAmount's return type)", () => {
+    expect(classifyPoolHealth(1000, 1000)).toBe('ok')
+    expect(classifyPoolHealth(1000, 3_000_000)).toBe('misconfigured')
+    expect(classifyPoolHealth(100_000_000, 100)).toBe('ok')
+  })
+
+  it("returns 'misconfigured' for dust tokenA (1e-9 G$, 1000 USDC, spot=1e12)", () => {
+    expect(classifyPoolHealth('1e-9', '1000')).toBe('misconfigured')
+  })
+
+  it("returns 'misconfigured' for absurd tokenB (1 token, 1e15 token, spot=1e15)", () => {
+    expect(classifyPoolHealth('1', '1e15')).toBe('misconfigured')
+  })
+
+  it("returns 'unknown' when reserveA is NaN", () => {
+    expect(classifyPoolHealth(NaN, 1000)).toBe('unknown')
+  })
+
+  it("returns 'unknown' when reserveA is Infinity", () => {
+    expect(classifyPoolHealth(Infinity, 1000)).toBe('unknown')
   })
 })
 

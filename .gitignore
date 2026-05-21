@@ -122,3 +122,6 @@ tmp/
 
 # Local TypeScript/review artifacts
 frontend/tsconfig.tsbuildinfo
+
+# Local generated review artifacts
+frontend/.next.review/

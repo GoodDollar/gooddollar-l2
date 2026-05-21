@@ -18,5 +18,5 @@ const TABS = [
 ]
 
 export function StocksSectionNav() {
-  return <SectionNav tabs={TABS} />
+  return <SectionNav tabs={TABS} mobileCompact />
 }

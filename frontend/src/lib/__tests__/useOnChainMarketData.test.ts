@@ -1,75 +1,102 @@
 import { describe, it, expect } from 'vitest'
-import { decodePoolSpotPrice } from '@/lib/useOnChainMarketData'
+import { deriveGdUsdPriceFromReserves } from '@/lib/useOnChainMarketData'
+import { getPool, parsePoolAmount, SPOT_MIN, SPOT_MAX } from '@/lib/useGoodPool'
 
-describe('decodePoolSpotPrice', () => {
-  // Realistic devnet ratio: 10M G$ (base, 18d) vs 1k USDC (quote, 6d)
-  //   → expected price = 1000 / 10_000_000 = 0.0001 USDC per G$.
-  it('decodes a realistic G$/USDC pool ratio with mixed decimals (18/6)', () => {
-    const price = decodePoolSpotPrice({
-      baseReserve:    10_000_000_000_000_000_000_000_000n, // 1e7 G$ in raw 1e18 units
-      quoteReserve:   1_000_000_000n,                       // 1e3 USDC in raw 1e6 units
-      baseDecimals:   18,
-      quoteDecimals:  6,
-    })
+// G$/USDC pool — G$ is 18-decimals (tokenA), USDC is 6-decimals (tokenB)
+const POOL = getPool('G$/USDC')
+
+describe('deriveGdUsdPriceFromReserves', () => {
+  it('returns null when either reserve is undefined', () => {
+    expect(deriveGdUsdPriceFromReserves(undefined, undefined)).toBeNull()
+    expect(
+      deriveGdUsdPriceFromReserves(parsePoolAmount('1000000', POOL.tokenADecimals), undefined),
+    ).toBeNull()
+    expect(
+      deriveGdUsdPriceFromReserves(undefined, parsePoolAmount('100', POOL.tokenBDecimals)),
+    ).toBeNull()
+  })
+
+  it('returns null when either reserve is zero', () => {
+    const zero = BigInt(0)
+    const someGd = parsePoolAmount('1000000', POOL.tokenADecimals)
+    const someUsdc = parsePoolAmount('100', POOL.tokenBDecimals)
+    expect(deriveGdUsdPriceFromReserves(zero, someUsdc)).toBeNull()
+    expect(deriveGdUsdPriceFromReserves(someGd, zero)).toBeNull()
+    expect(deriveGdUsdPriceFromReserves(zero, zero)).toBeNull()
+  })
+
+  it('returns a plausible spot price for realistic G$/USDC reserves (~$0.0001 per G$)', () => {
+    // 10,000,000 G$ paired with 1,000 USDC → spot ≈ 0.0001 USDC/G$
+    const reserveA = parsePoolAmount('10000000', POOL.tokenADecimals) // 1e7 G$ as 18-dec
+    const reserveB = parsePoolAmount('1000', POOL.tokenBDecimals) // 1e3 USDC as 6-dec
+
+    const price = deriveGdUsdPriceFromReserves(reserveA, reserveB)
     expect(price).not.toBeNull()
     expect(price!).toBeGreaterThan(0)
-    expect(price!).toBeLessThan(0.001)
+    // Expected ≈ 0.0001, with floating-point tolerance
     expect(price!).toBeCloseTo(0.0001, 8)
+    expect(price!).toBeGreaterThanOrEqual(SPOT_MIN)
+    expect(price!).toBeLessThanOrEqual(SPOT_MAX)
   })
 
-  // Sanity: when base and quote share decimals the result is just quote/base.
-  it('matches naive ratio when both tokens share decimals', () => {
-    const price = decodePoolSpotPrice({
-      baseReserve:   1_000_000n,
-      quoteReserve:  2_000_000n,
-      baseDecimals:  18,
-      quoteDecimals: 18,
-    })
-    expect(price).toBe(2)
-  })
+  it('rejects implausibly high spot prices (above SPOT_MAX)', () => {
+    // Raw bigints used as raw integers (decimals ignored) would yield ~1e12 USDC/G$
+    // — the kind of value the bug produced. With proper decimals, we must still reject
+    // anything that resolves above SPOT_MAX after formatting.
+    // 1 G$ paired with 1e10 USDC → spot = 1e10 USDC/G$  (way above SPOT_MAX = 1e3)
+    const reserveA = parsePoolAmount('1', POOL.tokenADecimals)
+    const reserveB = parsePoolAmount('10000000000', POOL.tokenBDecimals)
 
-  // The buggy code path (formatUnits(spotPrice, 18) on a value already scaled
-  // by 1e18 from a mixed-decimal pool) was off by ~1e12 for the devnet config.
-  // Guard against that regression.
-  it('does NOT inflate the price by 1e12 (regression for the explore market-cap bug)', () => {
-    const price = decodePoolSpotPrice({
-      baseReserve:   10_000_000_000_000_000_000_000_000n,
-      quoteReserve:  1_000_000_000n,
-      baseDecimals:  18,
-      quoteDecimals: 6,
-    })
-    expect(price!).toBeLessThan(1)
-  })
-
-  it('returns null when baseReserve is zero (avoids division by zero / Infinity)', () => {
-    const price = decodePoolSpotPrice({
-      baseReserve:   0n,
-      quoteReserve:  1_000_000n,
-      baseDecimals:  18,
-      quoteDecimals: 6,
-    })
+    const price = deriveGdUsdPriceFromReserves(reserveA, reserveB)
     expect(price).toBeNull()
   })
 
-  it('returns null when quoteReserve is zero (empty pool side)', () => {
-    const price = decodePoolSpotPrice({
-      baseReserve:   1n,
-      quoteReserve:  0n,
-      baseDecimals:  18,
-      quoteDecimals: 6,
-    })
+  it('rejects implausibly low spot prices (below SPOT_MIN)', () => {
+    // 1e12 G$ paired with 1 USDC → spot = 1e-12 USDC/G$ (well below SPOT_MIN = 1e-9)
+    const reserveA = parsePoolAmount('1000000000000', POOL.tokenADecimals)
+    const reserveB = parsePoolAmount('1', POOL.tokenBDecimals)
+
+    const price = deriveGdUsdPriceFromReserves(reserveA, reserveB)
     expect(price).toBeNull()
   })
 
-  it('handles tiny prices without losing precision to zero or Infinity', () => {
-    const price = decodePoolSpotPrice({
-      baseReserve:   1_000_000_000_000_000_000_000_000n, // 1e6 G$ raw
-      quoteReserve:  1n,                                  // 1e-6 USDC raw
-      baseDecimals:  18,
-      quoteDecimals: 6,
-    })
+  it('rejects raw bigints with mismatched decimals (the original bug pattern)', () => {
+    // Simulates the original bug: contracts returned reserves as raw bigints
+    // but caller treated G$ (18-dec) and USDC (6-dec) as same scale.
+    // If decimals are handled correctly, this pair yields a plausible ~0.0001 price.
+    // If decimals are ignored, the ratio explodes — verify our function handles decimals.
+    const reserveA = parsePoolAmount('10000000', POOL.tokenADecimals) // 1e25 raw
+    const reserveB = parsePoolAmount('1000', POOL.tokenBDecimals) // 1e9 raw
+
+    // Decimal-aware result is plausible:
+    const correct = deriveGdUsdPriceFromReserves(reserveA, reserveB)
+    expect(correct).not.toBeNull()
+    expect(correct!).toBeCloseTo(0.0001, 8)
+
+    // Sanity guard: spot must be within bounds — the old bug produced ~1e16,
+    // which would have been rejected even if it slipped through formatting.
+    expect(correct!).toBeLessThan(SPOT_MAX)
+    expect(correct!).toBeGreaterThan(SPOT_MIN)
+  })
+
+  it('accepts the boundary value SPOT_MAX (1000 USDC/G$)', () => {
+    // 1 G$ paired with 1000 USDC → spot = 1000 USDC/G$ — at boundary
+    const reserveA = parsePoolAmount('1', POOL.tokenADecimals)
+    const reserveB = parsePoolAmount('1000', POOL.tokenBDecimals)
+
+    const price = deriveGdUsdPriceFromReserves(reserveA, reserveB)
     expect(price).not.toBeNull()
-    expect(price!).toBeGreaterThan(0)
+    expect(price!).toBe(SPOT_MAX)
+  })
+
+  it('handles asymmetric realistic reserves without overflow', () => {
+    // Large but realistic pool: 1B G$ paired with 100k USDC → ~0.0001
+    const reserveA = parsePoolAmount('1000000000', POOL.tokenADecimals)
+    const reserveB = parsePoolAmount('100000', POOL.tokenBDecimals)
+
+    const price = deriveGdUsdPriceFromReserves(reserveA, reserveB)
+    expect(price).not.toBeNull()
+    expect(price!).toBeCloseTo(0.0001, 8)
     expect(Number.isFinite(price!)).toBe(true)
   })
 })

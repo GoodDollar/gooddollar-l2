@@ -94,21 +94,64 @@ interface CoinGeckoSimpleEntry {
 
 async function fetchCoinGeckoQuotes(
   symbols: string[],
-): Promise<{ prices: Record<string, number>; quotes: Record<string, Quote> }> {
+): Promise<{
+  prices: Record<string, number>
+  quotes: Record<string, Quote>
+  unknownSymbols: string[]
+}> {
+  // Compute client-side "unknown" set up front so we surface it even when we
+  // early-return without hitting the server, or when the server response is
+  // the legacy shape (no unknownSymbols field).
+  const clientUnknown = symbols.filter(s => !COINGECKO_IDS[s])
   const ids = Array.from(new Set(symbols.map(s => COINGECKO_IDS[s]).filter(Boolean)))
-  if (ids.length === 0) return { prices: {}, quotes: {} }
+  if (ids.length === 0) {
+    return { prices: {}, quotes: {}, unknownSymbols: clientUnknown }
+  }
 
   const res = await fetch(`/api/prices?symbols=${symbols.join(',')}`)
+
+  // Task 0027: the server now returns 400 + `code: "no_supported_symbols"`
+  // when every requested symbol is unmapped. Defensively handle that — even
+  // though `ids.length === 0` above usually short-circuits first, the
+  // server's symbol table and the client's can drift.
+  if (res.status === 400) {
+    type ErrEnvelope = { code?: string; details?: { unknownSymbols?: unknown } }
+    let body: ErrEnvelope = {}
+    try { body = (await res.json()) as ErrEnvelope } catch { /* ignore */ }
+    if (body.code === 'no_supported_symbols') {
+      const reported = Array.isArray(body.details?.unknownSymbols)
+        ? (body.details!.unknownSymbols as unknown[]).filter(
+            (x): x is string => typeof x === 'string',
+          )
+        : symbols
+      return { prices: {}, quotes: {}, unknownSymbols: reported }
+    }
+  }
+
   if (!res.ok) throw new Error(`Price proxy ${res.status}`)
 
-  const data: Record<string, CoinGeckoSimpleEntry> = await res.json()
+  // New server shape is a strict superset of the legacy Coingecko shape:
+  // top-level coingecko keys are still present (for backward compat) AND new
+  // fields (`prices`, `requested`, `unknownSymbols`) sit alongside. Tests
+  // and older callers that mock the bare shape continue to work — we just
+  // read `unknownSymbols` when present.
+  type ServerEnvelope = Record<string, CoinGeckoSimpleEntry | unknown> & {
+    unknownSymbols?: unknown
+  }
+  const data = (await res.json()) as ServerEnvelope
+
+  const serverUnknown = Array.isArray(data.unknownSymbols)
+    ? (data.unknownSymbols as unknown[]).filter(
+        (x): x is string => typeof x === 'string',
+      )
+    : null
 
   const prices: Record<string, number> = {}
   const quotes: Record<string, Quote> = {}
   for (const sym of symbols) {
     const id = COINGECKO_IDS[sym]
     if (!id) continue
-    const entry = data[id]
+    const entry = data[id] as CoinGeckoSimpleEntry | undefined
     if (!entry || typeof entry.usd !== 'number') continue
 
     prices[sym] = entry.usd
@@ -119,7 +162,9 @@ async function fetchCoinGeckoQuotes(
       marketCap: typeof entry.usd_market_cap   === 'number' ? entry.usd_market_cap   : 0,
     }
   }
-  return { prices, quotes }
+  // Prefer the server's view (authoritative re: supported symbols today),
+  // fall back to the client-computed set for legacy/mocked responses.
+  return { prices, quotes, unknownSymbols: serverUnknown ?? clientUnknown }
 }
 
 // ─── Public state shape ───────────────────────────────────────────────────────
@@ -134,6 +179,13 @@ export interface PriceFeedState {
   isLive: boolean
   lastUpdated: Date | null
   error: string | null
+  /**
+   * Subset of the requested symbols that the price proxy could not resolve
+   * (no Coingecko mapping). Empty when every requested symbol is supported.
+   * Consumers should use this to render a warning chip instead of silently
+   * showing a 0 / fallback price. See task 0027.
+   */
+  unknownSymbols: string[]
 }
 
 // ─── Shared singleton store ───────────────────────────────────────────────────
@@ -157,6 +209,7 @@ const store: PriceFeedStore = {
     isLive: false,
     lastUpdated: null,
     error: null,
+    unknownSymbols: [],
   },
   refs: new Map(),
   subscribers: new Set(),
@@ -183,19 +236,25 @@ async function refresh(): Promise<void> {
 
   store.inFlight = true
   try {
-    const { prices: live, quotes } = await fetchCoinGeckoQuotes(symbols)
+    const { prices: live, quotes, unknownSymbols } = await fetchCoinGeckoQuotes(symbols)
     store.state = {
       prices: { ...store.state.prices, ...live },
       quotes: { ...store.state.quotes, ...quotes },
       isLive: Object.keys(live).length > 0,
       lastUpdated: new Date(),
       error: null,
+      // Replace (don't accumulate) so dropping a subscriber that was the only
+      // one asking for an unknown symbol also drops it from the surfaced list.
+      // We always send the full trackedSymbols() set, so the response covers it.
+      unknownSymbols,
     }
   } catch (err) {
     store.state = {
       ...store.state,
       isLive: false,
       error: err instanceof Error ? err.message : 'Price feed unavailable',
+      // Leave unknownSymbols alone on transient network errors so any prior
+      // warning surfaces stay rendered until the next successful refresh.
     }
   } finally {
     store.inFlight = false
@@ -277,6 +336,7 @@ export function __resetPriceFeedStoreForTests(): void {
     isLive: false,
     lastUpdated: null,
     error: null,
+    unknownSymbols: [],
   }
 }
 

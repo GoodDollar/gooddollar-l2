@@ -146,20 +146,44 @@ function MarketCapSparkline({ value, positive }: { value: number; positive: bool
   )
 }
 
+/**
+ * Hard ceiling on a single token's market cap for inclusion in the
+ * headline "Total Market Cap" stat (task 0029).
+ *
+ * `useOnChainMarketData` is the primary defense — it derives the G$ price
+ * from decimal-aware reserves and rejects values outside `[SPOT_MIN,
+ * SPOT_MAX]`. This is belt-and-suspenders for any token whose market cap
+ * still comes through implausibly large (e.g. a new pool variant, an
+ * oracle returning 1e18 scaled wrong, a CoinGecko quirk). The largest
+ * real-world crypto market cap in 2026 is ~$2T, so $5T is a safe ceiling
+ * that lets the rest of the bar render correctly while clearly omitting
+ * a misbehaving token.
+ */
+const MAX_PLAUSIBLE_MARKET_CAP = 5e12 // USD 5 trillion
+
 function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
   const [activeCard, setActiveCard] = useState(0)
   const [dragOffset, setDragOffset] = useState(0)
 
   const stats = useMemo(() => {
-    const totalMarketCap = tokens.reduce((s, t) => s + t.marketCap, 0)
+    // Exclude implausibly large market caps from the headline sum so a
+    // single misbehaving token doesn't print "$1,000,000,000.81T" and
+    // overwhelm the whole page. We still keep those tokens in `tokens`
+    // (and therefore in the table below) — they'll render their own row
+    // with the bad value, which is at least less misleading than a
+    // 13-digit "total".
+    const tokensInBounds = tokens.filter(t => t.marketCap <= MAX_PLAUSIBLE_MARKET_CAP)
+    const totalMarketCap = tokensInBounds.reduce((s, t) => s + t.marketCap, 0)
+    const excludedCount = tokens.length - tokensInBounds.length
     // No token reports a positive market cap → treat the index as
     // "unavailable" rather than rendering "$0" with a misleading
     // sparkline. Mirrors how `change24h === null` flows through the same
     // card via `weightedChange === null`.
-    const hasAnyMarketCap = tokens.some(t => t.marketCap > 0)
-    // Weight only tokens with known change24h so missing data doesn't drag
-    // the index toward zero. If no token reports change24h, weightedChange is null.
-    const tokensWithChange = tokens.filter(t => t.change24h !== null)
+    const hasAnyMarketCap = tokensInBounds.some(t => t.marketCap > 0)
+    // Weight only tokens with known change24h (and in-bound market caps) so
+    // missing data doesn't drag the index toward zero. If no token reports
+    // change24h, weightedChange is null.
+    const tokensWithChange = tokensInBounds.filter(t => t.change24h !== null)
     const weightedMarketCap = tokensWithChange.reduce((s, t) => s + t.marketCap, 0)
     const weightedChange = weightedMarketCap > 0
       ? tokensWithChange.reduce((s, t) => s + (t.change24h ?? 0) * t.marketCap, 0) / weightedMarketCap
@@ -173,7 +197,14 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
     // old inline `change24h > 0` filter let DAI through at +0.02%, which
     // displayed as a contradictory "▲0.0% gainer".
     const gainers = selectTopGainers(tokens, 3)
-    return { totalMarketCap, hasAnyMarketCap, weightedChange, trending, gainers }
+    return {
+      totalMarketCap,
+      hasAnyMarketCap,
+      weightedChange,
+      trending,
+      gainers,
+      excludedCount,
+    }
   }, [tokens])
 
   const cards = [
@@ -182,7 +213,17 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
       content: (
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-xs text-gray-500 mb-1.5 font-medium">Total Market Cap</div>
+            <div className="text-xs text-gray-500 mb-1.5 font-medium flex items-center gap-1.5">
+              Total Market Cap
+              {stats.excludedCount > 0 && (
+                <span
+                  className="text-[10px] font-medium text-amber-400/80 uppercase tracking-wide"
+                  title={`${stats.excludedCount} token${stats.excludedCount === 1 ? '' : 's'} excluded because reported market cap was implausibly large.`}
+                >
+                  (partial)
+                </span>
+              )}
+            </div>
             {stats.hasAnyMarketCap ? (
               <div className="text-xl font-bold text-white mb-0.5">{formatMarketCap(stats.totalMarketCap)}</div>
             ) : (
