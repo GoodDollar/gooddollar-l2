@@ -254,7 +254,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
     expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/Live prices are offline\. Trading is paused for safety\./i)).toBeTruthy()
+    expect(screen.getAllByText(/Trading is paused/i).length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText(/Price data is stale/i).length).toBeGreaterThanOrEqual(1)
   })
 

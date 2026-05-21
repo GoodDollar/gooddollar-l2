@@ -97,7 +97,27 @@ describe('StockDetailPage wallet gate + oracle guard', () => {
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
     expect(await screen.findByRole('button', { name: /Connect Wallet to Trade/i })).toBeTruthy()
-    expect(await screen.findByText(/Trading is temporarily limited while prices update/i)).toBeTruthy()
+    const pausedTexts = await screen.findAllByText(/Trading is paused/i)
+    expect(pausedTexts.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows consolidated "Trading is paused" instead of separate oracle/sync warnings', async () => {
+    oracleGuardState = { health: 'offline', reason: 'Price data is stale', isLoading: false }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const pausedTexts = await screen.findAllByText(/Trading is paused/i)
+    expect(pausedTexts.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/browse stocks.*review charts/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.queryByText(/Trading is temporarily limited/i)).toBeNull()
+    expect(screen.queryByText(/New trades are paused while price data catches up/i)).toBeNull()
+  })
+
+  it('includes collapsible Technical details in consolidated warning', async () => {
+    oracleGuardState = { health: 'offline', reason: 'Price data is stale', isLoading: false }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const details = await screen.findAllByText(/Technical details/i)
+    expect(details.length).toBeGreaterThanOrEqual(1)
   })
 
   it('deduplicates right-rail next-step links in oracle-limited disconnected state', async () => {

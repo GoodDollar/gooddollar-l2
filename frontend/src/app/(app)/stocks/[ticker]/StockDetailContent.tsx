@@ -300,18 +300,17 @@ function OrderForm({
           You only hold {balanceShares.toFixed(4)} {stock.ticker}. Reduce the amount to sell.
         </div>
       )}
-      {oracleTradeBlocked && (
+      {(oracleTradeBlocked || syncBlocked) && (
         <div role="alert" aria-live="polite"
           className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          <div className="font-medium text-amber-100">Trading is temporarily limited while prices update.</div>
-          {oracleBlockReason && <div className="mt-1 text-amber-200/90">{oracleBlockReason}</div>}
-        </div>
-      )}
-      {syncBlocked && (
-        <div role="alert" aria-live="polite"
-          className="mb-3 rounded-xl border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-          <div className="font-medium text-red-100">New trades are paused while price data catches up. Please wait a moment.</div>
-          {syncGuard.reason && <div className="mt-1 text-red-200/90">{syncGuard.reason}</div>}
+          <div className="font-medium text-amber-100">Trading is paused</div>
+          <div className="mt-1 text-amber-200/90">Price data is temporarily unavailable. You can still browse stocks, review charts, and connect your wallet.</div>
+          {(oracleBlockReason || syncGuard.reason) && (
+            <details className="mt-1.5">
+              <summary className="text-[10px] text-amber-300/70 cursor-pointer hover:text-amber-200 transition-colors">Technical details</summary>
+              <div className="mt-1 text-[10px] text-amber-200/70">{oracleBlockReason || syncGuard.reason}</div>
+            </details>
+          )}
         </div>
       )}
 
@@ -498,22 +497,18 @@ export function StockDetailContent() {
               <OracleStatusBadge variant="detail" symbol={stock.ticker} useStocksFallback />
             ) : null}
           </div>
-          {oracleGuard.health !== 'live' && (
+          {(oracleGuard.health !== 'live' || !syncGuard.allowRiskIncrease) && (
             <div role="alert" className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3">
-              <p className="text-sm font-semibold text-amber-200">
-                {oracleGuard.health === 'offline'
-                  ? 'Live prices are offline. Trading is paused for safety.'
-                  : 'Live prices are temporarily delayed. Trading will resume when price feeds recover.'}
+              <p className="text-sm font-semibold text-amber-200">Trading is paused</p>
+              <p className="mt-1 text-sm text-amber-100/90">
+                Price data is temporarily unavailable. You can still browse stocks, review charts, and connect your wallet.
               </p>
-              {oracleGuard.reason && (
-                <p className="mt-1 text-xs text-amber-100/90">{oracleGuard.reason}</p>
+              {(oracleGuard.reason || syncGuard.reason) && (
+                <details className="mt-2">
+                  <summary className="text-xs text-amber-300/70 cursor-pointer hover:text-amber-200 transition-colors">Technical details</summary>
+                  <p className="mt-1 text-xs text-amber-200/70">{oracleGuard.reason || syncGuard.reason}</p>
+                </details>
               )}
-            </div>
-          )}
-          {oracleGuard.health === 'live' && !syncGuard.allowRiskIncrease && (
-            <div role="alert" className="mb-4 rounded-2xl border border-red-500/35 bg-red-500/10 px-4 py-3">
-              <p className="text-sm font-semibold text-red-200">Price data is updating. Please wait a moment before trading.</p>
-              {syncGuard.reason && <p className="mt-1 text-xs text-red-100/90">{syncGuard.reason}</p>}
             </div>
           )}
 
