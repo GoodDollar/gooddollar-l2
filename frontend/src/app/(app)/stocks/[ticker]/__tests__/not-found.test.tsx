@@ -41,7 +41,9 @@ const makeStock = () => ({
 
 vi.mock('next/navigation', () => ({
   useParams: () => currentParams,
-  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/stocks/AAPL',
+  useSearchParams: () => new URLSearchParams(''),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
 
 vi.mock('next/link', () => ({

@@ -23,6 +23,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 ### Recent UX polish (updated: 2026-05-21)
 
 - Stocks markets now includes a new `Market Intelligence` strip (Top Movers, Upcoming Earnings, News Flow) with explicit demo labeling and ticker drill-in links so users can discover catalysts without leaving `/stocks`.
+- Stocks detail now supports URL-persisted research tabs (`Overview`, `Fundamentals`, `Events`), so users can deep-link into diligence context (`?tab=fundamentals`) and keep tab state through browser navigation.
 - Stocks screener state now persists in URL query params (search, filters, sort), and ticker preview links carry that state forward so browser Back from `/stocks/[ticker]` restores the exact prior screen context.
 - Stocks oracle badge now surfaces explicit auth failures (`Auth required · stocks status 401`) when status dependencies return 401/403, instead of collapsing credential issues into generic offline/demo messaging.
 - Stocks list search now guards against pre-hydration input loss: the search box is disabled until client mount, preventing fast-typing races where nonsense queries appeared to be ignored before React hydration completed.

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
@@ -23,6 +23,7 @@ import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
 // NOTE: Keep these imports STATIC. Inside an App Router dynamic-segment
 // page (e.g. `[ticker]/page.tsx`), wrapping a client component in
@@ -90,6 +91,12 @@ function normalizeTickerForLookup(rawTicker?: string): string {
   if (UNSAFE_TICKER_PATTERN.test(normalized)) return ''
   if (!SAFE_TICKER_PATTERN.test(normalized)) return ''
   return normalized
+}
+
+function formatEventDate(offsetDays: number): string {
+  const now = new Date()
+  const date = new Date(now.getTime() + offsetDays * 24 * 60 * 60 * 1000)
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function OrderForm({ stock, position }: { stock: { ticker: string; price: number }; position: OnChainStockPosition | null }) {
@@ -275,6 +282,9 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
 }
 
 export default function StockDetailPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
@@ -282,6 +292,7 @@ export default function StockDetailPage() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
+  const [activeTab, setActiveTab] = useState<TickerTab>(() => parseTickerTab(searchParams.get('tab')))
   const [analysisExpanded, setAnalysisExpanded] = useState(true)
   const [peerMetric, setPeerMetric] = useState<PeerMetric>('change24h')
   const [analystLoading, setAnalystLoading] = useState(true)
@@ -317,12 +328,46 @@ export default function StockDetailPage() {
     const spreadPct = first > 0 ? ((high - low) / first) * 100 : 0
     return { signal, changePct, spreadPct }
   }, [chartData])
+  const fundamentalsRows = useMemo(() => (stock ? buildFundamentalsRows(stock) : []), [stock])
+  const eventTimeline = useMemo(() => {
+    if (!stock) return []
+    const upcoming = [
+      { id: `${stock.ticker}-earnings-next`, label: 'Earnings call', date: formatEventDate(7), status: 'Upcoming' },
+      { id: `${stock.ticker}-dividend-next`, label: 'Dividend ex-date', date: stock.dividendYield > 0 ? formatEventDate(13) : 'Not scheduled', status: stock.dividendYield > 0 ? 'Upcoming' : 'Info' },
+    ]
+    const recent = newsItems.slice(0, 2).map((item, idx) => ({
+      id: item.id,
+      label: item.headline,
+      date: new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      status: idx === 0 ? 'Recent' : 'Catalyst',
+    }))
+    return [...upcoming, ...recent]
+  }, [newsItems, stock])
 
   useEffect(() => {
     setAnalystLoading(true)
     const timer = setTimeout(() => setAnalystLoading(false), 140)
     return () => clearTimeout(timer)
   }, [ticker])
+
+  useEffect(() => {
+    const nextTab = parseTickerTab(searchParams.get('tab'))
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab)
+    }
+  }, [activeTab, searchParams])
+
+  const handleTabChange = (nextTab: TickerTab) => {
+    setActiveTab(nextTab)
+    const nextParams = new URLSearchParams(searchParams.toString())
+    if (nextTab === 'overview') {
+      nextParams.delete('tab')
+    } else {
+      nextParams.set('tab', nextTab)
+    }
+    const next = nextParams.toString()
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+  }
 
   if (!stock) {
     return (
@@ -406,54 +451,119 @@ export default function StockDetailPage() {
             )}
           </div>
 
-          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
-            <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">Market Cap</div>
-                <div className="text-white font-medium">{formatLargeNumber(stock.marketCap)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
-                <div className="text-white font-medium">{formatLargeNumber(stock.volume24h)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">Sector</div>
-                <div className="text-white font-medium">{stock.sector}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">52W High</div>
-                <div className="text-white font-medium">{formatStockPrice(stock.high52w)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
-                <div className="text-white font-medium">{formatStockPrice(stock.low52w)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
-                <div className={`font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">P/E Ratio</div>
-                <div className="text-white font-medium">{stock.peRatio.toFixed(1)}x</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">EPS</div>
-                <div className={`font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>${stock.eps.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">Dividend Yield</div>
-                <div className="text-white font-medium">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : '—'}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">Avg Volume</div>
-                <div className="text-white font-medium">{formatLargeNumber(stock.avgVolume).replace('$', '')}</div>
-              </div>
-            </div>
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-gray-700/20 bg-dark-100/70 p-2">
+            <button
+              type="button"
+              onClick={() => handleTabChange('overview')}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold ${activeTab === 'overview' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('fundamentals')}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold ${activeTab === 'fundamentals' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}
+            >
+              Fundamentals
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('events')}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold ${activeTab === 'events' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}
+            >
+              Events
+            </button>
           </div>
 
+          {activeTab === 'overview' && (
+            <>
+              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
+                <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">Market Cap</div>
+                    <div className="text-white font-medium">{formatLargeNumber(stock.marketCap)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
+                    <div className="text-white font-medium">{formatLargeNumber(stock.volume24h)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">Sector</div>
+                    <div className="text-white font-medium">{stock.sector}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">52W High</div>
+                    <div className="text-white font-medium">{formatStockPrice(stock.high52w)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
+                    <div className="text-white font-medium">{formatStockPrice(stock.low52w)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
+                    <div className={`font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">P/E Ratio</div>
+                    <div className="text-white font-medium">{stock.peRatio.toFixed(1)}x</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">EPS</div>
+                    <div className={`font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>${stock.eps.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">Dividend Yield</div>
+                    <div className="text-white font-medium">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs mb-0.5">Avg Volume</div>
+                    <div className="text-white font-medium">{formatLargeNumber(stock.avgVolume).replace('$', '')}</div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'fundamentals' && (
+            <section className="rounded-2xl border border-gray-700/20 bg-dark-100 p-5">
+              <h2 className="mb-3 text-sm font-semibold text-white">Fundamentals</h2>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {fundamentalsRows.map((row) => (
+                  <div key={row.label} className="rounded-xl border border-gray-700/20 bg-dark-50/20 px-3 py-2.5">
+                    <div className="text-[11px] text-gray-500">{row.label}</div>
+                    <div className="mt-0.5 text-sm font-semibold text-white">{row.value}</div>
+                    <div className={`mt-0.5 text-[11px] ${row.positive === null ? 'text-gray-400' : row.positive ? 'text-green-400' : 'text-red-400'}`}>{row.delta}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'events' && (
+            <section className="rounded-2xl border border-gray-700/20 bg-dark-100 p-5">
+              <h2 className="mb-3 text-sm font-semibold text-white">Events</h2>
+              {eventTimeline.length === 0 ? (
+                <p className="text-xs text-gray-500">No event data available right now.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {eventTimeline.map((event) => (
+                    <li key={event.id} className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-white">{event.label}</span>
+                        <span className="text-[10px] text-gray-500">{event.status}</span>
+                      </div>
+                      <p className="text-xs text-gray-400">{event.date}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {activeTab === 'overview' && (
           <section className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4" aria-labelledby="analysis-heading">
             <div className="flex items-center justify-between gap-2">
               <h2 id="analysis-heading" className="text-sm font-semibold text-white">Analysis</h2>
@@ -544,20 +654,23 @@ export default function StockDetailPage() {
               </div>
             )}
           </section>
+          )}
 
-          {stock.description && (
+          {activeTab === 'overview' && stock.description && (
             <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
               <h2 className="text-sm font-semibold text-white mb-2">About {stock.name}</h2>
               <p className="text-sm text-gray-400 leading-relaxed">{stock.description}</p>
             </div>
           )}
 
-          <NewsEventsPanel
-            ticker={stock.ticker}
-            isLoading={newsLoading}
-            error={newsError}
-            items={newsItems}
-          />
+          {activeTab === 'overview' && (
+            <NewsEventsPanel
+              ticker={stock.ticker}
+              isLoading={newsLoading}
+              error={newsError}
+              items={newsItems}
+            />
+          )}
         </div>
 
         <div className="lg:w-80 shrink-0">
