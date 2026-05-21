@@ -16,6 +16,7 @@ import {
   healthFactorColor,
   type LendReserve,
 } from '@/lib/lendData'
+import UtilizationCurveChart from '@/components/UtilizationCurveChart'
 import { sanitizeNumericInput } from '@/lib/format'
 import {
   useLendAction,
@@ -755,6 +756,14 @@ export default function LendPage() {
                 reserve={selectedReserve}
                 onClose={() => setSelectedSymbol(null)}
               />
+
+              {/* Interest rate model chart */}
+              <div className="mt-4">
+                <UtilizationCurveChart
+                  reserve={selectedReserve}
+                  dimmed={!selectedReserve.borrowingEnabled}
+                />
+              </div>
 
               {/* Reserve details */}
               <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4 space-y-2 text-xs">
