@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, memo, useCallback } from 'react'
+import { useMemo, memo, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
@@ -73,8 +73,10 @@ const WatchlistRow = memo(function WatchlistRow({ stock, idx, onRowClick }: Watc
 
 export default function StocksWatchlistPage() {
   const router = useRouter()
+  const { push, refresh } = router
   const { stocks: data, isLoading } = useOnChainStocks()
   const { watchlist, isWatched } = useWatchlist()
+  const [loadingTooLong, setLoadingTooLong] = useState(false)
 
   const watched = useMemo(() => {
     return data.filter((s) => isWatched(s.ticker))
@@ -82,10 +84,21 @@ export default function StocksWatchlistPage() {
   }, [data, isWatched, watchlist])
 
   const handleRowClick = useCallback((ticker: string) => {
-    router.push(`/stocks/${ticker}`)
-  }, [router])
+    push(`/stocks/${ticker}`)
+  }, [push])
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingTooLong(false)
+      return
+    }
+    const timeout = window.setTimeout(() => setLoadingTooLong(true), 2500)
+    return () => window.clearTimeout(timeout)
+  }, [isLoading])
 
   const isEmpty = !isLoading && watched.length === 0
+  const showLoading = isLoading && !loadingTooLong
+  const showDegraded = isLoading && loadingTooLong
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -113,7 +126,43 @@ export default function StocksWatchlistPage() {
         <OracleStatusBadge useStocksFallback />
       </div>
 
-      {isEmpty ? (
+      {showLoading ? (
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 px-6 py-12 text-center">
+          <h2 className="text-lg font-semibold text-white mb-1">Loading watchlist…</h2>
+          <p className="text-sm text-gray-400 mb-5">
+            Fetching latest stock and oracle data for your tracked symbols.
+          </p>
+          <div className="mx-auto w-full max-w-xl space-y-2" aria-hidden="true">
+            <div className="h-10 rounded-xl bg-dark-50/60 animate-pulse" />
+            <div className="h-10 rounded-xl bg-dark-50/40 animate-pulse" />
+            <div className="h-10 rounded-xl bg-dark-50/30 animate-pulse" />
+          </div>
+        </div>
+      ) : showDegraded ? (
+        <div className="bg-dark-100 rounded-2xl border border-amber-500/30 px-6 py-12 text-center">
+          <h2 className="text-lg font-semibold text-white mb-1">Still fetching live stock data</h2>
+          <p className="text-sm text-gray-300 mb-5">
+            Oracle reads are taking longer than expected. You can retry now or browse all stocks.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <button
+              type="button"
+              onClick={() => refresh()}
+              className="px-4 py-2.5 rounded-xl border border-gray-600/50 text-sm font-semibold text-gray-100 hover:bg-white/5 transition"
+            >
+              Try again
+            </button>
+            <Link
+              href="/stocks"
+              prefetch={false}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+            >
+              Browse all stocks
+              <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </div>
+      ) : isEmpty ? (
         <div className="bg-dark-100 rounded-2xl border border-gray-700/20 px-6 py-12 text-center">
           <div className="text-5xl mb-3" aria-hidden="true">☆</div>
           <h2 className="text-lg font-semibold text-white mb-1">Your watchlist is empty</h2>
