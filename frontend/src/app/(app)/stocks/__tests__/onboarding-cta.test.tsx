@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-utils/wrapper'
 
@@ -111,18 +111,19 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    const tickerNodes = screen.getAllByText('AAPL')
-    const row = tickerNodes[0]?.closest('div[class*="bg-dark-100"]')
+    const tapBadges = screen.getAllByText('Tap to trade')
+    const row = tapBadges[0]?.closest('div[class*="bg-dark-100"]')
     expect(row).toBeTruthy()
 
     const rightColumn = row?.querySelector('div.text-right')
     expect(rightColumn?.className).toContain('w-[96px]')
     expect(rightColumn?.className).toContain('shrink-0')
 
-    const price = screen.getAllByText('$218.27')[0]
+    const rowScope = within(row as HTMLElement)
+    const price = rowScope.getByText('$218.27')
     expect(price.className).toContain('whitespace-nowrap')
 
-    const name = screen.getAllByText('sAAPL')[0]
+    const name = rowScope.getByText('sAAPL')
     expect(name.className).toContain('max-w-[84px]')
 
     // Ensure rendered "Tap to trade" badge still exists in constrained layout.

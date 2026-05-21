@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks markets now renders a search-aware watchlist empty state when filters combine to zero results (for example `Watchlist` + query `AAPL`), replacing misleading generic empty-watchlist copy with contextual `No watchlist stocks match "<query>"` messaging and a `Clear search` recovery action.
 - Stocks markets discovery shelf loaders now use valid status semantics (`role="status"` + polite live updates) instead of invalid `aria-label`-only `div` markup, removing repeated `aria-prohibited-attr` accessibility console errors during `/stocks` loading states.
 - Stocks detail tab controls now support robust keyboard navigation (`ArrowLeft/ArrowRight/Home/End`) across both chart timeframes and the Research Hub, with roving tab focus/selection semantics to keep ticker analysis flows accessible without pointer input.
 - Stocks detail now includes a `Rebalance Sync` panel that surfaces oracle snapshot block, per-product sync blocks (AMM/perps/predict/lend/yield), two-block proof state, and divergence thresholds, with a fail-safe risk-stop banner/CTA gate that blocks order submission when same-block sync invariants are not met.

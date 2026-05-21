@@ -104,6 +104,10 @@ export default function StocksPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
   const { watchlist, isWatched } = useWatchlist()
+  const queryTrimmed = query.trim()
+  const isQueryActive = queryTrimmed.length > 0
+  const showWatchlistGuidanceEmpty = filter === 'watchlist' && watchlist.length === 0 && !isQueryActive
+  const showWatchlistSearchEmpty = filter === 'watchlist' && isQueryActive
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -119,9 +123,8 @@ export default function StocksPage() {
     if (filter === 'watchlist') {
       stocks = stocks.filter(s => isWatched(s.ticker))
     }
-    const trimmed = query.trim()
-    if (trimmed) {
-      const q = trimmed.toLowerCase()
+    if (queryTrimmed) {
+      const q = queryTrimmed.toLowerCase()
       stocks = stocks.filter(s =>
         s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
       )
@@ -131,7 +134,7 @@ export default function StocksPage() {
       return (a[sortField] - b[sortField]) * mul
     })
     // watchlist included so list re-filters when toggle changes
-  }, [data, query, sortField, sortDir, filter, isWatched])
+  }, [data, queryTrimmed, sortField, sortDir, filter, isWatched])
   const dailyMovers = useMemo(() => getDailyMovers(data, 5), [data])
   const trendingStocks = useMemo(() => getTrendingStocks(data, 5), [data])
   const marketAnalysisPicks = useMemo(() => getMarketAnalysisPicks(data, 5), [data])
@@ -254,12 +257,17 @@ export default function StocksPage() {
       <div className="sm:hidden space-y-2 mb-2">
         {filtered.length === 0 ? (
           <div className="py-12 text-center text-gray-500 bg-dark-100 rounded-2xl border border-gray-700/20">
-            {filter === 'watchlist' && watchlist.length === 0 ? (
+            {showWatchlistGuidanceEmpty ? (
               <>
                 <div className="text-3xl mb-2" aria-hidden="true">☆</div>
                 <p className="text-sm">Your watchlist is empty.</p>
                 <p className="text-xs mt-1">Tap the star on any stock to add it.</p>
                 <button onClick={() => setFilter('all')} className="mt-3 text-goodgreen underline text-sm">Browse all stocks</button>
+              </>
+            ) : showWatchlistSearchEmpty ? (
+              <>
+                No watchlist stocks match &quot;{queryTrimmed}&quot;.{` `}
+                <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear search</button>
               </>
             ) : (
               <>
@@ -331,7 +339,7 @@ export default function StocksPage() {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-gray-500">
-                    {filter === 'watchlist' && watchlist.length === 0 ? (
+                    {showWatchlistGuidanceEmpty ? (
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-3xl" aria-hidden="true">☆</span>
                         <p className="text-sm">Your watchlist is empty.</p>
@@ -344,6 +352,11 @@ export default function StocksPage() {
                           Browse all stocks
                         </button>
                       </div>
+                    ) : showWatchlistSearchEmpty ? (
+                      <>
+                        No watchlist stocks match &quot;{queryTrimmed}&quot;.{` `}
+                        <button onClick={() => setQuery('')} className="text-goodgreen underline">Clear search</button>
+                      </>
                     ) : (
                       <>
                         No stocks match your search.{' '}
