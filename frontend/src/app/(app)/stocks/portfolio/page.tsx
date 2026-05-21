@@ -25,7 +25,7 @@ const DeferredStocksPortfolioImpactSection = dynamic(
             </div>
             <button
               type="button"
-              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
+              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-[#031615] hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
             >
               Connect Wallet to View UBI Impact
             </button>

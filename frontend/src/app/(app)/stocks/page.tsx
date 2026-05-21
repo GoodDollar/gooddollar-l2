@@ -159,7 +159,7 @@ export default function StocksPage() {
             </div>
             <button
               onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
-              className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+              className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-[#031615] font-semibold text-sm hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
             >
               {walletConnectConfigured ? 'Connect Wallet to Trade Stocks' : 'Browse Stocks to Prepare Trade'}
             </button>
