@@ -17,6 +17,7 @@ import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
+import { StockOrderFormFallback } from '@/components/stocks/StockOrderFormFallback'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 
@@ -28,14 +29,7 @@ const StockOrderForm = dynamic(
   () => import('@/components/stocks/StockOrderForm').then((mod) => mod.StockOrderForm),
   {
     ssr: false,
-    loading: () => (
-      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 animate-pulse">
-        <div className="h-4 w-20 rounded bg-dark-50/70 mb-3" />
-        <div className="h-10 rounded-xl bg-dark-50/60 mb-2" />
-        <div className="h-10 rounded-xl bg-dark-50/40 mb-3" />
-        <div className="h-10 rounded-xl bg-dark-50/50" />
-      </div>
-    ),
+    loading: () => <StockOrderFormFallback />,
   },
 )
 
