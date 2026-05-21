@@ -97,7 +97,13 @@ function normalizeTickerForLookup(rawTicker?: string): string {
 function formatEventDate(offsetDays: number): string {
   const now = new Date()
   const date = new Date(now.getTime() + offsetDays * 24 * 60 * 60 * 1000)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+function formatCalendarDate(dateInput: Date | string): string {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 function OrderForm({
@@ -327,9 +333,9 @@ export default function StockDetailPage() {
   const chartMounted = useMounted()
 
   const chartData = useMemo(() => {
-    if (!stock) return []
+    if (!stock || !chartMounted) return []
     return getChartData(stock.ticker, timeframe, stock.price)
-  }, [stock, timeframe])
+  }, [chartMounted, stock, timeframe])
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
@@ -362,7 +368,7 @@ export default function StockDetailPage() {
     const recent = newsItems.slice(0, 2).map((item, idx) => ({
       id: item.id,
       label: item.headline,
-      date: new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: formatCalendarDate(item.publishedAt),
       status: idx === 0 ? 'Recent' : 'Catalyst',
     }))
     return [...upcoming, ...recent]
