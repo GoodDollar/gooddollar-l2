@@ -21,8 +21,10 @@ import { StockOrderForm } from '@/components/stocks/StockOrderForm'
 import { StockOrderFormFallback } from '@/components/stocks/StockOrderFormFallback'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
-import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
+import { usePriceServiceStatus, getConsecutiveFailures } from '@/lib/usePriceServiceStatus'
 import { RebalanceSyncPanel } from '@/components/stocks/RebalanceSyncPanel'
+import { OracleUnavailableBanner } from '@/components/stocks/OracleUnavailableBanner'
+import { RebalanceErrorBoundary } from '@/components/stocks/RebalanceErrorBoundary'
 import { StockResearchHub } from '@/components/stocks/StockResearchHub'
 import { buildSymbolRebalanceStatus, evaluateRebalanceGuard } from '@/lib/stocksRebalanceInvariant'
 
@@ -73,7 +75,7 @@ export default function StockDetailPage() {
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks } = useOnChainStocks()
-  const { status: oracleStatus } = usePriceServiceStatus()
+  const { status: oracleStatus, error: oracleError, refresh: oracleRefresh } = usePriceServiceStatus()
   const { data: chainBlock } = useBlockNumber({ watch: true })
   const currentBlock = chainBlock ? Number(chainBlock) : null
   const stock = stocks.find(s => s.ticker === ticker)
@@ -459,11 +461,19 @@ export default function StockDetailPage() {
             <StockOrderFormFallback />
           )}
 
-          <RebalanceSyncPanel
-            status={symbolRebalanceStatus}
-            guard={rebalanceGuard}
-            currentBlock={currentBlock}
+          <OracleUnavailableBanner
+            error={oracleError}
+            consecutiveFailures={getConsecutiveFailures()}
+            onRetry={oracleRefresh}
           />
+
+          <RebalanceErrorBoundary>
+            <RebalanceSyncPanel
+              status={symbolRebalanceStatus}
+              guard={rebalanceGuard}
+              currentBlock={currentBlock}
+            />
+          </RebalanceErrorBoundary>
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
