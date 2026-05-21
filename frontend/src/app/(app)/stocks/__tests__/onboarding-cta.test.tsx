@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const push = vi.fn()
+const openConnectModal = vi.fn()
 const walletState = { address: undefined as `0x${string}` | undefined }
 
 vi.mock('next/navigation', () => ({
@@ -18,6 +20,13 @@ vi.mock('wagmi', async (importOriginal) => {
     useAccount: () => walletState,
   }
 })
+
+vi.mock('@rainbow-me/rainbowkit', () => ({
+  ConnectButton: {
+    Custom: ({ children }: { children: (args: { openConnectModal: () => void }) => unknown }) =>
+      children({ openConnectModal }),
+  },
+}))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
   useOnChainStocks: () => ({
@@ -48,6 +57,26 @@ vi.mock('@/lib/useOnChainStocks', () => ({
 import StocksPage from '../page'
 
 describe('StocksPage onboarding CTA', () => {
+  it('opens wallet connect modal from onboarding CTA and keeps browse as a separate action', async () => {
+    walletState.address = undefined
+    openConnectModal.mockClear()
+    push.mockClear()
+
+    const user = userEvent.setup()
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Connect Wallet to Trade Stocks' }))
+    expect(openConnectModal).toHaveBeenCalledTimes(1)
+    expect(push).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Browse a Starter Stock' }))
+    expect(push).toHaveBeenCalledWith('/stocks/AAPL')
+  })
+
   it('shows first-time onboarding CTA when wallet is disconnected', () => {
     walletState.address = undefined
 

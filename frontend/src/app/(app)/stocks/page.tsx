@@ -3,6 +3,7 @@
 import { useState, useMemo, memo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useWatchlist } from '@/lib/useWatchlist'
@@ -164,12 +165,26 @@ export default function StocksPage() {
               <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
               <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
             </div>
-            <button
-              onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
-              className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
-            >
-              Connect Wallet to Trade Stocks
-            </button>
+            <div className="shrink-0 flex flex-col items-stretch gap-2">
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <button
+                    type="button"
+                    onClick={openConnectModal}
+                    className="px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+                  >
+                    Connect Wallet to Trade Stocks
+                  </button>
+                )}
+              </ConnectButton.Custom>
+              <button
+                type="button"
+                onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
+                className="px-4 py-2 rounded-xl border border-gray-600/40 text-gray-200 text-xs font-medium hover:border-goodgreen/40 hover:text-white transition"
+              >
+                Browse a Starter Stock
+              </button>
+            </div>
           </div>
         </div>
       )}
