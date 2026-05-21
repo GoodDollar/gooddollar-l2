@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks routes now defer heavy page modules behind dynamic client chunks, cutting route-specific bundles from multi-MB to ~160 KB each (`/stocks/portfolio` page chunk `4162KB -> 158KB`, `/stocks/[ticker]` page chunk `8748KB -> 161KB`) and improving first-render responsiveness while preserving the same UI flow.
 - Stocks markets oracle badge now avoids false-positive `Live` state when quote-status checks fail (`/api/status/quotes` non-2xx/network failure), and instead shows a degraded status cue aligned with stock-detail risk language.
 - Stocks wallet surfaces now suppress the noisy MetaMask SDK async-storage resolution warning by aliasing `@react-native-async-storage/async-storage` to a browser-safe no-op in Next webpack config, keeping console/e2e logs clean while preserving wallet connector UX.
 - Stocks portfolio collateral-health summary card now uses responsive helper typography and spacing (`leading-relaxed`, stacked helper copy, stretched metric-card alignment) so disconnected-state guidance no longer appears cramped/clipped on tablet and desktop.
