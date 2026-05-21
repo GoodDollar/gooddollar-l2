@@ -64,7 +64,7 @@ const { useAccount } = await import('wagmi')
 const { useWalletReady } = await import('@/lib/WalletReadyContext')
 const { useMintSynthetic, useRedeemSynthetic } = await import('@/lib/useStocks')
 
-const { OrderForm } = await import('@/app/(app)/stocks/[ticker]/page')
+const { StockOrderForm: OrderForm } = await import('@/components/stocks/StockOrderForm')
 
 // --- fixtures ------------------------------------------------------------
 

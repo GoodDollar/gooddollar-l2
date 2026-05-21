@@ -64,7 +64,7 @@ const { useMintSynthetic, useRedeemSynthetic } = await import('@/lib/useStocks')
 
 // The component under test lives inside the stock detail page module so we
 // import it after the mocks above are registered. It is exported by name.
-const { OrderForm } = await import('@/app/(app)/stocks/[ticker]/page')
+const { StockOrderForm: OrderForm } = await import('@/components/stocks/StockOrderForm')
 
 // --- fixtures ------------------------------------------------------------
 
