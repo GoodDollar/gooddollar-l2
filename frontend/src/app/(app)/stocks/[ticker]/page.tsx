@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { useBlockNumber } from 'wagmi'
 
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
@@ -20,6 +21,9 @@ import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { StockOrderFormFallback } from '@/components/stocks/StockOrderFormFallback'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
+import { RebalanceSyncPanel } from '@/components/stocks/RebalanceSyncPanel'
+import { buildSymbolRebalanceStatus, evaluateRebalanceGuard } from '@/lib/stocksRebalanceInvariant'
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'ALL']
 const TIMEFRAME_LABEL: Record<Timeframe, string> = {
@@ -75,6 +79,9 @@ export default function StockDetailPage() {
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks } = useOnChainStocks()
+  const { status: oracleStatus } = usePriceServiceStatus()
+  const { data: chainBlock } = useBlockNumber({ watch: true })
+  const currentBlock = chainBlock ? Number(chainBlock) : null
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
@@ -123,6 +130,15 @@ export default function StockDetailPage() {
       .filter((s) => s.ticker.includes(q) || s.name.toUpperCase().includes(q))
       .slice(0, 8)
   }, [symbolQuery, switchableSymbols])
+  const symbolRebalanceStatus = useMemo(
+    () => buildSymbolRebalanceStatus(ticker, oracleStatus),
+    [oracleStatus, ticker],
+  )
+  const rebalanceGuard = useMemo(
+    () => evaluateRebalanceGuard(symbolRebalanceStatus, currentBlock),
+    [symbolRebalanceStatus, currentBlock],
+  )
+  const riskBlockReason = rebalanceGuard.blocked ? rebalanceGuard.reasons[0] ?? 'Sync required' : null
 
   useEffect(() => {
     setAnalystLoading(true)
@@ -391,7 +407,13 @@ export default function StockDetailPage() {
         </div>
 
         <div className="lg:w-80 shrink-0">
-          <StockOrderForm stock={stock} position={position} />
+          <StockOrderForm stock={stock} position={position} riskBlockReason={riskBlockReason} />
+
+          <RebalanceSyncPanel
+            status={symbolRebalanceStatus}
+            guard={rebalanceGuard}
+            currentBlock={currentBlock}
+          />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>

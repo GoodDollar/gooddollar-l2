@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks detail now includes a `Rebalance Sync` panel that surfaces oracle snapshot block, per-product sync blocks (AMM/perps/predict/lend/yield), two-block proof state, and divergence thresholds, with a fail-safe risk-stop banner/CTA gate that blocks order submission when same-block sync invariants are not met.
 - Stocks detail hydration now stays SSR/client-consistent for initial chart-derived metrics (performance summary + day range), removing hydration mismatch/Suspense fallback rerenders that were degrading first-load stability on `/stocks/[ticker]`.
 - Stocks detail now includes an in-page `Switch symbol` control (desktop inline + mobile toggle) so users can jump directly between tickers without returning to the markets table.
 - Stocks detail chart now shows a prominent timeframe performance summary (for example `+/-X.XX% Past 3 Months`) that updates as users switch timeframe tabs.

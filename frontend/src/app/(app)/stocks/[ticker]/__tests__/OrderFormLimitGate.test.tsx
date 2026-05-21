@@ -164,4 +164,23 @@ describe('<OrderForm> limit-order on-chain gate', () => {
       screen.queryByRole('button', { name: /limit not available/i }),
     ).not.toBeInTheDocument()
   })
+
+  it('shows risk-stop banner and blocks submission when rebalance sync is not current', async () => {
+    setupHooks({ isDeployed: true })
+    const user = userEvent.setup()
+
+    render(<OrderForm stock={stock} position={null} riskBlockReason="Awaiting same-block sync for: perps" />)
+
+    expect(screen.getByTestId('stocks-risk-stop-banner')).toHaveTextContent('Risk stop active')
+
+    const amountInput = screen.getByTestId('stocks-order-amount-input')
+    await user.type(amountInput, '100')
+
+    const cta = screen.getByRole('button', { name: /sync required/i })
+    expect(cta).toBeDisabled()
+
+    await user.keyboard('{Enter}')
+    expect(mintMock).not.toHaveBeenCalled()
+    expect(redeemMock).not.toHaveBeenCalled()
+  })
 })

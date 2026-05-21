@@ -35,7 +35,15 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
   return <>{children}</>
 }
 
-export function StockOrderForm({ stock, position }: { stock: { ticker: string; price: number }; position: OnChainStockPosition | null }) {
+export function StockOrderForm({
+  stock,
+  position,
+  riskBlockReason = null,
+}: {
+  stock: { ticker: string; price: number }
+  position: OnChainStockPosition | null
+  riskBlockReason?: string | null
+}) {
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [amount, setAmount] = useState('')
@@ -78,6 +86,7 @@ export function StockOrderForm({ stock, position }: { stock: { ticker: string; p
   // believed orders had placed. We now block submit at handleSubmit AND
   // visually (banner + disabled button) until a real limit book ships.
   const limitGate = isLimitDisabledOnChain({ isDeployed, orderType })
+  const riskBlocked = !!riskBlockReason
 
   const actionPhase = side === 'buy' ? mintPhase : redeemPhase
   const actionError = side === 'buy' ? mintError : redeemError
@@ -89,6 +98,7 @@ export function StockOrderForm({ stock, position }: { stock: { ticker: string; p
     if (amountTooLarge) return
     if (sellDisabled) return
     if (limitGate.disabled) return
+    if (riskBlocked) return
 
     if (isDeployed && orderType === 'market') {
       const amountNum = parseFloat(amount)
@@ -154,6 +164,16 @@ export function StockOrderForm({ stock, position }: { stock: { ticker: string; p
           className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300"
         >
           Limit orders are not yet supported on-chain. Switch to <span className="font-semibold">Market</span> to trade {stock.ticker} now.
+        </div>
+      )}
+      {riskBlocked && (
+        <div
+          role="alert"
+          aria-live="polite"
+          data-testid="stocks-risk-stop-banner"
+          className="mb-3 rounded-xl border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+        >
+          Risk stop active: {riskBlockReason}
         </div>
       )}
 
@@ -227,20 +247,20 @@ export function StockOrderForm({ stock, position }: { stock: { ticker: string; p
         // "Enter Amount" placeholder). The inner submit button stays disabled
         // and handleSubmit short-circuits, so this is safe — it just gives the
         // user a clearer reason why nothing happens. See task 0028.
-        <WalletGatedTradeButton hasAmount={limitGate.disabled || (hasAmount && hasValidPrice && !sellSharesExceedsBalance)}>
-          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || limitGate.disabled}
+        <WalletGatedTradeButton hasAmount={riskBlocked || limitGate.disabled || (hasAmount && hasValidPrice && !sellSharesExceedsBalance)}>
+          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || limitGate.disabled || riskBlocked}
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
-            {limitGate.disabled ? 'Limit not available' : actionPhase === 'approving' ? 'Approving…' : actionPhase === 'pending' ? 'Confirming…' : actionPhase === 'done' ? 'Order Submitted!' : submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
+            {riskBlocked ? 'Sync required' : limitGate.disabled ? 'Limit not available' : actionPhase === 'approving' ? 'Approving…' : actionPhase === 'pending' ? 'Confirming…' : actionPhase === 'done' ? 'Order Submitted!' : submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || limitGate.disabled}
+        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || limitGate.disabled || riskBlocked}
           className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>
-          {limitGate.disabled ? 'Limit not available' : submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
+          {riskBlocked ? 'Sync required' : limitGate.disabled ? 'Limit not available' : submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
         </button>
       )}
 
