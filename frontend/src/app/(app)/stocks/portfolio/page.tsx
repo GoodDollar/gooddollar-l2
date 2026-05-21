@@ -98,7 +98,7 @@ function CollateralHealth({
   totalRequired?: number
   hasPositions?: boolean
 }) {
-  const hasRiskPosition = hasPositions && totalRequired > 0
+  const hasRiskPosition = hasPositions && totalRequired > 0 && ratio > 0
 
   if (!hasRiskPosition) {
     return (
