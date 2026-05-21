@@ -20,14 +20,31 @@ import { computeLimitPriceFieldState } from '@/lib/stocksLimitPriceField'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
+import { useStocksOracleGuard } from '@/lib/useStocksOracleGuard'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 
-function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
+function WalletGatedTradeButton({
+  hasAmount,
+  oracleTradeBlocked,
+  children,
+}: {
+  hasAmount: boolean
+  oracleTradeBlocked: boolean
+  children: React.ReactNode
+}) {
   const { isConnected } = useAccount()
+  if (oracleTradeBlocked) {
+    return (
+      <button type="button" disabled
+        className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-amber-300 cursor-not-allowed border border-amber-500/30">
+        Oracle status not trade-ready
+      </button>
+    )
+  }
   if (!isConnected) {
     return (
       <ConnectButton.Custom>
@@ -82,7 +99,17 @@ function normalizeTickerForLookup(rawTicker?: string): string {
   return normalized
 }
 
-function OrderForm({ stock, position }: { stock: { ticker: string; price: number }; position: OnChainStockPosition | null }) {
+function OrderForm({
+  stock,
+  position,
+  oracleTradeBlocked,
+  oracleBlockReason,
+}: {
+  stock: { ticker: string; price: number }
+  position: OnChainStockPosition | null
+  oracleTradeBlocked: boolean
+  oracleBlockReason: string | null
+}) {
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [amount, setAmount] = useState('')
@@ -134,6 +161,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
     if (!amount || parseFloat(amount) <= 0 || limitPriceInvalid || !hasValidPrice) return
     if (amountTooLarge) return
     if (sellDisabled) return
+    if (oracleTradeBlocked) return
     if (!submission.canSubmitOnChain) return
 
     const amountNum = parseFloat(amount)
@@ -206,6 +234,13 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
           You only hold {balanceShares.toFixed(4)} {stock.ticker}. Reduce the amount to sell.
         </div>
       )}
+      {oracleTradeBlocked && (
+        <div role="alert" aria-live="polite"
+          className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          <div className="font-medium text-amber-100">Trading is temporarily limited due to oracle health.</div>
+          {oracleBlockReason && <div className="mt-1 text-amber-200/90">{oracleBlockReason}</div>}
+        </div>
+      )}
 
       <div className="mb-3">
         <label className="text-xs text-gray-400 mb-1 block">Amount (USD)</label>
@@ -254,8 +289,11 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
           No {stock.ticker} to sell
         </button>
       ) : walletReady ? (
-        <WalletGatedTradeButton hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance && submission.canSubmitOnChain}>
-          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || !submission.canSubmitOnChain}
+        <WalletGatedTradeButton
+          hasAmount={hasAmount && hasValidPrice && !sellSharesExceedsBalance && submission.canSubmitOnChain && !oracleTradeBlocked}
+          oracleTradeBlocked={oracleTradeBlocked}
+        >
+          <button type="submit" disabled={limitPriceInvalid || !hasValidPrice || isPending || sellSharesExceedsBalance || amountTooLarge || !submission.canSubmitOnChain || oracleTradeBlocked}
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
@@ -263,7 +301,7 @@ function OrderForm({ stock, position }: { stock: { ticker: string; price: number
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || !submission.canSubmitOnChain}
+        <button type="submit" disabled={!hasAmount || limitPriceInvalid || !hasValidPrice || sellDisabled || amountTooLarge || !submission.canSubmitOnChain || oracleTradeBlocked}
           className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>
@@ -300,6 +338,7 @@ export default function StockDetailPage() {
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
+  const oracleGuard = useStocksOracleGuard(stock?.ticker)
 
   if (!stock && stocksLoading) {
     return (
@@ -379,9 +418,21 @@ export default function StockDetailPage() {
           </div>
           <div className="mb-4">
             {chartMounted ? (
-              <OracleStatusBadge variant="detail" symbol={stock.ticker} />
+              <OracleStatusBadge variant="detail" symbol={stock.ticker} useStocksFallback />
             ) : null}
           </div>
+          {oracleGuard.health !== 'live' && (
+            <div role="alert" className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3">
+              <p className="text-sm font-semibold text-amber-200">
+                {oracleGuard.health === 'offline'
+                  ? 'Oracle is offline. Trading is paused for safety.'
+                  : 'Oracle is degraded. Trading is limited until quotes recover.'}
+              </p>
+              {oracleGuard.reason && (
+                <p className="mt-1 text-xs text-amber-100/90">{oracleGuard.reason}</p>
+              )}
+            </div>
+          )}
 
           <AnalystOutlookCard
             currentPrice={stock.price}
@@ -469,7 +520,12 @@ export default function StockDetailPage() {
         </div>
 
         <div className="lg:w-80 shrink-0">
-          <OrderForm stock={stock} position={position} />
+          <OrderForm
+            stock={stock}
+            position={position}
+            oracleTradeBlocked={oracleGuard.health !== 'live'}
+            oracleBlockReason={oracleGuard.reason}
+          />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>

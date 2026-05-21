@@ -20,6 +20,11 @@ let currentStocks: Array<{
   avgVolume: number
   description?: string
 }> = []
+let oracleGuardState: { health: 'live' | 'degraded' | 'offline'; reason: string | null; isLoading: boolean } = {
+  health: 'live',
+  reason: null,
+  isLoading: false,
+}
 
 const makeStock = () => ({
   ticker: 'AAPL',
@@ -53,6 +58,10 @@ vi.mock('@/components/PriceChart', () => ({
   PriceChart: () => <div data-testid="price-chart" />,
 }))
 
+vi.mock('@/components/OracleStatusBadge', () => ({
+  OracleStatusBadge: () => <div data-testid="oracle-badge" />,
+}))
+
 vi.mock('@/lib/chartData', () => ({
   getChartData: () => [],
 }))
@@ -71,6 +80,10 @@ vi.mock('@/lib/WalletReadyContext', () => ({
   useWalletReady: () => true,
 }))
 
+vi.mock('@/lib/useStocksOracleGuard', () => ({
+  useStocksOracleGuard: () => oracleGuardState,
+}))
+
 vi.mock('@rainbow-me/rainbowkit', () => ({
   ConnectButton: { Custom: () => null },
 }))
@@ -81,6 +94,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
   beforeEach(() => {
     currentParams = {}
     currentStocks = []
+    oracleGuardState = { health: 'live', reason: null, isLoading: false }
   })
 
   it('renders a generic not-found message without echoing plain invalid ticker input', () => {
@@ -216,5 +230,21 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.queryByRole('link', { name: /Explore crypto tokens/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /Trade crypto perpetual futures/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /Prediction markets/i })).toBeNull()
+  })
+
+  it('shows a prominent risk banner when oracle guard reports offline', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    oracleGuardState = {
+      health: 'offline',
+      reason: 'Quote is stale (321s old).',
+      isLoading: false,
+    }
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/Oracle is offline\. Trading is paused for safety\./i)).toBeTruthy()
+    expect(screen.getAllByText(/Quote is stale/i).length).toBeGreaterThanOrEqual(1)
   })
 })

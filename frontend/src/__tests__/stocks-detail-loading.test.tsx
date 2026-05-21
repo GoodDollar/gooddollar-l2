@@ -74,6 +74,10 @@ vi.mock('@/lib/WalletReadyContext', () => ({
   useWalletReady: () => ({ isReady: true }),
 }))
 
+vi.mock('@/lib/useStocksOracleGuard', () => ({
+  useStocksOracleGuard: () => ({ health: 'live', reason: null, isLoading: false }),
+}))
+
 // Heavy presentational components that only render after the early return —
 // safe to stub.
 vi.mock('@/components/PriceChart', () => ({ PriceChart: () => null }))
