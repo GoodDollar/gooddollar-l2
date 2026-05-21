@@ -14,6 +14,7 @@ import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
+import { isWalletConnectConfigured } from '@/lib/walletConnectReadiness'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
 import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
@@ -22,6 +23,7 @@ import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
+import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
 
 const PriceChart = dynamic(
   () => import('@/components/PriceChart').then((m) => ({ default: m.PriceChart })),
@@ -35,16 +37,20 @@ const OracleStatusBadge = dynamic(
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
+  const walletConnectConfigured = isWalletConnectConfigured()
   if (!isConnected) {
     return (
-      <ConnectButton.Custom>
-        {({ openConnectModal }) => (
-          <button type="button" onClick={openConnectModal}
-            className="w-full py-3 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors">
-            Connect Wallet to Trade
-          </button>
-        )}
-      </ConnectButton.Custom>
+      <div className="space-y-2">
+        {!walletConnectConfigured && <WalletConnectNotice />}
+        <ConnectButton.Custom>
+          {({ openConnectModal }) => (
+            <button type="button" onClick={openConnectModal}
+              className="w-full py-3 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors">
+              Connect Wallet to Trade
+            </button>
+          )}
+        </ConnectButton.Custom>
+      </div>
     )
   }
   if (!hasAmount) {

@@ -7,7 +7,9 @@ import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
+import { isWalletConnectConfigured } from '@/lib/walletConnectReadiness'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
+import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const DeferredStocksPortfolioImpactSection = dynamic(
@@ -144,6 +146,7 @@ function TradeRow({ trade }: { trade: TradeRecord }) {
 export default function StocksPortfolioPage() {
   const router = useRouter()
   const { address, isConnected } = useAccount()
+  const walletConnectConfigured = isWalletConnectConfigured()
   const {
     holdings,
     totalValue,
@@ -169,6 +172,9 @@ export default function StocksPortfolioPage() {
     >
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
+      {isDisconnected && !walletConnectConfigured && (
+        <WalletConnectNotice className="mb-4" />
+      )}
 
       {/* Portfolio Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">

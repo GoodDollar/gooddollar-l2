@@ -9,6 +9,8 @@ import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
+import { isWalletConnectConfigured } from '@/lib/walletConnectReadiness'
+import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -88,6 +90,7 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
 export default function StocksPage() {
   const router = useRouter()
   const { address } = useAccount()
+  const walletConnectConfigured = isWalletConnectConfigured()
   const [query, setQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -150,12 +153,15 @@ export default function StocksPage() {
               <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
               <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
               <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
+              {!walletConnectConfigured && (
+                <WalletConnectNotice className="mt-3" />
+              )}
             </div>
             <button
               onClick={() => router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)}
               className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
             >
-              Connect Wallet to Trade Stocks
+              {walletConnectConfigured ? 'Connect Wallet to Trade Stocks' : 'Browse Stocks to Prepare Trade'}
             </button>
           </div>
         </div>

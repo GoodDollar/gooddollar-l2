@@ -57,7 +57,8 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByRole('button', { name: 'Connect Wallet to Trade Stocks' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Browse Stocks to Prepare Trade' })).toBeInTheDocument()
+    expect(screen.getByText(/Mobile wallet QR connections are temporarily unavailable/i)).toBeInTheDocument()
     expect(screen.getByText('Tap to trade')).toBeInTheDocument()
   })
 

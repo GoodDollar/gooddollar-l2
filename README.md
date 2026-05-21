@@ -20,8 +20,9 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 
 POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candidate. The product app, public RPC, faucet, protocol pages, analytics, feedback path, Paperclip agent dashboard, Explorer / Blockscout, and 12 backend health services are online. Explorer was restored at `2026-05-19 07:54 UTC` after the Blockscout web/proxy containers had exited; it remains an alpha hardening watch item, but is no longer a public `502` blocker.
 
-### Recent UX polish (updated: 2026-05-20)
+### Recent UX polish (updated: 2026-05-21)
 
+- Stocks routes now show an explicit WalletConnect readiness notice when `NEXT_PUBLIC_WC_PROJECT_ID` is missing/invalid, and the disconnected onboarding CTA copy no longer implies that mobile QR wallet connection is immediately available in that state.
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.
 - Stocks portfolio disconnected state now reliably stays neutral (including stale-address / not-connected wallet sessions), with an in-context `Connect Wallet to View UBI Impact` CTA instead of misleading `0% — Critical` risk framing.
 - Perps portfolio empty state no longer leaks raw template fragments (for example `positions.length === 0 ? (`), restoring clean, production-grade empty-state rendering.
