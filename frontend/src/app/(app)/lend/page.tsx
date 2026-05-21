@@ -517,7 +517,7 @@ function MarketsTable({
                               Coming Soon
                             </span>
                           </div>
-                          <p className="text-[10px] text-gray-500">Not yet deployed</p>
+                          <p className="text-[10px] text-gray-500">{r.name}</p>
                         </div>
                       </div>
                     </td>
