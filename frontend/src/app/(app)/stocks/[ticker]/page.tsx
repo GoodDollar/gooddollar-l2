@@ -151,6 +151,10 @@ function OrderForm({
   const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
   const fee = amount ? parseFloat(amount) * 0.001 : 0
   const ubiFee = fee * 0.33
+  const SLIPPAGE_TOLERANCE = 0.005
+  const priceImpact = amount ? (parseFloat(amount) / 100_000) * 0.01 : 0
+  const minReceived = shares * (1 - SLIPPAGE_TOLERANCE)
+  const totalCost = amount ? parseFloat(amount) + fee : 0
   // Sanity-cap the Amount (USD) input so the summary cannot advertise
   // implausibly large notional values (e.g. $1T phantom orders) and so
   // we never submit an order the chain would just revert. See task 0058.
@@ -311,22 +315,42 @@ function OrderForm({
       </div>
 
       {amount && parseFloat(amount) > 0 && hasValidPrice && effectivePrice > 0 && !sellGated && !amountTooLarge && (
-        <div className="mb-4 space-y-1.5 text-xs">
-          <div className="flex justify-between text-gray-400">
-            <span>Est. Shares</span>
-            <span className="text-white truncate ml-2">{formatStockShares(shares)} {stock.ticker}</span>
-          </div>
-          <div className="flex justify-between text-gray-400">
-            <span>Price</span>
-            <span className="text-white truncate ml-2">{formatStockPrice(effectivePrice)}</span>
-          </div>
-          <div className="flex justify-between text-gray-400">
-            <span>Fee (0.1%)</span>
-            <span className="text-white truncate ml-2">{formatTradeAmount(fee)}</span>
-          </div>
-          <div className="flex justify-between text-goodgreen/80">
-            <span>→ UBI Pool (33%)</span>
-            <span className="truncate ml-2">{formatTradeAmount(ubiFee)}</span>
+        <div data-testid="trade-preview" className="mb-4 rounded-xl border border-gray-700/30 bg-dark-50/50 p-3 space-y-0">
+          <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-2">Trade Preview</p>
+          <div className="space-y-1.5 text-xs">
+            <div className="flex justify-between text-gray-400">
+              <span>Entry Price</span>
+              <span className="text-white truncate ml-2">{formatStockPrice(effectivePrice)}</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>Price Impact</span>
+              <span className={`truncate ml-2 ${priceImpact > 0.5 ? 'text-yellow-400' : 'text-white'}`}>~{priceImpact.toFixed(2)}%</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>Trading Fee (0.1%)</span>
+              <span className="text-white truncate ml-2">{formatTradeAmount(fee)}</span>
+            </div>
+            <div className="flex justify-between text-goodgreen/80">
+              <span>→ UBI Contribution (33%)</span>
+              <span className="truncate ml-2">{formatTradeAmount(ubiFee)}</span>
+            </div>
+            <div className="border-t border-gray-700/30 my-1.5" />
+            <div className="flex justify-between text-gray-400">
+              <span>{side === 'buy' ? 'You Receive' : 'You Sell'}</span>
+              <span className="text-white font-medium truncate ml-2">~{formatStockShares(shares)} {stock.ticker}</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>Min. Received</span>
+              <span className="text-gray-300 truncate ml-2">~{formatStockShares(minReceived)} {stock.ticker}</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span className="text-gray-500 text-[10px]">0.5% slippage tolerance</span>
+            </div>
+            <div className="border-t border-gray-700/30 my-1.5" />
+            <div className="flex justify-between text-gray-400 font-medium">
+              <span>{side === 'buy' ? 'Total Cost' : 'Proceeds'}</span>
+              <span className="text-white truncate ml-2">{side === 'buy' ? formatTradeAmount(totalCost) : formatTradeAmount(parseFloat(amount) - fee)}</span>
+            </div>
           </div>
         </div>
       )}
