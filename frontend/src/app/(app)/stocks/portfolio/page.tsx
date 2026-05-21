@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { useMemo, useState, useEffect } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
@@ -121,6 +122,35 @@ function CollateralHealth({
         <div className={`h-full rounded-full transition-all ${bgColor}`} style={{ width: `${barWidth}%` }} />
       </div>
     </div>
+  )
+}
+
+function PortfolioOnboardingCard() {
+  return (
+    <section className="mb-6 rounded-2xl border border-goodgreen/30 bg-gradient-to-br from-goodgreen/12 via-cyan-500/8 to-dark-100 p-4 sm:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Get started in 3 steps</h2>
+          <p className="mt-1 text-sm text-gray-300">Connect your wallet once, open your first stock position, then track performance and UBI impact here.</p>
+          <ol className="mt-3 space-y-1.5 text-xs text-gray-300">
+            <li><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-goodgreen/40 bg-goodgreen/10 text-[11px] font-semibold text-goodgreen">1</span>Connect wallet</li>
+            <li><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-600 bg-dark-50 text-[11px] font-semibold text-gray-300">2</span>Open your first stock position</li>
+            <li><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-600 bg-dark-50 text-[11px] font-semibold text-gray-300">3</span>Track risk, P&amp;L, and UBI contribution</li>
+          </ol>
+        </div>
+        <ConnectButton.Custom>
+          {({ openConnectModal }) => (
+            <button
+              type="button"
+              onClick={openConnectModal}
+              className="w-full rounded-xl bg-goodgreen px-4 py-3 text-sm font-semibold text-black transition-colors hover:bg-goodgreen/90 lg:w-auto"
+            >
+              Connect Wallet to Start Portfolio
+            </button>
+          )}
+        </ConnectButton.Custom>
+      </div>
+    </section>
   )
 }
 
@@ -291,6 +321,7 @@ export default function StocksPortfolioPage() {
     >
     <div className="w-full max-w-5xl mx-auto pb-24 md:pr-24">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
+      {isDisconnected && <PortfolioOnboardingCard />}
 
       {/* Portfolio Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
@@ -351,6 +382,8 @@ export default function StocksPortfolioPage() {
         </div>
       </div>
 
+      {!isDisconnected ? (
+      <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4">
           <div className="flex items-center justify-between gap-2 mb-2">
@@ -509,6 +542,26 @@ export default function StocksPortfolioPage() {
           </article>
         </div>
       </section>
+      </>
+      ) : (
+        <section className="mb-6 rounded-2xl border border-gray-700/20 bg-dark-100 p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-white">What unlocks after connect</h2>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3 text-xs text-gray-300">
+              <div className="mb-1 text-goodgreen">Live holdings</div>
+              Real position values, allocation mix, and unrealized P&amp;L.
+            </article>
+            <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3 text-xs text-gray-300">
+              <div className="mb-1 text-goodgreen">Risk diagnostics</div>
+              Collateral health, drawdown, volatility, and benchmark comparison.
+            </article>
+            <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3 text-xs text-gray-300">
+              <div className="mb-1 text-goodgreen">UBI impact</div>
+              Contribution insights tied to your stock activity.
+            </article>
+          </div>
+        </section>
+      )}
 
       <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
 

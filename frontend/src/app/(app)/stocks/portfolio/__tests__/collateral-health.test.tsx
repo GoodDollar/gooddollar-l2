@@ -113,6 +113,19 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(screen.getByText('Loading impact insights…')).toBeInTheDocument()
   })
 
+  it('prioritizes a single onboarding path for disconnected first-time users', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByRole('heading', { name: /Get started in 3 steps/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Connect Wallet to Start Portfolio' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Portfolio Diagnostics' })).not.toBeInTheDocument()
+  })
+
   it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {
     accountState.address = '0x1111111111111111111111111111111111111111'
     accountState.isConnected = true
