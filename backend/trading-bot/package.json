@@ -1,0 +1,16 @@
+{
+  "name": "goodchain-trading-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx tsx trading-bot.ts",
+    "dev": "npx tsx --watch trading-bot.ts"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

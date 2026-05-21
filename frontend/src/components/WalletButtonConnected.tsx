@@ -27,6 +27,7 @@ export function WalletButtonConnected() {
                 return (
                   <button
                     onClick={openConnectModal}
+                    aria-label="Connect Wallet"
                     className="px-2.5 sm:px-4 py-2 rounded-xl bg-goodgreen/10 border border-goodgreen/30 text-goodgreen text-sm font-medium hover:bg-goodgreen/10 transition-colors whitespace-nowrap"
                   >
                     <span className="hidden sm:inline">Connect Wallet</span>

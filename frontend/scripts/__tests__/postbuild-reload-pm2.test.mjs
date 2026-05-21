@@ -150,6 +150,30 @@ describe('postbuild-reload-pm2', () => {
     expect(result.message).toMatch(/skipping reload/i)
   })
 
+
+  it('PM2 goodswap registered from a different cwd → exit 0 and skip live reload', async () => {
+    writeBuildId(tmp)
+
+    const result = await postbuildReloadPm2({
+      cwd: tmp,
+      env: {},
+      whichImpl: (bin) => (bin === 'pm2' ? '/usr/bin/pm2' : null),
+      execFileImpl: makeExecFile({
+        jlistApps: [{
+          name: 'goodswap',
+          pid: 1234,
+          pm2_env: { status: 'online', pm_cwd: '/home/goodclaw/gooddollar-l2/frontend' },
+        }],
+      }),
+      spawnSyncImpl: () => { throw new Error('spawnSync should not be called') },
+      fetchImpl: () => { throw new Error('fetch should not be called') },
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(result.message).toMatch(/different cwd/i)
+    expect(result.message).toMatch(/skipping reload/i)
+  })
+
   it('.next/BUILD_ID missing → exit 1 with `task 0087` + `next build appears to have aborted` message', async () => {
     // No .next/BUILD_ID written.
     const result = await postbuildReloadPm2({
@@ -234,11 +258,46 @@ describe('postbuild-reload-pm2', () => {
       fetchImpl: makeFetch({ status: 200 }),
       healthPollMs: 1,
       healthTimeoutMs: 100,
+      buildIdSyncTimeoutMs: 20,
     })
 
     expect(result.exitCode).toBe(1)
     expect(result.message).toMatch(/buildid|drift/i)
     expect(result.message).toMatch(/task 0087/)
+  })
+
+  it('buildid-sync initially sees the old worker, then passes → exit 0 after polling', async () => {
+    writeBuildId(tmp)
+
+    let syncCalls = 0
+    const spawnSyncImpl = (cmd, args) => {
+      if (cmd === 'node' && args?.[0]?.endsWith('check-buildid-sync.mjs')) {
+        syncCalls++
+        return syncCalls < 3
+          ? { status: 1, stdout: '', stderr: '[check-buildid-sync] FAIL: BUILD_ID drift detected' }
+          : { status: 0, stdout: '[check-buildid-sync] OK — disk BUILD_ID matches live: TEST_BUILD_ID', stderr: '' }
+      }
+      if (cmd === 'node' && args?.[0]?.endsWith('check-served-chunks.mjs')) {
+        return { status: 0, stdout: '[check-served-chunks] OK', stderr: '' }
+      }
+      throw new Error(`unexpected spawnSync call: ${cmd} ${args?.join(' ')}`)
+    }
+
+    const result = await postbuildReloadPm2({
+      cwd: tmp,
+      env: {},
+      whichImpl: (bin) => (bin === 'pm2' ? '/usr/bin/pm2' : null),
+      execFileImpl: makeExecFile(),
+      spawnSyncImpl,
+      fetchImpl: makeFetch({ status: 200 }),
+      healthPollMs: 1,
+      healthTimeoutMs: 100,
+      buildIdSyncTimeoutMs: 100,
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(syncCalls).toBeGreaterThanOrEqual(3)
+    expect(result.message).toMatch(/reloaded goodswap/i)
   })
 
   it('health poll recovers after initial failures → exit 0 (process eventually binds)', async () => {
@@ -365,6 +424,7 @@ describe('postbuild-reload-pm2', () => {
       fetchImpl: makeFetch({ status: 200 }),
       healthPollMs: 1,
       healthTimeoutMs: 100,
+      buildIdSyncTimeoutMs: 20,
     })
 
     expect(result.exitCode).toBe(1)

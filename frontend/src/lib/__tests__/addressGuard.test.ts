@@ -5,11 +5,8 @@ import { CONTRACTS } from '../devnet'
 describe('isClaimableFaucetAddress', () => {
   describe('format validation', () => {
     it('rejects non-string input', () => {
-      // @ts-expect-error testing runtime guard
       expect(isClaimableFaucetAddress(undefined)).toBe(false)
-      // @ts-expect-error testing runtime guard
       expect(isClaimableFaucetAddress(null)).toBe(false)
-      // @ts-expect-error testing runtime guard
       expect(isClaimableFaucetAddress(12345)).toBe(false)
     })
 

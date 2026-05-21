@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { NextRequest } from 'next/server'
 
 let tempDir: string
 let logFile: string
@@ -32,7 +33,7 @@ function makeRequest(body: BodyInit | null, headers: Record<string, string> = {}
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body,
-  })
+  }) as unknown as NextRequest
 }
 
 function basePayload(overrides: Record<string, unknown> = {}) {

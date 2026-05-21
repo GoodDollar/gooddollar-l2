@@ -12,9 +12,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /**
- * Minimal .env loader (no extra dependency). Looks for a .env file in the
- * project root and falls back to process.env. Values already in process.env
- * win over file values, matching standard dotenv "preserve existing" rules.
+ * Minimal .env-file parser (no extra dependency). Precedence is applied by
+ * pick(): generated deployment address artifacts first, then root .env, then
+ * process.env as the final operator override/backstop.
  */
 function loadDotenv(filePath) {
   const out = {};
@@ -50,11 +50,60 @@ function loadDotenv(filePath) {
 const ROOT_ENV = loadDotenv(path.join(__dirname, '..', '.env'));
 const ADDR_ENV = loadDotenv(path.join(__dirname, '..', '.autobuilder', 'addresses.env'));
 
+function loadAddressJsonEnv(filePath) {
+  const out = {};
+  try {
+    if (!fs.existsSync(filePath)) return out;
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const contracts = data.contracts && typeof data.contracts === 'object' ? data.contracts : {};
+    const aliases = {
+      GoodDollarToken: ['GDT', 'GDT_ADDRESS', 'GDOLLAR_ADDRESS'],
+      UBIFeeSplitter: ['FEE_SPLITTER', 'UBI_FEE_SPLITTER'],
+      LiFiBridgeAggregator: ['LIFI', 'BRIDGE_ADDRESS'],
+      ValidatorStaking: ['UBI'],
+      FundingRate: ['FUNDING_RATE'],
+      MarginVault: ['VAULT'],
+      PerpPriceOracle: ['PERP_ORACLE', 'PRICE_ORACLE_ADDRESS'],
+      PerpEngine: ['PERP', 'PERP_ENGINE'],
+      ConditionalTokens: ['CONDITIONAL_TOKENS'],
+      MarketFactory: ['MF', 'MARKET_FACTORY'],
+      AgentRegistry: ['AGENT_REGISTRY'],
+      StocksPriceOracle: ['PRICE_ORACLE_ADDRESS'],
+      SyntheticAssetFactory: ['STOCKS', 'SYNTHETIC_FACTORY'],
+      CollateralVault: ['COLLATERAL_VAULT'],
+      GoodLendPool: ['LEND', 'LEND_POOL'],
+      GoodSwapRouter: ['SWAP', 'SWAP_ROUTER'],
+      SwapPriceOracle: ['SWAP_ORACLE', 'SWAP_ORACLE_ADDRESS'],
+      VaultManager: ['VAULT_MANAGER'],
+      VaultFactory: ['VAULT_FACTORY'],
+      gUSD: ['GUSD'],
+      MockWETH: ['WETH', 'WETH_ADDRESS'],
+      MockUSDC: ['USDC', 'USDC_ADDRESS'],
+      CollateralRegistry: ['COLLATERAL_REGISTRY'],
+      GoodLendToken: ['GTOKEN'],
+      UBIRevenueTracker: ['UBI_REVENUE_TRACKER'],
+      StockOracleV2: ['STOCK_ORACLE_V2', 'STOCK_ORACLE_V2_ADDRESS'],
+      StockOracleV2Adapter: ['STOCK_ORACLE_V2_ADAPTER'],
+    };
+    for (const [name, value] of Object.entries(contracts)) {
+      if (!value || typeof value !== 'string') continue;
+      out[name] = value;
+      out[name.toUpperCase()] = value;
+      for (const key of aliases[name] || []) out[key] = value;
+    }
+  } catch (_err) {
+    // Swallow — services should still start from addresses.env/.env/fallbacks.
+  }
+  return out;
+}
+
+const ADDR_JSON_ENV = loadAddressJsonEnv(path.join(__dirname, '..', 'op-stack', 'addresses.json'));
+
 function pick(key, fallback) {
-  // Prefer file artifacts over the gateway/PM2 parent process env. The parent
-  // env can retain stale devnet addresses after an Anvil reset, which made
-  // services restart against contracts with no bytecode.
-  return ROOT_ENV[key] || ADDR_ENV[key] || process.env[key] || fallback;
+  // Prefer canonical deployed-address artifacts over .env and the PM2 parent
+  // process. Parent/root env can retain stale devnet addresses after an Anvil
+  // reset, which made services restart against contracts with no bytecode.
+  return ADDR_JSON_ENV[key] || ADDR_ENV[key] || ROOT_ENV[key] || process.env[key] || fallback;
 }
 
 function pickAny(keys, fallback) {
@@ -71,8 +120,8 @@ const BASE_ENV = {
     'OPERATOR_PRIVATE_KEY',
     pickAny(['PRIVATE_KEY', 'DEPLOYER_KEY'], '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'),
   ),
-  GDT_ADDRESS: pickAny(['GDT_ADDRESS', 'GDT'], '0x8f86403a4de0bb5791fa46b8e795c547942fe4cf'),
-  UBI_FEE_SPLITTER: pickAny(['UBI_FEE_SPLITTER', 'FEE_SPLITTER'], '0x809d550fca64d94bd9f66e60752a544199cfac3d'),
+  GDT_ADDRESS: pickAny(['GDT_ADDRESS', 'GDT'], '0x5fbdb2315678afecb367f032d93f642f64180aa3'),
+  UBI_FEE_SPLITTER: pickAny(['UBI_FEE_SPLITTER', 'FEE_SPLITTER'], '0xdc64a140aa3e981100a9beca4e685f962f0cf6c9'),
   CHAIN_ID: pick('CHAIN_ID', '42069'),
 };
 
@@ -110,7 +159,7 @@ module.exports = {
         GDOLLAR_ADDRESS: pickAny(['GDOLLAR_ADDRESS', 'GDT_ADDRESS', 'GDT'], '0x5fbdb2315678afecb367f032d93f642f64180aa3'),
         WETH_ADDRESS: pick('WETH_ADDRESS', '0x8f86403a4de0bb5791fa46b8e795c547942fe4cf'),
         USDC_ADDRESS: pick('USDC_ADDRESS', '0x0e801d84fa97b50751dbf25036d067dcf18858bf'),
-        UPDATE_INTERVAL_MS: pick('UPDATE_INTERVAL_MS', '60000'),
+        UPDATE_INTERVAL_MS: pick('SWAP_ORACLE_UPDATE_INTERVAL_MS', '900000'),
       },
     }),
     app({
@@ -120,8 +169,9 @@ module.exports = {
         ...BASE_ENV,
         PRICE_ORACLE_ADDRESS: pick('PRICE_ORACLE_ADDRESS', '0x20d7b364e8ed1f4260b5b90c41c2dec3c1f6d367'),
         STOCK_ORACLE_V2_ADDRESS: pickAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], '0xF357118EBd576f3C812c7875B1A1651a7f140E9C'),
-        SYNTHETIC_FACTORY: pickAny(['SYNTHETIC_FACTORY', 'STOCKS'], '0xfaaddc93baf78e89dcf37ba67943e1be8f37bb8c'),
-        COLLATERAL_VAULT: pick('COLLATERAL_VAULT', '0x276c216d241856199a83bf27b2286659e5b877d3'),
+        SYNTHETIC_FACTORY: pickAny(['SYNTHETIC_FACTORY', 'STOCKS'], '0x4b6ab5f819a515382b0deb6935d793817bb4af28'),
+        COLLATERAL_VAULT: pick('COLLATERAL_VAULT', '0xcace1b78160ae76398f486c8a18044da0d66d86d'),
+        UPDATE_INTERVAL_MS: pick('STOCKS_KEEPER_UPDATE_INTERVAL_MS', '900000'),
       },
     }),
     app({
@@ -130,12 +180,12 @@ module.exports = {
       env: {
         ...BASE_ENV,
         AGENT_REGISTRY: pick('AGENT_REGISTRY', '0x8a791620dd6260079bf849dc5567adc3f2fdc318'),
-        SWAP_ROUTER: pickAny(['SWAP_ROUTER', 'SWAP'], '0x922d6956c99e12dfeb3224dea977d0939758a1fe'),
-        PERP_ENGINE: pickAny(['PERP_ENGINE', 'PERP'], '0x172076e0166d1f9cc711c77adf8488051744980c'),
-        LEND_POOL: pickAny(['LEND_POOL', 'LEND'], '0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc'),
-        MARKET_FACTORY: pickAny(['MARKET_FACTORY', 'MF'], '0xfaA7b3a4b5c3f54a934a2e33D34C7bC099f96CCE'),
-        COLLATERAL_VAULT: pick('COLLATERAL_VAULT', '0x276c216d241856199a83bf27b2286659e5b877d3'),
-        VAULT_FACTORY: pick('VAULT_FACTORY', '0x66f625b8c4c635af8b74ece2d7ed0d58b4af3c3d'),
+        SWAP_ROUTER: pickAny(['SWAP_ROUTER', 'SWAP'], '0x262e2b50219620226c5fb5956432a88fffd94ba7'),
+        PERP_ENGINE: pickAny(['PERP_ENGINE', 'PERP'], '0x90c84237fddf091b1e63f369af122eb46000bc70'),
+        LEND_POOL: pickAny(['LEND_POOL', 'LEND'], '0x5f3f1dbd7b74c6b46e8c44f98792a1daf8d69154'),
+        MARKET_FACTORY: pickAny(['MARKET_FACTORY', 'MF'], '0x54b8d8e2455946f2a5b8982283f2359812e815ce'),
+        COLLATERAL_VAULT: pick('COLLATERAL_VAULT', '0xcace1b78160ae76398f486c8a18044da0d66d86d'),
+        VAULT_FACTORY: pick('VAULT_FACTORY', '0x6a59cc73e334b018c9922793d96df84b538e6fd5'),
       },
     }),
     app({
@@ -143,7 +193,7 @@ module.exports = {
       script: 'bridge-keeper/dist/index.js',
       env: {
         ...BASE_ENV,
-        BRIDGE_ADDRESS: pick('BRIDGE_ADDRESS', '0xd42912755319665397ff090fbb63b1a31ae87cee'),
+        BRIDGE_ADDRESS: pick('BRIDGE_ADDRESS', '0x0165878a594ca255338adfa4d48449f69242eb8f'),
       },
     }),
     app({
@@ -151,8 +201,8 @@ module.exports = {
       script: 'harvest-keeper/dist/index.js',
       env: {
         ...BASE_ENV,
-        LEND_POOL: pickAny(['LEND_POOL', 'LEND'], '0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc'),
-        VAULT_FACTORY: pick('VAULT_FACTORY', '0x66f625b8c4c635af8b74ece2d7ed0d58b4af3c3d'),
+        LEND_POOL: pickAny(['LEND_POOL', 'LEND'], '0x5f3f1dbd7b74c6b46e8c44f98792a1daf8d69154'),
+        VAULT_FACTORY: pick('VAULT_FACTORY', '0x6a59cc73e334b018c9922793d96df84b538e6fd5'),
       },
     }),
     app({
@@ -165,9 +215,9 @@ module.exports = {
       script: 'liquidator/dist/index.js',
       env: {
         ...BASE_ENV,
-        PERP_ENGINE: pickAny(['PERP_ENGINE', 'PERP'], '0x172076e0166d1f9cc711c77adf8488051744980c'),
-        LEND_POOL: pickAny(['LEND_POOL', 'LEND'], '0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc'),
-        VAULT_MANAGER: pick('VAULT_MANAGER', '0xe039608e695d21ab11675ebba00261a0e750526c'),
+        PERP_ENGINE: pickAny(['PERP_ENGINE', 'PERP'], '0x90c84237fddf091b1e63f369af122eb46000bc70'),
+        LEND_POOL: pickAny(['LEND_POOL', 'LEND'], '0x5f3f1dbd7b74c6b46e8c44f98792a1daf8d69154'),
+        VAULT_MANAGER: pick('VAULT_MANAGER', '0x5d42ebdbba61412295d7b0302d6f50ac449ddb4f'),
       },
     }),
     app({
@@ -180,7 +230,7 @@ module.exports = {
       script: 'revenue-tracker/dist/index.js',
       env: {
         ...BASE_ENV,
-        UBI_REVENUE_TRACKER: pick('UBI_REVENUE_TRACKER', '0xfd6f7a6a5c21a3f503ebae7a473639974379c351'),
+        UBI_REVENUE_TRACKER: pick('UBI_REVENUE_TRACKER', '0x162700d1613dfec978032a909de02643bc55df1a'),
         UBI_FEE_SPLITTER: BASE_ENV.UBI_FEE_SPLITTER,
       },
     }),
