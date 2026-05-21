@@ -10,10 +10,9 @@ import { createConfig } from 'wagmi'
 import { http } from 'viem'
 import { gooddollarL2 } from './chain'
 import { validateWcProjectId } from './wagmi-helpers'
+import { isWalletConnectConfigured, validatedWcProjectId } from './walletConnectConfig'
 
-const rawWcProjectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID
-const validatedWcProjectId = validateWcProjectId(rawWcProjectId)
-const isValidWcProjectId = validatedWcProjectId !== ''
+const isValidWcProjectId = isWalletConnectConfigured
 
 // Scoped console filter for Reown / WalletConnect noise.
 //
@@ -50,7 +49,10 @@ const isValidWcProjectId = validatedWcProjectId !== ''
 // console methods on top of themselves.
 function installReownConsoleFilter(): void {
   if (typeof window === 'undefined') return
-  const w = window as unknown as { __reownConsoleFilterInstalled?: boolean }
+  const w = window as unknown as {
+    __reownConsoleFilterInstalled?: boolean
+    __wagmiMissingProjectIdWarned?: boolean
+  }
   if (w.__reownConsoleFilterInstalled) return
   w.__reownConsoleFilterInstalled = true
 
@@ -85,15 +87,19 @@ function installReownConsoleFilter(): void {
 installReownConsoleFilter()
 
 if (typeof window !== 'undefined' && !isValidWcProjectId) {
-  // Developer-help message. Intentionally NOT matched by the
-  // reownAllowlistRe / reownConfigRe patterns above — it must
-  // remain visible so contributors know why mobile wallet flows
-  // are missing in dev when no WalletConnect project ID is set.
-  console.error(
-    '[wagmi] NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid.\n' +
-    'Mobile wallet connections (Rainbow, MetaMask Mobile, Trust Wallet, etc.) will NOT work.\n' +
-    'Register a project at https://cloud.walletconnect.com and add NEXT_PUBLIC_WC_PROJECT_ID to your .env.local'
-  )
+  const w = window as unknown as { __wagmiMissingProjectIdWarned?: boolean }
+  if (!w.__wagmiMissingProjectIdWarned) {
+    w.__wagmiMissingProjectIdWarned = true
+    // Developer-help message. Intentionally NOT matched by the
+    // reownAllowlistRe / reownConfigRe patterns above — it must
+    // remain visible so contributors know why mobile wallet flows
+    // are missing in dev when no WalletConnect project ID is set.
+    console.error(
+      '[wagmi] NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid.\n' +
+      'Mobile wallet connections (Rainbow, MetaMask Mobile, Trust Wallet, etc.) will NOT work.\n' +
+      'Register a project at https://cloud.walletconnect.com and add NEXT_PUBLIC_WC_PROJECT_ID to your .env.local'
+    )
+  }
 }
 
 export { validateWcProjectId } from './wagmi-helpers'

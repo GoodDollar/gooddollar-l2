@@ -10,6 +10,7 @@ import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeR
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
+import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   buildBenchmarkSeries,
@@ -322,6 +323,7 @@ export default function StocksPortfolioPage() {
     <div className="w-full max-w-5xl mx-auto pb-24 md:pr-24">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
       {isDisconnected && <PortfolioOnboardingCard />}
+      {isDisconnected && <WalletConnectConfigWarning className="mb-4" />}
 
       {/* Portfolio Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">

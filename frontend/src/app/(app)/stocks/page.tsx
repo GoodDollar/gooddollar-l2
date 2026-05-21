@@ -11,6 +11,7 @@ import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { MarketIntelligencePanel } from '@/components/stocks/MarketIntelligencePanel'
 import { StocksRebalanceDashboard } from '@/components/stocks/StocksRebalanceDashboard'
+import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { useMounted } from '@/lib/useMounted'
 import {
@@ -267,48 +268,51 @@ export default function StocksPage() {
       </div>
 
       {!address && (
-        isLive ? (
-          <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
-                <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
-                <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
-              </div>
-              <button
-                onClick={() => pushTickerRoute(data[0]?.ticker || 'AAPL')}
-                className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
-              >
-                Connect Wallet to Trade Stocks
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-yellow-500/25 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-semibold text-white">Stocks Oracle in Demo Mode</h2>
-                  <span
-                    className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                    aria-hidden="true"
-                  >
-                    Demo
-                  </span>
+        <>
+          <WalletConnectConfigWarning className="mb-4" />
+          {isLive ? (
+            <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
+                  <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
+                  <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-300 mt-1">The on-chain stocks oracle isn&apos;t live yet. You can preview the trading experience, but orders cannot be placed.</p>
-                <p className="text-[11px] sm:text-xs text-gray-400 mt-2">Preview a stock to see the trade UI. Trading will unlock once the oracle is reachable.</p>
+                <button
+                  onClick={() => pushTickerRoute(data[0]?.ticker || 'AAPL')}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+                >
+                  Connect Wallet to Trade Stocks
+                </button>
               </div>
-              <button
-                onClick={() => pushTickerRoute(data[0]?.ticker || 'AAPL')}
-                className="shrink-0 px-4 py-2.5 rounded-xl bg-dark-100 text-gray-200 border border-gray-700/40 font-semibold text-sm hover:bg-dark-50/40 transition"
-                aria-label="Preview stocks demo"
-              >
-                Preview Stocks Demo
-              </button>
             </div>
-          </div>
-        )
+          ) : (
+            <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-yellow-500/25 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-semibold text-white">Stocks Oracle in Demo Mode</h2>
+                    <span
+                      className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                      aria-hidden="true"
+                    >
+                      Demo
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-300 mt-1">The on-chain stocks oracle isn&apos;t live yet. You can preview the trading experience, but orders cannot be placed.</p>
+                  <p className="text-[11px] sm:text-xs text-gray-400 mt-2">Preview a stock to see the trade UI. Trading will unlock once the oracle is reachable.</p>
+                </div>
+                <button
+                  onClick={() => pushTickerRoute(data[0]?.ticker || 'AAPL')}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-dark-100 text-gray-200 border border-gray-700/40 font-semibold text-sm hover:bg-dark-50/40 transition"
+                  aria-label="Preview stocks demo"
+                >
+                  Preview Stocks Demo
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <MarketIntelligencePanel

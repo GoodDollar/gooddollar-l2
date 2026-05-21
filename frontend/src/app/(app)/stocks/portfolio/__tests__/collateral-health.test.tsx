@@ -100,6 +100,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     )
 
     expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
+    expect(screen.getByText(/Mobile wallet connectors are unavailable in this environment/i)).toBeInTheDocument()
   })
 
   it('shows deferred impact section loading placeholders on first paint', () => {

@@ -60,6 +60,7 @@ describe('StocksPage onboarding CTA', () => {
 
     expect(screen.getByRole('button', { name: 'Connect Wallet to Trade Stocks' })).toBeInTheDocument()
     expect(screen.getByText('Tap to trade')).toBeInTheDocument()
+    expect(screen.getByText(/Mobile wallet connectors are unavailable in this environment/i)).toBeInTheDocument()
   })
 
   it('hides first-time onboarding CTA when wallet is connected', () => {
