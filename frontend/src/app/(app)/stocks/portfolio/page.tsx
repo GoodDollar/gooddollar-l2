@@ -340,15 +340,15 @@ export default function StocksPortfolioPage() {
         </TabsList>
 
         <TabsContent value="holdings">
-          {isLoading ? (
-            <div className="py-16 text-center">
-              <p className="text-gray-400 text-sm">Loading positions…</p>
-            </div>
-          ) : isDisconnected ? (
+          {isDisconnected ? (
             <div className="py-16 text-center">
               <p className="text-gray-300 text-sm mb-1">Connect wallet to unlock your holdings timeline</p>
               <p className="text-gray-500 text-xs mb-4">Preview cards above show the metrics you will get after connection.</p>
               <Link href="/stocks" className="text-goodgreen text-sm hover:underline">Browse Stocks</Link>
+            </div>
+          ) : isLoading ? (
+            <div className="py-16 text-center">
+              <p className="text-gray-400 text-sm">Loading positions…</p>
             </div>
           ) : holdings.length === 0 ? (
             <div className="py-16 text-center">

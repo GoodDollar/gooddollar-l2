@@ -47,8 +47,13 @@ vi.mock('@/lib/useStockHoldings', () => ({
   useStockHoldings: () => holdingsState,
 }))
 
+const tradesState = {
+  trades: [] as unknown[],
+  isLoading: false,
+}
+
 vi.mock('@/lib/useStockTrades', () => ({
-  useStockTrades: () => ({ trades: [], isLoading: false }),
+  useStockTrades: () => tradesState,
 }))
 
 vi.mock('@/components/ConnectWalletEmptyState', () => ({
@@ -65,6 +70,8 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
   beforeEach(() => {
     accountState.address = undefined
     accountState.isConnected = false
+    holdingsState.isLoading = false
+    tradesState.isLoading = false
     window.sessionStorage.clear()
   })
 
@@ -141,6 +148,20 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
 
     expect(screen.queryByText('Loading impact insights…')).not.toBeInTheDocument()
     expect(screen.getByText('Connect wallet to unlock your holdings timeline')).toBeInTheDocument()
+  })
+
+  it('prioritizes disconnected holdings messaging over transient loading text', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+    holdingsState.isLoading = true
+    tradesState.isLoading = true
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByText('Connect wallet to unlock your holdings timeline')).toBeInTheDocument()
+    expect(screen.queryByText('Loading positions…')).not.toBeInTheDocument()
   })
 
   it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {
