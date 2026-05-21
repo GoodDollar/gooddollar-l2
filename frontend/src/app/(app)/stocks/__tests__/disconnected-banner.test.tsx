@@ -94,6 +94,8 @@ describe('StocksPage – connect-wallet CTA', () => {
     )
 
     const cta = screen.getByRole('button', { name: 'Connect Wallet to Trade Stocks' })
+    expect(cta.className).toContain('text-black')
+    expect(cta.className).toContain('hover:bg-goodgreen-600')
     fireEvent.click(cta)
 
     expect(openConnectModal).toHaveBeenCalledTimes(1)

@@ -175,7 +175,7 @@ export default function StocksPage() {
                 <button
                   type="button"
                   onClick={wrongChain ? openChainModal : openConnectModal}
-                  className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-black font-semibold text-sm hover:bg-goodgreen-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 active:scale-[0.98] transition-colors"
                 >
                   {wrongChain ? 'Switch Network' : 'Connect Wallet to Trade Stocks'}
                 </button>
