@@ -587,12 +587,18 @@ export function StockDetailContent() {
             </div>
           </div>
 
-          {stock.description && (
-            <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
-              <h2 className="text-sm font-semibold text-white mb-2">About {stock.name}</h2>
-              <p className="text-sm text-gray-400 leading-relaxed">{stock.description}</p>
-            </div>
-          )}
+          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
+            <h2 className="text-sm font-semibold text-white mb-3">About s{stock.ticker}</h2>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              s{stock.ticker} is a synthetic token on GoodChain that tracks {stock.name}&apos;s real stock price via on-chain price feeds. Trade 24/7 in fractional amounts — no minimums. 20% of trading fees fund Universal Basic Income.
+            </p>
+            {stock.description && (
+              <>
+                <hr className="border-gray-700/30 my-3" />
+                <p className="text-sm text-gray-400 leading-relaxed">{stock.description}</p>
+              </>
+            )}
+          </div>
 
           <DeferredNewsEventsPanel
             ticker={stock.ticker}

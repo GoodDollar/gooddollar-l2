@@ -275,6 +275,22 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.getByText('Waiting')).toBeTruthy()
   })
 
+  it('shows synthetic token explainer above company description in About section', () => {
+    const stockWithDesc = { ...makeStock(), description: 'Apple Inc. designs and sells electronics.' }
+    currentStocks = [stockWithDesc]
+    currentParams = { ticker: 'AAPL' }
+    walletConnected = false
+    oracleGuardState = { health: 'live', reason: null, isLoading: false }
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByText(/sAAPL is a synthetic token/i)).toBeTruthy()
+    expect(screen.getByText(/tracks.*Apple Inc/i)).toBeTruthy()
+    expect(screen.getByText(/24\/7/i)).toBeTruthy()
+    expect(screen.getByText(/Universal Basic Income/i)).toBeTruthy()
+    expect(screen.getByText('Apple Inc. designs and sells electronics.')).toBeTruthy()
+  })
+
   it('shows actionable recovery links when oracle is not live', () => {
     currentStocks = [makeStock()]
     currentParams = { ticker: 'AAPL' }
