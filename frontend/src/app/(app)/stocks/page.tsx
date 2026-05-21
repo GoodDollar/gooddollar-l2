@@ -69,8 +69,7 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick, actionLabel }:
               <span className="font-semibold text-white">{stock.ticker}</span>
               <span className="text-gray-500 text-xs truncate max-w-[120px] inline-block align-middle">{displayName}</span>
             </div>
-            <div className="text-[10px] text-gray-600">Token s{stock.ticker}</div>
-          </div>
+            </div>
         </div>
       </td>
       <td className="py-3 px-3 text-right text-white font-medium">
@@ -239,7 +238,6 @@ export default function StocksPage() {
                   <span className="font-semibold text-white text-sm truncate max-w-[52px]">{stock.ticker}</span>
                   <span className="text-gray-500 text-xs truncate max-w-[120px]">{parseDisplayName(stock)}</span>
                 </div>
-                <div className="text-[10px] text-gray-600 mt-0.5">Token s{stock.ticker}</div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
                 </div>

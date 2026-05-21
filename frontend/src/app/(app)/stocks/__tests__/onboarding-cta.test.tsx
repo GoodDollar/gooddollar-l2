@@ -139,4 +139,17 @@ describe('StocksPage onboarding CTA', () => {
 
     expect(screen.getByRole('button', { name: 'Trade now for AAPL' })).toBeInTheDocument()
   })
+
+  it('does not show "Token s{ticker}" jargon in stock rows', () => {
+    walletState.address = undefined
+
+    const { container } = render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    expect(container.textContent).not.toContain('Token sAAPL')
+    expect(container.textContent).not.toContain('Token s')
+  })
 })

@@ -583,9 +583,9 @@ export function StockDetailContent() {
           </div>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
-            <h2 className="text-sm font-semibold text-white mb-3">About s{stock.ticker}</h2>
+            <h2 className="text-sm font-semibold text-white mb-3">About {stock.ticker}</h2>
             <p className="text-sm text-gray-400 leading-relaxed">
-              s{stock.ticker} is a synthetic token on GoodChain that tracks {stock.name}&apos;s real stock price via on-chain price feeds. Trade 24/7 in fractional amounts — no minimums. 20% of trading fees fund Universal Basic Income.
+              {stock.ticker} on GoodDollar tracks {stock.name}&apos;s real stock price via on-chain price feeds. Trade 24/7 in fractional amounts — no minimums. 20% of trading fees fund Universal Basic Income.
             </p>
             {stock.description && (
               <>
@@ -722,7 +722,7 @@ export function StockDetailContent() {
                   </Link>
                 ) : (
                   <Link href={`/stocks/${stock.ticker}#stock-order-form`} prefetch={false} className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors inline-flex items-center gap-1">
-                    Buy s{stock.ticker}
+                    Buy {stock.ticker}
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                   </Link>
                 )}

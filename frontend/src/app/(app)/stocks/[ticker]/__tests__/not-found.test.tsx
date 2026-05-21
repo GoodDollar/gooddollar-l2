@@ -229,7 +229,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     currentParams = { ticker: 'AAPL' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const buyLink = screen.getByRole('link', { name: /Buy sAAPL/i })
+    const buyLink = screen.getByRole('link', { name: /Buy AAPL/i })
     const portfolioLink = screen.getByRole('link', { name: /Open Stock Portfolio/i })
     const browseLink = screen.getByRole('link', { name: /Browse Stocks/i })
 
@@ -284,7 +284,9 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
 
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    expect(screen.getByText(/sAAPL is a synthetic token/i)).toBeTruthy()
+    expect(screen.getByText(/About AAPL/i)).toBeTruthy()
+    expect(screen.getByText(/AAPL on GoodDollar tracks/i)).toBeTruthy()
+    expect(screen.queryByText(/sAAPL/i)).toBeNull()
     expect(screen.getByText(/tracks.*Apple Inc/i)).toBeTruthy()
     expect(screen.getByText(/24\/7/i)).toBeTruthy()
     expect(screen.getByText(/Universal Basic Income/i)).toBeTruthy()
