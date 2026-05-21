@@ -27,6 +27,8 @@ const PRICE_SERVICE_URL =
   process.env.NEXT_PUBLIC_PRICE_SERVICE_URL || 'http://localhost:9300'
 
 const POLL_INTERVAL_MS = 10_000
+const FAILURE_BACKOFF_BASE_MS = 15_000
+const FAILURE_BACKOFF_MAX_MS = 120_000
 
 type Subscriber = (state: OracleStatusState) => void
 
@@ -35,6 +37,8 @@ interface StatusStore {
   subscribers: Set<Subscriber>
   intervalId: ReturnType<typeof setInterval> | null
   inFlight: boolean
+  failureCount: number
+  cooldownUntil: number
 }
 
 const store: StatusStore = {
@@ -42,6 +46,8 @@ const store: StatusStore = {
   subscribers: new Set(),
   intervalId: null,
   inFlight: false,
+  failureCount: 0,
+  cooldownUntil: 0,
 }
 
 function notify(): void {
@@ -51,6 +57,7 @@ function notify(): void {
 async function fetchStatus(): Promise<void> {
   if (store.inFlight) return
   if (typeof document !== 'undefined' && document.hidden) return
+  if (Date.now() < store.cooldownUntil) return
 
   store.inFlight = true
   try {
@@ -59,8 +66,16 @@ async function fetchStatus(): Promise<void> {
     })
     if (!res.ok) throw new Error(`Status endpoint returned ${res.status}`)
     const data: PriceServiceStatus = await res.json()
+    store.failureCount = 0
+    store.cooldownUntil = 0
     store.state = { status: data, isLoading: false, error: null }
   } catch (err) {
+    store.failureCount += 1
+    const backoffMs = Math.min(
+      FAILURE_BACKOFF_MAX_MS,
+      FAILURE_BACKOFF_BASE_MS * (2 ** Math.max(0, store.failureCount - 1)),
+    )
+    store.cooldownUntil = Date.now() + backoffMs
     store.state = {
       ...store.state,
       isLoading: false,
@@ -135,4 +150,16 @@ export function getDominantSession(quotes: QuoteStatus[]): string {
     }
   }
   return dominant
+}
+
+export function __resetPriceServiceStatusStoreForTests(): void {
+  if (store.intervalId !== null) {
+    clearInterval(store.intervalId)
+  }
+  store.state = { status: null, isLoading: true, error: null }
+  store.subscribers.clear()
+  store.intervalId = null
+  store.inFlight = false
+  store.failureCount = 0
+  store.cooldownUntil = 0
 }

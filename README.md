@@ -24,6 +24,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 - Stocks performance checks now include dedicated route bundle budgets for `/stocks`, `/stocks/[ticker]`, and `/stocks/portfolio`, and the disconnected onboarding panel + oracle badge on `/stocks` are deferred so discovery UI renders before non-critical wallet/status modules.
 - Stocks detail page now defers non-critical insight modules (`Analyst Outlook`, `News & Events`, and `Related symbols / Daily movers`) behind progressive dynamic loading with skeleton placeholders, trimming eager detail-route payload while keeping core quote/trade context immediate.
+- Oracle status polling now applies failure backoff/cooldown when the quote-status endpoint is unreachable, reducing repeated failed-request churn on stocks pages while preserving existing fallback badge states.
 - Stocks detail mobile hierarchy now prioritizes the trade module above secondary context, trims chart density, and collapses lower-priority metrics behind a `More metrics` disclosure for faster scanability.
 - Stocks primary wallet CTAs now use higher-contrast color pairing with explicit hover/active/focus-visible states across markets, detail, and portfolio surfaces.
 - Stocks routes now show an explicit WalletConnect readiness notice when `NEXT_PUBLIC_WC_PROJECT_ID` is missing/invalid, and the disconnected onboarding CTA copy no longer implies that mobile QR wallet connection is immediately available in that state.
