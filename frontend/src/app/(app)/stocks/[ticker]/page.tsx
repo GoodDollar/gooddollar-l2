@@ -25,6 +25,13 @@ import { usePriceServiceStatus, getConsecutiveFailures } from '@/lib/usePriceSer
 import { RebalanceSyncPanel } from '@/components/stocks/RebalanceSyncPanel'
 import { OracleUnavailableBanner } from '@/components/stocks/OracleUnavailableBanner'
 import { RebalanceErrorBoundary } from '@/components/stocks/RebalanceErrorBoundary'
+import { ExposureNettingPanel } from '@/components/stocks/ExposureNettingPanel'
+import {
+  type SymbolExposureSummary,
+  aggregateExposure,
+  classifyResidual,
+  computePortfolioDelta,
+} from '@/lib/exposureNetting'
 import { StockResearchHub } from '@/components/stocks/StockResearchHub'
 import { buildSymbolRebalanceStatus, evaluateRebalanceGuard } from '@/lib/stocksRebalanceInvariant'
 
@@ -135,6 +142,25 @@ export default function StockDetailPage() {
     [symbolRebalanceStatus, currentBlock],
   )
   const riskBlockReason = rebalanceGuard.blocked ? rebalanceGuard.reasons[0] ?? 'Sync required' : null
+
+  const exposureSummaries: SymbolExposureSummary[] = useMemo(() => {
+    if (!position || position.debtFloat <= 0 || !stock) return []
+    const positionUsd = position.debtFloat * stock.price
+    const exposures = [{ product: 'amm' as const, sizeUsd: positionUsd, direction: 'long' as const }]
+    const agg = aggregateExposure(exposures)
+    const gross = agg.grossLongUsd + agg.grossShortUsd
+    return [{
+      symbol: stock.ticker,
+      ...agg,
+      classification: classifyResidual(agg.netExposureUsd, gross),
+      byProduct: exposures,
+    }]
+  }, [position, stock])
+
+  const portfolioDelta = useMemo(
+    () => computePortfolioDelta(exposureSummaries),
+    [exposureSummaries],
+  )
   const timeframeTabRefs = useRef<Record<Timeframe, HTMLButtonElement | null>>({
     '1D': null,
     '1W': null,
@@ -474,6 +500,13 @@ export default function StockDetailPage() {
               currentBlock={currentBlock}
             />
           </RebalanceErrorBoundary>
+
+          {hasPosition && (
+            <ExposureNettingPanel
+              summaries={exposureSummaries}
+              portfolioDelta={portfolioDelta}
+            />
+          )}
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
