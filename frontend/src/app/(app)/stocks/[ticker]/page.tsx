@@ -23,6 +23,7 @@ import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
 import { RebalanceSyncPanel } from '@/components/stocks/RebalanceSyncPanel'
+import { StockResearchHub } from '@/components/stocks/StockResearchHub'
 import { buildSymbolRebalanceStatus, evaluateRebalanceGuard } from '@/lib/stocksRebalanceInvariant'
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'ALL']
@@ -397,6 +398,13 @@ export default function StockDetailPage() {
               <p className="text-sm text-gray-400 leading-relaxed">{stock.description}</p>
             </div>
           )}
+
+          <StockResearchHub
+            ticker={stock.ticker}
+            companyName={stock.name}
+            sector={stock.sector}
+            summary={stock.description}
+          />
 
           <NewsEventsPanel
             ticker={stock.ticker}
