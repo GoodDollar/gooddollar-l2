@@ -87,6 +87,9 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
     expect(screen.getByText('Connect wallet')).toBeInTheDocument()
     expect(screen.getByText('Review live metrics')).toBeInTheDocument()
     expect(screen.getByText('Track impact and holdings')).toBeInTheDocument()
+    expect(screen.getByText('Market benchmark preview')).toBeInTheDocument()
+    expect(screen.getByText('Portfolio health preview')).toBeInTheDocument()
+    expect(screen.getByText('Today\'s synthetic movers (read-only preview)')).toBeInTheDocument()
     expect(screen.queryByText('Total Value')).not.toBeInTheDocument()
     expect(screen.queryByText('0% — Critical')).not.toBeInTheDocument()
   })
@@ -114,6 +117,7 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
     )
 
     expect(screen.queryByText('Loading impact insights…')).not.toBeInTheDocument()
+    expect(screen.getByText('Connect wallet to unlock your holdings timeline')).toBeInTheDocument()
   })
 
   it('does NOT show "Critical" when collateral exists but required collateral is zero', () => {

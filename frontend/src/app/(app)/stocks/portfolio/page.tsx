@@ -13,6 +13,12 @@ import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
 import { StocksConnectFallbackRail } from '@/components/stocks/StocksConnectFallbackRail'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
+const PRECONNECT_BENCHMARKS = [
+  { ticker: 'NVDA', move: '+3.2%', volume: '$310.0M' },
+  { ticker: 'AAPL', move: '+1.3%', volume: '$62.0M' },
+  { ticker: 'TSLA', move: '-2.1%', volume: '$95.0M' },
+] as const
+
 const DeferredStocksPortfolioImpactSection = dynamic(
   () => import('./StocksPortfolioImpactSection').then((module) => module.StocksPortfolioImpactSection),
   {
@@ -209,6 +215,40 @@ export default function StocksPortfolioPage() {
               Browse Stocks First
             </Link>
           </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-2" data-testid="stocks-portfolio-preconnect-preview">
+            <div className="rounded-xl border border-gray-700/25 bg-dark-100/70 p-3">
+              <p className="text-xs font-semibold text-white">Market benchmark preview</p>
+              <p className="mt-1 text-[11px] text-gray-400">Today&apos;s synthetic movers (read-only preview)</p>
+              <div className="mt-2.5 space-y-1.5">
+                {PRECONNECT_BENCHMARKS.map((entry) => (
+                  <div key={entry.ticker} className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-50/45 px-2 py-1.5 text-xs">
+                    <span className="text-gray-200">{entry.ticker}</span>
+                    <span className={entry.move.startsWith('-') ? 'text-red-300' : 'text-green-300'}>{entry.move}</span>
+                    <span className="text-gray-400">{entry.volume}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-700/25 bg-dark-100/70 p-3">
+              <p className="text-xs font-semibold text-white">Portfolio health preview</p>
+              <p className="mt-1 text-[11px] text-gray-400">Sample values to show what unlocks after connect</p>
+              <div className="mt-2.5 grid grid-cols-3 gap-2 text-xs">
+                <div className="rounded-lg border border-gray-700/25 bg-dark-50/45 p-2">
+                  <p className="text-gray-400">Value</p>
+                  <p className="mt-1 text-white">$4,320</p>
+                </div>
+                <div className="rounded-lg border border-gray-700/25 bg-dark-50/45 p-2">
+                  <p className="text-gray-400">P&L</p>
+                  <p className="mt-1 text-green-300">+6.4%</p>
+                </div>
+                <div className="rounded-lg border border-gray-700/25 bg-dark-50/45 p-2">
+                  <p className="text-gray-400">UBI impact</p>
+                  <p className="mt-1 text-goodgreen">$2.59</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
       ) : (
         <>
@@ -273,6 +313,12 @@ export default function StocksPortfolioPage() {
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">Loading positions…</p>
             </div>
+          ) : isDisconnected ? (
+            <div className="py-16 text-center">
+              <p className="text-gray-300 text-sm mb-1">Connect wallet to unlock your holdings timeline</p>
+              <p className="text-gray-500 text-xs mb-4">Preview cards above show the metrics you will get after connection.</p>
+              <Link href="/stocks" className="text-goodgreen text-sm hover:underline">Browse Stocks</Link>
+            </div>
           ) : holdings.length === 0 ? (
             <div className="py-16 text-center">
               <svg className="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,7 +352,12 @@ export default function StocksPortfolioPage() {
         </TabsContent>
 
         <TabsContent value="history">
-          {trades.length === 0 ? (
+          {isDisconnected ? (
+            <div className="py-16 text-center">
+              <p className="text-gray-300 text-sm mb-1">Connect wallet to unlock trade history and UBI impact timeline</p>
+              <p className="text-gray-500 text-xs">You can keep exploring markets before connecting.</p>
+            </div>
+          ) : trades.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-gray-400 text-sm">No trade history</p>
             </div>
