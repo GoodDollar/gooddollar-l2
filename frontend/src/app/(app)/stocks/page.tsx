@@ -38,6 +38,34 @@ function StockIcon({ ticker }: { ticker: string }) {
   )
 }
 
+interface SortableHeaderProps {
+  label: string
+  field: SortField
+  sortField: SortField
+  sortDir: SortDir
+  onSort: (field: SortField) => void
+  className?: string
+}
+
+function SortableHeader({ label, field, sortField, sortDir, onSort, className }: SortableHeaderProps) {
+  const active = sortField === field
+  return (
+    <th
+      scope="col"
+      aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className={className}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className="inline-flex items-center justify-end w-full font-semibold hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/60 rounded-sm"
+      >
+        {label} <SortArrow active={active} dir={sortDir} />
+      </button>
+    </th>
+  )
+}
+
 interface StockRowProps {
   stock: Stock
   idx: number
@@ -116,7 +144,10 @@ export default function StocksPage() {
     }
     return [...stocks].sort((a, b) => {
       const mul = sortDir === 'asc' ? 1 : -1
-      return (a[sortField] - b[sortField]) * mul
+      const aVal = Number(a[sortField] ?? 0)
+      const bVal = Number(b[sortField] ?? 0)
+      if (aVal === bVal) return a.ticker.localeCompare(b.ticker)
+      return (aVal - bVal) * mul
     })
   }, [data, query, sortField, sortDir])
 
@@ -224,18 +255,38 @@ export default function StocksPage() {
               <tr className="border-b border-gray-700/30 text-gray-400 bg-dark-50/25">
                 <th scope="col" className="text-right py-3 px-3 font-semibold w-10">#</th>
                 <th scope="col" className="text-left py-3 px-3 font-semibold">Stock</th>
-                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('price')}>
-                  Price <SortArrow active={sortField === 'price'} dir={sortDir} />
-                </th>
-                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('change24h')}>
-                  24h Change <SortArrow active={sortField === 'change24h'} dir={sortDir} />
-                </th>
-                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors hidden sm:table-cell" onClick={() => handleSort('volume24h')}>
-                  Volume <SortArrow active={sortField === 'volume24h'} dir={sortDir} />
-                </th>
-                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors hidden md:table-cell" onClick={() => handleSort('marketCap')}>
-                  Market Cap <SortArrow active={sortField === 'marketCap'} dir={sortDir} />
-                </th>
+                <SortableHeader
+                  label="Price"
+                  field="price"
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                  className="text-right py-3 px-3"
+                />
+                <SortableHeader
+                  label="24h Change"
+                  field="change24h"
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                  className="text-right py-3 px-3"
+                />
+                <SortableHeader
+                  label="Volume"
+                  field="volume24h"
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                  className="text-right py-3 px-3 hidden sm:table-cell"
+                />
+                <SortableHeader
+                  label="Market Cap"
+                  field="marketCap"
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                  className="text-right py-3 px-3 hidden md:table-cell"
+                />
                 <th scope="col" className="py-3 px-2 font-semibold hidden sm:table-cell">7d Trend</th>
                 <th scope="col" className="w-20 hidden sm:table-cell" />
               </tr>
