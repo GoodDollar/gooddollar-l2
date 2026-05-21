@@ -66,6 +66,7 @@ type PeerMetric = 'change24h' | 'marketCap' | 'peRatio'
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
+const TRAILING_TICKER_DELIMITERS = /[/\\]+$/g
 
 function decodeTickerBounded(rawTicker?: string): string {
   if (!rawTicker) return ''
@@ -85,8 +86,7 @@ function decodeTickerBounded(rawTicker?: string): string {
 function normalizeTickerForLookup(rawTicker?: string): string {
   const decoded = decodeTickerBounded(rawTicker)
   if (decoded.length > 64) return ''
-  if (UNSAFE_TICKER_PATTERN.test(decoded)) return ''
-  const normalized = decoded.trim().toUpperCase()
+  const normalized = decoded.trim().toUpperCase().replace(TRAILING_TICKER_DELIMITERS, '')
   if (!normalized) return ''
   if (UNSAFE_TICKER_PATTERN.test(normalized)) return ''
   if (!SAFE_TICKER_PATTERN.test(normalized)) return ''

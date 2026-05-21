@@ -204,6 +204,15 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
   })
 
+  it('resolves encoded trailing-slash ticker payload to stock detail page', () => {
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL%2F' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByRole('heading', { name: 'AAPL' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
+  })
+
   it('shows stocks-focused next actions in empty-position state on valid detail pages', () => {
     currentStocks = [makeStock()]
     currentParams = { ticker: 'AAPL' }

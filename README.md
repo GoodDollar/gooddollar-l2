@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks ticker routing now normalizes encoded trailing delimiters (for example `/stocks/AAPL%2F`) to recover valid symbols instead of showing a false `Stock Not Found` shell on malformed shared links.
 - Stocks pages now use route-aware feedback-control positioning plus reserved right/bottom safe-area spacing on `/stocks` and `/stocks/portfolio`, so floating feedback UI no longer obscures market/news/table content.
 - Stocks mobile discovery now uses a clearer top-viewport hierarchy with a dedicated filter shell and tuned spacing between header, context banners, intelligence, and screening controls.
 - Stocks section tabs now use compact mobile sizing (`text-xs`, reduced horizontal padding, tighter vertical rhythm) to reduce top-of-screen crowding while preserving desktop tab density.
