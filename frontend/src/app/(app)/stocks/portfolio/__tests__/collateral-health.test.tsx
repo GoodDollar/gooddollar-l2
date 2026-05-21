@@ -6,11 +6,13 @@ const accountState = {
   address: undefined as `0x${string}` | undefined,
   isConnected: false,
 }
+const searchParamsState = { value: '' }
+const replace = vi.fn()
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace }),
   usePathname: () => '/stocks/portfolio',
-  useSearchParams: () => new URLSearchParams(''),
+  useSearchParams: () => new URLSearchParams(searchParamsState.value),
   useParams: () => ({}),
 }))
 
@@ -66,6 +68,8 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
   beforeEach(() => {
     accountState.address = undefined
     accountState.isConnected = false
+    searchParamsState.value = ''
+    replace.mockReset()
   })
 
   it('shows neutral disconnected summary placeholders instead of active $0 metrics', () => {
@@ -115,6 +119,26 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(wrapper).toBeTruthy()
     expect(wrapper?.className).toContain('min-h-screen')
     expect(wrapper?.className).toContain('bg-dark-200')
+  })
+
+  it('normalizes unsupported query params to canonical portfolio URL', () => {
+    searchParamsState.value = 'tab=bad'
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(replace).toHaveBeenCalledWith('/stocks/portfolio', { scroll: false })
+  })
+
+  it('drops unsupported params but preserves valid benchmark query', () => {
+    searchParamsState.value = 'tab=bad&benchmark=QQQ'
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(replace).toHaveBeenCalledWith('/stocks/portfolio?benchmark=QQQ', { scroll: false })
   })
 
   it('shows deferred impact section loading placeholders on first paint', () => {

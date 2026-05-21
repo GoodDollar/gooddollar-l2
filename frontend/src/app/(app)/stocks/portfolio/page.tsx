@@ -304,6 +304,32 @@ export default function StocksPortfolioPage() {
     }
   }, [benchmark, searchParams])
 
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    let changed = false
+
+    for (const key of Array.from(params.keys())) {
+      if (key !== 'benchmark') {
+        params.delete(key)
+        changed = true
+      }
+    }
+
+    const rawBenchmark = params.get('benchmark')
+    if (rawBenchmark !== null) {
+      const normalizedBenchmark = parseBenchmarkId(rawBenchmark)
+      if (normalizedBenchmark !== rawBenchmark) {
+        params.set('benchmark', normalizedBenchmark)
+        changed = true
+      }
+    }
+
+    if (!changed) return
+
+    const next = params.toString()
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams])
+
   const handleBenchmarkChange = (nextBenchmark: BenchmarkId) => {
     setBenchmark(nextBenchmark)
     if (typeof window !== 'undefined') {
