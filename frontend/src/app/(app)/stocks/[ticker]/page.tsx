@@ -25,6 +25,7 @@ import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 import { StockAccountPanel } from '@/components/stocks/StockAccountPanel'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { PriceChart } from '@/components/PriceChart'
+import { DepthChart } from '@/components/stocks/DepthChart'
 import { StockMarketData } from '@/components/stocks/StockMarketData'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
@@ -431,6 +432,7 @@ export default function StockDetailPage() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
+  const [chartView, setChartView] = useState<'price' | 'depth'>('price')
   const [activeTab, setActiveTab] = useState<TickerTab>(() => parseTickerTab(searchParams.get('tab')))
   const [analysisExpanded, setAnalysisExpanded] = useState(true)
   const [peerMetric, setPeerMetric] = useState<PeerMetric>('change24h')
@@ -591,18 +593,34 @@ export default function StockDetailPage() {
           />
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
-            <div className="flex gap-1 mb-3">
-              {TIMEFRAMES.map(tf => (
-                <button key={tf} onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-                  {tf}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex gap-1">
+                {chartView === 'price' && TIMEFRAMES.map(tf => (
+                  <button key={tf} onClick={() => setTimeframe(tf)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+                    {tf}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-0.5 rounded-lg bg-dark-50/60 p-0.5">
+                <button onClick={() => setChartView('price')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chartView === 'price' ? 'bg-dark-200 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
+                  Price
                 </button>
-              ))}
+                <button onClick={() => setChartView('depth')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chartView === 'depth' ? 'bg-dark-200 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
+                  Depth
+                </button>
+              </div>
             </div>
-            {chartMounted ? (
-              <PriceChart data={chartData} height={350} />
+            {chartView === 'price' ? (
+              chartMounted ? (
+                <PriceChart data={chartData} height={350} />
+              ) : (
+                <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
+              )
             ) : (
-              <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
+              <DepthChart oraclePrice={stock.price} height={350} />
             )}
           </div>
 
