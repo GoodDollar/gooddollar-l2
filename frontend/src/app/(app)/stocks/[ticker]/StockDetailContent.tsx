@@ -89,14 +89,6 @@ function WalletGatedTradeButton({
   children: React.ReactNode
 }) {
   const { isConnected } = useAccount()
-  if (oracleTradeBlocked) {
-    return (
-      <button type="button" disabled
-        className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-amber-300 cursor-not-allowed border border-amber-500/30">
-        Oracle status not trade-ready
-      </button>
-    )
-  }
   if (!isConnected) {
     return (
       <div className="space-y-2">
@@ -113,7 +105,20 @@ function WalletGatedTradeButton({
             {mobileWalletUnavailableMessage}
           </p>
         )}
+        {oracleTradeBlocked && (
+          <p className="text-[11px] text-amber-200 text-center">
+            Wallet setup is available now. Trade submission stays paused until oracle health recovers.
+          </p>
+        )}
       </div>
+    )
+  }
+  if (oracleTradeBlocked) {
+    return (
+      <button type="button" disabled
+        className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-amber-300 cursor-not-allowed border border-amber-500/30">
+        Oracle status not trade-ready
+      </button>
     )
   }
   if (!hasAmount) {
