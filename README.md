@@ -28,7 +28,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 - Perps portfolio empty state no longer leaks raw template fragments (for example `positions.length === 0 ? (`), restoring clean, production-grade empty-state rendering.
 - Perps portfolio positions-tab empty state now renders through a dedicated row component plus stricter leak assertions, adding another guard rail against template fragment regressions.
 - Stocks detail page now lazy-loads chart/oracle UI modules; latest build reduced `/stocks/[ticker]` First Load JS from ~386 kB to ~332 kB while preserving trading flow.
-- Stocks navigation links now opt out of eager prefetch in stocks section/detail contexts (section tabs, portfolio icon, and cross-route CTAs) to reduce non-essential background route fetch fan-out.
+- Stocks header/navigation now disables eager route prefetch to keep stocks-first loading focused; latest production capture reduced `/stocks` requests from `60` to `44` and `/stocks/[ticker]` from `66` to `45`, while eliminating background `_rsc` fan-out and unrelated perps/predict/lend chunk preloads during initial stocks render.
 - Stocks detail now includes an `Analyst Outlook` card (consensus, low/mean/high target context, and implied upside/downside) with explicit loading and unavailable-data fallbacks.
 - Stocks detail now includes a `News & Events` panel with per-ticker catalyst headlines, tags, source attribution, and empty/error fallbacks so users can keep context in-app.
 - Stocks detail sidebar now includes stocks-native discovery modules (`Related symbols` + `Daily movers`) so users can jump directly into adjacent opportunities without leaving the stocks flow.

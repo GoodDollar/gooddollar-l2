@@ -11,8 +11,8 @@ vi.mock('../ActivityButton', () => ({
 }))
 
 vi.mock('next/link', () => ({
-  default: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
-    <a href={href} className={className}>{children}</a>
+  default: ({ href, children, className, prefetch }: { href: string; children: React.ReactNode; className?: string; prefetch?: boolean }) => (
+    <a href={href} className={className} data-prefetch={String(prefetch)}>{children}</a>
   ),
 }))
 
@@ -214,6 +214,14 @@ describe('Header', () => {
     const hrefs = Array.from(mobileNav.querySelectorAll('a')).map(l => l.getAttribute('href'))
     expect(hrefs).toContain('/faucet')
     expect(hrefs).toContain('/testnet-guide')
+  })
+
+  it('disables Link prefetch for header navigation links', () => {
+    render(<Header />)
+    const stockNav = document.querySelector('a[href="/stocks"]')
+    const perpsNav = document.querySelector('a[href="/perps"]')
+    expect(stockNav).toHaveAttribute('data-prefetch', 'false')
+    expect(perpsNav).toHaveAttribute('data-prefetch', 'false')
   })
 })
 
