@@ -23,8 +23,8 @@ export interface OracleStatusState {
   error: string | null
 }
 
-const PRICE_SERVICE_URL =
-  process.env.NEXT_PUBLIC_PRICE_SERVICE_URL || 'http://localhost:9300'
+const ORACLE_STATUS_URL =
+  process.env.NEXT_PUBLIC_ORACLE_STATUS_URL || '/api/oracle/status'
 
 const POLL_INTERVAL_MS = 10_000
 
@@ -54,7 +54,7 @@ async function fetchStatus(): Promise<void> {
 
   store.inFlight = true
   try {
-    const res = await fetch(`${PRICE_SERVICE_URL}/status/quotes`, {
+    const res = await fetch(ORACLE_STATUS_URL, {
       signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) throw new Error(`Status endpoint returned ${res.status}`)
