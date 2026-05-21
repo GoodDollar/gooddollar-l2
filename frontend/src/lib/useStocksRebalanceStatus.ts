@@ -19,6 +19,31 @@ interface UseStocksRebalanceStatusResult {
 }
 
 const POLL_MS = 10_000
+const inflightByUrl = new Map<string, Promise<RebalanceApiResponse>>()
+
+async function fetchRebalanceStatus(url: string): Promise<RebalanceApiResponse> {
+  const inflight = inflightByUrl.get(url)
+  if (inflight) return inflight
+
+  const request = (async () => {
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
+    if (!res.ok) throw new Error(`rebalance status ${res.status}`)
+    return await res.json() as RebalanceApiResponse
+  })()
+
+  inflightByUrl.set(url, request)
+  request.then(() => {
+    if (inflightByUrl.get(url) === request) {
+      inflightByUrl.delete(url)
+    }
+  }, () => {
+    if (inflightByUrl.get(url) === request) {
+      inflightByUrl.delete(url)
+    }
+  })
+
+  return request
+}
 
 export function useStocksRebalanceStatus(symbols: string[]): UseStocksRebalanceStatusResult {
   const normalizedSymbols = useMemo(
@@ -40,9 +65,7 @@ export function useStocksRebalanceStatus(symbols: string[]): UseStocksRebalanceS
 
     const tick = async () => {
       try {
-        const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
-        if (!res.ok) throw new Error(`rebalance status ${res.status}`)
-        const next = await res.json() as RebalanceApiResponse
+        const next = await fetchRebalanceStatus(url)
         if (cancelled) return
         setData(next)
         setError(null)
