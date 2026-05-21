@@ -57,17 +57,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
           </div>
         )
       }
-      if (fallbackState === 'live') {
-        return (
-          <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            <span>Live</span>
-            <span className="text-gray-600">·</span>
-            <span>stocks-keeper</span>
-          </div>
-        )
-      }
-      if (fallbackState === 'degraded') {
+      if (fallbackState === 'live' || fallbackState === 'degraded') {
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />

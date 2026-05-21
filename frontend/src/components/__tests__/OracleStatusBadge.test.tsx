@@ -16,7 +16,7 @@ describe('OracleStatusBadge stocks fallback', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows Live with stocks fallback when quote status is unavailable but stocks-keeper is healthy', async () => {
+  it('shows Oracle degraded when quote status is unavailable even if stocks-keeper is healthy', async () => {
     vi.mocked(usePriceServiceStatus).mockReturnValue({
       status: null,
       isLoading: false,
@@ -33,8 +33,8 @@ describe('OracleStatusBadge stocks fallback', () => {
     )
 
     render(<OracleStatusBadge useStocksFallback />)
-    await waitFor(() => expect(screen.getByText('Live')).toBeInTheDocument())
-    expect(screen.getByText('stocks-keeper')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Oracle degraded')).toBeInTheDocument())
+    expect(screen.queryByText('Live')).not.toBeInTheDocument()
   })
 
   it('shows Oracle offline when quote status is unavailable and fallback status fails', async () => {
@@ -49,4 +49,3 @@ describe('OracleStatusBadge stocks fallback', () => {
     await waitFor(() => expect(screen.getByText('Oracle offline')).toBeInTheDocument())
   })
 })
-
