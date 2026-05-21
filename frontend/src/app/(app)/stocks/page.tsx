@@ -122,6 +122,7 @@ export default function StocksPage() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const stocksTableRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
+  const [sectorFilter, setSectorFilter] = useState<string>('All')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
@@ -135,8 +136,26 @@ export default function StocksPage() {
     }
   }
 
+  const topMovers = useMemo(
+    () => data.toSorted((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h)).slice(0, 5),
+    [data]
+  )
+
+  const trending = useMemo(
+    () => data.toSorted((a, b) => b.volume24h - a.volume24h).slice(0, 5),
+    [data]
+  )
+
+  const sectors = useMemo(
+    () => ['All', ...Array.from(new Set(data.map((s) => s.sector).filter(Boolean))).slice(0, 6)],
+    [data]
+  )
+
   const filtered = useMemo(() => {
     let stocks = data
+    if (sectorFilter !== 'All') {
+      stocks = stocks.filter((s) => s.sector === sectorFilter)
+    }
     const trimmed = query.trim()
     if (trimmed) {
       const q = trimmed.toLowerCase()
@@ -144,14 +163,14 @@ export default function StocksPage() {
         s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
       )
     }
-    return [...stocks].sort((a, b) => {
+    return stocks.toSorted((a, b) => {
       const mul = sortDir === 'asc' ? 1 : -1
       const aVal = Number(a[sortField] ?? 0)
       const bVal = Number(b[sortField] ?? 0)
       if (aVal === bVal) return a.ticker.localeCompare(b.ticker)
       return (aVal - bVal) * mul
     })
-  }, [data, query, sortField, sortDir])
+  }, [data, sectorFilter, query, sortField, sortDir])
 
   const handleRowClick = useCallback((ticker: string) => {
     router.push(`/stocks/${ticker}`)
@@ -208,6 +227,80 @@ export default function StocksPage() {
           </div>
         </div>
       )}
+
+      <div className="mb-4 rounded-2xl border border-gray-700/30 bg-dark-100/70 p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-sm sm:text-base font-semibold text-white">Discover opportunities faster</h2>
+            <p className="text-xs text-gray-400">Use movers, trending, and sector filters to narrow candidates before opening a ticker.</p>
+          </div>
+          {sectorFilter !== 'All' && (
+            <button
+              type="button"
+              onClick={() => setSectorFilter('All')}
+              className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors self-start sm:self-auto"
+            >
+              Clear sector filter
+            </button>
+          )}
+        </div>
+
+        <div className="mb-4 flex flex-wrap gap-2" data-testid="stocks-sector-filters">
+          {sectors.map((sector) => (
+            <button
+              key={sector}
+              type="button"
+              onClick={() => setSectorFilter(sector)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                sectorFilter === sector
+                  ? 'bg-goodgreen text-[#031615]'
+                  : 'bg-dark-50 text-gray-300 border border-gray-700/30 hover:text-white hover:border-goodgreen/40'
+              }`}
+            >
+              {sector}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="stocks-discovery-modules">
+          <div className="rounded-xl border border-gray-700/25 bg-dark-50/40 p-3">
+            <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">Top Movers</h3>
+            <div className="space-y-1.5">
+              {topMovers.map((stock) => (
+                <button
+                  key={`mover-${stock.ticker}`}
+                  type="button"
+                  onClick={() => handleRowClick(stock.ticker)}
+                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.04] transition-colors text-left"
+                >
+                  <span className="text-sm font-medium text-white">{stock.ticker}</span>
+                  <span className={stock.change24h >= 0 ? 'text-goodgreen text-xs font-semibold' : 'text-red-400 text-xs font-semibold'}>
+                    {stock.change24h >= 0 ? '+' : ''}
+                    {stock.change24h.toFixed(2)}%
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-700/25 bg-dark-50/40 p-3">
+            <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">Trending</h3>
+            <div className="space-y-1.5">
+              {trending.map((stock) => (
+                <button
+                  key={`trending-${stock.ticker}`}
+                  type="button"
+                  onClick={() => handleRowClick(stock.ticker)}
+                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.04] transition-colors text-left"
+                >
+                  <span className="text-sm font-medium text-white">{stock.ticker}</span>
+                  <span className="text-xs text-gray-300">{formatLargeNumber(stock.volume24h)} vol</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
         <input

@@ -90,8 +90,8 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    const tickerNodes = screen.getAllByText('AAPL')
-    const row = tickerNodes[0]?.closest('div[class*="bg-dark-100"]')
+    const tapBadge = screen.getByText('Tap to trade')
+    const row = tapBadge.closest('div[class*="bg-dark-100"]')
     expect(row).toBeTruthy()
 
     const rightColumn = row?.querySelector('div.text-right')
