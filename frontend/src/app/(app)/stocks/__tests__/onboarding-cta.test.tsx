@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-utils/wrapper'
+import { STOCKS_ONBOARDING_PROGRESS_KEY } from '@/lib/stocksOnboardingProgress'
 
 const push = vi.fn()
 const scrollIntoView = vi.fn()
@@ -55,6 +56,21 @@ vi.mock('@/lib/useOnChainStocks', () => ({
 import StocksPage from '../page'
 
 describe('StocksPage onboarding CTA', () => {
+  it('shows shared disconnected journey checklist on markets', async () => {
+    walletState.address = undefined
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    expect(await screen.findByTestId('stocks-onboarding-checklist')).toBeInTheDocument()
+    expect(screen.getByText('Explore markets')).toBeInTheDocument()
+    expect(screen.getByText('Open stock detail')).toBeInTheDocument()
+    expect(screen.getByText('Connect wallet and place first order')).toBeInTheDocument()
+  })
+
   it('shows first-time onboarding CTA when wallet is disconnected', async () => {
     walletState.address = undefined
 
@@ -154,6 +170,26 @@ describe('StocksPage onboarding CTA', () => {
     expect(tradeButton).toBeInTheDocument()
     expect(tradeButton.className).not.toContain('sm:opacity-0')
     expect(tradeButton.className).not.toContain('group-hover:opacity-100')
+  })
+
+  it('marks stock-detail step in session progress when Trade is selected', async () => {
+    walletState.address = undefined
+    push.mockClear()
+    window.sessionStorage.clear()
+    const user = userEvent.setup()
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Trade' }))
+    const progressRaw = window.sessionStorage.getItem(STOCKS_ONBOARDING_PROGRESS_KEY)
+    expect(progressRaw).toBeTruthy()
+    const progress = JSON.parse(progressRaw || '{}')
+    expect(progress.openedStockDetail).toBe(true)
+    expect(push).toHaveBeenCalledWith('/stocks/AAPL')
   })
 
   it('keeps read-only CTA in browse context when wallet connect is unavailable', async () => {

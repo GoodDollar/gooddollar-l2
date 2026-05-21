@@ -3,15 +3,22 @@
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
 import { isWalletConnectConfigured } from '@/lib/walletConnectReadiness'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
+import { StocksOnboardingChecklist } from '@/components/stocks/StocksOnboardingChecklist'
 import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
 import { StocksConnectFallbackRail } from '@/components/stocks/StocksConnectFallbackRail'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  markStocksOnboardingStep,
+  readStocksOnboardingProgress,
+  type StocksOnboardingProgress,
+} from '@/lib/stocksOnboardingProgress'
 
 const PRECONNECT_BENCHMARKS = [
   { ticker: 'NVDA', move: '+3.2%', volume: '$310.0M' },
@@ -153,6 +160,11 @@ function TradeRow({ trade }: { trade: TradeRecord }) {
 export default function StocksPortfolioPage() {
   const router = useRouter()
   const { address, isConnected } = useAccount()
+  const [progress, setProgress] = useState<StocksOnboardingProgress>({
+    exploredMarkets: false,
+    openedStockDetail: false,
+    connectIntent: false,
+  })
   const walletConnectConfigured = isWalletConnectConfigured()
   const {
     holdings,
@@ -172,6 +184,10 @@ export default function StocksPortfolioPage() {
   const hasRiskPosition = hasLivePositions && summary.totalRequired > 0
   const isLoading = holdingsLoading || tradesLoading
 
+  useEffect(() => {
+    setProgress(readStocksOnboardingProgress())
+  }, [])
+
   return (
     <ConnectWalletEmptyState
       title="Connect to View Stocks"
@@ -179,13 +195,22 @@ export default function StocksPortfolioPage() {
     >
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
-      {isDisconnected && !walletConnectConfigured && (
+      {isDisconnected && !walletConnectConfigured && !progress.exploredMarkets && (
         <>
           <WalletConnectNotice className="mb-3" />
           <StocksConnectFallbackRail
-            onUseInBrowserWallet={() => router.push('/stocks/AAPL')}
-            onTryAnotherConnector={() => router.push('/stocks/AAPL')}
-            onContinueReadOnly={() => router.push('/stocks')}
+            onUseInBrowserWallet={() => {
+              setProgress(prev => markStocksOnboardingStep(prev, 'connectIntent'))
+              router.push('/stocks/AAPL')
+            }}
+            onTryAnotherConnector={() => {
+              setProgress(prev => markStocksOnboardingStep(prev, 'connectIntent'))
+              router.push('/stocks/AAPL')
+            }}
+            onContinueReadOnly={() => {
+              setProgress(prev => markStocksOnboardingStep(prev, 'exploredMarkets'))
+              router.push('/stocks')
+            }}
             continueLabel="Continue in Read-only Mode"
           />
         </>
@@ -207,14 +232,20 @@ export default function StocksPortfolioPage() {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
               type="button"
+              onClick={() => setProgress(prev => markStocksOnboardingStep(prev, 'connectIntent'))}
               className="px-4 py-2.5 rounded-xl bg-goodgreen text-[#031615] font-semibold text-sm hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
             >
               Connect Wallet to Unlock Portfolio
             </button>
-            <Link href="/stocks" className="text-sm text-goodgreen hover:text-[#22c5b6] transition-colors">
+            <Link
+              href="/stocks"
+              onClick={() => setProgress(prev => markStocksOnboardingStep(prev, 'exploredMarkets'))}
+              className="text-sm text-goodgreen hover:text-[#22c5b6] transition-colors"
+            >
               Browse Stocks First
             </Link>
           </div>
+          <StocksOnboardingChecklist progress={progress} className="mt-4" />
 
           <div className="mt-4 grid gap-3 lg:grid-cols-2" data-testid="stocks-portfolio-preconnect-preview">
             <div className="rounded-xl border border-gray-700/25 bg-dark-100/70 p-3">

@@ -6,13 +6,24 @@ import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import {
+  markStocksOnboardingStep,
+  readStocksOnboardingProgress,
+  type StocksOnboardingProgress,
+} from '@/lib/stocksOnboardingProgress'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { PercentageChange } from '@/components/ui/percentage-change'
+import { StocksOnboardingChecklist } from '@/components/stocks/StocksOnboardingChecklist'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
 const STOCKS_SEARCH_STORAGE_KEY = 'gd-stocks-market-search'
+const DEFAULT_PROGRESS: StocksOnboardingProgress = {
+  exploredMarkets: false,
+  openedStockDetail: false,
+  connectIntent: false,
+}
 
 const DeferredOracleStatusBadge = dynamic(
   () => import('@/components/OracleStatusBadge').then((module) => ({ default: module.OracleStatusBadge })),
@@ -150,10 +161,21 @@ export default function StocksPage() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const stocksTableRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
+  const [progress, setProgress] = useState<StocksOnboardingProgress>(DEFAULT_PROGRESS)
   const [sectorFilter, setSectorFilter] = useState<string>('All')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+
+  useEffect(() => {
+    setProgress(readStocksOnboardingProgress())
+  }, [])
+
+  useEffect(() => {
+    if (!address && !progress.exploredMarkets) {
+      setProgress(prev => markStocksOnboardingStep(prev, 'exploredMarkets'))
+    }
+  }, [address, progress.exploredMarkets])
 
   useEffect(() => {
     const savedQuery = window.sessionStorage.getItem(STOCKS_SEARCH_STORAGE_KEY)
@@ -217,8 +239,11 @@ export default function StocksPage() {
   }, [data, sectorFilter, query, sortField, sortDir])
 
   const handleRowClick = useCallback((ticker: string) => {
+    if (!address) {
+      setProgress(prev => markStocksOnboardingStep(prev, 'openedStockDetail'))
+    }
     router.push(`/stocks/${ticker}`)
-  }, [router])
+  }, [address, router])
 
   const handlePrepareBrowse = useCallback(() => {
     stocksTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -252,10 +277,13 @@ export default function StocksPage() {
       />
 
       {!address && (
-        <DeferredStocksOnboardingCard
-          onPrepareBrowse={handlePrepareBrowse}
-          onStartTrading={handleStartTrading}
-        />
+        <>
+          <DeferredStocksOnboardingCard
+            onPrepareBrowse={handlePrepareBrowse}
+            onStartTrading={handleStartTrading}
+          />
+          <StocksOnboardingChecklist progress={progress} className="mb-4" />
+        </>
       )}
 
       <div className="mb-4 rounded-2xl border border-gray-700/30 bg-dark-100/70 p-4 sm:p-5">

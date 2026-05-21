@@ -65,6 +65,7 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
   beforeEach(() => {
     accountState.address = undefined
     accountState.isConnected = false
+    window.sessionStorage.clear()
   })
 
   it('shows a guided disconnected portfolio setup card instead of metric placeholders', () => {
@@ -107,6 +108,27 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
     expect(screen.getByRole('button', { name: 'Continue in Read-only Mode' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'More connection options' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Try Another Connector' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('stocks-onboarding-checklist')).toBeInTheDocument()
+  })
+
+  it('suppresses duplicate fallback rail once markets exploration is already recorded', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+    window.sessionStorage.setItem(
+      'gd-stocks-onboarding-progress',
+      JSON.stringify({
+        exploredMarkets: true,
+        openedStockDetail: false,
+        connectIntent: false,
+      }),
+    )
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.queryByText('Connection fallback options')).not.toBeInTheDocument()
+    expect(screen.getByTestId('stocks-onboarding-checklist')).toBeInTheDocument()
   })
 
   it('hides impact loading placeholders when in guided disconnected mode', () => {
