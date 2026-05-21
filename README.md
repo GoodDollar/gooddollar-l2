@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks detail mobile hierarchy now prioritizes the trade module above secondary context, trims chart density, and collapses lower-priority metrics behind a `More metrics` disclosure for faster scanability.
 - Stocks primary wallet CTAs now use higher-contrast color pairing with explicit hover/active/focus-visible states across markets, detail, and portfolio surfaces.
 - Stocks routes now show an explicit WalletConnect readiness notice when `NEXT_PUBLIC_WC_PROJECT_ID` is missing/invalid, and the disconnected onboarding CTA copy no longer implies that mobile QR wallet connection is immediately available in that state.
 - Stocks markets list now keeps the per-row `Trade` action visible by default on desktop (not hover-gated), improving first-time action discoverability.

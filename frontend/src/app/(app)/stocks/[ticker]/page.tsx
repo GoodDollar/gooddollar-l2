@@ -338,20 +338,20 @@ export default function StockDetailPage() {
         <span>←</span> Back to Stocks
       </Link>
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 order-2 lg:order-1">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-xs font-bold text-goodgreen">
               {stock.ticker.slice(0, 2)}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
-              <p className="text-sm text-gray-400">{stock.name} · {stock.sector}</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-white">{stock.ticker}</h1>
+              <p className="text-xs sm:text-sm text-gray-400">{stock.name} · {stock.sector}</p>
             </div>
           </div>
 
           <div className="flex items-baseline gap-3 mb-2">
-            <span className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
-            <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <span className="text-2xl sm:text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
+            <span className={`text-xs sm:text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
             </span>
           </div>
@@ -365,8 +365,8 @@ export default function StockDetailPage() {
             isLoading={analystLoading}
           />
 
-          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
-            <div className="flex gap-1 mb-3">
+          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-3 sm:p-4 mb-4">
+            <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
               {TIMEFRAMES.map(tf => (
                 <button key={tf} onClick={() => setTimeframe(tf)}
                   className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
@@ -375,15 +375,15 @@ export default function StockDetailPage() {
               ))}
             </div>
             {chartMounted ? (
-              <PriceChart data={chartData} height={350} />
+              <PriceChart data={chartData} height={300} />
             ) : (
-              <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
+              <div className="w-full bg-dark-50/30 rounded-xl animate-pulse h-[300px]" />
             )}
           </div>
 
-          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
+          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 sm:p-5">
             <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">Market Cap</div>
                 <div className="text-white font-medium">{formatLargeNumber(stock.marketCap)}</div>
@@ -410,23 +410,46 @@ export default function StockDetailPage() {
                   {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
                 </div>
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <div className="text-gray-500 text-xs mb-0.5">P/E Ratio</div>
                 <div className="text-white font-medium">{stock.peRatio.toFixed(1)}x</div>
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <div className="text-gray-500 text-xs mb-0.5">EPS</div>
                 <div className={`font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>${stock.eps.toFixed(2)}</div>
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <div className="text-gray-500 text-xs mb-0.5">Dividend Yield</div>
                 <div className="text-white font-medium">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : '—'}</div>
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <div className="text-gray-500 text-xs mb-0.5">Avg Volume</div>
                 <div className="text-white font-medium">{formatLargeNumber(stock.avgVolume).replace('$', '')}</div>
               </div>
             </div>
+            <details className="sm:hidden mt-3 border-t border-gray-700/20 pt-3">
+              <summary className="text-xs font-medium text-goodgreen cursor-pointer select-none">
+                More metrics
+              </summary>
+              <div className="grid grid-cols-2 gap-3 text-sm mt-2">
+                <div>
+                  <div className="text-gray-500 text-xs mb-0.5">P/E Ratio</div>
+                  <div className="text-white font-medium">{stock.peRatio.toFixed(1)}x</div>
+                </div>
+                <div>
+                  <div className="text-gray-500 text-xs mb-0.5">EPS</div>
+                  <div className={`font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>${stock.eps.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-gray-500 text-xs mb-0.5">Dividend Yield</div>
+                  <div className="text-white font-medium">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : '—'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-500 text-xs mb-0.5">Avg Volume</div>
+                  <div className="text-white font-medium">{formatLargeNumber(stock.avgVolume).replace('$', '')}</div>
+                </div>
+              </div>
+            </details>
           </div>
 
           {stock.description && (
@@ -444,7 +467,7 @@ export default function StockDetailPage() {
           />
         </div>
 
-        <div className="lg:w-80 shrink-0">
+        <div className="lg:w-80 shrink-0 order-1 lg:order-2">
           <OrderForm stock={stock} position={position} />
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
