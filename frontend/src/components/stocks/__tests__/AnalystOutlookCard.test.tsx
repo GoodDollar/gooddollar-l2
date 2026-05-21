@@ -26,6 +26,9 @@ describe('AnalystOutlookCard', () => {
           targetMean: 230,
           targetHigh: 260,
           asOf: 'May 2026',
+          confidence: 'High',
+          source: 'Street Consensus',
+          refreshedAt: '2026-05-20T12:00:00Z',
         }}
       />
     )
@@ -33,6 +36,11 @@ describe('AnalystOutlookCard', () => {
     expect(screen.getByText('Bullish')).toBeInTheDocument()
     expect(screen.getByText(/\+15\.0%/)).toBeInTheDocument()
     expect(screen.getByText(/\$230\.00/)).toBeInTheDocument()
+    expect(screen.getByText(/\+\$30\.00 vs live/i)).toBeInTheDocument()
+    expect(screen.getByText(/Confidence:/i)).toBeInTheDocument()
+    expect(screen.getByText(/^High$/i)).toBeInTheDocument()
+    expect(screen.getByText(/Source:/i)).toBeInTheDocument()
+    expect(screen.getByText(/Street Consensus/i)).toBeInTheDocument()
   })
 
   it('renders the 5-tier rating distribution with analyst count and per-bucket legend', () => {
@@ -48,6 +56,9 @@ describe('AnalystOutlookCard', () => {
           targetMean: 230,
           targetHigh: 260,
           asOf: 'May 2026',
+          confidence: 'High',
+          source: 'Street Consensus',
+          refreshedAt: '2026-05-20T12:00:00Z',
         }}
       />
     )

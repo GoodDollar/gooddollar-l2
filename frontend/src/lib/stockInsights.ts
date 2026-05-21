@@ -14,6 +14,9 @@ export interface AnalystOutlook {
   targetMean: number
   targetHigh: number
   asOf: string
+  confidence: 'High' | 'Moderate' | 'Low'
+  source: string
+  refreshedAt: string
 }
 
 export interface StockNewsItem {
@@ -32,6 +35,11 @@ function buildOutlook(
   ratings: AnalystRatingDistribution,
   prices: { targetLow: number; targetMean: number; targetHigh: number },
   asOf: string,
+  provenance: Pick<AnalystOutlook, 'confidence' | 'source' | 'refreshedAt'> = {
+    confidence: 'Moderate',
+    source: 'Street Consensus',
+    refreshedAt: '2026-05-20T12:00:00Z',
+  },
 ): AnalystOutlook {
   const analystCount =
     ratings.strongBuy + ratings.buy + ratings.hold + ratings.sell + ratings.strongSell
@@ -41,6 +49,7 @@ function buildOutlook(
     analystCount,
     ...prices,
     asOf,
+    ...provenance,
   }
 }
 

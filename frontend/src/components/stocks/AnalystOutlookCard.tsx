@@ -139,16 +139,26 @@ export function AnalystOutlookCard({
         </div>
       ) : (
         <div>
+          {(() => {
+            const upsidePercent = calcUpsidePercent(currentPrice, outlook.targetMean)
+            const targetDelta = outlook.targetMean - currentPrice
+            const targetDeltaLabel = `${targetDelta >= 0 ? '+' : '-'}$${Math.abs(targetDelta).toFixed(2)}`
+            return (
+              <>
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-[11px] text-gray-400">Target Mean</p>
               <p className="text-2xl font-bold text-white">${outlook.targetMean.toFixed(2)}</p>
             </div>
-            <div className={`text-sm font-semibold ${calcUpsidePercent(currentPrice, outlook.targetMean) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {calcUpsidePercent(currentPrice, outlook.targetMean) >= 0 ? '+' : ''}
-              {calcUpsidePercent(currentPrice, outlook.targetMean).toFixed(1)}%
+            <div className={`text-sm font-semibold ${upsidePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {upsidePercent >= 0 ? '+' : ''}
+              {upsidePercent.toFixed(1)}%
             </div>
           </div>
+
+          <p className={`mt-1 text-xs ${targetDelta >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+            {targetDeltaLabel} vs live
+          </p>
 
           <div className="mt-2.5 flex items-center justify-between text-xs text-gray-400">
             <span>Low ${outlook.targetLow.toFixed(2)}</span>
@@ -166,7 +176,16 @@ export function AnalystOutlookCard({
 
           <RatingDistributionBar ratings={outlook.ratings} analystCount={outlook.analystCount} />
 
+          <div className="mt-3 grid gap-1 text-[11px] text-gray-400">
+            <p>Confidence: <span className="text-gray-200">{outlook.confidence || 'Unavailable'}</span></p>
+            <p>Source: <span className="text-gray-200">{outlook.source || 'Unavailable'}</span></p>
+            <p>Refreshed: <span className="text-gray-200">{outlook.refreshedAt || 'Unavailable'}</span></p>
+          </div>
+
           <p className="mt-3 text-[11px] text-gray-500">Consensus snapshot as of {outlook.asOf}</p>
+              </>
+            )
+          })()}
         </div>
       )}
     </div>
