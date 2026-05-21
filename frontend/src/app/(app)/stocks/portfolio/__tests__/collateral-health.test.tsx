@@ -103,6 +103,20 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(screen.getByText(/Mobile wallet connectors are unavailable in this environment/i)).toBeInTheDocument()
   })
 
+  it('uses a full-height themed wrapper so mobile layout does not fall back to unstyled background gaps', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('min-h-screen')
+    expect(wrapper?.className).toContain('bg-dark-200')
+  })
+
   it('shows deferred impact section loading placeholders on first paint', () => {
     accountState.address = undefined
     accountState.isConnected = false

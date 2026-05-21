@@ -152,4 +152,19 @@ describe('StocksPage onboarding CTA', () => {
     expect(filterShell?.className).toContain('bg-dark-100/35')
     expect(filterShell?.className).toContain('p-3')
   })
+
+  it('uses a full-height page wrapper so mobile viewports keep continuous themed background', () => {
+    walletState.address = undefined
+
+    const { container } = render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('min-h-screen')
+    expect(wrapper?.className).toContain('bg-dark-200')
+  })
 })

@@ -39,6 +39,7 @@ npm run dev     # http://localhost:3100
 - ✅ Recent activity panel (localStorage)
 - ✅ Mobile responsive + keyboard accessible
 - ✅ Context-aware 404 recovery CTA for stocks deep-link failures
+- ✅ Full-height themed wrappers on stocks markets/portfolio to avoid mobile background dropouts
 - ✅ Lazy-loaded wallet providers
 - ✅ Memoized components for performance
 - ✅ SVG token logos for all 18 tokens

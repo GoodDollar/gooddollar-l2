@@ -271,7 +271,7 @@ export default function StocksPage() {
   }, [pushTickerRoute])
 
   return (
-    <div className="w-full max-w-5xl mx-auto pb-24 md:pr-24 space-y-5 sm:space-y-0">
+    <div className="w-full max-w-5xl mx-auto min-h-screen bg-dark-200 pb-24 md:pr-24 space-y-5 sm:space-y-0">
       <div className="mb-5 sm:mb-6">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-9 h-9 rounded-xl bg-goodgreen/10 border border-goodgreen/20 flex items-center justify-center">
