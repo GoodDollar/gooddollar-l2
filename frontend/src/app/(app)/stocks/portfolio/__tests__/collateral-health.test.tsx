@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 const accountState = {
@@ -21,10 +21,12 @@ vi.mock('wagmi', async (importOriginal) => {
   }
 })
 
+const openConnectModal = vi.fn()
+
 vi.mock('@rainbow-me/rainbowkit', () => ({
   ConnectButton: {
     Custom: ({ children }: { children: (props: { openConnectModal: () => void }) => React.ReactNode }) =>
-      <>{children({ openConnectModal: vi.fn() })}</>,
+      <>{children({ openConnectModal })}</>,
   },
 }))
 
@@ -72,6 +74,7 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
     accountState.isConnected = false
     holdingsState.isLoading = false
     tradesState.isLoading = false
+    openConnectModal.mockReset()
     window.sessionStorage.clear()
   })
 
@@ -116,6 +119,20 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
     expect(screen.getByRole('button', { name: 'More connection options' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Try Another Connector' })).not.toBeInTheDocument()
     expect(screen.getByTestId('stocks-onboarding-checklist')).toBeInTheDocument()
+  })
+
+  it('opens connect modal from primary and fallback connect CTAs', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet to Unlock Portfolio' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Connect with In-browser Wallet' }))
+
+    expect(openConnectModal).toHaveBeenCalledTimes(2)
   })
 
   it('suppresses duplicate fallback rail once markets exploration is already recorded', () => {

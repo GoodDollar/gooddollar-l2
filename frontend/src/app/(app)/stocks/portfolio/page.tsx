@@ -4,6 +4,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
@@ -188,6 +189,10 @@ export default function StocksPortfolioPage() {
     setProgress(readStocksOnboardingProgress())
   }, [])
 
+  const markConnectIntent = () => {
+    setProgress((prev) => markStocksOnboardingStep(prev, 'connectIntent'))
+  }
+
   return (
     <ConnectWalletEmptyState
       title="Connect to View Stocks"
@@ -198,21 +203,25 @@ export default function StocksPortfolioPage() {
       {isDisconnected && !walletConnectConfigured && !progress.exploredMarkets && (
         <>
           <WalletConnectNotice className="mb-3" />
-          <StocksConnectFallbackRail
-            onUseInBrowserWallet={() => {
-              setProgress(prev => markStocksOnboardingStep(prev, 'connectIntent'))
-              router.push('/stocks/AAPL')
-            }}
-            onTryAnotherConnector={() => {
-              setProgress(prev => markStocksOnboardingStep(prev, 'connectIntent'))
-              router.push('/stocks/AAPL')
-            }}
-            onContinueReadOnly={() => {
-              setProgress(prev => markStocksOnboardingStep(prev, 'exploredMarkets'))
-              router.push('/stocks')
-            }}
-            continueLabel="Continue in Read-only Mode"
-          />
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <StocksConnectFallbackRail
+                onUseInBrowserWallet={() => {
+                  markConnectIntent()
+                  openConnectModal()
+                }}
+                onTryAnotherConnector={() => {
+                  markConnectIntent()
+                  openConnectModal()
+                }}
+                onContinueReadOnly={() => {
+                  setProgress(prev => markStocksOnboardingStep(prev, 'exploredMarkets'))
+                  router.push('/stocks')
+                }}
+                continueLabel="Continue in Read-only Mode"
+              />
+            )}
+          </ConnectButton.Custom>
         </>
       )}
       {isDisconnected ? (
@@ -230,13 +239,20 @@ export default function StocksPortfolioPage() {
             <div className="rounded-xl border border-gray-700/30 bg-dark-100/55 px-3 py-2 text-xs text-gray-200">Track impact and holdings</div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setProgress(prev => markStocksOnboardingStep(prev, 'connectIntent'))}
-              className="px-4 py-2.5 rounded-xl bg-goodgreen text-[#031615] font-semibold text-sm hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
-            >
-              Connect Wallet to Unlock Portfolio
-            </button>
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button
+                  type="button"
+                  onClick={() => {
+                    markConnectIntent()
+                    openConnectModal()
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-goodgreen text-[#031615] font-semibold text-sm hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
+                >
+                  Connect Wallet to Unlock Portfolio
+                </button>
+              )}
+            </ConnectButton.Custom>
             <Link
               href="/stocks"
               onClick={() => setProgress(prev => markStocksOnboardingStep(prev, 'exploredMarkets'))}
