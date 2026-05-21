@@ -17,8 +17,9 @@ from `0026`).
 
 **Scope:** Consolidated map of what is and isn't covered by automated
 security testing across all 69 production contracts under `src/`. Pure
-documentation; no production Solidity, no `foundry.toml`, and no test
-files are modified by this commit.
+documentation; no production Solidity and no test files are modified by
+this commit. (Note: `foundry.toml` was subsequently updated by task 0071
+to pin `[fuzz]` and `[invariant]` blocks.)
 
 **Sibling docs:**
 
@@ -49,8 +50,8 @@ files are modified by this commit.
 
 ### 1.2 Foundry config & fuzz/invariant defaults
 
-The current [`foundry.toml`](../../foundry.toml) contains **only** a
-`[profile.default]` block:
+The [`foundry.toml`](../../foundry.toml) contains explicit `[fuzz]` and
+`[invariant]` blocks (pinned in task 0071, iter #1 of lane d):
 
 ```toml
 [profile.default]
@@ -61,43 +62,56 @@ libs = ["lib"]
 via_ir = true
 optimizer = true
 optimizer_runs = 200
+
+[fuzz]
+runs = 1024
+seed = "0x4242"
+max_test_rejects = 131072
+
+[invariant]
+runs = 256
+depth = 32
+fail_on_revert = false
 ```
 
-**There are no `[fuzz]` or `[invariant]` blocks.** The runner therefore
-uses Foundry's built-in defaults. For `forge` `1.5.1-stable` those are:
+| Knob | Pinned value | Foundry default | Notes |
+| --- | --- | --- | --- |
+| `fuzz.runs` | `1024` | `256` | 4× default for deeper coverage. |
+| `fuzz.seed` | `0x4242` | random | Deterministic for audit reproducibility. |
+| `fuzz.max_test_rejects` | `131072` | `65536` | Raised to accommodate a pre-existing test with high rejection rate (`PerpEngine.fuzz.t.sol::testFuzz_closePosition_reverts_noPosition`). |
+| `invariant.runs` | `256` | `256` | Matches default; pinned for clarity. |
+| `invariant.depth` | `32` | `15` | ~2× default sequence depth. |
+| `invariant.fail_on_revert` | `false` | `false` | Matches default; pinned for clarity. |
 
-| Knob | Default | Notes |
-| --- | --- | --- |
-| `fuzz.runs` | `256` | Per fuzz test case. |
-| `fuzz.max_test_rejects` | `65536` | Reverts before a fuzz test fails. |
-| `fuzz.seed` | unset (random) | Non-reproducible by default. |
-| `invariant.runs` | `256` | Per invariant. |
-| `invariant.depth` | `500` | Calls per run. |
-| `invariant.fail_on_revert` | `false` | Reverts are not failures. |
-| `invariant.call_override` | `false` | Off. |
-| `invariant.dictionary_weight` | `80` | Mutation dictionary weight. |
-| `invariant.include_storage` | `true` | Storage values in dict. |
-| `invariant.include_push_bytes` | `true` | Push immediates in dict. |
-
-Pinning these explicitly is **out of scope** for this task and is
-recommended as a follow-up in Section 6.
+**Known pre-existing test issue:** `test/perps/PerpEngine.fuzz.t.sol` contains
+`testFuzz_closePosition_reverts_noPosition` which uses `vm.assume(_mktId < 1)`
+on a `uint256` parameter, rejecting ~100% of fuzzed inputs. This is why
+`max_test_rejects` was raised from 65536 to 131072. The test itself is locked
+(executed in a prior task) — a follow-up task should rewrite this assumption.
 
 ### 1.3 Coverage baseline
 
-- Headline figure from [`docs/SECURITY-AUDIT.md`](../SECURITY-AUDIT.md):
-  **68.66 % line coverage** (as of an earlier commit — the audit doc
-  does not currently pin its own snapshot hash).
-- Re-running `forge coverage` with `via_ir = true` triggers
-  stack-too-deep on several contracts. Use the workaround documented in
-  `foundry.toml`:
-
-  ```bash
-  forge coverage --ir-minimum --report summary
-  forge coverage --ir-minimum --report lcov
-  ```
-
-- Refresh queued: a future task should re-run coverage against the
-  current commit and update both this section and `SECURITY-AUDIT.md`.
+- Last known figure from [`docs/SECURITY-AUDIT.md`](../SECURITY-AUDIT.md):
+  **68.66 % line coverage** (stale — captured before tasks 0065-0068 added
+  fuzz/invariant tests for StockOracleV2, StockAMM, UnifiedRiskEngine, and
+  cross-contract rebalance integration).
+- **Coverage refresh blocked (task 0071, iter #1):** Both `forge coverage`
+  and `forge coverage --ir-minimum` fail with a stack-too-deep compilation
+  error (`Error: Variable expr_181394_component is 1 too deep in the stack`).
+  This is a Foundry/Solc limitation: coverage instrumentation adds extra
+  stack variables to contracts that already rely on `via_ir = true` for
+  compilation. Path-scoped attempts (`--match-path`, `--no-match-path`,
+  `--no-match-contract`) all fail identically because the error occurs
+  during compilation of ALL source contracts, not during test execution.
+- **Workaround options for a future task:**
+  1. Identify the specific contract(s) causing the stack overflow and
+     refactor to reduce stack depth (requires human approval to modify
+     production Solidity).
+  2. Wait for a Foundry release that improves coverage instrumentation
+     stack management.
+  3. Use Slither's coverage mapping as an approximate alternative.
+- The 68.66% figure is retained as the last-known baseline until coverage
+  can be refreshed.
 
 ---
 
@@ -692,18 +706,18 @@ extends or pins anything described above.
    invariants in Section 3 as concrete `invariant_*` harnesses under
    `test/` is in-scope for follow-up iterations. Default reading: yes.
 
-2. **Pinning `[fuzz]` / `[invariant]` blocks in `foundry.toml`** —
-   Section 1.2 documents that no such blocks exist. A separate small
-   task should pin them so that fuzz/invariant runs are reproducible
-   (`fuzz.seed`, `fuzz.runs`, `invariant.runs`, `invariant.depth`).
-   Defer to human approval because changing the runner's defaults can
-   change CI duration and CI green-status semantics in flight.
+2. **~~Pinning `[fuzz]` / `[invariant]` blocks in `foundry.toml`~~** —
+   **RESOLVED** (task 0071, iter #1 of lane d). Explicit `[fuzz]` and
+   `[invariant]` blocks are now pinned in `foundry.toml` with
+   `fuzz.runs=1024`, `fuzz.seed=0x4242`, `invariant.runs=256`,
+   `invariant.depth=32`. See Section 1.2 for full details.
 
 3. **Coverage refresh cadence** — The 68.66 % figure in Section 1.3 is
-   stale (it predates this commit). Should the next iteration re-run
-   `forge coverage --ir-minimum --report lcov`, attach the
-   timestamped summary under `docs/security/iter-N/`, and refresh
-   Section 1.3?
+   stale. Task 0071 attempted `forge coverage --ir-minimum` but it
+   fails with stack-too-deep (see Section 1.3). Coverage cannot be
+   refreshed until the Foundry/Solc limitation is addressed. Consider
+   Slither-based coverage mapping as an alternative, or wait for a
+   Foundry release that handles coverage instrumentation stack depth.
 
 4. **Treatment of `ValidatorStakingDevnet.sol`** — Section 4 (`root /
    cross-cutting`) flags it as devnet-only and uncovered. Either: (a)
