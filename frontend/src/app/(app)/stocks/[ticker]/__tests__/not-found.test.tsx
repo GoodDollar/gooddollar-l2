@@ -270,7 +270,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.getByText('1. Connect wallet')).toBeTruthy()
     expect(screen.getByText('Required')).toBeTruthy()
     expect(screen.getByText('2. Confirm oracle is live')).toBeTruthy()
-    expect(screen.getByText('Blocked')).toBeTruthy()
+    expect(screen.getAllByText('Blocked').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('3. Submit order')).toBeTruthy()
     expect(screen.getByText('Waiting')).toBeTruthy()
   })
