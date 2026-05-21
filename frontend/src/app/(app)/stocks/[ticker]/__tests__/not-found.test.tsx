@@ -247,15 +247,15 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     currentParams = { ticker: 'AAPL' }
     oracleGuardState = {
       health: 'offline',
-      reason: 'Quote is stale (321s old).',
+      reason: 'Price data is stale (321s old).',
       isLoading: false,
     }
 
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
     expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/Oracle is offline\. Trading is paused for safety\./i)).toBeTruthy()
-    expect(screen.getAllByText(/Quote is stale/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/Live prices are offline\. Trading is paused for safety\./i)).toBeTruthy()
+    expect(screen.getAllByText(/Price data is stale/i).length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows first-trade checklist with required states for disconnected users', () => {
@@ -269,7 +269,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     expect(screen.getByText(/First trade checklist/i)).toBeTruthy()
     expect(screen.getByText('1. Connect wallet')).toBeTruthy()
     expect(screen.getByText('Required')).toBeTruthy()
-    expect(screen.getByText('2. Confirm oracle is live')).toBeTruthy()
+    expect(screen.getByText('2. Confirm live prices')).toBeTruthy()
     expect(screen.getAllByText('Blocked').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('3. Submit order')).toBeTruthy()
     expect(screen.getByText('Waiting')).toBeTruthy()
@@ -279,7 +279,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     currentStocks = [makeStock()]
     currentParams = { ticker: 'AAPL' }
     walletConnected = true
-    oracleGuardState = { health: 'offline', reason: 'Quote stale.', isLoading: false }
+    oracleGuardState = { health: 'offline', reason: 'Price data is stale.', isLoading: false }
 
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 

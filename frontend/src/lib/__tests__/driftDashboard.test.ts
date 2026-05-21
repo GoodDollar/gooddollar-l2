@@ -51,7 +51,7 @@ describe('drift dashboard rows', () => {
 
     expect(row.health).toBe('lagging')
     expect(row.products.perps.status).toBe('lagging')
-    expect(row.stopReason).toContain('oracle is 450')
+    expect(row.stopReason).toContain('price data is updating')
   })
 
   it('shows stopped when divergence is above 0.5%', () => {
@@ -62,7 +62,7 @@ describe('drift dashboard rows', () => {
     }, 800 * 12_000)
 
     expect(row.health).toBe('stopped')
-    expect(row.stopReason).toContain('divergence')
+    expect(row.stopReason).toContain('price is out of range')
   })
 
   it('shows stopped when stale propagation is detected', () => {
@@ -73,6 +73,6 @@ describe('drift dashboard rows', () => {
     }, 800 * 12_000)
 
     expect(row.health).toBe('stopped')
-    expect(row.stopReason).toContain('stale')
+    expect(row.stopReason).toContain('price data is too old')
   })
 })

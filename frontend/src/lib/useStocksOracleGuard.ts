@@ -25,7 +25,7 @@ export function deriveStocksTradeOracleHealth(
   if (!symbol || !status) {
     return {
       health: 'offline',
-      reason: 'Oracle status is unavailable.',
+      reason: 'Price feed status is unavailable.',
       isLoading: false,
     }
   }
@@ -34,7 +34,7 @@ export function deriveStocksTradeOracleHealth(
   if (!quote) {
     return {
       health: 'degraded',
-      reason: `No oracle quote available for ${symbol}.`,
+      reason: `No price data available for ${symbol}.`,
       isLoading: false,
     }
   }
@@ -42,7 +42,7 @@ export function deriveStocksTradeOracleHealth(
   if (quote.lastUpdateMs > 300_000) {
     return {
       health: 'offline',
-      reason: `Quote is stale (${Math.floor(quote.lastUpdateMs / 1000)}s old).`,
+      reason: `Price data is stale (${Math.floor(quote.lastUpdateMs / 1000)}s old).`,
       isLoading: false,
     }
   }
@@ -50,7 +50,7 @@ export function deriveStocksTradeOracleHealth(
   if (!status.healthy || quote.lastUpdateMs > 60_000 || quote.confidence < 50) {
     return {
       health: 'degraded',
-      reason: 'Quote feed is delayed or low confidence.',
+      reason: 'Live prices are delayed or low confidence.',
       isLoading: false,
     }
   }
@@ -97,7 +97,7 @@ export function useStocksOracleGuard(symbol?: string): StocksOracleGuardState {
     if (fallbackLoading) {
       return {
         health: 'offline',
-        reason: 'Checking oracle status…',
+        reason: 'Checking price feed status…',
         isLoading: true,
       }
     }
@@ -106,8 +106,8 @@ export function useStocksOracleGuard(symbol?: string): StocksOracleGuardState {
       health: mapped,
       reason:
         mapped === 'degraded'
-          ? 'Quote feed is unavailable. Keeper health is partially available via status API.'
-          : 'Oracle status is unavailable.',
+          ? 'Live prices are temporarily delayed. Price data is partially available.'
+          : 'Price feed status is unavailable.',
       isLoading: false,
     }
   }, [symbol, status, fallbackHealth, fallbackLoading])

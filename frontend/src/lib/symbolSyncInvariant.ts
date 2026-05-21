@@ -75,14 +75,14 @@ export function evaluateRiskIncrease(snapshot: SymbolSyncSnapshot, product: Sync
     return {
       allowRiskIncrease: false,
       stopCode: 'stale-propagation',
-      reason: `Blocked: ${snapshot.symbol} quote is stale and cannot propagate safely.`,
+      reason: `Trading paused: ${snapshot.symbol} price data is too old to trade safely.`,
     }
   }
   if (snapshot.divergenceBps > DIVERGENCE_STOP_BPS) {
     return {
       allowRiskIncrease: false,
       stopCode: 'divergence',
-      reason: `Blocked: ${snapshot.symbol} divergence ${snapshot.divergenceBps}bps exceeds ${DIVERGENCE_STOP_BPS}bps.`,
+      reason: `Trading paused: ${snapshot.symbol} price is out of range. Please wait for prices to stabilize.`,
     }
   }
   const productState = snapshot.productSync[product]
@@ -90,7 +90,7 @@ export function evaluateRiskIncrease(snapshot: SymbolSyncSnapshot, product: Sync
     return {
       allowRiskIncrease: false,
       stopCode: 'lagging-sync',
-      reason: `Blocked: ${product} synced at block ${productState.lastSyncedBlock}, oracle is ${snapshot.oracleBlock}.`,
+      reason: `Trading paused: ${product} price data is updating. Please wait a moment.`,
     }
   }
   return {

@@ -107,7 +107,7 @@ function WalletGatedTradeButton({
         )}
         {oracleTradeBlocked && (
           <p className="text-[11px] text-amber-200 text-center">
-            Wallet setup is available now. Trade submission stays paused until oracle health recovers.
+            Wallet setup is available now. Trade submission stays paused until live prices recover.
           </p>
         )}
       </div>
@@ -117,7 +117,7 @@ function WalletGatedTradeButton({
     return (
       <button type="button" disabled
         className="w-full py-3 rounded-xl font-semibold text-sm bg-dark-50 text-amber-300 cursor-not-allowed border border-amber-500/30">
-        Oracle status not trade-ready
+        Prices not trade-ready
       </button>
     )
   }
@@ -303,14 +303,14 @@ function OrderForm({
       {oracleTradeBlocked && (
         <div role="alert" aria-live="polite"
           className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          <div className="font-medium text-amber-100">Trading is temporarily limited due to oracle health.</div>
+          <div className="font-medium text-amber-100">Trading is temporarily limited while prices update.</div>
           {oracleBlockReason && <div className="mt-1 text-amber-200/90">{oracleBlockReason}</div>}
         </div>
       )}
       {syncBlocked && (
         <div role="alert" aria-live="polite"
           className="mb-3 rounded-xl border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-          <div className="font-medium text-red-100">Risk-increasing actions are blocked until symbol sync catches up.</div>
+          <div className="font-medium text-red-100">New trades are paused while price data catches up. Please wait a moment.</div>
           {syncGuard.reason && <div className="mt-1 text-red-200/90">{syncGuard.reason}</div>}
         </div>
       )}
@@ -502,8 +502,8 @@ export function StockDetailContent() {
             <div role="alert" className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3">
               <p className="text-sm font-semibold text-amber-200">
                 {oracleGuard.health === 'offline'
-                  ? 'Oracle is offline. Trading is paused for safety.'
-                  : 'Oracle is degraded. Trading is limited until quotes recover.'}
+                  ? 'Live prices are offline. Trading is paused for safety.'
+                  : 'Live prices are temporarily delayed. Trading will resume when price feeds recover.'}
               </p>
               {oracleGuard.reason && (
                 <p className="mt-1 text-xs text-amber-100/90">{oracleGuard.reason}</p>
@@ -512,7 +512,7 @@ export function StockDetailContent() {
           )}
           {oracleGuard.health === 'live' && !syncGuard.allowRiskIncrease && (
             <div role="alert" className="mb-4 rounded-2xl border border-red-500/35 bg-red-500/10 px-4 py-3">
-              <p className="text-sm font-semibold text-red-200">Symbol sync is behind the current oracle block.</p>
+              <p className="text-sm font-semibold text-red-200">Price data is updating. Please wait a moment before trading.</p>
               {syncGuard.reason && <p className="mt-1 text-xs text-red-100/90">{syncGuard.reason}</p>}
             </div>
           )}
@@ -614,13 +614,13 @@ export function StockDetailContent() {
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-gray-300">2. Confirm oracle is live</span>
+                <span className="text-gray-300">2. Confirm live prices</span>
                 <span className={`px-2 py-0.5 rounded-full ${oracleGuard.health === 'live' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'}`}>
                   {oracleGuard.health === 'live' ? 'Done' : 'Blocked'}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-gray-300">2b. Symbol sync on current block</span>
+                <span className="text-gray-300">2b. Price data current</span>
                 <span className={`px-2 py-0.5 rounded-full ${syncGuard.allowRiskIncrease ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'}`}>
                   {syncGuard.allowRiskIncrease ? 'Done' : 'Blocked'}
                 </span>
@@ -634,7 +634,7 @@ export function StockDetailContent() {
             </div>
             {!tradeReady && (
               <p className="mt-3 text-[11px] text-gray-400">
-                If trading is blocked, browse other stocks or check your portfolio while oracle health recovers.
+                If trading is blocked, browse other stocks or check your portfolio while prices recover.
               </p>
             )}
           </div>
@@ -711,7 +711,7 @@ export function StockDetailContent() {
           ) : (
             <div className="mt-4 bg-dark-100/50 rounded-2xl border border-goodgreen/20 p-4">
               <p className="text-xs text-gray-500 mb-2">
-                {oracleLimited ? 'Next steps while oracle recovers' : 'Next steps in stocks'}
+                {oracleLimited ? 'Next steps while prices recover' : 'Next steps in stocks'}
               </p>
               <div className="flex flex-col gap-1.5">
                 {oracleLimited ? (

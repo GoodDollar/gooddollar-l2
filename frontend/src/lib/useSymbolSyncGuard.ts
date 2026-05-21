@@ -25,7 +25,7 @@ export function useSymbolSyncGuard(symbol: string | undefined, product: SyncProd
         allowRiskIncrease: !shouldRequireStrictSync(symbol),
         stopCode: shouldRequireStrictSync(symbol) ? 'lagging-sync' : 'none',
         reason: shouldRequireStrictSync(symbol)
-          ? 'Blocked: missing symbol sync snapshot.'
+          ? 'Price data is not yet available. Please wait.'
           : null,
         loading: isLoading,
         hasSnapshot: false,
@@ -38,7 +38,7 @@ export function useSymbolSyncGuard(symbol: string | undefined, product: SyncProd
         allowRiskIncrease: !shouldRequireStrictSync(symbol),
         stopCode: shouldRequireStrictSync(symbol) ? 'lagging-sync' : 'none',
         reason: shouldRequireStrictSync(symbol)
-          ? `Blocked: no sync quote available for ${symbol}.`
+          ? `No price data available for ${symbol}. Please wait.`
           : null,
         loading: false,
         hasSnapshot: false,

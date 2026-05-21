@@ -53,7 +53,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
             <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-            <span>Checking oracle...</span>
+            <span>Checking prices...</span>
           </div>
         )
       }
@@ -61,7 +61,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-            <span>Oracle degraded</span>
+            <span>Prices delayed</span>
           </div>
         )
       }
@@ -69,7 +69,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     return (
       <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-        <span>Oracle offline</span>
+        <span>Prices offline</span>
       </div>
     )
   }
@@ -82,7 +82,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       return (
         <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
           <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-          <span>No oracle data for {symbol}</span>
+          <span>No price data for {symbol}</span>
         </div>
       )
     }

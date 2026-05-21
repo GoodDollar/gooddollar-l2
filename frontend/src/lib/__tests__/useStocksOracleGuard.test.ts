@@ -26,7 +26,7 @@ describe('deriveStocksTradeOracleHealth', () => {
     })
 
     expect(state.health).toBe('degraded')
-    expect(state.reason).toContain('delayed')
+    expect(state.reason).toContain('prices are delayed')
   })
 
   it('returns offline for very stale quotes', () => {
@@ -39,6 +39,6 @@ describe('deriveStocksTradeOracleHealth', () => {
     })
 
     expect(state.health).toBe('offline')
-    expect(state.reason).toContain('stale')
+    expect(state.reason).toContain('Price data is stale')
   })
 })
