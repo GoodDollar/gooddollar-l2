@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 type TabId = 'about' | 'how' | 'guides'
 
@@ -22,6 +22,27 @@ export function StockResearchHub({
   summary: string
 }) {
   const [activeTab, setActiveTab] = useState<TabId>('about')
+  const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
+    about: null,
+    how: null,
+    guides: null,
+  })
+
+  function moveTabSelection(current: TabId, direction: 'next' | 'prev' | 'start' | 'end') {
+    const currentIndex = TABS.findIndex((tab) => tab.id === current)
+    if (currentIndex === -1) return
+
+    let targetIndex = currentIndex
+    if (direction === 'next') targetIndex = (currentIndex + 1) % TABS.length
+    if (direction === 'prev') targetIndex = (currentIndex - 1 + TABS.length) % TABS.length
+    if (direction === 'start') targetIndex = 0
+    if (direction === 'end') targetIndex = TABS.length - 1
+
+    const nextTab = TABS[targetIndex]
+    if (!nextTab) return
+    setActiveTab(nextTab.id)
+    tabRefs.current[nextTab.id]?.focus()
+  }
 
   return (
     <section className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4" aria-label="Stock research hub">
@@ -36,10 +57,29 @@ export function StockResearchHub({
           return (
             <button
               key={tab.id}
+              ref={(node) => {
+                tabRefs.current[tab.id] = node
+              }}
               type="button"
               role="tab"
               aria-selected={active}
+              tabIndex={active ? 0 : -1}
               onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowRight') {
+                  event.preventDefault()
+                  moveTabSelection(tab.id, 'next')
+                } else if (event.key === 'ArrowLeft') {
+                  event.preventDefault()
+                  moveTabSelection(tab.id, 'prev')
+                } else if (event.key === 'Home') {
+                  event.preventDefault()
+                  moveTabSelection(tab.id, 'start')
+                } else if (event.key === 'End') {
+                  event.preventDefault()
+                  moveTabSelection(tab.id, 'end')
+                }
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 active ? 'bg-goodgreen/15 text-goodgreen ring-1 ring-goodgreen/30' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
@@ -282,6 +283,27 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
 
     expect(screen.getByText('-5.00%')).toBeTruthy()
     expect(screen.getByText('Past Day')).toBeTruthy()
+  })
+
+  it('supports arrow-key navigation for chart timeframe tabs', async () => {
+    const user = userEvent.setup()
+    currentStocks = [makeStock()]
+    currentParams = { ticker: 'AAPL' }
+    mockChartData.mockImplementation((_symbol: string, timeframe: string, basePrice: number) => {
+      if (timeframe === '3M') return [{ close: 100, open: 100, high: 101, low: 99, volume: 1, time: 1 }, { close: 110, open: 100, high: 111, low: 99, volume: 1, time: 2 }]
+      if (timeframe === '6M') return [{ close: 200, open: 200, high: 201, low: 199, volume: 1, time: 1 }, { close: 160, open: 200, high: 201, low: 159, volume: 1, time: 2 }]
+      return [{ close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 1 }, { close: basePrice, open: basePrice, high: basePrice, low: basePrice, volume: 1, time: 2 }]
+    })
+
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    const threeMonthTab = screen.getByRole('tab', { name: '3M' })
+    threeMonthTab.focus()
+    await user.keyboard('{ArrowRight}')
+
+    expect(screen.getByRole('tab', { name: '6M' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('-20.00%')).toBeTruthy()
+    expect(screen.getByText('Past 6 Months')).toBeTruthy()
   })
 
   it('shows quote context metadata and day range in key statistics', () => {

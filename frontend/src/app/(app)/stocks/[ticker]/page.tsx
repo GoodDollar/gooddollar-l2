@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useBlockNumber } from 'wagmi'
@@ -140,6 +140,16 @@ export default function StockDetailPage() {
     [symbolRebalanceStatus, currentBlock],
   )
   const riskBlockReason = rebalanceGuard.blocked ? rebalanceGuard.reasons[0] ?? 'Sync required' : null
+  const timeframeTabRefs = useRef<Record<Timeframe, HTMLButtonElement | null>>({
+    '1D': null,
+    '1W': null,
+    '1M': null,
+    '3M': null,
+    '6M': null,
+    '1Y': null,
+    '5Y': null,
+    ALL: null,
+  })
 
   useEffect(() => {
     setAnalystLoading(true)
@@ -156,6 +166,22 @@ export default function StockDetailPage() {
     router.push(`/stocks/${selected.ticker}`)
     setSymbolQuery('')
     setShowMobileSwitcher(false)
+  }
+
+  function moveTimeframeSelection(current: Timeframe, direction: 'next' | 'prev' | 'start' | 'end') {
+    const currentIndex = TIMEFRAMES.findIndex((tf) => tf === current)
+    if (currentIndex === -1) return
+
+    let targetIndex = currentIndex
+    if (direction === 'next') targetIndex = (currentIndex + 1) % TIMEFRAMES.length
+    if (direction === 'prev') targetIndex = (currentIndex - 1 + TIMEFRAMES.length) % TIMEFRAMES.length
+    if (direction === 'start') targetIndex = 0
+    if (direction === 'end') targetIndex = TIMEFRAMES.length - 1
+
+    const nextTimeframe = TIMEFRAMES[targetIndex]
+    if (!nextTimeframe) return
+    setTimeframe(nextTimeframe)
+    timeframeTabRefs.current[nextTimeframe]?.focus()
   }
 
   if (!stock) {
@@ -316,10 +342,29 @@ export default function StockDetailPage() {
                 return (
                   <button
                     key={tf}
+                    ref={(node) => {
+                      timeframeTabRefs.current[tf] = node
+                    }}
                     type="button"
                     role="tab"
                     aria-selected={isActive}
+                    tabIndex={isActive ? 0 : -1}
                     onClick={() => setTimeframe(tf)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'ArrowRight') {
+                        event.preventDefault()
+                        moveTimeframeSelection(tf, 'next')
+                      } else if (event.key === 'ArrowLeft') {
+                        event.preventDefault()
+                        moveTimeframeSelection(tf, 'prev')
+                      } else if (event.key === 'Home') {
+                        event.preventDefault()
+                        moveTimeframeSelection(tf, 'start')
+                      } else if (event.key === 'End') {
+                        event.preventDefault()
+                        moveTimeframeSelection(tf, 'end')
+                      }
+                    }}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
                       isActive
                         ? 'bg-goodgreen/15 text-goodgreen ring-1 ring-goodgreen/30'

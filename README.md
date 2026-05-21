@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks detail tab controls now support robust keyboard navigation (`ArrowLeft/ArrowRight/Home/End`) across both chart timeframes and the Research Hub, with roving tab focus/selection semantics to keep ticker analysis flows accessible without pointer input.
 - Stocks detail now includes a `Rebalance Sync` panel that surfaces oracle snapshot block, per-product sync blocks (AMM/perps/predict/lend/yield), two-block proof state, and divergence thresholds, with a fail-safe risk-stop banner/CTA gate that blocks order submission when same-block sync invariants are not met.
 - Stocks oracle health polling now uses same-origin `/api/oracle/status` proxying instead of browser-direct `localhost:9300` requests, removing repeated `ERR_CONNECTION_REFUSED` failures in stocks detail/watchlist flows when local keeper ports are unavailable.
 - Stocks detail hydration now stays SSR/client-consistent for initial chart-derived metrics (performance summary + day range), removing hydration mismatch/Suspense fallback rerenders that were degrading first-load stability on `/stocks/[ticker]`.

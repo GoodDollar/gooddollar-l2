@@ -28,6 +28,27 @@ describe('StockResearchHub', () => {
     expect(screen.getByText(/Trading checklist/i)).toBeInTheDocument()
   })
 
+  it('supports keyboard navigation across research tabs', async () => {
+    const user = userEvent.setup()
+    render(
+      <StockResearchHub
+        ticker="AAPL"
+        companyName="Apple"
+        sector="Technology"
+        summary="Consumer devices and software ecosystem."
+      />,
+    )
+
+    const aboutTab = screen.getByRole('tab', { name: 'About' })
+    const howTab = screen.getByRole('tab', { name: 'How to Buy' })
+
+    aboutTab.focus()
+    await user.keyboard('{ArrowRight}')
+
+    expect(howTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText(/Connect your wallet/i)).toBeInTheDocument()
+  })
+
   it('falls back gracefully when summary is unavailable', () => {
     render(
       <StockResearchHub
