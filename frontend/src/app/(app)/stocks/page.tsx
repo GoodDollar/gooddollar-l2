@@ -2,18 +2,46 @@
 
 import { useState, useMemo, memo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
-import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
-import { isWalletConnectConfigured } from '@/lib/walletConnectReadiness'
-import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
+
+const DeferredOracleStatusBadge = dynamic(
+  () => import('@/components/OracleStatusBadge').then((module) => ({ default: module.OracleStatusBadge })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+        <span>Checking oracle...</span>
+      </div>
+    ),
+  },
+)
+
+const DeferredStocksOnboardingCard = dynamic(
+  () => import('./StocksOnboardingCard').then((module) => ({ default: module.StocksOnboardingCard })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/20 bg-goodgreen/5">
+        <div className="animate-pulse space-y-2.5">
+          <div className="h-4 w-64 bg-dark-50 rounded" />
+          <div className="h-3 w-[26rem] max-w-full bg-dark-50 rounded" />
+          <div className="h-3 w-40 bg-dark-50 rounded" />
+          <div className="h-10 w-64 bg-dark-50 rounded-xl" />
+        </div>
+      </div>
+    ),
+  },
+)
 
 function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return (
@@ -118,7 +146,6 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
 export default function StocksPage() {
   const router = useRouter()
   const { address } = useAccount()
-  const walletConnectConfigured = isWalletConnectConfigured()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const stocksTableRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
@@ -176,14 +203,14 @@ export default function StocksPage() {
     router.push(`/stocks/${ticker}`)
   }, [router])
 
-  const handleOnboardingCta = useCallback(() => {
-    if (!walletConnectConfigured) {
-      stocksTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      searchInputRef.current?.focus()
-      return
-    }
+  const handlePrepareBrowse = useCallback(() => {
+    stocksTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    searchInputRef.current?.focus()
+  }, [])
+
+  const handleStartTrading = useCallback(() => {
     router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)
-  }, [walletConnectConfigured, router, data])
+  }, [router, data])
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -208,24 +235,10 @@ export default function StocksPage() {
       />
 
       {!address && (
-        <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
-              <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
-              <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
-              {!walletConnectConfigured && (
-                <WalletConnectNotice className="mt-3" />
-              )}
-            </div>
-            <button
-              onClick={handleOnboardingCta}
-              className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-[#031615] font-semibold text-sm hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
-            >
-              {walletConnectConfigured ? 'Open Featured Stock to Start Trading' : 'Browse Stocks to Prepare Trade'}
-            </button>
-          </div>
-        </div>
+        <DeferredStocksOnboardingCard
+          onPrepareBrowse={handlePrepareBrowse}
+          onStartTrading={handleStartTrading}
+        />
       )}
 
       <div className="mb-4 rounded-2xl border border-gray-700/30 bg-dark-100/70 p-4 sm:p-5">
@@ -311,7 +324,7 @@ export default function StocksPage() {
           onChange={e => setQuery(e.target.value)}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
         />
-        <OracleStatusBadge useStocksFallback />
+        <DeferredOracleStatusBadge useStocksFallback />
       </div>
 
       {/* Mobile card list (< sm) */}

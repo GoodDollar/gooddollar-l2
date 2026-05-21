@@ -1,0 +1,37 @@
+'use client'
+
+import { isWalletConnectConfigured } from '@/lib/walletConnectReadiness'
+import { WalletConnectNotice } from '@/components/stocks/WalletConnectNotice'
+
+interface StocksOnboardingCardProps {
+  onPrepareBrowse: () => void
+  onStartTrading: () => void
+}
+
+export function StocksOnboardingCard({
+  onPrepareBrowse,
+  onStartTrading,
+}: StocksOnboardingCardProps) {
+  const walletConnectConfigured = isWalletConnectConfigured()
+
+  return (
+    <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
+          <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
+          <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
+          {!walletConnectConfigured && (
+            <WalletConnectNotice className="mt-3" />
+          )}
+        </div>
+        <button
+          onClick={walletConnectConfigured ? onStartTrading : onPrepareBrowse}
+          className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-[#031615] font-semibold text-sm hover:bg-[#22c5b6] active:bg-[#00a697] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/70 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 transition-colors"
+        >
+          {walletConnectConfigured ? 'Open Featured Stock to Start Trading' : 'Browse Stocks to Prepare Trade'}
+        </button>
+      </div>
+    </div>
+  )
+}

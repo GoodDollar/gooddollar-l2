@@ -55,7 +55,7 @@ vi.mock('@/lib/useOnChainStocks', () => ({
 import StocksPage from '../page'
 
 describe('StocksPage onboarding CTA', () => {
-  it('shows first-time onboarding CTA when wallet is disconnected', () => {
+  it('shows first-time onboarding CTA when wallet is disconnected', async () => {
     walletState.address = undefined
 
     render(
@@ -64,7 +64,7 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByRole('button', { name: 'Browse Stocks to Prepare Trade' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Browse Stocks to Prepare Trade' })).toBeInTheDocument()
     expect(screen.getByText(/Mobile wallet QR connections are temporarily unavailable/i)).toBeInTheDocument()
     expect(screen.getByText('Tap to trade')).toBeInTheDocument()
   })
@@ -135,7 +135,7 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    await user.click(screen.getByRole('button', { name: 'Browse Stocks to Prepare Trade' }))
+    await user.click(await screen.findByRole('button', { name: 'Browse Stocks to Prepare Trade' }))
 
     expect(push).not.toHaveBeenCalled()
     expect(scrollIntoView).toHaveBeenCalled()
