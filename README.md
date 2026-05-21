@@ -22,6 +22,7 @@ POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candi
 
 ### Recent UX polish (updated: 2026-05-21)
 
+- Stocks portfolio disconnected layout now uses a single prominent action group (`Connect Wallet to View UBI Impact` + `Browse Stock Markets`) and a cleaner follow-up information stack, removing the uneven two-card dead-space rhythm previously seen on tablet/desktop while preserving mobile usability (`frontend/src/app/(app)/stocks/portfolio/StocksPortfolioContent.tsx`, `frontend/src/app/(app)/stocks/portfolio/StocksPortfolioImpactSection.tsx`).
 - Stocks drift dashboard health-state transition logic now compiles cleanly in production builds after removing an unreachable `health !== 'stopped'` branch in `deriveDriftRow`; added regression assertion coverage in `frontend/src/lib/__tests__/driftDashboard.test.ts` and re-validated `frontend` build green.
 - Stocks/perps risk-taking actions now enforce a symbol-sync invariant keyed to oracle block snapshots: quote-status payloads include per-symbol `oracleBlock` + per-product `lastSyncedBlock`, and order submission is blocked when stale propagation, >0.5% divergence, or lagging sync is detected (`frontend/src/lib/symbolSyncInvariant.ts`, `frontend/src/lib/useSymbolSyncGuard.ts`).
 - Test dashboard now includes a stock drift monitor table with per-symbol oracle block, per-product sync blocks (AMM/perps/predict/lend/yield), divergence (bps), and `Synced`/`Lagging`/`Stopped` badges to surface two-block propagation health and stop-rule state.

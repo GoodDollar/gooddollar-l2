@@ -115,6 +115,20 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(browseLink.getAttribute('href')).toBe('/stocks')
   })
 
+  it('elevates disconnected primary actions into a single prominent action group', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    render(
+      <TestWrapper><StocksPortfolioContent /></TestWrapper>
+    )
+
+    const actions = screen.getByTestId('stocks-disconnected-primary-actions')
+    expect(actions.className).toContain('sm:flex-row')
+    expect(screen.getByRole('button', { name: 'Connect Wallet to View UBI Impact' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Browse Stock Markets' })).toBeInTheDocument()
+  })
+
   it('shows deferred impact section loading placeholders on first paint', () => {
     accountState.address = undefined
     accountState.isConnected = false

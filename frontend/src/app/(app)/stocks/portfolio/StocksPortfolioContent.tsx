@@ -4,6 +4,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
@@ -17,16 +18,9 @@ const DeferredStocksPortfolioImpactSection = dynamic(
     loading: () => (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" aria-live="polite">
         <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-6">
-          <div className="space-y-3">
-            <div className="text-center text-gray-400 text-sm">
-              Connect wallet to see your UBI impact
-            </div>
-            <button
-              type="button"
-              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
-            >
-              Connect Wallet to View UBI Impact
-            </button>
+          <div className="space-y-3 animate-pulse">
+            <div className="h-4 w-2/3 bg-gray-700/60 rounded" />
+            <div className="h-10 w-full bg-gray-700/60 rounded-xl" />
             <div className="animate-pulse space-y-2">
               <div className="h-3 w-full bg-gray-700/60 rounded" />
               <div className="h-3 w-5/6 bg-gray-700/60 rounded" />
@@ -232,15 +226,29 @@ export function StocksPortfolioContent() {
       </div>
 
       {isDisconnected && (
-        <div className="mb-6 rounded-2xl border border-goodgreen/25 bg-goodgreen/5 px-4 py-4 sm:px-5">
-          <p className="text-sm font-semibold text-white">No wallet connected yet.</p>
-          <p className="mt-1 text-xs sm:text-sm text-gray-300">
+        <div className="mb-6 rounded-2xl border border-goodgreen/30 bg-gradient-to-r from-goodgreen/10 via-goodgreen/5 to-transparent px-4 py-4 sm:px-5 sm:py-5">
+          <p className="text-sm sm:text-base font-semibold text-white">No wallet connected yet.</p>
+          <p className="mt-1 text-xs sm:text-sm text-gray-300 max-w-2xl">
             You can browse markets first, then connect when you are ready to trade.
           </p>
-          <div className="mt-3">
+          <div
+            data-testid="stocks-disconnected-primary-actions"
+            className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3"
+          >
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <button
+                  type="button"
+                  onClick={openConnectModal}
+                  className="inline-flex items-center justify-center rounded-xl bg-goodgreen px-3.5 py-2 text-xs sm:text-sm font-semibold text-black hover:bg-goodgreen/90 transition-colors"
+                >
+                  Connect Wallet to View UBI Impact
+                </button>
+              )}
+            </ConnectButton.Custom>
             <Link
               href="/stocks"
-              className="inline-flex items-center justify-center rounded-xl border border-goodgreen/40 bg-dark-50/40 px-3 py-2 text-xs sm:text-sm font-semibold text-goodgreen hover:bg-goodgreen/10 transition-colors"
+              className="inline-flex items-center justify-center rounded-xl border border-goodgreen/40 bg-dark-50/40 px-3.5 py-2 text-xs sm:text-sm font-semibold text-goodgreen hover:bg-goodgreen/10 transition-colors"
             >
               Browse Stock Markets
             </Link>
@@ -248,7 +256,10 @@ export function StocksPortfolioContent() {
         </div>
       )}
 
-      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
+      <DeferredStocksPortfolioImpactSection
+        userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2}
+        isDisconnected={isDisconnected}
+      />
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">
