@@ -7,6 +7,7 @@ const walletState = { address: undefined as `0x${string}` | undefined }
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
+  usePathname: () => '/stocks',
   useSearchParams: () => new URLSearchParams(''),
   useParams: () => ({}),
 }))
@@ -82,8 +83,8 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    const tickerNodes = screen.getAllByText('AAPL')
-    const row = tickerNodes[0]?.closest('div[class*="bg-dark-100"]')
+    const tradeHint = screen.getByText('Tap to trade')
+    const row = tradeHint.closest('div[class*="bg-dark-100"]')
     expect(row).toBeTruthy()
 
     const rightColumn = row?.querySelector('div.text-right')
@@ -113,5 +114,41 @@ describe('StocksPage onboarding CTA', () => {
     expect(tradeButton).toBeInTheDocument()
     expect(tradeButton.className).not.toContain('sm:opacity-0')
     expect(tradeButton.className).not.toContain('group-hover:opacity-100')
+  })
+
+  it('reserves right/bottom safe area on stocks markets page for floating feedback controls', () => {
+    walletState.address = undefined
+
+    const { container } = render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('pb-24')
+    expect(wrapper?.className).toContain('md:pr-24')
+  })
+
+  it('uses mobile-first filter shell spacing for clearer top-viewport hierarchy', () => {
+    walletState.address = undefined
+
+    const { container } = render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('space-y-5')
+
+    const searchInput = screen.getByPlaceholderText('Search stocks...')
+    const filterShell = searchInput.closest('div.mb-4')
+    expect(filterShell).toBeTruthy()
+    expect(filterShell?.className).toContain('rounded-2xl')
+    expect(filterShell?.className).toContain('bg-dark-100/35')
+    expect(filterShell?.className).toContain('p-3')
   })
 })

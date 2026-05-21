@@ -237,8 +237,8 @@ export default function StocksPage() {
   }, [pushTickerRoute])
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
-      <div className="mb-6">
+    <div className="w-full max-w-5xl mx-auto pb-24 md:pr-24 space-y-5 sm:space-y-0">
+      <div className="mb-5 sm:mb-6">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-9 h-9 rounded-xl bg-goodgreen/10 border border-goodgreen/20 flex items-center justify-center">
             <svg className="w-5 h-5 text-goodgreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,11 +252,13 @@ export default function StocksPage() {
         </div>
       </div>
 
-      <InfoBanner
-        title="How Tokenized Stocks Work"
-        description="Synthetic stock tokens track real equity prices via Chainlink oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 20% of fees to UBI."
-        storageKey="gd-banner-dismissed-stocks"
-      />
+      <div className="mb-4 sm:mb-5">
+        <InfoBanner
+          title="How Tokenized Stocks Work"
+          description="Synthetic stock tokens track real equity prices via Chainlink oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 20% of fees to UBI."
+          storageKey="gd-banner-dismissed-stocks"
+        />
+      </div>
 
       {!address && (
         isLive ? (
@@ -310,7 +312,7 @@ export default function StocksPage() {
         onSelectTicker={pushTickerRoute}
       />
 
-      <div className="mb-3 flex flex-col lg:flex-row lg:items-center gap-2 sm:gap-3">
+      <div className="mb-4 sm:mb-5 flex flex-col lg:flex-row lg:items-center gap-3 rounded-2xl border border-gray-700/20 bg-dark-100/35 p-3 sm:p-0 sm:border-0 sm:bg-transparent sm:rounded-none">
         <input
           type="text"
           placeholder="Search stocks..."

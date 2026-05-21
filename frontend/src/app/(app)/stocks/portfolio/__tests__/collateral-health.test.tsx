@@ -273,4 +273,18 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
 
     expect(screen.getByRole('img', { name: /1M portfolio performance/i })).toBeInTheDocument()
   })
+
+  it('reserves right/bottom safe area on stocks portfolio for floating feedback controls', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('pb-24')
+    expect(wrapper?.className).toContain('md:pr-24')
+  })
 })

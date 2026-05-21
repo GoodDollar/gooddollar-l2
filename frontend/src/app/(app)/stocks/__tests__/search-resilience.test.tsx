@@ -157,13 +157,14 @@ describe('StocksPage search resilience', () => {
     fireEvent.change(screen.getByLabelText('Filter by sector'), { target: { value: 'Healthcare' } })
     fireEvent.change(screen.getByLabelText('Filter by momentum'), { target: { value: 'losers' } })
 
-    expect(screen.getAllByText('PFE').length).toBeGreaterThan(0)
-    expect(screen.queryAllByText('AAPL').length).toBe(0)
-    expect(screen.queryAllByText('MSFT').length).toBe(0)
+    const table = screen.getByRole('table')
+    expect(within(table).getAllByText('PFE').length).toBeGreaterThan(0)
+    expect(within(table).queryAllByText('AAPL').length).toBe(0)
+    expect(within(table).queryAllByText('MSFT').length).toBe(0)
 
     fireEvent.click(screen.getByRole('button', { name: /Clear all filters/i }))
-    expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('MSFT').length).toBeGreaterThan(0)
+    expect(within(table).getAllByText('AAPL').length).toBeGreaterThan(0)
+    expect(within(table).getAllByText('MSFT').length).toBeGreaterThan(0)
   })
 
   it('clears filters from empty-state action when zero results are caused by filters only', () => {

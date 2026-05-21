@@ -51,6 +51,16 @@ export function FeedbackButton() {
   const [error, setError] = useState<string | null>(null)
   const pathname = usePathname() ?? '/'
   const { address } = useAccount()
+  const isStocksRoute = pathname === '/stocks' || pathname.startsWith('/stocks/')
+  const launcherPositionClass = isStocksRoute
+    ? 'bottom-4 right-3 sm:right-4 md:bottom-6 md:right-4'
+    : 'bottom-6 right-6'
+  const launcherSizeClass = isStocksRoute
+    ? 'px-3 py-2'
+    : 'px-4 py-2.5'
+  const dialogPositionClass = isStocksRoute
+    ? 'bottom-4 right-3 sm:right-4 md:bottom-6 md:right-4'
+    : 'bottom-6 right-6'
 
   const submit = useCallback(async () => {
     if (!desc.trim()) return
@@ -96,12 +106,12 @@ export function FeedbackButton() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-accent hover:bg-accent/80 text-dark font-semibold px-4 py-2.5 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 text-sm"
+        className={`fixed ${launcherPositionClass} z-50 bg-accent hover:bg-accent/80 text-dark font-semibold ${launcherSizeClass} rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 text-sm`}
         aria-label="Send feedback"
         data-testid="feedback-open"
       >
         <span>💬</span>
-        <span className="hidden sm:inline">Feedback</span>
+        <span className={isStocksRoute ? 'hidden' : 'hidden sm:inline'}>Feedback</span>
       </button>
     )
   }
@@ -110,7 +120,7 @@ export function FeedbackButton() {
     <div
       role="dialog"
       aria-label="Send feedback"
-      className="fixed bottom-6 right-6 z-50 w-80 bg-dark-50 border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+      className={`fixed ${dialogPositionClass} z-50 w-80 bg-dark-50 border border-white/10 rounded-2xl shadow-2xl overflow-hidden`}
       data-testid="feedback-dialog"
     >
       {/* Header */}
