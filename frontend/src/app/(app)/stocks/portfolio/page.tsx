@@ -2,14 +2,22 @@
 
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMemo, useState, useEffect } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  buildBenchmarkSeries,
+  buildContributionRows,
+  calcMaxDrawdownPct,
+  calcVolatilityPct,
+  parseBenchmarkId,
+  type BenchmarkId,
+} from './portfolioDiagnostics'
 
 const DeferredStocksPortfolioImpactSection = dynamic(
   () => import('./StocksPortfolioImpactSection').then((module) => module.StocksPortfolioImpactSection),
@@ -47,11 +55,11 @@ const DeferredStocksPortfolioImpactSection = dynamic(
   },
 )
 
-type TrendRange = '1D' | '1W' | '1M'
+type TrendRange = '1W' | '1M' | '3M' | '1Y'
 type AllocationMode = 'value' | 'shares'
 
 function buildTrendPoints(totalValue: number, unrealizedPnl: number, range: TrendRange): number[] {
-  const points = range === '1D' ? 12 : range === '1W' ? 14 : 30
+  const points = range === '1W' ? 14 : range === '1M' ? 30 : range === '3M' ? 45 : 60
   const costBasis = Math.max(0, totalValue - unrealizedPnl)
   const start = totalValue <= 0 ? 0 : Math.max(0, costBasis * 0.92)
   const end = Math.max(0, totalValue)
@@ -172,6 +180,8 @@ function TradeRow({ trade }: { trade: TradeRecord }) {
 
 export default function StocksPortfolioPage() {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { address, isConnected } = useAccount()
   const {
     holdings,
@@ -184,7 +194,8 @@ export default function StocksPortfolioPage() {
     isLoading: holdingsLoading,
   } = useStockHoldings(address)
   const { trades, isLoading: tradesLoading } = useStockTrades(address)
-  const [trendRange, setTrendRange] = useState<TrendRange>('1W')
+  const [trendRange, setTrendRange] = useState<TrendRange>('1M')
+  const [benchmark, setBenchmark] = useState<BenchmarkId>(() => parseBenchmarkId(searchParams.get('benchmark')))
   const [allocationMode, setAllocationMode] = useState<AllocationMode>('value')
 
   const summary = { totalValue, unrealizedPnl, pnlPercent, totalCollateral, totalRequired, healthRatio }
@@ -212,6 +223,26 @@ export default function StocksPortfolioPage() {
     return buildTrendPoints(summary.totalValue, summary.unrealizedPnl, trendRange)
   }, [summary.totalValue, summary.unrealizedPnl, trendRange])
   const trendPath = useMemo(() => sparklinePath(trendValues, 100, 32), [trendValues])
+  const benchmarkValues = useMemo(() => buildBenchmarkSeries(trendValues[0] ?? 100, trendValues.length || 30, benchmark), [benchmark, trendValues])
+  const benchmarkPath = useMemo(() => sparklinePath(benchmarkValues, 100, 32), [benchmarkValues])
+  const benchmarkDeltaPct = useMemo(() => {
+    if (benchmarkValues.length < 2) return 0
+    const first = benchmarkValues[0] ?? 0
+    const last = benchmarkValues[benchmarkValues.length - 1] ?? 0
+    if (first <= 0) return 0
+    return ((last - first) / first) * 100
+  }, [benchmarkValues])
+  const portfolioDeltaPct = useMemo(() => {
+    if (trendValues.length < 2) return 0
+    const first = trendValues[0] ?? 0
+    const last = trendValues[trendValues.length - 1] ?? 0
+    if (first <= 0) return 0
+    return ((last - first) / first) * 100
+  }, [trendValues])
+  const maxDrawdownPct = useMemo(() => calcMaxDrawdownPct(trendValues), [trendValues])
+  const volatilityPct = useMemo(() => calcVolatilityPct(trendValues), [trendValues])
+  const concentrationPct = useMemo(() => (allocationRows[0]?.pct ?? 0), [allocationRows])
+  const contributionRows = useMemo(() => buildContributionRows(holdings).slice(0, 5), [holdings])
 
   const topContributors = useMemo(() => {
     return holdings
@@ -226,6 +257,32 @@ export default function StocksPortfolioPage() {
       .toSorted((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
       .slice(0, 4)
   }, [holdings])
+
+  useEffect(() => {
+    const fromQuery = parseBenchmarkId(searchParams.get('benchmark'))
+    if (fromQuery !== benchmark) {
+      setBenchmark(fromQuery)
+      return
+    }
+
+    if (typeof window !== 'undefined') {
+      const persisted = parseBenchmarkId(window.localStorage.getItem('stocks-portfolio-benchmark'))
+      if (!searchParams.get('benchmark') && persisted !== benchmark) {
+        setBenchmark(persisted)
+      }
+    }
+  }, [benchmark, searchParams])
+
+  const handleBenchmarkChange = (nextBenchmark: BenchmarkId) => {
+    setBenchmark(nextBenchmark)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('stocks-portfolio-benchmark', nextBenchmark)
+    }
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('benchmark', nextBenchmark)
+    const next = params.toString()
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+  }
 
   return (
     <ConnectWalletEmptyState
@@ -326,7 +383,7 @@ export default function StocksPortfolioPage() {
           <div className="flex items-center justify-between gap-2 mb-2">
             <h2 className="text-sm font-semibold text-white">Performance Trend</h2>
             <div className="flex items-center gap-1">
-              {(['1D', '1W', '1M'] as TrendRange[]).map((range) => (
+              {(['1W', '1M', '3M', '1Y'] as TrendRange[]).map((range) => (
                 <button key={range} type="button" onClick={() => setTrendRange(range)} className={`px-2 py-1 rounded text-[11px] ${trendRange === range ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>{range}</button>
               ))}
             </div>
@@ -366,6 +423,92 @@ export default function StocksPortfolioPage() {
           )}
         </section>
       </div>
+
+      <section className="mb-6 rounded-2xl border border-gray-700/20 bg-dark-100 p-4 sm:p-5">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-sm font-semibold text-white">Portfolio Diagnostics</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1">
+              {(['1W', '1M', '3M', '1Y'] as TrendRange[]).map((range) => (
+                <button key={`diag-${range}`} type="button" onClick={() => setTrendRange(range)} className={`rounded px-2 py-1 text-[11px] ${trendRange === range ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+                  {range}
+                </button>
+              ))}
+            </div>
+            <select
+              aria-label="Benchmark selector"
+              value={benchmark}
+              onChange={(event) => handleBenchmarkChange(parseBenchmarkId(event.target.value))}
+              className="rounded-lg border border-gray-700/30 bg-dark-50/40 px-2 py-1 text-xs text-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            >
+              <option value="SPY">S&P proxy (SPY)</option>
+              <option value="QQQ">Nasdaq proxy (QQQ)</option>
+              <option value="DIA">Dow proxy (DIA)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">Benchmark</h3>
+            {isDisconnected ? (
+              <p className="text-xs text-gray-500">Connect wallet to compare portfolio vs benchmark.</p>
+            ) : (
+              <>
+                <svg viewBox="0 0 100 32" role="img" aria-label={`${trendRange} portfolio vs benchmark`} className="mb-2 h-20 w-full rounded-lg border border-gray-700/20 bg-dark-100/60">
+                  <path d={trendPath} fill="none" stroke="#19f39f" strokeWidth="1.8" />
+                  <path d={benchmarkPath} fill="none" stroke="#6b7280" strokeWidth="1.4" strokeDasharray="3 2" />
+                </svg>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Portfolio</span>
+                    <span className={portfolioDeltaPct >= 0 ? 'text-green-400' : 'text-red-400'}>{portfolioDeltaPct >= 0 ? '+' : ''}{portfolioDeltaPct.toFixed(2)}%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">{benchmark}</span>
+                    <span className={benchmarkDeltaPct >= 0 ? 'text-green-400' : 'text-red-400'}>{benchmarkDeltaPct >= 0 ? '+' : ''}{benchmarkDeltaPct.toFixed(2)}%</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </article>
+
+          <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">Risk</h3>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/60 px-2.5 py-2">
+                <span className="text-gray-400">Max drawdown</span>
+                <span className="text-white">{isDisconnected ? '—' : `${maxDrawdownPct.toFixed(2)}%`}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/60 px-2.5 py-2">
+                <span className="text-gray-400">Volatility</span>
+                <span className="text-white">{isDisconnected ? '—' : `${volatilityPct.toFixed(2)}%`}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/60 px-2.5 py-2">
+                <span className="text-gray-400">Concentration</span>
+                <span className="text-white">{isDisconnected ? '—' : `${concentrationPct.toFixed(1)}% top position`}</span>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">Contribution</h3>
+            {contributionRows.length === 0 ? (
+              <p className="text-xs text-gray-500">Open positions to unlock contribution analytics.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {contributionRows.map((row) => (
+                  <div key={`diag-${row.ticker}`} className="grid grid-cols-3 items-center rounded-lg border border-gray-700/20 bg-dark-100/60 px-2 py-1.5 text-xs">
+                    <span className="text-gray-200">{row.ticker}</span>
+                    <span className="text-gray-400 text-right">{row.weightPct.toFixed(1)}%</span>
+                    <span className={`text-right ${row.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{row.pnl >= 0 ? '+' : ''}{formatStockPrice(row.pnl)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+        </div>
+      </section>
 
       <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
 

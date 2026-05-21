@@ -8,7 +8,8 @@ const accountState = {
 }
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => '/stocks/portfolio',
   useSearchParams: () => new URLSearchParams(''),
   useParams: () => ({}),
 }))
@@ -268,7 +269,7 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: 'Shares' }))
-    fireEvent.click(screen.getByRole('button', { name: '1M' }))
+    fireEvent.click(screen.getAllByRole('button', { name: '1M' })[0]!)
 
     expect(screen.getByRole('img', { name: /1M portfolio performance/i })).toBeInTheDocument()
   })
