@@ -60,6 +60,23 @@ const stocksFixture = [
     dividendYield: 0.6,
     avgVolume: 32000000,
   },
+  {
+    ticker: 'PFE',
+    name: 'sPFE',
+    sector: 'Healthcare',
+    description: 'Pfizer synthetic',
+    price: 31.2,
+    change24h: -1.9,
+    volume24h: 18000000,
+    marketCap: 176000000000,
+    high52w: 44,
+    low52w: 24,
+    sparkline7d: [33, 32, 31, 31, 31],
+    peRatio: 15,
+    eps: 2.1,
+    dividendYield: 4.1,
+    avgVolume: 28000000,
+  },
 ]
 
 vi.mock('@/lib/useOnChainStocks', () => ({
@@ -99,5 +116,26 @@ describe('StocksPage search resilience', () => {
 
     expect(screen.getAllByText(/No stocks match your search/i).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: /clear/i }).length).toBeGreaterThan(0)
+  })
+
+  it('applies sector and momentum filters, then clears all', () => {
+    mountedState.mounted = true
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>,
+    )
+
+    fireEvent.change(screen.getByLabelText('Filter by sector'), { target: { value: 'Healthcare' } })
+    fireEvent.change(screen.getByLabelText('Filter by momentum'), { target: { value: 'losers' } })
+
+    expect(screen.getAllByText('PFE').length).toBeGreaterThan(0)
+    expect(screen.queryAllByText('AAPL').length).toBe(0)
+    expect(screen.queryAllByText('MSFT').length).toBe(0)
+
+    fireEvent.click(screen.getByRole('button', { name: /Clear all filters/i }))
+    expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('MSFT').length).toBeGreaterThan(0)
   })
 })

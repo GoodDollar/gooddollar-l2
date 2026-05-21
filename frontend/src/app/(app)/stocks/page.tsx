@@ -13,6 +13,9 @@ import { useMounted } from '@/lib/useMounted'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
+type CapFilter = 'all' | 'mega' | 'large' | 'mid'
+type MomentumFilter = 'all' | 'gainers' | 'losers'
+type LiquidityFilter = 'all' | 'active' | 'quiet'
 
 function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return (
@@ -112,7 +115,15 @@ export default function StocksPage() {
   const [query, setQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [sectorFilter, setSectorFilter] = useState<string>('all')
+  const [capFilter, setCapFilter] = useState<CapFilter>('all')
+  const [momentumFilter, setMomentumFilter] = useState<MomentumFilter>('all')
+  const [liquidityFilter, setLiquidityFilter] = useState<LiquidityFilter>('all')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+
+  const sectors = useMemo(() => (
+    Array.from(new Set(data.map((stock) => stock.sector).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  ), [data])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -132,11 +143,36 @@ export default function StocksPage() {
         s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
       )
     }
+    if (sectorFilter !== 'all') {
+      stocks = stocks.filter((s) => s.sector === sectorFilter)
+    }
+    if (capFilter !== 'all') {
+      stocks = stocks.filter((s) => {
+        if (capFilter === 'mega') return s.marketCap >= 200_000_000_000
+        if (capFilter === 'large') return s.marketCap >= 10_000_000_000 && s.marketCap < 200_000_000_000
+        return s.marketCap >= 2_000_000_000 && s.marketCap < 10_000_000_000
+      })
+    }
+    if (momentumFilter !== 'all') {
+      stocks = stocks.filter((s) => momentumFilter === 'gainers' ? s.change24h >= 0 : s.change24h < 0)
+    }
+    if (liquidityFilter !== 'all') {
+      stocks = stocks.filter((s) => liquidityFilter === 'active' ? s.volume24h >= 50_000_000 : s.volume24h < 50_000_000)
+    }
     return [...stocks].sort((a, b) => {
       const mul = sortDir === 'asc' ? 1 : -1
       return (a[sortField] - b[sortField]) * mul
     })
-  }, [data, query, sortField, sortDir])
+  }, [data, query, sortField, sortDir, sectorFilter, capFilter, momentumFilter, liquidityFilter])
+
+  const activeFilterCount = Number(sectorFilter !== 'all') + Number(capFilter !== 'all') + Number(momentumFilter !== 'all') + Number(liquidityFilter !== 'all')
+
+  const clearAllFilters = () => {
+    setSectorFilter('all')
+    setCapFilter('all')
+    setMomentumFilter('all')
+    setLiquidityFilter('all')
+  }
 
   const handleRowClick = useCallback((ticker: string) => {
     router.push(`/stocks/${ticker}`)
@@ -209,7 +245,7 @@ export default function StocksPage() {
         )
       )}
 
-      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+      <div className="mb-3 flex flex-col lg:flex-row lg:items-center gap-2 sm:gap-3">
         <input
           type="text"
           placeholder="Search stocks..."
@@ -218,8 +254,80 @@ export default function StocksPage() {
           disabled={!mounted}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30 disabled:opacity-70 disabled:cursor-not-allowed"
         />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
+          <select
+            aria-label="Filter by sector"
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            value={sectorFilter}
+            onChange={(e) => setSectorFilter(e.target.value)}
+          >
+            <option value="all">All sectors</option>
+            {sectors.map((sector) => (
+              <option key={sector} value={sector}>{sector}</option>
+            ))}
+          </select>
+          <select
+            aria-label="Filter by market cap"
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            value={capFilter}
+            onChange={(e) => setCapFilter(e.target.value as CapFilter)}
+          >
+            <option value="all">All caps</option>
+            <option value="mega">Mega cap</option>
+            <option value="large">Large cap</option>
+            <option value="mid">Mid cap</option>
+          </select>
+          <select
+            aria-label="Filter by momentum"
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            value={momentumFilter}
+            onChange={(e) => setMomentumFilter(e.target.value as MomentumFilter)}
+          >
+            <option value="all">All momentum</option>
+            <option value="gainers">Gainers</option>
+            <option value="losers">Losers</option>
+          </select>
+          <select
+            aria-label="Filter by liquidity"
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            value={liquidityFilter}
+            onChange={(e) => setLiquidityFilter(e.target.value as LiquidityFilter)}
+          >
+            <option value="all">All liquidity</option>
+            <option value="active">High volume</option>
+            <option value="quiet">Lower volume</option>
+          </select>
+        </div>
         <OracleStatusBadge useStocksFallback onChainReachable={isLive} />
       </div>
+
+      {activeFilterCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {sectorFilter !== 'all' && (
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setSectorFilter('all')}>
+              Sector: {sectorFilter} <span aria-hidden="true">x</span>
+            </button>
+          )}
+          {capFilter !== 'all' && (
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setCapFilter('all')}>
+              Cap: {capFilter} <span aria-hidden="true">x</span>
+            </button>
+          )}
+          {momentumFilter !== 'all' && (
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setMomentumFilter('all')}>
+              Momentum: {momentumFilter} <span aria-hidden="true">x</span>
+            </button>
+          )}
+          {liquidityFilter !== 'all' && (
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setLiquidityFilter('all')}>
+              Liquidity: {liquidityFilter} <span aria-hidden="true">x</span>
+            </button>
+          )}
+          <button type="button" className="text-xs text-gray-300 hover:text-white underline underline-offset-2" onClick={clearAllFilters}>
+            Clear all filters
+          </button>
+        </div>
+      )}
 
       {/* Mobile card list (< sm) */}
       <div className="sm:hidden space-y-2 mb-2">
