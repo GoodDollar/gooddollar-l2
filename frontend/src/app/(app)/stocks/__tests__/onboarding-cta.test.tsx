@@ -71,7 +71,7 @@ describe('StocksPage onboarding CTA', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Connect Wallet to Trade Stocks' })).toBeInTheDocument()
-    expect(screen.getByText('Tap to view')).toBeInTheDocument()
+    expect(screen.getByText('Tap for details')).toBeInTheDocument()
     expect(
       screen.getByText(/Mobile wallet connectors are unavailable in this environment/i),
     ).toBeInTheDocument()
@@ -109,14 +109,14 @@ describe('StocksPage onboarding CTA', () => {
     const price = screen.getAllByText('$218.27')[0]
     expect(price.className).toContain('whitespace-nowrap')
 
-    const name = screen.getAllByText('sAAPL')[0]
-    expect(name.className).toContain('max-w-[84px]')
+    const name = screen.getAllByText('Apple synthetic')[0]
+    expect(name.className).toContain('max-w-[120px]')
 
-    // Ensure rendered "Tap to view" badge still exists in constrained layout.
-    expect(container.textContent).toContain('Tap to view')
+    // Ensure rendered "Tap for details" badge still exists in constrained layout.
+    expect(container.textContent).toContain('Tap for details')
   })
 
-  it('uses View action label on desktop table when disconnected', () => {
+  it('uses View details action label on desktop table when disconnected', () => {
     walletState.address = undefined
 
     render(
@@ -125,10 +125,10 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByRole('button', { name: 'View' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'View details for AAPL' })).toBeInTheDocument()
   })
 
-  it('uses Trade action label on desktop table when connected', () => {
+  it('uses Trade now action label on desktop table when connected', () => {
     walletState.address = '0x1111111111111111111111111111111111111111'
 
     render(
@@ -137,6 +137,6 @@ describe('StocksPage onboarding CTA', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByRole('button', { name: 'Trade' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Trade now for AAPL' })).toBeInTheDocument()
   })
 })

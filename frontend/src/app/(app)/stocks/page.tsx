@@ -43,10 +43,18 @@ interface StockRowProps {
   stock: Stock
   idx: number
   onRowClick: (ticker: string) => void
-  actionLabel: 'Trade' | 'View'
+  actionLabel: 'Trade now' | 'View details'
+}
+
+function parseDisplayName(stock: Stock): string {
+  const syntheticLabel = `s${stock.ticker}`.toUpperCase()
+  if (stock.name.toUpperCase() !== syntheticLabel) return stock.name
+  const fromDescription = stock.description.split('—')[0]?.trim()
+  return fromDescription || `${stock.ticker} synthetic stock`
 }
 
 const StockRow = memo(function StockRow({ stock, idx, onRowClick, actionLabel }: StockRowProps) {
+  const displayName = parseDisplayName(stock)
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -57,8 +65,11 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick, actionLabel }:
         <div className="flex items-center gap-2.5">
           <StockIcon ticker={stock.ticker} />
           <div>
-            <span className="font-semibold text-white">{stock.ticker}</span>
-            <span className="text-gray-500 ml-1.5 text-xs truncate max-w-[120px] inline-block align-middle">{stock.name}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-white">{stock.ticker}</span>
+              <span className="text-gray-500 text-xs truncate max-w-[120px] inline-block align-middle">{displayName}</span>
+            </div>
+            <div className="text-[10px] text-gray-600">Token s{stock.ticker}</div>
           </div>
         </div>
       </td>
@@ -80,6 +91,7 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick, actionLabel }:
       <td className="py-3 px-1 text-right w-20 hidden sm:table-cell">
         <button
           onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
+          aria-label={`${actionLabel} for ${stock.ticker}`}
           className="px-3 py-1 text-xs font-semibold rounded-lg bg-goodgreen/15 text-goodgreen hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
         >
           {actionLabel}
@@ -98,7 +110,7 @@ export default function StocksPage() {
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
-  const marketActionLabel: 'Trade' | 'View' = showConnectBanner ? 'View' : 'Trade'
+  const marketActionLabel: 'Trade now' | 'View details' = showConnectBanner ? 'View details' : 'Trade now'
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -225,8 +237,9 @@ export default function StocksPage() {
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
                   <span className="font-semibold text-white text-sm truncate max-w-[52px]">{stock.ticker}</span>
-                  <span className="text-gray-500 text-xs truncate max-w-[84px]">{stock.name}</span>
+                  <span className="text-gray-500 text-xs truncate max-w-[120px]">{parseDisplayName(stock)}</span>
                 </div>
+                <div className="text-[10px] text-gray-600 mt-0.5">Token s{stock.ticker}</div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
                 </div>
@@ -237,7 +250,7 @@ export default function StocksPage() {
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
                 </div>
                 <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
-                  {showConnectBanner ? 'Tap to view' : 'Tap to trade'}
+                  {showConnectBanner ? 'Tap for details' : 'Tap to trade'}
                 </span>
               </div>
             </div>
