@@ -21,6 +21,7 @@ import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { useStocksOracleGuard } from '@/lib/useStocksOracleGuard'
+import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/walletCapabilities'
 import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
@@ -47,14 +48,21 @@ function WalletGatedTradeButton({
   }
   if (!isConnected) {
     return (
-      <ConnectButton.Custom>
-        {({ openConnectModal }) => (
-          <button type="button" onClick={openConnectModal}
-            className="w-full py-3 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors">
-            Connect Wallet to Trade
-          </button>
+      <div className="space-y-2">
+        <ConnectButton.Custom>
+          {({ openConnectModal }) => (
+            <button type="button" onClick={openConnectModal}
+              className="w-full py-3 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors">
+              Connect Wallet to Trade
+            </button>
+          )}
+        </ConnectButton.Custom>
+        {!isWalletConnectEnabled && (
+          <p className="text-[11px] text-amber-300 text-center">
+            {mobileWalletUnavailableMessage}
+          </p>
         )}
-      </ConnectButton.Custom>
+      </div>
     )
   }
   if (!hasAmount) {

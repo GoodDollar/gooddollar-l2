@@ -11,6 +11,7 @@ import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { DEVNET_CHAIN_ID } from '@/lib/devnet'
+import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/walletCapabilities'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -160,6 +161,11 @@ export default function StocksPage() {
                   : 'Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.'}
               </p>
               <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
+              {!wrongChain && !isWalletConnectEnabled && (
+                <p className="text-[11px] sm:text-xs text-amber-300 mt-2">
+                  {mobileWalletUnavailableMessage}
+                </p>
+              )}
             </div>
             <ConnectButton.Custom>
               {({ openConnectModal, openChainModal }) => (
