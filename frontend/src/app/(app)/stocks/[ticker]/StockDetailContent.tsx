@@ -611,25 +611,25 @@ export function StockDetailContent() {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-gray-300">1. Connect wallet</span>
                 <span className={`px-2 py-0.5 rounded-full ${isConnected ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'}`}>
-                  {isConnected ? 'Done' : 'Required'}
+                  {isConnected ? '✓ Ready' : 'Action needed'}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-gray-300">2. Confirm live prices</span>
                 <span className={`px-2 py-0.5 rounded-full ${oracleGuard.health === 'live' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'}`}>
-                  {oracleGuard.health === 'live' ? 'Done' : 'Blocked'}
+                  {oracleGuard.health === 'live' ? '✓ Ready' : 'Waiting...'}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-gray-300">2b. Price data current</span>
                 <span className={`px-2 py-0.5 rounded-full ${syncGuard.allowRiskIncrease ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'}`}>
-                  {syncGuard.allowRiskIncrease ? 'Done' : 'Blocked'}
+                  {syncGuard.allowRiskIncrease ? '✓ Ready' : 'Waiting...'}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-gray-300">3. Submit order</span>
                 <span className={`px-2 py-0.5 rounded-full ${tradeReady ? 'bg-green-500/20 text-green-300' : 'bg-gray-700/40 text-gray-300'}`}>
-                  {tradeReady ? 'Ready' : 'Waiting'}
+                  {tradeReady ? '✓ Ready' : 'Almost there'}
                 </span>
               </div>
             </div>

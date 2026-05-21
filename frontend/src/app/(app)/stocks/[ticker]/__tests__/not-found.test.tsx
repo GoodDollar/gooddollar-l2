@@ -268,11 +268,13 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
 
     expect(screen.getByText(/First trade checklist/i)).toBeTruthy()
     expect(screen.getByText('1. Connect wallet')).toBeTruthy()
-    expect(screen.getByText('Required')).toBeTruthy()
+    expect(screen.getByText('Action needed')).toBeTruthy()
     expect(screen.getByText('2. Confirm live prices')).toBeTruthy()
-    expect(screen.getAllByText('Blocked').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Waiting...').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('3. Submit order')).toBeTruthy()
-    expect(screen.getByText('Waiting')).toBeTruthy()
+    expect(screen.getByText('Almost there')).toBeTruthy()
+    expect(screen.queryByText('Blocked')).toBeNull()
+    expect(screen.queryByText('Required')).toBeNull()
   })
 
   it('shows synthetic token explainer above company description in About section', () => {
