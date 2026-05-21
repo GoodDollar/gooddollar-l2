@@ -9,8 +9,12 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatStockPrice, formatLargeNumber, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
+import { computePerformanceStats } from '@/lib/computePerformanceStats'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
+import { PortfolioPnLChart } from '@/components/stocks/PortfolioPnLChart'
+import { AllocationDonut } from '@/components/stocks/AllocationDonut'
+import { PerformanceStatsPanel } from '@/components/stocks/PerformanceStatsPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   buildBenchmarkSeries,
@@ -189,18 +193,21 @@ function HoldingRow({ holding, onClick }: { holding: PortfolioHolding; onClick: 
 
 function TradeRow({ trade }: { trade: TradeRecord }) {
   const date = new Date(trade.timestamp)
+  const total = trade.shares * trade.price
   return (
-    <tr className="border-b border-gray-700/10">
-      <td className="py-3 px-3 text-sm text-white">{trade.ticker}</td>
+    <tr className="border-b border-gray-700/10 hover:bg-dark-50/30 transition-colors">
+      <td className="py-3 px-3 text-sm text-white font-medium">{trade.ticker}</td>
       <td className="py-3 px-3 text-sm">
         <span className={`px-2 py-0.5 rounded text-xs font-medium ${trade.side === 'buy' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
           {trade.side.toUpperCase()}
         </span>
       </td>
-      <td className="py-3 px-3 text-right text-gray-300 text-sm">{trade.shares.toFixed(2)}</td>
+      <td className="py-3 px-3 text-right text-gray-300 text-sm">{trade.shares.toFixed(4)}</td>
       <td className="py-3 px-3 text-right text-white text-sm">{formatStockPrice(trade.price)}</td>
+      <td className="py-3 px-3 text-right text-gray-300 text-sm hidden md:table-cell">{formatStockPrice(total)}</td>
       <td className="py-3 px-3 text-right text-gray-400 text-sm hidden sm:table-cell">
-        {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        <div className="text-xs">{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+        <div className="text-[10px] text-gray-600">{date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
       </td>
       <td className={`py-3 px-3 text-right text-sm font-medium ${trade.pnl > 0 ? 'text-green-400' : trade.pnl < 0 ? 'text-red-400' : 'text-gray-500'}`}>
         {trade.pnl !== 0 ? `${trade.pnl > 0 ? '+' : ''}${formatStockPrice(trade.pnl)}` : '—'}
@@ -287,6 +294,17 @@ export default function StocksPortfolioPage() {
       })
       .toSorted((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
       .slice(0, 4)
+  }, [holdings])
+
+  const performanceStats = useMemo(() => computePerformanceStats(trades), [trades])
+
+  const donutSegments = useMemo(() => {
+    const total = holdings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0)
+    if (total <= 0) return []
+    return holdings
+      .map(h => ({ ticker: h.ticker, pct: ((h.shares * h.currentPrice) / total) * 100 }))
+      .filter(s => s.pct > 0)
+      .toSorted((a, b) => b.pct - a.pct)
   }, [holdings])
 
   useEffect(() => {
@@ -412,58 +430,26 @@ export default function StocksPortfolioPage() {
 
       {!isDisconnected ? (
       <>
+      <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4 mb-6">
+        <PortfolioPnLChart
+          values={trendValues}
+          range={trendRange}
+          onRangeChange={setTrendRange}
+          currentValue={summary.totalValue}
+          unrealizedPnl={summary.unrealizedPnl}
+          height={200}
+        />
+      </section>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-        <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <h2 className="text-sm font-semibold text-white">Allocation</h2>
-            <div className="flex items-center gap-1 rounded-lg bg-dark-50/60 border border-gray-700/20 p-1">
-              <button type="button" onClick={() => setAllocationMode('value')} className={`px-2 py-1 rounded text-[11px] ${allocationMode === 'value' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>Value</button>
-              <button type="button" onClick={() => setAllocationMode('shares')} className={`px-2 py-1 rounded text-[11px] ${allocationMode === 'shares' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>Shares</button>
-            </div>
-          </div>
-          {allocationRows.length === 0 ? (
-            <p className="text-xs text-gray-500">Connect wallet and open a position to see allocation mix.</p>
-          ) : (
-            <div className="space-y-2.5">
-              {allocationRows.map((row) => (
-                <div key={row.ticker}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-gray-200">{row.ticker}</span>
-                    <span className="text-gray-400">{row.pct.toFixed(1)}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-dark-50 overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-goodgreen/90 to-cyan-400/70" style={{ width: `${Math.min(100, row.pct)}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4 flex flex-col items-center justify-center">
+          <h2 className="text-sm font-semibold text-white mb-3 self-start">Allocation</h2>
+          <AllocationDonut segments={donutSegments} size={140} />
         </section>
 
         <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <h2 className="text-sm font-semibold text-white">Performance Trend</h2>
-            <div className="flex items-center gap-1">
-              {(['1W', '1M', '3M', '1Y'] as TrendRange[]).map((range) => (
-                <button key={range} type="button" onClick={() => setTrendRange(range)} className={`px-2 py-1 rounded text-[11px] ${trendRange === range ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>{range}</button>
-              ))}
-            </div>
-          </div>
-          {isDisconnected || trendValues.length === 0 ? (
-            <p className="text-xs text-gray-500">Connect wallet to load portfolio performance history.</p>
-          ) : (
-            <div className="space-y-2">
-              <svg viewBox="0 0 100 32" role="img" aria-label={`${trendRange} portfolio performance`} className="w-full h-20 rounded-lg border border-gray-700/20 bg-dark-50/30">
-                <path d={trendPath} fill="none" stroke="#19f39f" strokeWidth="1.8" />
-              </svg>
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>{trendRange} basis</span>
-                <span className={summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                  {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
-                </span>
-              </div>
-            </div>
-          )}
+          <h2 className="text-sm font-semibold text-white mb-3">Performance Stats</h2>
+          <PerformanceStatsPanel stats={performanceStats} />
         </section>
 
         <section className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-4">
@@ -660,6 +646,7 @@ export default function StocksPortfolioPage() {
                     <th className="text-left py-2.5 px-3 font-semibold">Side</th>
                     <th className="text-right py-2.5 px-3 font-semibold">Shares</th>
                     <th className="text-right py-2.5 px-3 font-semibold">Price</th>
+                    <th className="text-right py-2.5 px-3 font-semibold hidden md:table-cell">Total</th>
                     <th className="text-right py-2.5 px-3 font-semibold hidden sm:table-cell">Date</th>
                     <th className="text-right py-2.5 px-3 font-semibold">P&L</th>
                   </tr>
