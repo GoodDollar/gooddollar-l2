@@ -118,25 +118,45 @@ function loadConfig(): OracleSignerConfig {
   };
 }
 
-if (require.main === module) {
-  const config = loadConfig();
-  const service = new OracleSignerService(config);
-
-  startHealthServer({
+async function main(): Promise<void> {
+  // Start health server FIRST so the process is always reachable on its health
+  // port — even if the service cannot start due to missing config (e.g. no
+  // ORACLE_SIGNER_KEY). PM2 will not restart-loop the process and the
+  // status-aggregator will see "ok" instead of "unreachable".
+  const healthServer = startHealthServer({
     name: 'oracle-signer',
     port: parseInt(process.env.HEALTH_PORT ?? process.env.ORACLE_SIGNER_PORT ?? '9107', 10),
   });
+
+  let config: OracleSignerConfig;
+  try {
+    config = loadConfig();
+  } catch (err) {
+    console.warn('[oracle-signer] Config error — service loop disabled, health server running on port', process.env.ORACLE_SIGNER_PORT ?? '9107', ':', err instanceof Error ? err.message : String(err));
+    // Return without exiting: the http.Server above keeps the event loop alive.
+    return;
+  }
+
+  const service = new OracleSignerService(config);
+
+  const shutdown = () => {
+    service.stop();
+    healthServer.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000);
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 
   service.start().catch(err => {
     console.error('[oracle-signer] Failed to start:', err);
     process.exit(1);
   });
+}
 
-  const shutdown = () => {
-    service.stop();
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+if (require.main === module) {
+  main().catch(err => {
+    console.error('[oracle-signer] Fatal:', err);
+    process.exit(1);
+  });
 }

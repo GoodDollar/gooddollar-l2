@@ -258,7 +258,12 @@ module.exports = {
       script: 'hedge-engine/dist/index.js',
       env: {
         ...BASE_ENV,
+        // RISK_ENGINE_ADDRESS intentionally defaults to '' when not deployed.
+        // The service starts in health-only mode (engine loop disabled) until
+        // this is set, so the health port (9106) stays bound and the
+        // status-aggregator can reach it.
         RISK_ENGINE_ADDRESS: pick('RISK_ENGINE_ADDRESS', ''),
+        HEDGE_ENGINE_PORT: pick('HEDGE_ENGINE_PORT', '9106'),
         HEDGE_DRY_RUN: pick('HEDGE_DRY_RUN', 'true'),
         HEDGE_POLL_INTERVAL_MS: pick('HEDGE_POLL_INTERVAL_MS', '30000'),
         HEDGE_SYMBOLS: pick('HEDGE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ'),
@@ -273,7 +278,12 @@ module.exports = {
         ...BASE_ENV,
         PRICE_SERVICE_URL: pick('PRICE_SERVICE_URL', 'ws://localhost:4001'),
         STOCK_ORACLE_V2_ADDRESS: pickAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], '0xF357118EBd576f3C812c7875B1A1651a7f140E9C'),
+        // ORACLE_SIGNER_KEY intentionally defaults to '' when not provisioned.
+        // The service starts in health-only mode (submission loop disabled) until
+        // this is set, so the health port (9107) stays bound and the
+        // status-aggregator can reach it.
         ORACLE_SIGNER_KEY: pick('ORACLE_SIGNER_KEY', ''),
+        ORACLE_SIGNER_PORT: pick('ORACLE_SIGNER_PORT', '9107'),
         ORACLE_UPDATE_INTERVAL: pick('ORACLE_UPDATE_INTERVAL', '5000'),
         ORACLE_MIN_DEVIATION: pick('ORACLE_MIN_DEVIATION', '10'),
         ORACLE_SYMBOLS: pick('ORACLE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ,NFLX'),

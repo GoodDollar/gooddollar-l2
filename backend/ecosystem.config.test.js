@@ -104,6 +104,16 @@ const revenueTracker = appByName('revenue-tracker');
 assert(revenueTracker.env.UBI_REVENUE_TRACKER.toLowerCase() === addresses.UBIRevenueTracker.toLowerCase(),
   'revenue-tracker: UBI_REVENUE_TRACKER matches op-stack/addresses.json');
 
+// hedge-engine and oracle-signer must expose explicit health ports so the
+// status-aggregator and check-health-server-sync.sh can reach them.
+const hedgeEngine = appByName('hedge-engine');
+assert(hedgeEngine.env.HEDGE_ENGINE_PORT === '9106',
+  'hedge-engine: HEDGE_ENGINE_PORT explicitly set to 9106');
+
+const oracleSigner = appByName('oracle-signer');
+assert(oracleSigner.env.ORACLE_SIGNER_PORT === '9107',
+  'oracle-signer: ORACLE_SIGNER_PORT explicitly set to 9107');
+
 const src = fs.readFileSync(path.join(__dirname, 'ecosystem.config.js'), 'utf8');
 assert(/require\(['"]dotenv['"]\)/.test(src) || /require\(['"]node:fs['"]\)/.test(src) || /process\.env/.test(src),
   'ecosystem.config.js loads env from .env (dotenv/fs/process.env)');

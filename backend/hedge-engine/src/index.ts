@@ -66,9 +66,22 @@ function createPlaceholderAdapter(): EtoroAdapter {
 async function main(): Promise<void> {
   const config = loadConfig();
 
+  // Start health server FIRST so the process is always reachable on its health
+  // port — even if the engine cannot start due to missing config. PM2 will not
+  // restart-loop the process, and the status-aggregator will see "ok" (or 503
+  // if the RPC is also down) instead of "unreachable".
+  const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+  const healthServer = startHealthServer({
+    name: 'hedge-engine',
+    port: parseInt(process.env.HEALTH_PORT ?? process.env.HEDGE_ENGINE_PORT ?? '9106', 10),
+    chainCheck: async () => Number(await provider.getBlockNumber()),
+  });
+
   if (!config.riskEngineAddress) {
-    console.error('[HedgeEngine] RISK_ENGINE_ADDRESS is required. Exiting.');
-    process.exit(1);
+    console.warn('[HedgeEngine] RISK_ENGINE_ADDRESS is not set — engine loop disabled, health server running on port', process.env.HEDGE_ENGINE_PORT ?? '9106');
+    // Return without exiting: the http.Server above keeps the event loop alive
+    // so PM2 does not restart-loop and the health port stays bound.
+    return;
   }
 
   const reader = new ExposureReader(config.rpcUrl, config.riskEngineAddress);
@@ -78,13 +91,6 @@ async function main(): Promise<void> {
   const executor = new HedgeExecutor(adapter, instrumentMap, config.dryRun);
 
   const engine = new HedgeEngine(reader, calculator, executor, config);
-
-  const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-  const healthServer = startHealthServer({
-    name: 'hedge-engine',
-    port: parseInt(process.env.HEALTH_PORT ?? process.env.HEDGE_ENGINE_PORT ?? '9106', 10),
-    chainCheck: async () => Number(await provider.getBlockNumber()),
-  });
 
   const shutdown = () => {
     console.log('[HedgeEngine] Shutting down...');
