@@ -27,7 +27,7 @@ const RelatedMoversPanel = lazy(() => import('@/components/stocks/RelatedMoversP
 const StockResearchHub = lazy(() => import('@/components/stocks/StockResearchHub').then(mod => ({ default: mod.StockResearchHub })))
 const ExposureNettingPanel = lazy(() => import('@/components/stocks/ExposureNettingPanel').then(mod => ({ default: mod.ExposureNettingPanel })))
 const AmmTradingPanel = lazy(() => import('@/components/stocks/AmmTradingPanel').then(mod => ({ default: mod.AmmTradingPanel })))
-import { getMarketHoursState } from '@/lib/ammPricing'
+import { useMarketHoursState } from '@/lib/useMarketHoursState'
 import {
   type SymbolExposureSummary,
   aggregateExposure,
@@ -175,7 +175,7 @@ export default function StockDetailPage() {
     () => computePortfolioDelta(exposureSummaries),
     [exposureSummaries],
   )
-  const marketState = useMemo(() => getMarketHoursState(new Date()), [])
+  const marketState = useMarketHoursState()
   const timeframeTabRefs = useRef<Record<Timeframe, HTMLButtonElement | null>>({
     '1D': null,
     '1W': null,
