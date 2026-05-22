@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
 import Link from 'next/link'
@@ -12,7 +12,6 @@ import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useStockPosition } from '@/lib/useStocks'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
-import dynamic from 'next/dynamic'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { StockOrderForm } from '@/components/stocks/StockOrderForm'
 import { StockOrderFormFallback } from '@/components/stocks/StockOrderFormFallback'
@@ -21,34 +20,13 @@ import { usePriceServiceStatus, getConsecutiveFailures } from '@/lib/usePriceSer
 import { OracleUnavailableBanner } from '@/components/stocks/OracleUnavailableBanner'
 import { RebalanceBlockSection } from '@/components/stocks/RebalanceBlockSection'
 
-const PriceChart = dynamic(
-  () => import('@/components/PriceChart').then(mod => ({ default: mod.PriceChart })),
-  { ssr: false, loading: () => <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} /> },
-)
-const AnalystOutlookCard = dynamic(
-  () => import('@/components/stocks/AnalystOutlookCard').then(mod => ({ default: mod.AnalystOutlookCard })),
-  { ssr: false, loading: () => <div className="h-28 bg-dark-50/30 rounded-2xl animate-pulse mb-4" /> },
-)
-const NewsEventsPanel = dynamic(
-  () => import('@/components/stocks/NewsEventsPanel').then(mod => ({ default: mod.NewsEventsPanel })),
-  { ssr: false, loading: () => <div className="h-48 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
-)
-const RelatedMoversPanel = dynamic(
-  () => import('@/components/stocks/RelatedMoversPanel').then(mod => ({ default: mod.RelatedMoversPanel })),
-  { ssr: false, loading: () => <div className="h-40 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
-)
-const StockResearchHub = dynamic(
-  () => import('@/components/stocks/StockResearchHub').then(mod => ({ default: mod.StockResearchHub })),
-  { ssr: false, loading: () => <div className="h-32 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
-)
-const ExposureNettingPanel = dynamic(
-  () => import('@/components/stocks/ExposureNettingPanel').then(mod => ({ default: mod.ExposureNettingPanel })),
-  { ssr: false, loading: () => <div className="h-24 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
-)
-const AmmTradingPanel = dynamic(
-  () => import('@/components/stocks/AmmTradingPanel').then(mod => ({ default: mod.AmmTradingPanel })),
-  { ssr: false, loading: () => <div className="h-48 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
-)
+const PriceChart = lazy(() => import('@/components/PriceChart').then(mod => ({ default: mod.PriceChart })))
+const AnalystOutlookCard = lazy(() => import('@/components/stocks/AnalystOutlookCard').then(mod => ({ default: mod.AnalystOutlookCard })))
+const NewsEventsPanel = lazy(() => import('@/components/stocks/NewsEventsPanel').then(mod => ({ default: mod.NewsEventsPanel })))
+const RelatedMoversPanel = lazy(() => import('@/components/stocks/RelatedMoversPanel').then(mod => ({ default: mod.RelatedMoversPanel })))
+const StockResearchHub = lazy(() => import('@/components/stocks/StockResearchHub').then(mod => ({ default: mod.StockResearchHub })))
+const ExposureNettingPanel = lazy(() => import('@/components/stocks/ExposureNettingPanel').then(mod => ({ default: mod.ExposureNettingPanel })))
+const AmmTradingPanel = lazy(() => import('@/components/stocks/AmmTradingPanel').then(mod => ({ default: mod.AmmTradingPanel })))
 import { getMarketHoursState } from '@/lib/ammPricing'
 import {
   type SymbolExposureSummary,
@@ -393,11 +371,13 @@ export default function StockDetailPage() {
             <OracleStatusBadge variant="detail" symbol={stock.ticker} useStocksFallback />
           </div>
 
-          <AnalystOutlookCard
-            currentPrice={stock.price}
-            outlook={analystOutlook}
-            isLoading={analystLoading}
-          />
+          <Suspense fallback={<div className="h-28 bg-dark-50/30 rounded-2xl animate-pulse mb-4" />}>
+            <AnalystOutlookCard
+              currentPrice={stock.price}
+              outlook={analystOutlook}
+              isLoading={analystLoading}
+            />
+          </Suspense>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
             {performanceSummary && (
@@ -458,7 +438,9 @@ export default function StockDetailPage() {
               })}
             </div>
             {mounted ? (
-              <PriceChart data={chartData} height={350} />
+              <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
+                <PriceChart data={chartData} height={350} />
+              </Suspense>
             ) : (
               <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
             )}
@@ -525,19 +507,23 @@ export default function StockDetailPage() {
             </div>
           )}
 
-          <StockResearchHub
-            ticker={stock.ticker}
-            companyName={stock.name}
-            sector={stock.sector}
-            summary={stock.description}
-          />
+          <Suspense fallback={<div className="h-40 bg-dark-50/30 rounded-2xl animate-pulse mb-4" />}>
+            <StockResearchHub
+              ticker={stock.ticker}
+              companyName={stock.name}
+              sector={stock.sector}
+              summary={stock.description}
+            />
+          </Suspense>
 
-          <NewsEventsPanel
-            ticker={stock.ticker}
-            isLoading={newsLoading}
-            error={newsError}
-            items={newsItems}
-          />
+          <Suspense fallback={<div className="h-40 bg-dark-50/30 rounded-2xl animate-pulse mb-4" />}>
+            <NewsEventsPanel
+              ticker={stock.ticker}
+              isLoading={newsLoading}
+              error={newsError}
+              items={newsItems}
+            />
+          </Suspense>
         </div>
 
         <div className="lg:w-80 shrink-0">
@@ -559,20 +545,24 @@ export default function StockDetailPage() {
           />
 
           {hasPosition && (
-            <ExposureNettingPanel
-              summaries={exposureSummaries}
-              portfolioDelta={portfolioDelta}
-            />
+            <Suspense fallback={<div className="h-28 bg-dark-50/30 rounded-2xl animate-pulse mb-4" />}>
+              <ExposureNettingPanel
+                summaries={exposureSummaries}
+                portfolioDelta={portfolioDelta}
+              />
+            </Suspense>
           )}
 
-          <AmmTradingPanel
-            oraclePrice={stock.price}
-            inventoryLong={stock.volume24h * 0.6}
-            inventoryShort={stock.volume24h * 0.4}
-            poolLiquidity={stock.volume24h * 2}
-            marketState={marketState}
-            ticker={stock.ticker}
-          />
+          <Suspense fallback={<div className="h-40 bg-dark-50/30 rounded-2xl animate-pulse mb-4" />}>
+            <AmmTradingPanel
+              oraclePrice={stock.price}
+              inventoryLong={stock.volume24h * 0.6}
+              inventoryShort={stock.volume24h * 0.4}
+              poolLiquidity={stock.volume24h * 2}
+              marketState={marketState}
+              ticker={stock.ticker}
+            />
+          </Suspense>
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
@@ -612,11 +602,13 @@ export default function StockDetailPage() {
             )}
           </div>
 
-          <RelatedMoversPanel
-            currentTicker={stock.ticker}
-            related={relatedSymbols}
-            movers={topMovers}
-          />
+          <Suspense fallback={<div className="h-28 bg-dark-50/30 rounded-2xl animate-pulse mb-4" />}>
+            <RelatedMoversPanel
+              currentTicker={stock.ticker}
+              related={relatedSymbols}
+              movers={topMovers}
+            />
+          </Suspense>
 
           {hasPosition ? (
             <div className="mt-4 bg-dark-100/50 rounded-2xl border border-gray-700/10 p-4">
