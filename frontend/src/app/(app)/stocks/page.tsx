@@ -290,7 +290,7 @@ export default function StocksPage() {
         </div>
       </div>
 
-      <div className="mb-4 sm:mb-5">
+      <div className="mb-2 sm:mb-4">
         <InfoBanner
           title="How Tokenized Stocks Work"
           description="Synthetic stock tokens track real equity prices via StockOracleV2 multi-signer oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 33% of fees to UBI."
@@ -300,9 +300,9 @@ export default function StocksPage() {
 
       {!address && (
         <>
-          <WalletConnectConfigWarning className="mb-4" />
+          <WalletConnectConfigWarning className="mb-2 sm:mb-4" />
           {isLive ? (
-            <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
+            <div className="mb-2 sm:mb-4 p-3 sm:p-4 md:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
@@ -318,7 +318,7 @@ export default function StocksPage() {
               </div>
             </div>
           ) : (
-            <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-yellow-500/25 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5">
+            <div className="mb-2 sm:mb-4 p-3 sm:p-4 md:p-5 rounded-2xl border border-yellow-500/25 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">

@@ -31,7 +31,7 @@ export function InfoBanner({ title, description, storageKey }: InfoBannerProps) 
   }
 
   return (
-    <div className="w-full mb-4 p-3 sm:p-4 rounded-xl bg-goodgreen/5 border border-goodgreen/20 flex items-start gap-3">
+    <div className="w-full mb-2 sm:mb-4 p-2 sm:p-3 md:p-4 rounded-xl bg-goodgreen/5 border border-goodgreen/20 flex items-start gap-2 sm:gap-3">
       <div className="w-5 h-5 mt-0.5 shrink-0 text-goodgreen">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -39,7 +39,7 @@ export function InfoBanner({ title, description, storageKey }: InfoBannerProps) 
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-goodgreen mb-0.5">{title}</p>
-        <p className="text-xs text-gray-400 leading-relaxed">{description}</p>
+        <p className="hidden sm:block text-xs text-gray-400 leading-relaxed">{description}</p>
       </div>
       <button
         onClick={handleDismiss}

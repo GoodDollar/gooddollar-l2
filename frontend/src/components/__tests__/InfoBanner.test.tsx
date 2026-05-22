@@ -30,4 +30,10 @@ describe('InfoBanner', () => {
     expect(screen.queryByText('Test Title')).not.toBeInTheDocument()
     expect(mockStorage['test-key']).toBe('true')
   })
+
+  it('hides description on mobile via responsive class', async () => {
+    render(<InfoBanner title="Test Title" description="Test desc" storageKey="test-key" />)
+    const desc = await screen.findByText('Test desc')
+    expect(desc.className).toMatch(/hidden\s+sm:block/)
+  })
 })
