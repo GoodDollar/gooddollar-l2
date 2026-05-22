@@ -99,8 +99,48 @@ Since the April 2026 audit identifying form labeling gaps, significant improveme
 
 **Grade Improvement**: B+ → A- (Form labeling issues from April audit fully resolved)
 
+## Bundle Size Optimization Analysis — May 22, 2026 ⚠️
+
+**Issue Identified**: Stocks ticker page exceeds bundle budget by 56KB (1306KB vs 1250KB).
+
+### 🔍 Root Cause Analysis
+The test suite expects dynamic loading optimizations that are **not implemented**:
+
+**Missing Optimizations** (expected by `stocks-detail-deferred-modules.test.ts`):
+- ❌ `DeferredAnalystOutlookCard = dynamic(...)` 
+- ❌ `DeferredNewsEventsPanel = dynamic(...)`
+- ❌ `DeferredRelatedMoversPanel = dynamic(...)`
+- ❌ `useBelowFoldActivation()` for viewport-based loading
+
+**Current Implementation**: Static imports for all components (982-line page component)
+
+### 📊 Bundle Composition Analysis
+Top contributors to `/stocks/[ticker]` page (1306KB):
+- 209KB: `8791-de7e81ff428d4d61.js` (charts/heavy components)
+- 169KB: `618f8807-4b9095aa84720473.js` (shared vendor)
+- 151KB: `4c9ea761-bd3afc12f0877823.js` (page-specific bundle)
+
+### ✅ Solution Pattern Available
+Portfolio page (`StocksPortfolioContent.tsx`) demonstrates correct dynamic import pattern:
+```jsx
+const DeferredComponent = dynamic(() => import('./Component'), {
+  ssr: false,
+  loading: () => <SkeletonWithAriaLive />
+})
+```
+
+### 🎯 Optimization Recommendation
+Implement deferred loading for non-critical components:
+1. **NewsEventsPanel** → Load when section becomes visible
+2. **RelatedMoversPanel** → Load when section becomes visible  
+3. **AnalystOutlookCard** → Load when section becomes visible
+4. Consider chart splitting for **PriceChart** and **DepthChart**
+
+**Expected Impact**: Reduce initial bundle by ~150-200KB, bringing page under 1250KB budget.
+
 **✨ No Critical Issues Found**
 Frontend has reached the quality bar defined in agent requirements. Focus areas for future iterations:
+- **Priority**: Implement missing dynamic imports for stocks ticker page bundle optimization
 - Continue monitoring bundle sizes as new features are added
 - Maintain accessibility standards on new components - monitor contrast ratios and avoid nested interactive controls
 - Keep design system documentation current
