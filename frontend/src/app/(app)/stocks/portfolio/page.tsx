@@ -96,7 +96,14 @@ function HoldingRow({ holding, onClick }: { holding: PortfolioHolding; onClick: 
   const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
 
   return (
-    <tr onClick={onClick} className="border-b border-gray-700/10 hover:bg-white/[0.04] cursor-pointer transition-colors">
+    <tr
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter') onClick() }}
+      role="link"
+      tabIndex={0}
+      data-testid={`portfolio-holding-row-${holding.ticker}`}
+      className="border-b border-gray-700/10 hover:bg-white/[0.04] active:bg-white/[0.08] cursor-pointer transition-colors"
+    >
       <td className="py-3 px-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-[9px] font-bold text-goodgreen">
@@ -115,6 +122,11 @@ function HoldingRow({ holding, onClick }: { holding: PortfolioHolding; onClick: 
       <td className={`py-3 px-3 text-right text-sm font-medium ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
         {pnl >= 0 ? '+' : ''}{formatStockPrice(pnl)}
         <span className="text-xs ml-1 opacity-70">({pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%)</span>
+      </td>
+      <td className="py-3 pl-1 pr-3 text-gray-500" data-testid="portfolio-holding-chevron">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="inline-block">
+          <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </td>
     </tr>
   )
@@ -328,6 +340,7 @@ export default function StocksPortfolioPage() {
                     <th className="text-right py-2.5 px-3 font-semibold">Price</th>
                     <th className="text-right py-2.5 px-3 font-semibold hidden sm:table-cell">Value</th>
                     <th className="text-right py-2.5 px-3 font-semibold">P&L</th>
+                    <th className="w-8"><span className="sr-only">Navigate</span></th>
                   </tr>
                 </thead>
                 <tbody>
