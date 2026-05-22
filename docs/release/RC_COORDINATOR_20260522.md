@@ -2,7 +2,7 @@
 
 **Lane:** `lane/coordinator-20260522`  
 **Base:** `8035c1d5` (`release/goodchain-l2-rc-2026-05-22`)  
-**Integration HEAD:** `96ac8e90` (after coordinator report commit: see git log)  
+**Integration HEAD:** `a297e9c3` (includes this report)  
 **Policy:** No push. No main modification. No production/PM2 restarts.
 
 ---
@@ -114,7 +114,7 @@ Test: `Perps full on-chain flow › opens a real market position through the UI 
 | Field | Value |
 |-------|-------|
 | **Verdict** | **PARTIAL** |
-| **Integration commit** | `96ac8e90` (+ coordinator report commit on same branch) |
+| **Integration commit** | `a297e9c3` |
 | **Conflicts** | None |
 | **Gates** | Foundry 55/55 on security suites + GoodDollarTokenSecure; build:e2e PASS; analytics+app-regression 62/62 PASS; perps 19/20 PASS (1 fail) |
 | **Primary blocker** | Perps full on-chain open-position assertion |
