@@ -72,7 +72,6 @@ export function FinancialsCard({ ticker }: FinancialsCardProps) {
 
       {expanded && (
         <div className="px-4 pb-4 space-y-4 border-t border-gray-800/60">
-          {/* Earnings summary */}
           <div className="pt-3 flex items-center justify-between">
             <div>
               <span className="text-xs text-gray-500">Last Quarter ({lastQuarter.quarter})</span>
@@ -94,7 +93,6 @@ export function FinancialsCard({ ticker }: FinancialsCardProps) {
             </div>
           </div>
 
-          {/* Revenue bar chart */}
           <div>
             <p className="text-xs text-gray-500 mb-2">Quarterly Revenue</p>
             <div className="flex gap-2">
@@ -104,7 +102,6 @@ export function FinancialsCard({ ticker }: FinancialsCardProps) {
             </div>
           </div>
 
-          {/* EPS history */}
           <div>
             <p className="text-xs text-gray-500 mb-2">EPS History</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

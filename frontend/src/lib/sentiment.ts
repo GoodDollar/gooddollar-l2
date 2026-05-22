@@ -1,9 +1,3 @@
-/**
- * Deterministic sentiment generation from ticker string.
- * Uses a simple string hash to produce consistent bullish/bearish %
- * per ticker without any real backend.
- */
-
 function hashString(str: string): number {
   let hash = 5381
   for (let i = 0; i < str.length; i++) {

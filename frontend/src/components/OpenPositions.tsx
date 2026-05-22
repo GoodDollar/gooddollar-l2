@@ -48,7 +48,6 @@ function PositionRow({ pos }: { pos: OpenPosition }) {
 
   return (
     <div className="px-3 py-3 border-b border-gray-700/10 last:border-0">
-      {/* Header: pair + side badge + PnL */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-white">{pos.pair}</span>
@@ -66,7 +65,6 @@ function PositionRow({ pos }: { pos: OpenPosition }) {
         </div>
       </div>
 
-      {/* Price grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5 text-[11px] mb-2">
         <div className="flex flex-col">
           <span className="text-gray-500">Entry Price</span>
@@ -89,7 +87,6 @@ function PositionRow({ pos }: { pos: OpenPosition }) {
         </div>
       </div>
 
-      {/* Size + margin row */}
       <div className="flex items-center justify-between text-[11px]">
         <div className="flex items-center gap-4">
           <span className="text-gray-500">Size <span className="text-gray-300 ml-0.5">{pos.size}</span></span>
@@ -97,7 +94,6 @@ function PositionRow({ pos }: { pos: OpenPosition }) {
           <span className="px-1.5 py-0.5 rounded text-[10px] text-gray-500 bg-dark-50/50">{pos.marginMode}</span>
         </div>
 
-        {/* Close controls */}
         <div>
           {showClose ? (
             <div className="flex gap-2">

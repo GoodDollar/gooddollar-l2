@@ -12,6 +12,8 @@ import { useStockTrades } from '@/lib/useStockTrades'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
+const ALLOC_COLORS = ['#00C853', '#2196F3', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4', '#FF5722', '#607D8B']
+
 const DeferredStocksPortfolioImpactSection = dynamic(
   () => import('./StocksPortfolioImpactSection').then((module) => module.StocksPortfolioImpactSection),
   {
@@ -156,8 +158,6 @@ export function StocksPortfolioContent() {
   const hasLivePositions = holdings.some((holding) => holding.shares > 0)
   const hasRiskPosition = hasLivePositions && summary.totalRequired > 0
   const isLoading = holdingsLoading || tradesLoading
-
-  const ALLOC_COLORS = ['#00C853', '#2196F3', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4', '#FF5722', '#607D8B']
 
   const allocation = useMemo(() => {
     if (!hasLivePositions || totalValue <= 0) return []
