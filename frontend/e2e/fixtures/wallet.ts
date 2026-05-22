@@ -25,11 +25,13 @@ const BROWSER_RPC_URL = '/api/rpc'
  */
 type MockWalletOptions = {
   chainId?: number
+  /** Simulate the user rejecting the account-access prompt (EIP-1193 code 4001). */
+  rejectRequestAccounts?: boolean
 }
 
 export async function injectMockWallet(page: Page, options: MockWalletOptions = {}) {
   await page.addInitScript(
-    ({ address, chainId, rpcUrl }) => {
+    ({ address, chainId, rpcUrl, rejectRequestAccounts }) => {
       let activeChainId = chainId
       const toChainHex = (id: number) => `0x${id.toString(16)}`
 
@@ -71,8 +73,18 @@ export async function injectMockWallet(page: Page, options: MockWalletOptions = 
         }): Promise<unknown> {
           switch (method) {
             case 'eth_accounts':
-            case 'eth_requestAccounts':
               return [address]
+
+            case 'eth_requestAccounts': {
+              if (rejectRequestAccounts) {
+                const error = new Error('User rejected the request.') as Error & {
+                  code: number
+                }
+                error.code = 4001
+                throw error
+              }
+              return [address]
+            }
 
             case 'eth_chainId':
               return toChainHex(activeChainId)
@@ -186,7 +198,12 @@ export async function injectMockWallet(page: Page, options: MockWalletOptions = 
       window.addEventListener('eip6963:requestProvider', announceProvider)
       announceProvider()
     },
-    { address: TESTER_ADDRESS, chainId: options.chainId ?? CHAIN_ID, rpcUrl: BROWSER_RPC_URL },
+    {
+      address: TESTER_ADDRESS,
+      chainId: options.chainId ?? CHAIN_ID,
+      rpcUrl: BROWSER_RPC_URL,
+      rejectRequestAccounts: Boolean(options.rejectRequestAccounts),
+    },
   )
 }
 

@@ -34,7 +34,7 @@ export function applyRuntimeDistDir({ dev, env = process.env } = {}) {
   if (env.NEXT_DIST_DIR) return env.NEXT_DIST_DIR
 
   // Keep dev-server artifacts isolated from the production/start build tree.
-  env.NEXT_DIST_DIR = '.next.dev'
+  env.NEXT_DIST_DIR = '.next.runtime-dev'
   return env.NEXT_DIST_DIR
 }
 

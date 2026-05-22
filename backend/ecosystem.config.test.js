@@ -15,7 +15,6 @@ const addresses = require('../op-stack/addresses.json').contracts;
 const BACKEND_SERVICES = [
   'activity-reporter',
   'bridge-keeper',
-  'goodswap',
   'harvest-keeper',
   'hedge-engine',
   'indexer',

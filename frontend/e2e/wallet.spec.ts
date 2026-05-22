@@ -94,6 +94,29 @@ test.describe('Mock wallet integration', () => {
     )
   })
 
+  test('mock wallet can simulate rejected account access', async ({ page }) => {
+    await injectMockWallet(page, { rejectRequestAccounts: true })
+    await page.goto('/swap')
+    await page.waitForLoadState('networkidle')
+
+    const rejection = await page.evaluate(async () => {
+      try {
+        await (window as any).ethereum?.request({ method: 'eth_requestAccounts' })
+        return null
+      } catch (error) {
+        return {
+          code: (error as { code?: number }).code,
+          message: (error as Error).message,
+        }
+      }
+    })
+
+    expect(rejection).toEqual({
+      code: 4001,
+      message: 'User rejected the request.',
+    })
+  })
+
   test('mock wallet records and applies chain switch requests for wrong-chain assertions', async ({ page }) => {
     await injectMockWallet(page, { chainId: 1 })
     await page.goto('/swap')
