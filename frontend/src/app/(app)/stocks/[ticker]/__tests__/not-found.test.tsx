@@ -5,7 +5,7 @@ import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
 const routerPush = vi.fn()
-const mockChartData = vi.fn(() => [])
+const mockChartData = vi.hoisted(() => vi.fn())
 let currentStocks: Array<{
   ticker: string
   name: string
@@ -63,7 +63,7 @@ vi.mock('@/components/PriceChart', () => ({
 }))
 
 vi.mock('@/lib/chartData', () => ({
-  getChartData: (...args: unknown[]) => mockChartData(...args),
+  getChartData: mockChartData,
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({

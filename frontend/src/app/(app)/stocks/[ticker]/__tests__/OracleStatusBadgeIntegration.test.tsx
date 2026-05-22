@@ -29,6 +29,7 @@ describe('Stock detail page OracleStatusBadge integration', () => {
       status: null,
       isLoading: false,
       error: 'quote status unavailable',
+      refresh: vi.fn(),
     })
     // Fallback `/api/status` is healthy via the stocks-keeper service.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -55,6 +56,7 @@ describe('Stock detail page OracleStatusBadge integration', () => {
       status: null,
       isLoading: false,
       error: 'quote status unavailable',
+      refresh: vi.fn(),
     })
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
@@ -79,6 +81,7 @@ describe('Stock detail page OracleStatusBadge integration', () => {
       status: null,
       isLoading: false,
       error: 'quote status unavailable',
+      refresh: vi.fn(),
     })
 
     let resolveFetch: ((value: Response) => void) | null = null
@@ -94,7 +97,7 @@ describe('Stock detail page OracleStatusBadge integration', () => {
     expect(screen.getByText('Checking oracle...')).toBeInTheDocument()
     expect(screen.queryByText('Oracle offline')).not.toBeInTheDocument()
 
-    resolveFetch?.(
+    resolveFetch!(
       new Response(
         JSON.stringify({
           overall: 'healthy',
@@ -113,6 +116,7 @@ describe('Stock detail page OracleStatusBadge integration', () => {
       status: null,
       isLoading: false,
       error: 'quote status unavailable',
+      refresh: vi.fn(),
     })
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'))
 
@@ -126,6 +130,7 @@ describe('Stock detail page OracleStatusBadge integration', () => {
       status: null,
       isLoading: false,
       error: 'quote status unavailable',
+      refresh: vi.fn(),
     })
     // Even though /api/status would return healthy, opting out must NOT fetch
     // it and must render the legacy "Oracle offline" copy.
