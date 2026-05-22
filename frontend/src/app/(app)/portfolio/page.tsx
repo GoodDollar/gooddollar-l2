@@ -133,7 +133,7 @@ export default function PortfolioPage() {
               )
             })}
             {stockHoldings.length > 3 && (
-              <p className="text-xs text-gray-500 text-center pt-1">+{stockHoldings.length - 3} more</p>
+              <Link href="/stocks/portfolio" className="block text-xs text-goodgreen hover:underline text-center pt-1">+{stockHoldings.length - 3} more</Link>
             )}
           </div>
         )}
@@ -185,7 +185,7 @@ export default function PortfolioPage() {
               )
             })}
             {predictPositions.length > 3 && (
-              <p className="text-xs text-gray-500 text-center pt-1">+{predictPositions.length - 3} more</p>
+              <Link href="/predict" className="block text-xs text-goodgreen hover:underline text-center pt-1">+{predictPositions.length - 3} more</Link>
             )}
           </div>
         )}
@@ -232,7 +232,7 @@ export default function PortfolioPage() {
               </Link>
             ))}
             {perpsPositions.length > 3 && (
-              <p className="text-xs text-gray-500 text-center pt-1">+{perpsPositions.length - 3} more</p>
+              <Link href="/perps" className="block text-xs text-goodgreen hover:underline text-center pt-1">+{perpsPositions.length - 3} more</Link>
             )}
           </div>
         )}
