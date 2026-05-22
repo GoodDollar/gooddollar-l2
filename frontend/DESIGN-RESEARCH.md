@@ -2328,4 +2328,28 @@ Our component library exceeds most DeFi applications in completeness and sophist
 - **Accessibility-first** foundation through Radix UI primitives
 - **Storybook documentation** for maintainable design system
 
+**Component Standardization Opportunity Identified (May 22, 2026):**
+
+**Manual Button Patterns vs Standardized Components**
+Found inconsistent usage between manual button styling and existing Radix UI Tabs component:
+
+✅ **Proper Usage** (predict/portfolio/page.tsx):
+```tsx
+<Tabs defaultValue="positions">
+  <TabsList>
+    <TabsTrigger value="positions">Positions</TabsTrigger>
+    <TabsTrigger value="history">History</TabsTrigger>
+  </TabsList>
+</Tabs>
+```
+
+⚠️ **Manual Implementation** (stocks/[ticker]/page.tsx):
+```tsx
+<button className={`px-2 py-1 ${peerMetric === 'change24h' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400'}`}>
+```
+
+**Recommendation**: Standardize tab/toggle buttons in stocks pages to use existing Tabs component for consistency, accessibility, and maintainability.
+
+**Impact**: ~6 manual button implementations → standardized Radix UI Tabs (better a11y, consistent styling, reduced code)
+
 **No gaps identified** - component library is comprehensive for current and future DeFi interface needs.
