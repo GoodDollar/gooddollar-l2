@@ -348,8 +348,9 @@ function main() {
  * PM2 env, so this returns false and tests can import the module safely.
  */
 export function shouldRunMain({ argv1, modulePath, env }) {
-  if (argv1 && argv1 === modulePath) return true
   const e = env || {}
+  if (e.VITEST || e.VITEST_WORKER_ID) return false
+  if (argv1 && argv1 === modulePath) return true
   if (e.pm_id !== undefined && e.pm_id !== '') return true
   if (e.PM2_HOME && e.name) return true
   return false
