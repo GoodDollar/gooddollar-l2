@@ -41,11 +41,11 @@ contract GoodDollarTokenSecure is ReentrancyGuard {
     struct VerificationVote {
         uint256 approvals;
         uint256 rejections;
-        mapping(address => bool) hasVoted;
         bool status; // true = verify, false = revoke
-        bool executed;
     }
     mapping(address => VerificationVote) public verificationVotes;
+    mapping(address => uint256) public verificationVoteEpoch;
+    mapping(address => mapping(uint256 => mapping(address => bool))) private _verificationHasVoted;
     mapping(address => uint256) public pendingVerificationId;
 
     // Security: Role-Based Access Control
@@ -256,19 +256,19 @@ contract GoodDollarTokenSecure is ReentrancyGuard {
         if (human == address(0)) revert HumanAddressCannotBeZero();
 
         VerificationVote storage vote = verificationVotes[human];
+        uint256 epoch = verificationVoteEpoch[human];
 
         // Initialize new vote if needed
-        if (vote.approvals == 0 && vote.rejections == 0 && !vote.executed) {
+        if (vote.approvals == 0 && vote.rejections == 0) {
             vote.status = status;
         }
 
         // Ensure vote is for the same action (verify/revoke)
         if (vote.status != status) revert VoteStatusMismatch();
-        if (vote.executed) revert VoteAlreadyExecuted();
-        if (vote.hasVoted[msg.sender]) revert AlreadyVoted();
+        if (_verificationHasVoted[human][epoch][msg.sender]) revert AlreadyVoted();
 
         // Cast vote
-        vote.hasVoted[msg.sender] = true;
+        _verificationHasVoted[human][epoch][msg.sender] = true;
         if (approval) {
             vote.approvals++;
         } else {
@@ -283,8 +283,9 @@ contract GoodDollarTokenSecure is ReentrancyGuard {
 
         if (vote.approvals >= requiredVotes) {
             _executeVerification(human, status);
-            vote.executed = true;
             emit VerificationConsensusReached(human, status, vote.approvals, vote.rejections);
+            delete verificationVotes[human];
+            verificationVoteEpoch[human]++;
         }
     }
 
