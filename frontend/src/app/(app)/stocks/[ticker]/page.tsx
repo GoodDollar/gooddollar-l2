@@ -150,6 +150,8 @@ function OrderForm({
   const effectivePrice = orderType !== 'market' && parsedLimitPrice > 0 ? parsedLimitPrice : (orderType !== 'market' ? 0 : stock.price)
   const parsedTp = parseFloat(tp) || 0
   const parsedSl = parseFloat(sl) || 0
+  const tpWrongSide = parsedTp > 0 && effectivePrice > 0 && ((side === 'buy' && parsedTp <= effectivePrice) || (side === 'sell' && parsedTp >= effectivePrice))
+  const slWrongSide = parsedSl > 0 && effectivePrice > 0 && ((side === 'buy' && parsedSl >= effectivePrice) || (side === 'sell' && parsedSl <= effectivePrice))
   const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
   const fee = amount ? parseFloat(amount) * 0.001 : 0
   const ubiFee = fee * 0.33
@@ -377,8 +379,13 @@ function OrderForm({
                 placeholder={side === 'buy' ? (stock.price * 1.1).toFixed(2) : (stock.price * 0.9).toFixed(2)}
                 value={tp}
                 onChange={e => setTp(sanitizeNumericInput(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/30 text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50" />
-              {parsedTp > 0 && shares > 0 && effectivePrice > 0 && (() => {
+                className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${tpWrongSide ? 'border-yellow-500/50' : 'border-gray-700/30'}`} />
+              {tpWrongSide && (
+                <p className="text-yellow-400 text-[10px] mt-1">
+                  {side === 'buy' ? 'Take profit should be above current price' : 'Take profit should be below current price'}
+                </p>
+              )}
+              {!tpWrongSide && parsedTp > 0 && shares > 0 && effectivePrice > 0 && (() => {
                 const diff = side === 'buy' ? parsedTp - effectivePrice : effectivePrice - parsedTp
                 const pnl = diff * shares
                 return (
@@ -395,8 +402,13 @@ function OrderForm({
                 placeholder={side === 'buy' ? (stock.price * 0.95).toFixed(2) : (stock.price * 1.05).toFixed(2)}
                 value={sl}
                 onChange={e => setSl(sanitizeNumericInput(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/30 text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50" />
-              {parsedSl > 0 && shares > 0 && effectivePrice > 0 && (() => {
+                className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${slWrongSide ? 'border-yellow-500/50' : 'border-gray-700/30'}`} />
+              {slWrongSide && (
+                <p className="text-yellow-400 text-[10px] mt-1">
+                  {side === 'buy' ? 'Stop loss should be below current price' : 'Stop loss should be above current price'}
+                </p>
+              )}
+              {!slWrongSide && parsedSl > 0 && shares > 0 && effectivePrice > 0 && (() => {
                 const diff = side === 'buy' ? parsedSl - effectivePrice : effectivePrice - parsedSl
                 const pnl = diff * shares
                 return (
