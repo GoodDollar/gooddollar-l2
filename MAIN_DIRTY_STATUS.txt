@@ -1,0 +1,12 @@
+ M docs/screenshots/testnet-guide.png
+ M frontend/src/app/(app)/perps/page.tsx
+ M op-stack/addresses.json
+ M script/DeployPerps.s.sol
+?? DEPLOYMENT_READINESS_REPORT.md
+?? SECURITY_VALIDATION_CHECKLIST.md
+?? TESTNET_DEPLOYMENT_SUMMARY.md
+?? script/DeploySecureGoodDollarTestnet.s.sol
+?? test/MultiOracleConsensus.t.sol
+?? test/PerformanceValidation.t.sol
+?? test/SecurityValidation.t.sol
+?? test/StateMigration.t.sol

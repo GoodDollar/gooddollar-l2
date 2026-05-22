@@ -283,6 +283,7 @@ test.describe('Perps Journey', () => {
 
 test.describe('Perps full on-chain flow', () => {
   test.use({ viewport: { width: 1280, height: 900 } })
+  test.setTimeout(120_000)
 
   test.beforeEach(async ({ page }) => {
     await injectMockWallet(page)

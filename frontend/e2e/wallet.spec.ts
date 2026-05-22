@@ -15,15 +15,21 @@ test.describe('Wallet connection', () => {
 
   test('clicking Connect Wallet opens the RainbowKit wallet picker', async ({ page }) => {
     await page.getByRole('button', { name: /connect wallet/i }).click()
-    await expect(page.getByText(/connect a wallet/i)).toBeVisible()
-    await expect(page.getByText(/metamask/i)).toBeVisible()
+    const dialog = page.getByRole('dialog', { name: /connect a wallet/i })
+    await expect(dialog).toBeVisible({ timeout: 5000 })
+    // E2E runs without WalletConnect project id (extension-only wallets). Production
+    // may list MetaMask via WC; accept either connector label inside the dialog.
+    await expect(
+      dialog.getByRole('button', { name: /browser wallet|metamask/i }).first(),
+    ).toBeVisible()
   })
 
   test('wallet picker can be dismissed', async ({ page }) => {
     await page.getByRole('button', { name: /connect wallet/i }).click()
-    await expect(page.getByText(/connect a wallet/i)).toBeVisible()
+    const dialog = page.getByRole('dialog', { name: /connect a wallet/i })
+    await expect(dialog).toBeVisible({ timeout: 5000 })
     await page.keyboard.press('Escape')
-    await expect(page.getByText(/connect a wallet/i)).not.toBeVisible({ timeout: 5000 })
+    await expect(dialog).not.toBeVisible({ timeout: 5000 })
   })
 
   test('Connect Wallet button is accessible on mobile', async ({ page }) => {
@@ -216,7 +222,9 @@ test.describe('Mock wallet integration', () => {
     await page.goto('/swap')
     await page.waitForLoadState('networkidle')
 
+    // Mock EIP-6963 provider may auto-connect; header then shows account, not CTA.
     const connectBtn = page.getByRole('button', { name: /connect wallet/i })
-    await expect(connectBtn).toBeVisible({ timeout: 10000 })
+    const accountBtn = page.getByRole('button', { name: /wallet account/i })
+    await expect(connectBtn.or(accountBtn)).toBeVisible({ timeout: 10000 })
   })
 })

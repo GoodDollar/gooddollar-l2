@@ -235,10 +235,14 @@ export default function ActivityPage() {
       setLoading(false)
       setRpcError(null)
     } catch (e) {
-      console.error('Fetch error:', e)
       if (e instanceof RpcError) {
+        // Rate limits / upstream RPC failures are surfaced in the page banner;
+        // keep them out of console.error so route-smoke E2E only fails on true
+        // unhandled application errors.
+        console.warn('RPC fetch warning:', e.message)
         setRpcError(e)
       } else {
+        console.error('Fetch error:', e)
         // Wrap non-RpcError failures so the banner still renders with useful
         // context instead of leaving the page in a silent indeterminate state.
         setRpcError(new RpcError('unknown', 'unexpected', (e as Error)?.message || String(e), RPC_URL))

@@ -26,7 +26,7 @@ export function IndicatorToggle({ indicators, onChange }: IndicatorToggleProps) 
             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
               active
                 ? 'bg-white/5 text-white border border-white/10'
-                : 'text-gray-400 hover:text-gray-200 border border-transparent'
+                : 'text-gray-300 hover:text-white border border-transparent'
             }`}
           >
             <span

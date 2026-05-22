@@ -6,7 +6,7 @@
  * Fast iteration (E2E_DEV_SERVER=1): `next dev` into `.next.e2e` (shorter runs only).
  */
 
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -53,10 +53,19 @@ const serverArgs = [
   String(port),
 ]
 
-const server = spawnSync(process.execPath, serverArgs, {
+const server = spawn(process.execPath, serverArgs, {
   cwd: frontendRoot,
   env: serverEnv,
   stdio: 'inherit',
 })
 
-process.exit(server.status ?? (server.signal ? 1 : 0))
+function forwardSignal(signal) {
+  if (!server.killed) server.kill(signal)
+}
+
+process.on('SIGINT', () => forwardSignal('SIGINT'))
+process.on('SIGTERM', () => forwardSignal('SIGTERM'))
+
+server.on('exit', (code, signal) => {
+  process.exit(code ?? (signal ? 1 : 0))
+})

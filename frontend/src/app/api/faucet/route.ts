@@ -145,6 +145,34 @@ async function handleGet(request: NextRequest) {
   return NextResponse.redirect(`${proto}://${host}/faucet`)
 }
 
+async function rejectInvalidFaucetRecipient(
+  request: Request,
+): Promise<NextResponse | null> {
+  try {
+    const body = await parseJsonBody(request)
+    const address =
+      body && typeof body === 'object' && 'address' in body
+        ? (body as { address: unknown }).address
+        : undefined
+
+    if (typeof address !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return NextResponse.json({ error: 'Invalid address' }, { status: 400 })
+    }
+    if (!isClaimableFaucetAddress(address)) {
+      return NextResponse.json(
+        { error: 'Invalid or unsupported recipient address' },
+        { status: 400 },
+      )
+    }
+    return null
+  } catch (error) {
+    if (error instanceof FaucetBadRequestError) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+    throw error
+  }
+}
+
 async function handlePost(request: NextRequest) {
   try {
     const body = await parseJsonBody(request)
@@ -277,7 +305,15 @@ async function handlePost(request: NextRequest) {
 }
 
 export const GET = withApiRateLimit(handleGet)
-export const POST = withApiRateLimit(handlePost)
+
+const rateLimitedPost = withApiRateLimit(handlePost)
+
+/** Reject malformed / burn addresses before the shared IP bucket (see withApiRateLimit). */
+export async function POST(request: NextRequest) {
+  const rejection = await rejectInvalidFaucetRecipient(request.clone())
+  if (rejection) return rejection
+  return rateLimitedPost(request)
+}
 
 // Reject unsupported methods with a structured JSON envelope (405).
 const ALLOWED = ['GET', 'POST'] as const

@@ -63,27 +63,46 @@ function resolveTarget(href: string, base: string): string {
   return href
 }
 
+/** Status codes that indicate transient overload, not a broken target. */
+const TRANSIENT_RATE_LIMIT = new Set([429])
+const TRANSIENT_EXTERNAL = new Set([429, 502, 503, 504])
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+type FetchRetryOptions = {
+  attempts?: number
+  /** When the response status is in this set, backoff and retry. */
+  retryOn?: ReadonlySet<number>
+}
+
 /**
- * GET with retry-on-429. The sandbox proxy rate-limits aggressively when the
- * spec fans out 10+ link checks back-to-back; CI sees a clean network and
- * never retries. Honours Retry-After when present, otherwise quadratic
- * backoff capped at 10s. Returns the last response either way so the caller
- * can still assert on it.
+ * GET with bounded retries on transient statuses. Internal routes only retry
+ * rate limits (429) so a real 503 from the app still fails fast. External
+ * GitHub probes also retry gateway overload (502/503/504). Honours
+ * Retry-After when present, otherwise quadratic backoff capped at 10s.
  */
+const REQUEST_TIMEOUT_MS = 20_000
+
 async function fetchWithRetry(
   request: APIRequestContext,
   url: string,
-  attempts = 5,
+  { attempts = 5, retryOn = TRANSIENT_RATE_LIMIT }: FetchRetryOptions = {},
 ) {
   let last: Awaited<ReturnType<APIRequestContext['get']>> | undefined
   for (let i = 0; i < attempts; i++) {
-    last = await request.get(url, { failOnStatusCode: false, maxRedirects: 5 })
-    if (last.status() !== 429) return last
+    last = await request.get(url, {
+      failOnStatusCode: false,
+      maxRedirects: 5,
+      timeout: REQUEST_TIMEOUT_MS,
+    })
+    if (!retryOn.has(last.status())) return last
     const ra = Number.parseInt(last.headers()['retry-after'] ?? '', 10)
     const waitMs = Number.isFinite(ra)
       ? Math.min(ra * 1000, 10_000)
       : Math.min(500 * (i + 1) * (i + 1), 8_000)
-    await new Promise((r) => setTimeout(r, waitMs))
+    await sleep(waitMs)
   }
   return last!
 }
@@ -132,9 +151,9 @@ test.describe('Testnet guide link-check (iter 14 proof)', () => {
     request,
     baseURL,
   }) => {
-    // Generous budget: live page on a remote host through a possible MITM
-    // proxy, plus 5 outbound github.com HEAD-equivalents.
-    test.setTimeout(120_000)
+    // Generous budget: dev-server cold routes, many internal probes, and
+    // paced GitHub checks with transient-status retries.
+    test.setTimeout(240_000)
 
     const liveBase = process.env.PUBLIC_APP_URL ?? baseURL ?? ''
     expect(liveBase, 'PUBLIC_APP_URL or playwright baseURL must be set').toBeTruthy()
@@ -156,6 +175,9 @@ test.describe('Testnet guide link-check (iter 14 proof)', () => {
       /Error checking Cross-Origin-Opener-Policy/i,
       /net::ERR_/i,
       /\b429\b/,
+      // E2E runners omit WalletConnect secrets; wagmi logs once at startup.
+      /\[wagmi\].*WC_PROJECT_ID/i,
+      /NEXT_PUBLIC_WC_PROJECT_ID is missing or invalid/i,
     ]
     const isBrowserNetworkNoise = (s: string) =>
       BROWSER_NETWORK_NOISE.some((re) => re.test(s))
@@ -209,7 +231,10 @@ test.describe('Testnet guide link-check (iter 14 proof)', () => {
     const internalReport: { href: string; status: number; ok: boolean }[] = []
     for (const href of internalHrefs) {
       const target = resolveTarget(href, liveBase)
-      const res = await fetchWithRetry(request, target)
+      const res = await fetchWithRetry(request, target, {
+        attempts: 4,
+        retryOn: TRANSIENT_RATE_LIMIT,
+      })
       const status = res.status()
       const ok = status < 400
       internalReport.push({ href, status, ok })
@@ -226,12 +251,19 @@ test.describe('Testnet guide link-check (iter 14 proof)', () => {
     ]
     const externalReport: { href: string; status: number; ok: boolean }[] = []
     for (const href of externalHrefsToCheck) {
-      // Some servers reject HEAD; use GET with failOnStatusCode:false.
-      const res = await fetchWithRetry(request, href)
+      // Pace probes — github.com rate-limits bursty CI runners (429/503).
+      if (externalReport.length > 0) await sleep(800)
+      const res = await fetchWithRetry(request, href, {
+        attempts: 5,
+        retryOn: TRANSIENT_EXTERNAL,
+      })
       const status = res.status()
       const ok = status < 400
       externalReport.push({ href, status, ok })
-      expect(ok, `external link ${href} returned ${status}`).toBe(true)
+      expect(
+        ok,
+        `external link ${href} returned ${status} (transient 429/502/503/504 retried)`,
+      ).toBe(true)
     }
 
     // ── Step 4: no console errors (proves 0015 is still in) ─────────────

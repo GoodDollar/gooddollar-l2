@@ -565,6 +565,13 @@ export const SyntheticAssetFactoryABI = [
 // ─── MarginVault ABI (deposit / withdraw / balances) ─────────────────────────
 export const MarginVaultABI = [
   {
+    inputs: [],
+    name: 'collateral',
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [{ name: 'amount', type: 'uint256' }],
     name: 'deposit',
     outputs: [],
