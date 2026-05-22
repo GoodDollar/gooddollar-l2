@@ -151,9 +151,10 @@ interface StockRowProps {
   stock: Stock
   idx: number
   onRowClick: (ticker: string) => void
+  isLive: boolean
 }
 
-const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProps) {
+const StockRow = memo(function StockRow({ stock, idx, onRowClick, isLive }: StockRowProps) {
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -170,7 +171,10 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
         </div>
       </td>
       <td className="py-3 px-3 text-right text-white font-medium">
-        {formatStockPrice(stock.price)}
+        <span className="inline-flex items-center gap-1.5">
+          {formatStockPrice(stock.price)}
+          {!isLive && <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded-md font-medium">Delayed</span>}
+        </span>
       </td>
       <td className="py-3 px-3 text-right font-medium">
         <PercentageChange value={stock.change24h} decimals={2} size="sm" />
@@ -509,7 +513,10 @@ export default function StocksPage() {
                 </div>
               </div>
               <div className="text-right shrink-0 w-[96px]">
-                <p className="text-white font-medium text-sm whitespace-nowrap">{formatStockPrice(stock.price)}</p>
+                <p className="text-white font-medium text-sm whitespace-nowrap inline-flex items-center gap-1 justify-end w-full">
+                  {formatStockPrice(stock.price)}
+                  {!isLive && <span className="text-[9px] text-amber-400/80 bg-amber-500/10 px-1 py-0.5 rounded font-medium">Delayed</span>}
+                </p>
                 <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
                 </div>
@@ -580,7 +587,7 @@ export default function StocksPage() {
                 </tr>
               ) : (
                 filtered.map((stock, idx) => (
-                  <StockRow key={stock.ticker} stock={stock} idx={idx} onRowClick={handleRowClick} />
+                  <StockRow key={stock.ticker} stock={stock} idx={idx} onRowClick={handleRowClick} isLive={isLive} />
                 ))
               )}
             </tbody>
@@ -589,7 +596,9 @@ export default function StocksPage() {
       </div>
 
       <p className="text-xs text-gray-600 text-center mt-4">
-        Prices sourced from on-chain oracle. Updated on every block.
+        {isLive
+          ? 'Prices sourced from on-chain oracle. Updated on every block.'
+          : 'Prices are delayed — oracle offline. Showing last known values.'}
       </p>
     </div>
   )
