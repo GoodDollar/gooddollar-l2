@@ -15,6 +15,7 @@ import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { StockOrderForm } from '@/components/stocks/StockOrderForm'
 import { StockOrderFormFallback } from '@/components/stocks/StockOrderFormFallback'
+import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { usePriceServiceStatus, getConsecutiveFailures } from '@/lib/usePriceServiceStatus'
 import { OracleUnavailableBanner } from '@/components/stocks/OracleUnavailableBanner'
@@ -107,6 +108,7 @@ export default function StockDetailPage() {
   const [showMobileSwitcher, setShowMobileSwitcher] = useState(false)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
+  const orderFormRef = useRef<HTMLDivElement>(null)
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const mounted = useMounted()
@@ -529,11 +531,13 @@ export default function StockDetailPage() {
         </div>
 
         <div className="lg:w-80 shrink-0">
-          {mounted ? (
-            <StockOrderForm stock={stock} position={position} riskBlockReason={riskBlockReason} />
-          ) : (
-            <StockOrderFormFallback />
-          )}
+          <div ref={orderFormRef}>
+            {mounted ? (
+              <StockOrderForm stock={stock} position={position} riskBlockReason={riskBlockReason} />
+            ) : (
+              <StockOrderFormFallback />
+            )}
+          </div>
 
           <OracleUnavailableBanner
             error={oracleError}
@@ -650,6 +654,8 @@ export default function StockDetailPage() {
           )}
         </div>
       </div>
+
+      <MobileTradeStickyBar targetRef={orderFormRef} ticker={stock.ticker} />
     </div>
   )
 }
