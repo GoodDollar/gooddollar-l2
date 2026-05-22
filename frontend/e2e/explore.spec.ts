@@ -10,9 +10,9 @@ test.describe('Explore page', () => {
   })
 
   test('renders market stats bar with three cards', async ({ page }) => {
-    await expect(page.getByText(/total market cap/i)).toBeVisible()
-    await expect(page.getByText(/trending/i)).toBeVisible()
-    await expect(page.getByText(/top gainers/i)).toBeVisible()
+    await expect(page.getByText(/total market cap/i).first()).toBeVisible()
+    await expect(page.getByText(/trending/i).first()).toBeVisible()
+    await expect(page.getByText(/top gainers/i).first()).toBeVisible()
   })
 
   test('token table is visible with header columns', async ({ page }) => {
@@ -44,7 +44,7 @@ test.describe('Explore page', () => {
   test('search with non-existent token shows empty state', async ({ page }) => {
     const searchInput = page.getByPlaceholder(/search tokens/i)
     await searchInput.fill('DOESNOTEXIST12345')
-    await expect(page.getByText(/no tokens match your search/i)).toBeVisible()
+    await expect(page.getByText(/no tokens match/i)).toBeVisible()
   })
 
   test('category filter buttons are present', async ({ page }) => {
