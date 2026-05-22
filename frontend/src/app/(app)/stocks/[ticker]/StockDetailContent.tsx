@@ -76,6 +76,29 @@ const DeferredNewsEventsPanel = dynamic(
   },
 )
 
+const DeferredStockAbout = dynamic(
+  () => import('@/components/stocks/StockAbout').then((module) => module.StockAbout),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
+        <div className="h-4 w-32 rounded bg-dark-50/60 animate-pulse mb-3" />
+        <div className="h-3 w-full rounded bg-dark-50/50 animate-pulse mb-2" />
+        <div className="h-3 w-full rounded bg-dark-50/50 animate-pulse mb-2" />
+        <div className="h-3 w-3/4 rounded bg-dark-50/50 animate-pulse mb-4" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-xl border border-gray-700/30 bg-dark-50/20 p-3">
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+        </div>
+      </div>
+    ),
+  },
+)
+
 const DeferredStockFAQ = dynamic(
   () => import('@/components/stocks/StockFAQ').then((module) => module.StockFAQ),
   {
@@ -618,18 +641,7 @@ export function StockDetailContent() {
             <DeferredFinancialsCard ticker={stock.ticker} />
           </div>
 
-          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
-            <h2 className="text-sm font-semibold text-white mb-3">About {stock.ticker}</h2>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              {stock.ticker} on GoodDollar tracks {stock.name}&apos;s real stock price via on-chain price feeds. Trade 24/7 in fractional amounts — no minimums. 20% of trading fees fund Universal Basic Income.
-            </p>
-            {stock.description && (
-              <>
-                <hr className="border-gray-700/30 my-3" />
-                <p className="text-sm text-gray-400 leading-relaxed">{stock.description}</p>
-              </>
-            )}
-          </div>
+          <DeferredStockAbout ticker={stock.ticker} companyName={stock.name} />
 
           <DeferredStockFAQ ticker={stock.ticker} companyName={stock.name} />
 
