@@ -68,7 +68,7 @@ export function useOnChainStocks(): { stocks: Stock[]; isLoading: boolean; isLiv
 
   const { data: priceData, isLoading, refetch } = useReadContracts({
     contracts: priceContracts,
-    query: { enabled: priceContracts.length > 0, refetchInterval: 30_000 },
+    query: { enabled: priceContracts.length > 0, refetchInterval: 30_000, staleTime: 30_000 },
   })
 
   const stocks = useMemo<Stock[]>(() => {
@@ -140,12 +140,12 @@ export function useOnChainHoldings(): {
 
   const { data: posData, isLoading: posLoading } = useReadContracts({
     contracts: posContracts,
-    query: { enabled: posContracts.length > 0, refetchInterval: 15_000 },
+    query: { enabled: posContracts.length > 0, refetchInterval: 15_000, staleTime: 15_000 },
   })
 
   const { data: priceData } = useReadContracts({
     contracts: priceContracts,
-    query: { enabled: priceContracts.length > 0, refetchInterval: 30_000 },
+    query: { enabled: priceContracts.length > 0, refetchInterval: 30_000, staleTime: 30_000 },
   })
 
   const holdings = useMemo<PortfolioHolding[]>(() => {
