@@ -1,6 +1,16 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
+const SECTIONS = [
+  { href: '/', label: 'Swap' },
+  { href: '/stocks', label: 'Stocks' },
+  { href: '/perps', label: 'Perps' },
+  { href: '/lend', label: 'Lend' },
+  { href: '/yield', label: 'Yield' },
+  { href: '/explore', label: 'Explore' },
+  { href: '/portfolio', label: 'Portfolio' },
+]
+
 export default function NotFound() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
@@ -19,6 +29,21 @@ export default function NotFound() {
           Back to Swap
         </Link>
       </Button>
+
+      <div className="mt-6 flex flex-col items-center gap-2">
+        <span className="text-xs text-gray-500">Or try:</span>
+        <div className="flex flex-wrap justify-center gap-2">
+          {SECTIONS.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className="rounded-full bg-dark-50 border border-gray-700/30 px-3 py-1 text-xs text-gray-300 hover:text-white hover:border-gray-500 transition-colors"
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
