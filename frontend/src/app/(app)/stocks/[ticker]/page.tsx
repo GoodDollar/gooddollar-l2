@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -19,14 +19,9 @@ import { computeSellGuards } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
-import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
-import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 import { StockAccountPanel } from '@/components/stocks/StockAccountPanel'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
-import { PriceChart } from '@/components/PriceChart'
-import { DepthChart } from '@/components/stocks/DepthChart'
-import { StockMarketData } from '@/components/stocks/StockMarketData'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
@@ -34,9 +29,15 @@ import { StockLogo } from '@/components/ui/stock-logo'
 import { StockStatsBar } from '@/components/stocks/StockStatsBar'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
+const AnalystOutlookCard = lazy(() => import('@/components/stocks/AnalystOutlookCard').then((mod) => ({ default: mod.AnalystOutlookCard })))
+const NewsEventsPanel = lazy(() => import('@/components/stocks/NewsEventsPanel').then((mod) => ({ default: mod.NewsEventsPanel })))
+const PriceChart = lazy(() => import('@/components/PriceChart').then((mod) => ({ default: mod.PriceChart })))
+const DepthChart = lazy(() => import('@/components/stocks/DepthChart').then((mod) => ({ default: mod.DepthChart })))
+const StockMarketData = lazy(() => import('@/components/stocks/StockMarketData').then((mod) => ({ default: mod.StockMarketData })))
+
 // NOTE: Keep these imports STATIC. Inside an App Router dynamic-segment
 // page (e.g. `[ticker]/page.tsx`), wrapping a client component in
-// `next/dynamic` with the no-SSR option produces a broken client-reference
+// the framework dynamic helper with the no-SSR option produces a broken client-reference
 // manifest in Next.js 14 production builds and causes a runtime
 // `TypeError: Cannot read properties of undefined (reading 'call')`, which
 // surfaces as HTTP 500. Use static imports plus the `useMounted()` gate
@@ -652,11 +653,13 @@ export default function StockDetailPage() {
 
           <StockStatsBar stock={stock} />
 
-          <AnalystOutlookCard
-            currentPrice={stock.price}
-            outlook={analystOutlook}
-            isLoading={analystLoading}
-          />
+          <Suspense fallback={<div className="mb-4 h-24 rounded-2xl bg-dark-100 animate-pulse" />}>
+            <AnalystOutlookCard
+              currentPrice={stock.price}
+              outlook={analystOutlook}
+              isLoading={analystLoading}
+            />
+          </Suspense>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
@@ -681,12 +684,16 @@ export default function StockDetailPage() {
             </div>
             {chartView === 'price' ? (
               chartMounted ? (
-                <PriceChart data={chartData} height={350} />
+                <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
+                  <PriceChart data={chartData} height={350} />
+                </Suspense>
               ) : (
                 <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
               )
             ) : (
-              <DepthChart oraclePrice={stock.price} height={350} />
+              <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
+                <DepthChart oraclePrice={stock.price} height={350} />
+              </Suspense>
             )}
           </div>
 
@@ -903,12 +910,14 @@ export default function StockDetailPage() {
           )}
 
           {activeTab === 'overview' && (
-            <NewsEventsPanel
-              ticker={stock.ticker}
-              isLoading={newsLoading}
-              error={newsError}
-              items={newsItems}
-            />
+            <Suspense fallback={<div className="mt-4 h-32 rounded-2xl bg-dark-100 animate-pulse" />}>
+              <NewsEventsPanel
+                ticker={stock.ticker}
+                isLoading={newsLoading}
+                error={newsError}
+                items={newsItems}
+              />
+            </Suspense>
           )}
         </div>
 
@@ -932,7 +941,9 @@ export default function StockDetailPage() {
             />
           </div>
 
-          <StockMarketData markPrice={stock.price} />
+          <Suspense fallback={<div className="mt-4 h-28 rounded-2xl bg-dark-100 animate-pulse" />}>
+            <StockMarketData markPrice={stock.price} />
+          </Suspense>
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
