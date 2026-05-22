@@ -13,26 +13,27 @@ test.describe('Wallet connection', () => {
     await expect(page.getByRole('button', { name: /connect wallet/i })).toBeVisible()
   })
 
-  test('clicking Connect Wallet shows the testnet launch toast', async ({ page }) => {
+  test('clicking Connect Wallet opens RainbowKit dialog', async ({ page }) => {
     await page.getByRole('button', { name: /connect wallet/i }).click()
-    await expect(page.getByText(/testnet launching soon/i)).toBeVisible()
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
   })
 
-  test('wallet toast disappears after ~3 seconds', async ({ page }) => {
+  test('RainbowKit dialog can be dismissed', async ({ page }) => {
     await page.getByRole('button', { name: /connect wallet/i }).click()
-    await expect(page.getByText(/testnet launching soon/i)).toBeVisible()
-    // Toast auto-dismisses after 3s
-    await expect(page.getByText(/testnet launching soon/i)).not.toBeVisible({ timeout: 5000 })
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible({ timeout: 5000 })
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible({ timeout: 5000 })
   })
 
   test('Connect Wallet button is accessible on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.reload()
-    // On mobile the label may be hidden but button should still exist
-    const btn = page.locator('button').filter({ hasText: '' }).first()
-    const connectBtn = page.getByRole('button', { name: /connect wallet/i })
-    // The button element should be in the DOM even if text is visually hidden
-    await expect(connectBtn).toBeAttached()
+    // On mobile the "Connect Wallet" label is display:none but still in textContent
+    const walletBtn = page.locator('button', { hasText: /connect wallet/i })
+    await expect(walletBtn).toBeAttached()
+    await walletBtn.click()
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
   })
 
   test('swap button requires wallet when no wallet connected', async ({ page }) => {
@@ -147,12 +148,16 @@ test.describe('Mock wallet integration', () => {
     })
   })
 
-  test('Connect Wallet button shows RainbowKit on app routes', async ({ page }) => {
+  test('wallet button is present on app routes with injected provider', async ({ page }) => {
     await injectMockWallet(page)
-    await page.goto('/swap')
+    await page.goto('/pool')
     await page.waitForLoadState('networkidle')
 
+    // With mock wallet injected, Wagmi may auto-connect via the EIP-6963
+    // provider — button shows account address instead of "Connect Wallet"
     const connectBtn = page.getByRole('button', { name: /connect wallet/i })
-    await expect(connectBtn).toBeVisible({ timeout: 10000 })
+    const accountBtn = page.locator('header button').filter({ hasText: /0x[a-fA-F0-9]/ })
+
+    await expect(connectBtn.or(accountBtn)).toBeVisible({ timeout: 10000 })
   })
 })
