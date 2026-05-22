@@ -9,6 +9,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { useOnChainPairs } from '@/lib/useOnChainPerps'
 import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
@@ -414,6 +415,7 @@ export default function StockDetailPage() {
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks, isLive } = useOnChainStocks()
+  const { pairs: perpPairs } = useOnChainPairs()
   const stock = stocks.find(s => s.ticker === ticker)
   const { status: priceServiceStatus, error: priceServiceError } = usePriceServiceStatus()
   const { position } = useStockPosition(ticker ?? '')
@@ -430,6 +432,7 @@ export default function StockDetailPage() {
     return getChartData(stock.ticker, timeframe, stock.price)
   }, [stock, timeframe])
   const hasPosition = !!position && position.debtFloat > 0
+  const stockPerpPair = useMemo(() => perpPairs.find(p => p.symbol === `${ticker}-USD`), [perpPairs, ticker])
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
   const [showNewsPanel, newsPanelRef] = useBelowFoldActivation()
@@ -694,6 +697,29 @@ export default function StockDetailPage() {
               </div>
             )}
           </div>
+
+          {stockPerpPair && (
+            <Link
+              href={`/perps?market=${stockPerpPair.symbol}`}
+              prefetch={false}
+              className="mt-4 flex items-center gap-3 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-2xl p-4 hover:border-indigo-500/40 transition-all group"
+            >
+              <div className="shrink-0 w-9 h-9 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                <svg className="w-4.5 h-4.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white group-hover:text-indigo-200 transition-colors">
+                  Trade {stockPerpPair.symbol} Perp
+                </p>
+                <p className="text-xs text-gray-500">Up to {stockPerpPair.maxLeverage}× leverage</p>
+              </div>
+              <svg className="w-4 h-4 text-gray-600 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          )}
 
           <div ref={relatedPanelRef}>
             {showRelatedPanel ? (
