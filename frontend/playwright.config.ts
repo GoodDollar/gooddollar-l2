@@ -6,7 +6,11 @@ import { defineConfig, devices } from '@playwright/test'
 // 3119 is intentionally far from production / supervised ports (3100 prod
 // goodswap, 3109 tori) and was verified free at iter17 plan time.
 const e2ePort = process.env.E2E_PORT ?? '3119'
-const baseURL = process.env.BASE_URL ?? `http://localhost:${e2ePort}`
+// Use 127.0.0.1 — next-runtime-server binds IPv4 only (0.0.0.0). Playwright's
+// mobile-chrome and Node apiRequest resolve "localhost" to ::1 first on many
+// hosts, causing ECONNREFUSED ::1:3119 while chromium still passes.
+const e2eHost = process.env.E2E_HOST ?? '127.0.0.1'
+const baseURL = process.env.BASE_URL ?? `http://${e2eHost}:${e2ePort}`
 /** Full-suite gate uses production `next start` on `.next.e2e` (see scripts/e2e-web-server.mjs). */
 const e2eProdServer = process.env.E2E_PROD_SERVER === '1'
 
@@ -53,7 +57,9 @@ export default defineConfig({
           ...(e2eProdServer ? { E2E_PROD_SERVER: '1' } : { E2E_DEV_SERVER: '1' }),
         },
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        // Production E2E must not reuse a stale server from a previous build;
+        // otherwise HTML/chunk manifests can drift after build:e2e:force.
+        reuseExistingServer: e2eProdServer ? false : !process.env.CI,
         timeout: e2eProdServer ? 600_000 : 120_000,
       },
 })

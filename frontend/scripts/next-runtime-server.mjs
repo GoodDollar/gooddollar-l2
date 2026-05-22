@@ -41,7 +41,12 @@ export function applyRuntimeDistDir({ dev, env = process.env } = {}) {
 export function createNextRuntimeServer({ argv = process.argv.slice(2), env = process.env } = {}) {
   const { dev, port } = parseCliArgs(argv)
   const distDir = applyRuntimeDistDir({ dev, env })
-  const app = next({ dev, hostname: '0.0.0.0', port })
+  const app = next({
+    dev,
+    hostname: '0.0.0.0',
+    port,
+    conf: distDir ? { distDir } : undefined,
+  })
   const handle = app.getRequestHandler()
 
   return app

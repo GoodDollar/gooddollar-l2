@@ -22,7 +22,7 @@ for (const pg of pages) {
     const page = await ctx.newPage();
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    const origin = baseURL ?? `http://localhost:${process.env.E2E_PORT ?? '3119'}`;
+    const origin = baseURL ?? `http://${process.env.E2E_HOST ?? '127.0.0.1'}:${process.env.E2E_PORT ?? '3119'}`;
     await page.goto(`${origin}${pg.path}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForTimeout(2000);
     await page.screenshot({
