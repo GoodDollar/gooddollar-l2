@@ -122,6 +122,7 @@ if (!existsSync(runtimeServerPath)) {
 } else {
   const runtimeServer = readFileSync(runtimeServerPath, 'utf8')
   const hasDevIsolationGuard =
+    /if\s*\(\s*env\.NEXT_DIST_DIR\s*\)\s*return\s+env\.NEXT_DIST_DIR[\s\S]*env\.NEXT_DIST_DIR\s*=\s*['"]\.next\.runtime-dev['"]/.test(runtimeServer) ||
     /if\s*\(\s*dev\s*&&\s*!process\.env\.NEXT_DIST_DIR\s*\)\s*\{[\s\S]*NEXT_DIST_DIR[\s\S]*\.next\.runtime-dev/.test(runtimeServer)
   if (!hasDevIsolationGuard) {
     errors.push(
