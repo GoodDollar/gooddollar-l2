@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 import { methodNotAllowed } from '@/lib/api-error'
 import { DEVNET_RPC_URL } from '@/lib/devnet'
-import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
 
@@ -59,7 +58,12 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = withApiRateLimit(handlePost)
+// Do not wrap the JSON-RPC proxy in the generic 60 RPM API limiter. A single
+// wagmi page load can legitimately issue dozens of batched reads followed by
+// write-path polling; applying the public API bucket here turns normal wallet
+// flows into 429s and leaves contract state stale. The upstream devnet remains
+// bounded by the small proxy timeout above and by the node itself.
+export const POST = handlePost
 
 // Reject unsupported methods with a structured JSON envelope (405).
 const ALLOWED = ['POST'] as const
