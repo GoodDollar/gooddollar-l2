@@ -164,7 +164,7 @@ function MarketCard({ market }: { market: PredictionMarket }) {
     : 'neutral'
 
   const timeLabelClass = status === 'expired'
-    ? 'text-red-400/70 bg-red-500/10 px-1.5 py-0.5 rounded'
+    ? 'text-red-300 bg-red-500/10 px-1.5 py-0.5 rounded'
     : status === 'ending-today'
     ? 'text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded'
     : 'text-gray-500'

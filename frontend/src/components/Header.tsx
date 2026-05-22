@@ -65,11 +65,11 @@ export function Header() {
   return (
     <header className="w-full border-b border-dark-50/50 bg-dark-100/80 backdrop-blur-md relative z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 h-16">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-goodgreen flex items-center justify-center font-bold text-dark text-sm">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="w-8 h-8 shrink-0 rounded-full bg-goodgreen flex items-center justify-center font-bold text-dark text-sm">
             G$
           </div>
-          <span className="text-lg font-semibold text-white">GoodDollar</span>
+          <span className="hidden sm:inline text-lg font-semibold text-white">GoodDollar</span>
         </div>
 
         <nav aria-label="Primary" className="hidden 2xl:flex items-center gap-5 text-sm text-gray-400">
@@ -133,7 +133,7 @@ export function Header() {
               <Link prefetch={false} href="/yield" className={`block px-3 py-2 rounded-lg ${isYield ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Yield</Link>
               <Link prefetch={false} href="/governance" className={`block px-3 py-2 rounded-lg ${isGovernance ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Govern</Link>
               <Link prefetch={false} href="/agents" className={`block px-3 py-2 rounded-lg ${isAgents ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Agents</Link>
-              <Link prefetch={false} href="/ubi-impact" className={`block px-3 py-2 rounded-lg ${isUBIImpact ? 'text-green-400 bg-dark-50/50 font-medium' : 'text-green-400/70 hover:text-green-400 hover:bg-dark-50/50'}`}>UBI</Link>
+              <Link prefetch={false} href="/ubi-impact" className={`block px-3 py-2 rounded-lg ${isUBIImpact ? 'text-green-400 bg-dark-50/50 font-medium' : 'text-green-300 hover:text-green-400 hover:bg-dark-50/50'}`}>UBI</Link>
               <Link prefetch={false} href="/activity" className={`block px-3 py-2 rounded-lg ${isActivity ? 'text-goodgreen bg-dark-50/50 font-medium' : 'text-goodgreen/80 hover:text-goodgreen hover:bg-dark-50/50'}`}>Activity</Link>
               <div className="border-t border-dark-50/50 my-1" />
               <Link prefetch={false} href="/faucet" className={`block px-3 py-2 rounded-lg ${isFaucet ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Faucet</Link>

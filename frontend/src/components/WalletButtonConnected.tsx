@@ -17,6 +17,7 @@ export function WalletButtonConnected() {
 
         return (
           <div
+            className="shrink-0"
             {...(!mounted && {
               'aria-hidden': true,
               style: { opacity: 0, pointerEvents: 'none', userSelect: 'none' },
@@ -42,7 +43,7 @@ export function WalletButtonConnected() {
                 return (
                   <button
                     onClick={openChainModal}
-                    className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors"
+                    className="px-2.5 sm:px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs sm:text-sm font-medium hover:bg-red-500/20 transition-colors whitespace-nowrap"
                   >
                     Wrong Network
                   </button>
@@ -52,10 +53,11 @@ export function WalletButtonConnected() {
               return (
                 <button
                   onClick={openAccountModal}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/50 hover:border-goodgreen/30 transition-colors"
+                  aria-label={`Wallet account ${account.displayName}`}
+                  className="flex max-w-[5.5rem] sm:max-w-none items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/50 hover:border-goodgreen/30 transition-colors"
                 >
-                  <div className="w-2 h-2 rounded-full bg-goodgreen" />
-                  <span className="text-sm text-white font-medium">
+                  <div className="w-2 h-2 shrink-0 rounded-full bg-goodgreen" />
+                  <span className="min-w-0 max-w-[4.25rem] truncate text-sm text-white font-medium sm:max-w-none">
                     {account.displayName}
                   </span>
                   <span className="text-xs text-gray-400 hidden sm:inline">

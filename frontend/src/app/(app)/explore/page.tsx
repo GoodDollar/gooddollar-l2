@@ -2,7 +2,6 @@
 
 import { useState, useMemo, memo, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion, PanInfo } from 'framer-motion'
 import { SearchX } from 'lucide-react'
 import { TokenIcon } from '@/components/TokenIcon'
 import { Sparkline } from '@/components/Sparkline'
@@ -81,7 +80,7 @@ const TokenRow = memo(function TokenRow({ token, idx, onRowClick, onSwapClick }:
           positive={(token.change24h ?? 0) >= 0}
         />
       </td>
-      <td className="py-3 px-1 text-right w-20 hidden sm:table-cell">
+      <td className="py-3 px-1 text-right w-16 sm:w-20">
         <button
           onClick={(e) => { e.stopPropagation(); onSwapClick(token.symbol) }}
           className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity px-3 py-1 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/10"
@@ -162,8 +161,6 @@ function MarketCapSparkline({ value, positive }: { value: number; positive: bool
 const MAX_PLAUSIBLE_MARKET_CAP = 5e12 // USD 5 trillion
 
 function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
-  const [activeCard, setActiveCard] = useState(0)
-  const [dragOffset, setDragOffset] = useState(0)
 
   const stats = useMemo(() => {
     // Exclude implausibly large market caps from the headline sum so a
@@ -347,42 +344,6 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
     }
   ]
 
-  const handlePan = (_: any, info: PanInfo) => {
-    setDragOffset(info.offset.x)
-  }
-
-  const handlePanStart = () => {
-    // Add haptic feedback on supported devices
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10)
-    }
-  }
-
-  const handlePanEnd = (_: any, info: PanInfo) => {
-    const threshold = 50 // Minimum swipe distance to trigger change
-    const velocity = Math.abs(info.velocity.x)
-
-    let newCard = activeCard
-
-    if (Math.abs(info.offset.x) > threshold || velocity > 500) {
-      if (info.offset.x > 0 && activeCard > 0) {
-        // Swipe right - go to previous card
-        newCard = activeCard - 1
-      } else if (info.offset.x < 0 && activeCard < cards.length - 1) {
-        // Swipe left - go to next card
-        newCard = activeCard + 1
-      }
-
-      // Haptic feedback on successful card change
-      if (newCard !== activeCard && 'vibrate' in navigator) {
-        navigator.vibrate(20)
-      }
-    }
-
-    setActiveCard(newCard)
-    setDragOffset(0)
-  }
-
   return (
     <div className="mb-6">
       {/* Desktop: Grid layout */}
@@ -394,72 +355,14 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
         ))}
       </div>
 
-      {/* Mobile: Swipeable carousel */}
-      <div className="md:hidden relative overflow-hidden">
-        <motion.div
-          className="flex transition-transform duration-300 ease-out"
-          style={{
-            transform: `translateX(calc(-${activeCard * 100}% + ${dragOffset}px))`,
-            cursor: dragOffset !== 0 ? 'grabbing' : 'grab'
-          }}
-          onPanStart={handlePanStart}
-          onPan={handlePan}
-          onPanEnd={handlePanEnd}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.1}
-          whileTap={{ scale: 0.98 }}
-        >
-          {cards.map((card, index) => (
-            <motion.div
-              key={card.title}
-              className="w-full flex-shrink-0 px-1"
-              animate={{
-                opacity: Math.abs(index - activeCard) <= 1 ? 1 : 0.3,
-                scale: index === activeCard ? 1 : 0.95
-              }}
-              transition={{
-                duration: 0.3,
-                ease: [0.25, 0.46, 0.45, 0.94] // Custom easing for smooth feel
-              }}
-            >
-              <div className={`bg-dark-100 rounded-2xl border p-4 mx-2 touch-pan-y transition-all duration-200 ${
-                index === activeCard
-                  ? 'border-goodgreen/30 shadow-lg shadow-goodgreen/10'
-                  : 'border-gray-700/20'
-              }`}>
-                {card.content}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Dot indicators */}
-        <div className="flex justify-center gap-2 mt-3">
-          {cards.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setActiveCard(index)}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index === activeCard ? 'bg-goodgreen' : 'bg-gray-600'
-              }`}
-              aria-label={`Go to ${cards[index].title} card`}
-            />
-          ))}
-        </div>
-
-        {/* Swipe hint for first-time users */}
-        {activeCard === 0 && (
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-gray-600 flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-            </svg>
-            swipe to explore
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
+      {/* Mobile: stacked cards keep all headline stats visible and avoid
+          transform-created off-screen content contributing to body scrollWidth. */}
+      <div className="md:hidden grid grid-cols-1 gap-3">
+        {cards.map((card) => (
+          <div key={card.title} className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
+            {card.content}
           </div>
-        )}
+        ))}
       </div>
     </div>
   )
@@ -681,7 +584,7 @@ function ExplorePageContent() {
                   Market Cap <SortArrow active={sortField === 'marketCap'} dir={sortDir} />
                 </th>
                 <th className="py-3 px-2 font-semibold hidden lg:table-cell">7d Trend</th>
-                <th className="w-20 hidden sm:table-cell" />
+                <th className="w-16 sm:w-20" />
               </tr>
             </thead>
             <tbody>

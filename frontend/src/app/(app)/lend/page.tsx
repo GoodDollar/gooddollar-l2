@@ -181,7 +181,7 @@ function Dashboard() {
           <div className="px-5 py-3 border-b border-gray-700/20">
             <h3 className="text-sm font-semibold text-white">Your Positions</h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} aria-label="Your lending positions table">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-gray-500 border-b border-gray-700/10">
@@ -477,7 +477,7 @@ function MarketsTable({
       <div className="px-5 py-3 border-b border-gray-700/20">
         <h2 className="text-sm font-semibold text-white">Markets</h2>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} aria-label="Lending markets table">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-gray-500 border-b border-gray-700/10">
@@ -662,7 +662,7 @@ export default function LendPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">GoodLend</h1>
+            <h1 className="text-xl font-bold text-white">GoodLend<span className="sr-only"> Lending</span></h1>
             <p className="text-xs text-gray-400">Supply &amp; borrow assets. 33% of interest funds UBI.</p>
           </div>
         </div>
