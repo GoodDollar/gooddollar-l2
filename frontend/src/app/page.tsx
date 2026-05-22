@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
+import { ProductPills } from '@/components/ProductPills'
 
 const SwapCard = dynamic(
   () => import('@/components/LandingSwapCard'),
@@ -59,12 +60,12 @@ export default function Home() {
         style={{ background: 'radial-gradient(ellipse at center, #00B0A0 0%, transparent 70%)' }}
       />
 
-      <div className="mb-8 text-center max-w-md relative">
+      <div className="mb-4 text-center max-w-md relative">
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-          Trade. Predict. Invest. Fund{'\u00A0'}UBI.
+          Trade Synthetic Stocks. Predict. Fund{'\u00A0'}UBI.
         </h1>
         <p className="text-sm text-gray-400">
-          Every swap, prediction, and trade on GoodDollar automatically funds universal basic income for verified humans worldwide.
+          Trade tokenized AAPL, TSLA, NVDA 24/7. Every swap and trade automatically funds universal basic income worldwide.
         </p>
         <p className="mt-3 text-xs text-gray-500 flex items-center justify-center gap-1.5">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-goodgreen animate-pulse" />
@@ -74,6 +75,8 @@ export default function Home() {
           people worldwide
         </p>
       </div>
+
+      <ProductPills />
 
       <SwapPriceChart
         inputSymbol="ETH"
