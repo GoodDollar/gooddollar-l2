@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GoodChain L2 Weekly Summary — 2026-05-22</title>
+  <style>
+    :root { color-scheme: dark; --bg:#07110c; --card:#0f1c14; --muted:#9db8a8; --text:#ecfff3; --green:#34d399; --amber:#fbbf24; --red:#fb7185; --line:#21432e; --blue:#60a5fa; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background: radial-gradient(circle at top, #12321f 0, var(--bg) 42rem); color:var(--text); line-height:1.55; }
+    main { max-width: 1120px; margin: 0 auto; padding: 40px 20px 64px; }
+    header { margin-bottom: 28px; }
+    h1 { margin: 0 0 8px; font-size: clamp(2rem, 4vw, 3.2rem); line-height:1.08; }
+    h2 { margin: 0 0 14px; font-size: 1.45rem; }
+    h3 { margin: 18px 0 8px; font-size: 1.05rem; color: var(--green); }
+    p { margin: 0 0 12px; }
+    a { color: var(--blue); }
+    .meta { color: var(--muted); }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap:14px; }
+    .card { background: rgba(15,28,20,.92); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.22); }
+    .pill { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:999px; padding:4px 10px; margin: 3px 5px 3px 0; color:var(--muted); font-size:.88rem; }
+    .ok { color: var(--green); }
+    .warn { color: var(--amber); }
+    .bad { color: var(--red); }
+    ul { margin: 8px 0 0; padding-left: 20px; }
+    li { margin: 5px 0; }
+    code { background:#071b10; border:1px solid var(--line); border-radius:6px; padding: 1px 5px; color:#d7ffe5; }
+    table { width:100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align:left; border-bottom: 1px solid var(--line); padding: 8px 6px; vertical-align: top; }
+    th { color: var(--muted); font-weight:600; }
+    .small { font-size:.92rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="pill">Weekly GoodChain L2 summary</p>
+    <h1>GoodChain L2 Weekly Summary — 2026-05-22</h1>
+    <p class="meta">Generated at 2026-05-22 16:05 UTC from local repo <code>/home/goodclaw/gooddollar-l2</code>. Local <code>main</code> is <strong>418 commits ahead</strong> of <code>origin/main</code>, so local paths are the canonical freshest references until pushed.</p>
+  </header>
+
+  <section class="card">
+    <h2>Executive summary</h2>
+    <p>This was a heavy shipping week: <strong>680 commits</strong> landed locally in the last seven days, covering frontend UX hardening, DeFi app polish, security/protocol fixes, test infrastructure, docs, runtime hardening, and accessibility/performance work.</p>
+    <p>Current public runtime is usable but <strong class="warn">degraded</strong>: GoodSwap and Explorer are serving, all RPC probes agree on chain ID <code>0xa455</code> / <code>42069</code> and block <code>0xe4b2</code>, but GoodSwap status remains <strong>12/14</strong> due <code>hedge-engine</code> and <code>oracle-signer</code> unreachable.</p>
+  </section>
+
+  <section class="grid" style="margin-top:14px">
+    <div class="card"><h2>Repo activity</h2><p><strong>680</strong> commits in 7 days</p><p><code>HEAD 6fcf5912</code><br/>security: comprehensive frontend health and security assessment May 2026</p></div>
+    <div class="card"><h2>Current health</h2><p><span class="warn">GoodSwap degraded 12/14</span><br/><span class="ok">RPC / Explorer live</span><br/><span class="ok">Core PM2 services online</span></p></div>
+    <div class="card"><h2>Open blocker</h2><p><code>hedge-engine</code> and <code>oracle-signer</code> are unreachable from the status API. Full Playwright E2E gate is still red/incomplete per README.</p></div>
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2>Work completed</h2>
+    <h3>Frontend / product UX</h3>
+    <ul>
+      <li>Large GoodStocks push: stock detail loading states, mobile sticky trade CTA, delayed/simulated/oracle fallback badges, analyst outlook, news/events, related movers, discovery shelves, portfolio disconnected flows, and risk/collateral copy cleanup.</li>
+      <li>GoodPerps, Predict, Explore, Swap, Portfolio, Activity, UBI Impact, Faucet, Bridge, Lend, Stable, Governance, Agents, and homepage routes all received polish, empty-state, mobile, and routing fixes across the week.</li>
+      <li>Component standardization advanced with reusable financial UI pieces such as PriceDisplay, PercentageChange, RiskIndicator, SummaryCard, SectionHeader, AmountInput, CalculatorOverlay, animated numbers, gesture buttons, and transaction progress.</li>
+    </ul>
+    <h3>Testing / release gates</h3>
+    <ul>
+      <li>E2E infra, layout, perps, and stocks regression branches were merged on 2026-05-22.</li>
+      <li>Playwright registry and non-destructive artifact publishing were added earlier in the week.</li>
+      <li>Current full E2E remains <strong class="bad">red/incomplete</strong>: latest README reports 830 discovered tests, SIGKILL before final summary, and 213 captured error-context artifacts, mostly localhost web-server loss.</li>
+    </ul>
+    <h3>Protocol / contracts / security</h3>
+    <ul>
+      <li>Slither and security hardening continued across GoodSwap, GoodLend, GoodVault, VaultManager, PerpEngine, StabilityPool, PegStabilityModule, CollateralVault, MarketFactory, UBI fee routing, and deployment scripts.</li>
+      <li>GoodSwap pools were reseeded and UBI fee routing / splitter bindings were refreshed and verified on devnet.</li>
+      <li>Security docs were expanded with canonical Slither baseline, provenance matrix, error handling triage, and finding/runbook artifacts.</li>
+    </ul>
+    <h3>Runtime / infrastructure</h3>
+    <ul>
+      <li>Public app status README was refreshed, including route sweep, PM2 health, RPC and public-surface checks.</li>
+      <li>Caddy compression for <code>goodswap.goodclaw.org</code> was enabled.</li>
+      <li>Runtime dev-mode dist isolation and build/deploy guards were added to reduce stale Next.js/chunk failures.</li>
+    </ul>
+    <h3>Design / research</h3>
+    <ul>
+      <li><code>frontend/DESIGN-RESEARCH.md</code> now includes a 2026-05-22 quality assessment, accessibility follow-up, and stocks bundle optimization analysis.</li>
+      <li>GoodChain eToro delivery docs were updated under <code>docs/autobuilder/goodchain-etoro-100-iter/</code>, including price/yield rebalance design and diagram work.</li>
+    </ul>
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2>Latest docs links</h2>
+    <ul>
+      <li><strong>Latest README / status:</strong> <code>/home/goodclaw/gooddollar-l2/README.md</code> — verified status refreshed 2026-05-22 11:47 UTC.</li>
+      <li><strong>Testnet guide:</strong> <code>/home/goodclaw/gooddollar-l2/docs/TESTNET_README.md</code>.</li>
+      <li><strong>Latest design doc:</strong> <code>/home/goodclaw/gooddollar-l2/frontend/DESIGN-RESEARCH.md</code> — updated 2026-05-22 16:02 UTC.</li>
+      <li><strong>GoodChain eToro checkpoint docs:</strong> <code>/home/goodclaw/gooddollar-l2/docs/autobuilder/goodchain-etoro-100-iter/README.md</code> and <code>PRICE_REBALANCE_DESIGN.md</code>.</li>
+      <li><strong>This report:</strong> <code>/home/goodclaw/gooddollar-l2/docs/weekly/weekly-summary-2026-05-22.html</code>.</li>
+    </ul>
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2>App status</h2>
+    <table class="small">
+      <thead><tr><th>Surface</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>GoodSwap app</td><td class="ok">HTTP 200</td><td><code>https://goodswap.goodclaw.org/</code> served Next.js HTML in 54 ms.</td></tr>
+        <tr><td>GoodSwap status API</td><td class="warn">Degraded</td><td><code>/api/status</code>: <code>overall=degraded</code>, <code>healthy=12</code>, <code>total=14</code>. Unhealthy: <code>hedge-engine</code>, <code>oracle-signer</code>.</td></tr>
+        <tr><td>Explorer</td><td class="ok">HTTP 200</td><td>Root and <code>/blocks</code> returned 200; indexing status reports <code>finished_indexing=true</code>, ratio <code>1.00</code>.</td></tr>
+        <tr><td>Paperclip</td><td class="ok">HTTP 200</td><td><code>https://paperclip.goodclaw.org/GOO/</code> served dashboard HTML.</td></tr>
+        <tr><td>RPC</td><td class="ok">POST OK</td><td>Local, balancer, and public RPC all returned chain ID <code>0xa455</code> and block <code>0xe4b2</code>.</td></tr>
+        <tr><td>PM2</td><td class="ok">Core online</td><td>Relevant GoodChain PM2 services: 14 online; autobuilder lanes A-D stopped by design. Goodagent prototypes are online but have high restart counts and should not be treated as stable.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2>Network status</h2>
+    <ul>
+      <li>Chain ID: <code>0xa455</code> / decimal <code>42069</code>.</li>
+      <li>Block height at latest probe: <code>0xe4b2</code> / decimal <code>58546</code>.</li>
+      <li>RPC agreement: local <code>127.0.0.1:8545</code>, balancer <code>127.0.0.1:8546</code>, and public <code>https://rpc.goodclaw.org</code> matched.</li>
+      <li>Explorer indexing: complete, <code>indexed_blocks_ratio=1.00</code>.</li>
+      <li>Sequencer/node health: inferred healthy from advancing RPC block and core PM2 services online; no direct sequencer API degradation detected in this probe.</li>
+    </ul>
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2>Open blockers</h2>
+    <ul>
+      <li><strong>GoodSwap degraded 12/14:</strong> <code>hedge-engine</code> and <code>oracle-signer</code> unreachable. This is the main live runtime blocker.</li>
+      <li><strong>Full E2E gate red/incomplete:</strong> latest documented Playwright all-run was killed before final summary; split/stabilized rerun required.</li>
+      <li><strong>Repo hygiene:</strong> local main is 418 commits ahead of origin/main and currently has unrelated unstaged/untracked work. Do not push blindly.</li>
+      <li><strong>Goodagent prototypes:</strong> PM2 reports very high restart counts; treat as unstable/non-core until fixed.</li>
+    </ul>
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2>Next week priorities</h2>
+    <ol>
+      <li>Fix <code>hedge-engine</code> + <code>oracle-signer</code> service reachability so status API returns 14/14.</li>
+      <li>Stabilize and split Playwright E2E runs; prove the full release gate green without SIGKILL / web-server loss.</li>
+      <li>Resolve or isolate dirty working-tree changes, then decide whether/when to push the 418 local commits.</li>
+      <li>Finish stocks detail bundle optimization: defer analyst/news/related movers and keep <code>/stocks/[ticker]</code> under budget.</li>
+      <li>Keep README and design docs synced after runtime fixes so the test group always has one fresh source of truth.</li>
+    </ol>
+  </section>
+</main>
+</body>
+</html>
