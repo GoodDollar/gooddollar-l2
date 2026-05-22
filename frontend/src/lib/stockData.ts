@@ -84,6 +84,15 @@ export function formatStockShares(n: number): string {
   return `${sign}${abs.toFixed(4)}`
 }
 
+// ─── Spread config ───────────────────────────────────────────────────────────
+
+/**
+ * Default bid/ask spread in basis points for synthetic stock AMM.
+ * Derived from eToro typical spread for US large-cap equities (~15bps each side).
+ * Will be replaced by real AMM spread data once StockOracleV2 provides it.
+ */
+export const DEFAULT_STOCK_SPREAD_BPS = 15
+
 // ─── Order-form bounds ────────────────────────────────────────────────────────
 
 /**

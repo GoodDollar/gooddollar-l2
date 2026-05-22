@@ -25,6 +25,7 @@ import { useStocksOracleGuard } from '@/lib/useStocksOracleGuard'
 import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
 import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/walletCapabilities'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { BidAskSpread, PriceWithTick } from '@/components/BidAskSpread'
 
 const DeferredPriceChart = dynamic(
   () => import('@/components/PriceChart').then((module) => module.PriceChart),
@@ -486,11 +487,14 @@ export function StockDetailContent() {
             </div>
           </div>
 
-          <div className="flex items-baseline gap-3 mb-2">
-            <span className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
+          <div className="flex items-baseline gap-3 mb-1">
+            <PriceWithTick price={stock.price} className="text-3xl font-bold text-white" />
             <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
             </span>
+          </div>
+          <div className="mb-2">
+            <BidAskSpread price={stock.price} />
           </div>
           <div className="mb-4">
             {chartMounted ? (
