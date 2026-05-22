@@ -384,7 +384,7 @@ export default function YieldPage() {
             <h2 className="text-lg font-semibold text-white mb-2">Yield Vaults Coming Soon</h2>
             <p className="text-sm text-gray-400 max-w-md">
               ERC-4626 yield vaults will auto-compound returns from synthetic stock lending markets.
-              20% of vault profits fund Universal Basic Income.
+              33% of vault profits fund Universal Basic Income.
             </p>
           </div>
 
@@ -407,7 +407,7 @@ export default function YieldPage() {
                 <svg className="w-4 h-4 text-goodgreen mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-sm text-gray-400">Earn yield while 20% of profits fund UBI</span>
+                <span className="text-sm text-gray-400">Earn yield while 33% of profits fund UBI</span>
               </li>
             </ul>
           </div>

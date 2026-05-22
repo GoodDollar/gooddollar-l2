@@ -208,7 +208,7 @@ export function StocksPortfolioContent() {
             <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
           ) : (
             <div className="text-lg sm:text-xl font-bold text-goodgreen">
-              {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
+              {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.33)}
               <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
             </div>
           )}
@@ -276,7 +276,7 @@ export function StocksPortfolioContent() {
       )}
 
       <DeferredStocksPortfolioImpactSection
-        userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2}
+        userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.33}
         isDisconnected={isDisconnected}
       />
 

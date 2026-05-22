@@ -166,7 +166,7 @@ export default function PredictPortfolioPage() {
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
           <div className="text-lg sm:text-xl font-bold text-goodgreen">
-            <PriceDisplay value={summary.totalInvested * 0.01 * 0.2} prefix="$" showContext contextLabel="via fees" />
+            <PriceDisplay value={summary.totalInvested * 0.01 * 0.33} prefix="$" showContext contextLabel="via fees" />
           </div>
         </div>
       </div>
@@ -179,7 +179,7 @@ export default function PredictPortfolioPage() {
           className="h-fit"
         />
         <PartnershipIntegrationCard
-          userUBIContribution={summary.totalInvested * 0.01 * 0.2}
+          userUBIContribution={summary.totalInvested * 0.01 * 0.33}
           compact={false}
           className="h-fit"
         />

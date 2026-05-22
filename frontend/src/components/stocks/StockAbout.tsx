@@ -222,7 +222,7 @@ export function StockAbout({ ticker, companyName }: StockAboutProps) {
         <h2 className="text-sm font-semibold text-white mb-3">About {ticker}</h2>
         <p className="text-sm text-gray-400 leading-relaxed">
           s{ticker} on GoodChain tracks {companyName}&apos;s real stock price via on-chain price feeds.
-          Trade 24/7 in fractional amounts with no minimums. 20% of trading fees fund Universal Basic Income.
+          Trade 24/7 in fractional amounts with no minimums. 33% of trading fees fund Universal Basic Income.
         </p>
       </div>
     )
@@ -263,7 +263,7 @@ export function StockAbout({ ticker, companyName }: StockAboutProps) {
         <div className="rounded-xl border border-goodgreen/20 bg-goodgreen/5 px-3 py-2.5">
           <p className="text-xs text-goodgreen/90 leading-relaxed">
             s{ticker} on GoodChain tracks {companyName}&apos;s real stock price via on-chain oracles.
-            Trade 24/7 in fractional amounts with no minimums. 20% of trading fees fund Universal Basic Income.
+            Trade 24/7 in fractional amounts with no minimums. 33% of trading fees fund Universal Basic Income.
           </p>
         </div>
       </div>
