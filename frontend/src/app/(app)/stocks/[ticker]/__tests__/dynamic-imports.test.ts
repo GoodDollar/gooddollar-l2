@@ -7,7 +7,7 @@ const src = readFileSync(
   'utf-8',
 )
 
-const MUST_BE_DYNAMIC = [
+const MUST_BE_LAZY = [
   'PriceChart',
   'AmmTradingPanel',
   'ExposureNettingPanel',
@@ -25,23 +25,29 @@ const MUST_STAY_STATIC = [
 ]
 
 describe('stocks/[ticker] dynamic imports', () => {
-  for (const name of MUST_BE_DYNAMIC) {
-    it(`${name} is lazy-loaded via next/dynamic with ssr:false`, () => {
+  for (const name of MUST_BE_LAZY) {
+    it(`${name} is lazy-loaded via React.lazy`, () => {
       const pattern = new RegExp(
-        `const\\s+${name}\\s*=\\s*dynamic\\(`,
+        `const\\s+${name}\\s*=\\s*lazy\\(`,
       )
       expect(src).toMatch(pattern)
-      const chunk = src.slice(src.indexOf(`const ${name}`))
-      expect(chunk.slice(0, 300)).toContain('ssr: false')
     })
   }
 
+  it('all lazy components are wrapped in <Suspense>', () => {
+    expect(src).toContain('<Suspense')
+    for (const name of MUST_BE_LAZY) {
+      const usagePattern = new RegExp(`<${name}[\\s/>]`)
+      expect(src).toMatch(usagePattern)
+    }
+  })
+
   for (const name of MUST_STAY_STATIC) {
     it(`${name} is a static import (above-fold / critical)`, () => {
-      const dynamicPattern = new RegExp(
-        `const\\s+${name}\\s*=\\s*dynamic\\(`,
+      const lazyPattern = new RegExp(
+        `const\\s+${name}\\s*=\\s*lazy\\(`,
       )
-      expect(src).not.toMatch(dynamicPattern)
+      expect(src).not.toMatch(lazyPattern)
       expect(src).toContain(`import { ${name} }`)
     })
   }
