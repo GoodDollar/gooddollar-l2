@@ -28,7 +28,7 @@ export function RebalanceSyncPanel({
   guard: RebalanceGuardEvaluation
   currentBlock: number | null
 }) {
-  const headline = guard.blocked ? 'Risk stop active' : 'Synced for trading'
+  const headline = guard.blocked ? 'Trading paused — syncing' : 'Synced for trading'
   const headlineClass = guard.blocked ? 'text-red-300' : 'text-green-300'
 
   return (

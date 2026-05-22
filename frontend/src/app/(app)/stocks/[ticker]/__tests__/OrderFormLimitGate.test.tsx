@@ -177,12 +177,13 @@ describe('<OrderForm> limit-order on-chain gate', () => {
 
     render(<OrderForm stock={stock} position={null} riskBlockReason="Awaiting same-block sync for: perps" />)
 
-    expect(screen.getByTestId('stocks-risk-stop-banner')).toHaveTextContent('Risk stop active')
+    expect(screen.getByTestId('stocks-risk-stop-banner')).toHaveTextContent('Trading paused')
+    expect(screen.getByTestId('stocks-risk-stop-banner')).toHaveTextContent('Price feeds syncing')
 
     const amountInput = screen.getByTestId('stocks-order-amount-input')
     await user.type(amountInput, '100')
 
-    const cta = screen.getByRole('button', { name: /sync required/i })
+    const cta = screen.getByRole('button', { name: /trading paused/i })
     expect(cta).toBeDisabled()
 
     await user.keyboard('{Enter}')

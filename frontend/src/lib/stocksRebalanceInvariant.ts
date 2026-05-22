@@ -77,6 +77,22 @@ export function buildSymbolRebalanceStatus(
   }
 }
 
+export function humanizeRiskReason(reason: string): string {
+  if (reason.includes('Two-block oracle sync proof'))
+    return 'Prices are being verified'
+  if (reason.includes('Current block unavailable'))
+    return 'Waiting for network confirmation'
+  if (reason.includes('Awaiting same-block sync'))
+    return 'Price feeds syncing'
+  if (reason.includes('exceeds') && reason.includes('stop rule'))
+    return 'Price discrepancy detected — verifying'
+  if (reason.includes('Stale propagation'))
+    return 'Price data refreshing'
+  if (reason.includes('Secret leakage') || reason.includes('secretLeak'))
+    return 'System check in progress'
+  return 'Trading temporarily paused'
+}
+
 export function evaluateRebalanceGuard(
   symbolStatus: SymbolRebalanceStatus,
   currentBlock: number | null,

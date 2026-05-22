@@ -9,6 +9,7 @@ import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, type OnChainStockPosition } from '@/lib/useStocks'
 import { computeSellGuards, isLimitDisabledOnChain } from '@/lib/stocksOrderValidation'
+import { humanizeRiskReason } from '@/lib/stocksRebalanceInvariant'
 import { toG$Wei } from '@/lib/gDollarAmount'
 
 interface ConfirmedOrder {
@@ -259,9 +260,12 @@ export function StockOrderForm({
           role="alert"
           aria-live="polite"
           data-testid="stocks-risk-stop-banner"
-          className="mb-3 rounded-xl border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+          className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300"
         >
-          Risk stop active: {riskBlockReason}
+          <span className="font-medium">Trading paused</span>
+          <span className="mx-1">—</span>
+          <span>{humanizeRiskReason(riskBlockReason!)}</span>
+          <p className="mt-0.5 text-[10px] text-amber-300/70">This usually resolves within a few seconds.</p>
         </div>
       )}
 
@@ -340,7 +344,7 @@ export function StockOrderForm({
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
-            {riskBlocked ? 'Sync required' : limitGate.disabled ? 'Limit not available' : actionPhase === 'approving' ? 'Approving…' : actionPhase === 'pending' ? 'Confirming…' : actionPhase === 'done' ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
+            {riskBlocked ? 'Trading paused' : limitGate.disabled ? 'Limit not available' : actionPhase === 'approving' ? 'Approving…' : actionPhase === 'pending' ? 'Confirming…' : actionPhase === 'done' ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
           </button>
         </WalletGatedTradeButton>
       ) : (
