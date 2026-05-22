@@ -43,9 +43,11 @@ describe('StocksRebalanceDashboard', () => {
     expect(screen.getByText('Stopped')).toBeInTheDocument()
   })
 
-  it('shows loading and error states', () => {
-    const { rerender } = render(<StocksRebalanceDashboard symbols={[]} isLoading />)
-    expect(screen.getByText(/Loading symbol sync status/i)).toBeInTheDocument()
+  it('shows skeleton shimmer when loading and error text when errored', () => {
+    const { container, rerender } = render(<StocksRebalanceDashboard symbols={[]} isLoading />)
+    expect(screen.queryByText(/Loading symbol sync status/i)).not.toBeInTheDocument()
+    const skeletons = container.querySelectorAll('.animate-pulse')
+    expect(skeletons.length).toBeGreaterThanOrEqual(3)
 
     rerender(<StocksRebalanceDashboard symbols={[]} error="status 503" />)
     expect(screen.getByText(/Unable to load sync status/i)).toBeInTheDocument()
