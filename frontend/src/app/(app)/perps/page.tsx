@@ -157,13 +157,20 @@ const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 
 function PairSelector({ pairs, selected, onSelect }: { pairs: PerpPair[]; selected: string; onSelect: (s: string) => void }) {
   return (
-    <ScrollStrip className="flex gap-1 pb-1" ariaLabel="Select perpetual market pair">
-      {pairs.map(p => (
-        <button key={p.symbol} onClick={() => onSelect(p.symbol)}
-          className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selected === p.symbol ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-50/50 border border-transparent'}`}>
-          {p.symbol}
-        </button>
-      ))}
+    <ScrollStrip className="flex gap-1.5 pb-1" ariaLabel="Select perpetual market pair">
+      {pairs.map(p => {
+        const isActive = selected === p.symbol
+        return (
+          <button key={p.symbol} onClick={() => onSelect(p.symbol)}
+            className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-medium transition-colors ${isActive ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-50/50 border border-transparent'}`}>
+            <span className="block font-semibold">{p.symbol}</span>
+            <span className="flex items-center gap-1.5 mt-0.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <span className={isActive ? 'text-goodgreen/80' : 'text-gray-500'}>{formatPerpsPrice(p.markPrice)}</span>
+              <PercentageChange value={p.change24h} decimals={1} showSign size="xs" />
+            </span>
+          </button>
+        )
+      })}
     </ScrollStrip>
   )
 }
