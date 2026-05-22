@@ -121,8 +121,10 @@ export function useOnChainPairs(): { pairs: PerpPair[]; isLoading: boolean; isLi
         ? lastFundingTime + FUNDING_INTERVAL_MS
         : Date.now() + FUNDING_INTERVAL_MS
 
-      const mark = markPrices[i] ?? 0
-      const change = 0
+      const fallbackPair = FALLBACK_PAIRS.find(p => p.symbol === meta.symbol)
+      const mark = markPrices[i] && markPrices[i] > 0 ? markPrices[i] : (fallbackPair?.markPrice ?? 0)
+      const index = indexPrices[i] && indexPrices[i] > 0 ? indexPrices[i] : (fallbackPair?.indexPrice ?? mark)
+      const change = fallbackPair?.change24h ?? 0
       const hl = derive24hHighLow(mark, change)
 
       result.push({
@@ -130,12 +132,12 @@ export function useOnChainPairs(): { pairs: PerpPair[]; isLoading: boolean; isLi
         baseAsset: meta.baseAsset,
         quoteAsset: meta.quoteAsset,
         markPrice: mark,
-        indexPrice: indexPrices[i] ?? 0,
+        indexPrice: index,
         change24h: change,
-        volume24h: 0,
-        fundingRate: 0,
+        volume24h: fallbackPair?.volume24h ?? 0,
+        fundingRate: fallbackPair?.fundingRate ?? 0,
         nextFundingTime,
-        openInterest: 0,
+        openInterest: fallbackPair?.openInterest ?? 0,
         maxLeverage: Number(maxLeverage),
         high24h: hl.high24h,
         low24h: hl.low24h,

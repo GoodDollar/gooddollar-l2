@@ -181,7 +181,7 @@ function Dashboard() {
           <div className="px-5 py-3 border-b border-gray-700/20">
             <h3 className="text-sm font-semibold text-white">Your Positions</h3>
           </div>
-          <div className="overflow-x-auto" tabIndex={0} aria-label="Your lending positions table">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Your lending positions table">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-gray-500 border-b border-gray-700/10">
@@ -477,7 +477,7 @@ function MarketsTable({
       <div className="px-5 py-3 border-b border-gray-700/20">
         <h2 className="text-sm font-semibold text-white">Markets</h2>
       </div>
-      <div className="overflow-x-auto" tabIndex={0} aria-label="Lending markets table">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Lending markets table">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-gray-500 border-b border-gray-700/10">

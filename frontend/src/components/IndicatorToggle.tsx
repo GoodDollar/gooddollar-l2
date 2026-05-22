@@ -26,12 +26,12 @@ export function IndicatorToggle({ indicators, onChange }: IndicatorToggleProps) 
             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
               active
                 ? 'bg-white/5 text-white border border-white/10'
-                : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                : 'text-gray-400 hover:text-gray-200 border border-transparent'
             }`}
           >
             <span
               className="w-2 h-2 rounded-full shrink-0"
-              style={{ backgroundColor: active ? color : 'rgba(107,114,128,0.4)' }}
+              style={{ backgroundColor: active ? color : 'rgba(156,163,175,0.9)' }}
             />
             {label}
           </button>

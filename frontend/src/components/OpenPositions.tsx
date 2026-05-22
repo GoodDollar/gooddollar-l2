@@ -121,7 +121,7 @@ export function OpenPositions() {
 
   if (positions.length === 0) {
     return (
-      <div className="py-8 text-center text-gray-500 text-xs">
+      <div className="py-8 text-center text-gray-400 text-xs">
         No open positions
       </div>
     )
