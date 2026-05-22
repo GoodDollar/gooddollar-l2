@@ -47,7 +47,7 @@ export function NewsEventsPanel({
         </div>
       ) : (
         <div className="space-y-2.5">
-          {items.slice(0, 4).map((item) => (
+          {items.slice(0, 5).map((item) => (
             <a
               key={item.id}
               href={item.url}
@@ -65,6 +65,8 @@ export function NewsEventsPanel({
           ))}
         </div>
       )}
+
+      <p className="text-[10px] text-gray-500 mt-3 text-right">News powered by GoodChain</p>
     </div>
   )
 }
