@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   formatStockPrice,
   formatLargeNumber,
+  formatLargeCount,
   formatStockShares,
   MAX_STOCK_ORDER_USD,
   getStockData,
@@ -48,6 +49,29 @@ describe('formatLargeNumber', () => {
 
   it('formats values under 1000', () => {
     expect(formatLargeNumber(250)).toBe('$250')
+  })
+})
+
+describe('formatLargeCount', () => {
+  it('does NOT prefix with a dollar sign', () => {
+    expect(formatLargeCount(1_500_000_000)).toBe('1.5B')
+    expect(formatLargeCount(1_500_000_000)).not.toContain('$')
+  })
+
+  it('formats trillions without dollar sign', () => {
+    expect(formatLargeCount(2.5e12)).toBe('2.50T')
+  })
+
+  it('formats millions without dollar sign', () => {
+    expect(formatLargeCount(3_200_000)).toBe('3.2M')
+  })
+
+  it('formats thousands without dollar sign', () => {
+    expect(formatLargeCount(5000)).toBe('5K')
+  })
+
+  it('formats values under 1000 without dollar sign', () => {
+    expect(formatLargeCount(250)).toBe('250')
   })
 })
 

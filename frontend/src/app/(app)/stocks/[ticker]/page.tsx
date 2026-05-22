@@ -464,7 +464,7 @@ export default function StockDetailPage() {
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
-                <div className="text-white font-medium">{formatLargeNumber(stock.volume24h)}</div>
+                <div className="text-white font-medium">{formatLargeCount(stock.volume24h)}</div>
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">Sector</div>
