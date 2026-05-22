@@ -1,0 +1,29 @@
+{
+  "tokens": [],
+  "venues": [
+    {
+      "id": "goodswap-spot",
+      "type": "spot",
+      "enabled": false,
+      "description": "Fill with GoodSwap router/factory/quoter addresses once published/discovered.",
+      "contracts": {}
+    },
+    {
+      "id": "goodperps",
+      "type": "perp",
+      "enabled": false,
+      "description": "Fill with GoodPerps reader/order/router contracts or REST endpoints.",
+      "contracts": {},
+      "rest": {}
+    },
+    {
+      "id": "goodpredict",
+      "type": "prediction",
+      "enabled": false,
+      "description": "Fill with GoodPredict market factory/orderbook/AMM contracts or REST endpoints.",
+      "contracts": {},
+      "rest": {}
+    }
+  ],
+  "pairs": []
+}
