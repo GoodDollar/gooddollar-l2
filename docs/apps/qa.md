@@ -44,7 +44,7 @@ npm run test:e2e:all      # full Playwright suite (E2E_PROD_SERVER=1)
 
 - E2E registry includes self-referential `tests`, `test-dashboard`, `invite` entries
 - RC coordinator: `app-regression.spec.ts` **62/62** (chromium + mobile-chrome) post-integration
-- Full suite (`test:e2e:all`): **not green / incomplete** at 2026-05-22 — see root README
+- Full suite (`test:e2e:all`): **807 passed, 7 skipped, 0 failed** on 2026-05-22 after RC merge/deploy — see root README
 
 ## Status (2026-05-22)
 

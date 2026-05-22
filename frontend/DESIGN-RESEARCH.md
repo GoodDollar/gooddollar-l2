@@ -2416,4 +2416,4 @@ E2E runs **no WalletConnect** (invalid/missing project id → extension-only con
 
 ### Release gate (design-relevant)
 
-RC merged at `fb12913b`; coordinator verdict **PARTIAL → perps E2E green after follow-up**. Full Playwright suite not re-run to completion. See [docs/release/RC_COORDINATOR_20260522.md](../docs/release/RC_COORDINATOR_20260522.md).
+RC merged at `fb12913b`, then follow-up fixes brought the full browser gate to **807 passed, 7 skipped, 0 failed**. GoodSwap frontend deploy completed with live BUILD_ID/chunk sync. See [docs/release/RC_COORDINATOR_20260522.md](../docs/release/RC_COORDINATOR_20260522.md) for the original coordinator record and root README for post-merge status.

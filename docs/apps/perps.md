@@ -57,4 +57,4 @@ Trading, funding, and liquidation fees — routes 3–5 in [`docs/UBI-FEE-ACCOUN
 ## Status (2026-05-22)
 
 - RC coordinator: perps journey spec green after `cb225e16` fix.
-- Prior full-suite E2E (`npm run test:e2e:all`): incomplete — do not treat as release gate until rerun completes.
+- Full-suite E2E (`npm run test:e2e:all`): green on 2026-05-22 after receipt-wait and RPC proxy fixes (`807 passed`, `7 skipped`, `0 failed`).

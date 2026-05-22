@@ -36,11 +36,11 @@ _Last refreshed for RC merge on `main`. Supersedes older status rows where they 
 ### RC integration (merged)
 
 - **HEAD:** `main` includes GoodChain L2 RC coordinator merge ([`docs/release/RC_COORDINATOR_20260522.md`](docs/release/RC_COORDINATOR_20260522.md)).
-- **Verdict:** **PARTIAL** — representative gates green; **do not declare full RC green** until full Playwright suite completes.
+- **Verdict:** **E2E green / deploy complete** — coordinator RC merged to `main`, deployed to `goodswap`, and verified live.
 - **Foundry (RC security suites):** 55/55 on `GoodDollarTokenSecure`, `SecurityValidation`, `MultiOracleConsensus`, `StateMigration`, `PerformanceValidation`.
 - **Playwright slices (post-integration):** analytics + app-regression **62/62** (chromium + mobile-chrome); perps journey **20/20** after on-chain follow-up fix.
-- **Full E2E (`npm run test:e2e:all`):** Prior run **incomplete** (SIGKILL, ~424/830 visible); prior gate also reported 308 unexpected (many `ERR_CONNECTION_REFUSED`). **Re-run required** before public alpha sign-off.
-- **Release hygiene:** [`docs/release/RC_RELEASE_HYGIENE_20260522.md`](docs/release/RC_RELEASE_HYGIENE_20260522.md) — dirty-tree items deferred (perps addresses, agent markdown, bloated screenshot).
+- **Full E2E (`npm run test:e2e:all`):** **807 passed, 7 skipped, 0 failed** on 2026-05-22 after the RC coordinator merge.
+- **Deployment:** `frontend/scripts/deploy.sh` completed; `goodswap` served BUILD_ID `JFi9iODQWOKbY7q8OUHh7` and passed live BUILD_ID/chunk sync checks.
 
 ### Live health snapshot (2026-05-22 README checkpoint)
 
@@ -48,16 +48,16 @@ _Last refreshed for RC merge on `main`. Supersedes older status rows where they 
 |-------|--------|
 | Public app route sweep | **29/29 HTTP 200** on `goodswap.goodclaw.org` |
 | `scripts/health-check.sh` | OK with warnings (disk/memory within bounds) |
-| `/api/status` | **12/14** services healthy; `hedge-engine`, `oracle-signer` **unreachable** when not fully provisioned (health-only mode is expected — see [`backend/README.md`](backend/README.md)) |
+| `/api/status` | **14/14** services healthy on local and public GoodSwap status APIs |
 | Public RPC | `eth_chainId = 0xa455` / decimal `42069` |
-| PM2 | ~21/25 online; A/B lanes stopped; agent prototypes **flapping** (not stable) |
+| PM2 | Core GoodChain services online; A/B lanes stopped; agent prototypes still flapping (not release-blocking for GoodSwap) |
 
 ### Go / no-go
 
 | Audience | Guidance |
 |----------|----------|
-| Internal demo / controlled testnet | **Go** — app, RPC, faucet, core protocols, analytics, feedback ingest are live |
-| Broad public alpha | **No-go** — full E2E gate incomplete, release manifest/tag pending, external audit/bounty not done |
+| Internal demo / controlled testnet | **Go** — app, RPC, faucet, core protocols, analytics, feedback ingest are live and full E2E is green |
+| Broad public alpha | **Conditional go** — browser/release gate is green; still requires release tag/manifest, security sign-off, and external audit/bug-bounty decision |
 
 ### UBI fee accounting
 
@@ -249,7 +249,7 @@ python3 scripts/check-doc-links.py README.md docs/TESTNET_README.md docs/ARCHITE
 | Frontend Vitest | 834 pass, 1 skip |
 | App-regression E2E | 27 routes green (`.autobuilder/final-e2e-gate-20260519T051711Z.log`) |
 | RC slice (2026-05-22) | 62/62 analytics+regression; 20/20 perps journey |
-| Full E2E | **Incomplete / red** — blocker for RC green |
+| Full E2E | **807 passed, 7 skipped, 0 failed** — RC browser gate green |
 
 ## Deployment & PM2 model
 
@@ -300,7 +300,7 @@ pm2 save
 - Network is **POC V1 / persistent devnet** — not production mainnet infra.
 - Explorer: live but requires soak/hardening for broad public alpha.
 - External Dune indexing: package shipped; live dashboards **pending**.
-- `hedge-engine` / `oracle-signer`: may show degraded until provisioned.
+- `hedge-engine` / `oracle-signer`: healthy in the 2026-05-22 post-deploy status snapshot; if keys/addresses are removed they degrade into health-only mode.
 - Agent prototype PM2 processes: **unstable** — do not rely on for demos.
 - Some `devnet.ts` addresses tagged **STALE** — refresh via `scripts/refresh-addresses.py` after redeploy.
 

@@ -19,16 +19,16 @@ Central index for frontend design patterns, accessibility rules, and test covera
 | Gate | Status | Notes |
 |------|--------|-------|
 | RC merge to `main` | **Merged** | `fb12913b` — GoodChain L2 RC coordinator |
-| RC green / production-ready | **No** | Per coordinator: declare RC green only after full E2E re-run |
+| RC green / production-ready | **Browser gate green** | Full Playwright passed after RC merge; production readiness still needs security/release sign-off |
 | `build:e2e:force` | **PASS** | Production `.next.e2e/` build |
 | Foundry security suites | **PASS** | 55/55 on integrated security lanes |
 | `app-regression` + `analytics` (chromium + mobile-chrome) | **PASS** | 62/62 representative slice |
 | `perps-journey.spec.ts` | **PASS post-fix** | 20/20 after receipt-wait + on-chain lane fixes |
-| Full Playwright suite | **Not re-run to green** | Prior 308 unexpected (mostly server cascade; believed fixed) |
+| Full Playwright suite | **PASS** | 807 passed, 7 skipped, 0 failed |
 | Security npm audit | **Open** | 35 vulns (4 high); Next.js upgrade path documented in weekly summary |
 | Testnet guide link-check | **Stabilized** | Transient 429/502/503/504 retries; WC noise filtered |
 
-**Do not push or deploy from design-doc lanes.** Land contract/address changes via dedicated deploy lanes per [RC_RELEASE_HYGIENE_20260522.md](../release/RC_RELEASE_HYGIENE_20260522.md).
+**Post-deploy note:** frontend deploy completed through `frontend/scripts/deploy.sh`; GoodSwap BUILD_ID/chunk sync was verified live.
 
 ---
 
