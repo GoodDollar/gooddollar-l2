@@ -3,6 +3,12 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 })
 
+const priceServiceOrigins = (() => {
+  const url = process.env.NEXT_PUBLIC_PRICE_SERVICE_URL
+  if (!url) return []
+  try { return [new URL(url).origin] } catch { return [] }
+})()
+
 const securityHeaders = [
   // Prevent clickjacking
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -49,6 +55,7 @@ const securityHeaders = [
         'https://pulse.walletconnect.org',
         'wss://pulse.walletconnect.org',
         'https://api.web3modal.org',
+        ...priceServiceOrigins,
         ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:*'] : []),
       ].join(' '),
       "worker-src 'self' blob:",

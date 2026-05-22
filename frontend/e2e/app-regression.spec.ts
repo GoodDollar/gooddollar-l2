@@ -79,7 +79,7 @@ function isAllowedConsoleError(line: string) {
     // Wallet/RPC providers can fail when no browser wallet is installed; page must still render.
     /walletconnect|metamask|ethereum provider|provider not found/i,
     // Live RPC can briefly refuse/abort during local dev server startup; UI recovery is asserted by text checks.
-    /Failed to fetch|ERR_NETWORK|AbortError|timeout/i,
+    /Failed to fetch|ERR_NETWORK|ERR_CONNECTION_REFUSED|AbortError|timeout/i,
     // Third-party chart canvas libraries can warn in JSDOM/browser teardown without breaking the route.
     /ResizeObserver|chart failed/i,
     /api\.coingecko\.com|No 'Access-Control-Allow-Origin'|net::ERR_FAILED/i,
