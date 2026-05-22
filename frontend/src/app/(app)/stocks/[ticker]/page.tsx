@@ -29,6 +29,7 @@ import { PriceChart } from '@/components/PriceChart'
 import { DepthChart } from '@/components/stocks/DepthChart'
 import { StockMarketData } from '@/components/stocks/StockMarketData'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { StockLogo } from '@/components/ui/stock-logo'
 import { StockStatsBar } from '@/components/stocks/StockStatsBar'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
@@ -616,9 +617,7 @@ export default function StockDetailPage() {
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-xs font-bold text-goodgreen">
-              {stock.ticker.slice(0, 2)}
-            </div>
+            <StockLogo ticker={stock.ticker} size="md" />
             <div>
               <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
               <p className="text-sm text-gray-400">{stock.name} · {stock.sector}</p>

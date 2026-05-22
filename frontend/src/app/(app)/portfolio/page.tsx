@@ -13,6 +13,7 @@ import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { ConnectWalletBanner } from '@/components/ConnectWalletBanner'
 import { PortfolioOnChain } from '@/components/PortfolioOnChain'
 import { Sparkline } from '@/components/Sparkline'
+import { StockLogo } from '@/components/ui/stock-logo'
 import { getStockByTicker } from '@/lib/stockData'
 import { SummaryCard, SectionHeader, EmptyState } from '@/components/ui'
 
@@ -121,9 +122,7 @@ export default function PortfolioPage() {
               return (
                 <Link key={h.ticker} href={`/stocks/${h.ticker}`} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-[8px] font-bold text-goodgreen">
-                      {h.ticker.slice(0, 2)}
-                    </div>
+                    <StockLogo ticker={h.ticker} size="sm" />
                     <div>
                       <span className="text-sm font-medium text-white">{h.ticker}</span>
                       {stockName && <span className="text-xs text-gray-500 ml-1.5">{stockName}</span>}

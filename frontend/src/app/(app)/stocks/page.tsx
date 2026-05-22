@@ -13,6 +13,7 @@ import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { MarketSessionBadge } from '@/components/stocks/MarketSessionBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
+import { StockLogo } from '@/components/ui/stock-logo'
 import { useMounted } from '@/lib/useMounted'
 import { useStockWatchlist } from '@/lib/useStockWatchlist'
 import {
@@ -70,11 +71,7 @@ function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
 }
 
 function StockIcon({ ticker }: { ticker: string }) {
-  return (
-    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-[10px] font-bold text-goodgreen shrink-0">
-      {ticker.slice(0, 2)}
-    </div>
-  )
+  return <StockLogo ticker={ticker} size="sm" />
 }
 
 function StarButton({ active, onClick }: { active: boolean; onClick: (e: React.MouseEvent) => void }) {
