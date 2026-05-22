@@ -272,7 +272,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const GD_PRICE_USD = 0.01
   const feeRate = orderType === 'market' ? 0.001 : 0.0002 // on-chain market fee is 0.1%
   const fee = notional * feeRate
-  const ubiFee = fee * 0.2
+  const ubiFee = fee * 0.33
   const marginRequiredGD = effectivePrice > 0 ? marginRequired / GD_PRICE_USD : 0
   const feeGD = orderType === 'market' ? (notional / GD_PRICE_USD) * feeRate : 0
   const totalRequiredGD = marginRequiredGD + feeGD

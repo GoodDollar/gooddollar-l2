@@ -61,7 +61,7 @@ function TradePanel({ market, initialSide }: { market: PredictionMarket, initial
   const shares = amount && price > 0 ? parseFloat(amount) / price : 0
   const potentialPayout = shares
   const fee = amount ? parseFloat(amount) * 0.01 : 0
-  const ubiFee = fee * 0.2
+  const ubiFee = fee * 0.33
   const hasAmount = !!amount && parseFloat(amount) > 0
   const isBusy = phase === 'approving' || phase === 'buying'
 
