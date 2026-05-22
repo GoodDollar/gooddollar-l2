@@ -386,7 +386,9 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
                 <label className="text-xs text-gray-400 mb-1 block">Quick Size</label>
                 <div className="flex gap-1">
                   {[0.25, 0.5, 0.75, 1].map(pct => {
-                    const maxSize = (account.availableMargin * leverage) / effectivePrice
+                    const availableFundingGD = account.availableMargin + walletG$
+                    const availableFundingUsd = availableFundingGD * GD_PRICE_USD
+                    const maxSize = effectivePrice > 0 ? (availableFundingUsd * leverage) / effectivePrice : 0
                     const targetSize = maxSize * pct
                     const decimals = effectivePrice >= 10000 ? 4 : effectivePrice >= 100 ? 3 : effectivePrice >= 1 ? 2 : 0
                     const rounded = parseFloat(targetSize.toFixed(decimals))
