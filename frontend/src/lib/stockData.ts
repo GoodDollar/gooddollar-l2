@@ -14,6 +14,7 @@
 export interface Stock {
   ticker: string
   name: string
+  displayName: string
   sector: string
   description: string
   price: number

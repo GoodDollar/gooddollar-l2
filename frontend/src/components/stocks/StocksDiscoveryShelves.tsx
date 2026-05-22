@@ -41,7 +41,7 @@ function Shelf({ title, subtitle, items, isLoading }: ShelfProps) {
             >
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-white">{stock.ticker}</p>
-                <p className="text-[11px] text-gray-500 truncate">{stock.name}</p>
+                <p className="text-[11px] text-gray-500 truncate">{stock.displayName}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-300">{formatStockPrice(stock.price)}</p>

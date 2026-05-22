@@ -40,7 +40,7 @@ const WatchlistRow = memo(function WatchlistRow({ stock, idx, onRowClick }: Watc
           <StockIcon ticker={stock.ticker} />
           <div>
             <span className="font-semibold text-white">{stock.ticker}</span>
-            <span className="text-gray-500 ml-1.5 text-xs truncate max-w-[120px] inline-block align-middle">{stock.name}</span>
+            <span className="text-gray-500 ml-1.5 text-xs truncate max-w-[120px] inline-block align-middle">{stock.displayName}</span>
           </div>
         </div>
       </td>
@@ -211,7 +211,7 @@ export default function StocksWatchlistPage() {
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex items-center gap-1.5">
                         <span className="font-semibold text-white text-sm truncate max-w-[52px]">{stock.ticker}</span>
-                        <span className="text-gray-500 text-xs truncate max-w-[84px]">{stock.name}</span>
+                        <span className="text-gray-500 text-xs truncate max-w-[84px]">{stock.displayName}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
