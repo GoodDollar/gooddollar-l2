@@ -26,6 +26,7 @@ import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
 import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/walletCapabilities'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { BidAskSpread, PriceWithTick } from '@/components/BidAskSpread'
+import { SentimentCard } from '@/components/SentimentCard'
 
 const DeferredPriceChart = dynamic(
   () => import('@/components/PriceChart').then((module) => module.PriceChart),
@@ -666,6 +667,10 @@ export function StockDetailContent() {
             oracleTradeBlocked={oracleGuard.health !== 'live' || !syncGuard.allowRiskIncrease}
             oracleBlockReason={oracleGuard.reason ?? syncGuard.reason}
           />
+
+          <div className="mt-4">
+            <SentimentCard ticker={stock.ticker} />
+          </div>
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>
