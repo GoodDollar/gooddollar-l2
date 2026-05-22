@@ -12,9 +12,11 @@
  */
 
 import { useCallback, useState } from 'react'
+import { waitForTransactionReceipt } from '@wagmi/core'
 import { useReadContract, useAccount, useWriteContract, useBytecode } from 'wagmi'
 import { PerpEngineABI, MarginVaultABI, ERC20ABI } from './abi'
 import { CONTRACTS } from './chain'
+import { config } from './wagmi'
 
 const ENGINE = CONTRACTS.PerpEngine
 const VAULT = CONTRACTS.MarginVault
@@ -153,29 +155,35 @@ export function useOpenPosition() {
 
       if (depositAmount > 0n) {
         setPhase('approving')
-        await writeContractAsync({
+        const approveHash = await writeContractAsync({
           address: collateralToken,
           abi: ERC20ABI,
           functionName: 'approve',
           args: [VAULT, depositAmount],
         })
+        const approveReceipt = await waitForTransactionReceipt(config, { hash: approveHash })
+        if (approveReceipt.status === 'reverted') throw new Error('Approval reverted')
 
         setPhase('pending')
-        await writeContractAsync({
+        const depositHash = await writeContractAsync({
           address: VAULT,
           abi: MarginVaultABI,
           functionName: 'deposit',
           args: [depositAmount],
         })
+        const depositReceipt = await waitForTransactionReceipt(config, { hash: depositHash })
+        if (depositReceipt.status === 'reverted') throw new Error('Margin deposit reverted')
       }
 
       setPhase('pending')
-      await writeContractAsync({
+      const openHash = await writeContractAsync({
         address: ENGINE,
         abi: PerpEngineABI,
         functionName: 'openPosition',
         args: [marketId, size, isLong, margin],
       })
+      const openReceipt = await waitForTransactionReceipt(config, { hash: openHash })
+      if (openReceipt.status === 'reverted') throw new Error('Open position reverted')
       setPhase('done')
     } catch (err: unknown) {
       const e = err as { shortMessage?: string; message?: string }
