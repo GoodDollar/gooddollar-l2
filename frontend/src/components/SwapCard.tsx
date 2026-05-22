@@ -7,6 +7,7 @@ import { ArrowUpDown, ChevronDown } from 'lucide-react'
 import { TokenSelector } from './TokenSelector'
 import { TOKENS, type Token } from '@/lib/tokens'
 import { UBIBreakdown } from './UBIBreakdown'
+import { StalePriceBanner } from './StalePriceBanner'
 import { SwapSettings } from './SwapSettings'
 import { SwapDetails } from './SwapDetails'
 import { SwapRoute } from './SwapRoute'
@@ -361,6 +362,12 @@ export function SwapCard() {
               )}
             </span>
             <span>{exchangeRate}</span>
+          </div>
+        )}
+
+        {!isLive && (
+          <div className="mx-4 mt-2">
+            <StalePriceBanner variant="swap" />
           </div>
         )}
 

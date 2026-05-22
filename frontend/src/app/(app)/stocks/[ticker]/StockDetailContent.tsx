@@ -9,6 +9,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { StalePriceBanner } from '@/components/StalePriceBanner'
 import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
@@ -445,7 +446,7 @@ export function StockDetailContent() {
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
-  const { stocks, isLoading: stocksLoading } = useOnChainStocks()
+  const { stocks, isLoading: stocksLoading, isLive } = useOnChainStocks()
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
@@ -526,6 +527,11 @@ export function StockDetailContent() {
       <Link href="/stocks" prefetch={false} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
         <span>←</span> Back to Stocks
       </Link>
+      {!isLive && (
+        <div className="mb-4">
+          <StalePriceBanner variant="stocks" />
+        </div>
+      )}
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-4">

@@ -8,6 +8,7 @@ import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
+import { StalePriceBanner } from '@/components/StalePriceBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { DEVNET_CHAIN_ID } from '@/lib/devnet'
@@ -183,6 +184,12 @@ export default function StocksPage() {
         description="Synthetic stock tokens track real equity prices via Chainlink oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 20% of fees to UBI."
         storageKey="gd-banner-dismissed-stocks"
       />
+
+      {!isLive && (
+        <div className="mb-4">
+          <StalePriceBanner variant="stocks" />
+        </div>
+      )}
 
       {showConnectBanner && (
         <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
