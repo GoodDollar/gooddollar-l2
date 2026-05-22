@@ -335,7 +335,7 @@ export default function TestnetGuidePage() {
             ]}
             verify={[
               'Check the transaction on the explorer',
-              'Verify the UBI fee was routed (20% of swap fee → UBI)',
+              'Verify the UBI fee was routed (33% of swap fee → UBI)',
             ]}
           />
 

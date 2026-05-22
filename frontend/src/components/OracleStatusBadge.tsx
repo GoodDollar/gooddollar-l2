@@ -129,9 +129,8 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
           )
         }
         return (
-          <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse" />
-            <span>{timeoutPhase === 'slow' ? 'Price feed connecting...' : 'Checking oracle...'}</span>
+          <div className="inline-flex items-center gap-1.5" aria-label={timeoutPhase === 'slow' ? 'Price feed connecting' : 'Checking price feed'}>
+            <div className="animate-pulse h-5 w-24 rounded-full bg-dark-50/30" />
           </div>
         )
       }

@@ -328,4 +328,43 @@ describe('StocksPortfolioPage — disconnected guidance and collateral states', 
     expect(text).toContain('Start your stock portfolio')
     expect(text).not.toContain('0% — Critical')
   })
+
+  it('renders portfolio analytics blocks and supports range/allocation toggles', () => {
+    accountState.address = '0x1111111111111111111111111111111111111111'
+    accountState.isConnected = true
+    holdingsState.holdings = [
+      { ticker: 'AAPL', shares: 2, avgCost: 180, currentPrice: 200, collateralDeposited: 0, collateralRequired: 0 },
+      { ticker: 'MSFT', shares: 1, avgCost: 350, currentPrice: 330, collateralDeposited: 0, collateralRequired: 0 },
+    ]
+    holdingsState.totalValue = 730
+    holdingsState.unrealizedPnl = 10
+    holdingsState.pnlPercent = 1.4
+
+    render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    expect(screen.getByRole('heading', { name: 'Allocation' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Performance Stats' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Top Contributors' })).toBeInTheDocument()
+    expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getAllByRole('button', { name: '1M' })[0]!)
+
+    expect(screen.getByRole('img', { name: /Portfolio P&L chart 1M/i })).toBeInTheDocument()
+  })
+
+  it('reserves right/bottom safe area on stocks portfolio for floating feedback controls', () => {
+    accountState.address = undefined
+    accountState.isConnected = false
+
+    const { container } = render(
+      <TestWrapper><StocksPortfolioPage /></TestWrapper>
+    )
+
+    const wrapper = container.querySelector('div.w-full.max-w-5xl.mx-auto')
+    expect(wrapper).toBeTruthy()
+    expect(wrapper?.className).toContain('pb-24')
+    expect(wrapper?.className).toContain('md:pr-24')
+  })
 })

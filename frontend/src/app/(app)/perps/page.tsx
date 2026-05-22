@@ -103,6 +103,47 @@ const RecentTrades = dynamic(
   }
 )
 
+const PerpsHistoryTabs = dynamic(
+  () => import('@/components/PerpsHistoryTabs').then(m => ({ default: m.PerpsHistoryTabs })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
+        <div className="flex gap-4 mb-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-4 w-20 bg-dark-50/40 rounded animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-6 bg-dark-50/40 rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+    ),
+  }
+)
+
+const FundingRateChart = dynamic(
+  () => import('@/components/FundingRateChart').then(m => ({ default: m.FundingRateChart })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
+        <div className="flex justify-between mb-3">
+          <div className="h-4 w-36 bg-dark-50/40 rounded animate-pulse" />
+          <div className="flex gap-1">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-6 w-10 bg-dark-50/40 rounded animate-pulse" />
+            ))}
+          </div>
+        </div>
+        <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 200 }} />
+      </div>
+    ),
+  }
+)
+
 const OpenPositions = dynamic(
   () => import('@/components/OpenPositions').then(m => ({ default: m.OpenPositions })),
   {
@@ -119,13 +160,20 @@ const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 
 function PairSelector({ pairs, selected, onSelect }: { pairs: PerpPair[]; selected: string; onSelect: (s: string) => void }) {
   return (
-    <ScrollStrip className="flex gap-1 pb-1" ariaLabel="Select perpetual market pair">
-      {pairs.map(p => (
-        <button key={p.symbol} onClick={() => onSelect(p.symbol)}
-          className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selected === p.symbol ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-50/50 border border-transparent'}`}>
-          {p.symbol}
-        </button>
-      ))}
+    <ScrollStrip className="flex gap-1.5 pb-1" ariaLabel="Select perpetual market pair">
+      {pairs.map(p => {
+        const isActive = selected === p.symbol
+        return (
+          <button key={p.symbol} onClick={() => onSelect(p.symbol)}
+            className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-medium transition-colors ${isActive ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-50/50 border border-transparent'}`}>
+            <span className="block font-semibold">{p.symbol}</span>
+            <span className="flex items-center gap-1.5 mt-0.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <span className={isActive ? 'text-goodgreen/80' : 'text-gray-500'}>{formatPerpsPrice(p.markPrice)}</span>
+              <PercentageChange value={p.change24h} decimals={1} showSign size="xs" />
+            </span>
+          </button>
+        )
+      })}
     </ScrollStrip>
   )
 }
@@ -277,7 +325,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const GD_PRICE_USD = 0.01
   const feeRate = orderType === 'market' ? 0.001 : 0.0002 // on-chain market fee is 0.1%
   const fee = notional * feeRate
-  const ubiFee = fee * 0.2
+  const ubiFee = fee * 0.33
   const marginRequiredGD = effectivePrice > 0 ? marginRequired / GD_PRICE_USD : 0
   const feeGD = orderType === 'market' ? (notional / GD_PRICE_USD) * feeRate : 0
   const totalRequiredGD = marginRequiredGD + feeGD
@@ -392,7 +440,9 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
                 <label className="text-xs text-gray-400 mb-1 block">Quick Size</label>
                 <div className="flex gap-1">
                   {[0.25, 0.5, 0.75, 1].map(pct => {
-                    const maxSize = (account.availableMargin * leverage) / effectivePrice
+                    const availableFundingGD = account.availableMargin + walletG$
+                    const availableFundingUsd = availableFundingGD * GD_PRICE_USD
+                    const maxSize = effectivePrice > 0 ? (availableFundingUsd * leverage) / effectivePrice : 0
                     const targetSize = maxSize * pct
                     const decimals = effectivePrice >= 10000 ? 4 : effectivePrice >= 100 ? 3 : effectivePrice >= 1 ? 2 : 0
                     const rounded = parseFloat(targetSize.toFixed(decimals))
@@ -518,7 +568,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
             <div className="flex justify-between text-gray-400"><span>Margin</span><span className="text-white truncate ml-2">{formatPerpsPrice(marginRequired)}</span></div>
             <div className="flex justify-between text-gray-400"><span>Liq. Price</span><span className="text-yellow-400 truncate ml-2">{formatPerpsPrice(liqPrice)}</span></div>
             <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.10%' : '0.02%'})</span><span className="text-white truncate ml-2">{formatLargeValue(fee)}</span></div>
-            <div className="flex justify-between text-goodgreen/80"><span>→ UBI (20%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
+            <div className="flex justify-between text-goodgreen/80"><span>→ UBI (33%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
             {tpPnl !== 0 && !tpInvalid && (
               <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className="truncate ml-2"><PriceDisplay value={tpPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>
             )}
@@ -562,7 +612,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
 
       <div className="flex items-center justify-center gap-1.5 text-[10px] text-goodgreen">
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-        <span>Fees → 20% funds UBI</span>
+        <span>Fees → 33% funds UBI</span>
       </div>
     </form>
   )
@@ -858,6 +908,18 @@ export default function PerpsPage() {
           </div>
           <OpenPositions />
         </div>
+      </div>
+
+      {/* Funding Rate History Chart */}
+      {pair && (
+        <div className="mt-4">
+          <FundingRateChart symbol={pair.symbol} />
+        </div>
+      )}
+
+      {/* Order / Trade / Funding History */}
+      <div className="mt-4">
+        <PerpsHistoryTabs />
       </div>
     </div>
   )

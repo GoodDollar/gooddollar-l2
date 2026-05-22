@@ -24,6 +24,11 @@ export interface LendReserve {
   borrowingEnabled: boolean
   // gToken
   gTokenSymbol: string
+  // Interest rate model (two-slope kinked curve)
+  optimalUtilization: number  // e.g. 0.80 = 80%
+  baseRate: number            // e.g. 0.01 = 1%
+  slope1: number              // rate increase per unit utilization below optimal
+  slope2: number              // rate increase per unit utilization above optimal
 }
 
 export interface UserPosition {
@@ -62,6 +67,10 @@ const RESERVES: LendReserve[] = [
     isActive: true,
     borrowingEnabled: true,
     gTokenSymbol: 'gWETH',
+    optimalUtilization: 0.80,
+    baseRate: 0.01,
+    slope1: 0.04,
+    slope2: 0.75,
   },
   {
     symbol: 'WBTC',
@@ -80,6 +89,10 @@ const RESERVES: LendReserve[] = [
     isActive: true,
     borrowingEnabled: true,
     gTokenSymbol: 'gWBTC',
+    optimalUtilization: 0.65,
+    baseRate: 0.005,
+    slope1: 0.03,
+    slope2: 1.00,
   },
   {
     symbol: 'USDC',
@@ -98,6 +111,10 @@ const RESERVES: LendReserve[] = [
     isActive: true,
     borrowingEnabled: true,
     gTokenSymbol: 'gUSDC',
+    optimalUtilization: 0.90,
+    baseRate: 0.00,
+    slope1: 0.04,
+    slope2: 0.60,
   },
   {
     symbol: 'DAI',
@@ -116,6 +133,10 @@ const RESERVES: LendReserve[] = [
     isActive: true,
     borrowingEnabled: true,
     gTokenSymbol: 'gDAI',
+    optimalUtilization: 0.90,
+    baseRate: 0.00,
+    slope1: 0.04,
+    slope2: 0.60,
   },
   {
     symbol: 'G$',
@@ -134,8 +155,165 @@ const RESERVES: LendReserve[] = [
     isActive: true,
     borrowingEnabled: true,
     gTokenSymbol: 'gG$',
+    optimalUtilization: 0.70,
+    baseRate: 0.02,
+    slope1: 0.10,
+    slope2: 1.50,
+  },
+  {
+    symbol: 'gAAPL',
+    name: 'Synthetic Apple Inc.',
+    address: '0xgAAPL_DEVNET',
+    decimals: 18,
+    price: 198.42,
+    totalSupplied: 0,
+    supplyAPY: 0,
+    totalBorrowed: 0,
+    borrowAPY: 0,
+    ltvBPS: 5500,
+    liquidationThresholdBPS: 6500,
+    liquidationBonusBPS: 11000,
+    reserveFactorBPS: 3300,
+    isActive: true,
+    borrowingEnabled: false,
+    gTokenSymbol: 'ggAAPL',
+    optimalUtilization: 0.70,
+    baseRate: 0.02,
+    slope1: 0.06,
+    slope2: 1.20,
+  },
+  {
+    symbol: 'gTSLA',
+    name: 'Synthetic Tesla Inc.',
+    address: '0xgTSLA_DEVNET',
+    decimals: 18,
+    price: 178.65,
+    totalSupplied: 0,
+    supplyAPY: 0,
+    totalBorrowed: 0,
+    borrowAPY: 0,
+    ltvBPS: 5000,
+    liquidationThresholdBPS: 6000,
+    liquidationBonusBPS: 12000,
+    reserveFactorBPS: 3300,
+    isActive: true,
+    borrowingEnabled: false,
+    gTokenSymbol: 'ggTSLA',
+    optimalUtilization: 0.65,
+    baseRate: 0.03,
+    slope1: 0.08,
+    slope2: 1.50,
+  },
+  {
+    symbol: 'gNVDA',
+    name: 'Synthetic NVIDIA Corp.',
+    address: '0xgNVDA_DEVNET',
+    decimals: 18,
+    price: 131.88,
+    totalSupplied: 0,
+    supplyAPY: 0,
+    totalBorrowed: 0,
+    borrowAPY: 0,
+    ltvBPS: 5500,
+    liquidationThresholdBPS: 6500,
+    liquidationBonusBPS: 11000,
+    reserveFactorBPS: 3300,
+    isActive: true,
+    borrowingEnabled: false,
+    gTokenSymbol: 'ggNVDA',
+    optimalUtilization: 0.65,
+    baseRate: 0.03,
+    slope1: 0.07,
+    slope2: 1.30,
+  },
+  {
+    symbol: 'gMSFT',
+    name: 'Synthetic Microsoft Corp.',
+    address: '0xgMSFT_DEVNET',
+    decimals: 18,
+    price: 432.15,
+    totalSupplied: 0,
+    supplyAPY: 0,
+    totalBorrowed: 0,
+    borrowAPY: 0,
+    ltvBPS: 6000,
+    liquidationThresholdBPS: 7000,
+    liquidationBonusBPS: 10500,
+    reserveFactorBPS: 3300,
+    isActive: true,
+    borrowingEnabled: false,
+    gTokenSymbol: 'ggMSFT',
+    optimalUtilization: 0.70,
+    baseRate: 0.02,
+    slope1: 0.05,
+    slope2: 1.10,
+  },
+  {
+    symbol: 'gMETA',
+    name: 'Synthetic Meta Platforms',
+    address: '0xgMETA_DEVNET',
+    decimals: 18,
+    price: 507.30,
+    totalSupplied: 0,
+    supplyAPY: 0,
+    totalBorrowed: 0,
+    borrowAPY: 0,
+    ltvBPS: 5500,
+    liquidationThresholdBPS: 6500,
+    liquidationBonusBPS: 11000,
+    reserveFactorBPS: 3300,
+    isActive: true,
+    borrowingEnabled: false,
+    gTokenSymbol: 'ggMETA',
+    optimalUtilization: 0.70,
+    baseRate: 0.02,
+    slope1: 0.06,
+    slope2: 1.20,
+  },
+  {
+    symbol: 'gSPY',
+    name: 'Synthetic S&P 500 ETF',
+    address: '0xgSPY_DEVNET',
+    decimals: 18,
+    price: 538.20,
+    totalSupplied: 0,
+    supplyAPY: 0,
+    totalBorrowed: 0,
+    borrowAPY: 0,
+    ltvBPS: 6500,
+    liquidationThresholdBPS: 7500,
+    liquidationBonusBPS: 10500,
+    reserveFactorBPS: 3300,
+    isActive: true,
+    borrowingEnabled: false,
+    gTokenSymbol: 'ggSPY',
+    optimalUtilization: 0.75,
+    baseRate: 0.015,
+    slope1: 0.04,
+    slope2: 0.90,
   },
 ]
+
+/**
+ * Two-slope kinked interest rate model.
+ * Returns borrow APY and supply APY at a given utilization.
+ */
+export function getRateAtUtilization(
+  reserve: LendReserve,
+  utilization: number
+): { borrowAPY: number; supplyAPY: number } {
+  const u = Math.max(0, Math.min(1, utilization))
+  const { optimalUtilization: uOpt, baseRate, slope1, slope2, reserveFactorBPS } = reserve
+  let borrowRate: number
+  if (u <= uOpt) {
+    borrowRate = baseRate + (u / uOpt) * slope1
+  } else {
+    borrowRate = baseRate + slope1 + ((u - uOpt) / (1 - uOpt)) * slope2
+  }
+  const reserveFactor = reserveFactorBPS / 10_000
+  const supplyRate = borrowRate * u * (1 - reserveFactor)
+  return { borrowAPY: borrowRate, supplyAPY: supplyRate }
+}
 
 export function getReserves(): LendReserve[] {
   return RESERVES

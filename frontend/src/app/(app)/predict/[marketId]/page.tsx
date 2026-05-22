@@ -61,7 +61,7 @@ function TradePanel({ market, initialSide }: { market: PredictionMarket, initial
   const shares = amount && price > 0 ? parseFloat(amount) / price : 0
   const potentialPayout = shares
   const fee = amount ? parseFloat(amount) * 0.01 : 0
-  const ubiFee = fee * 0.2
+  const ubiFee = fee * 0.33
   const hasAmount = !!amount && parseFloat(amount) > 0
   const isBusy = phase === 'approving' || phase === 'buying'
 
@@ -123,8 +123,8 @@ function TradePanel({ market, initialSide }: { market: PredictionMarket, initial
             <span>Fee (1%)</span>
             <span className="text-white">{formatLargeValue(fee)}</span>
           </div>
-          <div className="flex justify-between text-goodgreen">
-            <span>→ UBI Pool (20%)</span>
+          <div className="flex justify-between text-goodgreen/80">
+            <span>→ UBI Pool (33%)</span>
             <span>{formatLargeValue(ubiFee)}</span>
           </div>
         </div>
@@ -161,7 +161,7 @@ function TradePanel({ market, initialSide }: { market: PredictionMarket, initial
 
       <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-goodgreen">
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-        <span>1% fee on winnings → 20% funds UBI</span>
+        <span>1% fee on winnings → 33% funds UBI</span>
       </div>
     </form>
   )

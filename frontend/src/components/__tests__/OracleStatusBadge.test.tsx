@@ -82,4 +82,18 @@ describe('OracleStatusBadge stocks fallback', () => {
     await waitFor(() => expect(screen.getAllByText('Live').length).toBeGreaterThan(0))
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
+
+  it('shows animated skeleton pill instead of plain text while checking oracle', () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}))
+
+    const { container } = render(<OracleStatusBadge useStocksFallback />)
+    expect(screen.queryByText('Checking oracle...')).not.toBeInTheDocument()
+    const skeleton = container.querySelector('.animate-pulse')
+    expect(skeleton).toBeInTheDocument()
+  })
 })

@@ -15,7 +15,9 @@ import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectCon
 import { MarketSessionBadge } from '@/components/stocks/MarketSessionBadge'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { PercentageChange } from '@/components/ui/percentage-change'
+import { StockLogo } from '@/components/ui/stock-logo'
 import { useMounted } from '@/lib/useMounted'
+import { useStockWatchlist } from '@/lib/useStockWatchlist'
 import {
   parseStocksScreenerState,
   serializeStocksScreenerState,
@@ -71,10 +73,27 @@ function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
 }
 
 function StockIcon({ ticker }: { ticker: string }) {
+  return <StockLogo ticker={ticker} size="sm" />
+}
+
+function StarButton({ active, onClick }: { active: boolean; onClick: (e: React.MouseEvent) => void }) {
   return (
-    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-[10px] font-bold text-goodgreen shrink-0">
-      {ticker.slice(0, 2)}
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors shrink-0"
+      aria-label={active ? 'Remove from watchlist' : 'Add to watchlist'}
+    >
+      {active ? (
+        <svg className="w-4 h-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4 text-gray-600 group-hover:text-gray-400 transition-colors" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      )}
+    </button>
   )
 }
 
@@ -83,10 +102,12 @@ interface StockRowProps {
   idx: number
   isLive: boolean
   canIncreaseRisk: boolean
+  isFavorite: boolean
+  onToggleFavorite: (ticker: string) => void
   onRowClick: (ticker: string) => void
 }
 
-const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, onRowClick }: StockRowProps) {
+const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, isFavorite, onToggleFavorite, onRowClick }: StockRowProps) {
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -98,6 +119,7 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, o
       </td>
       <td className="py-3 px-3">
         <div className="flex items-center gap-2.5">
+          <StarButton active={isFavorite} onClick={(e) => { e.stopPropagation(); onToggleFavorite(stock.ticker) }} />
           <StockIcon ticker={stock.ticker} />
           <div>
             <span className="font-semibold text-white">{stock.ticker}</span>
@@ -168,6 +190,8 @@ export default function StocksPage() {
   const [momentumFilter, setMomentumFilter] = useState<MomentumFilter>(initialScreenerState.momentumFilter)
   const [liquidityFilter, setLiquidityFilter] = useState<LiquidityFilter>(initialScreenerState.liquidityFilter)
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+  const { favorites, toggleFavorite, isFavorite } = useStockWatchlist()
+  const [watchlistActive, setWatchlistActive] = useState(false)
   const rebalanceSymbols = useMemo(() => data.map((stock) => stock.ticker), [data])
   const { data: rebalanceStatus, isLoading: rebalanceLoading, error: rebalanceError, bySymbol: rebalanceBySymbol } =
     useStocksRebalanceStatus(rebalanceSymbols)
@@ -187,6 +211,9 @@ export default function StocksPage() {
 
   const filtered = useMemo(() => {
     let stocks = data
+    if (watchlistActive) {
+      stocks = stocks.filter(s => favorites.has(s.ticker))
+    }
     const trimmed = query.trim()
     if (trimmed) {
       const q = trimmed.toLowerCase()
@@ -214,7 +241,7 @@ export default function StocksPage() {
       const mul = sortDir === 'asc' ? 1 : -1
       return (a[sortField] - b[sortField]) * mul
     })
-  }, [data, query, sortField, sortDir, sectorFilter, capFilter, momentumFilter, liquidityFilter])
+  }, [data, query, sortField, sortDir, sectorFilter, capFilter, momentumFilter, liquidityFilter, watchlistActive, favorites])
 
   const activeFilterCount = Number(sectorFilter !== 'all') + Number(capFilter !== 'all') + Number(momentumFilter !== 'all') + Number(liquidityFilter !== 'all')
   const hasSearchQuery = query.trim().length > 0
@@ -247,25 +274,34 @@ export default function StocksPage() {
   }
 
   const clearEmptyStateConstraints = () => {
+    if (watchlistActive) setWatchlistActive(false)
     if (hasSearchQuery) setQuery('')
     if (hasActiveFilters) clearAllFilters()
   }
 
-  const emptyStateMessage = hasSearchQuery && hasActiveFilters
-    ? 'No stocks match your search and filters.'
-    : hasActiveFilters
-      ? 'No stocks match your current filters.'
-      : hasSearchQuery
-        ? 'No stocks match your search.'
-        : 'No stocks available right now.'
+  const emptyStateMessage = watchlistActive && favorites.size === 0
+    ? 'Your watchlist is empty. Star a stock to add it here.'
+    : watchlistActive
+      ? 'No watchlist stocks match your filters.'
+      : hasSearchQuery && hasActiveFilters
+        ? 'No stocks match your search and filters.'
+        : hasActiveFilters
+          ? 'No stocks match your current filters.'
+          : hasSearchQuery
+            ? 'No stocks match your search.'
+            : 'No stocks available right now.'
 
-  const emptyStateActionLabel = hasSearchQuery && hasActiveFilters
-    ? 'Clear search & filters'
-    : hasActiveFilters
-      ? 'Clear filters'
-      : hasSearchQuery
-        ? 'Clear search'
-        : null
+  const emptyStateActionLabel = watchlistActive && favorites.size === 0
+    ? 'Show all stocks'
+    : watchlistActive
+      ? 'Show all stocks'
+      : hasSearchQuery && hasActiveFilters
+        ? 'Clear search & filters'
+        : hasActiveFilters
+          ? 'Clear filters'
+          : hasSearchQuery
+            ? 'Clear search'
+            : null
 
   const pushTickerRoute = useCallback((ticker: string) => {
     const next = screenerQueryString ? `/stocks/${ticker}?${screenerQueryString}` : `/stocks/${ticker}`
@@ -295,7 +331,7 @@ export default function StocksPage() {
         </div>
       </div>
 
-      <div className="mb-4 sm:mb-5">
+      <div className="mb-2 sm:mb-4">
         <InfoBanner
           title="How Tokenized Stocks Work"
           description="Synthetic stock tokens track real equity prices via StockOracleV2 multi-signer oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 33% of fees to UBI."
@@ -311,9 +347,9 @@ export default function StocksPage() {
 
       {!address && (
         <>
-          <WalletConnectConfigWarning className="mb-4" />
+          <WalletConnectConfigWarning className="mb-2 sm:mb-4" />
           {isLive ? (
-            <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
+            <div className="mb-2 sm:mb-4 p-3 sm:p-4 md:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
@@ -329,7 +365,7 @@ export default function StocksPage() {
               </div>
             </div>
           ) : (
-            <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-yellow-500/25 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5">
+            <div className="mb-2 sm:mb-4 p-3 sm:p-4 md:p-5 rounded-2xl border border-yellow-500/25 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -373,6 +409,22 @@ export default function StocksPage() {
           disabled={!mounted}
           className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30 disabled:opacity-70 disabled:cursor-not-allowed"
         />
+        <button
+          type="button"
+          onClick={() => setWatchlistActive(v => !v)}
+          className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
+            watchlistActive
+              ? 'bg-yellow-400/15 border-yellow-400/30 text-yellow-400'
+              : 'bg-dark-100 border-gray-700/30 text-gray-400 hover:text-gray-200 hover:border-gray-600/40'
+          }`}
+          aria-pressed={watchlistActive}
+          aria-label="Filter watchlist"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+          Watchlist{favorites.size > 0 ? ` (${favorites.size})` : ''}
+        </button>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
           <select
             aria-label="Filter by sector"
@@ -473,6 +525,7 @@ export default function StocksPage() {
               onClick={() => handleRowClick(stock.ticker)}
               className="bg-dark-100 rounded-xl border border-gray-700/20 px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-dark-50/30 transition-colors active:scale-[0.99]"
             >
+              <StarButton active={isFavorite(stock.ticker)} onClick={(e) => { e.stopPropagation(); toggleFavorite(stock.ticker) }} />
               <StockIcon ticker={stock.ticker} />
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
@@ -556,6 +609,8 @@ export default function StocksPage() {
                     idx={idx}
                     isLive={isLive}
                     canIncreaseRisk={rebalanceBySymbol[stock.ticker]?.riskIncreaseAllowed ?? true}
+                    isFavorite={isFavorite(stock.ticker)}
+                    onToggleFavorite={toggleFavorite}
                     onRowClick={handleRowClick}
                   />
                 ))

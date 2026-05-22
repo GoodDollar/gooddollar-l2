@@ -247,7 +247,7 @@ function OrderForm({
   const effectivePrice = orderType === 'limit' && parsedLimitPrice > 0 ? parsedLimitPrice : (orderType === 'limit' ? 0 : stock.price)
   const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
   const fee = amount ? parseFloat(amount) * 0.001 : 0
-  const ubiFee = fee * 0.2
+  const ubiFee = fee * 0.33
   // Sanity-cap the Amount (USD) input so the summary cannot advertise
   // implausibly large notional values (e.g. $1T phantom orders) and so
   // we never submit an order the chain would just revert. See task 0058.
@@ -394,7 +394,7 @@ function OrderForm({
             <span className="text-white truncate ml-2">{formatTradeAmount(fee)}</span>
           </div>
           <div className="flex justify-between text-goodgreen/80">
-            <span>→ UBI Pool (20%)</span>
+            <span>→ UBI Pool (33%)</span>
             <span className="truncate ml-2">{formatTradeAmount(ubiFee)}</span>
           </div>
         </div>
@@ -436,7 +436,7 @@ function OrderForm({
 
       <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-goodgreen">
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-        <span>0.1% fee → 20% funds UBI</span>
+        <span>0.1% fee → 33% funds UBI</span>
       </div>
     </form>
   )

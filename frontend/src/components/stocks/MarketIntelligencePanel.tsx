@@ -97,7 +97,11 @@ export function MarketIntelligencePanel({
             </div>
           </div>
           {isLoading ? (
-            <p className="text-xs text-gray-500">Loading movers…</p>
+            <div className="space-y-1.5" aria-busy="true">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse h-8 rounded-lg bg-dark-50/30" />
+              ))}
+            </div>
           ) : !hasData ? (
             <p className="text-xs text-gray-500">No movers available.</p>
           ) : (
@@ -123,7 +127,11 @@ export function MarketIntelligencePanel({
         <article className="rounded-xl border border-gray-700/20 bg-dark-50/30 p-3">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">Upcoming Earnings</h3>
           {isLoading ? (
-            <p className="text-xs text-gray-500">Loading earnings…</p>
+            <div className="space-y-1.5" aria-busy="true">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse h-8 rounded-lg bg-dark-50/30" />
+              ))}
+            </div>
           ) : !hasData ? (
             <p className="text-xs text-gray-500">No earnings events available.</p>
           ) : (
@@ -147,7 +155,11 @@ export function MarketIntelligencePanel({
         <article className="rounded-xl border border-gray-700/20 bg-dark-50/30 p-3">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">News Flow</h3>
           {isLoading ? (
-            <p className="text-xs text-gray-500">Loading headlines…</p>
+            <div className="space-y-1.5" aria-busy="true">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse h-8 rounded-lg bg-dark-50/30" />
+              ))}
+            </div>
           ) : !hasData ? (
             <p className="text-xs text-gray-500">No headlines available.</p>
           ) : (

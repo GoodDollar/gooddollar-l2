@@ -45,7 +45,8 @@ export function LazyPredictSection() {
         <div className="space-y-2">
           {predictPositions.slice(0, 3).map(p => {
             const market = predictMarketMap.get(p.marketId)
-            const currentPrice = p.side === 'yes' ? market?.yesPrice ?? 0 : 1 - (market?.yesPrice ?? 0)
+            const yesPrice = market?.yesPrice ?? 0
+            const currentPrice = p.side === 'yes' ? yesPrice : 1 - yesPrice
             const value = p.shares * currentPrice
             const pnl = value - (p.shares * p.avgPrice)
             const sideLabel = p.side.toUpperCase()

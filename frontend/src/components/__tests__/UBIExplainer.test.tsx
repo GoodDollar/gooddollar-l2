@@ -21,7 +21,7 @@ describe('UBIExplainer', () => {
   it('renders all 4 flow steps', () => {
     render(<UBIExplainer />)
     expect(screen.getByText('Your Trade')).toBeInTheDocument()
-    expect(screen.getByText('20% Fee')).toBeInTheDocument()
+    expect(screen.getByText('33% Fee')).toBeInTheDocument()
     expect(screen.getByText('UBI Pool')).toBeInTheDocument()
     expect(screen.getByText('640K+ People')).toBeInTheDocument()
   })

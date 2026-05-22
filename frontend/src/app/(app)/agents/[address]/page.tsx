@@ -209,7 +209,7 @@ export default function AgentDetailPage() {
           </div>
           <div>
             <div className="text-2xl font-bold text-goodgreen">{stats.ubiContribution}</div>
-            <div className="text-xs text-gray-400">→ UBI Pool (20%)</div>
+            <div className="text-xs text-gray-400">→ UBI Pool (33%)</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-blue-400">

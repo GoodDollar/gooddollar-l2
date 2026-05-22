@@ -30,6 +30,7 @@ import { StockMarketData } from '@/components/stocks/StockMarketData'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
+import { StockLogo } from '@/components/ui/stock-logo'
 import { StockStatsBar } from '@/components/stocks/StockStatsBar'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
@@ -43,6 +44,8 @@ import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerT
 // See task 0090 (initiative 0002) and task 0025 (initiative 0006).
 // (A regression test at `src/__tests__/dynamic-routes-no-ssr-false.test.ts`
 // enforces this rule; do not reintroduce the forbidden token here.)
+
+const RESERVED_STOCK_SUBROUTES = new Set(['markets', 'portfolio'])
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -155,10 +158,12 @@ function OrderForm({
   const effectivePrice = orderType !== 'market' && parsedLimitPrice > 0 ? parsedLimitPrice : (orderType !== 'market' ? 0 : stock.price)
   const parsedTp = parseFloat(tp) || 0
   const parsedSl = parseFloat(sl) || 0
+  const tpWrongSide = parsedTp > 0 && effectivePrice > 0 && ((side === 'buy' && parsedTp <= effectivePrice) || (side === 'sell' && parsedTp >= effectivePrice))
+  const slWrongSide = parsedSl > 0 && effectivePrice > 0 && ((side === 'buy' && parsedSl >= effectivePrice) || (side === 'sell' && parsedSl <= effectivePrice))
   const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
   const fee = amount ? parseFloat(amount) * 0.001 : 0
   const ubiFee = fee * 0.33
-  const SLIPPAGE_TOLERANCE = 0.005
+  const SLIPPAGE_TOLERANCE = parseFloat(slippage) / 100 || 0.005
   const priceImpact = amount ? (parseFloat(amount) / 100_000) * 0.01 : 0
   const minReceived = shares * (1 - SLIPPAGE_TOLERANCE)
   const totalCost = amount ? parseFloat(amount) + fee : 0
@@ -351,7 +356,7 @@ function OrderForm({
               <span className="text-gray-300 truncate ml-2">~{formatStockShares(minReceived)} {stock.ticker}</span>
             </div>
             <div className="flex justify-between text-gray-400">
-              <span className="text-gray-500 text-[10px]">0.5% slippage tolerance</span>
+              <span className="text-gray-500 text-[10px]">{slippage}% slippage tolerance</span>
             </div>
             <div className="border-t border-gray-700/30 my-1.5" />
             <div className="flex justify-between text-gray-400 font-medium">
@@ -382,13 +387,18 @@ function OrderForm({
                 placeholder={side === 'buy' ? (stock.price * 1.1).toFixed(2) : (stock.price * 0.9).toFixed(2)}
                 value={tp}
                 onChange={e => setTp(sanitizeNumericInput(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/30 text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50" />
-              {parsedTp > 0 && shares > 0 && effectivePrice > 0 && (() => {
+                className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${tpWrongSide ? 'border-yellow-500/50' : 'border-gray-700/30'}`} />
+              {tpWrongSide && (
+                <p className="text-yellow-400 text-[10px] mt-1">
+                  {side === 'buy' ? 'Take profit should be above current price' : 'Take profit should be below current price'}
+                </p>
+              )}
+              {!tpWrongSide && parsedTp > 0 && shares > 0 && effectivePrice > 0 && (() => {
                 const diff = side === 'buy' ? parsedTp - effectivePrice : effectivePrice - parsedTp
                 const pnl = diff * shares
                 return (
                   <p className={`text-[10px] mt-1 ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    Est. Profit: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                    {pnl >= 0 ? 'Est. Profit' : 'Est. Loss'}: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
                   </p>
                 )
               })()}
@@ -400,13 +410,18 @@ function OrderForm({
                 placeholder={side === 'buy' ? (stock.price * 0.95).toFixed(2) : (stock.price * 1.05).toFixed(2)}
                 value={sl}
                 onChange={e => setSl(sanitizeNumericInput(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-dark-50 border border-gray-700/30 text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50" />
-              {parsedSl > 0 && shares > 0 && effectivePrice > 0 && (() => {
+                className={`w-full px-3 py-2 rounded-xl bg-dark-50 border text-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${slWrongSide ? 'border-yellow-500/50' : 'border-gray-700/30'}`} />
+              {slWrongSide && (
+                <p className="text-yellow-400 text-[10px] mt-1">
+                  {side === 'buy' ? 'Stop loss should be below current price' : 'Stop loss should be above current price'}
+                </p>
+              )}
+              {!slWrongSide && parsedSl > 0 && shares > 0 && effectivePrice > 0 && (() => {
                 const diff = side === 'buy' ? parsedSl - effectivePrice : effectivePrice - parsedSl
                 const pnl = diff * shares
                 return (
                   <p className={`text-[10px] mt-1 ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    Est. Loss: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                    {pnl < 0 ? 'Est. Loss' : 'Est. Profit'}: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
                   </p>
                 )
               })()}
@@ -455,6 +470,7 @@ export default function StockDetailPage() {
   const searchParams = useSearchParams()
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
+  const isReservedSubroute = !!rawTicker && RESERVED_STOCK_SUBROUTES.has(rawTicker.toLowerCase())
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks, isLive } = useOnChainStocks()
   const { bySymbol: rebalanceBySymbol } = useStocksRebalanceStatus(ticker ? [ticker] : [])
@@ -547,6 +563,12 @@ export default function StockDetailPage() {
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
   }, [pathname, router, searchParams])
 
+  useEffect(() => {
+    if (isReservedSubroute) {
+      router.replace('/stocks')
+    }
+  }, [isReservedSubroute, router])
+
   const handleTabChange = (nextTab: TickerTab) => {
     setActiveTab(nextTab)
     const nextParams = new URLSearchParams(searchParams.toString())
@@ -557,6 +579,14 @@ export default function StockDetailPage() {
     }
     const next = nextParams.toString()
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+  }
+
+  if (isReservedSubroute) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-goodgreen border-t-transparent" />
+      </div>
+    )
   }
 
   if (!stock) {
@@ -594,9 +624,7 @@ export default function StockDetailPage() {
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-xs font-bold text-goodgreen">
-              {stock.ticker.slice(0, 2)}
-            </div>
+            <StockLogo ticker={stock.ticker} size="md" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
@@ -690,28 +718,28 @@ export default function StockDetailPage() {
             <>
               <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
                 <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  <div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">Market Cap</div>
-                    <div className="text-white font-medium">{formatLargeNumber(stock.marketCap)}</div>
+                    <div className="text-white font-medium truncate">{formatLargeNumber(stock.marketCap)}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
-                    <div className="text-white font-medium">{formatLargeNumber(stock.volume24h)}</div>
+                    <div className="text-white font-medium truncate">{formatLargeNumber(stock.volume24h)}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">Sector</div>
-                    <div className="text-white font-medium">{stock.sector}</div>
+                    <div className="text-white font-medium truncate">{stock.sector}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">52W High</div>
-                    <div className="text-white font-medium">{formatStockPrice(stock.high52w)}</div>
+                    <div className="text-white font-medium truncate">{formatStockPrice(stock.high52w)}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
-                    <div className="text-white font-medium">{formatStockPrice(stock.low52w)}</div>
+                    <div className="text-white font-medium truncate">{formatStockPrice(stock.low52w)}</div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
                     <div className={`font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%

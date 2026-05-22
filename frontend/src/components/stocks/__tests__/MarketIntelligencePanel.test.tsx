@@ -104,4 +104,15 @@ describe('MarketIntelligencePanel', () => {
     expect(screen.getByText(/No earnings events available/i)).toBeInTheDocument()
     expect(screen.getByText(/No headlines available/i)).toBeInTheDocument()
   })
+
+  it('renders skeleton shimmer bars instead of plain text when loading', () => {
+    const { container } = render(
+      <MarketIntelligencePanel stocks={[]} isLive isLoading={true} onSelectTicker={vi.fn()} />
+    )
+    expect(screen.queryByText(/Loading movers/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Loading earnings/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Loading headlines/i)).not.toBeInTheDocument()
+    const skeletons = container.querySelectorAll('.animate-pulse')
+    expect(skeletons.length).toBeGreaterThanOrEqual(9)
+  })
 })

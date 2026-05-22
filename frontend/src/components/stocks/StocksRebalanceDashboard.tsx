@@ -28,7 +28,11 @@ export function StocksRebalanceDashboard({ symbols, isLoading = false, error = n
       </div>
 
       {isLoading && (
-        <p className="text-xs text-gray-400">Loading symbol sync status...</p>
+        <div className="space-y-2" aria-busy="true">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse h-6 rounded bg-dark-50/30" />
+          ))}
+        </div>
       )}
 
       {!isLoading && error && (
