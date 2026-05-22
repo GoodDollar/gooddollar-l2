@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } fro
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 
 import Link from 'next/link'
-import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
+import { formatStockPrice, formatLargeNumber, formatLargeCount } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
@@ -504,7 +504,7 @@ export default function StockDetailPage() {
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">Avg Volume</div>
-                <div className="text-white font-medium">{formatLargeNumber(stock.avgVolume).replace('$', '')}</div>
+                <div className="text-white font-medium">{formatLargeCount(stock.avgVolume)}</div>
               </div>
             </div>
           </div>
