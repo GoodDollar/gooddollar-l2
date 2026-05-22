@@ -126,8 +126,11 @@ Added after the initial coordinator report:
 
 - `cb225e16` / coordinator cherry-pick: perps E2E on-chain flow fix covering live collateral read, devnet G$ default, live fee splitter redeploy requirement, BTC/ETH market id alignment, and missing open-positions panel test id.
 
-Follow-up gates to run on coordinator after this commit:
+Follow-up gates run on coordinator after this commit:
 
-- `cd frontend && npm run build:e2e:force`
-- `cd frontend && E2E_PROD_SERVER=1 npx playwright test e2e/perps-journey.spec.ts --project=chromium`
-- `git diff --check`
+- `git diff --check` — PASS
+- `cd frontend && npm run build:e2e:force` — PASS
+- `cd frontend && E2E_PROD_SERVER=1 npx playwright test e2e/perps-journey.spec.ts --project=chromium` — PASS, 20/20
+
+
+Coordinator tip after perps follow-up: `3b4611a0` before this report update; perps code cherry-pick is `a031fb32` from lane commit `cb225e16`.
