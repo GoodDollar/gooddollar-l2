@@ -16,6 +16,29 @@ GoodDollar L2 is an OP Stack-style EVM chain where useful financial activity rou
 - Architecture diagrams: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Testnet guide: [`docs/TESTNET_README.md`](docs/TESTNET_README.md)
 
+## Verified Status — 2026-05-22
+
+_Last refreshed: 2026-05-22 11:47 UTC. This snapshot supersedes older status rows in this README where they conflict._
+
+### Live app and service health
+
+- Public route sweep: **29 / 29 app routes returned HTTP 200** on `https://goodswap.goodclaw.org`, including Swap, Explore, Pool, Yield, Faucet, Bridge, Perps, Predict, Lend, Stable, Stocks, Portfolio, Agents, Governance, UBI Impact, Activity, Test Dashboard, Tests, Testnet Guide, Invite, and Analytics.
+- System health gate: `bash scripts/health-check.sh` returned **OK with 1 warning** at `2026-05-22 11:46 UTC`. Chain was producing blocks, disk was `59%`, memory was `28%`, package version was `v0.2.0`, branch was `main @ 23c3a049`, and the repo was `406` commits ahead of `origin/main` before this README-only status commit.
+- Status API: `https://goodswap.goodclaw.org/api/status` returned HTTP `200` but `overall: degraded` with `12 / 14` services healthy. Healthy services included `swap-oracle`, `activity-reporter`, `harvest-keeper`, `liquidator`, `revenue-tracker`, `stocks-keeper`, `indexer`, `monitor`, `rpc-balancer`, `bridge-keeper`, `perps`, and `predict`; `hedge-engine` and `oracle-signer` were `unreachable` (`fetch failed`).
+- Public RPC: `https://rpc.goodclaw.org` returned `eth_chainId = 0xa455` / decimal chain ID `42069` and block `0xc655`; a plain GET correctly returned HTTP `400` because JSON-RPC requires POST.
+- Public surfaces: `https://goodclaw.org`, `https://goodswap.goodclaw.org`, `https://explorer.goodclaw.org`, and `https://paperclip.goodclaw.org/GOO/` all returned HTTP `200`.
+- PM2: **21 / 25 processes online**. Core app/keeper/indexer services were online. `goodchain-ab-lane-a` through `goodchain-ab-lane-d` were stopped. `goodagent-prototype` and `goodagent-tori-prototype` were technically `online` but flapping/crash-looping with `22k+` restarts and `0s` uptime, so they are not considered stable.
+
+### Full E2E test status
+
+- Command run from `frontend`: `npm run test:e2e:all` (`playwright test`).
+- Scope: Playwright discovered **830 tests** across projects and ran with `1` worker.
+- Result: **not green / incomplete**. The run exited with `SIGKILL` before a final Playwright summary, so it must not be treated as a passing release gate.
+- Latest visible progress in the process log reached at least test `424 / 830`; failure artifacts continued to be written until `2026-05-22 11:46 UTC`.
+- Failure evidence captured: `213` Playwright `error-context.md` files under `.playwright-test-results/artifacts`. The dominant failure class was local test web-server loss: `175` contexts show `page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3119/...`. Remaining captured failures included mobile viewport timeout/assertion cases, explorer/stocks assertion failures, and mobile faucet negative-path cases.
+- Repeated non-fatal runtime noise during the run: Reown/Web3Modal config fetch returned HTTP `403` and WalletConnect Core logged repeated re-initialization warnings.
+- Next action: stabilize/split the Playwright web-server run, then rerun the interrupted projects; until then the live HTTP app sweep is green, but the full E2E gate is **red/incomplete**.
+
 ## POC V1 Status — 2026-05-19
 
 POC V1 is live as a persistent public GoodDollar L2 devnet / alpha-testnet candidate. The product app, public RPC, faucet, protocol pages, analytics, feedback path, Paperclip agent dashboard, Explorer / Blockscout, and 12 backend health services are online. Explorer was restored at `2026-05-19 07:54 UTC` after the Blockscout web/proxy containers had exited; it remains an alpha hardening watch item, but is no longer a public `502` blocker.
@@ -204,6 +227,8 @@ GoodDollar L2 is not just a token or a single dapp. It is a full stack:
 ## Apps Running on GoodDollar L2
 
 The POC V1 app suite is centered on `https://goodswap.goodclaw.org`. Status below reflects the `2026-05-19 06:57 UTC` refresh: direct HTTP checks plus the latest 27-route Playwright registry gate where applicable.
+
+The table below is historical POC V1 context from the previous 2026-05-19 README refresh. The latest 2026-05-22 live HTTP sweep is green, but the full E2E gate is red/incomplete as documented in the verified status section above.
 
 | App | Live link | Status | Purpose | UBI Link |
 |---|---|---|---|---|
