@@ -167,6 +167,7 @@ const nextConfig = {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       'porto/internal': false,
+      '@react-native-async-storage/async-storage': false,
     }
     config.externals.push('pino-pretty', 'lokijs', 'encoding')
     return config
