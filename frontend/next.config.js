@@ -122,6 +122,7 @@ const nextConfig = {
       'wagmi',
       '@rainbow-me/rainbowkit',
       '@tanstack/react-query',
+      'lucide-react',
     ],
   },
   webpack: (config) => {
