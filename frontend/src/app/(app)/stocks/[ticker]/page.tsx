@@ -413,7 +413,7 @@ export default function StockDetailPage() {
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
-  const { stocks } = useOnChainStocks()
+  const { stocks, isLive } = useOnChainStocks()
   const stock = stocks.find(s => s.ticker === ticker)
   const { status: priceServiceStatus, error: priceServiceError } = usePriceServiceStatus()
   const { position } = useStockPosition(ticker ?? '')
@@ -529,11 +529,27 @@ export default function StockDetailPage() {
                 </button>
               ))}
             </div>
-            {chartMounted ? (
-              <PriceChart data={chartData} height={300} />
-            ) : (
-              <div className="w-full bg-dark-50/30 rounded-xl animate-pulse h-[300px]" />
-            )}
+            <div className="relative">
+              {chartMounted ? (
+                chartData.length > 0 ? (
+                  <PriceChart data={chartData} height={300} />
+                ) : (
+                  <div className="w-full h-[300px] bg-dark-50/30 rounded-xl flex flex-col items-center justify-center gap-2">
+                    <svg className="w-8 h-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13l4-4 4 4 4-6 6 6" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 17h18" /></svg>
+                    <span className="text-xs text-gray-500">No chart data available</span>
+                  </div>
+                )
+              ) : (
+                <div className="w-full h-[300px] bg-dark-50/30 rounded-xl flex items-center justify-center">
+                  <span className="text-xs text-gray-500 animate-pulse">Loading chart…</span>
+                </div>
+              )}
+              {chartMounted && chartData.length > 0 && !isLive && (
+                <span className="absolute top-2 right-2 text-[10px] text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md font-medium backdrop-blur-sm">
+                  Simulated · oracle offline
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 sm:p-5">
