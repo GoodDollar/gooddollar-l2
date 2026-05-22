@@ -153,7 +153,7 @@ function OrderForm({
   const shares = amount && effectivePrice > 0 ? parseFloat(amount) / effectivePrice : 0
   const fee = amount ? parseFloat(amount) * 0.001 : 0
   const ubiFee = fee * 0.33
-  const SLIPPAGE_TOLERANCE = 0.005
+  const SLIPPAGE_TOLERANCE = parseFloat(slippage) / 100 || 0.005
   const priceImpact = amount ? (parseFloat(amount) / 100_000) * 0.01 : 0
   const minReceived = shares * (1 - SLIPPAGE_TOLERANCE)
   const totalCost = amount ? parseFloat(amount) + fee : 0
@@ -346,7 +346,7 @@ function OrderForm({
               <span className="text-gray-300 truncate ml-2">~{formatStockShares(minReceived)} {stock.ticker}</span>
             </div>
             <div className="flex justify-between text-gray-400">
-              <span className="text-gray-500 text-[10px]">0.5% slippage tolerance</span>
+              <span className="text-gray-500 text-[10px]">{slippage}% slippage tolerance</span>
             </div>
             <div className="border-t border-gray-700/30 my-1.5" />
             <div className="flex justify-between text-gray-400 font-medium">
