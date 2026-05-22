@@ -316,14 +316,13 @@ describe('StocksPortfolioPage — CollateralHealth empty state (task 0005)', () 
     )
 
     expect(screen.getByRole('heading', { name: 'Allocation' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Performance Trend' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Performance Stats' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Top Contributors' })).toBeInTheDocument()
     expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Shares' }))
     fireEvent.click(screen.getAllByRole('button', { name: '1M' })[0]!)
 
-    expect(screen.getByRole('img', { name: /1M portfolio performance/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Portfolio P&L chart 1M/i })).toBeInTheDocument()
   })
 
   it('reserves right/bottom safe area on stocks portfolio for floating feedback controls', () => {

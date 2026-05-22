@@ -14,7 +14,7 @@ describe('Portfolio CollateralHealth component', () => {
 
     const fnBody = source.slice(fnStart, fnStart + 800)
 
-    expect(fnBody).toMatch(/ratio\s*[>=<]+\s*0/)
+    expect(fnBody).toMatch(/totalRequired\s*>\s*0/)
   })
 
   it('isDisconnected check wraps the CollateralHealth render', () => {
