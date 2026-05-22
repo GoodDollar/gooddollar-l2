@@ -18,20 +18,10 @@ const DeferredStocksPortfolioImpactSection = dynamic(
     loading: () => (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" aria-live="polite">
         <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-6">
-          <div className="space-y-3">
-            <div className="text-center text-gray-400 text-sm">
-              Connect wallet to see your UBI impact
-            </div>
-            <button
-              type="button"
-              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
-            >
-              Connect Wallet to View UBI Impact
-            </button>
-            <div className="animate-pulse space-y-2">
-              <div className="h-3 w-full bg-gray-700/60 rounded" />
-              <div className="h-3 w-5/6 bg-gray-700/60 rounded" />
-            </div>
+          <div className="animate-pulse space-y-3">
+            <div className="h-4 w-44 bg-gray-700/60 rounded" />
+            <div className="h-8 w-32 bg-gray-700/60 rounded" />
+            <div className="h-3 w-5/6 bg-gray-700/60 rounded" />
           </div>
         </div>
         <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-6">
@@ -185,91 +175,74 @@ export default function StocksPortfolioPage() {
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Stock Portfolio</h1>
 
-      {isDisconnected && (
+      {isDisconnected ? (
         <section
-          className="bg-dark-100 rounded-2xl border border-goodgreen/25 p-5 mb-6"
+          className="bg-dark-100 rounded-2xl border border-goodgreen/25 p-8 text-center"
           data-testid="stocks-portfolio-disconnected-hero"
         >
-          <h2 className="text-lg font-semibold text-white mb-1">Connect wallet to view holdings and history</h2>
-          <p className="text-sm text-gray-400 mb-4">
-            Track your stock positions, unrealized P&amp;L, and trade history once your wallet is connected.
+          <svg className="w-12 h-12 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+          <h2 className="text-lg font-semibold text-white mb-2">Connect your wallet to track stock positions</h2>
+          <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
+            View your holdings, unrealized P&amp;L, collateral health, trade history, and UBI contributions — all in one place.
           </p>
           <ConnectButton.Custom>
             {({ openConnectModal }) => (
               <button
                 type="button"
                 onClick={openConnectModal}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
+                className="px-6 py-2.5 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
               >
-                Connect Wallet to View Holdings &amp; History
+                Connect Wallet
               </button>
             )}
           </ConnectButton.Custom>
+          <div className="mt-4">
+            <Link href="/stocks" className="text-goodgreen text-sm hover:underline">
+              Browse Stocks →
+            </Link>
+          </div>
         </section>
-      )}
-
+      ) : (
+        <>
       {/* Portfolio Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Total Value</div>
-          <div className={`text-lg sm:text-xl font-bold ${isDisconnected ? 'text-gray-500' : 'text-white'}`}>
-            {isDisconnected ? '—' : formatLargeNumber(summary.totalValue)}
+          <div className="text-lg sm:text-xl font-bold text-white">
+            {formatLargeNumber(summary.totalValue)}
           </div>
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">Unrealized P&L</div>
-          {isDisconnected ? (
-            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
-          ) : (
-            <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
-              <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
-            </div>
-          )}
+          <div className={`text-lg sm:text-xl font-bold ${summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {summary.unrealizedPnl >= 0 ? '+' : ''}{formatStockPrice(summary.unrealizedPnl)}
+            <span className="hidden sm:inline text-sm ml-1 opacity-70">({summary.pnlPercent >= 0 ? '+' : ''}{summary.pnlPercent.toFixed(1)}%)</span>
+          </div>
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
           <div className="text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">UBI Contributed</div>
-          {isDisconnected ? (
-            <div className="text-lg sm:text-xl font-bold text-gray-500">—</div>
-          ) : (
-            <div className="text-lg sm:text-xl font-bold text-goodgreen">
-              {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
-              <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
-            </div>
-          )}
+          <div className="text-lg sm:text-xl font-bold text-goodgreen">
+            {formatStockPrice((summary.totalValue || 0) * 0.003 * 0.2)}
+            <span className="hidden sm:inline text-sm ml-1 opacity-70 text-gray-400">via fees</span>
+          </div>
         </div>
         <div className="bg-dark-100 rounded-xl sm:rounded-2xl border border-gray-700/20 p-3 sm:p-5">
-          {isDisconnected ? (
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 gap-0.5">
-                <span className="text-[10px] sm:text-xs text-gray-400">Collateral Health</span>
-                <span className="text-[10px] sm:text-xs font-medium text-gray-500">Connect wallet to view collateral health</span>
-              </div>
-              <div className="h-1.5 bg-dark-50 rounded-full overflow-hidden" />
-              <div className="hidden sm:block mt-2 text-xs text-gray-500">
-                Connect wallet to unlock collateral monitoring.
-              </div>
-            </div>
-          ) : (
-            <>
-              <CollateralHealth
-                ratio={summary.healthRatio}
-                totalRequired={summary.totalRequired}
-                hasPositions={hasLivePositions}
-              />
-              <div className="hidden sm:block mt-2 text-xs text-gray-500">
-                {hasRiskPosition
-                  ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`
-                  : 'Collateral health appears after you open a leveraged position'}
-              </div>
-            </>
-          )}
+          <CollateralHealth
+            ratio={summary.healthRatio}
+            totalRequired={summary.totalRequired}
+            hasPositions={hasLivePositions}
+          />
+          <div className="hidden sm:block mt-2 text-xs text-gray-500">
+            {hasRiskPosition
+              ? `${formatStockPrice(summary.totalCollateral)} / ${formatStockPrice(summary.totalRequired)} required`
+              : 'Collateral health appears after you open a leveraged position'}
+          </div>
         </div>
       </div>
 
-      <div className={isDisconnected ? 'opacity-80' : undefined}>
-        <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
-      </div>
+      <DeferredStocksPortfolioImpactSection userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2} />
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">
@@ -288,16 +261,7 @@ export default function StocksPortfolioPage() {
         </TabsList>
 
         <TabsContent value="holdings">
-          {isDisconnected ? (
-            <div className="py-16 text-center" role="status">
-              <svg className="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7h18M3 12h18M3 17h18" />
-              </svg>
-              <p className="text-gray-400 text-sm mb-1">Connect your wallet to view holdings</p>
-              <p className="text-gray-600 text-xs mb-4">Your tokenized stock positions will appear here once you connect.</p>
-              <Link href="/stocks" className="text-goodgreen text-sm hover:underline">Browse Stocks</Link>
-            </div>
-          ) : isLoading ? (
+          {isLoading ? (
             <div className="py-16 text-center" role="status" aria-live="polite">
               <p className="text-gray-400 text-sm">Loading positions…</p>
             </div>
@@ -354,12 +318,7 @@ export default function StocksPortfolioPage() {
         </TabsContent>
 
         <TabsContent value="history">
-          {isDisconnected ? (
-            <div className="py-16 text-center" role="status">
-              <p className="text-gray-400 text-sm mb-1">Connect your wallet to view trade history</p>
-              <p className="text-gray-600 text-xs">Past trades and PnL appear here after you connect.</p>
-            </div>
-          ) : tradesLoading ? (
+          {tradesLoading ? (
             <div className="py-16 text-center" role="status" aria-live="polite">
               <p className="text-gray-400 text-sm">Loading trade history…</p>
             </div>
@@ -407,6 +366,8 @@ export default function StocksPortfolioPage() {
           )}
         </TabsContent>
       </Tabs>
+        </>
+      )}
     </div>
     </ConnectWalletEmptyState>
   )
