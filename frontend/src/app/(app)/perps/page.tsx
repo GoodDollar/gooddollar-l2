@@ -285,12 +285,17 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
     query: { enabled: !!CONTRACTS.MarginVault, retry: false },
   }).data as `0x${string}` | undefined
 
+  // Read wallet collateral as soon as the wallet connects. While MarginVault
+  // collateral() is still loading, fall back to GoodDollarToken so margin math
+  // does not briefly treat wallet G$ as zero and disable the submit button.
+  const walletCollateral = marginCollateral ?? CONTRACTS.GoodDollarToken
+
   const walletG$Result = useReadContract({
-    address: marginCollateral,
+    address: walletCollateral,
     abi: ERC20ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!(address && marginCollateral), refetchInterval: 10_000, retry: false },
+    query: { enabled: !!address, refetchInterval: 10_000, retry: false },
   })
 
   useEffect(() => {
@@ -360,7 +365,9 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
     : 0
 
   const availableFundingGD = account.availableMargin + walletG$
-  const exceedsMargin = sizeNum > 0 && totalRequiredGD > availableFundingGD
+  const walletBalanceReady = !address || !walletG$Result.isLoading
+  const exceedsMargin =
+    sizeNum > 0 && walletBalanceReady && totalRequiredGD > availableFundingGD
 
   // Calculate max size based on vault + wallet G$ that can be auto-deposited
   const availableFundingUsd = availableFundingGD * GD_PRICE_USD
@@ -879,17 +886,17 @@ export default function PerpsPage() {
 
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Chart panel — always visible on desktop; on mobile only when chart tab active */}
-        <div className="flex-1 min-w-0">
-          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex gap-1">
+        <div className={`flex-1 min-w-0 ${mobileTab !== 'chart' ? 'hidden lg:block' : ''}`}>
+          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 overflow-hidden">
+            <div className="flex items-center justify-between gap-2 mb-3 min-w-0">
+              <ScrollStrip className="flex gap-1 min-w-0 flex-1" ariaLabel="Chart timeframe">
                 {TIMEFRAMES.map(tf => (
                   <button key={tf} onClick={() => setTimeframe(tf)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+                    className={`shrink-0 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
                     {tf}
                   </button>
                 ))}
-              </div>
+              </ScrollStrip>
               <IndicatorToggle indicators={indicators} onChange={toggleIndicator} />
             </div>
             <ChartErrorBoundary>
