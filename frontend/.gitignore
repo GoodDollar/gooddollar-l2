@@ -2,5 +2,6 @@ node_modules/
 .next/
 # Playwright dev-server build dir — see playwright.config.ts (task 0029)
 .next.e2e/
+.next.review/
 # Watchdog runtime event log — see ecosystem.watchdog.config.cjs (task 0029)
 .autobuilder-logs/

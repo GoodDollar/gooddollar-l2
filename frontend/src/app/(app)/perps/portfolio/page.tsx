@@ -145,6 +145,81 @@ export default function PerpsPortfolioPage() {
     ))
   }, [pairs, positions])
 
+  const ordersContent = useMemo(() => {
+    if (orders.length === 0) {
+      return <div className="py-16 text-center"><p className="text-gray-400 text-sm">No pending orders</p></div>
+    }
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-700/30 text-gray-400">
+              <th className="text-left py-2 px-3 font-semibold">Pair</th>
+              <th className="text-left py-2 px-3 font-semibold">Type</th>
+              <th className="text-left py-2 px-3 font-semibold">Side</th>
+              <th className="text-right py-2 px-3 font-semibold">Price</th>
+              <th className="text-right py-2 px-3 font-semibold">Size</th>
+              <th className="text-right py-2 px-3 font-semibold"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map(o => <OrderRow key={o.id} order={o} />)}
+          </tbody>
+        </table>
+      </div>
+    )
+  }, [orders])
+
+  const tradesContent = useMemo(() => {
+    if (trades.length === 0) {
+      return <div className="py-16 text-center"><p className="text-gray-400 text-sm">No trade history</p></div>
+    }
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-700/30 text-gray-400">
+              <th className="text-left py-2 px-3 font-semibold">Pair</th>
+              <th className="text-left py-2 px-3 font-semibold">Side</th>
+              <th className="text-left py-2 px-3 font-semibold">Type</th>
+              <th className="text-right py-2 px-3 font-semibold">Size</th>
+              <th className="text-right py-2 px-3 font-semibold">Price</th>
+              <th className="text-right py-2 px-3 font-semibold">Fee</th>
+              <th className="text-right py-2 px-3 font-semibold">P&L</th>
+              <th className="text-right py-2 px-3 font-semibold hidden sm:table-cell">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.map(t => <TradeRow key={t.id} trade={t} />)}
+          </tbody>
+        </table>
+      </div>
+    )
+  }, [trades])
+
+  const fundingContent = useMemo(() => {
+    if (funding.length === 0) {
+      return <div className="py-16 text-center"><p className="text-gray-400 text-sm">No funding payments</p></div>
+    }
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-700/30 text-gray-400">
+              <th className="text-left py-2 px-3 font-semibold">Pair</th>
+              <th className="text-right py-2 px-3 font-semibold">Amount</th>
+              <th className="text-right py-2 px-3 font-semibold">Rate</th>
+              <th className="text-right py-2 px-3 font-semibold">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {funding.map((f, i) => <FundingRow key={i} payment={f} />)}
+          </tbody>
+        </table>
+      </div>
+    )
+  }, [funding])
+
   return (
     <ConnectWalletEmptyState
       title="Connect to View Perps"
@@ -225,75 +300,15 @@ export default function PerpsPortfolioPage() {
         </TabsContent>
 
         <TabsContent value="orders">
-          {orders.length === 0 ? (
-            <div className="py-16 text-center"><p className="text-gray-400 text-sm">No pending orders</p></div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-700/30 text-gray-400">
-                    <th className="text-left py-2 px-3 font-semibold">Pair</th>
-                    <th className="text-left py-2 px-3 font-semibold">Type</th>
-                    <th className="text-left py-2 px-3 font-semibold">Side</th>
-                    <th className="text-right py-2 px-3 font-semibold">Price</th>
-                    <th className="text-right py-2 px-3 font-semibold">Size</th>
-                    <th className="text-right py-2 px-3 font-semibold"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map(o => <OrderRow key={o.id} order={o} />)}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {ordersContent}
         </TabsContent>
 
         <TabsContent value="history">
-          {trades.length === 0 ? (
-            <div className="py-16 text-center"><p className="text-gray-400 text-sm">No trade history</p></div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-700/30 text-gray-400">
-                    <th className="text-left py-2 px-3 font-semibold">Pair</th>
-                    <th className="text-left py-2 px-3 font-semibold">Side</th>
-                    <th className="text-left py-2 px-3 font-semibold">Type</th>
-                    <th className="text-right py-2 px-3 font-semibold">Size</th>
-                    <th className="text-right py-2 px-3 font-semibold">Price</th>
-                    <th className="text-right py-2 px-3 font-semibold">Fee</th>
-                    <th className="text-right py-2 px-3 font-semibold">P&L</th>
-                    <th className="text-right py-2 px-3 font-semibold hidden sm:table-cell">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {trades.map(t => <TradeRow key={t.id} trade={t} />)}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {tradesContent}
         </TabsContent>
 
         <TabsContent value="funding">
-          {funding.length === 0 ? (
-            <div className="py-16 text-center"><p className="text-gray-400 text-sm">No funding payments</p></div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-700/30 text-gray-400">
-                    <th className="text-left py-2 px-3 font-semibold">Pair</th>
-                    <th className="text-right py-2 px-3 font-semibold">Amount</th>
-                    <th className="text-right py-2 px-3 font-semibold">Rate</th>
-                    <th className="text-right py-2 px-3 font-semibold">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {funding.map((f, i) => <FundingRow key={i} payment={f} />)}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {fundingContent}
         </TabsContent>
       </Tabs>
     </div>

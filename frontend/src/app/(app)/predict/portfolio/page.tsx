@@ -30,6 +30,115 @@ export default function PredictPortfolioPage() {
     return market && new Date(market.endDate) < new Date() && !market.resolved
   })
 
+  const positionsContent = useMemo(() => {
+    if (positions.length === 0) {
+      return (
+        <div className="py-16 text-center">
+          <p className="text-gray-400 text-sm mb-1">No open positions</p>
+          <p className="text-gray-600 text-xs mb-4">Start predicting to build your portfolio</p>
+          <Link href="/predict" className="text-goodgreen text-sm hover:underline">Browse Markets</Link>
+        </div>
+      )
+    }
+    return (
+      <div className="divide-y divide-gray-700/10">
+        {positions.map(pos => {
+          const market = marketMap.get(pos.marketId)
+          const currentVal = pos.side === 'yes' ? pos.currentPrice : 1 - pos.currentPrice
+          const pnl = pos.shares * (currentVal - pos.avgPrice)
+          return (
+            <Link key={pos.marketId} href={`/predict/${pos.marketId}`} className="block px-5 py-4 hover:bg-dark-50/30 transition-colors">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{market?.question ?? `Market #${pos.marketId}`}</p>
+                  <div className="flex items-center gap-3 mt-1 text-xs">
+                    <span className={`px-2 py-0.5 rounded font-medium ${pos.side === 'yes' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {pos.side.toUpperCase()}
+                    </span>
+                    <span className="text-gray-500">{pos.shares.toFixed(1)} shares @ {(pos.avgPrice * 100).toFixed(0)}¢</span>
+                    <ExpertValidationBadge
+                      marketId={pos.marketId}
+                      showDetails={false}
+                      className="ml-1"
+                    />
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-medium">
+                    <PriceDisplay value={pnl} prefix="$" decimals={2} showSign size="sm" />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {market ? `${Math.round(market.yesPrice * 100)}% YES` : ''}
+                  </div>
+                </div>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+    )
+  }, [positions, marketMap])
+
+  const pendingContent = useMemo(() => {
+    if (pendingPositions.length === 0) {
+      return (
+        <div className="py-16 text-center">
+          <p className="text-gray-400 text-sm">No markets pending resolution</p>
+        </div>
+      )
+    }
+    return (
+      <div className="divide-y divide-gray-700/10">
+        {pendingPositions.map(pos => {
+          const market = marketMap.get(pos.marketId)
+          return (
+            <div key={pos.marketId} className="px-5 py-4">
+              <p className="text-sm text-white">{market?.question ?? `Market #${pos.marketId}`}</p>
+              <p className="text-xs text-gray-500 mt-1">Ended {market ? new Date(market.endDate).toLocaleDateString() : ''} — awaiting resolution</p>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }, [pendingPositions, marketMap])
+
+  const historyContent = useMemo(() => {
+    if (resolved.length === 0) {
+      return (
+        <div className="py-16 text-center">
+          <p className="text-gray-400 text-sm">No resolved positions</p>
+        </div>
+      )
+    }
+    return (
+      <div className="divide-y divide-gray-700/10">
+        {resolved.map(pos => {
+          const market = marketMap.get(pos.marketId)
+          const won = pos.side === pos.outcome
+          const pnl = won ? pos.payout - pos.shares * pos.avgPrice : -(pos.shares * pos.avgPrice)
+          return (
+            <div key={pos.marketId} className="px-5 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm text-white">{market?.question ?? `Market #${pos.marketId}`}</p>
+                  <div className="flex items-center gap-2 mt-1 text-xs">
+                    <span className={`px-2 py-0.5 rounded font-medium ${won ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {won ? 'WON' : 'LOST'}
+                    </span>
+                    <span className="text-gray-500">Outcome: {pos.outcome.toUpperCase()}</span>
+                  </div>
+                </div>
+                <div className="text-sm font-medium">
+                  <PriceDisplay value={pnl} prefix="$" decimals={2} showSign size="sm" />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }, [resolved, marketMap])
+
   return (
     <ConnectWalletEmptyState
       title="Connect to View Predictions"
@@ -99,105 +208,15 @@ export default function PredictPortfolioPage() {
         </TabsList>
 
         <TabsContent value="positions" className="mt-0">
-          {positions.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-gray-400 text-sm mb-1">No open positions</p>
-              <p className="text-gray-600 text-xs mb-4">Start predicting to build your portfolio</p>
-              <Link href="/predict" className="text-goodgreen text-sm hover:underline">Browse Markets</Link>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-700/10">
-              {positions.map(pos => {
-                const market = marketMap.get(pos.marketId)
-                const currentVal = pos.side === 'yes' ? pos.currentPrice : 1 - pos.currentPrice
-                const pnl = pos.shares * (currentVal - pos.avgPrice)
-                return (
-                  <Link key={pos.marketId} href={`/predict/${pos.marketId}`} className="block px-5 py-4 hover:bg-dark-50/30 transition-colors">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{market?.question ?? `Market #${pos.marketId}`}</p>
-                        <div className="flex items-center gap-3 mt-1 text-xs">
-                          <span className={`px-2 py-0.5 rounded font-medium ${pos.side === 'yes' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
-                            {pos.side.toUpperCase()}
-                          </span>
-                          <span className="text-gray-500">{pos.shares.toFixed(1)} shares @ {(pos.avgPrice * 100).toFixed(0)}¢</span>
-                          <ExpertValidationBadge
-                            marketId={pos.marketId}
-                            showDetails={false}
-                            className="ml-1"
-                          />
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-sm font-medium">
-                          <PriceDisplay value={pnl} prefix="$" decimals={2} showSign size="sm" />
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {market ? `${Math.round(market.yesPrice * 100)}% YES` : ''}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
+          {positionsContent}
         </TabsContent>
 
         <TabsContent value="pending" className="mt-0">
-          {
-          pendingPositions.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-gray-400 text-sm">No markets pending resolution</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-700/10">
-              {pendingPositions.map(pos => {
-                const market = marketMap.get(pos.marketId)
-                return (
-                  <div key={pos.marketId} className="px-5 py-4">
-                    <p className="text-sm text-white">{market?.question ?? `Market #${pos.marketId}`}</p>
-                    <p className="text-xs text-gray-500 mt-1">Ended {market ? new Date(market.endDate).toLocaleDateString() : ''} — awaiting resolution</p>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          {pendingContent}
         </TabsContent>
 
         <TabsContent value="history" className="mt-0">
-          {
-          resolved.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-gray-400 text-sm">No resolved positions</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-700/10">
-              {resolved.map(pos => {
-                const market = marketMap.get(pos.marketId)
-                const won = pos.side === pos.outcome
-                const pnl = won ? pos.payout - pos.shares * pos.avgPrice : -(pos.shares * pos.avgPrice)
-                return (
-                  <div key={pos.marketId} className="px-5 py-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm text-white">{market?.question ?? `Market #${pos.marketId}`}</p>
-                        <div className="flex items-center gap-2 mt-1 text-xs">
-                          <span className={`px-2 py-0.5 rounded font-medium ${won ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
-                            {won ? 'WON' : 'LOST'}
-                          </span>
-                          <span className="text-gray-500">Outcome: {pos.outcome.toUpperCase()}</span>
-                        </div>
-                      </div>
-                      <div className="text-sm font-medium">
-                        <PriceDisplay value={pnl} prefix="$" decimals={2} showSign size="sm" />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          {historyContent}
         </TabsContent>
       </Tabs>
     </div>
