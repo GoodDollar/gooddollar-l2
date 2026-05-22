@@ -414,7 +414,7 @@ export default function StockDetailPage() {
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
-  const { stocks, isLive } = useOnChainStocks()
+  const { stocks, isLive, isLoading } = useOnChainStocks()
   const { pairs: perpPairs } = useOnChainPairs()
   const stock = stocks.find(s => s.ticker === ticker)
   const { status: priceServiceStatus, error: priceServiceError } = usePriceServiceStatus()
@@ -460,6 +460,27 @@ export default function StockDetailPage() {
     const timer = setTimeout(() => setAnalystLoading(false), 140)
     return () => clearTimeout(timer)
   }, [ticker])
+
+  if (isLoading && !stock) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-6 animate-pulse" data-testid="stock-detail-skeleton">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-12 h-12 rounded-xl bg-dark-50 border border-gray-700/30" />
+          <div className="space-y-2">
+            <div className="h-6 w-24 rounded bg-dark-50" />
+            <div className="h-4 w-40 rounded bg-dark-50" />
+          </div>
+        </div>
+        <div className="h-10 w-48 rounded bg-dark-50 mb-4" />
+        <div className="h-64 w-full rounded-xl bg-dark-50 border border-gray-700/30 mb-6" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-20 rounded-xl bg-dark-50 border border-gray-700/30" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   if (!stock) {
     return (

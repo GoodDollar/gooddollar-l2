@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
 
 let currentParams: Record<string, string | undefined> = {}
+let currentIsLoading = false
 let currentStocks: Array<{
   ticker: string
   name: string
@@ -58,7 +59,7 @@ vi.mock('@/lib/chartData', () => ({
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
-  useOnChainStocks: () => ({ stocks: currentStocks, isLive: false, isLoading: false }),
+  useOnChainStocks: () => ({ stocks: currentStocks, isLive: false, isLoading: currentIsLoading }),
 }))
 
 vi.mock('@/lib/useStocks', () => ({
@@ -81,6 +82,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
   beforeEach(() => {
     currentParams = {}
     currentStocks = []
+    currentIsLoading = false
   })
 
   it('renders a generic not-found message without echoing plain invalid ticker input', () => {
@@ -197,6 +199,16 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
     expect(screen.getByRole('heading', { name: 'AAPL' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
+  })
+
+  it('shows loading skeleton while stocks are loading instead of Not Found', () => {
+    currentIsLoading = true
+    currentStocks = []
+    currentParams = { ticker: 'AAPL' }
+    render(<TestWrapper><StockDetailPage /></TestWrapper>)
+
+    expect(screen.getByTestId('stock-detail-skeleton')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: /Stock Not Found/i })).toBeNull()
   })
 
