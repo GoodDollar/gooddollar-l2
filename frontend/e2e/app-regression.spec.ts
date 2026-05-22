@@ -13,6 +13,9 @@ test.describe('GoodDollar L2 app E2E registry — sequential Playwright automati
       page.on('console', (msg) => {
         if (msg.type() === 'error') consoleErrors.push(msg.text())
       })
+      await page.route('https://logo.clearbit.com/**', (route) =>
+        route.fulfill({ status: 204, body: '' }),
+      )
 
       await page.goto(app.route, { waitUntil: 'domcontentloaded' })
       await expect(page).not.toHaveURL(/\/404(?:\/|$)/)
