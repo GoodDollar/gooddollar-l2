@@ -332,7 +332,7 @@ export default function StocksPortfolioPage() {
                 </thead>
                 <tbody>
                   {holdings.map(h => (
-                    <HoldingRow key={h.ticker} holding={h} onClick={() => router.push(`/stocks/${h.ticker}`)} />
+                    <HoldingRow key={h.ticker} holding={h} onClick={() => router.push(`/stocks/${h.ticker}?from=portfolio`)} />
                   ))}
                 </tbody>
               </table>

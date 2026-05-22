@@ -50,6 +50,7 @@ const makeStock = (overrides: Partial<{
 vi.mock('next/navigation', () => ({
   useParams: () => currentParams,
   useRouter: () => ({ push: routerPush }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 vi.mock('next/link', () => ({

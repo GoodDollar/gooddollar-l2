@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
@@ -83,9 +83,18 @@ function normalizeTickerForLookup(rawTicker?: string): string {
   return normalized
 }
 
+const BACK_LINK_MAP: Record<string, { label: string; href: string }> = {
+  watchlist: { label: 'Back to Watchlist', href: '/stocks/watchlist' },
+  portfolio: { label: 'Back to Portfolio', href: '/stocks/portfolio' },
+}
+const DEFAULT_BACK_LINK = { label: 'Back to Markets', href: '/stocks' }
+
 export default function StockDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
+  const fromParam = searchParams.get('from') ?? ''
+  const backLink = BACK_LINK_MAP[fromParam] ?? DEFAULT_BACK_LINK
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks } = useOnChainStocks()
@@ -263,8 +272,8 @@ export default function StockDetailPage() {
 
   return (
     <div className="w-full max-w-5xl mx-auto">
-      <Link href="/stocks" prefetch={false} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
-        <span>←</span> Back to Stocks
+      <Link href={backLink.href} prefetch={false} data-testid="stocks-detail-back-link" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
+        <span>←</span> {backLink.label}
       </Link>
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">

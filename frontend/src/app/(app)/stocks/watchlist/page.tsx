@@ -83,7 +83,7 @@ export default function StocksWatchlistPage() {
   }, [data, isWatched])
 
   const handleRowClick = useCallback((ticker: string) => {
-    push(`/stocks/${ticker}`)
+    push(`/stocks/${ticker}?from=watchlist`)
   }, [push])
 
   useEffect(() => {
