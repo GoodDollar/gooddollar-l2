@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import { AmmTradingPanel } from '../AmmTradingPanel'
 
 describe('AmmTradingPanel', () => {
@@ -7,7 +7,6 @@ describe('AmmTradingPanel', () => {
     oraclePrice: 195.5,
     inventoryLong: 5000,
     inventoryShort: 3000,
-    poolLiquidity: 1_000_000,
     marketState: 'OPEN' as const,
     ticker: 'AAPL',
   }
@@ -29,12 +28,6 @@ describe('AmmTradingPanel', () => {
     expect(screen.getByText('OPEN')).toBeInTheDocument()
   })
 
-  it('disables trade button when market is CLOSED', () => {
-    render(<AmmTradingPanel {...baseProps} marketState="CLOSED" />)
-    const tradeBtn = screen.getByRole('button', { name: /market closed/i })
-    expect(tradeBtn).toBeDisabled()
-  })
-
   it('shows warning when market is HALTED', () => {
     render(<AmmTradingPanel {...baseProps} marketState="HALTED" />)
     expect(screen.getByText(/trading is paused/i)).toBeInTheDocument()
@@ -45,27 +38,16 @@ describe('AmmTradingPanel', () => {
     expect(screen.getByText(/inventory skew/i)).toBeInTheDocument()
   })
 
-  it('computes price impact when order size is entered', () => {
-    render(<AmmTradingPanel {...baseProps} />)
-    const input = screen.getByPlaceholderText(/order size/i)
-    fireEvent.change(input, { target: { value: '10000' } })
-    expect(screen.getByText(/price impact/i)).toBeInTheDocument()
-  })
-
-  it('shows slippage tolerance selector', () => {
-    render(<AmmTradingPanel {...baseProps} />)
-    expect(screen.getByText(/slippage/i)).toBeInTheDocument()
-  })
-
   it('renders spread value', () => {
     render(<AmmTradingPanel {...baseProps} />)
     expect(screen.getByText(/spread/i)).toBeInTheDocument()
   })
 
-  it('allows toggling between buy and sell', () => {
+  it('does not render any trade button or order input', () => {
     render(<AmmTradingPanel {...baseProps} />)
-    const sellBtn = screen.getByRole('button', { name: /sell/i })
-    fireEvent.click(sellBtn)
-    expect(sellBtn).toHaveClass('bg-red-600')
+    expect(screen.queryByRole('button', { name: /buy/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /sell/i })).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/order size/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/slippage/i)).not.toBeInTheDocument()
   })
 })

@@ -567,7 +567,6 @@ export default function StockDetailPage() {
               oraclePrice={stock.price}
               inventoryLong={stock.volume24h * 0.6}
               inventoryShort={stock.volume24h * 0.4}
-              poolLiquidity={stock.volume24h * 2}
               marketState={marketState}
               ticker={stock.ticker}
             />
