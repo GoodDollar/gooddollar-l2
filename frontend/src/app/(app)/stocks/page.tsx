@@ -135,9 +135,11 @@ export default function StocksPage() {
     })
     // watchlist included so list re-filters when toggle changes
   }, [data, queryTrimmed, sortField, sortDir, filter, isWatched])
-  const dailyMovers = useMemo(() => getDailyMovers(data, 5), [data])
-  const trendingStocks = useMemo(() => getTrendingStocks(data, 5), [data])
-  const marketAnalysisPicks = useMemo(() => getMarketAnalysisPicks(data, 5), [data])
+  const { movers: dailyMovers, trending: trendingStocks, analysis: marketAnalysisPicks } = useMemo(() => ({
+    movers: getDailyMovers(data, 5),
+    trending: getTrendingStocks(data, 5),
+    analysis: getMarketAnalysisPicks(data, 5),
+  }), [data])
 
   const handleRowClick = useCallback((ticker: string) => {
     router.push(`/stocks/${ticker}`)
