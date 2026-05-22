@@ -76,6 +76,21 @@ const DeferredNewsEventsPanel = dynamic(
   },
 )
 
+const DeferredStockFAQ = dynamic(
+  () => import('@/components/stocks/StockFAQ').then((module) => module.StockFAQ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
+        <div className="h-4 w-40 rounded bg-dark-50/60 animate-pulse mb-3" />
+        <div className="h-10 rounded-xl bg-dark-50/50 animate-pulse mb-2" />
+        <div className="h-10 rounded-xl bg-dark-50/50 animate-pulse mb-2" />
+        <div className="h-10 rounded-xl bg-dark-50/50 animate-pulse" />
+      </div>
+    ),
+  },
+)
+
 const DeferredRelatedMoversPanel = dynamic(
   () => import('@/components/stocks/RelatedMoversPanel').then((module) => module.RelatedMoversPanel),
   {
@@ -615,6 +630,8 @@ export function StockDetailContent() {
               </>
             )}
           </div>
+
+          <DeferredStockFAQ ticker={stock.ticker} companyName={stock.name} />
 
           <DeferredNewsEventsPanel
             ticker={stock.ticker}
