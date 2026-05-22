@@ -13,20 +13,47 @@ import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useStockPosition } from '@/lib/useStocks'
 import { useMounted } from '@/lib/useMounted'
 import { getRelatedSymbols, getTopMovers } from '@/lib/stockDiscovery'
-import { AnalystOutlookCard } from '@/components/stocks/AnalystOutlookCard'
-import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
-import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
+import dynamic from 'next/dynamic'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { StockOrderForm } from '@/components/stocks/StockOrderForm'
 import { StockOrderFormFallback } from '@/components/stocks/StockOrderFormFallback'
-import { PriceChart } from '@/components/PriceChart'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { usePriceServiceStatus, getConsecutiveFailures } from '@/lib/usePriceServiceStatus'
-import { RebalanceSyncPanel } from '@/components/stocks/RebalanceSyncPanel'
 import { OracleUnavailableBanner } from '@/components/stocks/OracleUnavailableBanner'
 import { RebalanceErrorBoundary } from '@/components/stocks/RebalanceErrorBoundary'
-import { ExposureNettingPanel } from '@/components/stocks/ExposureNettingPanel'
-import { AmmTradingPanel } from '@/components/stocks/AmmTradingPanel'
+
+const PriceChart = dynamic(
+  () => import('@/components/PriceChart').then(mod => ({ default: mod.PriceChart })),
+  { ssr: false, loading: () => <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} /> },
+)
+const AnalystOutlookCard = dynamic(
+  () => import('@/components/stocks/AnalystOutlookCard').then(mod => ({ default: mod.AnalystOutlookCard })),
+  { ssr: false, loading: () => <div className="h-28 bg-dark-50/30 rounded-2xl animate-pulse mb-4" /> },
+)
+const NewsEventsPanel = dynamic(
+  () => import('@/components/stocks/NewsEventsPanel').then(mod => ({ default: mod.NewsEventsPanel })),
+  { ssr: false, loading: () => <div className="h-48 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
+)
+const RelatedMoversPanel = dynamic(
+  () => import('@/components/stocks/RelatedMoversPanel').then(mod => ({ default: mod.RelatedMoversPanel })),
+  { ssr: false, loading: () => <div className="h-40 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
+)
+const StockResearchHub = dynamic(
+  () => import('@/components/stocks/StockResearchHub').then(mod => ({ default: mod.StockResearchHub })),
+  { ssr: false, loading: () => <div className="h-32 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
+)
+const ExposureNettingPanel = dynamic(
+  () => import('@/components/stocks/ExposureNettingPanel').then(mod => ({ default: mod.ExposureNettingPanel })),
+  { ssr: false, loading: () => <div className="h-24 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
+)
+const AmmTradingPanel = dynamic(
+  () => import('@/components/stocks/AmmTradingPanel').then(mod => ({ default: mod.AmmTradingPanel })),
+  { ssr: false, loading: () => <div className="h-48 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
+)
+const RebalanceSyncPanel = dynamic(
+  () => import('@/components/stocks/RebalanceSyncPanel').then(mod => ({ default: mod.RebalanceSyncPanel })),
+  { ssr: false, loading: () => <div className="h-20 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
+)
 import { getMarketHoursState } from '@/lib/ammPricing'
 import {
   type SymbolExposureSummary,
@@ -34,7 +61,6 @@ import {
   classifyResidual,
   computePortfolioDelta,
 } from '@/lib/exposureNetting'
-import { StockResearchHub } from '@/components/stocks/StockResearchHub'
 import { buildSymbolRebalanceStatus, evaluateRebalanceGuard } from '@/lib/stocksRebalanceInvariant'
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'ALL']
@@ -91,7 +117,7 @@ export default function StockDetailPage() {
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks } = useOnChainStocks()
   const { status: oracleStatus, error: oracleError, refresh: oracleRefresh } = usePriceServiceStatus()
-  const { data: chainBlock } = useBlockNumber({ watch: true })
+  const { data: chainBlock } = useBlockNumber({ query: { refetchInterval: 12_000 } })
   const currentBlock = chainBlock ? Number(chainBlock) : null
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
