@@ -1,20 +1,14 @@
-import { describe, expect, it, vi } from 'vitest'
-
-const { notFoundSpy } = vi.hoisted(() => ({
-  notFoundSpy: vi.fn(() => {
-    throw new Error('NEXT_NOT_FOUND')
-  }),
-}))
-
-vi.mock('next/navigation', () => ({
-  notFound: notFoundSpy,
-}))
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 
 import StocksInvalidPathPage from '../page'
 
 describe('StocksInvalidPathPage', () => {
-  it('routes invalid nested stocks paths to segment not-found', () => {
-    expect(() => StocksInvalidPathPage()).toThrowError('NEXT_NOT_FOUND')
-    expect(notFoundSpy).toHaveBeenCalledTimes(1)
+  it('renders a branded recovery page for invalid nested stocks paths', () => {
+    render(<StocksInvalidPathPage />)
+
+    expect(screen.getByRole('heading', { name: 'Stock Not Found' })).toBeTruthy()
+    const link = screen.getByRole('link', { name: 'Back to Stocks' })
+    expect(link).toHaveAttribute('href', '/stocks')
   })
 })
