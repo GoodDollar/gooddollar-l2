@@ -234,7 +234,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
     abi: ERC20ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 10_000 },
+    query: { enabled: !!address, refetchInterval: 10_000, retry: false, throwOnError: false },
   })
 
   useEffect(() => {
@@ -625,14 +625,14 @@ function MarginFundingPanel() {
     abi: ERC20ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 10_000 },
+    query: { enabled: !!address, refetchInterval: 10_000, retry: false, throwOnError: false },
   })
   const marginBalance = useReadContract({
     address: CONTRACTS.MarginVault,
     abi: MarginVaultABI,
     functionName: 'balances',
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 10_000 },
+    query: { enabled: !!address, refetchInterval: 10_000, retry: false, throwOnError: false },
   })
 
   const walletG$ = walletBalance.data ? Number(walletBalance.data as bigint) / 1e18 : 0

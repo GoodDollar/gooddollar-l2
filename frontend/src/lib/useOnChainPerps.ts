@@ -58,7 +58,7 @@ export function useOnChainPairs(): { pairs: PerpPair[]; isLoading: boolean; isLi
     address: ENGINE,
     abi: PerpEngineABI,
     functionName: 'marketCount',
-    query: { refetchInterval: 60_000 },
+    query: { enabled: !!ENGINE, refetchInterval: 60_000, retry: false, throwOnError: false },
   })
 
   const count = Number((countResult.data as bigint | undefined) ?? BigInt(0))
@@ -86,12 +86,12 @@ export function useOnChainPairs(): { pairs: PerpPair[]; isLoading: boolean; isLi
 
   const { data, isLoading } = useReadContracts({
     contracts: marketContracts,
-    query: { enabled: maxRead > 0, refetchInterval: 30_000 },
+    query: { enabled: maxRead > 0, refetchInterval: 30_000, retry: false, throwOnError: false },
   })
 
   const { data: fundingData } = useReadContracts({
     contracts: fundingContracts,
-    query: { enabled: maxRead > 0, refetchInterval: 60_000 },
+    query: { enabled: maxRead > 0, refetchInterval: 60_000, retry: false, throwOnError: false },
   })
 
   // Read oracle prices for all active markets
@@ -239,7 +239,7 @@ export function useOnChainAccountSummary(): {
     abi: MarginVaultABI,
     functionName: 'balances',
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 10_000 },
+    query: { enabled: !!address, refetchInterval: 10_000, retry: false, throwOnError: false },
   })
 
   const summary = useMemo<AccountSummaryData>(() => {
