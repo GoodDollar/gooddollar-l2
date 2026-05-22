@@ -15,6 +15,7 @@ import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/wa
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
+type MoverTab = 'gainers' | 'losers' | 'active'
 
 function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return (
@@ -108,7 +109,26 @@ export default function StocksPage() {
   const [query, setQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [activeSector, setActiveSector] = useState<string>('All')
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+
+  const [moverTab, setMoverTab] = useState<MoverTab>('gainers')
+
+  const sectors = useMemo(() => {
+    const unique = Array.from(new Set(data.flatMap(s => s.sector ? [s.sector] : [])))
+    unique.sort()
+    return ['All', ...unique]
+  }, [data])
+
+  const movers = useMemo(() => {
+    if (data.length < 3) return null
+    const sorted = [...data]
+    return {
+      gainers: sorted.sort((a, b) => b.change24h - a.change24h).slice(0, 5),
+      losers: sorted.sort((a, b) => a.change24h - b.change24h).slice(0, 5),
+      active: sorted.sort((a, b) => b.volume24h - a.volume24h).slice(0, 5),
+    }
+  }, [data])
   const marketActionLabel: 'Trade now' | 'View details' = showConnectBanner ? 'View details' : 'Trade now'
 
   const handleSort = (field: SortField) => {
@@ -122,6 +142,9 @@ export default function StocksPage() {
 
   const filtered = useMemo(() => {
     let stocks = data
+    if (activeSector !== 'All') {
+      stocks = stocks.filter(s => s.sector === activeSector)
+    }
     const trimmed = query.trim()
     if (trimmed) {
       const q = trimmed.toLowerCase()
@@ -129,11 +152,11 @@ export default function StocksPage() {
         s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
       )
     }
-    return [...stocks].sort((a, b) => {
+    return stocks.toSorted((a, b) => {
       const mul = sortDir === 'asc' ? 1 : -1
       return (a[sortField] - b[sortField]) * mul
     })
-  }, [data, query, sortField, sortDir])
+  }, [data, query, sortField, sortDir, activeSector])
 
   const handleRowClick = useCallback((ticker: string) => {
     router.push(`/stocks/${ticker}`)
@@ -196,6 +219,50 @@ export default function StocksPage() {
         </div>
       )}
 
+      {movers && (
+        <div className="mb-5 bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
+          <div className="flex border-b border-gray-700/20">
+            {([
+              { key: 'gainers' as MoverTab, label: 'Top Gainers', icon: '▲' },
+              { key: 'losers' as MoverTab, label: 'Top Losers', icon: '▼' },
+              { key: 'active' as MoverTab, label: 'Most Active', icon: '⚡' },
+            ]).map(tab => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setMoverTab(tab.key)}
+                className={`flex-1 py-2.5 px-3 text-xs sm:text-sm font-medium transition-colors ${
+                  moverTab === tab.key
+                    ? 'text-goodgreen border-b-2 border-goodgreen bg-goodgreen/5'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <span className="mr-1">{tab.icon}</span>{tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-3">
+            {movers[moverTab].map(stock => (
+              <button
+                key={stock.ticker}
+                type="button"
+                onClick={() => handleRowClick(stock.ticker)}
+                className="flex flex-col items-center gap-1 p-2.5 rounded-xl hover:bg-white/[0.04] transition-colors"
+              >
+                <StockIcon ticker={stock.ticker} />
+                <span className="text-xs font-semibold text-white">{stock.ticker}</span>
+                <span className="text-sm font-medium text-white">{formatStockPrice(stock.price)}</span>
+                {moverTab === 'active' ? (
+                  <span className="text-[10px] text-gray-400">{formatLargeNumber(stock.volume24h)} vol</span>
+                ) : (
+                  <PercentageChange value={stock.change24h} decimals={2} size="xs" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
         <input
           type="text"
@@ -206,6 +273,25 @@ export default function StocksPage() {
         />
         <OracleStatusBadge useStocksFallback />
       </div>
+      {sectors.length > 2 && (
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+          {sectors.map(sector => (
+            <button
+              key={sector}
+              type="button"
+              onClick={() => setActiveSector(sector)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                activeSector === sector
+                  ? 'bg-goodgreen/20 text-goodgreen border border-goodgreen/30'
+                  : 'bg-dark-100 text-gray-400 border border-gray-700/20 hover:text-gray-200 hover:border-gray-600/30'
+              }`}
+            >
+              {sector}
+            </button>
+          ))}
+        </div>
+      )}
+
       {showConnectBanner && (
         <p className="mb-4 text-[11px] sm:text-xs text-gray-400">
           Not connected yet: select any stock to view details, then connect wallet to place a trade.
