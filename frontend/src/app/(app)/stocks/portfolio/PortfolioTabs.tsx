@@ -6,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatStockPrice, type PortfolioHolding, type TradeRecord } from '@/lib/stockData'
 
 function HoldingRow({ holding, onClick }: { holding: PortfolioHolding; onClick: () => void }) {
-  const stockName: string | null = null
   const value = holding.shares * holding.currentPrice
   const cost = holding.shares * holding.avgCost
   const pnl = value - cost
@@ -19,10 +18,7 @@ function HoldingRow({ holding, onClick }: { holding: PortfolioHolding; onClick: 
           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-[9px] font-bold text-goodgreen">
             {holding.ticker.slice(0, 2)}
           </div>
-          <div>
-            <span className="font-medium text-white text-sm">{holding.ticker}</span>
-            {stockName && <span className="text-gray-500 text-xs ml-1 hidden sm:inline">{stockName}</span>}
-          </div>
+          <span className="font-medium text-white text-sm">{holding.ticker}</span>
         </div>
       </td>
       <td className="py-3 px-3 text-right text-white text-sm">{holding.shares.toFixed(2)}</td>
