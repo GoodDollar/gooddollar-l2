@@ -41,7 +41,7 @@ export function usePosition(marketId: bigint): {
     abi: PerpEngineABI,
     functionName: 'positions',
     args: ENGINE && address ? [address, marketId] : undefined,
-    query: { enabled: !!(ENGINE && address), refetchInterval: 10_000 },
+    query: { enabled: !!(ENGINE && address), refetchInterval: 10_000, retry: false },
   })
 
   if (!result.data) return { position: null, isLoading: result.isLoading }
@@ -70,7 +70,7 @@ export function usePerpMarketCount(): { count: bigint; isLoading: boolean } {
     address: ENGINE ?? undefined,
     abi: PerpEngineABI,
     functionName: 'marketCount',
-    query: { enabled: !!ENGINE, refetchInterval: 60_000 },
+    query: { enabled: !!ENGINE, refetchInterval: 60_000, retry: false },
   })
   return {
     count: (result.data as bigint | undefined) ?? BigInt(0),
@@ -93,7 +93,7 @@ export function useOpenPosition() {
     abi: MarginVaultABI,
     functionName: 'balances',
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 10_000 },
+    query: { enabled: !!address, refetchInterval: 10_000, retry: false },
   })
 
   const reset = useCallback(() => { setPhase('idle'); setError(null) }, [])

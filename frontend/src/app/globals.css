@@ -106,3 +106,21 @@ input[type="number"] {
   flex-direction: column;
   flex: 1 1 auto;
 }
+
+/* Price tick animations for bid/ask spread display (task 0060) */
+@keyframes tick-up {
+  0% { color: inherit; }
+  20% { color: #4ade80; }
+  100% { color: inherit; }
+}
+@keyframes tick-down {
+  0% { color: inherit; }
+  20% { color: #f87171; }
+  100% { color: inherit; }
+}
+.animate-tick-up {
+  animation: tick-up 600ms ease-out;
+}
+.animate-tick-down {
+  animation: tick-down 600ms ease-out;
+}

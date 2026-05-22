@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
@@ -10,6 +11,8 @@ import { useStockHoldings } from '@/lib/useStockHoldings'
 import { useStockTrades } from '@/lib/useStockTrades'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+const ALLOC_COLORS = ['#00C853', '#2196F3', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4', '#FF5722', '#607D8B']
 
 const DeferredStocksPortfolioImpactSection = dynamic(
   () => import('./StocksPortfolioImpactSection').then((module) => module.StocksPortfolioImpactSection),
@@ -156,6 +159,22 @@ export function StocksPortfolioContent() {
   const hasRiskPosition = hasLivePositions && summary.totalRequired > 0
   const isLoading = holdingsLoading || tradesLoading
 
+  const allocation = useMemo(() => {
+    if (!hasLivePositions || totalValue <= 0) return []
+    return holdings
+      .filter(h => h.shares > 0)
+      .map((h, i) => {
+        const val = h.shares * h.currentPrice
+        return {
+          ticker: h.ticker,
+          value: val,
+          pct: (val / totalValue) * 100,
+          color: ALLOC_COLORS[i % ALLOC_COLORS.length],
+        }
+      })
+      .sort((a, b) => b.value - a.value)
+  }, [holdings, totalValue, hasLivePositions])
+
   return (
     <ConnectWalletEmptyState
       title="Connect to View Stocks"
@@ -260,6 +279,32 @@ export function StocksPortfolioContent() {
         userUBIContribution={(summary.totalValue || 0) * 0.003 * 0.2}
         isDisconnected={isDisconnected}
       />
+
+      {allocation.length > 0 && (
+        <div className="mb-6 bg-dark-100 rounded-2xl border border-gray-700/20 p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-white mb-3">Portfolio Allocation</h2>
+          <div className="h-3 rounded-full overflow-hidden flex mb-4">
+            {allocation.map(a => (
+              <div
+                key={a.ticker}
+                className="h-full first:rounded-l-full last:rounded-r-full transition-all"
+                style={{ width: `${a.pct}%`, backgroundColor: a.color }}
+                title={`${a.ticker}: ${a.pct.toFixed(1)}%`}
+              />
+            ))}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {allocation.map(a => (
+              <div key={a.ticker} className="flex items-center gap-2 py-1">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
+                <span className="text-xs font-medium text-white">{a.ticker}</span>
+                <span className="text-xs text-gray-400 ml-auto">{a.pct.toFixed(1)}%</span>
+                <span className="text-xs text-gray-500 hidden sm:inline">{formatStockPrice(a.value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Tabs defaultValue="holdings" className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <TabsList className="w-full justify-start rounded-none border-b border-gray-700/20 bg-transparent p-0 h-auto">

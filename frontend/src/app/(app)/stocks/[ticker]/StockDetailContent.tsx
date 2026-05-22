@@ -9,6 +9,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { StalePriceBanner } from '@/components/StalePriceBanner'
 import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
@@ -25,6 +26,8 @@ import { useStocksOracleGuard } from '@/lib/useStocksOracleGuard'
 import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
 import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/walletCapabilities'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { BidAskSpread, PriceWithTick } from '@/components/BidAskSpread'
+import { SentimentCard } from '@/components/SentimentCard'
 
 const DeferredPriceChart = dynamic(
   () => import('@/components/PriceChart').then((module) => module.PriceChart),
@@ -48,6 +51,18 @@ const DeferredAnalystOutlookCard = dynamic(
   },
 )
 
+const DeferredFinancialsCard = dynamic(
+  () => import('@/components/FinancialsCard').then((module) => module.FinancialsCard),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 mt-4">
+        <div className="h-4 w-40 rounded bg-dark-50/60 animate-pulse" />
+      </div>
+    ),
+  },
+)
+
 const DeferredNewsEventsPanel = dynamic(
   () => import('@/components/stocks/NewsEventsPanel').then((module) => module.NewsEventsPanel),
   {
@@ -57,6 +72,44 @@ const DeferredNewsEventsPanel = dynamic(
         <div className="h-4 w-28 rounded bg-dark-50/60 animate-pulse mb-3" />
         <div className="h-14 rounded-xl bg-dark-50/50 animate-pulse mb-2" />
         <div className="h-14 rounded-xl bg-dark-50/50 animate-pulse" />
+      </div>
+    ),
+  },
+)
+
+const DeferredStockAbout = dynamic(
+  () => import('@/components/stocks/StockAbout').then((module) => module.StockAbout),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
+        <div className="h-4 w-32 rounded bg-dark-50/60 animate-pulse mb-3" />
+        <div className="h-3 w-full rounded bg-dark-50/50 animate-pulse mb-2" />
+        <div className="h-3 w-full rounded bg-dark-50/50 animate-pulse mb-2" />
+        <div className="h-3 w-3/4 rounded bg-dark-50/50 animate-pulse mb-4" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-xl border border-gray-700/30 bg-dark-50/20 p-3">
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+          <div className="h-8 rounded bg-dark-50/40 animate-pulse" />
+        </div>
+      </div>
+    ),
+  },
+)
+
+const DeferredStockFAQ = dynamic(
+  () => import('@/components/stocks/StockFAQ').then((module) => module.StockFAQ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
+        <div className="h-4 w-40 rounded bg-dark-50/60 animate-pulse mb-3" />
+        <div className="h-10 rounded-xl bg-dark-50/50 animate-pulse mb-2" />
+        <div className="h-10 rounded-xl bg-dark-50/50 animate-pulse mb-2" />
+        <div className="h-10 rounded-xl bg-dark-50/50 animate-pulse" />
       </div>
     ),
   },
@@ -393,7 +446,7 @@ export function StockDetailContent() {
   const params = useParams()
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
-  const { stocks, isLoading: stocksLoading } = useOnChainStocks()
+  const { stocks, isLoading: stocksLoading, isLive } = useOnChainStocks()
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
@@ -474,6 +527,11 @@ export function StockDetailContent() {
       <Link href="/stocks" prefetch={false} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
         <span>←</span> Back to Stocks
       </Link>
+      {!isLive && (
+        <div className="mb-4">
+          <StalePriceBanner variant="stocks" />
+        </div>
+      )}
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-4">
@@ -486,11 +544,14 @@ export function StockDetailContent() {
             </div>
           </div>
 
-          <div className="flex items-baseline gap-3 mb-2">
-            <span className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
+          <div className="flex items-baseline gap-3 mb-1">
+            <PriceWithTick price={stock.price} className="text-3xl font-bold text-white" />
             <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
             </span>
+          </div>
+          <div className="mb-2">
+            <BidAskSpread price={stock.price} />
           </div>
           <div className="mb-4">
             {chartMounted ? (
@@ -582,18 +643,13 @@ export function StockDetailContent() {
             </div>
           </div>
 
-          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
-            <h2 className="text-sm font-semibold text-white mb-3">About {stock.ticker}</h2>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              {stock.ticker} on GoodDollar tracks {stock.name}&apos;s real stock price via on-chain price feeds. Trade 24/7 in fractional amounts — no minimums. 20% of trading fees fund Universal Basic Income.
-            </p>
-            {stock.description && (
-              <>
-                <hr className="border-gray-700/30 my-3" />
-                <p className="text-sm text-gray-400 leading-relaxed">{stock.description}</p>
-              </>
-            )}
+          <div className="mt-4">
+            <DeferredFinancialsCard ticker={stock.ticker} />
           </div>
+
+          <DeferredStockAbout ticker={stock.ticker} companyName={stock.name} />
+
+          <DeferredStockFAQ ticker={stock.ticker} companyName={stock.name} />
 
           <DeferredNewsEventsPanel
             ticker={stock.ticker}
@@ -646,6 +702,10 @@ export function StockDetailContent() {
             oracleTradeBlocked={oracleGuard.health !== 'live' || !syncGuard.allowRiskIncrease}
             oracleBlockReason={oracleGuard.reason ?? syncGuard.reason}
           />
+
+          <div className="mt-4">
+            <SentimentCard ticker={stock.ticker} />
+          </div>
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Your Position</h3>

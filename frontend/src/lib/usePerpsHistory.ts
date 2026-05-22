@@ -96,7 +96,7 @@ export function useOracleMarkPrices(marketCount: number): {
 
   const { data, isLoading } = useReadContracts({
     contracts,
-    query: { enabled: contracts.length > 0, refetchInterval: 10_000 },
+    query: { enabled: contracts.length > 0, refetchInterval: 10_000, retry: false },
   })
 
   const { markPrices, indexPrices } = useMemo(() => {

@@ -9,6 +9,7 @@ import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
+import { StalePriceBanner } from '@/components/StalePriceBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { MarketSessionBadge } from '@/components/stocks/MarketSessionBadge'
@@ -301,6 +302,12 @@ export default function StocksPage() {
           storageKey="gd-banner-dismissed-stocks"
         />
       </div>
+
+      {!isLive && (
+        <div className="mb-4">
+          <StalePriceBanner variant="stocks" />
+        </div>
+      )}
 
       {!address && (
         <>
