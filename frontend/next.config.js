@@ -137,6 +137,9 @@ const nextConfig = {
       'lucide-react',
     ],
   },
+
+  // Turbopack configuration for Next.js 16 compatibility
+  turbopack: {},
   webpack: (config) => {
     // Bundle optimization for better caching and performance
     config.optimization.splitChunks = {
