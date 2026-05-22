@@ -49,6 +49,18 @@ const DeferredAnalystOutlookCard = dynamic(
   },
 )
 
+const DeferredFinancialsCard = dynamic(
+  () => import('@/components/FinancialsCard').then((module) => module.FinancialsCard),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 mt-4">
+        <div className="h-4 w-40 rounded bg-dark-50/60 animate-pulse" />
+      </div>
+    ),
+  },
+)
+
 const DeferredNewsEventsPanel = dynamic(
   () => import('@/components/stocks/NewsEventsPanel').then((module) => module.NewsEventsPanel),
   {
@@ -584,6 +596,10 @@ export function StockDetailContent() {
                 <div className="text-white font-medium">{formatLargeNumber(stock.avgVolume).replace('$', '')}</div>
               </div>
             </div>
+          </div>
+
+          <div className="mt-4">
+            <DeferredFinancialsCard ticker={stock.ticker} />
           </div>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">

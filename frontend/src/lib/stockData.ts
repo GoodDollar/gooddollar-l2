@@ -115,6 +115,81 @@ export function getAllTickers(): string[] {
   return TICKERS
 }
 
+// ─── Financials / Earnings data ─────────────────────────────────────────────
+
+export interface QuarterlyFinancial {
+  quarter: string
+  revenue: number
+  eps: number
+  epsEstimate: number
+}
+
+export interface StockFinancials {
+  nextEarningsDate: string
+  quarters: QuarterlyFinancial[]
+}
+
+const FINANCIALS_DATA: Record<string, StockFinancials> = {
+  AAPL: {
+    nextEarningsDate: 'Jul 31, 2026',
+    quarters: [
+      { quarter: 'Q2 2026', revenue: 94.8e9, eps: 1.65, epsEstimate: 1.60 },
+      { quarter: 'Q1 2026', revenue: 124.3e9, eps: 2.40, epsEstimate: 2.35 },
+      { quarter: 'Q4 2025', revenue: 89.5e9, eps: 1.46, epsEstimate: 1.47 },
+      { quarter: 'Q3 2025', revenue: 85.8e9, eps: 1.40, epsEstimate: 1.35 },
+    ],
+  },
+  TSLA: {
+    nextEarningsDate: 'Jul 22, 2026',
+    quarters: [
+      { quarter: 'Q2 2026', revenue: 25.7e9, eps: 0.85, epsEstimate: 0.78 },
+      { quarter: 'Q1 2026', revenue: 21.3e9, eps: 0.52, epsEstimate: 0.58 },
+      { quarter: 'Q4 2025', revenue: 25.2e9, eps: 0.73, epsEstimate: 0.71 },
+      { quarter: 'Q3 2025', revenue: 23.4e9, eps: 0.62, epsEstimate: 0.60 },
+    ],
+  },
+  NVDA: {
+    nextEarningsDate: 'Aug 20, 2026',
+    quarters: [
+      { quarter: 'Q2 2026', revenue: 44.1e9, eps: 0.89, epsEstimate: 0.84 },
+      { quarter: 'Q1 2026', revenue: 39.3e9, eps: 0.78, epsEstimate: 0.74 },
+      { quarter: 'Q4 2025', revenue: 35.1e9, eps: 0.68, epsEstimate: 0.64 },
+      { quarter: 'Q3 2025', revenue: 30.0e9, eps: 0.58, epsEstimate: 0.57 },
+    ],
+  },
+  MSFT: {
+    nextEarningsDate: 'Jul 22, 2026',
+    quarters: [
+      { quarter: 'Q2 2026', revenue: 65.6e9, eps: 3.30, epsEstimate: 3.22 },
+      { quarter: 'Q1 2026', revenue: 69.6e9, eps: 3.46, epsEstimate: 3.30 },
+      { quarter: 'Q4 2025', revenue: 62.0e9, eps: 3.05, epsEstimate: 2.98 },
+      { quarter: 'Q3 2025', revenue: 56.5e9, eps: 2.93, epsEstimate: 2.82 },
+    ],
+  },
+  META: {
+    nextEarningsDate: 'Jul 23, 2026',
+    quarters: [
+      { quarter: 'Q2 2026', revenue: 42.3e9, eps: 6.20, epsEstimate: 5.95 },
+      { quarter: 'Q1 2026', revenue: 40.1e9, eps: 5.85, epsEstimate: 5.70 },
+      { quarter: 'Q4 2025', revenue: 40.1e9, eps: 5.33, epsEstimate: 5.25 },
+      { quarter: 'Q3 2025', revenue: 34.1e9, eps: 4.50, epsEstimate: 4.39 },
+    ],
+  },
+  AMZN: {
+    nextEarningsDate: 'Jul 24, 2026',
+    quarters: [
+      { quarter: 'Q2 2026', revenue: 158.9e9, eps: 1.45, epsEstimate: 1.38 },
+      { quarter: 'Q1 2026', revenue: 155.7e9, eps: 1.36, epsEstimate: 1.29 },
+      { quarter: 'Q4 2025', revenue: 170.0e9, eps: 1.48, epsEstimate: 1.46 },
+      { quarter: 'Q3 2025', revenue: 143.1e9, eps: 1.14, epsEstimate: 1.12 },
+    ],
+  },
+}
+
+export function getStockFinancials(ticker: string): StockFinancials | null {
+  return FINANCIALS_DATA[ticker] ?? null
+}
+
 // ─── Deprecated mock getters — return empty; use hooks instead ───────────────
 // Kept temporarily so pages that haven't migrated don't crash on import.
 
