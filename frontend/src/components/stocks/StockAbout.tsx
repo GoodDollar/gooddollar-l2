@@ -180,6 +180,32 @@ const COMPANY_PROFILES: Record<string, CompanyProfile> = {
     sector: 'Entertainment',
     website: 'thewaltdisneycompany.com',
   },
+  SPY: {
+    description: [
+      'The SPDR S&P 500 ETF Trust (SPY) is the largest and most actively traded exchange-traded fund in the world, tracking the S&P 500 Index. It provides exposure to 500 of the largest U.S. publicly traded companies across all major sectors.',
+      'SPY was the first ETF listed in the United States (1993) and remains the benchmark for passive U.S. large-cap equity exposure. It is widely used by institutional and retail investors for core portfolio allocation, hedging, and tactical trading.',
+      'The fund is managed by State Street Global Advisors and reconstitutes quarterly to match the S&P 500 Index composition, offering a low-cost way to own a diversified slice of the U.S. economy.',
+    ],
+    ceo: 'State Street Global Advisors',
+    employees: 'N/A (ETF)',
+    founded: '1993',
+    headquarters: 'Boston, Massachusetts',
+    sector: 'Index Fund (Large-Cap Blend)',
+    website: 'ssga.com',
+  },
+  QQQ: {
+    description: [
+      'The Invesco QQQ Trust (QQQ) tracks the Nasdaq-100 Index, providing exposure to 100 of the largest non-financial companies listed on the Nasdaq Stock Exchange. The fund is heavily weighted toward technology, communication services, and consumer discretionary sectors.',
+      'QQQ is one of the most popular ETFs for growth-oriented investors seeking concentrated exposure to mega-cap tech companies including Apple, Microsoft, NVIDIA, Amazon, and Meta. It has historically outperformed the broader market during technology-led rallies.',
+      'Managed by Invesco, the fund rebalances quarterly and excludes financial companies, giving it a distinct growth tilt relative to the S&P 500. It serves as a liquid proxy for U.S. tech sector performance.',
+    ],
+    ceo: 'Invesco Ltd.',
+    employees: 'N/A (ETF)',
+    founded: '1999',
+    headquarters: 'Atlanta, Georgia',
+    sector: 'Index Fund (Tech-Heavy Growth)',
+    website: 'invesco.com/qqq',
+  },
 }
 
 interface StockAboutProps {
@@ -216,8 +242,8 @@ export function StockAbout({ ticker, companyName }: StockAboutProps) {
       <h2 className="text-sm font-semibold text-white mb-3">About {companyName}</h2>
 
       <div className="space-y-2.5 mb-4">
-        {profile.description.map((para, idx) => (
-          <p key={`about-${ticker}-${idx}`} className="text-sm text-gray-400 leading-relaxed">
+        {profile.description.map((para) => (
+          <p key={para.slice(0, 40)} className="text-sm text-gray-400 leading-relaxed">
             {para}
           </p>
         ))}
@@ -232,11 +258,14 @@ export function StockAbout({ ticker, companyName }: StockAboutProps) {
         ))}
       </div>
 
-      <div className="mt-4 rounded-xl border border-goodgreen/20 bg-goodgreen/5 px-3 py-2.5">
-        <p className="text-xs text-goodgreen/90 leading-relaxed">
-          s{ticker} on GoodChain tracks {companyName}&apos;s real stock price via on-chain oracles.
-          Trade 24/7 in fractional amounts with no minimums. 20% of trading fees fund Universal Basic Income.
-        </p>
+      <div className="mt-4 pt-4 border-t border-gray-700/20">
+        <h3 className="text-xs font-semibold text-goodgreen/80 uppercase tracking-wide mb-2">About the Synthetic Token</h3>
+        <div className="rounded-xl border border-goodgreen/20 bg-goodgreen/5 px-3 py-2.5">
+          <p className="text-xs text-goodgreen/90 leading-relaxed">
+            s{ticker} on GoodChain tracks {companyName}&apos;s real stock price via on-chain oracles.
+            Trade 24/7 in fractional amounts with no minimums. 20% of trading fees fund Universal Basic Income.
+          </p>
+        </div>
       </div>
     </div>
   )
