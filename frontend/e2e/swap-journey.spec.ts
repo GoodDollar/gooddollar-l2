@@ -78,7 +78,7 @@ test.describe('Swap Journey', () => {
     const reviewTitle = page.locator('h3:has-text("Review Swap")')
     await expect(reviewTitle).toBeVisible()
 
-    const youPay = page.locator('[data-testid="modal-backdrop"]').getByText('0.1')
+    const youPay = page.locator('[data-testid="modal-backdrop"]').getByText('0.1', { exact: true }).first()
     await expect(youPay).toBeVisible()
 
     const ethLabel = page.locator('[data-testid="modal-backdrop"]').getByText('ETH').first()

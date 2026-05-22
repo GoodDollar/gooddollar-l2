@@ -7,10 +7,14 @@ import { defineConfig, devices } from '@playwright/test'
 // goodswap, 3109 tori) and was verified free at iter17 plan time.
 const e2ePort = process.env.E2E_PORT ?? '3119'
 const baseURL = process.env.BASE_URL ?? `http://localhost:${e2ePort}`
+/** Full-suite gate uses production `next start` on `.next.e2e` (see scripts/e2e-web-server.mjs). */
+const e2eProdServer = process.env.E2E_PROD_SERVER === '1'
 
 export default defineConfig({
   testDir: './e2e',
   outputDir: '../.playwright-test-results/artifacts',
+  // Autobuilder desktop screenshot captures; not part of the public-testnet gate.
+  testIgnore: ['**/quick-screenshots.spec.ts'],
   // Public-testnet release gates run one route after another for deterministic evidence.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -36,26 +40,20 @@ export default defineConfig({
       use: { ...devices['Pixel 5'] },
     },
   ],
-  // CRITICAL: NEXT_DIST_DIR=.next.e2e isolates Playwright's dev-server build
-  // artifacts from the production `.next/` directory used by PM2-managed
-  // `goodswap`. `next.config.js` reads `process.env.NEXT_DIST_DIR` and feeds
-  // it into Next's `distDir` config, which IS honored by `next dev`.
-  //
-  // Why not `--dist-dir .next.e2e` on the CLI? Iter19 (task 0029) tried that;
-  // Next 14.2.x's `next dev` rejects the flag with `unknown option`, so the
-  // webServer silently failed and isolation was effectively off. See task
-  // 0032 for the full forensics. The
-  // `frontend/scripts/check-playwright-isolation.mjs` guard now refuses both
-  // the legacy CLI flag (poison-pill) and a missing env var.
+  // CRITICAL: NEXT_DIST_DIR=.next.e2e isolates Playwright build artifacts from
+  // PM2-managed production `.next/`. Full suite (E2E_PROD_SERVER=1) runs
+  // `next build` + `next start` via scripts/e2e-web-server.mjs so the server
+  // does not die mid-run; dev-only mode uses `next dev` for short local runs.
   webServer: process.env.SKIP_DEV_SERVER
     ? undefined
     : {
-        command: `node scripts/next-runtime-server.mjs --dev -p ${e2ePort}`,
+        command: `node scripts/e2e-web-server.mjs -p ${e2ePort}`,
         env: {
           NEXT_DIST_DIR: '.next.e2e',
+          ...(e2eProdServer ? { E2E_PROD_SERVER: '1' } : { E2E_DEV_SERVER: '1' }),
         },
         url: baseURL,
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        timeout: e2eProdServer ? 600_000 : 120_000,
       },
 })

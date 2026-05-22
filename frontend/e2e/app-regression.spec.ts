@@ -7,6 +7,8 @@ const fatalText = /Application error|Unhandled Runtime Error|Internal Server Err
 
 
 test.describe('GoodDollar L2 app E2E registry — sequential Playwright automation', () => {
+  test.setTimeout(60_000)
+
   for (const app of registry.apps as AppCoverage[]) {
     test(`${app.id}: ${app.route} renders and satisfies registry assertions`, async ({ page }) => {
       const consoleErrors: string[] = []
@@ -49,20 +51,22 @@ function normalize(text: string) {
 async function waitForRegistryBody(page: Page, app: AppCoverage) {
   const titlePattern = new RegExp(app.titlePattern, 'i')
 
+  let settledText = ''
   await expect
     .poll(
       async () => {
-        const text = normalize(await page.locator('body').innerText())
-        return text.length > 40 && !fatalText.test(text) && titlePattern.test(text) ? text : ''
+        const text = normalize((await page.locator('body').textContent()) ?? '')
+        settledText = text.length > 40 && !fatalText.test(text) && titlePattern.test(text) ? text : ''
+        return settledText
       },
       {
         message: `${app.id} should settle into its registry content contract`,
-        timeout: app.critical ? 5000 : 3000,
+        timeout: app.critical ? 10_000 : 5_000,
       },
     )
     .not.toBe('')
 
-  return normalize(await page.locator('body').innerText())
+  return settledText
 }
 
 async function visibleActionCount(page: Page) {

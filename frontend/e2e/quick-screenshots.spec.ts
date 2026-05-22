@@ -11,16 +11,19 @@ const pages = [
   { name: 'explore', path: '/explore' },
 ];
 
-const BASE = process.env.BASE_URL || 'http://localhost:3214';
 const OUT = '../.autobuilder/review-screenshots/baseline';
 
+// Desktop-only review captures; avoid duplicate runs on mobile-chrome project.
+test.describe.configure({ mode: 'parallel' });
+
 for (const pg of pages) {
-  test(`screenshot-${pg.name}`, async ({ browser }) => {
+  test(`screenshot-${pg.name}`, async ({ browser, baseURL }) => {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await ctx.newPage();
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto(`${BASE}${pg.path}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    const origin = baseURL ?? `http://localhost:${process.env.E2E_PORT ?? '3119'}`;
+    await page.goto(`${origin}${pg.path}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForTimeout(2000);
     await page.screenshot({
       path: `${OUT}/${pg.name}-desktop.png`,

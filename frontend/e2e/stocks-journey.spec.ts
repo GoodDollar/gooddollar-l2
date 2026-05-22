@@ -170,15 +170,15 @@ test.describe('Stocks Journey', () => {
     test.skip(isMobile, 'Desktop budget guard')
 
     await page.goto('/stocks/portfolio')
-    await page.waitForLoadState('networkidle')
-    await expect(page.getByRole('heading', { name: 'Stock Portfolio' })).toBeVisible({ timeout: 30_000 })
+    await page.waitForLoadState('domcontentloaded')
+    await expect(page.getByRole('heading', { name: 'Stock Portfolio', exact: true })).toBeVisible({ timeout: 30_000 })
   })
 
   test('markets to stock detail navigation renders trade form', async ({ page, isMobile }) => {
     test.skip(isMobile, 'Desktop budget guard')
 
     await page.goto('/stocks/AAPL')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     await expect(page.locator('form#stock-order-form')).toBeVisible({ timeout: 20_000 })
   })
 

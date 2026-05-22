@@ -20,8 +20,7 @@ test.describe('Mobile Viewport — Swap Page', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
 
-    const heading = page.locator('h1, h2, [data-testid]').first()
-    await expect(heading).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: /Trade\. Predict\. Invest\. Fund\s+UBI\./ })).toBeVisible({ timeout: 10_000 })
   })
 
   test('no horizontal overflow on swap page', async ({ page }) => {

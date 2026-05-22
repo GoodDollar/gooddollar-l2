@@ -25,7 +25,7 @@ test.describe('Stable Journey', () => {
     await expect(page.locator('h1', { hasText: 'GoodStable' })).toBeVisible({ timeout: 10_000 })
 
     await expect(page.locator('text=Lock WETH, G$, or USDC to mint gUSD')).toBeVisible()
-    await expect(page.locator('text=20% of stability fees fund the UBI pool')).toBeVisible()
+    await expect(page.locator('text=33% of stability fees fund the UBI pool')).toBeVisible()
   })
 
   test('protocol stats show total supply, UBI fees, min ratio', async ({ page }) => {

@@ -17,7 +17,7 @@ test('surface sweep - screenshot + console check', async ({ page }) => {
 
   for (const route of routes) {
     try {
-      await page.goto(`http://localhost:3100${route}`, { waitUntil: 'domcontentloaded', timeout: 10000 });
+      await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 10000 });
       await page.waitForTimeout(500);
       const slug = route === '/' ? 'home' : route.replace(/\//g, '-').slice(1);
       await page.screenshot({ path: `/tmp/sweep-${slug}.png`, fullPage: false });

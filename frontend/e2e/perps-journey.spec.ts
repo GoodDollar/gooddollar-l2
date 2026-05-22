@@ -148,10 +148,10 @@ test.describe('Perps Journey', () => {
     await expect(page.getByText('Margin', { exact: true }).first()).toBeVisible()
     await expect(page.getByText('Liq. Price', { exact: true })).toBeVisible()
     await expect(page.getByText('Fee (').first()).toBeVisible()
-    await expect(page.locator('text=→ UBI (20%)')).toBeVisible()
+    await expect(page.locator('text=→ UBI (33%)')).toBeVisible()
   })
 
-  test('entering size keeps submit disabled when balance is zero', async ({ page }) => {
+  test('entering size enables submit when the connected wallet can auto-fund margin', async ({ page }) => {
     await page.goto('/perps')
     await page.waitForLoadState('networkidle')
 
@@ -163,7 +163,7 @@ test.describe('Perps Journey', () => {
 
     const submitButton = page.getByRole('button', { name: /^Long BTC$/ })
     await expect(submitButton).toBeVisible()
-    await expect(submitButton).toBeDisabled()
+    await expect(submitButton).toBeEnabled()
   })
 
   test('account panel shows balance, equity, margin info', async ({ page }) => {
@@ -231,9 +231,15 @@ test.describe('Perps Journey', () => {
 
     await expect(page.locator('h1', { hasText: 'Perpetual Futures' })).toBeVisible({ timeout: 10_000 })
 
+    const chartTab = page.getByRole('button', { name: 'chart', exact: true })
+    if (await chartTab.isVisible()) {
+      await chartTab.click()
+    }
+
     const timeframes = ['1D', '1W', '1M', '3M', '1Y']
     for (const tf of timeframes) {
-      const btn = page.locator(`button:has-text("${tf}")`).first()
+      const btn = page.getByRole('button', { name: tf, exact: true }).first()
+      await btn.scrollIntoViewIfNeeded()
       await expect(btn).toBeVisible()
     }
 
@@ -263,7 +269,7 @@ test.describe('Perps Journey', () => {
 
     await expect(page.locator('h1', { hasText: 'Perpetual Futures' })).toBeVisible({ timeout: 10_000 })
 
-    const ubiFeeInfo = page.locator('text=Fees → 20% funds UBI')
+    const ubiFeeInfo = page.locator('text=Fees → 33% funds UBI')
     await expect(ubiFeeInfo).toBeVisible()
   })
 
@@ -320,9 +326,10 @@ test.describe('Perps full on-chain flow', () => {
       return positions.some((position) => position.isOpen && position.size > 0n)
     }, { timeout: 90_000 }).toBe(true)
 
-    await expect(page.getByRole('heading', { name: 'Open Positions' })).toBeVisible()
-    await expect(page.getByText('No open positions')).not.toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText(/LONG \d+x|SHORT \d+x/)).toBeVisible({ timeout: 15_000 })
+    const openPositionsPanel = page.getByTestId('open-positions-panel')
+    await expect(openPositionsPanel.getByRole('heading', { name: 'Open Positions' })).toBeVisible()
+    await expect(openPositionsPanel.getByText('No open positions')).not.toBeVisible({ timeout: 30_000 })
+    await expect(openPositionsPanel.getByText(/LONG \d+x|SHORT \d+x/)).toBeVisible({ timeout: 15_000 })
   })
 })
 

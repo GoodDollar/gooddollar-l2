@@ -10,9 +10,11 @@ test.describe('Explore page', () => {
   })
 
   test('renders market stats bar with three cards', async ({ page }) => {
-    await expect(page.getByText(/total market cap/i).first()).toBeVisible()
-    await expect(page.getByText(/trending/i).first()).toBeVisible()
-    await expect(page.getByText(/top gainers/i).first()).toBeVisible()
+    // Desktop and mobile render duplicate stat cards; only one grid is visible per viewport.
+    const visible = (pattern: RegExp) => page.getByText(pattern).locator('visible=true').first()
+    await expect(visible(/total market cap/i)).toBeVisible()
+    await expect(visible(/trending/i)).toBeVisible()
+    await expect(visible(/top gainers/i)).toBeVisible()
   })
 
   test('token table is visible with header columns', async ({ page }) => {
