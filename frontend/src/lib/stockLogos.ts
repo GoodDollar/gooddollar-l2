@@ -14,6 +14,8 @@ const STOCK_LOGO_DOMAINS: Record<string, string> = {
 }
 
 export function getStockLogoUrl(ticker: string): string | null {
+  if (process.env.NEXT_PUBLIC_ENABLE_CLEARBIT_LOGOS !== 'true') return null
+
   const domain = STOCK_LOGO_DOMAINS[ticker.toUpperCase()]
   return domain ? `https://logo.clearbit.com/${domain}` : null
 }

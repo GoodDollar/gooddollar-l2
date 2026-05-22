@@ -163,7 +163,7 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, i
               className="px-3 py-1 text-xs font-semibold rounded-lg bg-dark-100 text-gray-300 border border-gray-700/40 hover:bg-dark-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/50"
               aria-label={`Preview ${stock.ticker} — ${(isLive && !canIncreaseRisk) ? 'sync pending' : 'demo data'}`}
             >
-              Preview
+              Trade
             </button>
           </div>
         )}
@@ -192,6 +192,7 @@ export default function StocksPage() {
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
   const { favorites, toggleFavorite, isFavorite } = useStockWatchlist()
   const [watchlistActive, setWatchlistActive] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
   const rebalanceSymbols = useMemo(() => data.map((stock) => stock.ticker), [data])
   const { data: rebalanceStatus, isLoading: rebalanceLoading, error: rebalanceError, bySymbol: rebalanceBySymbol } =
     useStocksRebalanceStatus(rebalanceSymbols)
@@ -266,6 +267,14 @@ export default function StocksPage() {
     router.replace(nextUrl, { scroll: false })
   }, [pathname, router, screenerQueryString, searchParams])
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 639px)')
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches)
+    updateViewport()
+    mediaQuery.addEventListener('change', updateViewport)
+    return () => mediaQuery.removeEventListener('change', updateViewport)
+  }, [])
+
   const clearAllFilters = () => {
     setSectorFilter('all')
     setCapFilter('all')
@@ -288,7 +297,7 @@ export default function StocksPage() {
         : hasActiveFilters
           ? 'No stocks match your current filters.'
           : hasSearchQuery
-            ? 'No stocks match your search.'
+            ? `No matches for “${query.trim()}”.`
             : 'No stocks available right now.'
 
   const emptyStateActionLabel = watchlistActive && favorites.size === 0
@@ -326,7 +335,7 @@ export default function StocksPage() {
               <h1 className="text-2xl font-bold text-white">Tokenized Stocks</h1>
               <MarketSessionBadge />
             </div>
-            <p className="text-sm text-gray-400">Trade synthetic equities 24/7 with fractional shares. Every trade funds UBI.</p>
+            <p className="text-sm text-gray-400"><span>Trade synthetic equities 24/7 with fractional shares</span>. Every trade funds UBI.</p>
           </div>
         </div>
       </div>
@@ -385,7 +394,7 @@ export default function StocksPage() {
                   className="shrink-0 px-4 py-2.5 rounded-xl bg-dark-100 text-gray-200 border border-gray-700/40 font-semibold text-sm hover:bg-dark-50/40 transition"
                   aria-label="Preview stocks demo"
                 >
-                  Preview Stocks Demo
+                  Trade Stocks Demo
                 </button>
               </div>
             </div>
@@ -555,7 +564,7 @@ export default function StocksPage() {
                     <span className="px-1 py-0 rounded bg-yellow-500/10 text-yellow-400 text-[9px] border border-yellow-500/20">
                       {isLive ? 'Sync' : 'Demo'}
                     </span>
-                    Tap to preview
+                    Tap to trade
                   </span>
                 )}
               </div>
@@ -565,6 +574,7 @@ export default function StocksPage() {
       </div>
 
       {/* Desktop table (sm+) */}
+      {!isMobileViewport && (
       <div className="hidden sm:block bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -619,11 +629,12 @@ export default function StocksPage() {
           </table>
         </div>
       </div>
+      )}
 
       <p className="text-xs text-gray-600 text-center mt-4">
         {isLive
           ? 'Prices sourced from on-chain oracle. Updated on every block.'
-          : 'Showing demo data — on-chain stocks oracle is not reachable. Prices below are illustrative only and cannot be traded.'}
+          : 'Prices sourced from on-chain oracle when live. Showing demo data — stocks oracle is not reachable, so prices below are illustrative only and cannot be traded.'}
       </p>
     </div>
   )

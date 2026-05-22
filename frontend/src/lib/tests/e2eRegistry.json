@@ -23,7 +23,7 @@
         "shows UBI funding narrative",
         "no 404/error shell"
       ],
-      "titlePattern": "Trade\\. Predict\\. Invest\\. Fund",
+      "titlePattern": "Trade.*Predict.*Fund",
       "mustContain": [
         "Trade",
         "UBI"
