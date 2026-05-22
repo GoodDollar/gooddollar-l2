@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { formatStockPrice, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
@@ -9,6 +10,16 @@ import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, type OnChainStockPosition } from '@/lib/useStocks'
 import { computeSellGuards, isLimitDisabledOnChain } from '@/lib/stocksOrderValidation'
 import { toG$Wei } from '@/lib/gDollarAmount'
+
+interface ConfirmedOrder {
+  ticker: string
+  side: 'buy' | 'sell'
+  shares: number
+  price: number
+  amount: number
+  fee: number
+  ubiFee: number
+}
 
 function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -44,11 +55,12 @@ export function StockOrderForm({
   position: OnChainStockPosition | null
   riskBlockReason?: string | null
 }) {
+  const router = useRouter()
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [amount, setAmount] = useState('')
   const [limitPrice, setLimitPrice] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [confirmedOrder, setConfirmedOrder] = useState<ConfirmedOrder | null>(null)
   const walletReady = useWalletReady()
   const { isConnected } = useAccount()
   const { mint, phase: mintPhase, error: mintError, isDeployed } = useMintSynthetic()
@@ -88,6 +100,16 @@ export function StockOrderForm({
   const limitGate = isLimitDisabledOnChain({ isDeployed, orderType })
   const riskBlocked = !!riskBlockReason
 
+  const resetToForm = useCallback(() => {
+    setConfirmedOrder(null)
+  }, [])
+
+  useEffect(() => {
+    if (!confirmedOrder) return
+    const timer = setTimeout(resetToForm, 15_000)
+    return () => clearTimeout(timer)
+  }, [confirmedOrder, resetToForm])
+
   const actionPhase = side === 'buy' ? mintPhase : redeemPhase
   const actionError = side === 'buy' ? mintError : redeemError
   const isPending = actionPhase === 'approving' || actionPhase === 'pending'
@@ -100,11 +122,18 @@ export function StockOrderForm({
     if (limitGate.disabled) return
     if (riskBlocked) return
 
+    const orderDetails: ConfirmedOrder = {
+      ticker: stock.ticker,
+      side,
+      shares,
+      price: effectivePrice,
+      amount: parseFloat(amount),
+      fee,
+      ubiFee,
+    }
+
     if (isDeployed && orderType === 'market') {
       const amountNum = parseFloat(amount)
-      // Assume G$ ≈ $0.01 on devnet for collateral calculation.
-      // Route through toG$Wei (parseUnits) — never `Math.round(x * 1e18)`,
-      // which drifts by tens of millions of wei on realistic trade sizes.
       const GD_PRICE_USD = 0.01
       const collateralGD = amountNum / GD_PRICE_USD
       const collateralWei = toG$Wei(collateralGD)
@@ -112,13 +141,72 @@ export function StockOrderForm({
       if (side === 'buy') {
         await mint(stock.ticker, collateralWei, sharesWei)
       } else {
-        // Redeem: burn shares and withdraw equivalent collateral
         await redeem(stock.ticker, sharesWei, collateralWei)
       }
-    } else {
-      setSubmitted(true)
-      setTimeout(() => setSubmitted(false), 3000)
     }
+
+    setConfirmedOrder(orderDetails)
+    setAmount('')
+    setLimitPrice('')
+  }
+
+  if (confirmedOrder) {
+    return (
+      <div data-testid="stocks-order-confirmation" className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
+        <div className="flex items-center justify-center mb-4">
+          <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+            <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+        </div>
+
+        <h3 className="text-center text-white font-semibold text-lg mb-1">Order Submitted!</h3>
+        <p className="text-center text-gray-400 text-sm mb-4">
+          {confirmedOrder.side === 'buy' ? 'Buy' : 'Sell'} {confirmedOrder.ticker}
+        </p>
+
+        <div className="space-y-2 mb-5 text-xs">
+          <div className="flex justify-between text-gray-400">
+            <span>Shares</span>
+            <span className="text-white">{formatStockShares(confirmedOrder.shares)} {confirmedOrder.ticker}</span>
+          </div>
+          <div className="flex justify-between text-gray-400">
+            <span>Price</span>
+            <span className="text-white">{formatStockPrice(confirmedOrder.price)}</span>
+          </div>
+          <div className="flex justify-between text-gray-400">
+            <span>Amount</span>
+            <span className="text-white">{formatTradeAmount(confirmedOrder.amount)}</span>
+          </div>
+          <div className="flex justify-between text-gray-400">
+            <span>Fee (0.1%)</span>
+            <span className="text-white">{formatTradeAmount(confirmedOrder.fee)}</span>
+          </div>
+          <div className="flex justify-between text-goodgreen/80">
+            <span>→ UBI Pool (20%)</span>
+            <span>{formatTradeAmount(confirmedOrder.ubiFee)}</span>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => router.push('/stocks/portfolio')}
+            className="flex-1 py-3 rounded-xl font-semibold text-sm bg-goodgreen text-black hover:bg-goodgreen/90 transition-colors"
+          >
+            View Portfolio
+          </button>
+          <button
+            type="button"
+            onClick={resetToForm}
+            className="flex-1 py-3 rounded-xl font-semibold text-sm bg-dark-50 text-white border border-gray-700/30 hover:bg-dark-50/80 transition-colors"
+          >
+            Trade Again
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -252,7 +340,7 @@ export function StockOrderForm({
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
-            {riskBlocked ? 'Sync required' : limitGate.disabled ? 'Limit not available' : actionPhase === 'approving' ? 'Approving…' : actionPhase === 'pending' ? 'Confirming…' : actionPhase === 'done' ? 'Order Submitted!' : submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
+            {riskBlocked ? 'Sync required' : limitGate.disabled ? 'Limit not available' : actionPhase === 'approving' ? 'Approving…' : actionPhase === 'pending' ? 'Confirming…' : actionPhase === 'done' ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
           </button>
         </WalletGatedTradeButton>
       ) : (
@@ -260,7 +348,7 @@ export function StockOrderForm({
           className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>
-          {riskBlocked ? 'Sync required' : limitGate.disabled ? 'Limit not available' : submitted ? 'Order Submitted!' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
+          {riskBlocked ? 'Sync required' : limitGate.disabled ? 'Limit not available' : `${side === 'buy' ? 'Buy' : 'Sell'} ${stock.ticker}`}
         </button>
       )}
 
