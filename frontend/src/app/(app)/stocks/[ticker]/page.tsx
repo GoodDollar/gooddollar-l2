@@ -140,6 +140,36 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
   return <>{children}</>
 }
 
+function MobileTradeCTA({ ticker }: { ticker: string }) {
+  const [showCta, setShowCta] = useState(true)
+
+  useEffect(() => {
+    const formEl = document.getElementById('stock-order-form')
+    if (!formEl || typeof IntersectionObserver === 'undefined') return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowCta(!entry.isIntersecting),
+      { threshold: 0.1 },
+    )
+    observer.observe(formEl)
+    return () => observer.disconnect()
+  }, [])
+
+  if (!showCta) return null
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-dark-100/95 backdrop-blur-sm border-t border-gray-700/30 px-4 py-3 safe-area-pb">
+      <button
+        type="button"
+        onClick={() => document.getElementById('stock-order-form')?.scrollIntoView({ behavior: 'smooth' })}
+        className="w-full py-3 rounded-xl font-semibold text-sm bg-goodgreen text-[#031615] hover:bg-[#22c5b6] active:bg-[#00a697] transition-colors shadow-lg"
+      >
+        Trade s{ticker}
+      </button>
+    </div>
+  )
+}
+
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
@@ -455,7 +485,7 @@ export default function StockDetailPage() {
   }
 
   return (
-    <div data-testid="stocks-detail-shell" className="w-full max-w-6xl 2xl:max-w-[84rem] mx-auto">
+    <div data-testid="stocks-detail-shell" className="w-full max-w-6xl 2xl:max-w-[84rem] mx-auto pb-20 lg:pb-0">
       <Link href="/stocks" prefetch={false} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
         <span>←</span> Back to Stocks
       </Link>
@@ -707,6 +737,7 @@ export default function StockDetailPage() {
           )}
         </div>
       </div>
+      <MobileTradeCTA ticker={stock.ticker} />
     </div>
   )
 }
