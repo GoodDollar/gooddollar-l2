@@ -1,57 +1,54 @@
 'use client'
 
-import { useState, useMemo, memo, useCallback, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, memo, useCallback, useEffect } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
-import { refreshPriceServiceStatus, usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
-import {
-  markStocksOnboardingStep,
-  readStocksOnboardingProgress,
-  type StocksOnboardingProgress,
-} from '@/lib/stocksOnboardingProgress'
+import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
+import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
+import { MarketSessionBadge } from '@/components/stocks/MarketSessionBadge'
 import { PercentageChange } from '@/components/ui/percentage-change'
-import { StocksOnboardingChecklist } from '@/components/stocks/StocksOnboardingChecklist'
+import { useMounted } from '@/lib/useMounted'
+import {
+  parseStocksScreenerState,
+  serializeStocksScreenerState,
+} from './screenerQueryState'
 
 type SortField = 'price' | 'change24h' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
-const STOCKS_SEARCH_STORAGE_KEY = 'gd-stocks-market-search'
-const DEFAULT_PROGRESS: StocksOnboardingProgress = {
-  exploredMarkets: false,
-  openedStockDetail: false,
-  connectIntent: false,
-}
+type CapFilter = 'all' | 'mega' | 'large' | 'mid'
+type MomentumFilter = 'all' | 'gainers' | 'losers'
+type LiquidityFilter = 'all' | 'active' | 'quiet'
 
-const DeferredOracleStatusBadge = dynamic(
-  () => import('@/components/OracleStatusBadge').then((module) => ({ default: module.OracleStatusBadge })),
+const MarketIntelligencePanel = dynamic(
+  () => import('@/components/stocks/MarketIntelligencePanel').then((mod) => mod.MarketIntelligencePanel),
   {
-    ssr: false,
     loading: () => (
-      <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-        <span>Checking oracle...</span>
-      </div>
+      <section
+        aria-label="Loading market intelligence"
+        className="mb-4 rounded-2xl border border-gray-700/20 bg-dark-100 p-4 text-sm text-gray-400"
+      >
+        Loading market intelligence...
+      </section>
     ),
   },
 )
 
-const DeferredStocksOnboardingCard = dynamic(
-  () => import('./StocksOnboardingCard').then((module) => ({ default: module.StocksOnboardingCard })),
+const StocksRebalanceDashboard = dynamic(
+  () => import('@/components/stocks/StocksRebalanceDashboard').then((mod) => mod.StocksRebalanceDashboard),
   {
-    ssr: false,
     loading: () => (
-      <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/20 bg-goodgreen/5">
-        <div className="animate-pulse space-y-2.5">
-          <div className="h-4 w-64 bg-dark-50 rounded" />
-          <div className="h-3 w-[26rem] max-w-full bg-dark-50 rounded" />
-          <div className="h-3 w-40 bg-dark-50 rounded" />
-          <div className="h-10 w-64 bg-dark-50 rounded-xl" />
-        </div>
-      </div>
+      <section
+        aria-label="Loading rebalance diagnostics"
+        className="rounded-2xl border border-gray-700/20 bg-dark-100 p-4 text-sm text-gray-400"
+      >
+        Loading rebalance diagnostics...
+      </section>
     ),
   },
 )
@@ -79,81 +76,15 @@ function StockIcon({ ticker }: { ticker: string }) {
   )
 }
 
-interface StocksNoResultsProps {
-  query: string
-  suggestions: string[]
-  onClear: () => void
-  onSelectTicker: (ticker: string) => void
-}
-
-function StocksNoResults({ query, suggestions, onClear, onSelectTicker }: StocksNoResultsProps) {
-  return (
-    <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/[0.06] px-5 py-8 text-center">
-      <p className="text-sm font-semibold text-yellow-200">
-        No matches for “{query}”
-      </p>
-      <p className="mt-2 text-xs text-yellow-100/80">
-        Check spelling or try one of the popular tickers below.
-      </p>
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={onClear}
-          className="px-3 py-1.5 rounded-lg border border-yellow-300/40 text-xs font-semibold text-yellow-100 hover:bg-yellow-300/10 transition-colors"
-        >
-          Clear search
-        </button>
-        {suggestions.map((ticker) => (
-          <button
-            key={ticker}
-            type="button"
-            onClick={() => onSelectTicker(ticker)}
-            className="px-3 py-1.5 rounded-lg bg-goodgreen/15 text-xs font-semibold text-goodgreen hover:bg-goodgreen/25 transition-colors"
-            aria-label={`Try ${ticker}`}
-          >
-            Try {ticker}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-interface SortableHeaderProps {
-  label: string
-  field: SortField
-  sortField: SortField
-  sortDir: SortDir
-  onSort: (field: SortField) => void
-  className?: string
-}
-
-function SortableHeader({ label, field, sortField, sortDir, onSort, className }: SortableHeaderProps) {
-  const active = sortField === field
-  return (
-    <th
-      scope="col"
-      aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
-      className={className}
-    >
-      <button
-        type="button"
-        onClick={() => onSort(field)}
-        className="inline-flex items-center justify-end w-full font-semibold hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/60 rounded-sm"
-      >
-        {label} <SortArrow active={active} dir={sortDir} />
-      </button>
-    </th>
-  )
-}
-
 interface StockRowProps {
   stock: Stock
   idx: number
+  isLive: boolean
+  canIncreaseRisk: boolean
   onRowClick: (ticker: string) => void
 }
 
-const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProps) {
+const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, onRowClick }: StockRowProps) {
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -184,13 +115,31 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
       <td className="py-3 px-2 hidden sm:table-cell" aria-label={`7-day trend: ${stock.change24h >= 0 ? 'up' : 'down'} ${Math.abs(stock.change24h).toFixed(1)}%`}>
         <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
       </td>
-      <td className="py-3 px-1 text-right w-20 hidden sm:table-cell">
-        <button
-          onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
-          className="px-3 py-1 text-xs font-semibold rounded-lg bg-goodgreen/15 text-goodgreen hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
-        >
-          Trade
-        </button>
+      <td className="py-3 px-1 text-right w-24 hidden sm:table-cell">
+        {isLive && canIncreaseRisk ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
+            className="px-3 py-1 text-xs font-semibold rounded-lg bg-goodgreen/15 text-goodgreen hover:bg-goodgreen/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+          >
+            Trade
+          </button>
+        ) : (
+          <div className="flex items-center justify-end gap-1.5">
+            <span
+              className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+              aria-hidden="true"
+            >
+              Demo
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onRowClick(stock.ticker) }}
+              className="px-3 py-1 text-xs font-semibold rounded-lg bg-dark-100 text-gray-300 border border-gray-700/40 hover:bg-dark-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/50"
+              aria-label={`Preview ${stock.ticker} — ${(isLive && !canIncreaseRisk) ? 'sync pending' : 'demo data'}`}
+            >
+              Preview
+            </button>
+          </div>
+        )}
       </td>
     </tr>
   )
@@ -198,51 +147,29 @@ const StockRow = memo(function StockRow({ stock, idx, onRowClick }: StockRowProp
 
 export default function StocksPage() {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { address } = useAccount()
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const stocksTableRef = useRef<HTMLDivElement>(null)
-  const [query, setQuery] = useState('')
-  const [progress, setProgress] = useState<StocksOnboardingProgress>(DEFAULT_PROGRESS)
-  const [sectorFilter, setSectorFilter] = useState<string>('All')
-  const [sortField, setSortField] = useState<SortField>('marketCap')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const mounted = useMounted()
+  const initialScreenerState = useMemo(
+    () => parseStocksScreenerState(searchParams),
+    [searchParams],
+  )
+  const [query, setQuery] = useState(initialScreenerState.query)
+  const [sortField, setSortField] = useState<SortField>(initialScreenerState.sortField)
+  const [sortDir, setSortDir] = useState<SortDir>(initialScreenerState.sortDir)
+  const [sectorFilter, setSectorFilter] = useState<string>(initialScreenerState.sectorFilter)
+  const [capFilter, setCapFilter] = useState<CapFilter>(initialScreenerState.capFilter)
+  const [momentumFilter, setMomentumFilter] = useState<MomentumFilter>(initialScreenerState.momentumFilter)
+  const [liquidityFilter, setLiquidityFilter] = useState<LiquidityFilter>(initialScreenerState.liquidityFilter)
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
-  const { status: priceStatus, error: priceStatusError, nextRetryAt } = usePriceServiceStatus()
-  const [retryNow, setRetryNow] = useState(Date.now())
+  const rebalanceSymbols = useMemo(() => data.map((stock) => stock.ticker), [data])
+  const { data: rebalanceStatus, isLoading: rebalanceLoading, error: rebalanceError, bySymbol: rebalanceBySymbol } =
+    useStocksRebalanceStatus(rebalanceSymbols)
 
-  useEffect(() => {
-    setProgress(readStocksOnboardingProgress())
-  }, [])
-
-  useEffect(() => {
-    if (!address && !progress.exploredMarkets) {
-      setProgress(prev => markStocksOnboardingStep(prev, 'exploredMarkets'))
-    }
-  }, [address, progress.exploredMarkets])
-
-  useEffect(() => {
-    const savedQuery = window.sessionStorage.getItem(STOCKS_SEARCH_STORAGE_KEY)
-    if (savedQuery && savedQuery.trim()) {
-      setQuery(savedQuery)
-    }
-  }, [])
-
-  useEffect(() => {
-    const trimmed = query.trim()
-    if (trimmed) {
-      window.sessionStorage.setItem(STOCKS_SEARCH_STORAGE_KEY, query)
-      return
-    }
-    window.sessionStorage.removeItem(STOCKS_SEARCH_STORAGE_KEY)
-  }, [query])
-
-  useEffect(() => {
-    if (!priceStatusError || !nextRetryAt) return
-    const intervalId = window.setInterval(() => {
-      setRetryNow(Date.now())
-    }, 1000)
-    return () => window.clearInterval(intervalId)
-  }, [priceStatusError, nextRetryAt])
+  const sectors = useMemo(() => (
+    Array.from(new Set(data.map((stock) => stock.sector).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  ), [data])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -253,26 +180,8 @@ export default function StocksPage() {
     }
   }
 
-  const topMovers = useMemo(
-    () => data.toSorted((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h)).slice(0, 5),
-    [data]
-  )
-
-  const trending = useMemo(
-    () => data.toSorted((a, b) => b.volume24h - a.volume24h).slice(0, 5),
-    [data]
-  )
-
-  const sectors = useMemo(
-    () => ['All', ...Array.from(new Set(data.map((s) => s.sector).filter(Boolean))).slice(0, 6)],
-    [data]
-  )
-
   const filtered = useMemo(() => {
     let stocks = data
-    if (sectorFilter !== 'All') {
-      stocks = stocks.filter((s) => s.sector === sectorFilter)
-    }
     const trimmed = query.trim()
     if (trimmed) {
       const q = trimmed.toLowerCase()
@@ -280,56 +189,91 @@ export default function StocksPage() {
         s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
       )
     }
-    return stocks.toSorted((a, b) => {
+    if (sectorFilter !== 'all') {
+      stocks = stocks.filter((s) => s.sector === sectorFilter)
+    }
+    if (capFilter !== 'all') {
+      stocks = stocks.filter((s) => {
+        if (capFilter === 'mega') return s.marketCap >= 200_000_000_000
+        if (capFilter === 'large') return s.marketCap >= 10_000_000_000 && s.marketCap < 200_000_000_000
+        return s.marketCap >= 2_000_000_000 && s.marketCap < 10_000_000_000
+      })
+    }
+    if (momentumFilter !== 'all') {
+      stocks = stocks.filter((s) => momentumFilter === 'gainers' ? s.change24h >= 0 : s.change24h < 0)
+    }
+    if (liquidityFilter !== 'all') {
+      stocks = stocks.filter((s) => liquidityFilter === 'active' ? s.volume24h >= 50_000_000 : s.volume24h < 50_000_000)
+    }
+    return [...stocks].sort((a, b) => {
       const mul = sortDir === 'asc' ? 1 : -1
-      const aVal = Number(a[sortField] ?? 0)
-      const bVal = Number(b[sortField] ?? 0)
-      if (aVal === bVal) return a.ticker.localeCompare(b.ticker)
-      return (aVal - bVal) * mul
+      return (a[sortField] - b[sortField]) * mul
     })
-  }, [data, sectorFilter, query, sortField, sortDir])
-  const trimmedQuery = query.trim()
-  const showNoResults = trimmedQuery.length > 0 && filtered.length === 0
-  const noResultsSuggestions = useMemo(
-    () => data.slice(0, 3).map((stock) => stock.ticker),
-    [data],
-  )
+  }, [data, query, sortField, sortDir, sectorFilter, capFilter, momentumFilter, liquidityFilter])
+
+  const activeFilterCount = Number(sectorFilter !== 'all') + Number(capFilter !== 'all') + Number(momentumFilter !== 'all') + Number(liquidityFilter !== 'all')
+  const hasSearchQuery = query.trim().length > 0
+  const hasActiveFilters = activeFilterCount > 0
+  const screenerQueryString = useMemo(() => {
+    return serializeStocksScreenerState({
+      query,
+      sortField,
+      sortDir,
+      sectorFilter,
+      capFilter,
+      momentumFilter,
+      liquidityFilter,
+    }).toString()
+  }, [query, sortField, sortDir, sectorFilter, capFilter, momentumFilter, liquidityFilter])
+
+  useEffect(() => {
+    const current = searchParams.toString()
+    if (current === screenerQueryString) return
+
+    const nextUrl = screenerQueryString ? `${pathname}?${screenerQueryString}` : pathname
+    router.replace(nextUrl, { scroll: false })
+  }, [pathname, router, screenerQueryString, searchParams])
+
+  const clearAllFilters = () => {
+    setSectorFilter('all')
+    setCapFilter('all')
+    setMomentumFilter('all')
+    setLiquidityFilter('all')
+  }
+
+  const clearEmptyStateConstraints = () => {
+    if (hasSearchQuery) setQuery('')
+    if (hasActiveFilters) clearAllFilters()
+  }
+
+  const emptyStateMessage = hasSearchQuery && hasActiveFilters
+    ? 'No stocks match your search and filters.'
+    : hasActiveFilters
+      ? 'No stocks match your current filters.'
+      : hasSearchQuery
+        ? 'No stocks match your search.'
+        : 'No stocks available right now.'
+
+  const emptyStateActionLabel = hasSearchQuery && hasActiveFilters
+    ? 'Clear search & filters'
+    : hasActiveFilters
+      ? 'Clear filters'
+      : hasSearchQuery
+        ? 'Clear search'
+        : null
+
+  const pushTickerRoute = useCallback((ticker: string) => {
+    const next = screenerQueryString ? `/stocks/${ticker}?${screenerQueryString}` : `/stocks/${ticker}`
+    router.push(next)
+  }, [router, screenerQueryString])
 
   const handleRowClick = useCallback((ticker: string) => {
-    if (!address) {
-      setProgress(prev => markStocksOnboardingStep(prev, 'openedStockDetail'))
-    }
-    router.push(`/stocks/${ticker}`)
-  }, [address, router])
-
-  const handlePrepareBrowse = useCallback(() => {
-    stocksTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    searchInputRef.current?.focus()
-  }, [])
-
-  const handleStartTrading = useCallback(() => {
-    router.push(`/stocks/${data[0]?.ticker || 'AAPL'}`)
-  }, [router, data])
-
-  const handleTryAnotherConnector = useCallback(() => {
-    setProgress(prev => markStocksOnboardingStep(prev, 'connectIntent'))
-    handlePrepareBrowse()
-  }, [handlePrepareBrowse])
-
-  const retryInSeconds = useMemo(() => {
-    if (!nextRetryAt) return null
-    return Math.max(0, Math.ceil((nextRetryAt - retryNow) / 1000))
-  }, [nextRetryAt, retryNow])
-
-  const lastSuccessfulLabel = useMemo(() => {
-    const ts = priceStatus?.timestamp
-    if (!ts) return null
-    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }, [priceStatus])
+    pushTickerRoute(ticker)
+  }, [pushTickerRoute])
 
   return (
-    <div data-testid="stocks-page-shell" className="w-full max-w-6xl 2xl:max-w-[84rem] mx-auto">
-      <div className="mb-6">
+    <div className="w-full max-w-5xl mx-auto min-h-screen bg-dark-200 pb-24 md:pr-24 space-y-5 sm:space-y-0">
+      <div className="mb-5 sm:mb-6">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-9 h-9 rounded-xl bg-goodgreen/10 border border-goodgreen/20 flex items-center justify-center">
             <svg className="w-5 h-5 text-goodgreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -337,160 +281,180 @@ export default function StocksPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Tokenized Stocks</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold text-white">Tokenized Stocks</h1>
+              <MarketSessionBadge />
+            </div>
             <p className="text-sm text-gray-400">Trade synthetic equities 24/7 with fractional shares. Every trade funds UBI.</p>
           </div>
         </div>
       </div>
 
-      <InfoBanner
-        title="How Tokenized Stocks Work"
-        description="Synthetic stock tokens track real equity prices via Chainlink oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 20% of fees to UBI."
-        storageKey="gd-banner-dismissed-stocks"
-      />
-
-      {priceStatusError && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-amber-100"
-          data-testid="stocks-price-status-degraded"
-        >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold">Market data may be stale</p>
-              <p className="mt-1 text-xs text-amber-100/85">
-                Quote status service is temporarily unavailable. Use extra caution before placing trades.
-                {lastSuccessfulLabel ? ` Last successful refresh: ${lastSuccessfulLabel}.` : ''}
-                {retryInSeconds !== null ? ` Auto-retry in ~${retryInSeconds}s.` : ''}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => { void refreshPriceServiceStatus(true) }}
-              className="self-start rounded-lg border border-amber-200/40 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-300/10 transition-colors"
-            >
-              Retry now
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="mb-4 sm:mb-5">
+        <InfoBanner
+          title="How Tokenized Stocks Work"
+          description="Synthetic stock tokens track real equity prices via StockOracleV2 multi-signer oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 33% of fees to UBI."
+          storageKey="gd-banner-dismissed-stocks"
+        />
+      </div>
 
       {!address && (
         <>
-          <DeferredStocksOnboardingCard
-            onPrepareBrowse={handlePrepareBrowse}
-            onStartTrading={handleStartTrading}
-            onTryAnotherConnector={handleTryAnotherConnector}
-          />
-          <StocksOnboardingChecklist progress={progress} className="mb-4" />
+          <WalletConnectConfigWarning className="mb-4" />
+          {isLive ? (
+            <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-goodgreen/25 bg-gradient-to-r from-goodgreen/10 to-goodgreen/5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="text-base sm:text-lg font-semibold text-white">Connect Wallet to Trade Stocks</h2>
+                  <p className="text-xs sm:text-sm text-gray-300 mt-1">Get started in under a minute: connect wallet, pick a stock, place your first buy or sell order.</p>
+                  <p className="text-[11px] sm:text-xs text-gray-400 mt-2">1. Connect wallet  2. Select stock  3. Tap Trade</p>
+                </div>
+                <button
+                  onClick={() => pushTickerRoute(data[0]?.ticker || 'AAPL')}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-goodgreen text-dark-900 font-semibold text-sm hover:brightness-110 transition"
+                >
+                  Connect Wallet to Trade Stocks
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4 p-4 sm:p-5 rounded-2xl border border-yellow-500/25 bg-gradient-to-r from-yellow-500/10 to-yellow-500/5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-semibold text-white">Stocks Oracle in Demo Mode</h2>
+                    <span
+                      className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                      aria-hidden="true"
+                    >
+                      Demo
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-300 mt-1">The on-chain stocks oracle isn&apos;t live yet. You can preview the trading experience, but orders cannot be placed.</p>
+                  <p className="text-[11px] sm:text-xs text-gray-400 mt-2">Preview a stock to see the trade UI. Trading will unlock once the oracle is reachable.</p>
+                </div>
+                <button
+                  onClick={() => pushTickerRoute(data[0]?.ticker || 'AAPL')}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-dark-100 text-gray-200 border border-gray-700/40 font-semibold text-sm hover:bg-dark-50/40 transition"
+                  aria-label="Preview stocks demo"
+                >
+                  Preview Stocks Demo
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
-      <div className="mb-4 rounded-2xl border border-gray-700/30 bg-dark-100/70 p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-sm sm:text-base font-semibold text-white">Discover opportunities faster</h2>
-            <p className="text-xs text-gray-400">Use movers, trending, and sector filters to narrow candidates before opening a ticker.</p>
-          </div>
-          {sectorFilter !== 'All' && (
-            <button
-              type="button"
-              onClick={() => setSectorFilter('All')}
-              className="text-xs text-goodgreen hover:text-goodgreen/80 transition-colors self-start sm:self-auto"
-            >
-              Clear sector filter
-            </button>
-          )}
-        </div>
+      <MarketIntelligencePanel
+        stocks={data}
+        isLive={isLive}
+        isLoading={isLoading}
+        onSelectTicker={pushTickerRoute}
+      />
 
-        <div className="mb-4 flex flex-wrap gap-2" data-testid="stocks-sector-filters">
-          {sectors.map((sector) => (
-            <button
-              key={sector}
-              type="button"
-              onClick={() => setSectorFilter(sector)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                sectorFilter === sector
-                  ? 'bg-goodgreen text-[#031615]'
-                  : 'bg-dark-50 text-gray-300 border border-gray-700/30 hover:text-white hover:border-goodgreen/40'
-              }`}
-            >
-              {sector}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="stocks-discovery-modules">
-          <div className="rounded-xl border border-gray-700/25 bg-dark-50/40 p-3">
-            <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">Top Movers</h3>
-            <div className="space-y-1.5">
-              {topMovers.map((stock) => (
-                <button
-                  key={`mover-${stock.ticker}`}
-                  type="button"
-                  onClick={() => handleRowClick(stock.ticker)}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.04] transition-colors text-left"
-                >
-                  <span className="text-sm font-medium text-white">{stock.ticker}</span>
-                  <span className={stock.change24h >= 0 ? 'text-goodgreen text-xs font-semibold' : 'text-red-400 text-xs font-semibold'}>
-                    {stock.change24h >= 0 ? '+' : ''}
-                    {stock.change24h.toFixed(2)}%
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-gray-700/25 bg-dark-50/40 p-3">
-            <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">Trending</h3>
-            <div className="space-y-1.5">
-              {trending.map((stock) => (
-                <button
-                  key={`trending-${stock.ticker}`}
-                  type="button"
-                  onClick={() => handleRowClick(stock.ticker)}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/[0.04] transition-colors text-left"
-                >
-                  <span className="text-sm font-medium text-white">{stock.ticker}</span>
-                  <span className="text-xs text-gray-300">{formatLargeNumber(stock.volume24h)} vol</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+      <div className="mb-4 sm:mb-5 flex flex-col lg:flex-row lg:items-center gap-3 rounded-2xl border border-gray-700/20 bg-dark-100/35 p-3 sm:p-0 sm:border-0 sm:bg-transparent sm:rounded-none">
         <input
-          ref={searchInputRef}
           type="text"
           placeholder="Search stocks..."
           value={query}
           onChange={e => setQuery(e.target.value)}
-          className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
+          disabled={!mounted}
+          className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30 disabled:opacity-70 disabled:cursor-not-allowed"
         />
-        {trimmedQuery && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            className="self-start sm:self-auto text-xs text-goodgreen hover:text-goodgreen/80 transition-colors"
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
+          <select
+            aria-label="Filter by sector"
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            value={sectorFilter}
+            onChange={(e) => setSectorFilter(e.target.value)}
           >
-            Clear
-          </button>
-        )}
-        <DeferredOracleStatusBadge useStocksFallback />
+            <option value="all">All sectors</option>
+            {sectors.map((sector) => (
+              <option key={sector} value={sector}>{sector}</option>
+            ))}
+          </select>
+          <select
+            aria-label="Filter by market cap"
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            value={capFilter}
+            onChange={(e) => setCapFilter(e.target.value as CapFilter)}
+          >
+            <option value="all">All caps</option>
+            <option value="mega">Mega cap</option>
+            <option value="large">Large cap</option>
+            <option value="mid">Mid cap</option>
+          </select>
+          <select
+            aria-label="Filter by momentum"
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            value={momentumFilter}
+            onChange={(e) => setMomentumFilter(e.target.value as MomentumFilter)}
+          >
+            <option value="all">All momentum</option>
+            <option value="gainers">Gainers</option>
+            <option value="losers">Losers</option>
+          </select>
+          <select
+            aria-label="Filter by liquidity"
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            value={liquidityFilter}
+            onChange={(e) => setLiquidityFilter(e.target.value as LiquidityFilter)}
+          >
+            <option value="all">All liquidity</option>
+            <option value="active">High volume</option>
+            <option value="quiet">Lower volume</option>
+          </select>
+        </div>
+        <OracleStatusBadge useStocksFallback onChainReachable={isLive} />
       </div>
+      <div className="mb-4">
+        <StocksRebalanceDashboard
+          symbols={rebalanceStatus?.symbols ?? []}
+          isLoading={rebalanceLoading}
+          error={rebalanceError}
+        />
+      </div>
+
+      {activeFilterCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {sectorFilter !== 'all' && (
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setSectorFilter('all')}>
+              Sector: {sectorFilter} <span aria-hidden="true">x</span>
+            </button>
+          )}
+          {capFilter !== 'all' && (
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setCapFilter('all')}>
+              Cap: {capFilter} <span aria-hidden="true">x</span>
+            </button>
+          )}
+          {momentumFilter !== 'all' && (
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setMomentumFilter('all')}>
+              Momentum: {momentumFilter} <span aria-hidden="true">x</span>
+            </button>
+          )}
+          {liquidityFilter !== 'all' && (
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setLiquidityFilter('all')}>
+              Liquidity: {liquidityFilter} <span aria-hidden="true">x</span>
+            </button>
+          )}
+          <button type="button" className="text-xs text-gray-300 hover:text-white underline underline-offset-2" onClick={clearAllFilters}>
+            Clear all filters
+          </button>
+        </div>
+      )}
 
       {/* Mobile card list (< sm) */}
       <div className="sm:hidden space-y-2 mb-2">
-        {showNoResults ? (
-          <StocksNoResults
-            query={trimmedQuery}
-            suggestions={noResultsSuggestions}
-            onClear={() => setQuery('')}
-            onSelectTicker={(ticker) => setQuery(ticker)}
-          />
+        {filtered.length === 0 ? (
+          <div className="py-12 text-center text-gray-500 bg-dark-100 rounded-2xl border border-gray-700/20">
+            {emptyStateMessage}{' '}
+            {emptyStateActionLabel && (
+              <button onClick={clearEmptyStateConstraints} className="text-goodgreen underline">
+                {emptyStateActionLabel}
+              </button>
+            )}
+          </div>
         ) : (
           filtered.map((stock) => (
             <div
@@ -513,9 +477,23 @@ export default function StocksPage() {
                 <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
                 </div>
-                <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
-                  Tap to trade
-                </span>
+                {isLive && (rebalanceBySymbol[stock.ticker]?.riskIncreaseAllowed ?? true) ? (
+                  <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
+                    Tap to trade
+                  </span>
+                ) : (
+                  <span
+                    className="inline-flex mt-1 items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-50/40 text-gray-300 border border-gray-700/40"
+                    aria-label={(isLive && rebalanceBySymbol[stock.ticker] && !rebalanceBySymbol[stock.ticker].riskIncreaseAllowed)
+                      ? 'Sync pending — preview only'
+                      : 'Demo data — preview only'}
+                  >
+                    <span className="px-1 py-0 rounded bg-yellow-500/10 text-yellow-400 text-[9px] border border-yellow-500/20">
+                      {isLive ? 'Sync' : 'Demo'}
+                    </span>
+                    Tap to preview
+                  </span>
+                )}
               </div>
             </div>
           ))
@@ -523,64 +501,51 @@ export default function StocksPage() {
       </div>
 
       {/* Desktop table (sm+) */}
-      <div ref={stocksTableRef} className="hidden sm:block bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
+      <div className="hidden sm:block bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-700/30 text-gray-400 bg-dark-50/25">
                 <th scope="col" className="text-right py-3 px-3 font-semibold w-10">#</th>
                 <th scope="col" className="text-left py-3 px-3 font-semibold">Stock</th>
-                <SortableHeader
-                  label="Price"
-                  field="price"
-                  sortField={sortField}
-                  sortDir={sortDir}
-                  onSort={handleSort}
-                  className="text-right py-3 px-3"
-                />
-                <SortableHeader
-                  label="24h Change"
-                  field="change24h"
-                  sortField={sortField}
-                  sortDir={sortDir}
-                  onSort={handleSort}
-                  className="text-right py-3 px-3"
-                />
-                <SortableHeader
-                  label="Volume"
-                  field="volume24h"
-                  sortField={sortField}
-                  sortDir={sortDir}
-                  onSort={handleSort}
-                  className="text-right py-3 px-3 hidden sm:table-cell"
-                />
-                <SortableHeader
-                  label="Market Cap"
-                  field="marketCap"
-                  sortField={sortField}
-                  sortDir={sortDir}
-                  onSort={handleSort}
-                  className="text-right py-3 px-3 hidden md:table-cell"
-                />
+                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('price')}>
+                  Price <SortArrow active={sortField === 'price'} dir={sortDir} />
+                </th>
+                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('change24h')}>
+                  24h Change <SortArrow active={sortField === 'change24h'} dir={sortDir} />
+                </th>
+                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors hidden sm:table-cell" onClick={() => handleSort('volume24h')}>
+                  Volume <SortArrow active={sortField === 'volume24h'} dir={sortDir} />
+                </th>
+                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors hidden md:table-cell" onClick={() => handleSort('marketCap')}>
+                  Market Cap <SortArrow active={sortField === 'marketCap'} dir={sortDir} />
+                </th>
                 <th scope="col" className="py-3 px-2 font-semibold hidden sm:table-cell">7d Trend</th>
-                <th scope="col" className="w-20 hidden sm:table-cell" />
+                <th scope="col" className="w-24 hidden sm:table-cell" />
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-gray-500">
-                    <StocksNoResults
-                      query={trimmedQuery}
-                      suggestions={noResultsSuggestions}
-                      onClear={() => setQuery('')}
-                      onSelectTicker={(ticker) => setQuery(ticker)}
-                    />
+                    {emptyStateMessage}{' '}
+                    {emptyStateActionLabel && (
+                      <button onClick={clearEmptyStateConstraints} className="text-goodgreen underline">
+                        {emptyStateActionLabel}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
                 filtered.map((stock, idx) => (
-                  <StockRow key={stock.ticker} stock={stock} idx={idx} onRowClick={handleRowClick} />
+                  <StockRow
+                    key={stock.ticker}
+                    stock={stock}
+                    idx={idx}
+                    isLive={isLive}
+                    canIncreaseRisk={rebalanceBySymbol[stock.ticker]?.riskIncreaseAllowed ?? true}
+                    onRowClick={handleRowClick}
+                  />
                 ))
               )}
             </tbody>
@@ -589,7 +554,9 @@ export default function StocksPage() {
       </div>
 
       <p className="text-xs text-gray-600 text-center mt-4">
-        Prices sourced from on-chain oracle. Updated on every block.
+        {isLive
+          ? 'Prices sourced from on-chain oracle. Updated on every block.'
+          : 'Showing demo data — on-chain stocks oracle is not reachable. Prices below are illustrative only and cannot be traded.'}
       </p>
     </div>
   )

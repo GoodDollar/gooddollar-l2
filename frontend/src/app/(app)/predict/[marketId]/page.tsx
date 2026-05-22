@@ -123,7 +123,7 @@ function TradePanel({ market, initialSide }: { market: PredictionMarket, initial
             <span>Fee (1%)</span>
             <span className="text-white">{formatLargeValue(fee)}</span>
           </div>
-          <div className="flex justify-between text-goodgreen/80">
+          <div className="flex justify-between text-goodgreen">
             <span>→ UBI Pool (20%)</span>
             <span>{formatLargeValue(ubiFee)}</span>
           </div>
@@ -337,7 +337,7 @@ export default function MarketDetailPage() {
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
           <div className="mb-4">
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen/80 border border-goodgreen/15">
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen border border-goodgreen/15">
               {market.category}
             </span>
           </div>

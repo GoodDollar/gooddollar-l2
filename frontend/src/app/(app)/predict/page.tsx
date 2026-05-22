@@ -183,15 +183,11 @@ function MarketCard({ market }: { market: PredictionMarket }) {
   return (
     <div
       onClick={handleCardClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick() } }}
-      aria-label={market.question}
-      className={`bg-dark-100 rounded-2xl border border-gray-700/20 p-5 hover:border-goodgreen/30 hover:-translate-y-[1px] transition-all group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/40 ${isExpired ? 'opacity-60' : ''}`}
+      className={`bg-dark-100 rounded-2xl border border-gray-700/20 p-5 hover:border-goodgreen/30 hover:-translate-y-[1px] transition-all group cursor-pointer ${isExpired ? 'opacity-60' : ''}`}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen/80 border border-goodgreen/15">
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen border border-goodgreen/15">
             {market.category}
           </span>
           {!isExpired && (
@@ -303,11 +299,7 @@ function FeaturedMarket({ market }: { market: PredictionMarket | null }) {
   return (
     <div
       onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick() } }}
-      aria-label={`Featured: ${market.question}`}
-      className="mb-6 bg-dark-100 rounded-2xl border border-goodgreen/20 p-5 sm:p-6 hover:border-goodgreen/40 transition-all group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/40 relative overflow-hidden"
+      className="mb-6 bg-dark-100 rounded-2xl border border-goodgreen/20 p-5 sm:p-6 hover:border-goodgreen/40 transition-all group cursor-pointer relative overflow-hidden"
     >
       <div
         aria-hidden="true"
@@ -324,9 +316,9 @@ function FeaturedMarket({ market }: { market: PredictionMarket | null }) {
             <span className="text-xs font-semibold text-goodgreen uppercase tracking-wider">Trending</span>
           </>
         ) : (
-          <span className="text-xs font-semibold text-goodgreen/80 uppercase tracking-wider">Featured</span>
+          <span className="text-xs font-semibold text-goodgreen uppercase tracking-wider">Featured</span>
         )}
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen/80 border border-goodgreen/15 ml-1">
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-goodgreen/10 text-goodgreen border border-goodgreen/15 ml-1">
           {market.category}
         </span>
         {isLive ? (
