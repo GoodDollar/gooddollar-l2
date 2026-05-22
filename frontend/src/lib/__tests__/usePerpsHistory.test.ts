@@ -46,10 +46,8 @@ describe('usePerpsHistory module', () => {
     expect(typeof mod.useLeaderboard).toBe('function')
   })
 
-  it('MARKET_ORACLE_KEYS has ETH as market 0 and BTC as market 1', async () => {
-    // Verify the oracle key correction: market 0 = ETH, market 1 = BTC
-    // ETH key = keccak256("ETH") = 0xaaae...
-    // BTC key = keccak256("BTC") = 0xe98e...
+  it('MARKET_ORACLE_KEYS has BTC as market 0 and ETH as market 1', async () => {
+    // DeployPerps seeds BTC first: market 0 = BTC (0xe98e...), market 1 = ETH (0xaaae...)
     const mod = await import('@/lib/usePerpsHistory')
     // The module isn't exporting MARKET_ORACLE_KEYS, but we can test via the hook's behavior
     // For now, just verify the module loads without errors

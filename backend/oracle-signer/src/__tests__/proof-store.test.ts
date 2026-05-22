@@ -72,6 +72,12 @@ describe('ProofStore', () => {
     expect(ps.snapshot().stocks[0].rail).toBe('stocks');
   });
 
+  it('uses null for unknown block numbers', () => {
+    const ps = new ProofStore();
+    ps.record('stocks', { ...baseEntry, blockNumber: null });
+    expect(ps.snapshot().stocks[0].blockNumber).toBeNull();
+  });
+
   it('returned snapshot arrays are detached copies (mutating them does not affect store)', () => {
     const ps = new ProofStore();
     ps.record('stocks', baseEntry);
@@ -321,8 +327,8 @@ describe('redactRpcEndpoint', () => {
     expect(redactRpcEndpoint('ws://user:secret@host/feed')).toBe('ws://host/feed');
   });
 
-  it('preserves query strings while stripping userinfo', () => {
-    expect(redactRpcEndpoint('wss://user:p@host/?k=v')).toBe('wss://host/?k=v');
+  it('strips query strings while stripping userinfo', () => {
+    expect(redactRpcEndpoint('wss://user:p@host/?k=v')).toBe('wss://host');
   });
 
   it('returns undefined for undefined input', () => {
@@ -340,7 +346,7 @@ describe('redactRpcEndpoint', () => {
   });
 
   it('preserves URL with no userinfo', () => {
-    expect(redactRpcEndpoint('http://localhost:8545')).toBe('http://localhost:8545/');
+    expect(redactRpcEndpoint('http://localhost:8545')).toBe('http://localhost:8545');
   });
 
   it('clamps to 200 chars', () => {
@@ -352,7 +358,7 @@ describe('redactRpcEndpoint', () => {
 
   it('handles IPv6 hosts (no userinfo to strip)', () => {
     const out = redactRpcEndpoint('http://[::1]:8545');
-    expect(out).toBe('http://[::1]:8545/');
+    expect(out).toBe('http://[::1]:8545');
   });
 
   it('returns undefined for non-string inputs', () => {
@@ -391,5 +397,25 @@ describe('redactProofReason', () => {
     expect(redactProofReason('plain string')).toBe('plain string');
     expect(redactProofReason(undefined)).toBe('undefined');
     expect(redactProofReason(null)).toBe('null');
+  });
+});
+
+
+describe('ProofStore capacity normalization and RPC redaction hardening', () => {
+  it('normalizes invalid and extreme capacities', () => {
+    for (const value of [NaN, 0, -10, Infinity]) {
+      const ps = new ProofStore(value);
+      for (let i = 0; i < 60; i++) ps.record('stocks', { ...baseEntry, txHash: `0x${i}` });
+      expect(ps.snapshot().stocks).toHaveLength(50);
+    }
+
+    const capped = new ProofStore(10000);
+    for (let i = 0; i < 550; i++) capped.record('stocks', { ...baseEntry, txHash: `0xc${i}` });
+    expect(capped.snapshot().stocks).toHaveLength(500);
+  });
+
+  it('redacts credential-like RPC URL path segments and query strings', () => {
+    expect(redactRpcEndpoint('https://user:pass@example.com/v2/abcdefghijklmnopqrstuvwxyz1234567890?apiKey=secret')).toBe('https://example.com/<redacted>');
+    expect(redactRpcEndpoint('http://127.0.0.1:8545')).toBe('http://127.0.0.1:8545');
   });
 });

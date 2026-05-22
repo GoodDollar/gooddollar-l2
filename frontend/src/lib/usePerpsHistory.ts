@@ -33,8 +33,8 @@ const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL || ''
 // Market oracle keys (keccak256 of ticker string) — used for oracle reads
 // Market ordering matches PerpEngine.markets[] array (verified via on-chain reads)
 const MARKET_ORACLE_KEYS: Record<number, { key: `0x${string}`; symbol: string }> = {
-  0: { key: '0xaaaebeba3810b1e6b70781f14b2d72c1cb89c0b2b320c43bb67ff79f562f5ff4', symbol: 'ETH-USD' },
-  1: { key: '0xe98e2830be1a7e4156d656a7505e65d08c67660dc618072422e9c78053c261e9', symbol: 'BTC-USD' },
+  0: { key: '0xe98e2830be1a7e4156d656a7505e65d08c67660dc618072422e9c78053c261e9', symbol: 'BTC-USD' },
+  1: { key: '0xaaaebeba3810b1e6b70781f14b2d72c1cb89c0b2b320c43bb67ff79f562f5ff4', symbol: 'ETH-USD' },
   2: { key: '0x0a3ec4fc70eaf64faf6eeda4e9b2bd4742a785464053aa23afad8bd24650e86f', symbol: 'SOL-USD' },
   3: { key: '0x3ed03c38e59dc60c7b69c2a4bf68f9214acd953252b5a90e8f5f59583e9bc3ae', symbol: 'BNB-USD' },
   4: { key: '0xa6a7de01e8b7ba6a4a61c782a73188d808fc1f3cf5743fadb68a02ed884b594f', symbol: 'MATIC-USD' },

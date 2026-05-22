@@ -185,4 +185,19 @@ describe('GET /proof — service status (task 0010)', () => {
     expect(body.service.reason).toBe('rpc error <redacted-hex>');
     await srv.close();
   });
+  it('returns canonical redacted degraded shape when proof provider throws', async () => {
+    const srv = await withServer({
+      proofProvider: () => { throw new Error('boom 0x' + 'a'.repeat(64)); },
+    });
+    const res = await get(`http://127.0.0.1:${srv.port}/proof`);
+    expect(res.status).toBe(503);
+    const body = JSON.parse(res.body);
+    expect(body.service).toEqual({ status: 'degraded', reason: 'proof provider error' });
+    expect(body.stocks).toEqual([]);
+    expect(body.crypto).toEqual([]);
+    expect(body.counts).toEqual({ stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } });
+    expect(JSON.stringify(body)).not.toContain('boom');
+    await srv.close();
+  });
+
 });

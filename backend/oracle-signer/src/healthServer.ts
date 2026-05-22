@@ -14,6 +14,8 @@
  */
 
 import * as http from 'http';
+import { canonicalEmptyProofSnapshot, redactProofReason } from './proof-store';
+import { canonicalEmptyProofSnapshot, redactProofReason } from './proof-store';
 
 export interface HealthServerOptions {
   name: string;
@@ -66,8 +68,11 @@ export function startHealthServer(opts: HealthServerOptions): http.Server {
         res.writeHead(httpStatus, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(base));
       } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'error', service: name, error: String(err) }));
+        console.warn(`[${name}] proof provider error: ${redactProofReason(err)}`);
+        const base: Record<string, unknown> = { ...canonicalEmptyProofSnapshot() };
+        base.service = { status: 'degraded', reason: 'proof provider error' };
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(base));
       }
       return;
     }

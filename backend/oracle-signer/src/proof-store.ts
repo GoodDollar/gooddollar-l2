@@ -14,7 +14,7 @@ export type RailName = 'stocks' | 'crypto';
 
 export interface ProofEntryInput {
   txHash: string;
-  blockNumber: number;
+  blockNumber: number | null;
   /** gasUsed serialised as a decimal string so JSON consumers don't have to deal with BigInt. */
   gasUsed: string;
   symbols: string[];
@@ -80,8 +80,8 @@ export interface RailStatus {
  * `signerAddress` is the wallet's PUBLIC address derived from the signer key
  * — the private key is never serialised anywhere in this snapshot.
  * `rpcEndpoint` is the RPC URL passed through `redactRpcEndpoint` (strips
- * URL `userinfo` like `user:pass@`). `oracleAddresses.<rail>` is null when
- * that rail's address isn't configured.
+ * URL credentials/query/hash and obvious token path segments).
+ * `oracleAddresses.<rail>` is null when that rail's address isn't configured.
  *
  * Casing for addresses follows ethers v6's checksum casing — callers that
  * need lowercased addresses should normalise downstream.
@@ -110,6 +110,7 @@ export interface ProofSnapshot {
 }
 
 export const DEFAULT_PROOF_CAPACITY = 50;
+export const MAX_PROOF_CAPACITY = 500;
 
 const REASON_MAX_LEN = 200;
 
@@ -121,10 +122,29 @@ const REASON_MAX_LEN = 200;
  */
 const RPC_ENDPOINT_MAX_LEN = 200;
 
+export function normalizeProofCapacity(raw: number | string | undefined | null): number {
+  const parsed = typeof raw === 'number'
+    ? raw
+    : typeof raw === 'string' && raw.trim().length > 0
+      ? Number(raw)
+      : DEFAULT_PROOF_CAPACITY;
+  if (!Number.isFinite(parsed)) return DEFAULT_PROOF_CAPACITY;
+
+  const capacity = Math.floor(parsed);
+  if (capacity <= 0) return DEFAULT_PROOF_CAPACITY;
+  return Math.min(capacity, MAX_PROOF_CAPACITY);
+}
+
+function shouldRedactPathSegment(segment: string): boolean {
+  const decoded = decodeURIComponent(segment);
+  if (/api[-_]?key|access[-_]?token|secret|password|credential/i.test(decoded)) return true;
+  return decoded.length >= 20 && /^[A-Za-z0-9._~-]+$/.test(decoded);
+}
+
 /**
  * Sanitise an RPC URL for inclusion in the public `/proof` response.
  *
- * - Strips `userinfo` from URLs (`https://user:pass@host` → `https://host`).
+ * - Strips `userinfo`, query strings, hashes, and obvious token path segments.
  * - Returns `undefined` for non-URL inputs (IPC paths, empty strings,
  *   malformed values, anything that the WHATWG URL parser rejects). The
  *   public proof body would rather omit the field than expose a partially-
@@ -144,9 +164,13 @@ export function redactRpcEndpoint(raw: string | undefined | null): string | unde
   } catch {
     return undefined;
   }
-  u.username = '';
-  u.password = '';
-  const out = u.toString();
+  const pathSegments = u.pathname.split('/').filter(Boolean);
+  const safePath = pathSegments.length === 0
+    ? ''
+    : pathSegments.some(shouldRedactPathSegment)
+      ? '/<redacted>'
+      : u.pathname;
+  const out = `${u.protocol}//${u.host}${safePath}`;
   return out.length > RPC_ENDPOINT_MAX_LEN ? out.slice(0, RPC_ENDPOINT_MAX_LEN) : out;
 }
 
@@ -225,7 +249,7 @@ export class ProofStore {
   private chainInfoState: ChainInfo = defaultChainInfo();
 
   constructor(capacity: number = DEFAULT_PROOF_CAPACITY) {
-    this.capacity = Math.max(1, Math.floor(capacity));
+    this.capacity = normalizeProofCapacity(capacity);
   }
 
   /**

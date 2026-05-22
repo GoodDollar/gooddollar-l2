@@ -31,7 +31,7 @@ import { CryptoSymbolMap, parseCryptoSymbolMap } from './crypto-symbol-map';
 import { NormalizedQuote, OracleSignerConfig, UpdateResult } from './types';
 import { startHealthServer } from './healthServer';
 import { assertDevnetChain, parseAllowedChainIds } from './chain-guard';
-import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY, redactProofReason, canonicalEmptyProofSnapshot, redactRpcEndpoint } from './proof-store';
+import { ProofStore, ProofSnapshot, normalizeProofCapacity, redactProofReason, canonicalEmptyProofSnapshot, redactRpcEndpoint } from './proof-store';
 import { AuditLog } from './audit-log';
 import * as path from 'path';
 import { ethers } from 'ethers';
@@ -96,9 +96,7 @@ export class OracleSignerService {
 
   constructor(config: OracleSignerConfig, deps: OracleSignerDeps = {}) {
     this.config = config;
-    this.proofStore = deps.proofStore ?? new ProofStore(
-      parseInt(process.env.ORACLE_PROOF_CAPACITY || String(DEFAULT_PROOF_CAPACITY), 10),
-    );
+    this.proofStore = deps.proofStore ?? new ProofStore(normalizeProofCapacity(process.env.ORACLE_PROOF_CAPACITY));
     this.auditLog = deps.auditLog ?? new AuditLog({
       dir: process.env.ORACLE_AUDIT_LOG_DIR || path.join(process.cwd(), '.autobuilder', 'logs', 'oracle-signer'),
     });
@@ -332,7 +330,7 @@ export class OracleSignerService {
 
       this.proofStore.record('stocks', {
         txHash: result.txHash,
-        blockNumber: result.blockNumber ?? 0,
+        blockNumber: result.blockNumber ?? null,
         gasUsed: result.gasUsed.toString(),
         symbols,
         roundTripMs: result.roundTripMs,
@@ -388,7 +386,7 @@ export class OracleSignerService {
 
       this.proofStore.record('crypto', {
         txHash: result.txHash,
-        blockNumber: result.blockNumber ?? 0,
+        blockNumber: result.blockNumber ?? null,
         gasUsed: result.gasUsed.toString(),
         symbols,
         roundTripMs: result.roundTripMs,
