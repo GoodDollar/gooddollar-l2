@@ -628,4 +628,24 @@ describe('shouldRunMain', () => {
   it('returns false when argv[1] is missing and no PM2 env', () => {
     expect(shouldRunMain({ argv1: undefined, modulePath: SELF, env: {} })).toBe(false)
   })
+
+  it('returns false when VITEST env is set even if PM2 env vars are present', () => {
+    expect(
+      shouldRunMain({
+        argv1: PM2_FORK,
+        modulePath: SELF,
+        env: { pm_id: '21', PM2_HOME: '/home/u/.pm2', name: 'goodchain-ab', VITEST: 'true' },
+      }),
+    ).toBe(false)
+  })
+
+  it('returns false when VITEST_WORKER_ID env is set even if PM2 env vars are present', () => {
+    expect(
+      shouldRunMain({
+        argv1: PM2_FORK,
+        modulePath: SELF,
+        env: { pm_id: '21', VITEST_WORKER_ID: '1' },
+      }),
+    ).toBe(false)
+  })
 })

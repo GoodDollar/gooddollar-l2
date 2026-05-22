@@ -12,6 +12,7 @@ import { InfoBanner } from '@/components/InfoBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { MarketSessionBadge } from '@/components/stocks/MarketSessionBadge'
+import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { useMounted } from '@/lib/useMounted'
 import {
@@ -91,6 +92,9 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, o
       className={`group border-b border-gray-700/10 hover:bg-white/[0.04] cursor-pointer transition-colors ${idx % 2 === 1 ? 'bg-dark-50/15' : ''}`}
     >
       <td className="py-3 px-3 text-gray-500 text-right">{idx + 1}</td>
+      <td className="py-3 px-2 w-10">
+        <WatchlistStarButton ticker={stock.ticker} size="sm" />
+      </td>
       <td className="py-3 px-3">
         <div className="flex items-center gap-2.5">
           <StockIcon ticker={stock.ticker} />
@@ -507,6 +511,7 @@ export default function StocksPage() {
             <thead>
               <tr className="border-b border-gray-700/30 text-gray-400 bg-dark-50/25">
                 <th scope="col" className="text-right py-3 px-3 font-semibold w-10">#</th>
+                <th scope="col" className="py-3 px-2 w-10" aria-label="Watchlist" />
                 <th scope="col" className="text-left py-3 px-3 font-semibold">Stock</th>
                 <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('price')}>
                   Price <SortArrow active={sortField === 'price'} dir={sortDir} />
@@ -527,7 +532,7 @@ export default function StocksPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-500">
+                  <td colSpan={9} className="py-12 text-center text-gray-500">
                     {emptyStateMessage}{' '}
                     {emptyStateActionLabel && (
                       <button onClick={clearEmptyStateConstraints} className="text-goodgreen underline">

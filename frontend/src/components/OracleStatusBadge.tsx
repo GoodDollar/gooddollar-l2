@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePriceServiceStatus, getSessionLabel, getDominantSession } from '@/lib/usePriceServiceStatus'
 import { deriveStocksOracleHealth, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
 
@@ -12,6 +12,7 @@ function formatAge(ms: number): string {
 }
 
 type Variant = 'compact' | 'detail'
+type TimeoutPhase = 'loading' | 'slow' | 'timed-out'
 
 interface OracleStatusBadgeProps {
   variant?: Variant
@@ -24,16 +25,17 @@ const FALLBACK_STATUS_TTL_MS = 30_000
 let fallbackCache: { value: StocksOracleHealth; expiresAt: number } | null = null
 let fallbackInFlight: Promise<StocksOracleHealth> | null = null
 
-async function resolveStocksFallbackStatus(): Promise<StocksOracleHealth> {
+async function resolveStocksFallbackStatus({ force = false }: { force?: boolean } = {}): Promise<StocksOracleHealth> {
   const now = Date.now()
-  if (fallbackCache && fallbackCache.expiresAt > now) {
+  if (!force && fallbackCache && fallbackCache.expiresAt > now) {
     return fallbackCache.value
   }
-  if (fallbackInFlight) {
+  if (!force && fallbackInFlight) {
     return fallbackInFlight
   }
 
-  fallbackInFlight = fetch('/api/status', { cache: 'no-store' })
+  let request: Promise<StocksOracleHealth>
+  request = fetch('/api/status', { cache: 'no-store' })
     .then(async (res) => {
       if (!res.ok) throw new Error(`status ${res.status}`)
       const data = await res.json()
@@ -45,9 +47,10 @@ async function resolveStocksFallbackStatus(): Promise<StocksOracleHealth> {
       return value
     })
     .finally(() => {
-      fallbackInFlight = null
+      if (fallbackInFlight === request) fallbackInFlight = null
     })
 
+  fallbackInFlight = request
   return fallbackInFlight
 }
 
@@ -55,31 +58,80 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
   const { status, error } = usePriceServiceStatus()
   const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
   const [fallbackLoading, setFallbackLoading] = useState(false)
+  const [fallbackReady, setFallbackReady] = useState(false)
+  const [timeoutPhase, setTimeoutPhase] = useState<TimeoutPhase>('loading')
+  const [retryCount, setRetryCount] = useState(0)
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timedOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearTimers = useCallback(() => {
+    if (slowTimer.current) {
+      clearTimeout(slowTimer.current)
+      slowTimer.current = null
+    }
+    if (timedOutTimer.current) {
+      clearTimeout(timedOutTimer.current)
+      timedOutTimer.current = null
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     if (!useStocksFallback || status || !error) return
 
+    setFallbackReady(false)
     setFallbackLoading(true)
-    resolveStocksFallbackStatus()
+    setTimeoutPhase('loading')
+
+    slowTimer.current = setTimeout(() => {
+      if (!cancelled) setTimeoutPhase('slow')
+    }, 5000)
+
+    timedOutTimer.current = setTimeout(() => {
+      if (!cancelled) setTimeoutPhase('timed-out')
+    }, 15000)
+
+    resolveStocksFallbackStatus({ force: retryCount > 0 })
       .then((nextState) => {
         if (cancelled) return
+        clearTimers()
         setFallbackState(nextState)
       })
       .finally(() => {
-        if (!cancelled) setFallbackLoading(false)
+        if (!cancelled) {
+          setFallbackLoading(false)
+          setFallbackReady(true)
+        }
       })
 
-    return () => { cancelled = true }
-  }, [useStocksFallback, status, error])
+    return () => {
+      cancelled = true
+      clearTimers()
+    }
+  }, [useStocksFallback, status, error, retryCount, clearTimers])
 
   if (error || !status) {
     if (useStocksFallback) {
-      if (fallbackLoading) {
+      if (fallbackLoading || !fallbackReady) {
+        if (timeoutPhase === 'timed-out') {
+          return (
+            <div className="inline-flex items-center gap-1.5 text-xs text-yellow-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+              <span>Price feed unavailable</span>
+              <button
+                type="button"
+                onClick={() => setRetryCount(c => c + 1)}
+                className="underline hover:text-yellow-300 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )
+        }
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-            <span>Checking oracle...</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse" />
+            <span>{timeoutPhase === 'slow' ? 'Price feed connecting...' : 'Checking oracle...'}</span>
           </div>
         )
       }

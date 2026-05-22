@@ -59,6 +59,12 @@ vi.mock('@/lib/useMounted', () => ({
   useMounted: () => true,
 }))
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => '/stocks/AAPL',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
 // --- resolve mocks after registration ------------------------------------
 const { useAccount } = await import('wagmi')
 const { useWalletReady } = await import('@/lib/WalletReadyContext')

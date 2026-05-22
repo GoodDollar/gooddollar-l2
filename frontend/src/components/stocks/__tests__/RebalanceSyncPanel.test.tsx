@@ -52,7 +52,7 @@ describe('<RebalanceSyncPanel />', () => {
       />,
     )
 
-    expect(screen.getByText('Risk stop active')).toBeInTheDocument()
+    expect(screen.getByText('Trading paused — syncing')).toBeInTheDocument()
     expect(screen.getByTestId('stocks-rebalance-reasons')).toBeInTheDocument()
     expect(screen.getByText('Awaiting same-block sync for: perps')).toBeInTheDocument()
   })

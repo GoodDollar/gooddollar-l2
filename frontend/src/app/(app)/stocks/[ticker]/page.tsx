@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -28,6 +28,8 @@ import { PriceChart } from '@/components/PriceChart'
 import { DepthChart } from '@/components/stocks/DepthChart'
 import { StockMarketData } from '@/components/stocks/StockMarketData'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
+import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
 import { StockStatsBar } from '@/components/stocks/StockStatsBar'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
@@ -70,6 +72,11 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 const TIMEFRAMES: Timeframe[] = ['1H', '4H', '1D', '1W', '1M', '3M', '1Y']
 type PeerMetric = 'change24h' | 'marketCap' | 'peRatio'
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
+const DETAIL_BACK_LINKS: Record<string, { label: string; href: string }> = {
+  watchlist: { label: 'Back to Watchlist', href: '/stocks/watchlist' },
+  portfolio: { label: 'Back to Portfolio', href: '/stocks/portfolio' },
+}
+const DEFAULT_DETAIL_BACK_LINK = { label: 'Back to Markets', href: '/stocks' }
 const SAFE_TICKER_PATTERN = /^[A-Z0-9]{1,16}$/
 const UNSAFE_TICKER_PATTERN = /[%/\\\u0000-\u001F\u007F]|\.{2}/
 const TRAILING_TICKER_DELIMITERS = /[/\\]+$/g
@@ -461,6 +468,7 @@ export default function StockDetailPage() {
   const [activeTab, setActiveTab] = useState<TickerTab>(() => parseTickerTab(searchParams.get('tab')))
   const [analysisExpanded, setAnalysisExpanded] = useState(true)
   const [peerMetric, setPeerMetric] = useState<PeerMetric>('change24h')
+  const orderFormRef = useRef<HTMLDivElement | null>(null)
   const [analystLoading, setAnalystLoading] = useState(true)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
@@ -495,6 +503,7 @@ export default function StockDetailPage() {
     return { signal, changePct, spreadPct }
   }, [chartData])
   const fundamentalsRows = useMemo(() => (stock ? buildFundamentalsRows(stock) : []), [stock])
+  const backLink = DETAIL_BACK_LINKS[searchParams.get('from') ?? ''] ?? DEFAULT_DETAIL_BACK_LINK
   const eventTimeline = useMemo(() => {
     if (!stock) return []
     const upcoming = [
@@ -578,8 +587,8 @@ export default function StockDetailPage() {
 
   return (
     <div className="w-full max-w-5xl mx-auto">
-      <Link href="/stocks" prefetch={false} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
-        <span>←</span> Back to Stocks
+      <Link href={backLink.href} prefetch={false} data-testid="stocks-detail-back-link" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4">
+        <span>←</span> {backLink.label}
       </Link>
       <WalletConnectConfigWarning className="mb-4" />
       <div className="flex flex-col lg:flex-row gap-6">
@@ -588,8 +597,11 @@ export default function StockDetailPage() {
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-xs font-bold text-goodgreen">
               {stock.ticker.slice(0, 2)}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
+                <WatchlistStarButton ticker={stock.ticker} size="md" />
+              </div>
               <p className="text-sm text-gray-400">{stock.name} · {stock.sector}</p>
             </div>
           </div>
@@ -883,12 +895,14 @@ export default function StockDetailPage() {
               On-chain stocks oracle is not reachable. Prices are illustrative only and orders cannot settle.
             </aside>
           )}
-          <OrderForm
-            stock={stock}
-            position={position}
-            riskIncreaseAllowed={riskIncreaseAllowed}
-            riskStopReasons={riskStopReasons}
-          />
+          <div ref={orderFormRef}>
+            <OrderForm
+              stock={stock}
+              position={position}
+              riskIncreaseAllowed={riskIncreaseAllowed}
+              riskStopReasons={riskStopReasons}
+            />
+          </div>
 
           <StockMarketData markPrice={stock.price} />
 
@@ -977,6 +991,8 @@ export default function StockDetailPage() {
           )}
         </div>
       </div>
+
+      <MobileTradeStickyBar targetRef={orderFormRef} ticker={stock.ticker} />
     </div>
   )
 }

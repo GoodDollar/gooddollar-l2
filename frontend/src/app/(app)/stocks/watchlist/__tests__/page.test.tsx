@@ -5,7 +5,7 @@ import { TestWrapper } from '@/test-utils/wrapper'
 const push = vi.fn()
 const refresh = vi.fn()
 
-let stocksState: { stocks: Array<{ ticker: string; name: string; sector: string; price: number; change24h: number; volume24h: number; marketCap: number; high52w: number; low52w: number; sparkline7d: number[]; peRatio: number; eps: number; dividendYield: number; avgVolume: number }>; isLoading: boolean; isLive: boolean } = {
+let stocksState: { stocks: Array<{ ticker: string; name: string; sector: string; price: number; change24h: number; volume24h: number; marketCap: number; high52w: number; low52w: number; sparkline7d: number[] | null; peRatio: number; eps: number; dividendYield: number; avgVolume: number }>; isLoading: boolean; isLive: boolean } = {
   stocks: [],
   isLoading: false,
   isLive: false,

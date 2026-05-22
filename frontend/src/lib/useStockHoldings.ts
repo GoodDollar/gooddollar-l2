@@ -62,6 +62,7 @@ export function useStockHoldings(
     query: {
       enabled: contracts.length > 0,
       refetchInterval: 30_000,
+      staleTime: 30_000,
     },
   })
 
