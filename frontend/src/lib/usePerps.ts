@@ -212,12 +212,14 @@ export function useClosePosition() {
 
     try {
       setPhase('pending')
-      await writeContractAsync({
+      const closeHash = await writeContractAsync({
         address: ENGINE,
         abi: PerpEngineABI,
         functionName: 'closePosition',
         args: [marketId],
       })
+      const closeReceipt = await waitForTransactionReceipt(config, { hash: closeHash })
+      if (closeReceipt.status === 'reverted') throw new Error('Close position reverted')
       setPhase('done')
     } catch (err: unknown) {
       const e = err as { shortMessage?: string; message?: string }

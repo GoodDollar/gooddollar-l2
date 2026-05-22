@@ -217,7 +217,7 @@ test.describe('Mock wallet integration', () => {
     })
   })
 
-  test('Connect Wallet button shows RainbowKit on app routes', async ({ page }) => {
+  test('header shows connect wallet or connected account on app routes', async ({ page }) => {
     await injectMockWallet(page)
     await page.goto('/swap')
     await page.waitForLoadState('networkidle')
