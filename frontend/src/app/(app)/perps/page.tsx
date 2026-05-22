@@ -10,6 +10,7 @@ import { sanitizeNumericInput } from '@/lib/format'
 import { boundPerpsSize } from '@/lib/perpsInput'
 import { validateStopLimitOrder } from '@/lib/perpsStopLimitValidation'
 import { getChartData, type Timeframe } from '@/lib/chartData'
+import { DEFAULT_INDICATORS, type ActiveIndicators, type IndicatorId } from '@/lib/indicators'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useOpenPosition } from '@/lib/usePerps'
 import { toG$Wei } from '@/lib/gDollarAmount'
@@ -57,6 +58,7 @@ const PriceChart = dynamic(
   }
 )
 import { ChartErrorBoundary } from '@/components/ChartErrorBoundary'
+import { IndicatorToggle } from '@/components/IndicatorToggle'
 import { ScrollStrip } from '@/components/ScrollStrip'
 
 const OrderBook = dynamic(
@@ -733,6 +735,11 @@ export default function PerpsPage() {
   const [selectedSymbol, setSelectedSymbol] = useState('BTC-USD')
   const [timeframe, setTimeframe] = useState<Timeframe>('1M')
   const [mobileTab, setMobileTab] = useState<MobileTab>('trade')
+  const [indicators, setIndicators] = useState<ActiveIndicators>(DEFAULT_INDICATORS)
+
+  const toggleIndicator = (id: IndicatorId) => {
+    setIndicators(prev => ({ ...prev, [id]: !prev[id] }))
+  }
 
   const pair = pairs.find(p => p.symbol === selectedSymbol) ?? pairs[0]
 
@@ -795,16 +802,19 @@ export default function PerpsPage() {
         {/* Chart panel — always visible on desktop; on mobile only when chart tab active */}
         <div className={`flex-1 min-w-0 ${mobileTab !== 'chart' ? 'hidden lg:block' : ''}`}>
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
-            <div className="flex gap-1 mb-3">
-              {TIMEFRAMES.map(tf => (
-                <button key={tf} onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
-                  {tf}
-                </button>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex gap-1">
+                {TIMEFRAMES.map(tf => (
+                  <button key={tf} onClick={() => setTimeframe(tf)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
+                    {tf}
+                  </button>
+                ))}
+              </div>
+              <IndicatorToggle indicators={indicators} onChange={toggleIndicator} />
             </div>
             <ChartErrorBoundary>
-              <PriceChart data={chartData} height={400} />
+              <PriceChart data={chartData} height={400} indicators={indicators} />
             </ChartErrorBoundary>
           </div>
         </div>

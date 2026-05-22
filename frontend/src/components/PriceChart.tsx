@@ -1,19 +1,26 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { createChart, CandlestickSeries, HistogramSeries, type IChartApi, ColorType, type Time } from 'lightweight-charts'
+import { useEffect, useRef, useMemo } from 'react'
+import { createChart, CandlestickSeries, HistogramSeries, LineSeries, type IChartApi, ColorType, type Time } from 'lightweight-charts'
 import { type OHLCData } from '@/lib/chartData'
+import { calculateSMA, calculateEMA, type ActiveIndicators, DEFAULT_INDICATORS } from '@/lib/indicators'
 
 interface PriceChartProps {
   data: OHLCData[]
   height?: number
+  indicators?: ActiveIndicators
 }
 
-export function PriceChart({ data, height = 400 }: PriceChartProps) {
+export function PriceChart({ data, height = 400, indicators = DEFAULT_INDICATORS }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candleRef = useRef<ReturnType<IChartApi['addSeries']> | null>(null)
   const volumeRef = useRef<ReturnType<IChartApi['addSeries']> | null>(null)
+  const smaRef = useRef<ReturnType<IChartApi['addSeries']> | null>(null)
+  const emaRef = useRef<ReturnType<IChartApi['addSeries']> | null>(null)
+
+  const smaData = useMemo(() => calculateSMA(data, 20), [data])
+  const emaData = useMemo(() => calculateEMA(data, 50), [data])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -50,15 +57,33 @@ export function PriceChart({ data, height = 400 }: PriceChartProps) {
     const volumeSeries = chart.addSeries(HistogramSeries, {
       color: 'rgba(0, 176, 160, 0.15)',
       priceFormat: { type: 'volume' },
-      priceScaleId: '',
+      priceScaleId: 'vol',
     })
-    volumeSeries.priceScale().applyOptions({
+    chart.priceScale('vol').applyOptions({
       scaleMargins: { top: 0.8, bottom: 0 },
+    })
+
+    const smaSeries = chart.addSeries(LineSeries, {
+      color: '#FBBF24',
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    })
+
+    const emaSeries = chart.addSeries(LineSeries, {
+      color: '#A78BFA',
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
     })
 
     chartRef.current = chart
     candleRef.current = candleSeries
     volumeRef.current = volumeSeries
+    smaRef.current = smaSeries
+    emaRef.current = emaSeries
 
     const handleResize = () => {
       if (containerRef.current) {
@@ -96,6 +121,33 @@ export function PriceChart({ data, height = 400 }: PriceChartProps) {
 
     chartRef.current?.timeScale().fitContent()
   }, [data])
+
+  useEffect(() => {
+    if (!volumeRef.current) return
+    volumeRef.current.applyOptions({
+      visible: indicators.vol,
+    })
+  }, [indicators.vol])
+
+  useEffect(() => {
+    if (!smaRef.current) return
+    if (indicators.sma20 && smaData.length > 0) {
+      smaRef.current.setData(smaData.map(p => ({ time: p.time as Time, value: p.value })))
+      smaRef.current.applyOptions({ visible: true })
+    } else {
+      smaRef.current.applyOptions({ visible: false })
+    }
+  }, [indicators.sma20, smaData])
+
+  useEffect(() => {
+    if (!emaRef.current) return
+    if (indicators.ema50 && emaData.length > 0) {
+      emaRef.current.setData(emaData.map(p => ({ time: p.time as Time, value: p.value })))
+      emaRef.current.applyOptions({ visible: true })
+    } else {
+      emaRef.current.applyOptions({ visible: false })
+    }
+  }, [indicators.ema50, emaData])
 
   return <div ref={containerRef} className="w-full" />
 }
