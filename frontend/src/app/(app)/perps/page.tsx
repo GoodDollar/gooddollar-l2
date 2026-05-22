@@ -569,7 +569,7 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
             <div className="flex justify-between text-gray-400"><span>Margin</span><span className="text-white truncate ml-2">{formatPerpsPrice(marginRequired)}</span></div>
             <div className="flex justify-between text-gray-400"><span>Liq. Price</span><span className="text-yellow-400 truncate ml-2">{formatPerpsPrice(liqPrice)}</span></div>
             <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.10%' : '0.02%'})</span><span className="text-white truncate ml-2">{formatLargeValue(fee)}</span></div>
-            <div className="flex justify-between text-goodgreen/80"><span>→ UBI (33%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
+            <div className="flex justify-between text-goodgreen"><span>→ UBI (33%)</span><span className="truncate ml-2">{formatLargeValue(ubiFee)}</span></div>
             {tpPnl !== 0 && !tpInvalid && (
               <div className="flex justify-between text-gray-400"><span>TP P&L</span><span className="truncate ml-2"><PriceDisplay value={tpPnl} prefix="$" showSign size="xs" showContext contextLabel="if hit" /></span></div>
             )}
@@ -859,7 +859,7 @@ export default function PerpsPage() {
 
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Chart panel — always visible on desktop; on mobile only when chart tab active */}
-        <div className={`flex-1 min-w-0 ${mobileTab !== 'chart' ? 'hidden lg:block' : ''}`}>
+        <div className="flex-1 min-w-0">
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex gap-1">
@@ -896,7 +896,7 @@ export default function PerpsPage() {
 
       {/* Order book / trades / positions grid */}
       {/* On mobile: visible when book tab active; on desktop: always visible */}
-      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4 ${mobileTab !== 'book' ? 'hidden lg:grid' : ''}`}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
         <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
           <div className="px-3 py-2 border-b border-gray-700/20">
             <h3 className="text-xs font-semibold text-white">Order Book</h3>
