@@ -606,7 +606,6 @@ export default function StockDetailPage() {
                 variant="detail"
                 symbol={stock.ticker}
                 useStocksFallback
-                onChainReachable={isLive}
               />
             ) : null}
           </div>

@@ -15,7 +15,9 @@ export interface StocksOracleGuardState {
 
 function mapFallbackToGuardState(fallback: StocksOracleHealth): StocksTradeOracleHealth {
   if (fallback === 'live') return 'degraded'
-  return fallback
+  if (fallback === 'fallback') return 'degraded'
+  if (fallback === 'auth') return 'offline'
+  return fallback as StocksTradeOracleHealth
 }
 
 export function deriveStocksTradeOracleHealth(

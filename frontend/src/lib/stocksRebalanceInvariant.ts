@@ -6,6 +6,28 @@ export interface ProductSyncBlocks {
   yield: number
 }
 
+export type RebalanceProduct = 'amm' | 'perps' | 'predict' | 'lend' | 'yield'
+
+export interface SymbolRebalanceStatus {
+  symbol: string
+  snapshotBlock: number
+  blockProof: number[]
+  stalePropagation: boolean
+  secretLeak: boolean
+  products: Record<RebalanceProduct, {
+    lastSyncedBlock: number
+    divergencePct: number
+  }>
+}
+
+export interface RebalanceGuardEvaluation {
+  blocked: boolean
+  reasons: string[]
+  staleProducts: string[]
+  maxDivergencePct: number
+  hasTwoBlockProof: boolean
+}
+
 export interface RebalanceInvariantInput {
   symbol: string
   currentBlock: number

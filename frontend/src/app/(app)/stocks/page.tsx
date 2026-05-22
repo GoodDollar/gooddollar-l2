@@ -406,7 +406,7 @@ export default function StocksPage() {
             <option value="quiet">Lower volume</option>
           </select>
         </div>
-        <OracleStatusBadge useStocksFallback onChainReachable={isLive} />
+        <OracleStatusBadge useStocksFallback />
       </div>
       <div className="mb-4">
         <StocksRebalanceDashboard
