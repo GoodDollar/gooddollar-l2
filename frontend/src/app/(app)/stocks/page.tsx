@@ -161,7 +161,7 @@ export default function StocksPage() {
 
       <InfoBanner
         title="How Tokenized Stocks Work"
-        description="Synthetic stock tokens track real equity prices via Chainlink oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 20% of fees to UBI."
+        description="Synthetic stock tokens track real equity prices via on-chain price oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 20% of fees to UBI."
         storageKey="gd-banner-dismissed-stocks"
       />
 
