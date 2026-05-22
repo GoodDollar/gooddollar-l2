@@ -95,7 +95,7 @@ export function useOnChainStocks(): { stocks: Stock[]; isLoading: boolean; isLiv
         marketCap: 0,
         high52w: price * 1.15,
         low52w: price * 0.75,
-        sparkline7d: [price, price, price, price, price, price, price],
+        sparkline7d: null,
         peRatio: 0,
         eps: 0,
         dividendYield: 0,

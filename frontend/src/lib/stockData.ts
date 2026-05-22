@@ -22,7 +22,7 @@ export interface Stock {
   marketCap: number
   high52w: number
   low52w: number
-  sparkline7d: number[]
+  sparkline7d: number[] | null
   peRatio: number
   eps: number
   dividendYield: number
