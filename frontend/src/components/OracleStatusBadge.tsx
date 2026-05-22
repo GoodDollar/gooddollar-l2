@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { usePriceServiceStatus, getSessionLabel, getDominantSession } from '@/lib/usePriceServiceStatus'
 import { deriveStocksOracleHealth, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
 
@@ -12,18 +12,11 @@ function formatAge(ms: number): string {
 }
 
 type Variant = 'compact' | 'detail'
+type TimeoutPhase = 'loading' | 'slow' | 'timed-out'
 
 interface OracleStatusBadgeProps {
   variant?: Variant
   symbol?: string
-  /**
-   * When the primary quotes-status endpoint is unreachable, also probe
-   * `/api/status` and report "Live" if the stocks-keeper service is healthy.
-   * Defaults to `true` so every consumer (compact listing badges and the
-   * stock detail page) shares the same resilient behavior — opt out with
-   * `useStocksFallback={false}` for legacy call sites that need the strict
-   * primary-only path.
-   */
   useStocksFallback?: boolean
 }
 
@@ -32,6 +25,15 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
   const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
   const [fallbackLoading, setFallbackLoading] = useState(false)
   const [fallbackReady, setFallbackReady] = useState(false)
+  const [timeoutPhase, setTimeoutPhase] = useState<TimeoutPhase>('loading')
+  const [retryCount, setRetryCount] = useState(0)
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timedOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearTimers = useCallback(() => {
+    if (slowTimer.current) { clearTimeout(slowTimer.current); slowTimer.current = null }
+    if (timedOutTimer.current) { clearTimeout(timedOutTimer.current); timedOutTimer.current = null }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -39,11 +41,22 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
 
     setFallbackReady(false)
     setFallbackLoading(true)
+    setTimeoutPhase('loading')
+
+    slowTimer.current = setTimeout(() => {
+      if (!cancelled) setTimeoutPhase('slow')
+    }, 5000)
+
+    timedOutTimer.current = setTimeout(() => {
+      if (!cancelled) setTimeoutPhase('timed-out')
+    }, 15000)
+
     fetch('/api/status', { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) throw new Error(`status ${res.status}`)
         const data = await res.json()
         if (cancelled) return
+        clearTimers()
         setFallbackState(deriveStocksOracleHealth(data))
       })
       .catch(() => {
@@ -57,16 +70,34 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         }
       })
 
-    return () => { cancelled = true }
-  }, [useStocksFallback, status, error])
+    return () => {
+      cancelled = true
+      clearTimers()
+    }
+  }, [useStocksFallback, status, error, retryCount, clearTimers])
 
   if (error || !status) {
     if (useStocksFallback) {
       if (fallbackLoading || !fallbackReady) {
+        if (timeoutPhase === 'timed-out') {
+          return (
+            <div className="inline-flex items-center gap-1.5 text-xs text-yellow-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+              <span>Price feed unavailable</span>
+              <button
+                type="button"
+                onClick={() => setRetryCount(c => c + 1)}
+                className="underline hover:text-yellow-300 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )
+        }
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-            <span>Checking oracle...</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse" />
+            <span>{timeoutPhase === 'slow' ? 'Price feed connecting...' : 'Connecting to price feed...'}</span>
           </div>
         )
       }
@@ -84,7 +115,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         return (
           <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-            <span>Oracle degraded</span>
+            <span>Price feed delayed</span>
           </div>
         )
       }
@@ -92,7 +123,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     return (
       <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-        <span>Oracle offline</span>
+        <span>Price feed offline</span>
       </div>
     )
   }
@@ -105,7 +136,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       return (
         <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
           <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-          <span>No oracle data for {symbol}</span>
+          <span>No price data for {symbol}</span>
         </div>
       )
     }
