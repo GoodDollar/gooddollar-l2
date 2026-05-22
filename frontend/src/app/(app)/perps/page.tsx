@@ -100,6 +100,27 @@ const RecentTrades = dynamic(
   }
 )
 
+const PerpsHistoryTabs = dynamic(
+  () => import('@/components/PerpsHistoryTabs').then(m => ({ default: m.PerpsHistoryTabs })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
+        <div className="flex gap-4 mb-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-4 w-20 bg-dark-50/40 rounded animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-6 bg-dark-50/40 rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+    ),
+  }
+)
+
 const OpenPositions = dynamic(
   () => import('@/components/OpenPositions').then(m => ({ default: m.OpenPositions })),
   {
@@ -841,6 +862,11 @@ export default function PerpsPage() {
           </div>
           <OpenPositions />
         </div>
+      </div>
+
+      {/* Order / Trade / Funding History */}
+      <div className="mt-4">
+        <PerpsHistoryTabs />
       </div>
     </div>
   )
