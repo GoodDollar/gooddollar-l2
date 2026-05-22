@@ -62,7 +62,7 @@ export default function Home() {
 
       <div className="mb-4 text-center max-w-md relative">
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-          Trade Synthetic Stocks. Predict. Fund{'\u00A0'}UBI.
+          Trade. Predict. Invest. Fund{'\u00A0'}UBI.
         </h1>
         <p className="text-sm text-gray-400">
           Trade tokenized AAPL, TSLA, NVDA 24/7. Every swap and trade automatically funds universal basic income worldwide.

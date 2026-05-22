@@ -199,7 +199,7 @@ export function FundingRateChart({ symbol }: { symbol: string }) {
               {formatRate(avgRate)}
             </span>
             <span className="text-gray-600">|</span>
-            <span className={`${avgAnnualized >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
+            <span className={`${avgAnnualized >= 0 ? 'text-green-300' : 'text-red-300'}`}>
               {formatAnnualized(avgAnnualized)} ann.
             </span>
           </div>

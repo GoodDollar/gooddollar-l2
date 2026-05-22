@@ -820,7 +820,7 @@ export default function PerpsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">Perpetual Futures</h1>
-            <p className="text-xs text-gray-400">Trade with up to {pair.maxLeverage}x leverage. Every fee funds UBI.</p>
+            <p className="text-xs text-gray-400">Perpetual Trading with up to {pair.maxLeverage}x leverage. Every fee funds UBI.</p>
           </div>
         </div>
       </div>

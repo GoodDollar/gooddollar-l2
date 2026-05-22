@@ -39,7 +39,7 @@ export function InfoBanner({ title, description, storageKey }: InfoBannerProps) 
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-goodgreen mb-0.5">{title}</p>
-        <p className="hidden sm:block text-xs text-gray-400 leading-relaxed">{description}</p>
+        <p className="text-xs text-gray-400 leading-relaxed">{description}</p>
       </div>
       <button
         onClick={handleDismiss}

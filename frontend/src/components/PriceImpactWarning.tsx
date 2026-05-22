@@ -50,7 +50,7 @@ export function PriceImpactWarning({ priceImpact, visible = true }: PriceImpactW
         <p className={`font-medium ${isRed ? 'text-red-400' : 'text-yellow-400'}`}>
           {headline}
         </p>
-        <p className={`text-xs mt-0.5 ${isRed ? 'text-red-400/70' : 'text-yellow-400/70'}`}>
+        <p className={`text-xs mt-0.5 ${isRed ? 'text-red-300' : 'text-yellow-400/70'}`}>
           {body}
         </p>
       </div>

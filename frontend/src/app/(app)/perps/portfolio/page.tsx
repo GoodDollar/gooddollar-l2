@@ -35,7 +35,7 @@ function PositionRow({ pos, marketId }: { pos: OpenPosition; marketId: bigint })
         <button
           onClick={() => closePosition(marketId)}
           disabled={isClosing || isDone}
-          className="px-2.5 py-1 text-xs rounded-lg text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+          className="px-2.5 py-1 text-xs rounded-lg text-red-300 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
         >
           {isDone ? 'Closed' : isClosing ? 'Closing...' : 'Close'}
         </button>
@@ -61,7 +61,7 @@ function OrderRow({ order }: { order: PendingOrder }) {
       <td className="py-2.5 px-3 text-right text-sm text-gray-300">{order.size}</td>
       <td className="py-2.5 px-3 text-right">
         <button onClick={() => setCancelling(true)} disabled={cancelling}
-          className="px-2.5 py-1 text-xs rounded-lg text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50">
+          className="px-2.5 py-1 text-xs rounded-lg text-red-300 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50">
           {cancelling ? 'Cancelled' : 'Cancel'}
         </button>
       </td>
