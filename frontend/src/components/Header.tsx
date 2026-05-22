@@ -172,7 +172,7 @@ export function Header() {
       {mobileMenuOpen && (
         <>
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed left-0 right-0 bottom-0 top-16 z-40 bg-black/50 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
