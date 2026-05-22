@@ -105,7 +105,6 @@ export default function StockDetailPage() {
   const [symbolQuery, setSymbolQuery] = useState('')
   const [symbolError, setSymbolError] = useState('')
   const [showMobileSwitcher, setShowMobileSwitcher] = useState(false)
-  const [analystLoading, setAnalystLoading] = useState(true)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
@@ -186,12 +185,6 @@ export default function StockDetailPage() {
     '5Y': null,
     ALL: null,
   })
-
-  useEffect(() => {
-    setAnalystLoading(true)
-    const timer = setTimeout(() => setAnalystLoading(false), 140)
-    return () => clearTimeout(timer)
-  }, [ticker])
 
   useEffect(() => {
     if (!symbolError) return
@@ -384,7 +377,7 @@ export default function StockDetailPage() {
             <AnalystOutlookCard
               currentPrice={stock.price}
               outlook={analystOutlook}
-              isLoading={analystLoading}
+              isLoading={false}
             />
           </Suspense>
 
