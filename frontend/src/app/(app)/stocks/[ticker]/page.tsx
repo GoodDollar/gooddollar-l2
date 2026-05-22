@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useBlockNumber } from 'wagmi'
 
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
@@ -20,7 +19,7 @@ import { StockOrderFormFallback } from '@/components/stocks/StockOrderFormFallba
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { usePriceServiceStatus, getConsecutiveFailures } from '@/lib/usePriceServiceStatus'
 import { OracleUnavailableBanner } from '@/components/stocks/OracleUnavailableBanner'
-import { RebalanceErrorBoundary } from '@/components/stocks/RebalanceErrorBoundary'
+import { RebalanceBlockSection } from '@/components/stocks/RebalanceBlockSection'
 
 const PriceChart = dynamic(
   () => import('@/components/PriceChart').then(mod => ({ default: mod.PriceChart })),
@@ -50,10 +49,6 @@ const AmmTradingPanel = dynamic(
   () => import('@/components/stocks/AmmTradingPanel').then(mod => ({ default: mod.AmmTradingPanel })),
   { ssr: false, loading: () => <div className="h-48 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
 )
-const RebalanceSyncPanel = dynamic(
-  () => import('@/components/stocks/RebalanceSyncPanel').then(mod => ({ default: mod.RebalanceSyncPanel })),
-  { ssr: false, loading: () => <div className="h-20 bg-dark-50/30 rounded-2xl animate-pulse mt-4" /> },
-)
 import { getMarketHoursState } from '@/lib/ammPricing'
 import {
   type SymbolExposureSummary,
@@ -61,7 +56,7 @@ import {
   classifyResidual,
   computePortfolioDelta,
 } from '@/lib/exposureNetting'
-import { buildSymbolRebalanceStatus, evaluateRebalanceGuard } from '@/lib/stocksRebalanceInvariant'
+import { buildSymbolRebalanceStatus } from '@/lib/stocksRebalanceInvariant'
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'ALL']
 const TIMEFRAME_LABEL: Record<Timeframe, string> = {
@@ -117,8 +112,6 @@ export default function StockDetailPage() {
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks } = useOnChainStocks()
   const { status: oracleStatus, error: oracleError, refresh: oracleRefresh } = usePriceServiceStatus()
-  const { data: chainBlock } = useBlockNumber({ query: { refetchInterval: 12_000 } })
-  const currentBlock = chainBlock ? Number(chainBlock) : null
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
@@ -172,11 +165,10 @@ export default function StockDetailPage() {
     () => buildSymbolRebalanceStatus(ticker, oracleStatus),
     [oracleStatus, ticker],
   )
-  const rebalanceGuard = useMemo(
-    () => evaluateRebalanceGuard(symbolRebalanceStatus, currentBlock),
-    [symbolRebalanceStatus, currentBlock],
-  )
-  const riskBlockReason = rebalanceGuard.blocked ? rebalanceGuard.reasons[0] ?? 'Sync required' : null
+  const [riskBlockReason, setRiskBlockReason] = useState<string | null>(null)
+  const handleRiskBlockReasonChange = useCallback((reason: string | null) => {
+    setRiskBlockReason(reason)
+  }, [])
 
   const exposureSummaries: SymbolExposureSummary[] = useMemo(() => {
     if (!position || position.debtFloat <= 0 || !stock) return []
@@ -561,13 +553,10 @@ export default function StockDetailPage() {
             onRetry={oracleRefresh}
           />
 
-          <RebalanceErrorBoundary>
-            <RebalanceSyncPanel
-              status={symbolRebalanceStatus}
-              guard={rebalanceGuard}
-              currentBlock={currentBlock}
-            />
-          </RebalanceErrorBoundary>
+          <RebalanceBlockSection
+            symbolRebalanceStatus={symbolRebalanceStatus}
+            onRiskBlockReasonChange={handleRiskBlockReasonChange}
+          />
 
           {hasPosition && (
             <ExposureNettingPanel
