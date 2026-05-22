@@ -170,6 +170,49 @@ function generateFundingHistory(count: number): FundingHistoryItem[] {
   })
 }
 
+// ─── Funding Rate Chart Data ──────────────────────────────────────────────────
+
+export interface FundingRateSnapshot {
+  timestamp: number
+  rate: number
+  annualized: number
+}
+
+export type FundingRange = '24h' | '7d' | '30d'
+
+const RANGE_HOURS: Record<FundingRange, number> = { '24h': 24, '7d': 168, '30d': 720 }
+
+const PAIR_SEEDS: Record<string, number> = {
+  'BTC-USD': 5001, 'ETH-USD': 5002, 'SOL-USD': 5003,
+  'AAPL-USD': 5004, 'TSLA-USD': 5005,
+}
+
+export function generateFundingRateHistory(
+  symbol: string,
+  range: FundingRange,
+): FundingRateSnapshot[] {
+  const hours = RANGE_HOURS[range]
+  const rng = seededRng((PAIR_SEEDS[symbol] ?? 5999) + hours)
+  const now = Date.now()
+  const snapshots: FundingRateSnapshot[] = []
+
+  let drift = (rng() - 0.4) * 0.0001
+  for (let i = hours - 1; i >= 0; i--) {
+    drift += (rng() - 0.5) * 0.00004
+    const rate = drift + (rng() - 0.5) * 0.0002
+    snapshots.push({
+      timestamp: now - i * 3600_000,
+      rate: +rate.toFixed(6),
+      annualized: +(rate * 8760 * 100).toFixed(4),
+    })
+  }
+  return snapshots
+}
+
+export function useFundingRateChart(symbol: string, range: FundingRange) {
+  return useMemo(() => generateFundingRateHistory(symbol, range), [symbol, range])
+}
+
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
 export function useMockOpenOrders() {

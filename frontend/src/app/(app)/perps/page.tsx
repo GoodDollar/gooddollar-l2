@@ -121,6 +121,26 @@ const PerpsHistoryTabs = dynamic(
   }
 )
 
+const FundingRateChart = dynamic(
+  () => import('@/components/FundingRateChart').then(m => ({ default: m.FundingRateChart })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
+        <div className="flex justify-between mb-3">
+          <div className="h-4 w-36 bg-dark-50/40 rounded animate-pulse" />
+          <div className="flex gap-1">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-6 w-10 bg-dark-50/40 rounded animate-pulse" />
+            ))}
+          </div>
+        </div>
+        <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 200 }} />
+      </div>
+    ),
+  }
+)
+
 const OpenPositions = dynamic(
   () => import('@/components/OpenPositions').then(m => ({ default: m.OpenPositions })),
   {
@@ -863,6 +883,13 @@ export default function PerpsPage() {
           <OpenPositions />
         </div>
       </div>
+
+      {/* Funding Rate History Chart */}
+      {pair && (
+        <div className="mt-4">
+          <FundingRateChart symbol={pair.symbol} />
+        </div>
+      )}
 
       {/* Order / Trade / Funding History */}
       <div className="mt-4">
