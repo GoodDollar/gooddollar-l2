@@ -449,7 +449,10 @@ export default function StablePage() {
             <p className="text-sm text-gray-400">Mint gUSD stablecoin by locking collateral</p>
           </div>
         </div>
-        <p className="text-sm text-gray-500 max-w-xl">
+        <p
+          className="text-sm text-gray-500 max-w-xl"
+          data-testid="stable-protocol-description"
+        >
           Lock WETH, G$, or USDC to mint gUSD — a decentralised stablecoin backed by overcollateralized vaults.
           33% of stability fees fund the UBI pool.
         </p>
