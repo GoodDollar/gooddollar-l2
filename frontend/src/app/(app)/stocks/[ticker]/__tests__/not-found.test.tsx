@@ -218,7 +218,7 @@ describe('StockDetailPage invalid ticker messaging hardening', () => {
     currentParams = { ticker: 'AAPL' }
     render(<TestWrapper><StockDetailPage /></TestWrapper>)
 
-    const buyLink = screen.getByRole('link', { name: /Buy sAAPL/i })
+    const buyLink = screen.getByRole('link', { name: /Buy AAPL/i })
     const portfolioLink = screen.getByRole('link', { name: /Open Stock Portfolio/i })
     const browseLink = screen.getByRole('link', { name: /Browse Stocks/i })
 
