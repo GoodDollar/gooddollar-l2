@@ -383,7 +383,7 @@ function OrderForm({
                 const pnl = diff * shares
                 return (
                   <p className={`text-[10px] mt-1 ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    Est. Profit: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                    {pnl >= 0 ? 'Est. Profit' : 'Est. Loss'}: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
                   </p>
                 )
               })()}
@@ -401,7 +401,7 @@ function OrderForm({
                 const pnl = diff * shares
                 return (
                   <p className={`text-[10px] mt-1 ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    Est. Loss: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                    {pnl < 0 ? 'Est. Loss' : 'Est. Profit'}: {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
                   </p>
                 )
               })()}
