@@ -2383,3 +2383,37 @@ Found inconsistent usage between manual button styling and existing Radix UI Tab
 3. **Low**: Apply safe minor package updates  
 
 **Action Needed**: Security vulnerability remediation should be prioritized over feature development.
+
+---
+
+## RC / E2E Design Sync — May 22, 2026
+
+> **Canonical hub:** [docs/design/README.md](../docs/design/README.md) — route patterns, test mapping, release gate status. This section captures research-relevant deltas from `9011fc0b..fb12913b`.
+
+### Perps mobile tabbed layout
+
+GoodPerps (`/perps`) uses a **Chart / Book / Trade** tab strip below `lg` breakpoint. Default tab is **Trade**. Chart and trade columns use `hidden lg:block` when inactive; timeframe chips and pair selector use `ScrollStrip` to prevent 375px overflow. Wallet G$ balance reads fall back to `GoodDollarToken` while vault collateral loads so Long/Short buttons are not spuriously disabled.
+
+**Open item:** Book tab label is shown but order book grid is not yet gated by tab state on mobile.
+
+### Transaction receipt UX
+
+`useOpenPosition` advances phases only after `waitForTransactionReceipt` confirms approve, deposit, and `openPosition` transactions (no success on hash alone). Button copy: `Approving…` → `Confirming…` → `Order Placed!`.
+
+### Wallet / RainbowKit
+
+E2E runs **no WalletConnect** (invalid/missing project id → extension-only connectors). Tests assert RainbowKit dialog with browser wallet / MetaMask labels; mock EIP-6963 provider may auto-connect to account button. Mobile connect keeps accessible name when icon-only.
+
+### Loading skeleton contract
+
+`/explore/loading.tsx` renders `<table><tbody><tr>` skeleton rows matching hydrated explore table — required for `explore.spec.ts` row counts during Suspense.
+
+### Accessibility (RC fixes)
+
+- Predict pages: full-opacity `text-goodgreen` (was `/80`, failed 4.5:1).
+- Perps chart: inactive indicator labels lightened to `text-gray-300` for mobile axe.
+- Nested interactive containers removed from predict market cards (prior audit).
+
+### Release gate (design-relevant)
+
+RC merged at `fb12913b`; coordinator verdict **PARTIAL → perps E2E green after follow-up**. Full Playwright suite not re-run to completion. See [docs/release/RC_COORDINATOR_20260522.md](../docs/release/RC_COORDINATOR_20260522.md).
