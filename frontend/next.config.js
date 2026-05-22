@@ -152,12 +152,20 @@ const nextConfig = {
           reuseExistingChunk: true,
           enforce: true,
         },
-        // UI vendor chunk
+        // UI vendor chunk (radix + lucide only — globally loaded)
         ui: {
           name: 'ui-vendor',
           chunks: 'all',
-          test: /[\\/]node_modules[\\/](@radix-ui|lucide-react|framer-motion)/,
+          test: /[\\/]node_modules[\\/](@radix-ui|lucide-react)/,
           priority: 25,
+          reuseExistingChunk: true,
+        },
+        // framer-motion async — only loaded on pages that actually import it
+        framer: {
+          name: 'framer-vendor',
+          chunks: 'async',
+          test: /[\\/]node_modules[\\/](framer-motion)/,
+          priority: 28,
           reuseExistingChunk: true,
         },
         // React vendor chunk
