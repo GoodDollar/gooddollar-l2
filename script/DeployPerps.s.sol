@@ -27,9 +27,9 @@ import "../src/perps/PerpEngine.sol";
  */
 contract DeployPerps is Script {
 
-    // Current devnet addresses (chain 42069)
-    // FEE_SPLITTER updated by FixUBIFeeSplitterGDT.s.sol (GOO-450 fix, 2026-04-05)
-    address constant GD_TOKEN_DEFAULT     = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
+    // Current devnet addresses (chain 42069) — GoodDollarToken from op-stack/addresses.json.
+    // Do NOT use 0x36C02… (mainnet WETH9); it has no code on devnet and breaks MarginVault deposits.
+    address constant GD_TOKEN_DEFAULT     = 0x5FbDB2315678afecb367f032d93F642f64180aa3;
     address constant FEE_SPLITTER_DEFAULT = 0x3abBB0D6ad848d64c8956edC9Bf6f18aC22E1485;
 
     struct Market {

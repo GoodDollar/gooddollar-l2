@@ -4,7 +4,7 @@
  * usePerps — wagmi hooks for GoodPerps PerpEngine on-chain interactions.
  *
  * Trade flow:
- *   1. Approve G$ to MarginVault
+ *   1. Approve MarginVault.collateral() token (G$ on devnet)
  *   2. MarginVault.deposit(margin)
  *   3. PerpEngine.openPosition(marketId, size, isLong, margin)
  *
@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useState } from 'react'
-import { useReadContract, useAccount, useWriteContract } from 'wagmi'
+import { useReadContract, useAccount, useWriteContract, useBytecode } from 'wagmi'
 import { PerpEngineABI, MarginVaultABI, ERC20ABI } from './abi'
 import { CONTRACTS } from './chain'
 
@@ -78,6 +78,37 @@ export function usePerpMarketCount(): { count: bigint; isLoading: boolean } {
   }
 }
 
+function usePerpsCollateralToken(): `0x${string}` | undefined {
+  const { data } = useReadContract({
+    address: VAULT,
+    abi: MarginVaultABI,
+    functionName: 'collateral',
+    query: { enabled: !!VAULT, retry: false },
+  })
+  return data as `0x${string}` | undefined
+}
+
+function usePerpsDeployed(): boolean {
+  const collateral = usePerpsCollateralToken()
+  const { data: engineCode } = useBytecode({
+    address: ENGINE,
+    query: { enabled: !!ENGINE },
+  })
+  const { data: collateralCode } = useBytecode({
+    address: collateral,
+    query: { enabled: !!collateral },
+  })
+  return Boolean(
+    ENGINE &&
+    VAULT &&
+    collateral &&
+    engineCode &&
+    engineCode !== '0x' &&
+    collateralCode &&
+    collateralCode !== '0x',
+  )
+}
+
 // ─── Write: open position ─────────────────────────────────────────────────────
 
 export type PerpActionPhase = 'idle' | 'approving' | 'pending' | 'done' | 'error'
@@ -87,6 +118,8 @@ export function useOpenPosition() {
   const [error, setError] = useState<string | null>(null)
   const { writeContractAsync } = useWriteContract()
   const { address, isConnected } = useAccount()
+  const collateralToken = usePerpsCollateralToken()
+  const isDeployed = usePerpsDeployed()
 
   const vaultBalance = useReadContract({
     address: VAULT,
@@ -105,7 +138,10 @@ export function useOpenPosition() {
     isLong: boolean,
   ) => {
     if (!isConnected) { setError('Wallet not connected'); return }
-    if (!ENGINE || !VAULT) { setError('PerpEngine not deployed yet'); return }
+    if (!isDeployed || !ENGINE || !VAULT || !collateralToken) {
+      setError('PerpEngine not deployed yet')
+      return
+    }
 
     try {
       // PerpEngine requires margin + trade fee to already be present in
@@ -118,7 +154,7 @@ export function useOpenPosition() {
       if (depositAmount > 0n) {
         setPhase('approving')
         await writeContractAsync({
-          address: CONTRACTS.GoodDollarToken,
+          address: collateralToken,
           abi: ERC20ABI,
           functionName: 'approve',
           args: [VAULT, depositAmount],
@@ -146,9 +182,9 @@ export function useOpenPosition() {
       setError(e?.shortMessage ?? e?.message ?? 'Transaction failed')
       setPhase('error')
     }
-  }, [isConnected, vaultBalance.data, writeContractAsync])
+  }, [isConnected, isDeployed, collateralToken, vaultBalance.data, writeContractAsync])
 
-  return { openPosition, phase, error, reset, isConnected, isDeployed: !!ENGINE }
+  return { openPosition, phase, error, reset, isConnected, isDeployed }
 }
 
 // ─── Write: close position ────────────────────────────────────────────────────
@@ -158,12 +194,13 @@ export function useClosePosition() {
   const [error, setError] = useState<string | null>(null)
   const { writeContractAsync } = useWriteContract()
   const { isConnected } = useAccount()
+  const isDeployed = usePerpsDeployed()
 
   const reset = useCallback(() => { setPhase('idle'); setError(null) }, [])
 
   const closePosition = useCallback(async (marketId: bigint) => {
     if (!isConnected) { setError('Wallet not connected'); return }
-    if (!ENGINE) { setError('PerpEngine not deployed yet'); return }
+    if (!isDeployed || !ENGINE) { setError('PerpEngine not deployed yet'); return }
 
     try {
       setPhase('pending')
@@ -179,7 +216,7 @@ export function useClosePosition() {
       setError(e?.shortMessage ?? e?.message ?? 'Transaction failed')
       setPhase('error')
     }
-  }, [isConnected, writeContractAsync])
+  }, [isConnected, isDeployed, writeContractAsync])
 
-  return { closePosition, phase, error, reset, isConnected, isDeployed: !!ENGINE }
+  return { closePosition, phase, error, reset, isConnected, isDeployed }
 }

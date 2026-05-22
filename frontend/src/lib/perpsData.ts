@@ -13,6 +13,8 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface PerpPair {
+  /** On-chain PerpEngine market index (matches `markets(uint256)` / `openPosition`). */
+  marketId: number
   symbol: string
   baseAsset: string
   quoteAsset: string

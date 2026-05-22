@@ -278,12 +278,19 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const { openPosition, phase: perpPhase, error: perpError, isDeployed } = useOpenPosition()
   const syncGuard = useSymbolSyncGuard(pair.baseAsset, 'perps')
   const syncBlocked = !syncGuard.allowRiskIncrease
+  const marginCollateral = useReadContract({
+    address: CONTRACTS.MarginVault,
+    abi: MarginVaultABI,
+    functionName: 'collateral',
+    query: { enabled: !!CONTRACTS.MarginVault, retry: false },
+  }).data as `0x${string}` | undefined
+
   const walletG$Result = useReadContract({
-    address: CONTRACTS.GoodDollarToken,
+    address: marginCollateral,
     abi: ERC20ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 10_000, retry: false },
+    query: { enabled: !!(address && marginCollateral), refetchInterval: 10_000, retry: false },
   })
 
   useEffect(() => {
@@ -671,12 +678,19 @@ function MarginFundingPanel() {
   const [phase, setPhase] = useState<'idle' | 'approving' | 'depositing' | 'done' | 'error'>('idle')
   const [error, setError] = useState('')
 
+  const collateralToken = useReadContract({
+    address: CONTRACTS.MarginVault,
+    abi: MarginVaultABI,
+    functionName: 'collateral',
+    query: { enabled: !!CONTRACTS.MarginVault, retry: false },
+  }).data as `0x${string}` | undefined
+
   const walletBalance = useReadContract({
-    address: CONTRACTS.GoodDollarToken,
+    address: collateralToken,
     abi: ERC20ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 10_000, retry: false },
+    query: { enabled: !!(address && collateralToken), refetchInterval: 10_000, retry: false },
   })
   const marginBalance = useReadContract({
     address: CONTRACTS.MarginVault,
@@ -699,9 +713,15 @@ function MarginFundingPanel() {
       setError('')
       const amountWei = toG$Wei(amountNum)
 
+      if (!collateralToken) {
+        setError('Perps margin vault is not configured')
+        setPhase('error')
+        return
+      }
+
       setPhase('approving')
       await writeContractAsync({
-        address: CONTRACTS.GoodDollarToken,
+        address: collateralToken,
         abi: ERC20ABI,
         functionName: 'approve',
         args: [CONTRACTS.MarginVault, amountWei],
@@ -881,7 +901,7 @@ export default function PerpsPage() {
         {/* Trade panel — always visible on desktop; on mobile only when trade tab active */}
         <div className={`lg:w-80 shrink-0 space-y-4 ${mobileTab !== 'trade' ? 'hidden lg:block' : ''}`}>
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
-            <OrderForm pair={pair} account={account} marketId={pairs.findIndex(p => p.symbol === pair.symbol)} />
+            <OrderForm pair={pair} account={account} marketId={pair.marketId} />
           </div>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
@@ -911,7 +931,10 @@ export default function PerpsPage() {
           <RecentTrades markPrice={pair.markPrice} />
         </div>
 
-        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
+        <div
+          data-testid="open-positions-panel"
+          className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden"
+        >
           <div className="px-3 py-2 border-b border-gray-700/20">
             <h3 className="text-xs font-semibold text-white">Open Positions</h3>
           </div>

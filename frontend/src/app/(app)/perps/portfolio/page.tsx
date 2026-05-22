@@ -140,7 +140,7 @@ export default function PerpsPortfolioPage() {
       <PositionRow
         key={i}
         pos={p}
-        marketId={BigInt(pairs.findIndex((pair) => pair.symbol === p.pair))}
+        marketId={BigInt(pairs.find((pair) => pair.symbol === p.pair)?.marketId ?? 0)}
       />
     ))
   }, [pairs, positions])

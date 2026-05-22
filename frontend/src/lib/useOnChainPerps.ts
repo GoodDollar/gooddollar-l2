@@ -24,11 +24,11 @@ function derive24hHighLow(markPrice: number, change24h: number): { high24h: numb
 }
 
 const FALLBACK_PAIRS: PerpPair[] = [
-  { symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', markPrice: 84250, indexPrice: 84200, change24h: 2.4, volume24h: 1_250_000_000, fundingRate: 0.0045, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 890_000_000, maxLeverage: 100, ...derive24hHighLow(84250, 2.4) },
-  { symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', markPrice: 1820, indexPrice: 1818, change24h: -1.2, volume24h: 580_000_000, fundingRate: -0.0012, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 420_000_000, maxLeverage: 50, ...derive24hHighLow(1820, -1.2) },
-  { symbol: 'SOL-USD', baseAsset: 'SOL', quoteAsset: 'USD', markPrice: 134.5, indexPrice: 134.2, change24h: 5.8, volume24h: 180_000_000, fundingRate: 0.0078, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 95_000_000, maxLeverage: 25, ...derive24hHighLow(134.5, 5.8) },
-  { symbol: 'BNB-USD', baseAsset: 'BNB', quoteAsset: 'USD', markPrice: 608, indexPrice: 607, change24h: 0.8, volume24h: 45_000_000, fundingRate: 0.0015, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 32_000_000, maxLeverage: 25, ...derive24hHighLow(608, 0.8) },
-  { symbol: 'ARB-USD', baseAsset: 'ARB', quoteAsset: 'USD', markPrice: 0.82, indexPrice: 0.819, change24h: -3.1, volume24h: 28_000_000, fundingRate: -0.0025, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 18_000_000, maxLeverage: 20, ...derive24hHighLow(0.82, -3.1) },
+  { marketId: 0, symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', markPrice: 84250, indexPrice: 84200, change24h: 2.4, volume24h: 1_250_000_000, fundingRate: 0.0045, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 890_000_000, maxLeverage: 100, ...derive24hHighLow(84250, 2.4) },
+  { marketId: 1, symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', markPrice: 1820, indexPrice: 1818, change24h: -1.2, volume24h: 580_000_000, fundingRate: -0.0012, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 420_000_000, maxLeverage: 50, ...derive24hHighLow(1820, -1.2) },
+  { marketId: 2, symbol: 'SOL-USD', baseAsset: 'SOL', quoteAsset: 'USD', markPrice: 134.5, indexPrice: 134.2, change24h: 5.8, volume24h: 180_000_000, fundingRate: 0.0078, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 95_000_000, maxLeverage: 25, ...derive24hHighLow(134.5, 5.8) },
+  { marketId: 3, symbol: 'BNB-USD', baseAsset: 'BNB', quoteAsset: 'USD', markPrice: 608, indexPrice: 607, change24h: 0.8, volume24h: 45_000_000, fundingRate: 0.0015, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 32_000_000, maxLeverage: 25, ...derive24hHighLow(608, 0.8) },
+  { marketId: 5, symbol: 'ARB-USD', baseAsset: 'ARB', quoteAsset: 'USD', markPrice: 0.82, indexPrice: 0.819, change24h: -3.1, volume24h: 28_000_000, fundingRate: -0.0025, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 18_000_000, maxLeverage: 20, ...derive24hHighLow(0.82, -3.1) },
 ]
 
 const ENGINE = CONTRACTS.PerpEngine
@@ -39,12 +39,12 @@ const FUNDING_INTERVAL_MS = 8 * 3600 * 1000 // 8 hours fallback
 // ─── Static market metadata (pairs the PerpEngine supports) ──────────────────
 // The on-chain PerpEngine stores markets by ID with a bytes32 key.
 // We map known market IDs to human-readable pair info.
-// On-chain market ordering (verified via `cast call markets(uint256)` + keccak256 of ticker):
-//   Market 0: keccak256("ETH") = 0xaaae...  → ETH-USD
-//   Market 1: keccak256("BTC") = 0xe98e...  → BTC-USD
+// On-chain market ordering (DeployPerps.s.sol seed + keccak256 ticker keys):
+//   Market 0: keccak256("BTC") → BTC-USD
+//   Market 1: keccak256("ETH") → ETH-USD
 const MARKET_META: Record<number, { symbol: string; baseAsset: string; quoteAsset: string; maxLeverage: number }> = {
-  0: { symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', maxLeverage: 50 },
-  1: { symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', maxLeverage: 100 },
+  0: { symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', maxLeverage: 100 },
+  1: { symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', maxLeverage: 50 },
   2: { symbol: 'SOL-USD', baseAsset: 'SOL', quoteAsset: 'USD', maxLeverage: 25 },
   3: { symbol: 'BNB-USD', baseAsset: 'BNB', quoteAsset: 'USD', maxLeverage: 25 },
   4: { symbol: 'MATIC-USD', baseAsset: 'MATIC', quoteAsset: 'USD', maxLeverage: 20 },
@@ -128,6 +128,7 @@ export function useOnChainPairs(): { pairs: PerpPair[]; isLoading: boolean; isLi
       const hl = derive24hHighLow(mark, change)
 
       result.push({
+        marketId: i,
         symbol: meta.symbol,
         baseAsset: meta.baseAsset,
         quoteAsset: meta.quoteAsset,
@@ -162,21 +163,21 @@ export function useOnChainPositions(): {
 
   const contracts = useMemo(() => {
     if (!address || pairs.length === 0) return []
-    return pairs.flatMap((_, i) => [
+    return pairs.flatMap((pair) => [
       {
         address: ENGINE as `0x${string}`,
         abi: PerpEngineABI,
         functionName: 'positions' as const,
-        args: [address, BigInt(i)] as [string, bigint],
+        args: [address, BigInt(pair.marketId)] as [string, bigint],
       },
       {
         address: ENGINE as `0x${string}`,
         abi: PerpEngineABI,
         functionName: 'unrealizedPnL' as const,
-        args: [address, BigInt(i)] as [string, bigint],
+        args: [address, BigInt(pair.marketId)] as [string, bigint],
       },
     ])
-  }, [address, pairs.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [address, pairs]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data, isLoading } = useReadContracts({
     contracts,
@@ -188,6 +189,7 @@ export function useOnChainPositions(): {
 
     const result: OpenPosition[] = []
     for (let i = 0; i < pairs.length; i++) {
+      const pair = pairs[i]
       const posResult = data[i * 2]
       const pnlResult = data[i * 2 + 1]
       if (posResult?.status !== 'success' || !posResult.result) continue
@@ -200,7 +202,7 @@ export function useOnChainPositions(): {
       const entryFloat = Number(entryPrice) / 1e8
       const collFloat = Number(margin) / 1e18
       const leverage = collFloat > 0 ? Math.round(sizeFloat * entryFloat / collFloat) : 1
-      const mark = markPrices[i] ?? entryFloat  // oracle mark price, fallback to entry
+      const mark = markPrices[pair.marketId] ?? entryFloat  // oracle mark price, fallback to entry
       // Liquidation price estimate: entry ± (margin / size) adjusted by maintenance margin
       const marginPerUnit = collFloat > 0 ? collFloat / sizeFloat : 0
       const maintenanceRatio = 0.02 // 2% maintenance margin
@@ -209,7 +211,7 @@ export function useOnChainPositions(): {
         : entryFloat + marginPerUnit * (1 - maintenanceRatio)
 
       result.push({
-        pair: pairs[i].symbol,
+        pair: pair.symbol,
         side: isLong ? 'long' : 'short',
         size: sizeFloat,
         leverage,
