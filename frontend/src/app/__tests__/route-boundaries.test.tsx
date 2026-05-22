@@ -14,6 +14,7 @@ import AnalyticsError from '@/app/(app)/analytics/error'
 import ActivityError from '@/app/activity/error'
 import TestDashboardError from '@/app/(app)/test-dashboard/error'
 import ExploreSymbolError from '@/app/(app)/explore/[symbol]/error'
+import StockDetailError from '@/app/(app)/stocks/[ticker]/error'
 
 describe('Route loading skeletons', () => {
   it.each([
@@ -40,6 +41,7 @@ describe('Route error boundaries', () => {
     ['Activity', ActivityError],
     ['Test Dashboard', TestDashboardError],
     ['Explore Symbol', ExploreSymbolError],
+    ['Stock Detail', StockDetailError],
   ])('%s error renders ErrorFallback with Try Again', (_name, Component) => {
     const reset = () => {}
     render(<Component error={testError} reset={reset} />)
@@ -54,6 +56,7 @@ describe('Route error boundaries', () => {
     ['Activity', ActivityError],
     ['Test Dashboard', TestDashboardError],
     ['Explore Symbol', ExploreSymbolError],
+    ['Stock Detail', StockDetailError],
   ])('%s error calls reset when Try Again is clicked', (_name, Component) => {
     let resetCalled = false
     const reset = () => { resetCalled = true }
