@@ -1,61 +1,96 @@
-# GoodSwap — Every Swap Funds UBI
+# GoodSwap Frontend — GoodChain L2 Web App
 
-> The first DEX on GoodDollar L2. 20% of every swap fee automatically funds universal basic income.
+> Next.js 14 app serving every protocol surface at [goodswap.goodclaw.org](https://goodswap.goodclaw.org).
 
-🌐 **Live:** [goodswap.goodclaw.org](https://goodswap.goodclaw.org)
+**Per-app route docs:** [`docs/apps/README.md`](../docs/apps/README.md)
 
-## Quick Start
+## Quick start
 
 ```bash
 cd frontend
 npm install
-npm run dev     # http://localhost:3100
+npm run dev          # http://localhost:3100 — uses isolated .next.dev
+npm run build        # atomic production build (scripts/atomic-build.mjs)
+npm run start        # production server :3100
+npm run deploy       # ONLY supported production rollout (build + pm2 reload)
 ```
 
-## Tech Stack
+## Tech stack
 
-- **Framework:** Next.js 14 (App Router)
-- **Styling:** Tailwind CSS
-- **Web3:** wagmi + viem + RainbowKit
-- **Language:** TypeScript
-- **Testing:** Vitest
+| Layer | Choice |
+|-------|--------|
+| Framework | Next.js 14 App Router |
+| Styling | Tailwind CSS |
+| Web3 | wagmi + viem + RainbowKit |
+| i18n | next-intl |
+| Unit tests | Vitest + Testing Library |
+| E2E | Playwright |
 
-## Pages
+## Route map
 
-| Route | Description |
-|-------|-------------|
-| `/` | Landing + swap widget |
-| `/explore` | Token explorer (18 tokens, prices, volume) |
-| `/bridge` | Cross-chain bridge (coming soon) |
-| `/pool` | Liquidity pools (coming soon) |
+All pages live under `src/app/`. Protocol routes use the `(app)` route group.
 
-## Features
+| Area | Paths | Doc |
+|------|-------|-----|
+| Swap / landing | `/` | [swap](../docs/apps/swap.md) |
+| Explore | `/explore`, `/explore/[symbol]` | [explore](../docs/apps/explore.md) |
+| Pool / Yield / Bridge | `/pool`, `/yield`, `/bridge` | [pool](../docs/apps/pool.md), [yield](../docs/apps/yield.md), [bridge](../docs/apps/bridge.md) |
+| Perps | `/perps`, `/perps/leaderboard`, `/perps/portfolio` | [perps](../docs/apps/perps.md) |
+| Predict | `/predict`, `/predict/create`, `/predict/portfolio`, `/predict/[marketId]` | [predict](../docs/apps/predict.md) |
+| Lend / Stable | `/lend`, `/stable` | [lend](../docs/apps/lend.md), [stable](../docs/apps/stable.md) |
+| Stocks | `/stocks`, `/stocks/markets`, `/stocks/[ticker]`, `/stocks/portfolio`, `/stocks/watchlist` | [stocks](../docs/apps/stocks.md) |
+| Portfolio / Governance / Agents | `/portfolio`, `/governance`, `/agents` | [portfolio](../docs/apps/portfolio.md), [governance](../docs/apps/governance.md), [agents](../docs/apps/agents.md) |
+| Observability / QA | `/analytics`, `/activity`, `/ubi-impact`, `/faucet`, `/testnet-guide`, `/tests` | [docs/apps/](../docs/apps/README.md) |
 
-- ✅ Swap interface with real-time token selection
-- ✅ Full-screen token selector with search & quick-select chips
-- ✅ Swap review modal with price impact warnings
-- ✅ Slippage settings with custom input + clamping
-- ✅ USD fiat equivalents on all amounts
-- ✅ Recent activity panel (localStorage)
-- ✅ Mobile responsive + keyboard accessible
-- ✅ Context-aware 404 recovery CTA for stocks deep-link failures
-- ✅ Full-height themed wrappers on stocks markets/portfolio to avoid mobile background dropouts
-- ✅ Canonical URL recovery for malformed stocks portfolio query params
-- ✅ Lazy-loaded wallet providers
-- ✅ Memoized components for performance
-- ✅ SVG token logos for all 18 tokens
-- ✅ Stocks detail keeps in-panel wallet onboarding visible even when oracle trade guard is active
+**E2E registry (29 routes):** `src/lib/tests/e2eRegistry.json`
 
-## Build & Deploy
+## API routes
+
+| Path | Method | Purpose |
+|------|--------|---------|
+| `/api/status` | GET | Proxies `status-aggregator` health JSON |
+| `/api/analytics/overview` | GET | Protocol KPI aggregate |
+| `/api/feedback` | POST | Redacted tester feedback → JSONL |
+| `/api/faucet` | POST | Testnet faucet claims |
+| `/api/prices` | GET | Price helper |
+| `/api/rpc` | POST | RPC proxy (rate-limited) |
+| `/api/oracle/status` | GET | Oracle health |
+| `/api/predict/comments` | * | Predict comment proxy |
+
+## Configuration
+
+Contract addresses and RPC: `src/lib/devnet.ts` → [`op-stack/addresses.json`](../op-stack/addresses.json).
+
+**Do not** run `next dev` against the production `frontend/` tree served by PM2 — use a separate worktree or rely on `distDir` isolation (see [`docs/TESTNET_README.md`](../docs/TESTNET_README.md#frontend-health-iter-19)).
+
+## Testing
 
 ```bash
-npm run build       # Production build
-npm run start       # Production server on :3100
-
-# Static export (for GitHub Pages / CDN)
-# Add `output: 'export'` to next.config.js, then:
-npx next build
-# Deploy `out/` directory
+npx tsc --noEmit
+npx vitest run
+npm run test:e2e              # app-regression registry (chromium)
+npm run test:e2e:all            # full suite (E2E_PROD_SERVER=1)
+npm run check:perf              # bundle + BUILD_ID + chunk probes
 ```
 
-Currently deployed via GitHub Pages → Cloudflare CDN.
+Key E2E journeys: `e2e/perps-journey.spec.ts`, `e2e/predict-journey.spec.ts`, `e2e/portfolio-journey.spec.ts`, `e2e/faucet-reliability.spec.ts`, `e2e/analytics.spec.ts`.
+
+## Deploy model (PM2)
+
+Production deploy **must** use:
+
+```bash
+cd frontend && npm run deploy
+```
+
+This runs `npm ci`, `npm run build`, `pm2 reload goodswap --update-env`, and `check-buildid-sync.mjs --strict`. See [`scripts/deploy.sh`](scripts/deploy.sh) and [`docs/runbooks/frontend-rebuild.md`](../docs/runbooks/frontend-rebuild.md).
+
+PM2 launcher fence: [`scripts/pm2-launch-next.mjs`](scripts/pm2-launch-next.mjs) validates `.next/` before `next start`.
+
+Watchdog (optional): [`scripts/goodswap-watchdog.mjs`](scripts/goodswap-watchdog.mjs) — reloads after stale chunk failures.
+
+## Related docs
+
+- [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)
+- [`backend/README.md`](../backend/README.md)
+- Root [`README.md`](../README.md)
