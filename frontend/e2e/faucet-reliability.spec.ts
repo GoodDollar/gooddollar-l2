@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+
 import { test, expect, type APIRequestContext } from '@playwright/test'
 
 const FAUCET_PATH = '/api/faucet'
@@ -119,15 +122,17 @@ test.describe('Faucet reliability — API regressions', () => {
     // never drains tokens to addresses from which they can never be recovered.
     // Previously this test allowed [200, 429, 503] for the zero address,
     // codifying the very drain bug it was supposed to catch.
-    const { CONTRACTS } = await import('../src/lib/devnet')
+    const addresses = JSON.parse(
+      readFileSync(path.resolve(process.cwd(), '..', 'op-stack', 'addresses.json'), 'utf8'),
+    ) as { contracts: Record<string, string> }
 
     const burnAddresses = [
       ZERO_ADDRESS,
       '0xdEaDdEaDdEaDdEaDdEaDdEaDdEaDdEaDdEaDdEaD',
       '0x000000000000000000000000000000000000dEaD',
       '0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
-      CONTRACTS.GoodDollarToken,
-      CONTRACTS.MockWETH,
+      addresses.contracts.GoodDollarToken,
+      addresses.contracts.MockWETH,
     ]
 
     for (const addr of burnAddresses) {

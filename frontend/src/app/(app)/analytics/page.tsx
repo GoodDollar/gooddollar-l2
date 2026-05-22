@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 
 /**
  * Iter 27 — Internal analytics dashboard.
@@ -257,13 +256,13 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl font-bold text-white">Analytics Dashboard</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             Internal view of chain activity, UBI fee routing, and service health.{' '}
-            <Link href="/api/analytics/overview" className="text-goodgreen hover:underline">
+            <a href="/api/analytics/overview" className="text-goodgreen hover:underline">
               /api/analytics/overview
-            </Link>{' '}
+            </a>{' '}
             ·{' '}
-            <Link href="/api/status" className="text-goodgreen hover:underline">
+            <a href="/api/status" className="text-goodgreen hover:underline">
               /api/status
-            </Link>
+            </a>
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -356,12 +355,12 @@ export default function AnalyticsPage() {
                 · uptime {Math.round(status.aggregatorUptime)}s
               </span>
             )}
-            <Link
+            <a
               href="/api/status"
               className="text-xs px-2 py-0.5 rounded border border-dark-50 text-gray-400 hover:bg-dark-50"
             >
               raw JSON →
-            </Link>
+            </a>
           </div>
         ) : (
           <PanelError message={status?.error ?? 'status aggregator unreachable'} />
@@ -583,9 +582,9 @@ export default function AnalyticsPage() {
         Sources: <code>analytics/address-book.json</code> (committed by iter 26),
         the status aggregator on <code>:9200</code>, the indexer on{' '}
         <code>:4200</code>, and <code>eth_blockNumber</code> via{' '}
-        <Link href="/api/rpc" className="text-goodgreen hover:underline">
+        <a href="/api/rpc" className="text-goodgreen hover:underline">
           /api/rpc
-        </Link>
+        </a>
         .
       </p>
     </div>

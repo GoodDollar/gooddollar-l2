@@ -38,7 +38,17 @@ class FaucetCapacityError extends Error {
 
 async function parseJsonBody(request: Request): Promise<unknown> {
   try {
-    return await request.json()
+    const body = await request.json()
+    // The faucet API contract is a JSON object payload. Playwright's
+    // APIRequestContext serializes string `data` values with an
+    // `application/json` content type as JSON strings, so malformed/empty-body
+    // regression probes can arrive here as primitive JSON values rather than a
+    // parser exception. Keep those failures in the "Invalid JSON" bucket while
+    // still allowing `{}` through to the address validator below.
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+      throw new FaucetBadRequestError('Invalid JSON body')
+    }
+    return body
   } catch {
     throw new FaucetBadRequestError('Invalid JSON body')
   }
