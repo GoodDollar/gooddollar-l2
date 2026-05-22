@@ -119,3 +119,15 @@ Test: `Perps full on-chain flow › opens a real market position through the UI 
 | **Gates** | Foundry 55/55 on security suites + GoodDollarTokenSecure; build:e2e PASS; analytics+app-regression 62/62 PASS; perps 19/20 PASS (1 fail) |
 | **Primary blocker** | Perps full on-chain open-position assertion |
 | **RC green** | **No** |
+
+## Perps follow-up integration
+
+Added after the initial coordinator report:
+
+- `cb225e16` / coordinator cherry-pick: perps E2E on-chain flow fix covering live collateral read, devnet G$ default, live fee splitter redeploy requirement, BTC/ETH market id alignment, and missing open-positions panel test id.
+
+Follow-up gates to run on coordinator after this commit:
+
+- `cd frontend && npm run build:e2e:force`
+- `cd frontend && E2E_PROD_SERVER=1 npx playwright test e2e/perps-journey.spec.ts --project=chromium`
+- `git diff --check`
