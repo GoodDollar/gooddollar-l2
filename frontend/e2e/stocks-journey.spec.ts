@@ -39,17 +39,23 @@ test.describe('Stocks Journey', () => {
   })
 
   test('stock table shows column headers', async ({ page }) => {
+    const isMobile = test.info().project.name === 'mobile-chrome'
     await page.goto('/stocks')
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
-    await expect(page.locator('th', { hasText: 'Stock' })).toBeVisible()
-    await expect(page.locator('th', { hasText: 'Price' })).toBeVisible()
-    await expect(page.locator('th', { hasText: '24h Change' })).toBeVisible()
+    if (isMobile) {
+      await expect(page.getByText('Tap to trade').first()).toBeVisible()
+    } else {
+      await expect(page.locator('th', { hasText: 'Stock' })).toBeVisible()
+      await expect(page.locator('th', { hasText: 'Price' })).toBeVisible()
+      await expect(page.locator('th', { hasText: '24h Change' })).toBeVisible()
+    }
   })
 
   test('stock table shows volume and market cap columns', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-chrome', 'Volume/Market Cap columns hidden on mobile card layout')
     await page.goto('/stocks')
     await page.waitForLoadState('domcontentloaded')
 
@@ -60,6 +66,7 @@ test.describe('Stocks Journey', () => {
   })
 
   test('stock table has 7d trend column', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-chrome', '7d Trend column hidden on mobile card layout')
     await page.goto('/stocks')
     await page.waitForLoadState('domcontentloaded')
 
@@ -69,16 +76,23 @@ test.describe('Stocks Journey', () => {
   })
 
   test('stock rows display with trade button on hover area', async ({ page }) => {
+    const isMobile = test.info().project.name === 'mobile-chrome'
     await page.goto('/stocks')
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
-    const tradeButtons = page.locator('button', { hasText: 'Trade' })
-    expect(await tradeButtons.count()).toBeGreaterThanOrEqual(1)
+    if (isMobile) {
+      const tapLabels = page.getByText('Tap to trade')
+      expect(await tapLabels.count()).toBeGreaterThanOrEqual(1)
+    } else {
+      const tradeButtons = page.locator('button', { hasText: 'Trade' })
+      expect(await tradeButtons.count()).toBeGreaterThanOrEqual(1)
+    }
   })
 
   test('search filters stocks by ticker', async ({ page }) => {
+    const isMobile = test.info().project.name === 'mobile-chrome'
     await page.goto('/stocks')
     await page.waitForLoadState('domcontentloaded')
 
@@ -87,10 +101,15 @@ test.describe('Stocks Journey', () => {
     const searchInput = page.locator('input[placeholder="Search stocks..."]')
     await searchInput.fill('AAPL')
 
-    await expect(page.locator('table').getByText('AAPL').first()).toBeVisible()
+    if (isMobile) {
+      await expect(page.getByText('AAPL').first()).toBeVisible()
+    } else {
+      await expect(page.locator('table').getByText('AAPL').first()).toBeVisible()
+    }
   })
 
   test('no results shows empty state with clear button', async ({ page }) => {
+    const isMobile = test.info().project.name === 'mobile-chrome'
     await page.goto('/stocks')
     await page.waitForLoadState('domcontentloaded')
 
@@ -99,11 +118,17 @@ test.describe('Stocks Journey', () => {
     const searchInput = page.locator('input[placeholder="Search stocks..."]')
     await searchInput.fill('ZZZNONEXISTENT')
 
-    await expect(page.locator('table').getByText('No stocks match your search')).toBeVisible()
-    await expect(page.locator('table').getByRole('button', { name: 'Clear' })).toBeVisible()
+    if (isMobile) {
+      await expect(page.getByText('No matches for')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Clear search' })).toBeVisible()
+    } else {
+      await expect(page.locator('table').getByText('No matches for')).toBeVisible()
+      await expect(page.locator('table').getByRole('button', { name: 'Clear search' })).toBeVisible()
+    }
   })
 
   test('clicking sort headers changes sort direction', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-chrome', 'Sort headers are table-only; mobile card layout has no sortable columns')
     await page.goto('/stocks')
     await page.waitForLoadState('domcontentloaded')
 
@@ -124,13 +149,19 @@ test.describe('Stocks Journey', () => {
   })
 
   test('clicking stock row navigates to detail page', async ({ page }) => {
+    const isMobile = test.info().project.name === 'mobile-chrome'
     await page.goto('/stocks')
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
-    const firstTradeButton = page.locator('button', { hasText: 'Trade' }).first()
-    await firstTradeButton.click()
+    if (isMobile) {
+      const firstCard = page.locator('.sm\\:hidden .rounded-xl').first()
+      await firstCard.click()
+    } else {
+      const firstTradeButton = page.locator('button', { hasText: 'Trade' }).first()
+      await firstTradeButton.click()
+    }
 
     await page.waitForURL(/\/stocks\/[A-Z]+/)
   })

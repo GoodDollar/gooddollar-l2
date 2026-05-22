@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAccount, useReadContract, useWriteContract } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
@@ -780,9 +781,10 @@ function MarginFundingPanel() {
 type MobileTab = 'chart' | 'book' | 'trade'
 
 export default function PerpsPage() {
+  const searchParams = useSearchParams()
   const { pairs } = useOnChainPairs()
   const { summary: account } = useOnChainAccountSummary()
-  const [selectedSymbol, setSelectedSymbol] = useState('BTC-USD')
+  const [selectedSymbol, setSelectedSymbol] = useState(() => searchParams.get('market') || 'BTC-USD')
   const [timeframe, setTimeframe] = useState<Timeframe>('1M')
   const [mobileTab, setMobileTab] = useState<MobileTab>('trade')
   const [indicators, setIndicators] = useState<ActiveIndicators>(DEFAULT_INDICATORS)
@@ -790,6 +792,13 @@ export default function PerpsPage() {
   const toggleIndicator = (id: IndicatorId) => {
     setIndicators(prev => ({ ...prev, [id]: !prev[id] }))
   }
+
+  useEffect(() => {
+    const market = searchParams.get('market')
+    if (market && pairs.some(p => p.symbol === market)) {
+      setSelectedSymbol(market)
+    }
+  }, [searchParams, pairs])
 
   const pair = pairs.find(p => p.symbol === selectedSymbol) ?? pairs[0]
 

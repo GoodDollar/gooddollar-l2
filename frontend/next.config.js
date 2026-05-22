@@ -3,6 +3,12 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 })
 
+const priceServiceOrigins = (() => {
+  const url = process.env.NEXT_PUBLIC_PRICE_SERVICE_URL
+  if (!url) return []
+  try { return [new URL(url).origin] } catch { return [] }
+})()
+
 const securityHeaders = [
   // Prevent clickjacking
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -49,6 +55,7 @@ const securityHeaders = [
         'https://pulse.walletconnect.org',
         'wss://pulse.walletconnect.org',
         'https://api.web3modal.org',
+        ...priceServiceOrigins,
         ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:*'] : []),
       ].join(' '),
       "worker-src 'self' blob:",
@@ -127,6 +134,7 @@ const nextConfig = {
       'wagmi',
       '@rainbow-me/rainbowkit',
       '@tanstack/react-query',
+      'lucide-react',
     ],
   },
   webpack: (config) => {
@@ -149,12 +157,20 @@ const nextConfig = {
           reuseExistingChunk: true,
           enforce: true,
         },
-        // UI vendor chunk
+        // UI vendor chunk (radix + lucide only — globally loaded)
         ui: {
           name: 'ui-vendor',
           chunks: 'all',
-          test: /[\\/]node_modules[\\/](@radix-ui|lucide-react|framer-motion)/,
+          test: /[\\/]node_modules[\\/](@radix-ui|lucide-react)/,
           priority: 25,
+          reuseExistingChunk: true,
+        },
+        // framer-motion async — only loaded on pages that actually import it
+        framer: {
+          name: 'framer-vendor',
+          chunks: 'async',
+          test: /[\\/]node_modules[\\/](framer-motion)/,
+          priority: 28,
           reuseExistingChunk: true,
         },
         // React vendor chunk
@@ -171,6 +187,7 @@ const nextConfig = {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       'porto/internal': false,
+      '@react-native-async-storage/async-storage': false,
     }
 
     // @metamask/sdk references a React Native storage adapter that is not

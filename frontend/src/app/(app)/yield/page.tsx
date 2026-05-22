@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { InfoBanner } from '@/components/InfoBanner'
@@ -349,7 +350,7 @@ export default function YieldPage() {
             🌾 GoodYield
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Auto-compounding vaults — deposit, earn, fund UBI
+            Auto-compounding vaults: deposit, earn, fund UBI
           </p>
         </div>
         <ConnectButton />
@@ -373,9 +374,56 @@ export default function YieldPage() {
           <div className="animate-pulse">Loading vaults…</div>
         </div>
       ) : vaults.length === 0 ? (
-        <div className="text-center text-gray-500 py-12">
-          <p className="text-lg mb-2">No vaults deployed yet</p>
-          <p className="text-sm">Vaults will appear here once created via VaultFactory</p>
+        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-6 sm:p-8">
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-goodgreen/10 border border-goodgreen/20 flex items-center justify-center mb-4">
+              <svg className="w-7 h-7 text-goodgreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-white mb-2">Yield Vaults Coming Soon</h2>
+            <p className="text-sm text-gray-400 max-w-md">
+              ERC-4626 yield vaults will auto-compound returns from synthetic stock lending markets.
+              20% of vault profits fund Universal Basic Income.
+            </p>
+          </div>
+
+          <div className="bg-dark-50/30 rounded-xl p-5 mb-6">
+            <h3 className="text-xs font-medium text-gray-300 uppercase tracking-wider mb-3">How it works</h3>
+            <ul className="space-y-3">
+              <li className="flex items-start gap-3">
+                <svg className="w-4 h-4 text-goodgreen mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm text-gray-400">Deposit synthetic stocks or stablecoins into a vault</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <svg className="w-4 h-4 text-goodgreen mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm text-gray-400">Vault deploys capital into lending markets automatically</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <svg className="w-4 h-4 text-goodgreen mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm text-gray-400">Earn yield while 20% of profits fund UBI</span>
+              </li>
+            </ul>
+          </div>
+
+          <Link
+            href="/lend"
+            className="flex items-center justify-between p-4 rounded-xl bg-goodgreen/5 border border-goodgreen/15 hover:bg-goodgreen/10 transition-colors group"
+          >
+            <div>
+              <p className="text-sm font-medium text-goodgreen">Earn yield now on GoodLend</p>
+              <p className="text-xs text-gray-500 mt-0.5">Supply assets to earn interest today</p>
+            </div>
+            <svg className="w-4 h-4 text-goodgreen/60 group-hover:text-goodgreen transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

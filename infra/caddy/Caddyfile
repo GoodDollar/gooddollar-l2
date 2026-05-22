@@ -31,6 +31,7 @@ explorer.goodclaw.org {
 
 goodswap.goodclaw.org {
 	tls /etc/letsencrypt/live/explorer.goodclaw.org/fullchain.pem /etc/letsencrypt/live/explorer.goodclaw.org/privkey.pem
+	encode zstd gzip
 	reverse_proxy localhost:3100
 }
 

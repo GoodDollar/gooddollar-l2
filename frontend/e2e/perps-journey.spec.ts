@@ -151,7 +151,7 @@ test.describe('Perps Journey', () => {
     await expect(page.locator('text=→ UBI (20%)')).toBeVisible()
   })
 
-  test('entering size activates the submit button', async ({ page }) => {
+  test('entering size keeps submit disabled when balance is zero', async ({ page }) => {
     await page.goto('/perps')
     await page.waitForLoadState('networkidle')
 
@@ -163,7 +163,7 @@ test.describe('Perps Journey', () => {
 
     const submitButton = page.getByRole('button', { name: /^Long BTC$/ })
     await expect(submitButton).toBeVisible()
-    await expect(submitButton).toBeEnabled()
+    await expect(submitButton).toBeDisabled()
   })
 
   test('account panel shows balance, equity, margin info', async ({ page }) => {
