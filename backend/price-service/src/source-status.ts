@@ -271,6 +271,30 @@ export const SOURCE_REASONS_PUBLIC: Readonly<
 );
 
 /**
+ * Operator-facing catalog of stable error-envelope slugs that ride on the
+ * service's HTTP error paths (404 today; 400/405 to follow as separate
+ * tasks). Distinct namespace from `REASON_CATALOG` / `SOURCE_REASONS_PUBLIC`
+ * because those catalogs describe upstream-source state, while these
+ * describe HTTP-level input-handling state — mixing the two pollutes the
+ * `/docs/source-reasons` semantics.
+ *
+ * Inner shape is identical to `SOURCE_REASONS_PUBLIC` so a consumer
+ * rendering one map can render the other with a single template. Shipped
+ * under the sibling `errorReasons` field on `/docs/source-reasons`
+ * (task 0063) — same endpoint, no new route.
+ */
+export const ERROR_REASONS_PUBLIC: Readonly<
+  Record<string, { humanReason: string; nextStep: string; severity: SourceSeverity }>
+> = Object.freeze({
+  'not-found': {
+    humanReason: 'No endpoint matches this URL.',
+    nextStep:
+      'Retry with `didYouMean` if present, else pick from `endpoints[]`.',
+    severity: 'info',
+  },
+});
+
+/**
  * Catalog of stable WebSocket-broadcaster failure modes. Distinct namespace
  * from `REASON_CATALOG` because the upstream-source verdict (`source.reason`
  * on data endpoints) is unrelated to a service-level WS bind failure: the

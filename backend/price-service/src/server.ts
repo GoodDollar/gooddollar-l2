@@ -3,6 +3,7 @@ import { QuoteCache } from './quote-cache';
 import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats, SourceStatus } from './types';
 import {
   enrichWsReason,
+  ERROR_REASONS_PUBLIC,
   sanitizeSourceStatus,
   SanitizedSourceStatus,
   SOURCE_REASONS_PUBLIC,
@@ -611,6 +612,27 @@ const METHOD_NOT_ALLOWED_NEXT_STEP =
 const METHOD_NOT_ALLOWED_SEVERITY: SourceSeverity = 'info';
 
 /**
+ * Catch-all 404 enrichment shipped on every `not-found` envelope so the
+ * body rides the same `{error, message, humanReason, severity, nextStep,
+ * …}` contract as the 405 (task 0057) and the source block (task 0050).
+ * All three constants read off `ERROR_REASONS_PUBLIC` so the catalog
+ * shipped at `/docs/source-reasons` and the live 404 body cannot drift.
+ * See task 0063.
+ */
+const NOT_FOUND_HUMAN_REASON = ERROR_REASONS_PUBLIC['not-found']!.humanReason;
+const NOT_FOUND_NEXT_STEP = ERROR_REASONS_PUBLIC['not-found']!.nextStep;
+const NOT_FOUND_SEVERITY: SourceSeverity = ERROR_REASONS_PUBLIC['not-found']!.severity;
+
+/**
+ * Per-request `message` for the catch-all 404. Names the offending verb
+ * and the bounded `path` echo so the audit log line answers
+ * "what did this caller try?" without a second lookup.
+ */
+function buildNotFoundMessage(method: string, path: string): string {
+  return `no endpoint matches ${method} ${path}`;
+}
+
+/**
  * Template the per-request 405 `message` off the offending verb + the
  * allowed-methods list. Mirrors the `Allow` header shape so an operator
  * grepping the audit log can match body and header on the same line.
@@ -717,9 +739,19 @@ function buildEndpointIndexCompact(): EndpointIndexCompactEntry[] {
 const WS_GUARD_SYNTHETIC_PATH =
   'ws://very-long-hostname-for-bound.example.com:65535';
 
+/**
+ * Synthetic worst-case body the boot guard measures against
+ * `MAX_404_BODY_BYTES`. Must mirror the live catch-all 404 shape
+ * (task 0063 enrichment included) so the guard's measurement actually
+ * reflects the real maximum wire payload.
+ */
 function build404SyntheticBody(): Record<string, unknown> {
   return {
     error: 'not-found',
+    message: 'no endpoint matches DELETE /__boot_guard_synthetic_path__',
+    humanReason: ERROR_REASONS_PUBLIC['not-found']!.humanReason,
+    severity: ERROR_REASONS_PUBLIC['not-found']!.severity,
+    nextStep: ERROR_REASONS_PUBLIC['not-found']!.nextStep,
     path: '/__boot_guard_synthetic__',
     method: 'GET',
     discovery: '/',
@@ -1223,9 +1255,16 @@ export function createServer(
 
   app.get('/docs/source-reasons', (_req: Request, res: Response) => {
     const now = Date.now();
+    // Two sibling maps with identical inner shape (task 0063):
+    // `reasons` describes upstream-source state (task 0020 catalog);
+    // `errorReasons` describes HTTP error-envelope slugs (`not-found`
+    // today; `method-not-allowed` and `invalid-symbol` fold in via
+    // separate follow-ups). Same endpoint, no new route.
     const body: Record<string, unknown> = {
       reasons: SOURCE_REASONS_PUBLIC,
       count: SOURCE_REASON_CATALOG_COUNT,
+      errorReasons: ERROR_REASONS_PUBLIC,
+      errorReasonCount: Object.keys(ERROR_REASONS_PUBLIC).length,
     };
     res.json(finalizeTimestamps(body, now));
   });
@@ -1580,10 +1619,24 @@ export function createServer(
     }
     const didYouMean = canonicalSuggestion(req.path);
     const echoed = echoPath(req.path);
+    // Field order mirrors the 405 envelope (task 0057): error → message
+    // → humanReason → severity → nextStep → ...echo → method →
+    // discovery → didYouMean? → endpoints[] → meta tail. The
+    // parametric-parent override rides on `message` (the per-request
+    // slot), NOT on `humanReason` (the static catalog value) — so the
+    // catalog single-source-of-truth stays intact and every 404's
+    // humanReason is identical. See task 0063.
+    const message =
+      req.path === '/quotes/'
+        ? PARAMETRIC_PARENT_MESSAGE
+        : buildNotFoundMessage(req.method, echoed.path);
     const body: Record<string, unknown> = {
       error: 'not-found',
+      message,
+      humanReason: NOT_FOUND_HUMAN_REASON,
+      severity: NOT_FOUND_SEVERITY,
+      nextStep: NOT_FOUND_NEXT_STEP,
     };
-    if (req.path === '/quotes/') body.message = PARAMETRIC_PARENT_MESSAGE;
     Object.assign(body, echoed);
     body.method = req.method;
     body.discovery = '/';
