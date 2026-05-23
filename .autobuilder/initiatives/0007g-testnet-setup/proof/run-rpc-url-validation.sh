@@ -21,6 +21,13 @@
 #   G. unset LANE7_RPC                            → existing unset WARN
 #   H. LANE7_RPC=http://localhost:8545?key=secret → redacted FATAL echo
 #                                                   (no `secret` leak)
+#   I. (task 0016, Leak A) userinfo in malformed FATAL — host:port only,
+#                          no userinfo, no `supersecret`.
+#   J. (task 0016, Leak B) query string in valid-URL report header —
+#                          report shows host:port only, no `?key`, no
+#                          `DEADBEEF`.
+#   K. (task 0016, combined) userinfo+query — FATAL path — neither
+#                          `userpass` nor `KEY` shows up in stderr.
 
 set -u
 
@@ -185,6 +192,86 @@ refute_substr "no API key leak in stderr" \
 assert_substr "redacted echo (host only)" \
   /tmp/proof-rpc-url-H.stderr \
   "FATAL: LANE7_RPC=http://localhost:8545" || exit 1
+
+# Case I (task 0016, Leak A): userinfo password in the malformed FATAL
+# echo. The regex rejects URLs whose host segment contains `:` or `/`
+# (and `@user:pass` produces both via the userinfo separator), so this
+# falls through to FATAL. The redact helper must strip the userinfo
+# segment so neither `user` nor `supersecret` lands on stderr.
+echo
+echo "=== Case I: userinfo in malformed FATAL (Leak A) ==="
+rm -f /tmp/proof-rpc-url-I.md
+LANE7_RPC='https://user:supersecret@rpc.example.com:8545/path' \
+PRICE_SERVICE_URL=http://127.0.0.1:49911/health \
+ORACLE_SIGNER_URL=http://127.0.0.1:49911/health \
+HEDGE_ENGINE_URL=http://127.0.0.1:49911/health \
+STATUS_AGGREGATOR_URL=http://127.0.0.1:49911/status.json \
+REPORT=/tmp/proof-rpc-url-I.md \
+  "$SMOKE" >/dev/null 2>/tmp/proof-rpc-url-I.stderr
+rc=$?
+echo "exit: $rc"
+[[ "$rc" == "2" ]] || { echo "FAIL  Case I expected exit 2"; exit 1; }
+echo "PASS  exit code 2"
+refute_substr "no userinfo leak in stderr" \
+  /tmp/proof-rpc-url-I.stderr "supersecret" || exit 1
+refute_substr "no username leak in stderr" \
+  /tmp/proof-rpc-url-I.stderr "user:supersecret" || exit 1
+assert_substr "redacted FATAL (host only)" \
+  /tmp/proof-rpc-url-I.stderr \
+  "FATAL: LANE7_RPC=https://rpc.example.com:8545/path" || exit 1
+
+# Case J (task 0016, Leak B): query string in the report header on a
+# valid-shape URL. The preflight regex requires the query to follow a
+# path segment (`(/.*)?` matches `/path?key=...`), so the URL has the
+# shape `http://host:port/path?key=...`. The report writer must redact
+# before echoing into the persistent Markdown report.
+echo
+echo "=== Case J: query string in report header (Leak B) ==="
+rm -f /tmp/proof-rpc-url-J.md
+LANE7_RPC="http://127.0.0.1:$RPC_PORT/rpc?key=DEADBEEFREDACTABLE" \
+STOCK_ORACLE_V2_ADDRESS=0xabcdefabcdefabcdefabcdefabcdefabcdefabcd \
+PRICE_SERVICE_URL=http://127.0.0.1:$GREEN_PORT/health \
+ORACLE_SIGNER_URL=http://127.0.0.1:$GREEN_PORT/health \
+HEDGE_ENGINE_URL=http://127.0.0.1:$GREEN_PORT/health \
+STATUS_AGGREGATOR_URL=http://127.0.0.1:$GREEN_PORT/status.json \
+REPORT=/tmp/proof-rpc-url-J.md \
+  "$SMOKE" >/dev/null 2>&1
+echo "exit: $?"
+[[ -f /tmp/proof-rpc-url-J.md ]] || { echo "FAIL  Case J: no report written"; exit 1; }
+refute_substr "no query string in report" \
+  /tmp/proof-rpc-url-J.md "DEADBEEFREDACTABLE" || exit 1
+refute_substr "no '?key=' in report" \
+  /tmp/proof-rpc-url-J.md "?key=" || exit 1
+assert_substr "redacted RPC in report header" \
+  /tmp/proof-rpc-url-J.md \
+  "**LANE7_RPC:** \`http://127.0.0.1:$RPC_PORT/rpc\`" || exit 1
+
+# Case K (task 0016, combined): userinfo + query string. Regex rejects
+# (userinfo introduces `@`/`:` past `://`), FATAL path. Both secret
+# vectors must be stripped from stderr.
+echo
+echo "=== Case K: combined userinfo + query string (FATAL) ==="
+rm -f /tmp/proof-rpc-url-K.md
+LANE7_RPC='https://userpass:KEYSECRET12345@host.example.com:8545/x?key=DEADBEEFKQ' \
+PRICE_SERVICE_URL=http://127.0.0.1:49911/health \
+ORACLE_SIGNER_URL=http://127.0.0.1:49911/health \
+HEDGE_ENGINE_URL=http://127.0.0.1:49911/health \
+STATUS_AGGREGATOR_URL=http://127.0.0.1:49911/status.json \
+REPORT=/tmp/proof-rpc-url-K.md \
+  "$SMOKE" >/dev/null 2>/tmp/proof-rpc-url-K.stderr
+rc=$?
+echo "exit: $rc"
+[[ "$rc" == "2" ]] || { echo "FAIL  Case K expected exit 2"; exit 1; }
+echo "PASS  exit code 2"
+refute_substr "no userinfo password in stderr" \
+  /tmp/proof-rpc-url-K.stderr "KEYSECRET12345" || exit 1
+refute_substr "no query-string secret in stderr" \
+  /tmp/proof-rpc-url-K.stderr "DEADBEEFKQ" || exit 1
+refute_substr "no userinfo username in stderr" \
+  /tmp/proof-rpc-url-K.stderr "userpass" || exit 1
+assert_substr "redacted FATAL (host only, no userinfo, no query)" \
+  /tmp/proof-rpc-url-K.stderr \
+  "FATAL: LANE7_RPC=https://host.example.com:8545/x" || exit 1
 
 echo
 echo "ALL CASES PASS"

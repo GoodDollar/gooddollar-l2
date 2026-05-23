@@ -63,6 +63,24 @@ for tool in node curl awk date; do
   fi
 done
 
+# Strip credentials from a URL value before echoing into operator-visible
+# surfaces (stderr, report file, console summary). Two patterns are common
+# on hosted RPC providers (Alchemy / Infura / QuickNode legacy / Tenderly):
+#   1. basic-auth userinfo:  https://USER:KEY@host/...
+#   2. query-string secret:  https://host/...?key=...
+# Both must be removed before any echo. Pure bash parameter expansion — no
+# subprocess, no new tool dependency, no behavior change for credential-free
+# URLs. Hoisted above the FATAL preflight at line ~140 so that path can use
+# it; same helper is reused at every other site that emits LANE7_RPC's value.
+redact_url_secrets() {
+  local u="$1"
+  u="${u%%\?*}"
+  case "$u" in
+    *://*@*) u="${u%%://*}://${u#*://*@}" ;;
+  esac
+  printf '%s' "$u"
+}
+
 LANE7_BASE="${LANE7_BASE:-http://localhost}"
 PRICE_SERVICE_PORT="${PRICE_SERVICE_PORT:-4000}"
 ORACLE_SIGNER_PORT="${ORACLE_SIGNER_PORT:-9107}"
@@ -127,9 +145,8 @@ LANE7_RPC="${LANE7_RPC-}"
 # preflight with a single FATAL block, redacting any `?key=...`
 # query string before echoing (some hosted RPCs put API keys there).
 if [[ -n "$LANE7_RPC" ]] && [[ ! "$LANE7_RPC" =~ $PROBE_URL_RE ]]; then
-  redacted_rpc="${LANE7_RPC%%\?*}"
   echo "FATAL: malformed LANE7_RPC — must match http(s)://host[:port][/path]" >&2
-  echo "FATAL: LANE7_RPC=$redacted_rpc" >&2
+  echo "FATAL: LANE7_RPC=$(redact_url_secrets "$LANE7_RPC")" >&2
   exit 2
 fi
 unset PROBE_URL_RE
@@ -284,7 +301,7 @@ for url in "$PRICE_SERVICE_URL" "$ORACLE_SIGNER_URL" "$HEDGE_ENGINE_URL" \
            "$STATUS_AGGREGATOR_URL" "$LANE7_RPC"; do
   case "$url" in
     *goodswap.goodclaw.org*|*rpc.goodclaw.org*)
-      echo "FATAL: lane-7 smoke must not touch production URL: $url" >&2
+      echo "FATAL: lane-7 smoke must not touch production URL: $(redact_url_secrets "$url")" >&2
       exit 2
       ;;
   esac
@@ -379,7 +396,7 @@ if [[ -z "$LANE7_RPC" ]]; then
 else
   case "$LANE7_RPC" in
     *goodswap.goodclaw.org*|*rpc.goodclaw.org*)
-      add_summary "❌ \`LANE7_RPC=$LANE7_RPC\` — lane-7 must not point at production RPC"
+      add_summary "❌ \`LANE7_RPC=$(redact_url_secrets "$LANE7_RPC")\` — lane-7 must not point at production RPC"
       BLOCKERS+=("LANE7_RPC points at production RPC")
       ;;
     *)
@@ -475,12 +492,13 @@ else
         ' "$LANE7_RPC" "$stock_oracle" 2>/dev/null)"
 
         last_updated="${last_updated:-0}"
+        rpc_redacted="$(redact_url_secrets "$LANE7_RPC")"
         if [[ "$last_updated" == "BADURL" ]]; then
-          add_summary "⚠️  \`LANE7_RPC=$LANE7_RPC\` failed URL parsing in node — on-chain freshness skipped"
-          WARNINGS+=("LANE7_RPC failed URL parsing (LANE7_RPC=$LANE7_RPC)")
+          add_summary "⚠️  \`LANE7_RPC=$rpc_redacted\` failed URL parsing in node — on-chain freshness skipped"
+          WARNINGS+=("LANE7_RPC failed URL parsing (LANE7_RPC=$rpc_redacted)")
         elif [[ "$last_updated" == "TIMEOUT" ]]; then
-          add_summary "⚠️  StockOracleV2.lastUpdated() probe timed out after 10s (\`LANE7_RPC=$LANE7_RPC\`)"
-          WARNINGS+=("on-chain freshness probe timed out after 10s (LANE7_RPC=$LANE7_RPC)")
+          add_summary "⚠️  StockOracleV2.lastUpdated() probe timed out after 10s (\`LANE7_RPC=$rpc_redacted\`)"
+          WARNINGS+=("on-chain freshness probe timed out after 10s (LANE7_RPC=$rpc_redacted)")
         elif [[ "$last_updated" == "0" ]]; then
           add_summary "⚠️  StockOracleV2.lastUpdated() returned 0 — fresh oracle absent (testnet candidate phase)"
           WARNINGS+=("on-chain oracle has no signer-supplied data yet")
@@ -497,7 +515,7 @@ else
             # too brittle for a 1 s NTP wobble.
             future_s=$(( -age_s ))
             add_summary "⚠️  StockOracleV2.lastUpdated() = $last_updated is ${future_s}s in the future — check signer host clock / NTP"
-            WARNINGS+=("on-chain oracle timestamp is ${future_s}s in the future (LANE7_RPC=$LANE7_RPC)")
+            WARNINGS+=("on-chain oracle timestamp is ${future_s}s in the future (LANE7_RPC=$rpc_redacted)")
           elif (( age_s > STALENESS_THRESHOLD_S )); then
             add_summary "❌ StockOracleV2.lastUpdated() = $last_updated; age $age_s s > threshold $STALENESS_THRESHOLD_S s"
             BLOCKERS+=("on-chain oracle stale (age ${age_s}s > ${STALENESS_THRESHOLD_S}s)")
@@ -589,7 +607,7 @@ mkdir -p "$(dirname "$REPORT")"
   echo "**Verdict:** \`$verdict\`  "
   echo "**Exit code:** \`$exit_code\`  "
   echo "**Lane base:** \`$LANE7_BASE\`  "
-  echo "**LANE7_RPC:** \`${LANE7_RPC:-unset}\`  "
+  echo "**LANE7_RPC:** \`$(redact_url_secrets "${LANE7_RPC:-unset}")\`  "
   echo
   echo "Source-of-truth contract: [\`docs/testnet/HEALTH-CONTRACT.md\`](./HEALTH-CONTRACT.md). Companion gate (production): \`scripts/testnet/health-gate.sh\`."
   echo
