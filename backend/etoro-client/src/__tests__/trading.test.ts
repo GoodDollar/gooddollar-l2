@@ -23,15 +23,29 @@ function tradingFor(
     capEnforcer?: DemoCapEnforcer;
     notionalSizer?: (o: OrderRequest) => number;
     symbolReferencePriceUsd?: (s: string) => number | undefined;
+    disableCapsForTestsOnly?: boolean;
   } = {},
 ) {
   const http = mockHttp();
   const audit = mockAudit(mode);
+  // For demo-trading tests that don't care about caps, attach a permissive
+  // enforcer by default. Individual tests can override or set
+  // `disableCapsForTestsOnly: true` to exercise the escape-hatch path.
+  const needsAutoEnforcer = mode === 'demo-trading'
+    && !opts.capEnforcer
+    && opts.disableCapsForTestsOnly !== true;
+  const capEnforcer = opts.capEnforcer ?? (needsAutoEnforcer
+    ? new DemoCapEnforcer({
+        maxOrderNotionalUsd: Number.MAX_SAFE_INTEGER,
+        maxDailyNotionalUsd: Number.MAX_SAFE_INTEGER,
+      })
+    : undefined);
   const trading = new TradingModule(http, audit, {
     mode,
-    capEnforcer: opts.capEnforcer,
+    capEnforcer,
     notionalSizer: opts.notionalSizer,
     symbolReferencePriceUsd: opts.symbolReferencePriceUsd,
+    disableCapsForTestsOnly: opts.disableCapsForTestsOnly,
   });
   return { http, audit, trading };
 }
@@ -429,6 +443,98 @@ describe('TradingModule — input validation (InvalidOrderError)', () => {
     // raw values must not leak
     expect(err).not.toContain('SECRETSYM');
     expect(err).not.toContain('sideways');
+  });
+});
+
+describe('TradingModule — constructor cap-enforcer requirement', () => {
+  it('throws when constructed in demo-trading mode without a capEnforcer', () => {
+    const http = mockHttp();
+    const audit = mockAudit('demo-trading');
+    expect(() => new TradingModule(http, audit, { mode: 'demo-trading' }))
+      .toThrow(/DemoCapEnforcer required for demo-trading mode/);
+  });
+
+  it("constructs successfully in 'demo-readonly' without a capEnforcer", () => {
+    expect(() => new TradingModule(mockHttp(), mockAudit('demo-readonly'), { mode: 'demo-readonly' }))
+      .not.toThrow();
+  });
+
+  it("constructs successfully in 'mock' without a capEnforcer", () => {
+    expect(() => new TradingModule(mockHttp(), mockAudit('mock'), { mode: 'mock' }))
+      .not.toThrow();
+  });
+
+  it("constructs successfully in 'real-disabled' without a capEnforcer", () => {
+    expect(() => new TradingModule(mockHttp(), mockAudit('real-disabled'), { mode: 'real-disabled' }))
+      .not.toThrow();
+  });
+
+  it('constructs in demo-trading with the disableCapsForTestsOnly escape hatch', () => {
+    expect(() => new TradingModule(mockHttp(), mockAudit('demo-trading'), {
+      mode: 'demo-trading',
+      disableCapsForTestsOnly: true,
+    })).not.toThrow();
+  });
+
+  it('emits one caps-disabled audit line per mutating call when the escape hatch is active', async () => {
+    const writes: string[] = [];
+    const fsMock = jest.requireMock('fs') as { appendFileSync: jest.Mock };
+    fsMock.appendFileSync.mockClear();
+    fsMock.appendFileSync.mockImplementation((_p: string, line: string) => { writes.push(line); });
+
+    const http = mockHttp();
+    const audit = new AuditLogger('demo-trading', '/dev/null');
+    const trading = new TradingModule(http, audit, {
+      mode: 'demo-trading',
+      disableCapsForTestsOnly: true,
+      notionalSizer: amountAsUsd,
+    });
+    http.post = jest.fn().mockResolvedValue({
+      status: 200,
+      data: { orderId: 'O', symbol: 'AAPL', side: 'buy', amount: 1, status: 'filled' },
+    });
+    http.delete = jest.fn().mockResolvedValue({ status: 200 });
+
+    await trading.openPosition({ symbol: 'AAPL', instrumentId: 'A', side: 'buy', amount: 1 });
+    await trading.placeLimitOrder({
+      symbol: 'AAPL', instrumentId: 'A', side: 'buy', amount: 1, price: 1, type: 'limit',
+    });
+    await trading.closePosition('POS-1');
+    await trading.partialClose('POS-1', 1);
+    await trading.cancelOrder('ORD-1');
+
+    const capsDisabledLines = writes
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+      .filter((e) => typeof e.error === 'string' && (e.error as string).startsWith('caps-disabled'));
+    expect(capsDisabledLines).toHaveLength(5);
+    for (const line of capsDisabledLines) {
+      expect(line.method).toBe('PRE-CHECK');
+      expect(line.path).toBe('/cap-enforcer');
+    }
+    const actions = new Set(capsDisabledLines.map((e) => e.action));
+    expect(actions).toEqual(new Set([
+      'openPosition', 'placeLimitOrder', 'closePosition', 'partialClose', 'cancelOrder',
+    ]));
+  });
+
+  it('runtime guard in assertCapOk catches a future regression that strips the enforcer', async () => {
+    // Construct via the escape hatch, then mutate private fields to simulate
+    // a future refactor that re-allows construction without an enforcer.
+    const http = mockHttp();
+    const audit = mockAudit('demo-trading');
+    const trading = new TradingModule(http, audit, {
+      mode: 'demo-trading',
+      disableCapsForTestsOnly: true,
+      notionalSizer: amountAsUsd,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (trading as any).disableCapsForTestsOnly = false;
+    http.post = jest.fn();
+
+    await expect(trading.openPosition({
+      symbol: 'AAPL', instrumentId: 'A', side: 'buy', amount: 1,
+    })).rejects.toThrow(/DemoCapEnforcer required for demo-trading mode/);
+    expect(http.post).not.toHaveBeenCalled();
   });
 });
 
