@@ -182,13 +182,27 @@ export default function HedgeStatusCard() {
           )}
         </div>
         {data?.proof && (
-          <a
-            href={`/api/hedge/status`}
-            className="text-xs text-goodgreen hover:underline font-mono"
-            title={data.proof.path}
-          >
-            latest proof →
-          </a>
+          <div className="flex items-center gap-2 flex-wrap">
+            {data.proof.summary && (
+              <span
+                data-testid="hedge-proof-summary"
+                className="text-xs text-gray-400 font-mono truncate max-w-[28ch]"
+                title={data.proof.summary}
+              >
+                {data.proof.summary}
+              </span>
+            )}
+            <a
+              data-testid="hedge-proof-link"
+              href="/api/hedge/proof/latest"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-goodgreen hover:underline font-mono"
+              title={data.proof.path}
+            >
+              latest proof →
+            </a>
+          </div>
         )}
       </header>
 

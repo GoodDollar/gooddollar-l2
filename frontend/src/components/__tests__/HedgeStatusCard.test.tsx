@@ -161,6 +161,17 @@ describe('HedgeStatusCard', () => {
     expect(screen.queryByTestId('hedge-stat-grid')).toBeNull();
   });
 
+  it('latest-proof link points at the markdown route and surfaces the summary chip', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const link = await screen.findByTestId('hedge-proof-link');
+    expect(link.getAttribute('href')).toBe('/api/hedge/proof/latest');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toContain('noopener');
+    const summary = screen.getByTestId('hedge-proof-summary');
+    expect(summary).toHaveTextContent('demo — 1 receipts');
+  });
+
   it('awaiting tick: snapshot null, no error → grid shows ENGINE: awaiting tick in neutral grey', async () => {
     mockFetchOnce({
       snapshot: null,

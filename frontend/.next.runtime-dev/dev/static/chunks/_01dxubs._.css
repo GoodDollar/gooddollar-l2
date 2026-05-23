@@ -1340,6 +1340,10 @@ img, video {
   max-width: 20rem;
 }
 
+.max-w-\[28ch\] {
+  max-width: 28ch;
+}
+
 .flex-1 {
   flex: 1;
 }
