@@ -299,6 +299,7 @@ function FeaturedMarket({ market }: { market: PredictionMarket | null }) {
   return (
     <div
       onClick={handleClick}
+      data-testid="predict-featured-market"
       className="mb-6 bg-dark-100 rounded-2xl border border-goodgreen/20 p-5 sm:p-6 hover:border-goodgreen/40 transition-all group cursor-pointer relative overflow-hidden"
     >
       <div
@@ -659,12 +660,18 @@ function PredictPageContent() {
     [filtered],
   )
 
-  // Featured selection runs against the visible-but-otherwise-unfiltered
-  // set so the hero stays consistent regardless of search/category, while
-  // still excluding devnet seed markets (task 0051). The grid below dedups
-  // by id so we never render the same market twice on the same page
-  // (task 0044).
-  const featured = useMemo(() => selectFeaturedMarket(visibleMarkets), [visibleMarkets])
+  // Featured selection is filter-aware (task 0007d-0032): when the user
+  // narrows by category or query, the hero only renders if there's a
+  // matching market. Without this guard the hero used to show a Crypto
+  // market under a "TRENDING" badge while the empty state below said
+  // "No markets in World Events yet" — two contradictory things on one
+  // page. Devnet seed markets stay excluded via `visibleMarkets` (task
+  // 0051), and the grid below dedupes by id (task 0044).
+  const featuredPool = useMemo(
+    () => (category === 'All' && query.trim() === '' ? visibleMarkets : filtered),
+    [category, query, visibleMarkets, filtered],
+  )
+  const featured = useMemo(() => selectFeaturedMarket(featuredPool), [featuredPool])
   const featuredId = featured?.id
   const activeMarketsWithoutFeatured = useMemo(
     () => activeMarkets.filter(m => m.id !== featuredId),
