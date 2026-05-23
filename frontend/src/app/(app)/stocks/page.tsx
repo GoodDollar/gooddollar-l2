@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
+import { hasLiveOracleChange } from '@/lib/oracleHonesty'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
@@ -82,10 +83,6 @@ function isSparklineUnavailable(data: number[] | null | undefined): boolean {
   return !data || data.length === 0 || new Set(data).size <= 1
 }
 
-function noLiveMarketData(stock: Stock): boolean {
-  return stock.change24h === 0 && stock.volume24h === 0
-}
-
 function StarButton({ active, onClick }: { active: boolean; onClick: (e: React.MouseEvent) => void }) {
   return (
     <button
@@ -142,7 +139,7 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, i
       </td>
       <td className="py-3 px-3 text-right font-medium">
         <PercentageChange
-          value={noLiveMarketData(stock) ? null : stock.change24h}
+          value={hasLiveOracleChange(stock) ? stock.change24h : null}
           decimals={2}
           size="sm"
         />
@@ -572,7 +569,7 @@ export default function StocksPage() {
                 <p className="text-white font-medium text-sm whitespace-nowrap">{formatStockPrice(stock.price)}</p>
                 <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                   <PercentageChange
-                    value={noLiveMarketData(stock) ? null : stock.change24h}
+                    value={hasLiveOracleChange(stock) ? stock.change24h : null}
                     decimals={2}
                     size="xs"
                     showSign

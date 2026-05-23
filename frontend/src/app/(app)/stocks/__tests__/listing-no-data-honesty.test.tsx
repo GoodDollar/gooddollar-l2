@@ -148,4 +148,22 @@ describe('Stocks listing — no-data honesty', () => {
     const cell = aaplRow!.querySelector('[aria-label*="data unavailable"]')
     expect(cell).not.toBeNull()
   })
+
+  // Task 0035 — AAPL is the canonical zero-data fixture for this suite.
+  // The 24h Change column must never paint a coloured percentage value
+  // for a row where the oracle has nothing to report, and the fallback
+  // dataset's previously-hardcoded percentages were exactly what was
+  // bypassing the listing guard.
+  it('AAPL row renders no percentage-change badge when oracle has no data', async () => {
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>,
+    )
+    const rows = getDesktopRows()
+    const aaplRow = rows.find((r) => within(r).queryByText('AAPL'))
+    expect(aaplRow).toBeDefined()
+    expect(aaplRow!.textContent ?? '').not.toMatch(/[+-]?\d+(\.\d+)?%/)
+  })
 })
+
