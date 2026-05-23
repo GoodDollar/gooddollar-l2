@@ -36,7 +36,13 @@ test.describe('Lane 6 — /live-prices-proof', () => {
     const reviewerContext = page.getByTestId('reviewer-context')
     await expect(reviewerContext).toBeVisible()
     const reviewerCopy = (await reviewerContext.textContent()) ?? ''
-    expect(reviewerCopy).toMatch(/If a panel is empty/i)
+    // Sync target: these regexes mirror the vitest invariants in
+    // frontend/src/app/(app)/live-prices-proof/__tests__/page.test.tsx (~lines 100-102),
+    // updated by task #0036 (commit 4c3ebe67). If you change the
+    // reviewer-aside copy, edit BOTH this spec and the vitest case
+    // — task lane6-e2e-spec-asserts-removed-reviewer-context-copy (0049).
+    expect(reviewerCopy).toMatch(/never silently swallows/i)
+    expect(reviewerCopy).toMatch(/yellow.*(degraded|awaiting)/i)
 
     // Safety banner — either the "Safe" pill or a refusal alert. We only
     // accept the "Safe" path in CI (real-trading must be disabled).

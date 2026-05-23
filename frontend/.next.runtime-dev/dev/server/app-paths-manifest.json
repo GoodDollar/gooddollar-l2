@@ -1,8 +1,13 @@
 {
   "/(app)/live-prices-proof/page": "app/(app)/live-prices-proof/page.js",
+  "/(app)/perps/page": "app/(app)/perps/page.js",
+  "/(app)/stocks/page": "app/(app)/stocks/page.js",
   "/api/hedge-proof/latest/route": "app/api/hedge-proof/latest/route.js",
   "/api/prices/route": "app/api/prices/route.js",
   "/api/rpc/route": "app/api/rpc/route.js",
   "/api/safety-state/route": "app/api/safety-state/route.js",
+  "/api/status/quotes/route": "app/api/status/quotes/route.js",
+  "/api/status/route": "app/api/status/route.js",
+  "/api/stocks/rebalance-status/route": "app/api/stocks/rebalance-status/route.js",
   "/page": "app/page.js"
 }
