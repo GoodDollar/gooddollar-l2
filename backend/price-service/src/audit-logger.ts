@@ -208,19 +208,13 @@ export class AuditLogger {
    */
   private pump(): void {
     if (this.draining) return;
-    if (this.streamFailed) {
-      this.discardPendingAsErrors();
-      return;
-    }
+    if (this.streamFailed) return this.flushPendingToErrors();
     const stream = this.openStream();
-    if (!stream) {
-      this.discardPendingAsErrors();
-      return;
-    }
+    if (!stream) return this.flushPendingToErrors();
 
     while (this.pending.length > 0) {
       const next = this.pending[0];
-      let ok = false;
+      let ok: boolean;
       this.inflight += 1;
       try {
         ok = stream.write(next, () => {
@@ -263,14 +257,22 @@ export class AuditLogger {
     });
   }
 
+  /**
+   * Latch the failed state and account for every line we cannot deliver:
+   * pending lines never reach the stream and inflight lines are gone
+   * from the kernel's perspective. Clears both counters so subsequent
+   * pumps don't double-count.
+   */
   private markFailed(): void {
-    if (!this.streamFailed) this.statsState.writeErrors += 1;
+    if (this.streamFailed) return;
     this.streamFailed = true;
     this.draining = false;
-    this.discardPendingAsErrors();
+    this.statsState.writeErrors += this.inflight + this.pending.length;
+    this.inflight = 0;
+    this.pending.length = 0;
   }
 
-  private discardPendingAsErrors(): void {
+  private flushPendingToErrors(): void {
     if (this.pending.length === 0) return;
     this.statsState.writeErrors += this.pending.length;
     this.pending.length = 0;
