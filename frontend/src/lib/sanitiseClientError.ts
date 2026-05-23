@@ -2,6 +2,8 @@ export type ClientErrorContext =
   | 'price-service'
   | 'price-service-shape'
   | 'oracle-multicall'
+  | 'hedge-proof'
+  | 'hedge-proof-shape'
 
 /**
  * Convert a raw client-side error (fetch, wagmi, JSON parser, etc.) into a
@@ -26,5 +28,9 @@ export function sanitiseClientError(
       return 'Live quotes feed returned an unexpected payload shape.'
     case 'oracle-multicall':
       return 'On-chain oracle reads are unavailable. The RPC endpoint may be unreachable.'
+    case 'hedge-proof':
+      return 'Hedge proof endpoint is unreachable. The /api/hedge-proof/latest route may be restarting.'
+    case 'hedge-proof-shape':
+      return 'Hedge proof file has an unexpected shape. Re-run the hedge engine to regenerate it.'
   }
 }

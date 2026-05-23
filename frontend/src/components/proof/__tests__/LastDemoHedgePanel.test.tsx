@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { LastDemoHedgePanel } from '../LastDemoHedgePanel'
 import { NO_OP_ORDER_ID, type HedgeProof } from '@/lib/hedgeProof'
@@ -62,6 +62,12 @@ function mockFetchOk(body: unknown) {
 }
 
 describe('LastDemoHedgePanel', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -156,6 +162,7 @@ describe('LastDemoHedgePanel', () => {
     expect(screen.queryByText(/JSON/)).not.toBeInTheDocument()
     expect(screen.queryByText(/parse/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/\/home\//)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument()
   })
 
   it('falls back to a generic HTTP message when the 500 body is not JSON', async () => {
@@ -173,5 +180,77 @@ describe('LastDemoHedgePanel', () => {
       expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
     })
     expect(screen.getByText(/HTTP 502/)).toBeInTheDocument()
+    expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument()
+  })
+
+  it('renders the canned shape-mismatch message when the 200 body has no proof field', async () => {
+    mockFetchOk({ source: RELATIVE_SOURCE })
+
+    render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
+    })
+    expect(screen.getByText(/unexpected shape/i)).toBeInTheDocument()
+    expect(screen.queryByText('AAPL')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Below-threshold tick/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/SHAPE_MISMATCH/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\bnull\b/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\/home\//)).not.toBeInTheDocument()
+
+    const tagged = consoleErrorSpy.mock.calls.find(
+      (c: unknown[]) => c[0] === '[proof-panel]' && c[1] === 'hedge-proof-shape',
+    )
+    expect(tagged).toBeDefined()
+  })
+
+  it('renders the canned shape-mismatch message when the 200 body has proof but no beforeExposure', async () => {
+    mockFetchOk({
+      proof: {
+        runId: 'r',
+        orderId: 'x',
+        symbol: 'AAPL',
+        side: 'buy',
+        notionalUsd: 0,
+        timestamp: 0,
+        dryRun: true,
+        etoroMode: 'sandbox',
+        realTradingEnabled: false,
+      },
+      source: RELATIVE_SOURCE,
+    })
+
+    render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
+    })
+    expect(screen.getByText(/unexpected shape/i)).toBeInTheDocument()
+    expect(screen.queryByText('AAPL')).not.toBeInTheDocument()
+    expect(screen.queryByText(/netDelta/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/SHAPE_MISMATCH/)).not.toBeInTheDocument()
+
+    const tagged = consoleErrorSpy.mock.calls.find(
+      (c: unknown[]) => c[0] === '[proof-panel]' && c[1] === 'hedge-proof-shape',
+    )
+    expect(tagged).toBeDefined()
+  })
+
+  it('renders the canned unreachable message when fetch itself rejects', async () => {
+    globalThis.fetch = vi.fn(() => Promise.reject(new Error('Failed to fetch')))
+
+    render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
+    })
+    expect(screen.getByText(/Hedge proof endpoint is unreachable/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument()
+
+    const tagged = consoleErrorSpy.mock.calls.find(
+      (c: unknown[]) => c[0] === '[proof-panel]' && c[1] === 'hedge-proof',
+    )
+    expect(tagged).toBeDefined()
   })
 })

@@ -52,4 +52,16 @@ describe('sanitiseClientError', () => {
     expect(call?.[1]).toBe('oracle-multicall')
     expect(call?.[2]).toBe(err)
   })
+
+  it('returns the canned hedge-proof copy and never leaks the raw fetch message', () => {
+    const out = sanitiseClientError('hedge-proof', new Error('Failed to fetch'))
+    expect(out).toMatch(/Hedge proof endpoint is unreachable/i)
+    expect(out).not.toMatch(/Failed to fetch/)
+  })
+
+  it('returns the canned hedge-proof-shape copy and never leaks the sentinel', () => {
+    const out = sanitiseClientError('hedge-proof-shape', new Error('SHAPE_MISMATCH'))
+    expect(out).toMatch(/unexpected shape/i)
+    expect(out).not.toMatch(/SHAPE_MISMATCH/)
+  })
 })

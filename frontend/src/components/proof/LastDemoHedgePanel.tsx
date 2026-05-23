@@ -2,11 +2,48 @@
 
 import { useEffect, useState } from 'react'
 
-import { type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
+import { type ExposureSnapshot, type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
+import { sanitiseClientError } from '@/lib/sanitiseClientError'
 
 interface ProofEnvelope {
   proof: HedgeProof
   source: string
+}
+
+const SHAPE_MISMATCH = 'SHAPE_MISMATCH'
+
+function isExposure(v: unknown): v is ExposureSnapshot {
+  if (typeof v !== 'object' || v === null) return false
+  const e = v as Record<string, unknown>
+  return (
+    typeof e.netDelta === 'number' &&
+    typeof e.absExposure === 'number' &&
+    typeof e.blockNumber === 'number'
+  )
+}
+
+function isHedgeProof(v: unknown): v is HedgeProof {
+  if (typeof v !== 'object' || v === null) return false
+  const p = v as Record<string, unknown>
+  return (
+    typeof p.runId === 'string' &&
+    typeof p.orderId === 'string' &&
+    typeof p.symbol === 'string' &&
+    (p.side === 'buy' || p.side === 'sell') &&
+    typeof p.notionalUsd === 'number' &&
+    typeof p.timestamp === 'number' &&
+    isExposure(p.beforeExposure) &&
+    isExposure(p.afterExposure) &&
+    typeof p.dryRun === 'boolean' &&
+    typeof p.etoroMode === 'string' &&
+    typeof p.realTradingEnabled === 'boolean'
+  )
+}
+
+function isProofEnvelope(v: unknown): v is ProofEnvelope {
+  if (typeof v !== 'object' || v === null) return false
+  const e = v as Record<string, unknown>
+  return typeof e.source === 'string' && isHedgeProof(e.proof)
 }
 
 type FetchState =
@@ -69,10 +106,17 @@ export function LastDemoHedgePanel({
           if (!cancelled) setState({ status: 'error', message: sanitisedMessage })
           return
         }
-        const data = (await res.json()) as ProofEnvelope
-        if (!cancelled) setState({ status: 'ok', data })
+        const raw = (await res.json()) as unknown
+        if (!isProofEnvelope(raw)) throw new Error(SHAPE_MISMATCH)
+        if (!cancelled) setState({ status: 'ok', data: raw })
       } catch (err) {
-        if (!cancelled) setState({ status: 'error', message: (err as Error).message })
+        if (!cancelled) {
+          const ctx =
+            err instanceof Error && err.message === SHAPE_MISMATCH
+              ? 'hedge-proof-shape'
+              : 'hedge-proof'
+          setState({ status: 'error', message: sanitiseClientError(ctx, err) })
+        }
       }
     }
 
