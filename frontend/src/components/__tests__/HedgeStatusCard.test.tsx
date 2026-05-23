@@ -426,6 +426,21 @@ describe('HedgeStatusCard', () => {
     expect(banner.className.split(/\s+/)).toContain('mb-3');
   });
 
+  it('error banner anchors with a red exclamation status icon at the left (#0057)', async () => {
+    // Modern audit UIs (eToro, Stripe, Linear) lead every error card with
+    // an unmistakable status glyph so the eye lands on "this is an error"
+    // before any copy is read. The banner used to be text-only.
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
+    render(<HedgeStatusCard />);
+    const banner = await screen.findByTestId('hedge-status-error');
+    const icon = screen.getByTestId('hedge-status-error-icon');
+    expect(banner.contains(icon)).toBe(true);
+    expect(icon.className).toContain('text-red-400');
+    const svg = icon.querySelector('svg');
+    expect(svg).not.toBeNull();
+    expect(svg!.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('shows a loading skeleton before the first fetch resolves', () => {
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
     render(<HedgeStatusCard />);

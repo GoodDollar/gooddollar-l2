@@ -2,6 +2,11 @@
 
 import Link from 'next/link'
 
+import {
+  ExclamationCircleIcon,
+  InformationCircleIcon,
+} from './HedgeStatusCard/icons'
+
 /**
  * Lane 5 — shared error card for hedge-proof surfaces.
  *
@@ -46,13 +51,32 @@ export default function HedgeProofErrorCard({
     variant === 'error'
       ? 'text-xs px-3 py-1.5 rounded-md border border-red-500/40 text-red-200 hover:bg-red-500/10 disabled:opacity-50'
       : 'text-xs px-3 py-1.5 rounded-md border border-dark-50 text-gray-200 hover:bg-dark-50 disabled:opacity-50'
+  // Anchor every error surface with a status glyph (#0057). The
+  // exclamation-in-circle reads as "this is an error" before any copy is
+  // parsed; the calmer information glyph reads as "empty state, not a
+  // failure" on the no_proof / empty_body surfaces. Both icons carry
+  // `aria-hidden="true"` via the shared SVG primitive — copy stays the
+  // semantic source of truth for screen readers.
+  const StatusGlyph =
+    variant === 'error' ? ExclamationCircleIcon : InformationCircleIcon
+  const iconColor = variant === 'error' ? 'text-red-400' : 'text-gray-400'
   return (
     <section
       data-testid={testid}
       className={`rounded-xl border ${wrapperClass} p-5`}
     >
-      <h2 className={`text-base font-semibold ${titleColor}`}>{title}</h2>
-      <p className="mt-1 text-sm text-gray-300">{detail}</p>
+      <div className="flex items-start gap-3">
+        <span
+          data-testid="hedge-proof-error-icon"
+          className={`${iconColor} shrink-0 mt-0.5`}
+        >
+          <StatusGlyph size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className={`text-base font-semibold ${titleColor}`}>{title}</h2>
+          <p className="mt-1 text-sm text-gray-300">{detail}</p>
+        </div>
+      </div>
       <div className="mt-4 flex items-center gap-3 flex-wrap">
         {onRetry && (
           <button

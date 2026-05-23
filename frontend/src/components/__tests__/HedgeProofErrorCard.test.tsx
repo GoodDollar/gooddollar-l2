@@ -77,4 +77,51 @@ describe('HedgeProofErrorCard', () => {
     )
     expect(screen.queryByTestId('hedge-proof-retry')).toBeNull()
   })
+
+  describe('status icon anchor (#0057)', () => {
+    it('variant="error" renders a red exclamation glyph at the top-left', () => {
+      render(
+        <HedgeProofErrorCard
+          title="Hedge engine unreachable"
+          detail="Engine offline"
+          variant="error"
+          onRetry={() => {}}
+        />,
+      )
+      const icon = screen.getByTestId('hedge-proof-error-icon')
+      expect(icon).toBeInTheDocument()
+      expect(icon.className).toContain('text-red-400')
+      const svg = icon.querySelector('svg')
+      expect(svg).not.toBeNull()
+      expect(svg!.getAttribute('aria-hidden')).toBe('true')
+    })
+
+    it('variant="neutral" renders a gray information glyph at the top-left', () => {
+      render(
+        <HedgeProofErrorCard
+          title="No hedge proof yet"
+          detail="No proof has been written."
+          onRetry={() => {}}
+        />,
+      )
+      const icon = screen.getByTestId('hedge-proof-error-icon')
+      expect(icon).toBeInTheDocument()
+      expect(icon.className).toContain('text-gray-400')
+      const svg = icon.querySelector('svg')
+      expect(svg).not.toBeNull()
+      expect(svg!.getAttribute('aria-hidden')).toBe('true')
+    })
+
+    it('icon renders even when no Retry button is shown (malformed-id surface)', () => {
+      render(
+        <HedgeProofErrorCard
+          title="Receipt id is not valid"
+          detail="The id couldn't be decoded."
+          variant="error"
+        />,
+      )
+      expect(screen.getByTestId('hedge-proof-error-icon')).toBeInTheDocument()
+      expect(screen.queryByTestId('hedge-proof-retry')).toBeNull()
+    })
+  })
 })

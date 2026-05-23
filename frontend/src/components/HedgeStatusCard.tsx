@@ -25,6 +25,7 @@ import { Sparkline } from './Sparkline'
 import {
   AlertTriangleIcon,
   ArrowPathIcon,
+  ExclamationCircleIcon,
   InboxIcon,
 } from './HedgeStatusCard/icons'
 import { ReceiptRow, type HedgeReceipt } from './HedgeStatusCard/ReceiptRow'
@@ -796,9 +797,15 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
       {!isThrottled && error && !data?.snapshot && (
         <div
           data-testid="hedge-status-error"
-          className="mb-3 bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300 flex items-center justify-between gap-3 flex-wrap"
+          className="mb-3 bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300 flex items-center gap-3 flex-wrap"
         >
-          <div className="flex flex-col gap-0.5 min-w-0">
+          <span
+            data-testid="hedge-status-error-icon"
+            className="text-red-400 shrink-0"
+          >
+            <ExclamationCircleIcon size={20} />
+          </span>
+          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
             <span className="font-medium">{buildHedgeErrorHeadline(error)}</span>
             <span className="text-red-300/80 text-xs">
               Auto-retrying every {Math.round(POLL_INTERVAL_MS / 1000)}s.

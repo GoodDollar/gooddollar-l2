@@ -92,3 +92,51 @@ export function InboxIcon({ size = 16 }: IconProps = {}) {
     </svg>
   )
 }
+
+// Red-circle exclamation glyph used as the status anchor on every
+// hedge error surface (#0057). Mirrors the eToro / Stripe / Linear
+// error-card vocabulary so the operator's eye lands on an
+// unmistakable "this is an error" anchor before any copy is read.
+export function ExclamationCircleIcon({ size = 16 }: IconProps = {}) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v5" />
+      <circle cx="12" cy="16.25" r="0.5" fill="currentColor" />
+    </svg>
+  )
+}
+
+// Calmer information circle glyph for the neutral "no proof yet" /
+// "empty body" surfaces (#0057). Same geometry as the exclamation
+// icon so the cards stay visually balanced when a viewer flips
+// between error and neutral variants.
+export function InformationCircleIcon({ size = 16 }: IconProps = {}) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <circle cx="12" cy="8" r="0.5" fill="currentColor" />
+    </svg>
+  )
+}
