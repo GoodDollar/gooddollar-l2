@@ -80,6 +80,42 @@ function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
   )
 }
 
+interface SortableHeaderProps {
+  label: string
+  field: SortField
+  sortField: SortField
+  sortDir: SortDir
+  onSort: (field: SortField) => void
+  /**
+   * When false the header renders inert: it loses its onClick handler, hover
+   * affordance, and SortArrow indicator, and exposes `aria-disabled="true"`
+   * so screen-reader users learn the column is unavailable. Used by the
+   * `/stocks` browse table when the on-chain oracle is offline and the
+   * underlying field would be sorted on `FALLBACK_STOCKS` literals.
+   */
+  enabled?: boolean
+  /** Extra Tailwind classes (visibility breakpoints) for the `<th>`. */
+  extraClass?: string
+}
+
+function SortableHeader({ label, field, sortField, sortDir, onSort, enabled = true, extraClass = '' }: SortableHeaderProps) {
+  const interactiveClass = enabled
+    ? 'cursor-pointer hover:text-white transition-colors'
+    : 'cursor-not-allowed text-gray-600'
+  return (
+    <th
+      scope="col"
+      className={`text-right py-3 px-3 font-semibold ${interactiveClass} ${extraClass}`.trim()}
+      onClick={enabled ? () => onSort(field) : undefined}
+      aria-disabled={enabled ? undefined : 'true'}
+      aria-sort={enabled && sortField === field ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
+    >
+      {label}
+      {enabled && <SortArrow active={sortField === field} dir={sortDir} />}
+    </th>
+  )
+}
+
 function StockIcon({ ticker }: { ticker: string }) {
   return <StockLogo ticker={ticker} size="sm" />
 }
@@ -117,6 +153,16 @@ interface StockRowProps {
 }
 
 const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, isFavorite, source, onToggleFavorite, onRowClick }: StockRowProps) {
+  // Task 0037 — when the on-chain stocks oracle is offline the row's
+  // `change24h` / `volume24h` / `marketCap` / `sparkline7d` cells are
+  // populated from `FALLBACK_STOCKS` literals. Gate those cells on
+  // `isLive` so they render as em-dashes (same pattern as Top Movers /
+  // Lend) — only `Price` remains rendered with its existing "Fallback
+  // price" pill. Quantitative columns reappear once the oracle is live.
+  const showDerived = isLive
+  const trendLabel = showDerived
+    ? `7-day trend: ${stock.change24h >= 0 ? 'up' : 'down'} ${Math.abs(stock.change24h).toFixed(1)}%`
+    : '7-day trend unavailable while the stocks oracle is offline'
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -144,19 +190,21 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, i
       </td>
       <td className="py-3 px-3 text-right font-medium">
         <PercentageChange
-          value={isNoData(stock.change24h) ? null : stock.change24h}
+          value={showDerived && !isNoData(stock.change24h) ? stock.change24h : null}
           decimals={2}
           size="sm"
         />
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">
-        {isNoData(stock.volume24h) ? NO_DATA_DASH : formatLargeNumber(stock.volume24h)}
+        {showDerived && !isNoData(stock.volume24h) ? formatLargeNumber(stock.volume24h) : NO_DATA_DASH}
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden md:table-cell">
-        {isNoData(stock.marketCap) ? NO_DATA_DASH : formatLargeNumber(stock.marketCap)}
+        {showDerived && !isNoData(stock.marketCap) ? formatLargeNumber(stock.marketCap) : NO_DATA_DASH}
       </td>
-      <td className="py-3 px-2 hidden sm:table-cell" aria-label={`7-day trend: ${stock.change24h >= 0 ? 'up' : 'down'} ${Math.abs(stock.change24h).toFixed(1)}%`}>
-        <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
+      <td className="py-3 px-2 hidden sm:table-cell" aria-label={trendLabel}>
+        {showDerived
+          ? <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
+          : <span className="text-gray-600">{NO_DATA_DASH}</span>}
       </td>
       <td className="py-3 px-1 text-right w-24 hidden sm:table-cell">
         {isLive && canIncreaseRisk ? (
@@ -490,7 +538,9 @@ export default function StocksPage() {
           </select>
           <select
             aria-label="Filter by market cap"
-            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            disabled={!isLive}
+            title={isLive ? undefined : 'Available once the stocks oracle is live'}
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 disabled:opacity-50 disabled:cursor-not-allowed"
             value={capFilter}
             onChange={(e) => setCapFilter(e.target.value as CapFilter)}
           >
@@ -501,7 +551,9 @@ export default function StocksPage() {
           </select>
           <select
             aria-label="Filter by momentum"
-            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            disabled={!isLive}
+            title={isLive ? undefined : 'Available once the stocks oracle is live'}
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 disabled:opacity-50 disabled:cursor-not-allowed"
             value={momentumFilter}
             onChange={(e) => setMomentumFilter(e.target.value as MomentumFilter)}
           >
@@ -511,7 +563,9 @@ export default function StocksPage() {
           </select>
           <select
             aria-label="Filter by liquidity"
-            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50"
+            disabled={!isLive}
+            title={isLive ? undefined : 'Available once the stocks oracle is live'}
+            className="px-3 py-2.5 rounded-xl bg-dark-100 border border-gray-700/30 text-gray-200 text-xs sm:text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 disabled:opacity-50 disabled:cursor-not-allowed"
             value={liquidityFilter}
             onChange={(e) => setLiquidityFilter(e.target.value as LiquidityFilter)}
           >
@@ -591,15 +645,17 @@ export default function StocksPage() {
                   <span className="font-semibold text-white text-sm truncate max-w-[52px]">{stock.ticker}</span>
                   <span className="text-gray-500 text-xs truncate max-w-[84px]">{stock.name}</span>
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
+                <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                  {isLive
+                    ? <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
+                    : <span aria-label="7d trend unavailable while the stocks oracle is offline">{NO_DATA_DASH}</span>}
                 </div>
               </div>
               <div className="text-right shrink-0 w-[96px]">
                 <p className="text-white font-medium text-sm whitespace-nowrap" data-testid="price-cell">{formatStockPrice(stock.price)}</p>
                 <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                   <PercentageChange
-                    value={isNoData(stock.change24h) ? null : stock.change24h}
+                    value={isLive && !isNoData(stock.change24h) ? stock.change24h : null}
                     decimals={2}
                     size="xs"
                     showSign
@@ -641,18 +697,10 @@ export default function StocksPage() {
                 <th scope="col" className="text-right py-3 px-3 font-semibold w-10">#</th>
                 <th scope="col" className="py-3 px-2 w-10" aria-label="Watchlist" />
                 <th scope="col" className="text-left py-3 px-3 font-semibold">Stock</th>
-                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('price')}>
-                  Price <SortArrow active={sortField === 'price'} dir={sortDir} />
-                </th>
-                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('change24h')}>
-                  24h Change <SortArrow active={sortField === 'change24h'} dir={sortDir} />
-                </th>
-                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors hidden sm:table-cell" onClick={() => handleSort('volume24h')}>
-                  Volume <SortArrow active={sortField === 'volume24h'} dir={sortDir} />
-                </th>
-                <th scope="col" className="text-right py-3 px-3 font-semibold cursor-pointer hover:text-white transition-colors hidden md:table-cell" onClick={() => handleSort('marketCap')}>
-                  Market Cap <SortArrow active={sortField === 'marketCap'} dir={sortDir} />
-                </th>
+                <SortableHeader label="Price" field="price" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="24h Change" field="change24h" sortField={sortField} sortDir={sortDir} onSort={handleSort} enabled={isLive} />
+                <SortableHeader label="Volume" field="volume24h" sortField={sortField} sortDir={sortDir} onSort={handleSort} enabled={isLive} extraClass="hidden sm:table-cell" />
+                <SortableHeader label="Market Cap" field="marketCap" sortField={sortField} sortDir={sortDir} onSort={handleSort} enabled={isLive} extraClass="hidden md:table-cell" />
                 <th scope="col" className="py-3 px-2 font-semibold hidden sm:table-cell">7d Trend</th>
                 <th scope="col" className="w-24 hidden sm:table-cell" />
               </tr>
@@ -699,7 +747,7 @@ export default function StocksPage() {
       <p className="text-xs text-gray-600 text-center mt-4">
         {isLive
           ? 'Prices sourced from on-chain oracle. Updated on every block.'
-          : 'Prices sourced from on-chain oracle when live. Showing demo data — stocks oracle is not reachable, so prices below are illustrative only and cannot be traded.'}
+          : 'Prices sourced from on-chain oracle when live. Stocks oracle is currently offline — only Price is rendered (with a "Fallback price" pill); 24h change, volume, market cap and 7d trend are blanked until the oracle resumes.'}
       </p>
     </div>
   )
