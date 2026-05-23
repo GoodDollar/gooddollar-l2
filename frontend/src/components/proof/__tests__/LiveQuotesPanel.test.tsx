@@ -1,6 +1,32 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
+
+vi.mock('wagmi', () => ({
+  useReadContract: vi.fn(),
+}))
+
+vi.mock('@/lib/stockData', () => ({
+  getAllTickers: () => ['AAPL'],
+}))
+
+vi.mock('@/lib/chain', () => ({
+  CONTRACTS: {
+    StocksPriceOracle: '0x1111111111111111111111111111111111111111',
+  },
+}))
+
+vi.mock('@/lib/abi', () => ({
+  PriceOracleABI: [],
+}))
+
+import { useReadContract } from 'wagmi'
 import { LiveQuotesPanel } from '../LiveQuotesPanel'
+import {
+  ProofPipelineAxesProvider,
+  type ProofPipelineAxesProviderProps,
+} from '../ProofPipelineAxesProvider'
+
+const useReadContractMock = vi.mocked(useReadContract)
 
 const QUOTES_FRESH = {
   quotes: {
@@ -58,9 +84,32 @@ function mockFetchOnce(body: unknown, ok = true) {
   )
 }
 
+/**
+ * Render the panel inside the shared provider so the hook drives the
+ * mocked fetch/wagmi paths. The provider props mirror the legacy
+ * `LiveQuotesPanel` prop set (priceServiceUrl, offChainIntervalMs, ...)
+ * which now lives one layer up — see task lane6-three-independent-quotes-pollers-at-conflicting-cadences
+ * (0051).
+ */
+function renderPanel(opts: Omit<ProofPipelineAxesProviderProps, 'children'> = {}) {
+  return render(
+    <ProofPipelineAxesProvider offChainIntervalMs={60_000} {...opts}>
+      <LiveQuotesPanel />
+    </ProofPipelineAxesProvider>,
+  )
+}
+
 describe('LiveQuotesPanel', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    useReadContractMock.mockReset()
+    // The panel does not read on-chain state; default mock keeps the
+    // hook quiet so off-chain fetches drive the rendered output.
+    useReadContractMock.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContract>)
   })
 
   afterEach(() => {
@@ -70,7 +119,7 @@ describe('LiveQuotesPanel', () => {
   it('renders happy-path quote row with no stale badge when cacheAge is fresh', async () => {
     mockFetchOnce(QUOTES_FRESH)
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} stalenessThresholdMs={30_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock', stalenessThresholdMs: 30_000 })
 
     await waitFor(() => {
       expect(screen.getByText('AAPL')).toBeInTheDocument()
@@ -82,7 +131,7 @@ describe('LiveQuotesPanel', () => {
   it('renders no per-row Age column header', async () => {
     mockFetchOnce(QUOTES_FRESH)
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock' })
 
     await waitFor(() => {
       expect(screen.getByText('AAPL')).toBeInTheDocument()
@@ -96,7 +145,7 @@ describe('LiveQuotesPanel', () => {
   it('panel header shows freshness chip in all-current state', async () => {
     mockFetchOnce(QUOTES_FRESH_MULTI)
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} stalenessThresholdMs={30_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock', stalenessThresholdMs: 30_000 })
 
     const chip = await screen.findByTestId('quotes-freshness')
     expect(chip.textContent).toMatch(/all current/i)
@@ -107,7 +156,7 @@ describe('LiveQuotesPanel', () => {
   it('panel header shows N stale of Y when at least one quote is stale', async () => {
     mockFetchOnce(QUOTES_MIXED_STALE)
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} stalenessThresholdMs={30_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock', stalenessThresholdMs: 30_000 })
 
     const chip = await screen.findByTestId('quotes-freshness')
     expect(chip.textContent).toMatch(/1 stale of 3/)
@@ -118,7 +167,7 @@ describe('LiveQuotesPanel', () => {
   it('only the divergent row gets the stale row pill', async () => {
     mockFetchOnce(QUOTES_MIXED_STALE)
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} stalenessThresholdMs={30_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock', stalenessThresholdMs: 30_000 })
 
     await screen.findByText('AAPL')
     expect(screen.getByTestId('quote-stale-MSFT')).toBeInTheDocument()
@@ -132,7 +181,7 @@ describe('LiveQuotesPanel', () => {
       timestamp: 1700000005_000,
     })
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock' })
 
     const pill = await screen.findByTestId('session-pill-AAPL')
     expect(pill.className).toMatch(/bg-green/)
@@ -145,7 +194,7 @@ describe('LiveQuotesPanel', () => {
       timestamp: 1700000005_000,
     })
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock' })
 
     const pill = await screen.findByTestId('session-pill-AAPL')
     expect(pill.className).toMatch(/text-gray-400/)
@@ -154,7 +203,7 @@ describe('LiveQuotesPanel', () => {
 
   it('renders the outer section with the stable jump-target id', () => {
     globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
-    const { container } = render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+    const { container } = renderPanel({ priceServiceUrl: 'http://mock' })
     expect(container.querySelector('section[id="panel-live-quotes"]')).not.toBeNull()
   })
 
@@ -163,7 +212,7 @@ describe('LiveQuotesPanel', () => {
     // below the panel. The shell stretches to the grid row height and the
     // body content is wrapped in a flex-1 container.
     globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
-    const { container } = render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+    const { container } = renderPanel({ priceServiceUrl: 'http://mock' })
     const section = container.querySelector('section[id="panel-live-quotes"]') as HTMLElement
     expect(section).not.toBeNull()
     expect(section.className).toMatch(/\bh-full\b/)
@@ -176,7 +225,7 @@ describe('LiveQuotesPanel', () => {
   it('renders a stale row pill when cacheAge exceeds the threshold', async () => {
     mockFetchOnce(QUOTES_STALE)
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} stalenessThresholdMs={30_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock', stalenessThresholdMs: 30_000 })
 
     await waitFor(() => {
       expect(screen.getByText('AAPL')).toBeInTheDocument()
@@ -187,7 +236,7 @@ describe('LiveQuotesPanel', () => {
   it('renders sanitised degraded copy when the price-service is unreachable, leaking no raw error inside the alert region', async () => {
     globalThis.fetch = vi.fn(() => Promise.reject(new Error('ECONNREFUSED 127.0.0.1:9300')))
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock-host:9300' })
 
     await waitFor(() => {
       expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
@@ -203,9 +252,6 @@ describe('LiveQuotesPanel', () => {
     expect(inside.queryByText(/Endpoint:/i)).not.toBeInTheDocument()
     expect(alert.textContent).toMatch(/is unreachable/)
 
-    // The configured host IS intentionally surfaced — in the header pill
-    // and again inline in the alert body — so reviewers can tell which
-    // endpoint was attempted without devtools.
     expect(screen.getByTestId('price-service-url')).toHaveTextContent('mock-host:9300')
     expect(inside.getByTestId('price-service-url-inline')).toHaveTextContent('mock-host:9300')
   })
@@ -225,7 +271,7 @@ describe('LiveQuotesPanel', () => {
     // bad payload.
     mockFetchOnce(body)
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock' })
 
     await waitFor(() => {
       expect(screen.getByText(/unexpected payload/i)).toBeInTheDocument()
@@ -239,7 +285,7 @@ describe('LiveQuotesPanel', () => {
   it('fetch failure renders one unreachable sentence, not two', async () => {
     globalThis.fetch = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')))
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock-host:9300' })
 
     await waitFor(() => {
       expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
@@ -256,7 +302,7 @@ describe('LiveQuotesPanel', () => {
   it('shape mismatch renders a payload-mismatch sentence, not "unreachable"', async () => {
     mockFetchOnce({ timestamp: 0, quotes: { BAD: 42 } })
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock-host:9300' })
 
     await waitFor(() => {
       expect(screen.getByText(/unexpected payload/i)).toBeInTheDocument()
@@ -275,7 +321,7 @@ describe('LiveQuotesPanel', () => {
   it('degraded box still surfaces the configured URL exactly once', async () => {
     globalThis.fetch = vi.fn(() => Promise.reject(new Error('boom')))
 
-    render(<LiveQuotesPanel priceServiceUrl="http://example.test:9400" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://example.test:9400' })
 
     await waitFor(() => {
       expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
@@ -290,7 +336,7 @@ describe('LiveQuotesPanel', () => {
   it('renders the configured price-service URL in the header', async () => {
     mockFetchOnce(QUOTES_FRESH)
 
-    render(<LiveQuotesPanel priceServiceUrl="https://price.example.com/v1" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'https://price.example.com/v1' })
 
     await waitFor(() => {
       expect(screen.getByText('AAPL')).toBeInTheDocument()
@@ -304,7 +350,7 @@ describe('LiveQuotesPanel', () => {
   it('renders the URL in the header even when the fetch is failing', async () => {
     globalThis.fetch = vi.fn(() => Promise.reject(new Error('boom')))
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock-host:9300' })
 
     await waitFor(() => {
       expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
@@ -321,7 +367,7 @@ describe('LiveQuotesPanel', () => {
   it('renders the URL in the header during the loading state', () => {
     globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: 'http://mock-host:9300' })
 
     expect(screen.getByTestId('price-service-url')).toHaveTextContent('mock-host:9300')
   })
@@ -333,7 +379,7 @@ describe('LiveQuotesPanel', () => {
     ['not a url', 'not a url'],
   ])('renders %s as %s in the header pill', async (input, expected) => {
     mockFetchOnce(QUOTES_FRESH)
-    render(<LiveQuotesPanel priceServiceUrl={input} intervalMs={60_000} />)
+    renderPanel({ priceServiceUrl: input })
     await waitFor(() => {
       expect(screen.getByTestId('price-service-url')).toHaveTextContent(expected)
     })
@@ -342,12 +388,7 @@ describe('LiveQuotesPanel', () => {
   it('strips userinfo from the rendered URL and the title', async () => {
     mockFetchOnce(QUOTES_FRESH)
 
-    render(
-      <LiveQuotesPanel
-        priceServiceUrl="https://user:pass@host.example.com/v1"
-        intervalMs={60_000}
-      />,
-    )
+    renderPanel({ priceServiceUrl: 'https://user:pass@host.example.com/v1' })
 
     await waitFor(() => {
       expect(screen.getByText('AAPL')).toBeInTheDocument()
@@ -358,5 +399,14 @@ describe('LiveQuotesPanel', () => {
     expect(pill.getAttribute('title')).toBe('host.example.com/v1')
     expect(pill.textContent).not.toMatch(/user|pass/)
     expect(pill.getAttribute('title')).not.toMatch(/user|pass/)
+  })
+
+  it('LiveQuotes header pill cadence reflects the provider cadenceMs constant', () => {
+    // Single source of truth for the off-chain cadence — the same
+    // number the rollup/flow polls at. See task
+    // lane6-three-independent-quotes-pollers-at-conflicting-cadences (0051).
+    globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
+    renderPanel({ priceServiceUrl: 'http://mock', offChainIntervalMs: 5_000 })
+    expect(screen.getByText(/refreshes every 5s/i)).toBeInTheDocument()
   })
 })

@@ -78,22 +78,22 @@ export default function LivePricesProofPage() {
             <PipelineFlowDiagram />
           </ProofPanelBoundary>
         </div>
-      </ProofPipelineAxesProvider>
 
-      <div className={`${SECTION_GAP_CLASS} grid grid-cols-1 gap-5 lg:grid-cols-2`}>
-        <ProofPanelBoundary label="Live Quotes">
-          <LiveQuotesPanel />
-        </ProofPanelBoundary>
-        <ProofPanelBoundary label="On-chain Oracle">
-          <OnChainOraclePanel />
-        </ProofPanelBoundary>
-        <ProofPanelBoundary label="Oracle Updates">
-          <OracleUpdatesPanel />
-        </ProofPanelBoundary>
-        <ProofPanelBoundary label="Last Demo Hedge">
-          <LastDemoHedgePanel />
-        </ProofPanelBoundary>
-      </div>
+        <div className={`${SECTION_GAP_CLASS} grid grid-cols-1 gap-5 lg:grid-cols-2`}>
+          <ProofPanelBoundary label="Live Quotes">
+            <LiveQuotesPanel />
+          </ProofPanelBoundary>
+          <ProofPanelBoundary label="On-chain Oracle">
+            <OnChainOraclePanel />
+          </ProofPanelBoundary>
+          <ProofPanelBoundary label="Oracle Updates">
+            <OracleUpdatesPanel />
+          </ProofPanelBoundary>
+          <ProofPanelBoundary label="Last Demo Hedge">
+            <LastDemoHedgePanel />
+          </ProofPanelBoundary>
+        </div>
+      </ProofPipelineAxesProvider>
 
       <footer
         data-testid="proof-page-footer"
