@@ -593,11 +593,32 @@ else
             let raw = "";
             res.on("data", c => raw += c);
             res.on("end", () => {
+              // Five distinct outcomes — collapsing all of them
+              // into "0" hides four operationally distinct
+              // failure modes from operators reading the report
+              // at promotion time. Sentinel shape mirrors the
+              // established BADURL (task 0015) / TIMEOUT (0010)
+              // conventions. The bash side branches on each.
               try {
                 const j = JSON.parse(raw);
-                if (!j.result || j.result === "0x") { console.log("0"); return; }
+                if (j && j.error) {
+                  const code = (j.error.code === undefined) ? "?" : String(j.error.code);
+                  const msg = String(j.error.message || "")
+                    .replace(/[\r\n\t]/g, " ")
+                    .slice(0, 160);
+                  console.log("RPCERR:" + code + ":" + msg);
+                  return;
+                }
+                if (j && j.result === "0x") {
+                  console.log("0");
+                  return;
+                }
+                if (!j || j.result === undefined || j.result === null) {
+                  console.log("NORESULT");
+                  return;
+                }
                 console.log(BigInt(j.result).toString());
-              } catch (_) { console.log("0"); }
+              } catch (_) { console.log("PARSEFAIL"); }
             });
           });
           req.on("error", () => { console.log("0"); process.exit(0); });
@@ -617,6 +638,23 @@ else
         elif [[ "$last_updated" == "TIMEOUT" ]]; then
           add_summary "⚠️  StockOracleV2.lastUpdated() probe timed out after 10s (\`LANE7_RPC=$rpc_redacted\`)"
           WARNINGS+=("on-chain freshness probe timed out after 10s (LANE7_RPC=$rpc_redacted)")
+        elif [[ "$last_updated" == RPCERR:* ]]; then
+          # `RPCERR:<code>:<message>` from the node-side parser. Server
+          # said the call itself is wrong — wrong contract address /
+          # wrong RPC endpoint / chain in a state where eth_call
+          # rejects. None of these are "testnet candidate phase";
+          # surface as BLOCKER with the server's message so the
+          # operator can pick the lever to pull.
+          rpc_err="${last_updated#RPCERR:}"
+          rpc_err_md="$(escape_md_cell "$rpc_err")"
+          add_summary "❌ StockOracleV2.lastUpdated() RPC returned error \`$rpc_err_md\` (\`LANE7_RPC=$rpc_redacted\`)"
+          BLOCKERS+=("on-chain oracle eth_call returned RPC error ($rpc_err) — check STOCK_ORACLE_V2_ADDRESS and LANE7_RPC")
+        elif [[ "$last_updated" == "NORESULT" ]]; then
+          add_summary "⚠️  StockOracleV2.lastUpdated() RPC returned null/undefined result (pruned state? bad block tag?) — on-chain freshness skipped (\`LANE7_RPC=$rpc_redacted\`)"
+          WARNINGS+=("on-chain oracle eth_call returned no result (LANE7_RPC=$rpc_redacted)")
+        elif [[ "$last_updated" == "PARSEFAIL" ]]; then
+          add_summary "⚠️  StockOracleV2.lastUpdated() RPC returned non-JSON response — on-chain freshness skipped (\`LANE7_RPC=$rpc_redacted\`)"
+          WARNINGS+=("on-chain oracle eth_call response did not parse as JSON (LANE7_RPC=$rpc_redacted)")
         elif [[ "$last_updated" == "0" ]]; then
           add_summary "⚠️  StockOracleV2.lastUpdated() returned 0 — fresh oracle absent (testnet candidate phase)"
           WARNINGS+=("on-chain oracle has no signer-supplied data yet")
