@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "hedge:demo": "ts-node src/cli-demo.ts"
   },
   "dependencies": {
     "ethers": "^6.13.0"
@@ -20,6 +21,7 @@
     "@types/node": "^20.14.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.0"
   }
 }

@@ -8,9 +8,13 @@ import { startHealthServer } from './healthServer';
 
 export { ExposureReader } from './exposure-reader';
 export { DeltaCalculator } from './delta-calculator';
-export { HedgeExecutor } from './hedge-executor';
-export type { EtoroAdapter } from './hedge-executor';
+export { HedgeExecutor, HEDGE_REAL_TRADING_ENABLED } from './hedge-executor';
+export type { EtoroAdapter, HedgeExecutorOptions, SafetyMode } from './hedge-executor';
 export { HedgeEngine } from './engine';
+export { HedgeProofRecorder, newProofRunId } from './hedge-proof';
+export type { HedgeProof, ExposureSnapshot } from './hedge-proof';
+export { createEtoroAdapter } from './etoro-adapter';
+export type { EtoroClientLike, CreateEtoroAdapterOpts } from './etoro-adapter';
 export type * from './types';
 
 function getEnvOrDefault(key: string, fallback: string): string {
@@ -44,8 +48,10 @@ function loadInstrumentMap(): Map<StockSymbol, string> {
 }
 
 /**
- * Placeholder adapter — real adapter wires into EtoroClient from etoro-client.
- * In production this file would import { createEtoroClient } and wrap it.
+ * Placeholder adapter — kept ONLY as a fallback for tests and for boots
+ * where no eToro credentials are configured. Production calls
+ * `createEtoroAdapter(client)` (see `etoro-adapter.ts`) when sandbox keys
+ * are present in env.
  */
 function createPlaceholderAdapter(): EtoroAdapter {
   return {
@@ -61,6 +67,32 @@ function createPlaceholderAdapter(): EtoroAdapter {
       return [];
     },
   };
+}
+
+/**
+ * Try to build a real eToro adapter from env. Returns null if credentials
+ * are missing OR if the etoro-client module cannot be resolved.
+ */
+function createAdapterFromEnv(): EtoroAdapter | null {
+  if (!process.env.ETORO_SANDBOX_KEY || !process.env.ETORO_SANDBOX_SECRET) {
+    return null;
+  }
+  try {
+    // Relative require keeps hedge-engine independent of npm workspace wiring.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const etoro = require('../../etoro-client/src') as {
+      EtoroClient: new (config?: unknown) => import('./etoro-adapter').EtoroClientLike;
+      assertDemoModeOrThrow?: (mode: string) => void;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { createEtoroAdapter } = require('./etoro-adapter') as typeof import('./etoro-adapter');
+    const client = new etoro.EtoroClient();
+    return createEtoroAdapter(client, { assertDemoMode: etoro.assertDemoModeOrThrow });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[HedgeEngine] real eToro adapter unavailable, using placeholder: ${msg}`);
+    return null;
+  }
 }
 
 async function main(): Promise<void> {
@@ -89,8 +121,11 @@ async function main(): Promise<void> {
   const reader = new ExposureReader(config.rpcUrl, config.riskEngineAddress);
   const calculator = new DeltaCalculator(config);
   const instrumentMap = loadInstrumentMap();
-  const adapter = createPlaceholderAdapter();
-  const executor = new HedgeExecutor(adapter, instrumentMap, config.dryRun);
+  const adapter = createAdapterFromEnv() ?? createPlaceholderAdapter();
+  const executor = new HedgeExecutor(adapter, instrumentMap, {
+    dryRun: config.dryRun,
+    safetyMode: (process.env.ETORO_MODE === 'real' ? 'real' : 'sandbox'),
+  });
 
   const engine = new HedgeEngine(reader, calculator, executor, config);
 

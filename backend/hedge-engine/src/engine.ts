@@ -1,9 +1,12 @@
 import { ExposureReader } from './exposure-reader';
 import { DeltaCalculator } from './delta-calculator';
 import { HedgeExecutor } from './hedge-executor';
+import { HedgeProof, HedgeProofRecorder, newProofRunId } from './hedge-proof';
 import {
   HedgeEngineConfig,
+  HedgeOrder,
   HedgeResult,
+  OnChainExposure,
   ReconciliationSnapshot,
   StockSymbol,
 } from './types';
@@ -109,6 +112,73 @@ export class HedgeEngine {
 
   getLastSnapshot(): ReconciliationSnapshot | null {
     return this.lastSnapshot;
+  }
+
+  /**
+   * Single-shot hedge for `symbol` with auditable proof. This is the verb
+   * the release-gate script (task 0006) invokes and the qa-harness/CLI
+   * use.
+   *
+   * Sequence:
+   *   1. read exposure (before)
+   *   2. compute delta vs current eToro positions
+   *   3. execute the hedge (or dry-run)
+   *   4. read exposure (after)
+   *   5. write a `HedgeProof` JSON file and return it
+   *
+   * If the delta is below the configured thresholds, returns a proof with
+   * `orderId='no-op'`, `notionalUsd=0`, side='buy' (sentinel) so the
+   * pipeline still produces evidence.
+   */
+  async runOnce(symbol: StockSymbol, opts?: { recorder?: HedgeProofRecorder; etoroMode?: string }): Promise<HedgeProof> {
+    const before = await this.reader.getExposure(symbol);
+    const positions = await this.executor.fetchPositions();
+    const order = this.computeSingleOrder(before, positions);
+
+    let result: HedgeResult | null = null;
+    if (order) {
+      result = await this.executor.execute(order);
+    }
+
+    const after = await this.reader.getExposure(symbol);
+
+    const runId = newProofRunId();
+    const noOpOrderId = 'no-op';
+    const orderId = result?.etoroOrderId ?? noOpOrderId;
+    const delta = order?.deltaToHedge ?? 0;
+    const proof: HedgeProof = {
+      runId,
+      orderId,
+      symbol,
+      side: delta >= 0 ? 'buy' : 'sell',
+      notionalUsd: Math.abs(delta),
+      timestamp: Date.now(),
+      beforeExposure: {
+        netDelta: before.netDelta,
+        absExposure: before.absExposure,
+        blockNumber: before.blockNumber,
+      },
+      afterExposure: {
+        netDelta: after.netDelta,
+        absExposure: after.absExposure,
+        blockNumber: after.blockNumber,
+      },
+      dryRun: this.config.dryRun,
+      etoroMode: opts?.etoroMode ?? 'sandbox',
+      realTradingEnabled: false,
+    };
+
+    const recorder = opts?.recorder ?? new HedgeProofRecorder();
+    await recorder.write(proof);
+    return proof;
+  }
+
+  private computeSingleOrder(
+    before: OnChainExposure,
+    positions: { symbol: StockSymbol; quantity: number }[],
+  ): HedgeOrder | null {
+    const orders = this.calculator.calculate([before], positions);
+    return orders.find((o) => o.symbol === before.symbol) ?? null;
   }
 
   private logSnapshot(snap: ReconciliationSnapshot): void {
