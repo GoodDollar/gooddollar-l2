@@ -14,6 +14,7 @@ import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { hasLiveOracleChange } from '@/lib/oracleHonesty'
 import { AnalysisGrid } from '@/components/stocks/AnalysisGrid'
 import { DemoChartOverlay } from '@/components/stocks/DemoChartOverlay'
+import { TrendSummaryCard } from '@/components/stocks/TrendSummaryCard'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
@@ -501,20 +502,6 @@ export default function StockDetailPage() {
     const directPeers = relatedSymbols.length > 0 ? relatedSymbols : topMovers.filter((candidate) => candidate.ticker !== stock.ticker)
     return directPeers.slice(0, 5)
   }, [relatedSymbols, stock, topMovers])
-  const trendSummary = useMemo(() => {
-    if (!chartData.length) return null
-    const first = chartData[0]?.close ?? 0
-    const last = chartData[chartData.length - 1]?.close ?? 0
-    if (first <= 0 || last <= 0) return null
-    const changePct = ((last - first) / first) * 100
-    let signal: 'Bullish' | 'Neutral' | 'Bearish' = 'Neutral'
-    if (changePct > 2) signal = 'Bullish'
-    if (changePct < -2) signal = 'Bearish'
-    const high = Math.max(...chartData.map((point) => point.high))
-    const low = Math.min(...chartData.map((point) => point.low))
-    const spreadPct = first > 0 ? ((high - low) / first) * 100 : 0
-    return { signal, changePct, spreadPct }
-  }, [chartData])
   const fundamentalsRows = useMemo(() => (stock ? buildFundamentalsRows(stock) : []), [stock])
   const backLink = DETAIL_BACK_LINKS[searchParams.get('from') ?? ''] ?? DEFAULT_DETAIL_BACK_LINK
   const eventTimeline = useMemo(() => {
@@ -806,29 +793,7 @@ export default function StockDetailPage() {
 
                 <PeerComparePanel peers={peerCandidates} metric={peerMetric} onMetricChange={setPeerMetric} />
 
-                <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300 mb-2">Trend Summary</h3>
-                  {!trendSummary ? (
-                    <p className="text-xs text-gray-500">Trend signal unavailable while chart data loads.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
-                        <div className="text-gray-500">Signal</div>
-                        <div className={`mt-1 font-semibold ${trendSummary.signal === 'Bullish' ? 'text-green-400' : trendSummary.signal === 'Bearish' ? 'text-red-400' : 'text-gray-200'}`}>{trendSummary.signal}</div>
-                      </div>
-                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
-                        <div className="text-gray-500">{timeframe} move</div>
-                        <div className={`mt-1 font-semibold ${trendSummary.changePct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {trendSummary.changePct >= 0 ? '+' : ''}{trendSummary.changePct.toFixed(2)}%
-                        </div>
-                      </div>
-                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
-                        <div className="text-gray-500">Range spread</div>
-                        <div className="mt-1 font-semibold text-gray-200">{trendSummary.spreadPct.toFixed(2)}%</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <TrendSummaryCard chartData={chartData} timeframe={timeframe} isLive={isLive} />
               </div>
             )}
           </section>
