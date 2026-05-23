@@ -79,10 +79,15 @@ export class RateLimiter {
         return { value, attempts, totalBackoffMs };
       } catch (error: unknown) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        if (!this.isThrottleError(error) || i === this.maxRetries) {
+        if (!this.isThrottleError(error)) {
           throw lastError;
         }
+        // Count every detected throttle, including the last failing one,
+        // so `getConsecutiveThrottles()` reflects real upstream pressure.
         const delay = this.onThrottle();
+        if (i === this.maxRetries) {
+          throw lastError;
+        }
         totalBackoffMs += delay;
         await this.sleepImpl(delay);
       }

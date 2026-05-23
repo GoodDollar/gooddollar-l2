@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { MarketDataModule, MarketDataDeps, detectUSMarketSession } from '../market-data';
 import { AuditLogger, AUDIT_CONSOLE_THROTTLE_MS } from '../audit-logger';
+import { RateLimiter } from '../rate-limiter';
 import { AuditLogEntry, EtoroMode, NormalizedQuote, InstrumentMetadata, SessionState } from '../types';
 
 function createMockAxios(responses: Record<string, unknown> = {}): AxiosInstance {
@@ -543,6 +544,32 @@ describe('MarketDataModule', () => {
       const parseErrors = entries.filter((e) => e.action === 'ws-message-parse-failed');
       expect(parseErrors).toHaveLength(1);
       expect(parseErrors[0].method).toBe('PARSE');
+    });
+
+    it('getQuotes absorbs a 429 via the injected dispatcher and resolves', async () => {
+      let n = 0;
+      const get = jest.fn(async () => {
+        n++;
+        if (n === 1) {
+          const err = new Error('429') as Error & { response: { status: number } };
+          err.response = { status: 429 };
+          throw err;
+        }
+        return { data: { quotes: [{ symbol: 'BTC', bid: 100, ask: 101, timestamp: Date.now() }] } };
+      });
+      const limiter = new RateLimiter({
+        minBackoffMs: 1, maxBackoffMs: 5, multiplier: 2, maxRetries: 3,
+        sleepImpl: async () => undefined,
+      });
+      const http = { get } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, {
+        dispatch: (fn) => limiter.executeWithTelemetry(fn),
+      });
+
+      const quotes = await mod.getQuotes(['BTC']);
+      expect(quotes).toHaveLength(1);
+      expect(quotes[0].symbol).toBe('BTC');
+      expect(n).toBe(2);
     });
 
     it('throttles console.error to one per AUDIT_CONSOLE_THROTTLE_MS window across many drops', () => {

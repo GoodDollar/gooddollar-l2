@@ -3,7 +3,8 @@ import { TradingModule, TradingError, LimitOrderRequest } from '../trading';
 import { AuditLogger } from '../audit-logger';
 import { DemoCapEnforcer } from '../cap-enforcer';
 import { DemoCapExceededError, RealTradingDisabledError } from '../errors';
-import { EtoroMode, OrderRequest } from '../types';
+import { RateLimiter } from '../rate-limiter';
+import { AuditLogEntry, EtoroMode, OrderRequest } from '../types';
 
 jest.mock('fs', () => ({
   appendFileSync: jest.fn(),
@@ -832,5 +833,88 @@ describe('TradingModule — happy paths (demo-trading)', () => {
       expect(trades[0].executionPrice).toBe(450.00);
       expect(trades[0].fee).toBe(1.5);
     });
+  });
+});
+
+describe('TradingModule — rate-limit dispatcher integration', () => {
+  function recordingAudit(mode: EtoroMode = 'demo-trading'): {
+    audit: AuditLogger;
+    entries: AuditLogEntry[];
+  } {
+    const entries: AuditLogEntry[] = [];
+    const audit = new AuditLogger(mode, {
+      logPath: '/dev/null',
+      appendImpl: (_p, line) => { entries.push(JSON.parse(line) as AuditLogEntry); },
+      mkdirImpl: () => undefined,
+      consoleErrorImpl: () => undefined,
+    });
+    return { audit, entries };
+  }
+
+  it('openPosition absorbs one 429 and audits attempts: 2', async () => {
+    let calls = 0;
+    const post = jest.fn(async () => {
+      calls++;
+      if (calls === 1) {
+        const err = new Error('429') as Error & { response: { status: number } };
+        err.response = { status: 429 };
+        throw err;
+      }
+      return {
+        status: 200,
+        data: { orderId: 'O-1', positionId: 'P-1', symbol: 'AAPL', side: 'buy', amount: 1, executionPrice: 100, status: 'filled' },
+      };
+    });
+    const http = { post, get: jest.fn(), delete: jest.fn() } as unknown as ReturnType<typeof mockHttp>;
+    const { audit, entries } = recordingAudit('demo-trading');
+    const limiter = new RateLimiter({
+      minBackoffMs: 1, maxBackoffMs: 5, multiplier: 2, maxRetries: 3,
+      sleepImpl: async () => undefined,
+    });
+    const trading = new TradingModule(http, audit, {
+      mode: 'demo-trading',
+      capEnforcer: new DemoCapEnforcer({
+        maxOrderNotionalUsd: Number.MAX_SAFE_INTEGER,
+        maxDailyNotionalUsd: Number.MAX_SAFE_INTEGER,
+      }),
+      notionalSizer: () => 100,
+      dispatch: (fn) => limiter.executeWithTelemetry(fn),
+    });
+
+    const result = await trading.openPosition({ symbol: 'AAPL', instrumentId: 'AAPL-US', side: 'buy', amount: 1 });
+    expect(result.orderId).toBe('O-1');
+    expect(calls).toBe(2);
+    const success = entries.find((e) => e.action === 'openPosition' && e.statusCode === 200);
+    expect(success?.attempts).toBe(2);
+    expect(success?.totalBackoffMs).toBe(1);
+  });
+
+  it('exhausting retries surfaces the 429 to the caller and consecutiveThrottles tracks pressure', async () => {
+    const post = jest.fn(async () => {
+      const err = new Error('429') as Error & { response: { status: number } };
+      err.response = { status: 429 };
+      throw err;
+    });
+    const http = { post, get: jest.fn(), delete: jest.fn() } as unknown as ReturnType<typeof mockHttp>;
+    const { audit } = recordingAudit('demo-trading');
+    const limiter = new RateLimiter({
+      minBackoffMs: 1, maxBackoffMs: 5, multiplier: 2, maxRetries: 2,
+      sleepImpl: async () => undefined,
+    });
+    const trading = new TradingModule(http, audit, {
+      mode: 'demo-trading',
+      capEnforcer: new DemoCapEnforcer({
+        maxOrderNotionalUsd: Number.MAX_SAFE_INTEGER,
+        maxDailyNotionalUsd: Number.MAX_SAFE_INTEGER,
+      }),
+      notionalSizer: () => 100,
+      dispatch: (fn) => limiter.executeWithTelemetry(fn),
+    });
+
+    await expect(
+      trading.openPosition({ symbol: 'AAPL', instrumentId: 'AAPL-US', side: 'buy', amount: 1 }),
+    ).rejects.toBeInstanceOf(TradingError);
+    expect(post).toHaveBeenCalledTimes(3);
+    expect(limiter.getConsecutiveThrottles()).toBe(3);
   });
 });

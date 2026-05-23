@@ -1,6 +1,7 @@
 import { AxiosInstance } from 'axios';
 import WebSocket from 'ws';
 import { AUDIT_CONSOLE_THROTTLE_MS, AuditLogger } from './audit-logger';
+import { HttpDispatcher, identityDispatcher } from './rate-limiter';
 import {
   NormalizedQuote,
   InstrumentMetadata,
@@ -38,6 +39,12 @@ export interface MarketDataDeps {
   clock?: () => number;
   /** Injectable `console.error` for throttle tests without spying on globals. */
   consoleErrorImpl?: (message: string) => void;
+  /**
+   * HTTP dispatcher (typically `EtoroClient.withRateLimit`) so REST
+   * methods share the SDK's single rate-limit bucket. Defaults to a
+   * no-retry pass-through.
+   */
+  dispatch?: HttpDispatcher;
 }
 
 export class MarketDataModule {
@@ -46,6 +53,7 @@ export class MarketDataModule {
   private readonly audit: AuditLogger | undefined;
   private readonly clock: () => number;
   private readonly consoleErrorImpl: (message: string) => void;
+  private readonly dispatch: HttpDispatcher;
   private instrumentCache = new Map<string, InstrumentMetadata>();
   private instrumentCacheExpiry = 0;
   private readonly quoteCache = new Map<string, NormalizedQuote>();
@@ -68,6 +76,7 @@ export class MarketDataModule {
     this.audit = deps?.audit;
     this.clock = deps?.clock ?? Date.now;
     this.consoleErrorImpl = deps?.consoleErrorImpl ?? ((message) => console.error(message));
+    this.dispatch = deps?.dispatch ?? identityDispatcher;
   }
 
   // --- Instrument metadata ---
@@ -83,7 +92,9 @@ export class MarketDataModule {
     const params: Record<string, string> = {};
     if (symbols?.length) params.symbols = symbols.join(',');
 
-    const resp = await this.http.get('/api/v1/market-data/instruments', { params });
+    const { value: resp } = await this.dispatch(() =>
+      this.http.get('/api/v1/market-data/instruments', { params }),
+    );
     const raw = extractArray(resp.data);
     const results: InstrumentMetadata[] = raw.map((item) => this.normalizeInstrument(item));
 
@@ -108,9 +119,11 @@ export class MarketDataModule {
   }
 
   async getQuotes(symbols: string[]): Promise<NormalizedQuote[]> {
-    const resp = await this.http.get('/api/v1/market-data/quotes', {
-      params: { symbols: symbols.join(',') },
-    });
+    const { value: resp } = await this.dispatch(() =>
+      this.http.get('/api/v1/market-data/quotes', {
+        params: { symbols: symbols.join(',') },
+      }),
+    );
     const raw = extractArray(resp.data);
     const quotes: NormalizedQuote[] = [];
     for (const item of raw) {
@@ -153,9 +166,11 @@ export class MarketDataModule {
     from: number,
     to: number,
   ): Promise<CandleData[]> {
-    const resp = await this.http.get('/api/v1/market-data/candles', {
-      params: { symbol, interval, from: String(from), to: String(to) },
-    });
+    const { value: resp } = await this.dispatch(() =>
+      this.http.get('/api/v1/market-data/candles', {
+        params: { symbol, interval, from: String(from), to: String(to) },
+      }),
+    );
     const raw = extractArray(resp.data);
     return raw.map((item) => this.normalizeCandle(item, symbol));
   }

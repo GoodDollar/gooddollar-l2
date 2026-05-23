@@ -6,7 +6,7 @@ import {
   REAL_TRADING_ENABLED,
   MODE_CAPABILITIES,
 } from './auth';
-import { RateLimiter, RateLimiterConfig } from './rate-limiter';
+import { HttpDispatcher, RateLimiter, RateLimiterConfig } from './rate-limiter';
 import { AuditLogger } from './audit-logger';
 import { MarketDataModule } from './market-data';
 import { TradingModule } from './trading';
@@ -118,6 +118,8 @@ export class EtoroClient {
       },
     });
 
+    const dispatch: HttpDispatcher = (fn) => this.rateLimiter.executeWithTelemetry(fn);
+
     if (this.credentials.mode === 'mock') {
       this.marketData = new MockEtoroSource();
     } else {
@@ -125,7 +127,10 @@ export class EtoroClient {
         ...(config?.marketData ?? {}),
         wsUrl: config?.marketData?.wsUrl ?? this.credentials.wsUrl,
       };
-      this.marketData = new MarketDataModule(this.http, mdConfig, { audit: this.audit });
+      this.marketData = new MarketDataModule(this.http, mdConfig, {
+        audit: this.audit,
+        dispatch,
+      });
     }
 
     const overrides = loadInstrumentOverrides();
@@ -156,8 +161,12 @@ export class EtoroClient {
       },
       maxQuoteAgeMs: config?.notional?.maxQuoteAgeMs,
       maxReferenceDriftRatio: config?.notional?.maxReferenceDriftRatio,
+      dispatch,
     });
-    this.account = new AccountModule(this.http, this.audit, this.credentials.mode);
+    this.account = new AccountModule(this.http, this.audit, {
+      mode: this.credentials.mode,
+      dispatch,
+    });
   }
 
   async authenticate(): Promise<string> {
@@ -166,48 +175,51 @@ export class EtoroClient {
       return this.sessionToken;
     }
 
-    return this.rateLimiter.executeWithRetry(async () => {
-      const start = Date.now();
-      try {
-        const response = await this.http.post('/auth/login', {
-          apiKey: this.credentials.apiKey,
-          apiSecret: this.credentials.apiSecret,
-        });
+    const start = Date.now();
+    try {
+      const { value: response, attempts, totalBackoffMs } =
+        await this.rateLimiter.executeWithTelemetry(() =>
+          this.http.post('/auth/login', {
+            apiKey: this.credentials.apiKey,
+            apiSecret: this.credentials.apiSecret,
+          }),
+        );
 
-        const token: string =
-          response.data?.accessToken ??
-          response.data?.access_token ??
-          response.data?.token ??
-          '';
+      const token: string =
+        response.data?.accessToken ??
+        response.data?.access_token ??
+        response.data?.token ??
+        '';
 
-        if (!token) {
-          throw new Error('Authentication response missing token');
-        }
-
-        this.sessionToken = token;
-        this.http.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-        this.audit.log({
-          action: 'authenticate',
-          method: 'POST',
-          path: '/auth/login',
-          statusCode: response.status,
-          durationMs: Date.now() - start,
-        });
-
-        return token;
-      } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : String(error);
-        this.audit.log({
-          action: 'authenticate',
-          method: 'POST',
-          path: '/auth/login',
-          durationMs: Date.now() - start,
-          error: msg,
-        });
-        throw error;
+      if (!token) {
+        throw new Error('Authentication response missing token');
       }
-    });
+
+      this.sessionToken = token;
+      this.http.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      this.audit.log({
+        action: 'authenticate',
+        method: 'POST',
+        path: '/auth/login',
+        statusCode: response.status,
+        durationMs: Date.now() - start,
+        attempts,
+        totalBackoffMs,
+      });
+
+      return token;
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.audit.log({
+        action: 'authenticate',
+        method: 'POST',
+        path: '/auth/login',
+        durationMs: Date.now() - start,
+        error: msg,
+      });
+      throw error;
+    }
   }
 
   isAuthenticated(): boolean {
@@ -230,34 +242,36 @@ export class EtoroClient {
       auditLogPath: this.audit.getResolvedLogPath(),
       auditWriteFailures: String(this.audit.getWriteFailureCount()),
       malformedQuotes: String(this.marketData.getMalformedQuoteCount?.() ?? 0),
+      consecutiveThrottles: String(this.rateLimiter.getConsecutiveThrottles()),
     };
   }
 
   async request<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.rateLimiter.executeWithRetry(async () => {
-      const start = Date.now();
-      try {
-        const response = await this.http.request<T>(config);
-        this.audit.log({
-          action: 'request',
-          method: config.method?.toUpperCase() ?? 'GET',
-          path: config.url ?? '',
-          statusCode: response.status,
-          durationMs: Date.now() - start,
-        });
-        return response;
-      } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : String(error);
-        this.audit.log({
-          action: 'request',
-          method: config.method?.toUpperCase() ?? 'GET',
-          path: config.url ?? '',
-          durationMs: Date.now() - start,
-          error: msg,
-        });
-        throw error;
-      }
-    });
+    const start = Date.now();
+    try {
+      const { value: response, attempts, totalBackoffMs } =
+        await this.rateLimiter.executeWithTelemetry(() => this.http.request<T>(config));
+      this.audit.log({
+        action: 'request',
+        method: config.method?.toUpperCase() ?? 'GET',
+        path: config.url ?? '',
+        statusCode: response.status,
+        durationMs: Date.now() - start,
+        attempts,
+        totalBackoffMs,
+      });
+      return response;
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.audit.log({
+        action: 'request',
+        method: config.method?.toUpperCase() ?? 'GET',
+        path: config.url ?? '',
+        durationMs: Date.now() - start,
+        error: msg,
+      });
+      throw error;
+    }
   }
 }
 
@@ -277,7 +291,11 @@ export {
   DEMO_WS_URL_DEFAULT,
   MODE_CAPABILITIES,
 } from './auth';
-export { RateLimiter } from './rate-limiter';
+export {
+  RateLimiter,
+  identityDispatcher,
+} from './rate-limiter';
+export type { HttpDispatcher, RetryTelemetry } from './rate-limiter';
 export { AuditLogger } from './audit-logger';
 export { MarketDataModule, computeConfidence } from './market-data';
 export { TradingModule, TradingError } from './trading';

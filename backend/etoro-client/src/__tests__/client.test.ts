@@ -183,6 +183,13 @@ describe('EtoroClient — getSummary.malformedQuotes', () => {
   });
 });
 
+describe('EtoroClient — getSummary.consecutiveThrottles', () => {
+  it('reports "0" on a fresh client', () => {
+    const client = new EtoroClient({ credentials: DEMO_CREDENTIALS });
+    expect(client.getSummary().consecutiveThrottles).toBe('0');
+  });
+});
+
 describe('EtoroClient — live-quote wiring through MockEtoroSource', () => {
   const MOCK_CREDENTIALS: EtoroCredentials = {
     apiKey: 'mock-api-key',

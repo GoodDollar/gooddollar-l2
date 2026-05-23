@@ -1,4 +1,4 @@
-import { AxiosInstance } from 'axios';
+import { AxiosInstance, AxiosResponse } from 'axios';
 import { AuditLogger } from './audit-logger';
 import { REAL_TRADING_ENABLED } from './auth';
 import { DemoCapEnforcer, computeOrderNotionalUsd } from './cap-enforcer';
@@ -8,7 +8,8 @@ import {
   MissingNotionalError,
   RealTradingDisabledError,
 } from './errors';
-import { EtoroMode, OrderRequest, OrderResult, Position } from './types';
+import { HttpDispatcher, identityDispatcher } from './rate-limiter';
+import { AuditLogEntry, EtoroMode, OrderRequest, OrderResult, Position } from './types';
 
 /** Source label for the resolved USD notional, recorded in the audit log. */
 export type NotionalSource = 'sizer' | 'limit-price' | 'live-quote' | 'reference-fallback';
@@ -108,6 +109,13 @@ export interface TradingModuleOptions {
    * See `docs/ETORO_GOODCHAIN_ADAPTER.md` for the operator-facing rule.
    */
   disableCapsForTestsOnly?: boolean;
+  /**
+   * HTTP dispatcher (typically `EtoroClient.withRateLimit`) so trading
+   * calls share the SDK's single rate-limit bucket and absorb eToro 429s
+   * with structured `attempts` / `totalBackoffMs` audit telemetry.
+   * Defaults to a no-retry pass-through for standalone construction.
+   */
+  dispatch?: HttpDispatcher;
 }
 
 /**
@@ -139,6 +147,7 @@ export class TradingModule {
   private readonly maxQuoteAgeMs: number;
   private readonly maxReferenceDriftRatio?: number;
   private readonly disableCapsForTestsOnly: boolean;
+  private readonly dispatch: HttpDispatcher;
 
   constructor(http: AxiosInstance, audit: AuditLogger, options: TradingModuleOptions = {}) {
     const mode = options.mode ?? 'mock';
@@ -159,6 +168,7 @@ export class TradingModule {
     this.maxQuoteAgeMs = options.maxQuoteAgeMs ?? DEFAULT_MAX_QUOTE_AGE_MS;
     this.maxReferenceDriftRatio = options.maxReferenceDriftRatio;
     this.disableCapsForTestsOnly = disableCapsForTestsOnly;
+    this.dispatch = options.dispatch ?? identityDispatcher;
   }
 
   getMode(): EtoroMode {
@@ -172,9 +182,11 @@ export class TradingModule {
     const notional = this.computeNotional(order);
     this.assertCapOk('openPosition', notional.usd);
 
-    const start = Date.now();
-    try {
-      const response = await this.http.post('/trading/orders', {
+    return this.runHttp({
+      action: 'openPosition',
+      method: 'POST',
+      path: '/trading/orders',
+      send: () => this.http.post('/trading/orders', {
         instrumentId: order.instrumentId,
         symbol: order.symbol,
         side: order.side,
@@ -183,28 +195,15 @@ export class TradingModule {
         stopLoss: order.stopLoss,
         takeProfit: order.takeProfit,
         type: 'market',
-      });
-
-      const data = asRecord(response.data);
-      const result = this.normalizeOrderResult(data);
-
-      this.recordCap(notional.usd);
-      this.audit.log({
-        action: 'openPosition',
-        method: 'POST',
-        path: '/trading/orders',
-        statusCode: response.status,
-        durationMs: Date.now() - start,
+      }),
+      parse: (data) => this.normalizeOrderResult(asRecord(data)),
+      auditExtras: {
         resolvedNotionalUsd: notional.usd,
         notionalSource: notional.source,
         quoteAgeMs: notional.quoteAgeMs,
-      });
-
-      return result;
-    } catch (error) {
-      this.logError('openPosition', 'POST', '/trading/orders', start, error);
-      throw this.wrapError(error, 'openPosition');
-    }
+      },
+      onSuccess: () => this.recordCap(notional.usd),
+    });
   }
 
   async placeLimitOrder(order: LimitOrderRequest): Promise<OrderResult> {
@@ -214,9 +213,11 @@ export class TradingModule {
     const notional = this.computeNotional(order);
     this.assertCapOk('placeLimitOrder', notional.usd);
 
-    const start = Date.now();
-    try {
-      const response = await this.http.post('/trading/orders', {
+    return this.runHttp({
+      action: 'placeLimitOrder',
+      method: 'POST',
+      path: '/trading/orders',
+      send: () => this.http.post('/trading/orders', {
         instrumentId: order.instrumentId,
         symbol: order.symbol,
         side: order.side,
@@ -227,55 +228,29 @@ export class TradingModule {
         type: order.type,
         price: order.price,
         timeInForce: order.timeInForce ?? 'GTC',
-      });
-
-      const data = asRecord(response.data);
-      const result = this.normalizeOrderResult(data);
-
-      this.recordCap(notional.usd);
-      this.audit.log({
-        action: 'placeLimitOrder',
-        method: 'POST',
-        path: '/trading/orders',
-        statusCode: response.status,
-        durationMs: Date.now() - start,
+      }),
+      parse: (data) => this.normalizeOrderResult(asRecord(data)),
+      auditExtras: {
         resolvedNotionalUsd: notional.usd,
         notionalSource: notional.source,
         quoteAgeMs: notional.quoteAgeMs,
-      });
-
-      return result;
-    } catch (error) {
-      this.logError('placeLimitOrder', 'POST', '/trading/orders', start, error);
-      throw this.wrapError(error, 'placeLimitOrder');
-    }
+      },
+      onSuccess: () => this.recordCap(notional.usd),
+    });
   }
 
   async closePosition(positionId: string): Promise<OrderResult> {
     this.validateIdString(positionId, 'positionId', 'closePosition');
     this.assertTradingEnabled('closePosition');
     this.noteCapsDisabledIfActive('closePosition');
-
-    const start = Date.now();
     const endpoint = `/trading/positions/${positionId}/close`;
-    try {
-      const response = await this.http.post(endpoint);
-      const data = asRecord(response.data);
-      const result = this.normalizeOrderResult(data);
-
-      this.audit.log({
-        action: 'closePosition',
-        method: 'POST',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
-      return result;
-    } catch (error) {
-      this.logError('closePosition', 'POST', endpoint, start, error);
-      throw this.wrapError(error, 'closePosition');
-    }
+    return this.runHttp({
+      action: 'closePosition',
+      method: 'POST',
+      path: endpoint,
+      send: () => this.http.post(endpoint),
+      parse: (data) => this.normalizeOrderResult(asRecord(data)),
+    });
   }
 
   async partialClose(positionId: string, amount: number): Promise<OrderResult> {
@@ -283,118 +258,108 @@ export class TradingModule {
     this.validatePositiveAmount(amount, 'amount', 'partialClose');
     this.assertTradingEnabled('partialClose');
     this.noteCapsDisabledIfActive('partialClose');
-
-    const start = Date.now();
     const endpoint = `/trading/positions/${positionId}/close`;
-    try {
-      const response = await this.http.post(endpoint, { amount });
-      const data = asRecord(response.data);
-      const result = this.normalizeOrderResult(data);
-
-      this.audit.log({
-        action: 'partialClose',
-        method: 'POST',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
-      return result;
-    } catch (error) {
-      this.logError('partialClose', 'POST', endpoint, start, error);
-      throw this.wrapError(error, 'partialClose');
-    }
+    return this.runHttp({
+      action: 'partialClose',
+      method: 'POST',
+      path: endpoint,
+      send: () => this.http.post(endpoint, { amount }),
+      parse: (data) => this.normalizeOrderResult(asRecord(data)),
+    });
   }
 
   async cancelOrder(orderId: string): Promise<void> {
     this.validateIdString(orderId, 'orderId', 'cancelOrder');
     this.assertTradingEnabled('cancelOrder');
     this.noteCapsDisabledIfActive('cancelOrder');
-
-    const start = Date.now();
     const endpoint = `/trading/orders/${orderId}`;
-    try {
-      const response = await this.http.delete(endpoint);
-
-      this.audit.log({
-        action: 'cancelOrder',
-        method: 'DELETE',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-    } catch (error) {
-      this.logError('cancelOrder', 'DELETE', endpoint, start, error);
-      throw this.wrapError(error, 'cancelOrder');
-    }
+    await this.runHttp({
+      action: 'cancelOrder',
+      method: 'DELETE',
+      path: endpoint,
+      send: () => this.http.delete(endpoint),
+      parse: () => undefined,
+    });
   }
 
   async getOrderStatus(orderId: string): Promise<OrderResult> {
-    const start = Date.now();
     const endpoint = `/trading/orders/${orderId}`;
-    try {
-      const response = await this.http.get(endpoint);
-      const data = asRecord(response.data);
-      const result = this.normalizeOrderResult(data);
-
-      this.audit.log({
-        action: 'getOrderStatus',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
-      return result;
-    } catch (error) {
-      this.logError('getOrderStatus', 'GET', endpoint, start, error);
-      throw this.wrapError(error, 'getOrderStatus');
-    }
+    return this.runHttp({
+      action: 'getOrderStatus',
+      method: 'GET',
+      path: endpoint,
+      send: () => this.http.get(endpoint),
+      parse: (data) => this.normalizeOrderResult(asRecord(data)),
+    });
   }
 
   async getOpenPositions(): Promise<Position[]> {
-    const start = Date.now();
     const endpoint = '/trading/positions';
-    try {
-      const response = await this.http.get(endpoint);
-      const items = extractArray(response.data);
-      const positions = items.map((r) => this.normalizePosition(asRecord(r)));
-
-      this.audit.log({
-        action: 'getOpenPositions',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
-      return positions;
-    } catch (error) {
-      this.logError('getOpenPositions', 'GET', endpoint, start, error);
-      throw this.wrapError(error, 'getOpenPositions');
-    }
+    return this.runHttp({
+      action: 'getOpenPositions',
+      method: 'GET',
+      path: endpoint,
+      send: () => this.http.get(endpoint),
+      parse: (data) => extractArray(data).map((r) => this.normalizePosition(asRecord(r))),
+    });
   }
 
   async getTradeHistory(limit = 50): Promise<TradeHistoryEntry[]> {
-    const start = Date.now();
     const endpoint = `/trading/history?limit=${limit}`;
-    try {
-      const response = await this.http.get(endpoint);
-      const items = extractArray(response.data);
-      const trades = items.map((r) => this.normalizeTradeHistory(asRecord(r)));
+    return this.runHttp({
+      action: 'getTradeHistory',
+      method: 'GET',
+      path: endpoint,
+      send: () => this.http.get(endpoint),
+      parse: (data) => extractArray(data).map((r) => this.normalizeTradeHistory(asRecord(r))),
+    });
+  }
 
+  /**
+   * Common HTTP/audit/error pipeline shared by every public method.
+   *
+   *   1. Run `send` through the rate-limited dispatcher.
+   *   2. On success: parse the response, run `onSuccess` (cap recording
+   *      etc.), emit one success audit-log line carrying retry telemetry
+   *      and the caller-supplied `auditExtras`.
+   *   3. On failure: emit one error audit-log line, then rethrow via
+   *      `wrapError` so callers receive a typed `TradingError` (or one of
+   *      the precise typed errors that flow through unchanged).
+   */
+  private async runHttp<T>(input: {
+    action: string;
+    method: 'GET' | 'POST' | 'DELETE';
+    path: string;
+    send: () => Promise<AxiosResponse>;
+    parse: (data: unknown) => T;
+    auditExtras?: Pick<AuditLogEntry, 'resolvedNotionalUsd' | 'notionalSource' | 'quoteAgeMs'>;
+    onSuccess?: () => void;
+  }): Promise<T> {
+    const start = Date.now();
+    try {
+      const { value: response, attempts, totalBackoffMs } = await this.dispatch(input.send);
+      const result = input.parse(response.data);
+      input.onSuccess?.();
       this.audit.log({
-        action: 'getTradeHistory',
-        method: 'GET',
-        path: endpoint,
+        action: input.action,
+        method: input.method,
+        path: input.path,
         statusCode: response.status,
         durationMs: Date.now() - start,
+        attempts,
+        totalBackoffMs,
+        ...input.auditExtras,
       });
-
-      return trades;
+      return result;
     } catch (error) {
-      this.logError('getTradeHistory', 'GET', endpoint, start, error);
-      throw this.wrapError(error, 'getTradeHistory');
+      this.audit.log({
+        action: input.action,
+        method: input.method,
+        path: input.path,
+        durationMs: Date.now() - start,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw this.wrapError(error, input.action);
     }
   }
 
@@ -719,11 +684,6 @@ export class TradingModule {
       timestamp: pickTimestamp(data),
       status: normalizeHistoryStatus(pickStr(data, 'status', 'state')),
     };
-  }
-
-  private logError(action: string, method: string, path: string, start: number, error: unknown): void {
-    const msg = error instanceof Error ? error.message : String(error);
-    this.audit.log({ action, method, path, durationMs: Date.now() - start, error: msg });
   }
 
   private wrapError(error: unknown, action: string): Error {

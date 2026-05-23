@@ -2,6 +2,7 @@ import axios from 'axios';
 import { AccountModule } from '../account';
 import { AuditLogger } from '../audit-logger';
 import { AccountUnavailableError } from '../errors';
+import { RateLimiter } from '../rate-limiter';
 import { AuditLogEntry, EtoroMode } from '../types';
 
 jest.mock('fs', () => ({
@@ -35,7 +36,7 @@ describe('AccountModule', () => {
   beforeEach(() => {
     http = mockHttp();
     audit = mockAudit();
-    account = new AccountModule(http, audit, 'demo-readonly');
+    account = new AccountModule(http, audit, { mode: 'demo-readonly' });
   });
 
   describe('getBalance', () => {
@@ -199,7 +200,7 @@ describe('AccountModule — mode-gate', () => {
     const get = jest.fn();
     const http = { get } as unknown as ReturnType<typeof mockHttp>;
     const { audit, entries } = recordingAudit('mock');
-    const account = new AccountModule(http, audit, 'mock');
+    const account = new AccountModule(http, audit, { mode: 'mock' });
 
     await expect(invoke(account)).rejects.toBeInstanceOf(AccountUnavailableError);
     expect(get).not.toHaveBeenCalled();
@@ -219,7 +220,7 @@ describe('AccountModule — mode-gate', () => {
       });
       const http = { get } as unknown as ReturnType<typeof mockHttp>;
       const { audit } = recordingAudit(mode);
-      const account = new AccountModule(http, audit, mode);
+      const account = new AccountModule(http, audit, { mode });
 
       const balance = await account.getBalance();
       expect(balance.totalEquity).toBe(100);
@@ -235,5 +236,56 @@ describe('AccountModule — mode-gate', () => {
     expect(err.reason).toBe('no demo URL');
     expect(err.message).toContain('Account API unavailable in mode "mock"');
     expect(err.message).toContain('ETORO_DEMO_KEY');
+  });
+});
+
+describe('AccountModule — rate-limit dispatcher integration', () => {
+  it('absorbs a single 429 and audits attempts: 2', async () => {
+    let calls = 0;
+    const get = jest.fn(async () => {
+      calls++;
+      if (calls === 1) {
+        const err = new Error('429') as Error & { response: { status: number } };
+        err.response = { status: 429 };
+        throw err;
+      }
+      return {
+        status: 200,
+        data: { totalEquity: 100, availableCash: 50, usedMargin: 0, freeMargin: 50, currency: 'USD' },
+      };
+    });
+    const http = { get } as unknown as ReturnType<typeof mockHttp>;
+    const { audit, entries } = recordingAudit('demo-readonly');
+    const sleeps: number[] = [];
+    const limiter = new RateLimiter({
+      minBackoffMs: 1, maxBackoffMs: 10, multiplier: 2, maxRetries: 3,
+      sleepImpl: async (ms) => { sleeps.push(ms); },
+    });
+    const account = new AccountModule(http, audit, {
+      mode: 'demo-readonly',
+      dispatch: (fn) => limiter.executeWithTelemetry(fn),
+    });
+
+    const balance = await account.getBalance();
+    expect(balance.totalEquity).toBe(100);
+    expect(calls).toBe(2);
+    const success = entries.find((e) => e.action === 'getBalance' && e.statusCode === 200);
+    expect(success?.attempts).toBe(2);
+    expect(success?.totalBackoffMs).toBe(1);
+  });
+
+  it('default identity dispatcher records attempts: 1 / totalBackoffMs: 0', async () => {
+    const get = jest.fn().mockResolvedValue({
+      status: 200,
+      data: { totalEquity: 1, availableCash: 1, usedMargin: 0, freeMargin: 1, currency: 'USD' },
+    });
+    const http = { get } as unknown as ReturnType<typeof mockHttp>;
+    const { audit, entries } = recordingAudit('demo-readonly');
+    const account = new AccountModule(http, audit, { mode: 'demo-readonly' });
+
+    await account.getBalance();
+    const success = entries.find((e) => e.action === 'getBalance' && e.statusCode === 200);
+    expect(success?.attempts).toBe(1);
+    expect(success?.totalBackoffMs).toBe(0);
   });
 });
