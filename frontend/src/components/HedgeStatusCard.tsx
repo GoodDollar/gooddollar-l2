@@ -571,7 +571,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
           className="flex flex-wrap items-center justify-between gap-3"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <h2 className="text-lg font-semibold text-white truncate">
+            <h2 className="text-lg font-semibold text-white">
               Demo hedge proof
             </h2>
             <HeaderStatusPill

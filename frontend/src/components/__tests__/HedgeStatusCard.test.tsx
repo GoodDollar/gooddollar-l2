@@ -1046,6 +1046,36 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  describe('header title never truncates (#0027)', () => {
+    it('healthy: h2 title is fully present and has no truncate class', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const card = await screen.findByTestId('hedge-status-card');
+      const h2 = card.querySelector('h2');
+      expect(h2).not.toBeNull();
+      expect(h2!.textContent).toBe('Demo hedge proof');
+      expect(h2!.className.split(/\s+/)).not.toContain('truncate');
+    });
+
+    it('error path: h2 title is still fully present, no truncate class', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const card = await screen.findByTestId('hedge-status-card');
+      const h2 = card.querySelector('h2');
+      expect(h2!.textContent).toBe('Demo hedge proof');
+      expect(h2!.className.split(/\s+/)).not.toContain('truncate');
+    });
+  });
+
   describe('normalizeHedgeError (#0022)', () => {
     it('strips the "Hedge engine" subject prefix', () => {
       expect(normalizeHedgeError('Hedge engine unreachable')).toBe('unreachable');
