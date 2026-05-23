@@ -44,6 +44,31 @@ Canonical PM2 configs:
 
 Additional packages (not always in PM2 ecosystem): `price-service/`, `trading-bot/`, `etoro-client/`.
 
+## Lane 1 — live prices & demo hedging
+
+The four packages below together implement the active initiative
+`0007a-etoro-connectivity`: eToro/demo market data → price-service →
+oracle-signer → on-chain → apps, plus a capped demo-hedge proof from
+`hedge-engine`. Lane 1 is **demo-only by source-level fence**
+(`REAL_TRADING_ENABLED` const in
+[`etoro-client/src/auth.ts`](etoro-client/src/auth.ts)).
+
+| Package | Path | Port | Role | Links |
+|---------|------|------|------|-------|
+| `@goodchain/etoro-client` | `etoro-client/` | n/a (SDK) | REST + WS client, four-mode safety, demo cap enforcer | [README](etoro-client/README.md) · [contract](../docs/ETORO_GOODCHAIN_ADAPTER.md) |
+| `@goodchain/price-service` | `price-service/` | `9300` REST · `9301` WS | Normalizes SDK quotes for downstream consumers | [README](price-service/README.md) |
+| `oracle-signer` | `oracle-signer/` | `9107` | Signs and publishes prices on-chain | (see ecosystem.config.js) |
+| `@goodchain/hedge-engine` | `hedge-engine/` | `9106` | Maps GoodChain exposure to capped demo eToro hedges; ships demo-proof script | [README](hedge-engine/README.md) · [proof runbook](../docs/runbooks/lane1-demo-hedge-proof.md) |
+
+Install + test the lane in one shot from the repo root:
+
+```bash
+npm run install:lane1
+npm run test:lane1
+```
+
+Deep contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../docs/ETORO_GOODCHAIN_ADAPTER.md).
+
 ## Status aggregation
 
 ```
