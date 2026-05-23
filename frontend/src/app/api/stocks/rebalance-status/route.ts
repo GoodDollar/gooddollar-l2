@@ -6,6 +6,7 @@ import {
   type RebalanceInvariantResult,
 } from '@/lib/stocksRebalanceInvariant'
 import { methodNotAllowed } from '@/lib/api-error'
+import { getOrFetchUpstreamStatus } from '@/lib/rebalanceStatusCache'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
@@ -13,6 +14,25 @@ export const runtime = 'nodejs'
 const STATUS_URL = process.env.STATUS_AGGREGATOR_URL ?? 'http://localhost:9200/status.json'
 const TIMEOUT_MS = 5000
 const DEFAULT_SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 'JPM', 'V', 'DIS', 'NFLX', 'AMD']
+
+const DEFAULT_CACHE_MS = 1000
+
+// Read once at module load. `0` (or any non-numeric value) disables the
+// server-side cache so every request hits upstream — useful for operators
+// who need to debug aggregator behavior directly.
+function readCacheMs(): number {
+  const raw = process.env.STATUS_AGGREGATOR_CACHE_MS
+  if (raw === undefined || raw === '') return DEFAULT_CACHE_MS
+  const n = Number(raw)
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_CACHE_MS
+}
+
+class UpstreamHttpError extends Error {
+  constructor(public readonly httpStatus: number) {
+    super(`upstream-not-ok-${httpStatus}`)
+    this.name = 'UpstreamHttpError'
+  }
+}
 
 interface StatusRebalancePayload {
   blockNumber?: number
@@ -57,23 +77,26 @@ function buildSymbolResults(
   })
 }
 
+async function fetchUpstreamPayload(): Promise<StatusRebalancePayload> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetch(STATUS_URL, { signal: controller.signal, cache: 'no-store' })
+    if (!res.ok) throw new UpstreamHttpError(res.status)
+    return await res.json() as StatusRebalancePayload
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function handleGet(req: NextRequest) {
   const symbols = parseRequestedSymbols(req)
+  // Cache key collapses tab-storms and many-tabs into one upstream fetch per
+  // unique symbol set per TTL window. Already sorted/deduped by the parser.
+  const cacheKey = symbols.slice().sort().join(',')
 
   try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
-    const res = await fetch(STATUS_URL, { signal: controller.signal, cache: 'no-store' })
-    clearTimeout(timer)
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: 'Status aggregator returned an error', httpStatus: res.status },
-        { status: 502 },
-      )
-    }
-
-    const payload = await res.json() as StatusRebalancePayload
+    const payload = await getOrFetchUpstreamStatus(cacheKey, fetchUpstreamPayload, readCacheMs())
     const currentBlock = getCurrentBlock(payload)
     const results = buildSymbolResults(symbols, currentBlock, payload)
 
@@ -85,7 +108,13 @@ async function handleGet(req: NextRequest) {
     }, {
       headers: { 'Cache-Control': 'no-store, max-age=0' },
     })
-  } catch {
+  } catch (err) {
+    if (err instanceof UpstreamHttpError) {
+      return NextResponse.json(
+        { error: 'Status aggregator returned an error', httpStatus: err.httpStatus },
+        { status: 502 },
+      )
+    }
     return NextResponse.json(
       {
         error: 'Status aggregator unreachable',
