@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
 import HedgeProofErrorCard from './HedgeProofErrorCard'
@@ -108,12 +108,33 @@ export default function HedgeProofViewer({
 }: HedgeProofViewerProps) {
   const [view, setView] = useState<ViewState>({ kind: 'loading' })
 
+  // Race-condition guards (#0065). Mirrors the canonical pattern from
+  // `HedgeStatusCard` (#0011):
+  //   - `seqRef`: monotonic per-load counter; only the latest fetch's
+  //     `setView` calls win even if a slow upstream ignores the abort.
+  //   - `abortRef`: latest controller so a new load cancels its
+  //     predecessor and unmount cancels whichever is in flight.
+  // Retry calls `load` directly through this same path so a stale
+  // retry response can never overwrite a newer one.
+  const seqRef = useRef(0)
+  const abortRef = useRef<AbortController | null>(null)
+
   const load = useCallback(async () => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const mySeq = ++seqRef.current
     setView({ kind: 'loading' })
+
     let res: Response
     try {
-      res = await fetch(endpoint, { cache: 'no-store' })
+      res = await fetch(endpoint, {
+        cache: 'no-store',
+        signal: controller.signal,
+      })
     } catch {
+      if (controller.signal.aborted) return
+      if (mySeq !== seqRef.current) return
       setView({ kind: 'error', copy: copyForNetwork() })
       return
     }
@@ -121,6 +142,8 @@ export default function HedgeProofViewer({
     try {
       body = (await res.json()) as ProofResponse
     } catch {
+      if (controller.signal.aborted) return
+      if (mySeq !== seqRef.current) return
       setView({
         kind: 'error',
         copy: {
@@ -130,6 +153,7 @@ export default function HedgeProofViewer({
       })
       return
     }
+    if (mySeq !== seqRef.current) return
     if (body.status === 'ok') {
       if (body.markdown.trim().length === 0) {
         setView({ kind: 'empty_body', data: body })
@@ -147,6 +171,9 @@ export default function HedgeProofViewer({
 
   useEffect(() => {
     void load()
+    return () => {
+      abortRef.current?.abort()
+    }
   }, [load])
 
   return (
