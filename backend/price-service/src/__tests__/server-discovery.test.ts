@@ -1,7 +1,7 @@
 import express from 'express';
 import { createServer, readPackageVersion, QUICKSTART } from '../server';
 import { QuoteCache } from '../quote-cache';
-import { DEFAULT_CONFIG } from '../types';
+import { DEFAULT_CONFIG, SourceStatus } from '../types';
 
 describe('REST Server — GET / discovery payload', () => {
   let cache: QuoteCache;
@@ -72,6 +72,122 @@ describe('REST Server — GET / discovery payload', () => {
     expect(body.service).toBe('price-service');
     expect(Array.isArray(body.endpoints)).toBe(true);
     expect(typeof body.timestamp).toBe('number');
+  });
+});
+
+describe('GET / surfaces source block when wired (task 0028)', () => {
+  function listenOn(app: express.Express): Promise<{
+    server: ReturnType<express.Express['listen']>;
+    baseUrl: string;
+  }> {
+    return new Promise((resolve) => {
+      const s = app.listen(0, () => {
+        const addr = s.address();
+        const port = addr && typeof addr === 'object' ? addr.port : 0;
+        resolve({ server: s, baseUrl: `http://127.0.0.1:${port}` });
+      });
+    });
+  }
+
+  function close(server: ReturnType<express.Express['listen']>): Promise<void> {
+    return new Promise((resolve) => server.close(() => resolve()));
+  }
+
+  it('degraded source: body.source carries reason + nextStep, body.status is "degraded"', async () => {
+    const cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    const src: SourceStatus = {
+      connected: false,
+      reason: 'source-unavailable',
+      lastAttachAt: null,
+    };
+    const app = createServer(cache, { symbols: ['AAPL'] }, undefined, () => src);
+    const { server, baseUrl } = await listenOn(app);
+    try {
+      const body = (await (await fetch(`${baseUrl}/`)).json()) as Record<string, unknown>;
+      expect(body.status).toBe('degraded');
+      expect(body.source).toBeDefined();
+      const s = body.source as Record<string, unknown>;
+      expect(s.connected).toBe(false);
+      expect(s.reason).toBe('source-unavailable');
+    } finally {
+      await close(server);
+    }
+  });
+
+  it('connected source: body.source.connected = true, body.status = "ok"', async () => {
+    const cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    const src: SourceStatus = {
+      connected: true,
+      symbols: ['AAPL'],
+      lastAttachAt: 1700000000000,
+    };
+    const app = createServer(cache, { symbols: ['AAPL'] }, undefined, () => src);
+    const { server, baseUrl } = await listenOn(app);
+    try {
+      const body = (await (await fetch(`${baseUrl}/`)).json()) as Record<string, unknown>;
+      expect(body.status).toBe('ok');
+      expect(body.source).toBeDefined();
+      const s = body.source as Record<string, unknown>;
+      expect(s.connected).toBe(true);
+    } finally {
+      await close(server);
+    }
+  });
+
+  it('no sourceStatusGetter wired: body has no "source" key', async () => {
+    const cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    const app = createServer(cache, { symbols: ['AAPL'] });
+    const { server, baseUrl } = await listenOn(app);
+    try {
+      const body = (await (await fetch(`${baseUrl}/`)).json()) as Record<string, unknown>;
+      expect('source' in body).toBe(false);
+      expect(['ok', 'degraded']).toContain(body.status);
+    } finally {
+      await close(server);
+    }
+  });
+
+  it('source field ships BEFORE status in JSON key order (matches /health)', async () => {
+    const cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    const src: SourceStatus = {
+      connected: false,
+      reason: 'source-unavailable',
+      lastAttachAt: null,
+    };
+    const app = createServer(cache, { symbols: ['AAPL'] }, undefined, () => src);
+    const { server, baseUrl } = await listenOn(app);
+    try {
+      const raw = await (await fetch(`${baseUrl}/`)).text();
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const keys = Object.keys(parsed);
+      const sourceIdx = keys.indexOf('source');
+      const statusIdx = keys.indexOf('status');
+      expect(sourceIdx).toBeGreaterThanOrEqual(0);
+      expect(statusIdx).toBeGreaterThan(sourceIdx);
+    } finally {
+      await close(server);
+    }
+  });
+
+  it('body.source on / matches body.source on /health for the same server', async () => {
+    const cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    const src: SourceStatus = {
+      connected: false,
+      reason:
+        "Cannot find module '../../etoro-client/src/index'\n" +
+        'Require stack:\n' +
+        '- /home/goodclaw/proj/backend/price-service/dist/index.js',
+      lastAttachAt: null,
+    };
+    const app = createServer(cache, { symbols: ['AAPL'] }, undefined, () => src);
+    const { server, baseUrl } = await listenOn(app);
+    try {
+      const rootBody = (await (await fetch(`${baseUrl}/`)).json()) as Record<string, unknown>;
+      const healthBody = (await (await fetch(`${baseUrl}/health`)).json()) as Record<string, unknown>;
+      expect(rootBody.source).toEqual(healthBody.source);
+    } finally {
+      await close(server);
+    }
   });
 });
 

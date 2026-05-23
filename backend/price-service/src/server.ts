@@ -520,7 +520,13 @@ export function createServer(
     };
     const ws = buildWsAdvertisement(req);
     if (ws) body.websocket = ws;
-    const { degraded } = computeDegraded(cache, sourceStatusGetter);
+    const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
+    // Surface the sanitised source block (when wired) so a fresh user
+    // hitting `/` sees the verdict AND the reason in one hop, not a
+    // bare `status: 'degraded'` flag they'd have to chase across endpoints.
+    // Mirrors the field ordering convention from `/health`: source first
+    // (context), status second (conclusion).
+    if (src) body.source = src;
     body.status = degraded ? 'degraded' : 'ok';
     body.timestamp = now;
     body.timestampIso = isoFromMs(now)!;
