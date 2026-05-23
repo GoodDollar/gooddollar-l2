@@ -452,7 +452,19 @@ if [[ -n "${PM2_ID_PRICE_SERVICE:-}" ]] && command -v pm2 >/dev/null 2>&1; then
     if [[ -n "$val" ]]; then ENV_PRESENCE[$key]="$val"; fi
   done
 elif [[ -f "$LANE7_ENV_FILE" ]]; then
+  # `read -r` does not strip trailing CR. A `.env` edited on Windows
+  # (or downloaded via a tool that adds CRLF) yields `val="false\r"`,
+  # which fails the equality check below and fires a contradictory
+  # `REAL_TRADING_ENABLED is false — must be unset or false` BLOCKER
+  # whose printed `\r` scrambles the operator's terminal during what
+  # already feels like a 3 AM safety alarm. Strip the CR per side
+  # before the existing quote-strip pass + raise a one-shot WARN so
+  # the operator knows to `dos2unix .env` the file at the source.
+  if grep -q $'\r' "$LANE7_ENV_FILE" 2>/dev/null; then
+    WARNINGS+=("$LANE7_ENV_FILE has CRLF line endings — run \`dos2unix\` or \`sed -i 's/\\r\$//'\`")
+  fi
   while IFS='=' read -r key val; do
+    key="${key%$'\r'}"; val="${val%$'\r'}"
     [[ -z "$key" || "$key" =~ ^# ]] && continue
     [[ "$key" == "REAL_TRADING_ENABLED" || "$key" == "ETORO_MODE" ]] || continue
     val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"

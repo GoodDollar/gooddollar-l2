@@ -218,6 +218,11 @@ into your post-deploy step:
 ./scripts/testnet/internal-smoke.sh && echo "lane-7 internal smoke green"
 ```
 
+If you see a `WARN: <path> has CRLF line endings` line, run
+`dos2unix .env` (or `sed -i 's/\r$//' .env`) so the parser stops
+treating Windows-edited values as `false\r` and contradicting itself
+in the safety-fence check.
+
 ## Rollback
 
 Lane-7 services are independent of production. Roll back in reverse
