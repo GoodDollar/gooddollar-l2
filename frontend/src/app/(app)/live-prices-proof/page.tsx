@@ -4,6 +4,7 @@ import { LastDemoHedgePanel } from '@/components/proof/LastDemoHedgePanel'
 import { LiveQuotesPanel } from '@/components/proof/LiveQuotesPanel'
 import { OnChainOraclePanel } from '@/components/proof/OnChainOraclePanel'
 import { OracleUpdatesPanel } from '@/components/proof/OracleUpdatesPanel'
+import { ProofPanelBoundary } from '@/components/proof/ProofPanelBoundary'
 import { SafetyBanner } from '@/components/proof/SafetyBanner'
 
 export default function LivePricesProofPage() {
@@ -28,13 +29,23 @@ export default function LivePricesProofPage() {
         </p>
       </header>
 
-      <SafetyBanner />
+      <ProofPanelBoundary label="Safety Banner">
+        <SafetyBanner />
+      </ProofPanelBoundary>
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <LiveQuotesPanel />
-        <OnChainOraclePanel />
-        <OracleUpdatesPanel />
-        <LastDemoHedgePanel />
+        <ProofPanelBoundary label="Live Quotes">
+          <LiveQuotesPanel />
+        </ProofPanelBoundary>
+        <ProofPanelBoundary label="On-chain Oracle">
+          <OnChainOraclePanel />
+        </ProofPanelBoundary>
+        <ProofPanelBoundary label="Oracle Updates">
+          <OracleUpdatesPanel />
+        </ProofPanelBoundary>
+        <ProofPanelBoundary label="Last Demo Hedge">
+          <LastDemoHedgePanel />
+        </ProofPanelBoundary>
       </div>
 
       <footer className="mt-8 text-xs text-gray-500">
