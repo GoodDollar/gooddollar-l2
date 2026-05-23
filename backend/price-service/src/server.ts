@@ -8,6 +8,61 @@ export type SourceStatusGetter = () => SourceStatus;
 export type BootAtGetter = () => number;
 
 /**
+ * Top-level discovery copy for `GET /`. Static so the body assembly stays a
+ * single object literal and the docs can't drift between handler + README.
+ */
+const SERVICE_DESCRIPTION =
+  'Normalizes eToro market data, applies risk filters, caches the latest ' +
+  'quote per symbol, and exposes REST + WebSocket feeds for downstream ' +
+  'consumers (oracle-signer, frontend).';
+
+const DOCS_URL =
+  'https://github.com/goodchain/goodchain-live-prices-lanes/blob/' +
+  'ab/0007-lane2-price-service/backend/price-service/README.md';
+
+/**
+ * curl-friendly example calls. Each must be a real, currently-supported
+ * request against a symbol in `DEFAULT_CONFIG.symbols` so a fresh deploy
+ * works out of the box.
+ */
+export const EXAMPLES: Readonly<Record<string, string>> = Object.freeze({
+  health: 'GET /health',
+  allQuotes: 'GET /quotes',
+  symbolQuote: 'GET /quotes/AAPL',
+  freshOnly: 'GET /quotes/fresh/all',
+});
+
+/**
+ * Pull the version string off a `package.json`-shaped object. Defaults to
+ * a real `require('../package.json')` so the server can be wired with
+ * zero arguments; the injection point exists so tests can exercise the
+ * fallback branch without monkey-patching the module loader.
+ *
+ * Returns the literal `'unknown'` on any throw or shape mismatch so the
+ * discovery payload always carries a string and never crashes boot.
+ */
+export function readPackageVersion(
+  pkgRequire: () => unknown = () => require('../package.json'),
+): string {
+  try {
+    const pkg = pkgRequire();
+    if (
+      pkg !== null &&
+      typeof pkg === 'object' &&
+      'version' in pkg &&
+      typeof (pkg as { version: unknown }).version === 'string'
+    ) {
+      return (pkg as { version: string }).version;
+    }
+    return 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+const PACKAGE_VERSION = readPackageVersion();
+
+/**
  * Map of exact known paths to the methods they accept. Keep grep-friendly:
  * downstreams (oracle-signer, frontend) match on path → 405 Allow header.
  * The parametric `/quotes/:symbol` route is matched by `QUOTES_SYMBOL_RE`.
@@ -131,7 +186,11 @@ export function createServer(
   app.get('/', (_req: Request, res: Response) => {
     res.json({
       service: 'price-service',
+      description: SERVICE_DESCRIPTION,
+      version: PACKAGE_VERSION,
+      docs: DOCS_URL,
       endpoints: buildEndpointIndex(),
+      examples: EXAMPLES,
       timestamp: Date.now(),
     });
   });
