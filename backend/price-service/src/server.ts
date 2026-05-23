@@ -1,4 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express';
+import compression from 'compression';
 import { QuoteCache } from './quote-cache';
 import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats, SourceStatus } from './types';
 import {
@@ -1151,6 +1152,18 @@ export function createServer(
   // through to the 404 catch-all, which `canonicalSuggestion` steers
   // back to the canonical form. See task 0046.
   app.set('strict routing', true);
+  // Compress JSON responses when the client opts in via `Accept-Encoding`.
+  // The `/`, `/health`, and `/docs/source-reasons` payloads are dominated
+  // by repeated English vocabulary (catalog summaries, severity labels,
+  // enum keys) — exactly what gzip handles best (~60% reduction on `/`).
+  // Threshold 256 covers `/audit/stats` (~333 B) without paying the
+  // gzip framing cost on near-empty responses; sub-threshold bodies and
+  // OPTIONS preflights ride uncompressed. The middleware sets
+  // `Vary: Accept-Encoding` on every response so caches that ignore
+  // `Cache-Control: no-store` (task 0043) at least don't cross-serve
+  // gzip bytes to identity clients. ETags stay disabled (task 0044).
+  // See task 0068.
+  app.use(compression({ threshold: 256, level: 6 }));
   const cfg = { ...DEFAULT_CONFIG, ...config };
   // Built once: per-request membership check is O(1). Uppercase every
   // entry so deploys with mixed-case `ORACLE_SYMBOLS` still match the
