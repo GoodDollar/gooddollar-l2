@@ -175,6 +175,52 @@ The audit log lives in `.autobuilder/logs/oracle-signer/YYYY-MM-DD.jsonl`
 (also gitignored) with one line per `submit_ok` / `submit_fail` / `refused`
 / `startup` / `shutdown` event.
 
+### Per-rail freshness — "how fresh is the oracle?"
+
+The `/proof` snapshot exposes a top-level `rails` block so operators can
+answer the most common SLO question — "is the rail publishing? when last?"
+— without subtracting timestamps from `stocks[0].submittedAtMs`:
+
+```bash
+curl -s http://localhost:9107/proof | jq '.rails'
+```
+
+```json
+{
+  "stocks": {
+    "enabled": true,
+    "lastSuccessAtMs": 1779544970392,
+    "lastSuccessAgeMs": 1203,
+    "lastFailureAtMs": null,
+    "lastFailureAgeMs": null
+  },
+  "crypto": {
+    "enabled": false,
+    "lastSuccessAtMs": null,
+    "lastSuccessAgeMs": null,
+    "lastFailureAtMs": null,
+    "lastFailureAgeMs": null
+  }
+}
+```
+
+- `enabled` is `true` when the rail's oracle address (and, for crypto, its
+  symbol map) is configured. A chain-guard-refused signer still reports
+  `enabled: true` — the field describes "is the rail wired", not "is it
+  publishing".
+- `lastSuccessAtMs` / `lastFailureAtMs` are tracked independently of the
+  bounded entry/failure rings, so they remain correct even when 50+
+  failures push every successful entry off the ring.
+- `lastSuccessAgeMs` / `lastFailureAgeMs` are derived at snapshot time as
+  `generatedAt - lastXxxAtMs`. They can be negative under clock skew.
+
+Alert if any enabled rail is stale beyond an SLO:
+
+```bash
+curl -s http://localhost:9107/proof \
+  | jq '[.rails[] | select(.enabled and (.lastSuccessAgeMs // 1e12) > 30000)] | length'
+```
+
 ### Failure proof — when submissions break
 
 The `/proof` snapshot also exposes the last N **failed** submissions per

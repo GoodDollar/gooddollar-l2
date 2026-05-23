@@ -46,8 +46,34 @@ export interface RailCounts {
   failed: number;
 }
 
+/**
+ * Per-rail operational status as seen at snapshot time. Surfaces the three
+ * questions an operator asks first: "is this rail configured?", "when did it
+ * last publish successfully?", and "when did it last fail?".
+ *
+ * `lastSuccessAtMs` / `lastFailureAtMs` are tracked as independent state on
+ * `ProofStore` — they survive ring rollover so an operator still has a
+ * timestamp to point at even when every entry in the bounded ring is a failure
+ * that pushed all successes off.
+ *
+ * `lastSuccessAgeMs` / `lastFailureAgeMs` are derived at snapshot time as
+ * `generatedAt - lastXxxAtMs`. They can be negative in pathological clock-skew
+ * cases; consumers should treat negative values as "clock skew" and not as
+ * "future timestamp".
+ */
+export interface RailStatus {
+  enabled: boolean;
+  lastSuccessAtMs: number | null;
+  lastSuccessAgeMs: number | null;
+  lastFailureAtMs: number | null;
+  lastFailureAgeMs: number | null;
+}
+
 export interface ProofSnapshot {
   generatedAt: number;
+  /** Per-rail status block — added by task 0009 so operators can answer
+   *  "is the oracle publishing? how fresh?" without subtracting timestamps. */
+  rails: { stocks: RailStatus; crypto: RailStatus };
   stocks: ProofEntry[];
   crypto: ProofEntry[];
   failures: { stocks: ProofFailure[]; crypto: ProofFailure[] };
@@ -81,6 +107,16 @@ export function redactProofReason(err: unknown): string {
   return redactedHex.length > REASON_MAX_LEN ? redactedHex.slice(0, REASON_MAX_LEN) : redactedHex;
 }
 
+interface RailStatusState {
+  enabled: boolean;
+  lastSuccessAtMs: number | null;
+  lastFailureAtMs: number | null;
+}
+
+function defaultRailStatusState(): RailStatusState {
+  return { enabled: false, lastSuccessAtMs: null, lastFailureAtMs: null };
+}
+
 export class ProofStore {
   private readonly capacity: number;
   private readonly rails: Record<RailName, ProofEntry[]> = { stocks: [], crypto: [] };
@@ -89,9 +125,22 @@ export class ProofStore {
     stocks: { ok: 0, failed: 0 },
     crypto: { ok: 0, failed: 0 },
   };
+  private readonly railStatus: Record<RailName, RailStatusState> = {
+    stocks: defaultRailStatusState(),
+    crypto: defaultRailStatusState(),
+  };
 
   constructor(capacity: number = DEFAULT_PROOF_CAPACITY) {
     this.capacity = Math.max(1, Math.floor(capacity));
+  }
+
+  /**
+   * Mark whether a rail is wired (has an oracle address + necessary config).
+   * Operators reading `/proof` use this to disambiguate "rail just hasn't
+   * published yet" from "rail isn't configured at all".
+   */
+  setRailEnabled(rail: RailName, enabled: boolean): void {
+    this.railStatus[rail].enabled = enabled;
   }
 
   record(rail: RailName, entry: ProofEntryInput): void {
@@ -99,6 +148,7 @@ export class ProofStore {
     arr.push({ ...entry, rail });
     while (arr.length > this.capacity) arr.shift();
     this.counts[rail].ok += 1;
+    this.railStatus[rail].lastSuccessAtMs = entry.submittedAtMs;
   }
 
   recordFailure(rail: RailName, fail: ProofFailureInput): void {
@@ -106,11 +156,24 @@ export class ProofStore {
     arr.push({ ...fail, rail });
     while (arr.length > this.capacity) arr.shift();
     this.counts[rail].failed += 1;
+    this.railStatus[rail].lastFailureAtMs = fail.attemptedAtMs;
   }
 
   snapshot(): ProofSnapshot {
+    const generatedAt = Date.now();
+    const buildRail = (rail: RailName): RailStatus => {
+      const s = this.railStatus[rail];
+      return {
+        enabled: s.enabled,
+        lastSuccessAtMs: s.lastSuccessAtMs,
+        lastSuccessAgeMs: s.lastSuccessAtMs === null ? null : generatedAt - s.lastSuccessAtMs,
+        lastFailureAtMs: s.lastFailureAtMs,
+        lastFailureAgeMs: s.lastFailureAtMs === null ? null : generatedAt - s.lastFailureAtMs,
+      };
+    };
     return {
-      generatedAt: Date.now(),
+      generatedAt,
+      rails: { stocks: buildRail('stocks'), crypto: buildRail('crypto') },
       stocks: this.rails.stocks.slice().reverse(),
       crypto: this.rails.crypto.slice().reverse(),
       failures: {

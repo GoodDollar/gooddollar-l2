@@ -48,6 +48,22 @@ symbol map) is configured.
   ```json
   {
     "generatedAt": 1716100000000,
+    "rails": {
+      "stocks": {
+        "enabled": true,
+        "lastSuccessAtMs": 1716099998800,
+        "lastSuccessAgeMs": 1200,
+        "lastFailureAtMs": null,
+        "lastFailureAgeMs": null
+      },
+      "crypto": {
+        "enabled": false,
+        "lastSuccessAtMs": null,
+        "lastSuccessAgeMs": null,
+        "lastFailureAtMs": null,
+        "lastFailureAgeMs": null
+      }
+    },
     "stocks": [{
       "rail": "stocks", "txHash": "0x…", "blockNumber": 123,
       "gasUsed": "150000", "symbols": ["AAPL"], "roundTripMs": 80,
@@ -56,6 +72,14 @@ symbol map) is configured.
     "crypto": [/* same shape */]
   }
   ```
+
+  The `rails` block answers "is the rail configured?" (`enabled`) and "how
+  fresh is it right now?" (`lastSuccessAgeMs` / `lastFailureAgeMs`) without
+  the operator having to subtract `submittedAtMs` from `generatedAt`. The
+  timestamps are tracked independently of the bounded entry/failure rings,
+  so they stay correct even when 50+ failures push all successes off the
+  ring. Older signer builds may omit `rails`; consumers default each rail
+  to `{ enabled: false, …nulls }`.
 
 ## Health and refusal semantics
 

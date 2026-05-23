@@ -4,6 +4,7 @@ node_modules/
 .next.e2e/
 # Runtime dev server build dir — see next-runtime-server.mjs (task 0057)
 .next.dev/
+.next.runtime-dev/
 # Watchdog runtime event log — see ecosystem.watchdog.config.cjs (task 0029)
 .autobuilder-logs/
 

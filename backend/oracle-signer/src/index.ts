@@ -213,6 +213,13 @@ export class OracleSignerService {
   async start(): Promise<void> {
     if (this.running || this.refused) return;
 
+    // Mark per-rail `enabled` BEFORE the chain-guard early-returns. `enabled`
+    // means "the rail's config is wired" (oracle address + key) — operators
+    // see `enabled: true` even on a refused signer so they can distinguish
+    // "not configured" from "configured but refused".
+    this.proofStore.setRailEnabled('stocks', this.submitter !== null);
+    this.proofStore.setRailEnabled('crypto', this.cryptoSubmitter !== null);
+
     // If neither rail is configured we degrade just like the missing-key path.
     if (!this.buffer && !this.cryptoBuffer) {
       this.refused = true;

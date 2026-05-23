@@ -281,6 +281,102 @@ describe('GET /api/oracle/status — failures + counts', () => {
   })
 })
 
+describe('GET /api/oracle/status — per-rail status', () => {
+  it('forwards rails block from upstream proof when present', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        rails: {
+          stocks: {
+            enabled: true,
+            lastSuccessAtMs: 1700000000000,
+            lastSuccessAgeMs: 1203,
+            lastFailureAtMs: null,
+            lastFailureAgeMs: null,
+          },
+          crypto: {
+            enabled: false,
+            lastSuccessAtMs: null,
+            lastSuccessAgeMs: null,
+            lastFailureAtMs: null,
+            lastFailureAgeMs: null,
+          },
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.rails.stocks).toEqual({
+      enabled: true,
+      lastSuccessAtMs: 1700000000000,
+      lastSuccessAgeMs: 1203,
+      lastFailureAtMs: null,
+      lastFailureAgeMs: null,
+    })
+    expect(data.rails.crypto.enabled).toBe(false)
+    expect(data.rails.crypto.lastSuccessAtMs).toBeNull()
+  })
+
+  it('defaults rails to disabled+null when upstream omits the block (older signer)', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.rails).toEqual({
+      stocks: {
+        enabled: false,
+        lastSuccessAtMs: null,
+        lastSuccessAgeMs: null,
+        lastFailureAtMs: null,
+        lastFailureAgeMs: null,
+      },
+      crypto: {
+        enabled: false,
+        lastSuccessAtMs: null,
+        lastSuccessAgeMs: null,
+        lastFailureAtMs: null,
+        lastFailureAgeMs: null,
+      },
+    })
+  })
+
+  it('503 body includes rails defaults so consumers can read them unconditionally', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.rails).toBeDefined()
+    expect(data.rails.stocks.enabled).toBe(false)
+    expect(data.rails.crypto.enabled).toBe(false)
+    expect(data.rails.stocks.lastSuccessAtMs).toBeNull()
+  })
+
+  it('coerces malformed upstream rail status to defaults', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        rails: { stocks: 'oops', crypto: { enabled: 'not-a-bool' } },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.rails.stocks.enabled).toBe(false)
+    expect(data.rails.stocks.lastSuccessAtMs).toBeNull()
+    expect(data.rails.crypto.enabled).toBe(false)
+  })
+})
+
 describe('redactUpstreamReason', () => {
   it('strips long hex sequences (signer keys, addresses)', () => {
     const r = redactUpstreamReason(

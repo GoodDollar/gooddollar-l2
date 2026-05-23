@@ -162,6 +162,106 @@ describe('ProofStore — failures + counts', () => {
   });
 });
 
+describe('ProofStore — per-rail status', () => {
+  it('default snapshot has rails block with disabled/null defaults', () => {
+    const ps = new ProofStore();
+    const snap = ps.snapshot();
+    expect(snap.rails.stocks).toEqual({
+      enabled: false,
+      lastSuccessAtMs: null,
+      lastSuccessAgeMs: null,
+      lastFailureAtMs: null,
+      lastFailureAgeMs: null,
+    });
+    expect(snap.rails.crypto).toEqual({
+      enabled: false,
+      lastSuccessAtMs: null,
+      lastSuccessAgeMs: null,
+      lastFailureAtMs: null,
+      lastFailureAgeMs: null,
+    });
+  });
+
+  it('setRailEnabled flips the enabled flag in the next snapshot', () => {
+    const ps = new ProofStore();
+    ps.setRailEnabled('stocks', true);
+    const snap = ps.snapshot();
+    expect(snap.rails.stocks.enabled).toBe(true);
+    expect(snap.rails.crypto.enabled).toBe(false);
+  });
+
+  it('record sets lastSuccessAtMs and derives lastSuccessAgeMs from generatedAt', () => {
+    const ps = new ProofStore();
+    const t = Date.now() - 1500;
+    ps.record('stocks', { ...baseEntry, submittedAtMs: t });
+    const snap = ps.snapshot();
+    expect(snap.rails.stocks.lastSuccessAtMs).toBe(t);
+    expect(snap.rails.stocks.lastSuccessAgeMs).toBe(snap.generatedAt - t);
+    expect(snap.rails.stocks.lastSuccessAgeMs).toBeGreaterThanOrEqual(0);
+    expect(snap.rails.stocks.lastFailureAtMs).toBeNull();
+    expect(snap.rails.stocks.lastFailureAgeMs).toBeNull();
+  });
+
+  it('lastSuccessAtMs survives ring rollover (independent of bounded entry ring)', () => {
+    const ps = new ProofStore(3);
+    let last = 0;
+    for (let i = 0; i < 7; i++) {
+      last = 1700000000000 + i;
+      ps.record('stocks', { ...baseEntry, txHash: `0xs${i}`, submittedAtMs: last });
+    }
+    const snap = ps.snapshot();
+    expect(snap.stocks).toHaveLength(3);
+    expect(snap.rails.stocks.lastSuccessAtMs).toBe(last);
+  });
+
+  it('recordFailure sets lastFailureAtMs and derives lastFailureAgeMs', () => {
+    const ps = new ProofStore();
+    const t = Date.now() - 800;
+    ps.recordFailure('crypto', { ...baseFailure, attemptedAtMs: t });
+    const snap = ps.snapshot();
+    expect(snap.rails.crypto.lastFailureAtMs).toBe(t);
+    expect(snap.rails.crypto.lastFailureAgeMs).toBe(snap.generatedAt - t);
+    expect(snap.rails.crypto.lastSuccessAtMs).toBeNull();
+    expect(snap.rails.crypto.lastSuccessAgeMs).toBeNull();
+  });
+
+  it('lastFailureAtMs survives ring rollover', () => {
+    const ps = new ProofStore(2);
+    let last = 0;
+    for (let i = 0; i < 5; i++) {
+      last = 1700000000000 + i;
+      ps.recordFailure('crypto', { ...baseFailure, reason: `r${i}`, attemptedAtMs: last });
+    }
+    const snap = ps.snapshot();
+    expect(snap.failures.crypto).toHaveLength(2);
+    expect(snap.rails.crypto.lastFailureAtMs).toBe(last);
+  });
+
+  it('mixed record + recordFailure populates both independently', () => {
+    const ps = new ProofStore();
+    const tSuccess = Date.now() - 2000;
+    const tFailure = Date.now() - 500;
+    ps.record('stocks', { ...baseEntry, submittedAtMs: tSuccess });
+    ps.recordFailure('stocks', { ...baseFailure, attemptedAtMs: tFailure });
+    const snap = ps.snapshot();
+    expect(snap.rails.stocks.lastSuccessAtMs).toBe(tSuccess);
+    expect(snap.rails.stocks.lastFailureAtMs).toBe(tFailure);
+    expect(snap.rails.stocks.lastSuccessAgeMs).toBe(snap.generatedAt - tSuccess);
+    expect(snap.rails.stocks.lastFailureAgeMs).toBe(snap.generatedAt - tFailure);
+  });
+
+  it('per-rail status is independent across rails', () => {
+    const ps = new ProofStore();
+    ps.setRailEnabled('stocks', true);
+    ps.record('stocks', { ...baseEntry, submittedAtMs: 1700000001000 });
+    const snap = ps.snapshot();
+    expect(snap.rails.stocks.enabled).toBe(true);
+    expect(snap.rails.stocks.lastSuccessAtMs).toBe(1700000001000);
+    expect(snap.rails.crypto.enabled).toBe(false);
+    expect(snap.rails.crypto.lastSuccessAtMs).toBeNull();
+  });
+});
+
 describe('redactProofReason', () => {
   it('strips long hex sequences (signer keys, addresses)', () => {
     const r = redactProofReason(

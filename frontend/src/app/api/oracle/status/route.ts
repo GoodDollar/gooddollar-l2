@@ -51,6 +51,13 @@ export type ProofFailurePayload = {
   attemptedAtMs: number
 }
 export type RailCountsPayload = { ok: number; failed: number }
+export type RailStatusPayload = {
+  enabled: boolean
+  lastSuccessAtMs: number | null
+  lastSuccessAgeMs: number | null
+  lastFailureAtMs: number | null
+  lastFailureAgeMs: number | null
+}
 type ProofPayload = {
   generatedAt: number
   stocks: ProofTail[]
@@ -58,6 +65,20 @@ type ProofPayload = {
   ingest?: IngestStatsPayload
   failures?: { stocks?: ProofFailurePayload[]; crypto?: ProofFailurePayload[] }
   counts?: { stocks?: RailCountsPayload; crypto?: RailCountsPayload }
+  rails?: { stocks?: unknown; crypto?: unknown }
+}
+
+const DEFAULT_RAIL_STATUS: RailStatusPayload = {
+  enabled: false,
+  lastSuccessAtMs: null,
+  lastSuccessAgeMs: null,
+  lastFailureAtMs: null,
+  lastFailureAgeMs: null,
+}
+
+export const DEFAULT_RAILS: { stocks: RailStatusPayload; crypto: RailStatusPayload } = {
+  stocks: { ...DEFAULT_RAIL_STATUS },
+  crypto: { ...DEFAULT_RAIL_STATUS },
 }
 
 export const DEFAULT_INGEST: IngestStatsPayload = {
@@ -73,6 +94,30 @@ function pickFailures(p: ProofPayload | undefined): { stocks: ProofFailurePayloa
   return {
     stocks: Array.isArray(f?.stocks) ? f!.stocks as ProofFailurePayload[] : [],
     crypto: Array.isArray(f?.crypto) ? f!.crypto as ProofFailurePayload[] : [],
+  }
+}
+
+function pickRailStatus(raw: unknown): RailStatusPayload {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_RAIL_STATUS }
+  const r = raw as Record<string, unknown>
+  const num = (k: string): number | null => {
+    const v = r[k]
+    return typeof v === 'number' && Number.isFinite(v) ? v : null
+  }
+  return {
+    enabled: typeof r.enabled === 'boolean' ? r.enabled : false,
+    lastSuccessAtMs: num('lastSuccessAtMs'),
+    lastSuccessAgeMs: num('lastSuccessAgeMs'),
+    lastFailureAtMs: num('lastFailureAtMs'),
+    lastFailureAgeMs: num('lastFailureAgeMs'),
+  }
+}
+
+function pickRails(p: ProofPayload | undefined): { stocks: RailStatusPayload; crypto: RailStatusPayload } {
+  const r = p?.rails
+  return {
+    stocks: pickRailStatus(r?.stocks),
+    crypto: pickRailStatus(r?.crypto),
   }
 }
 
@@ -186,6 +231,7 @@ async function handleGet(_req?: NextRequest) {
         ingest: { ...DEFAULT_INGEST },
         failures: { stocks: [], crypto: [] },
         counts: { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } },
+        rails: { stocks: { ...DEFAULT_RAIL_STATUS }, crypto: { ...DEFAULT_RAIL_STATUS } },
         freshCount: 0,
         totalCount: 0,
         upstreams,
@@ -206,6 +252,9 @@ async function handleGet(_req?: NextRequest) {
   const ingest = proofOk ? pickIngest(proofRes.value) : { ...DEFAULT_INGEST }
   const failures = proofOk ? pickFailures(proofRes.value) : { stocks: [], crypto: [] }
   const counts = proofOk ? pickCounts(proofRes.value) : { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } }
+  const rails = proofOk
+    ? pickRails(proofRes.value)
+    : { stocks: { ...DEFAULT_RAIL_STATUS }, crypto: { ...DEFAULT_RAIL_STATUS } }
 
   const healthy = quotesOk && proofOk && (quotesRes.value.healthy ?? true)
   const freshCount = quotesOk ? (quotesRes.value.freshCount ?? quotes.length) : 0
@@ -220,6 +269,7 @@ async function handleGet(_req?: NextRequest) {
     ingest,
     failures,
     counts,
+    rails,
     freshCount,
     totalCount,
     timestamp: quotesOk ? (quotesRes.value.timestamp ?? Date.now()) : Date.now(),
