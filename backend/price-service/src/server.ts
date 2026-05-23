@@ -97,7 +97,6 @@ export function createServer(
     }
     next();
   });
-  app.use(express.json({ limit: '32kb' }));
 
   app.get('/health', (_req: Request, res: Response) => {
     const fresh = cache.getFresh();
@@ -255,31 +254,18 @@ export function createServer(
   app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     const e = (err && typeof err === 'object' ? err : {}) as {
       status?: unknown;
-      type?: unknown;
       expose?: unknown;
       message?: unknown;
     };
     const status = typeof e.status === 'number' ? e.status : 500;
-    const code =
-      e.type === 'entity.parse.failed'
-        ? 'malformed-json'
-        : e.type === 'entity.too.large'
-          ? 'payload-too-large'
-          : status >= 500
-            ? 'internal-error'
-            : 'bad-request';
-    // Static, redacted messages: never reflect parser internals
-    // (which embed "at position N" / file paths in some Node versions).
+    const code = status >= 500 ? 'internal-error' : 'bad-request';
+    // Static, redacted message for 5xx — never reflect handler internals.
     const message =
       status >= 500
         ? 'internal error'
-        : code === 'malformed-json'
-          ? 'Invalid JSON body'
-          : code === 'payload-too-large'
-            ? 'Request body too large'
-            : code === 'bad-request' && e.expose === true && typeof e.message === 'string'
-              ? e.message
-              : code;
+        : e.expose === true && typeof e.message === 'string'
+          ? e.message
+          : code;
     res.status(status).json({
       error: code,
       message,

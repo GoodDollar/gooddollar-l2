@@ -1,3 +1,4 @@
+import http from 'http';
 import { createServer } from '../server';
 import { QuoteCache } from '../quote-cache';
 import { NormalizedQuote, IngestStats, SourceStatus, computeSpread } from '../types';
@@ -302,38 +303,49 @@ describe('REST Server — error handling envelope', () => {
     server.close(done);
   });
 
-  it('POST /quotes with malformed JSON returns JSON 400 envelope', async () => {
+  it('POST /quotes with malformed JSON returns 405 (no body parser, no parse attempt)', async () => {
     const res = await fetch(`${baseUrl}/quotes`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: '{not json',
     });
-    const text = await res.text();
-    const body = JSON.parse(text) as Record<string, unknown>;
-    expect(res.status).toBe(400);
-    expect(res.headers.get('content-type') || '').toMatch(/^application\/json/);
-    expect(body.error).toBe('malformed-json');
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(405);
+    expect(body.error).toBe('method-not-allowed');
+    expect(body.allowed).toEqual(['GET', 'OPTIONS']);
     expect(body.path).toBe('/quotes');
     expect(body.method).toBe('POST');
-    expect(typeof body.timestamp).toBe('number');
-    expect(text).not.toMatch(/\bat /);
-    expect(text).not.toContain('node_modules');
-    expect(text).not.toMatch(/\/home\//);
-    expect(text).not.toMatch(/\/usr\//);
   });
 
-  it('POST /quotes with oversized body returns JSON 413', async () => {
-    const big = JSON.stringify({ x: 'A'.repeat(40_000) });
-    const res = await fetch(`${baseUrl}/quotes`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: big,
+  it('GET /health with json body is processed as a GET (body ignored)', async () => {
+    const addr = (server.address() as import('net').AddressInfo);
+    const malformed = '{not json';
+    const result = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+      const req = http.request(
+        {
+          host: '127.0.0.1',
+          port: addr.port,
+          method: 'GET',
+          path: '/health',
+          headers: {
+            'content-type': 'application/json',
+            'content-length': Buffer.byteLength(malformed),
+          },
+        },
+        (res) => {
+          let buf = '';
+          res.on('data', (chunk) => (buf += chunk));
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, body: buf }));
+        },
+      );
+      req.on('error', reject);
+      req.write(malformed);
+      req.end();
     });
-    expect(res.status).toBe(413);
-    const body = (await res.json()) as Record<string, unknown>;
-    expect(body.error).toBe('payload-too-large');
-    expect(body.path).toBe('/quotes');
-    expect(body.method).toBe('POST');
+    expect([200, 503]).toContain(result.status);
+    const parsed = JSON.parse(result.body) as Record<string, unknown>;
+    expect(parsed.error).not.toBe('malformed-json');
+    expect(parsed.status === 'ok' || parsed.status === 'degraded').toBe(true);
   });
 
   it('route handler throw returns JSON 500 with literal "internal error"', async () => {
