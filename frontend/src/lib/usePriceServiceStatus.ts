@@ -9,6 +9,14 @@ export interface QuoteStatus {
   lastUpdateMs: number
   sessionState: string
   confidence: number
+  /**
+   * Optional ms-since-epoch of the *price's* as-of timestamp. For closed
+   * sessions, the time of the closing print; for after-hours, the most
+   * recent market-close time; for pre-market, the market-open time. The
+   * field is undefined for open sessions (the "Updated Xs ago" clause
+   * already covers liveness) and for upstreams that don't yet emit it.
+   */
+  sessionAsOfMs?: number
   oracleBlock?: number
   divergenceBps?: number
   productSync?: Partial<Record<'amm' | 'perps' | 'prediction' | 'lend' | 'yield', { lastSyncedBlock: number; value?: number }>>

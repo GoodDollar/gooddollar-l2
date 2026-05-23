@@ -15,6 +15,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
+import { lastSessionAnchorMs } from '@/lib/sessionAnchor'
 
 export const runtime = 'nodejs'
 
@@ -22,7 +23,13 @@ const PRICE_SERVICE_URL = process.env.PRICE_SERVICE_URL ?? process.env.NEXT_PUBL
 const ORACLE_SIGNER_URL = process.env.ORACLE_SIGNER_URL ?? 'http://localhost:9107'
 const TIMEOUT_MS = 5000
 
-type QuoteRow = { symbol: string; lastUpdateMs: number; sessionState: string; confidence: number }
+type QuoteRow = {
+  symbol: string
+  lastUpdateMs: number
+  sessionState: string
+  confidence: number
+  sessionAsOfMs?: number
+}
 type ProofTail = {
   rail: 'stocks' | 'crypto'
   txHash: string
@@ -198,7 +205,9 @@ function pickIngest(p: { ingest?: unknown } | undefined): IngestStatsPayload {
   }
 }
 
-export type UpstreamStatus = { status: 'ok' } | { status: 'down'; reason: string }
+export type UpstreamStatus =
+  | { status: 'ok'; label?: string }
+  | { status: 'down'; reason: string; label?: string }
 
 const REASON_MAX_LEN = 200
 
@@ -227,6 +236,18 @@ function buildUpstream(settled: PromiseSettledResult<unknown>): UpstreamStatus {
     return { status: 'ok' }
   }
   return { status: 'down', reason: redactUpstreamReason(settled.reason) }
+}
+
+/**
+ * Operator-readable label for the price-service upstream so the
+ * OracleStatusBadge can render `Source: eToro demo → …` instead of
+ * `Source: mock → …`. Read at request time so a `.env.local` change is
+ * picked up without restarting Next.js.
+ */
+function readPriceSourceLabel(): string {
+  const raw = process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL
+  if (typeof raw === 'string' && raw.trim().length > 0) return raw.trim()
+  return 'mock'
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -281,8 +302,9 @@ async function handleGet(_req?: NextRequest) {
     fetchJsonAllowDegraded<ProofPayload>(`${ORACLE_SIGNER_URL}/proof`),
   ])
 
+  const priceSourceLabel = readPriceSourceLabel()
   const upstreams = {
-    priceService: buildUpstream(quotesRes),
+    priceService: { ...buildUpstream(quotesRes), label: priceSourceLabel },
     oracleSigner: buildUpstream(proofRes),
   }
 
