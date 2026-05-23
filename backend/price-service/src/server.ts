@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { QuoteCache } from './quote-cache';
 import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats } from './types';
 
