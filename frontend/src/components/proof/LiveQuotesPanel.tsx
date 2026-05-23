@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
+import { formatProofUsd } from '@/lib/proofFormat'
 
 interface Quote {
   source?: string
@@ -53,16 +54,6 @@ function displayHost(url: string): string {
 function spreadPct(bid: number, ask: number): number {
   if (!Number.isFinite(bid) || !Number.isFinite(ask) || bid <= 0) return 0
   return ((ask - bid) / ((ask + bid) / 2)) * 100
-}
-
-function formatUsd(n: number): string {
-  if (!Number.isFinite(n)) return '—'
-  return n.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 4,
-  })
 }
 
 function formatAge(ms: number): string {
@@ -222,9 +213,9 @@ export function LiveQuotesPanel({
                   return (
                     <tr key={q.symbol} className="border-b border-white/5 last:border-0">
                       <td className="py-2 pr-3 font-medium text-white">{q.symbol}</td>
-                      <td className="py-2 pr-3 text-right font-mono text-gray-100">{formatUsd(q.mid)}</td>
+                      <td className="py-2 pr-3 text-right font-mono text-gray-100">{formatProofUsd(q.symbol, q.mid)}</td>
                       <td className="py-2 pr-3 text-right font-mono text-gray-400">
-                        {formatUsd(q.bid)} / {formatUsd(q.ask)}
+                        {formatProofUsd(q.symbol, q.bid)} / {formatProofUsd(q.symbol, q.ask)}
                       </td>
                       <td className="py-2 pr-3 text-right font-mono text-gray-300">
                         {spreadPct(q.bid, q.ask).toFixed(3)}%
