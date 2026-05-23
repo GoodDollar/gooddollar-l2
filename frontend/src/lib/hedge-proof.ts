@@ -20,6 +20,23 @@ export const PROOF_URL =
   process.env.HEDGE_PROOF_URL ?? 'http://localhost:9116/hedge/proof/latest'
 export const PROOF_TIMEOUT_MS = 5_000
 
+/**
+ * Builds the candidate engine URLs for a per-receipt proof lookup.
+ *
+ * The engine's per-id endpoint lives outside this lane's worktree, so
+ * the route is defensive: try path-style first (`/proof/<id>`), fall
+ * back to query-style (`/proof/latest?id=<id>`). The first endpoint
+ * that returns 200 (or a clean 404) wins; 5xx falls through to the
+ * next; both failing returns engine_down.
+ *
+ * Exported (and pure) so the proof route's tests can pin the exact URLs.
+ */
+export function proofUrlsForReceipt(id: string): string[] {
+  const safeId = encodeURIComponent(id)
+  const base = PROOF_URL.replace(/\/+$/, '').replace(/\/proof\/latest$/, '')
+  return [`${base}/proof/${safeId}`, `${PROOF_URL}?id=${safeId}`]
+}
+
 export interface ProofPointer {
   path: string
   timestamp: number

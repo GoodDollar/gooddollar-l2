@@ -12,7 +12,6 @@ import {
   type ReactNode,
 } from 'react'
 
-import { formatExposureDelta } from '@/lib/format-exposure-delta'
 import { formatNotionalUsd } from '@/lib/format-notional'
 import { buildHedgeErrorHeadline, classifyClientError } from '@/lib/hedge-error'
 import { buildDailySeries } from '@/lib/hedge-daily-series'
@@ -24,7 +23,7 @@ import {
   ArrowPathIcon,
   InboxIcon,
 } from './HedgeStatusCard/icons'
-import { CopyIdButton } from './HedgeStatusCard/CopyIdButton'
+import { ReceiptRow, type HedgeReceipt } from './HedgeStatusCard/ReceiptRow'
 import { ReceiptsExportToolbar } from './HedgeStatusCard/ReceiptsExportToolbar'
 
 /**
@@ -40,22 +39,6 @@ import { ReceiptsExportToolbar } from './HedgeStatusCard/ReceiptsExportToolbar'
  * services. The card shows distinct loading, empty, error, breaker-tripped,
  * and kill-switch-engaged states.
  */
-
-interface HedgeReceipt {
-  v: number
-  id: string
-  timestamp: number
-  symbol: string
-  side: 'buy' | 'sell' | 'noop'
-  notionalUsd: number
-  success: boolean
-  error?: string
-  etoroOrderId?: string
-  beforeExposure: number
-  afterExposure: number
-  dryRun: boolean
-  mode: 'sandbox' | 'real' | 'demo' | 'unknown'
-}
 
 interface CapSnapshot {
   dailyNotionalUsd: number
@@ -107,11 +90,6 @@ interface HedgeStatusResponse {
 
 const POLL_INTERVAL_MS = 10_000
 
-function shortId(id: string): string {
-  if (!id) return '—'
-  return id.length <= 8 ? id : id.slice(0, 8)
-}
-
 function timeAgo(ms: number | undefined): string {
   if (!ms) return '—'
   const diff = Math.max(0, Math.floor((Date.now() - ms) / 1000))
@@ -119,11 +97,6 @@ function timeAgo(ms: number | undefined): string {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
   return `${Math.floor(diff / 86400)}d ago`
-}
-
-function isoTitle(ms: number | undefined): string | undefined {
-  if (!ms || !Number.isFinite(ms)) return undefined
-  return new Date(ms).toISOString()
 }
 
 // "Healthy converged" → the most recent poll *was* the most recent tick;
@@ -1064,93 +1037,3 @@ const Stat = memo(function Stat({
   )
 })
 
-// Receipt rows come from a fresh JSON parse on every poll, so object
-// identity is never stable. Compare on the exact subset of fields the
-// row JSX reads so a byte-identical receipt skips re-render entirely.
-// NB: extending the row's JSX requires adding any new field here too.
-function areReceiptPropsEqual(
-  a: Readonly<{ receipt: HedgeReceipt }>,
-  b: Readonly<{ receipt: HedgeReceipt }>,
-): boolean {
-  const x = a.receipt
-  const y = b.receipt
-  return (
-    x.id === y.id &&
-    x.timestamp === y.timestamp &&
-    x.success === y.success &&
-    x.notionalUsd === y.notionalUsd &&
-    x.beforeExposure === y.beforeExposure &&
-    x.afterExposure === y.afterExposure &&
-    x.etoroOrderId === y.etoroOrderId &&
-    x.symbol === y.symbol &&
-    x.side === y.side &&
-    x.error === y.error
-  )
-}
-
-const ReceiptRow = memo(function ReceiptRow({ receipt: r }: { receipt: HedgeReceipt }) {
-  const delta = formatExposureDelta(r.beforeExposure, r.afterExposure)
-  return (
-    <tr
-      data-testid="hedge-receipt-row"
-      title={r.id}
-      className="border-t border-dark-100 font-mono"
-    >
-      <td
-        className="py-1.5 pr-2 text-xs text-gray-300"
-        title={isoTitle(r.timestamp)}
-      >
-        {timeAgo(r.timestamp)}
-      </td>
-      <td className="py-1.5 pr-2 text-xs text-gray-300">
-        <div>
-          <CopyIdButton
-            value={r.id}
-            label={shortId(r.id)}
-            ariaLabel={`Copy hedge id ${r.id}`}
-            testId="hedge-receipt-internal-id-copy"
-          />
-        </div>
-        <div data-testid="hedge-receipt-etoro-id" className="text-gray-500">
-          eToro:{' '}
-          {/* eToro order ids are opaque ~48-char identifiers. Without a
-              cap they single-handedly push the receipts table 2.4×
-              wider than its scroller on a 375-px phone, hiding
-              SYMBOL / SIDE / NOTIONAL / Δ / STATUS to the right. The
-              fixed 10ch cap keeps column geometry stable across
-              viewports; the title attribute restores full text on
-              hover/long-press (task 0039). CopyIdButton wraps the
-              truncated span so an operator can copy the FULL id with
-              one tap (task 0043). */}
-          <CopyIdButton
-            value={r.etoroOrderId}
-            label={r.etoroOrderId}
-            ariaLabel={r.etoroOrderId ? `Copy eToro order id ${r.etoroOrderId}` : ''}
-            visibleClassName="text-gray-400 inline-block max-w-[10ch] truncate align-bottom"
-            placeholder={<span className="text-gray-400">—</span>}
-            testId="hedge-receipt-etoro-id-copy"
-          />
-        </div>
-      </td>
-      <td className="py-1.5 pr-2 text-white">{r.symbol}</td>
-      <td className="py-1.5 pr-2 text-gray-300">{r.side}</td>
-      <td className="py-1.5 pr-2 text-right text-gray-200">
-        {formatNotionalUsd(r.notionalUsd)}
-      </td>
-      <td
-        data-testid="hedge-receipt-exposure-delta"
-        className="py-1.5 pr-2 text-xs text-gray-300"
-      >
-        <div>{delta.display}</div>
-        <div className={delta.deltaClass}>({delta.deltaSigned})</div>
-      </td>
-      <td className="py-1.5 text-xs">
-        {r.success ? (
-          <span className="text-goodgreen">ok</span>
-        ) : (
-          <span className="text-yellow-400">{r.error ?? 'failed'}</span>
-        )}
-      </td>
-    </tr>
-  )
-}, areReceiptPropsEqual)

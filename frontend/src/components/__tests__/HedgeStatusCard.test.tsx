@@ -1,6 +1,12 @@
 import { createRef } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+
+const routerPushMock = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: routerPushMock, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+}));
+
 import HedgeStatusCard, { type HedgeStatusCardHandle } from '../HedgeStatusCard';
 import { normalizeHedgeError } from '@/lib/hedge-error';
 
@@ -52,6 +58,7 @@ function mockFetchOnce(body: unknown, init: ResponseInit = { status: 200 }) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  routerPushMock.mockReset();
 });
 
 afterEach(() => {
@@ -868,6 +875,40 @@ describe('HedgeStatusCard', () => {
     expect(cell.textContent).toBe('— → —(—)');
     expect(cell.textContent).not.toContain('null');
     expect(cell.textContent).not.toContain('undefined');
+  });
+
+  it('clicking a receipt row navigates to /analytics/hedge/proof/<id> (#0045)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const row = await screen.findByTestId('hedge-receipt-row');
+    expect(row.getAttribute('role')).toBe('link');
+    expect(row.getAttribute('tabindex')).toBe('0');
+    fireEvent.click(row);
+    expect(routerPushMock).toHaveBeenCalledWith(
+      '/analytics/hedge/proof/abc12345defg',
+    );
+  });
+
+  it('pressing Enter on a focused receipt row navigates to the proof page (#0045)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const row = await screen.findByTestId('hedge-receipt-row');
+    fireEvent.keyDown(row, { key: 'Enter' });
+    expect(routerPushMock).toHaveBeenCalledWith(
+      '/analytics/hedge/proof/abc12345defg',
+    );
+  });
+
+  it('clicking the in-row copy button does NOT trigger row navigation (#0045)', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const copy = await screen.findByTestId('hedge-receipt-internal-id-copy');
+    fireEvent.click(copy);
+    expect(routerPushMock).not.toHaveBeenCalled();
   });
 
   it('receipt id and eToro id are rendered as copy buttons with aria-label (#0043)', async () => {
