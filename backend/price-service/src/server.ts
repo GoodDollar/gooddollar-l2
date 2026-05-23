@@ -189,12 +189,14 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
   {
     path: '/quotes',
     methods: ['GET'],
-    summary: 'Every cached quote with cache age and per-quote filter verdict.',
+    summary:
+      'Every cached quote with cache age and per-quote filter verdict; ' +
+      '503 when source dead AND cache empty (matches /quotes/fresh/all).',
     responseShape:
       '{ totalCached, count (deprecated→totalCached), deprecations, ' +
-      'degraded?, message?, quotes: Record<string, NormalizedQuote ' +
-      '& {cacheAge, filterAccepted, filterReason}>, source?, ' +
-      'timestamp, timestampIso }',
+      'degraded?, stale?, message?, quotes: Record<string, ' +
+      'NormalizedQuote & {cacheAge, filterAccepted, filterReason}>, ' +
+      'source?, timestamp, timestampIso } -- 200/503',
   },
   {
     path: '/quotes/fresh/all',
@@ -1188,21 +1190,37 @@ export function createServer(
         count: 'rename → totalCached; will be removed in the next release',
       },
     };
+    let status = 200;
     if (sourceStatusGetter) {
       const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
       body.degraded = degraded;
-      if (count === 0) {
-        body.message = degraded
-          ? 'no cached quotes — upstream source is degraded ' +
-            '(see source.reason / source.nextStep)'
-          : 'no cached quotes — source is healthy, awaiting first tick';
+      // Match /quotes/fresh/all's status-code contract: a single
+      // `resp.ok` check on the consumer side now classifies every
+      // degraded state across both bulk endpoints. 503 only fires when
+      // the source is dead AND the cache holds nothing useful — a
+      // non-empty cache is still a useful read-only answer (flagged
+      // with `stale:true` so a consumer can distinguish fresh from
+      // cache-only). See task 0060.
+      if (degraded && count === 0) {
+        status = 503;
+        body.message =
+          'no cached quotes — upstream source is degraded ' +
+          '(see source.reason / source.nextStep)';
+      } else if (degraded && count > 0) {
+        body.stale = true;
+        body.message =
+          'serving stale cached quotes — upstream source is dead ' +
+          '(see source.reason / source.nextStep)';
+      } else if (count === 0) {
+        body.message =
+          'no cached quotes — source is healthy, awaiting first tick';
       }
       body.quotes = quotes;
       ctx = { ...ctx, src };
     } else {
       body.quotes = quotes;
     }
-    res.json(finalizeEnvelope(body, now, ctx));
+    res.status(status).json(finalizeEnvelope(body, now, ctx));
   });
 
   // Single helper so all three sub-envelopes (200 success, 404

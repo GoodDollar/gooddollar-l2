@@ -1230,12 +1230,12 @@ describe('REST Server — data endpoints carry source state when getter wired', 
     server.close(done);
   });
 
-  it('GET /quotes includes source.connected=false when getter reports disconnect', async () => {
+  it('GET /quotes includes source.connected=false when getter reports disconnect (503 per task 0060)', async () => {
     cache.clear();
     srcState = { connected: false, reason: 'etoro-client-not-installed', lastAttachAt: null };
     const res = await fetch(`${baseUrl}/quotes`);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
     const src = body.source as Record<string, unknown>;
     expect(src.connected).toBe(false);
     expect(src.reason).toBe('etoro-client-not-installed');

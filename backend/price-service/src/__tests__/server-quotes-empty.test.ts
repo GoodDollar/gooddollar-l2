@@ -105,7 +105,7 @@ describe('GET /quotes — degraded + message when source disconnected', () => {
     server.close(done);
   });
 
-  it('empty + degraded includes message referencing source.reason', async () => {
+  it('empty + degraded → 503 with message referencing source.reason (task 0060)', async () => {
     cache.clear();
     srcState = {
       connected: false,
@@ -113,7 +113,7 @@ describe('GET /quotes — degraded + message when source disconnected', () => {
       lastAttachAt: null,
     };
     const res = await fetch(`${baseUrl}/quotes`);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.count).toBe(0);
     expect(body.degraded).toBe(true);
@@ -121,7 +121,7 @@ describe('GET /quotes — degraded + message when source disconnected', () => {
     expect(body.message).toMatch(/degraded|source\.reason/i);
   });
 
-  it('non-empty omits message even when degraded', async () => {
+  it('non-empty stays 200 even when degraded; carries stale:true and a stale-cache message (task 0060)', async () => {
     cache.clear();
     cache.update(makeQuote({ symbol: 'AAPL' }));
     srcState = {
@@ -130,10 +130,13 @@ describe('GET /quotes — degraded + message when source disconnected', () => {
       lastAttachAt: null,
     };
     const res = await fetch(`${baseUrl}/quotes`);
+    expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.count).toBe(1);
     expect(body.degraded).toBe(true);
-    expect(Object.prototype.hasOwnProperty.call(body, 'message')).toBe(false);
+    expect(body.stale).toBe(true);
+    expect(typeof body.message).toBe('string');
+    expect(body.message as string).toMatch(/stale/i);
   });
 });
 
