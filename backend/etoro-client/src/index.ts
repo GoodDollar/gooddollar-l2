@@ -329,6 +329,7 @@ export {
   loadDemoCapConfig,
   redactCredentials,
   resolveMode,
+  resolveModeSource,
   REAL_TRADING_ENABLED,
   DEMO_BASE_URL_DEFAULT,
   DEMO_WS_URL_DEFAULT,

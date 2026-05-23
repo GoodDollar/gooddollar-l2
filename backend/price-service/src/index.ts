@@ -1,13 +1,8 @@
 import type { Server } from 'http';
-import {
-  EtoroClient,
-  INSTRUMENT_SYMBOLS,
-  partitionLaneSymbols,
-} from '@goodchain/etoro-client';
 import { QuoteCache } from './quote-cache';
 import { WsBroadcaster } from './ws-broadcaster';
 import { createServer } from './server';
-import { connectEtoroSource } from './etoro-source';
+import { bootstrapEtoroSource } from './bootstrap';
 import type { EtoroSourceHandle } from './etoro-source';
 import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult } from './types';
 
@@ -17,6 +12,11 @@ export { WsBroadcaster } from './ws-broadcaster';
 export { createServer } from './server';
 export { connectEtoroSource } from './etoro-source';
 export type { EtoroSourceConfig, EtoroSourceHandle, MarketDataSource } from './etoro-source';
+export {
+  bootstrapEtoroSource,
+  defaultBootstrapDeps,
+} from './bootstrap';
+export type { BootstrapDeps, BootstrapResult } from './bootstrap';
 export type * from './types';
 
 export class PriceService {
@@ -60,35 +60,12 @@ if (require.main === module) {
   let sourceHandle: EtoroSourceHandle | undefined;
 
   try {
-    const mode = process.env.ETORO_MODE ?? 'sandbox';
-    console.log(`[price-service] Connecting to eToro in ${mode} mode...`);
-
-    const client = new EtoroClient();
-    const rawSymbols = (process.env.ORACLE_SYMBOLS ?? service.config.symbols.join(','))
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const { valid: symbols, unknown } = partitionLaneSymbols(rawSymbols);
-    if (unknown.length > 0) {
-      console.error(
-        `[price-service] Unknown symbols: ${unknown.join(', ')}. ` +
-        `Valid: ${INSTRUMENT_SYMBOLS.join(', ')}`,
-      );
-      process.env.SERVICE_HEALTH_STATUS = 'degraded';
-      process.env.SERVICE_DISABLED_REASON = `Unknown symbols: ${unknown.join(',')}`;
-    }
-
-    sourceHandle = connectEtoroSource(service, {
-      symbols,
-      marketData: client.marketData,
-    });
-
-    console.log(`[price-service] Subscribed to ${symbols.length} symbols via eToro: ${symbols.join(', ')}`);
-  } catch (err: unknown) {
+    const result = bootstrapEtoroSource(service);
+    sourceHandle = result.handle;
+  } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[price-service] eToro source unavailable: ${msg}`);
-    console.warn('[price-service] Running without live quotes — use REST API to ingest manually');
+    console.error(`[price-service] fatal: ${msg}`);
+    process.exit(1);
   }
 
   const shutdown = () => {
