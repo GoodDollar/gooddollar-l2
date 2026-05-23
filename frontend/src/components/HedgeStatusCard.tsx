@@ -755,7 +755,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               )}
               <a
                 data-testid="hedge-proof-link"
-                href="/api/hedge/proof/latest"
+                href="/analytics/hedge/proof/latest"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-goodgreen hover:underline font-mono"

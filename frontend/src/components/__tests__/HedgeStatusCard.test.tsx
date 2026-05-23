@@ -494,11 +494,16 @@ describe('HedgeStatusCard', () => {
     expect(grid).toHaveTextContent('—');
   });
 
-  it('latest-proof link points at the markdown route and surfaces the summary chip', async () => {
+  it('latest-proof link points at the in-app proof viewer and surfaces the summary chip (#0036)', async () => {
+    // After #0036 the hedge card sends the operator to the styled
+    // in-app `/analytics/hedge/proof/latest` page rather than the raw
+    // `text/markdown` API route. The existing API route is kept for
+    // automation/curl, accessible via the "View raw markdown" link
+    // inside the new viewer.
     mockFetchOnce(BASE_RESPONSE);
     render(<HedgeStatusCard />);
     const link = await screen.findByTestId('hedge-proof-link');
-    expect(link.getAttribute('href')).toBe('/api/hedge/proof/latest');
+    expect(link.getAttribute('href')).toBe('/analytics/hedge/proof/latest');
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toContain('noopener');
     const summary = screen.getByTestId('hedge-proof-summary');

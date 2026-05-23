@@ -1,40 +1,27 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { readFile, realpath } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { methodNotAllowed } from '@/lib/api-error';
+import {
+  PROOF_URL,
+  resolveSafePath,
+  timedFetch,
+  type ProofPointer,
+} from '@/lib/hedge-proof';
 import { withApiRateLimit } from '@/lib/withApiRateLimit';
 
 /**
- * Lane 5 — `latest proof` markdown artifact viewer.
+ * Lane 5 — `latest proof` markdown artifact endpoint.
  *
- * The hedge-engine writes a markdown proof file per cycle and exposes a
- * pointer at `/hedge/proof/latest` with `{ path, timestamp, summary }`.
- * That route returns JSON; operators need the actual markdown body so the
- * dashboard's "latest proof →" link is useful without SSHing into a host.
- *
- * This route:
- *   1. Reads the pointer from the engine.
- *   2. Resolves the pointer's `path`, then confirms (via `realpath`) that
- *      the resolved file sits inside `HEDGE_PROOF_DIR_FRONTEND`. This is
- *      the only directory we ever read from — path traversal is rejected.
- *   3. Streams the file body as `text/markdown` so the browser renders
- *      it as plain text.
- *
- * Failure semantics are markdown bodies (not JSON) so the dashboard link
- * never sends a reviewer to a JSON dump.
+ * Returns the most recent hedge proof markdown body as
+ * `text/markdown`. Failure semantics are markdown-shaped so existing
+ * automation / curl flows keep working unchanged. The in-app proof
+ * viewer at `/analytics/hedge/proof/latest` consumes the JSON
+ * companion route (`./latest.json`) instead.
  */
 
 export const runtime = 'nodejs';
-
-const PROOF_URL =
-  process.env.HEDGE_PROOF_URL ?? 'http://localhost:9116/hedge/proof/latest';
-const PROOF_DIR_RAW =
-  process.env.HEDGE_PROOF_DIR_FRONTEND ??
-  process.env.HEDGE_PROOF_DIR ??
-  '.autobuilder/initiatives/0007e-hedging-demo/proofs';
-const PROOF_DIR_ABS = path.resolve(PROOF_DIR_RAW);
-const TIMEOUT_MS = 5_000;
 
 function markdown(body: string, status: number): NextResponse {
   return new NextResponse(body, {
@@ -44,36 +31,6 @@ function markdown(body: string, status: number): NextResponse {
       'Cache-Control': 'no-store',
     },
   });
-}
-
-async function timedFetch(url: string): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    return await fetch(url, { signal: controller.signal, cache: 'no-store' });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-interface ProofPointer {
-  path: string;
-  timestamp: number;
-  summary: string;
-}
-
-async function resolveSafePath(rawPath: string): Promise<string | null> {
-  const candidate = path.resolve(rawPath);
-  let resolved: string;
-  try {
-    resolved = await realpath(candidate);
-  } catch {
-    resolved = candidate;
-  }
-  const dir = PROOF_DIR_ABS;
-  if (resolved === dir) return null;
-  if (resolved.startsWith(dir + path.sep)) return resolved;
-  return null;
 }
 
 async function handleGet(_req: NextRequest): Promise<NextResponse> {
