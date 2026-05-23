@@ -35,7 +35,8 @@ describe('OracleStatusBadge stocks fallback', () => {
 
     render(<OracleStatusBadge useStocksFallback />)
     await waitFor(() => expect(screen.getByText('Live')).toBeInTheDocument())
-    expect(screen.getByText('stocks-keeper')).toBeInTheDocument()
+    expect(screen.getByText('on-chain feed')).toBeInTheDocument()
+    expect(screen.queryByText('stocks-keeper')).not.toBeInTheDocument()
   })
 
   it('shows Oracle offline when quote status is unavailable and fallback status fails', async () => {

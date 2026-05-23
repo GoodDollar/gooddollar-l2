@@ -44,6 +44,12 @@ function renderDetailRow(quoteStatus: QuoteStatus) {
 type Variant = 'compact' | 'detail'
 type TimeoutPhase = 'loading' | 'slow' | 'timed-out'
 
+// User-facing label for the listing-page badge. Keep short, plain English —
+// this is what a trader reads next to the live price, not an internal
+// service name. Internal `services[].name === 'stocks-keeper'` lookups in
+// `deriveStocksOracleHealth` remain unchanged; that's a contract identifier.
+const SOURCE_LABEL = 'on-chain feed'
+
 interface OracleStatusBadgeProps {
   variant?: Variant
   symbol?: string
@@ -265,7 +271,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             <span>Live</span>
             <span className="text-gray-600">·</span>
-            <span>stocks-keeper</span>
+            <span>{SOURCE_LABEL}</span>
           </div>
         )
       }
