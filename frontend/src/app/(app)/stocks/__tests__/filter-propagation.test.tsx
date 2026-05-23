@@ -236,11 +236,10 @@ describe('/stocks — filter propagation (task 0013)', () => {
     expect(screen.getByTestId('earnings-global-caption')).toHaveTextContent(/always shows all markets/i)
     expect(screen.getByTestId('news-global-caption')).toHaveTextContent(/filters apply to browse table and rebalance dashboard\./i)
 
-    // News + earnings still render content from the unfiltered set — at least
-    // one ticker from outside the Automotive sector should appear in the
-    // Market Intelligence panel.
-    const tickersInIntel = within(intelSection).getAllByText(/^(TSLA|AAPL|MSFT|NVDA)$/)
-    expect(tickersInIntel.length).toBeGreaterThan(2)
+    // News + earnings render an honest empty state until a real feed exists
+    // (task 0007d-0018) — no fake headlines / fake earnings dates leak in.
+    expect(within(intelSection).getByTestId('earnings-empty')).toHaveTextContent(/No earnings calendar yet/i)
+    expect(within(intelSection).getByTestId('news-flow-empty')).toHaveTextContent(/No headlines yet/i)
   })
 
   it('Drift & Rebalance heading drops the (filtered) suffix when no filter is active', () => {

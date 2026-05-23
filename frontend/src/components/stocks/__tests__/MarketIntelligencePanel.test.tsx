@@ -58,7 +58,7 @@ const stocks: Stock[] = [
 ]
 
 describe('MarketIntelligencePanel', () => {
-  it('renders core modules and demo badge when oracle is offline', () => {
+  it('renders core modules; News + Earnings always render an honest empty state until a feed is wired', () => {
     render(
       <MarketIntelligencePanel stocks={stocks} isLive={false} isLoading={false} onSelectTicker={vi.fn()} />
     )
@@ -66,7 +66,19 @@ describe('MarketIntelligencePanel', () => {
     expect(screen.getByRole('heading', { name: /Top Movers/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /Upcoming Earnings/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /News Flow/i })).toBeInTheDocument()
-    expect(screen.getByText(/Demo intelligence data/i)).toBeInTheDocument()
+
+    // The panel-level "Demo intelligence data" chip was replaced by per-column
+    // source captions on the columns that have no live feed.
+    expect(screen.queryByText(/Demo intelligence data/i)).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Source: feed pending/i).length).toBeGreaterThanOrEqual(2)
+
+    expect(screen.getByTestId('news-flow-empty').textContent).toMatch(/No headlines yet/i)
+    expect(screen.getByTestId('earnings-empty').textContent).toMatch(/No earnings calendar yet/i)
+
+    // No fabricated headlines or calendar dates may leak through.
+    expect(
+      screen.queryByText(/Market Wire|Tech Ledger|momentum turns positive|pulls back after recent run/i),
+    ).not.toBeInTheDocument()
   })
 
   it('switches movers mode and routes ticker clicks', () => {
@@ -101,8 +113,8 @@ describe('MarketIntelligencePanel', () => {
       <MarketIntelligencePanel stocks={[]} isLive isLoading={false} onSelectTicker={vi.fn()} />
     )
     expect(screen.getByText(/No movers available/i)).toBeInTheDocument()
-    expect(screen.getByText(/No earnings events available/i)).toBeInTheDocument()
-    expect(screen.getByText(/No headlines available/i)).toBeInTheDocument()
+    expect(screen.getByTestId('earnings-empty').textContent).toMatch(/No earnings calendar yet/i)
+    expect(screen.getByTestId('news-flow-empty').textContent).toMatch(/No headlines yet/i)
   })
 
   it('renders skeleton shimmer bars instead of plain text when loading', () => {
