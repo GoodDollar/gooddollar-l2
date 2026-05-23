@@ -23,8 +23,21 @@ the L2 oracle) has its own runbook at
 - The deployed `RISK_ENGINE_ADDRESS`.
 - The lane installed: `npm run install:lane1` from the repo root.
 - A pinned eToro instrument id for `PROOF_SYMBOL` (`PROOF_INSTRUMENT_ID`).
+  Resolve it once via:
+
+  ```bash
+  ETORO_MODE=demo-readonly \
+  ETORO_DEMO_KEY=… ETORO_DEMO_SECRET=… ETORO_DEMO_USER_KEY=… \
+  (cd backend/etoro-client && npm run resolve-instrument-id -- AAPL)
+  ```
+
+  Output is one TSV row per symbol —
+  `<symbol>\t<instrumentId>\t<instrumentType>\t<displayName>` — copy
+  the `instrumentId` (column 2) into `PROOF_INSTRUMENT_ID`.
+
   The proof script intentionally does not bootstrap the SDK's instrument
-  resolver, so it is independent of `/market-data/search` reachability.
+  resolver at runtime, so it remains independent of
+  `/market-data/search` reachability once the value is pinned.
 
 **Safety.** Both `ETORO_MODE=demo-trading` AND `HEDGE_TRADING_ENABLED=true`
 are required — the script refuses to run otherwise. The source-level
