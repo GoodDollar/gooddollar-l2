@@ -218,11 +218,15 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     // detail (cacheAge, filterAccepted, filterReason, …) is documented
     // on the /quotes responseShape; here we just keep the marker. The
     // 400 + 404 envelopes carry full field lists so a fresh integrator
-    // can write the error-path types from this string alone.
+    // can write the error-path types from this string alone. `path*`
+    // is shorthand for `path, pathTruncated?, pathOriginalLength?,
+    // pathPrefixLength?` (task 0058 — verbatim-prefix echo bounded to
+    // MAX_ECHOED_PATH_BYTES bytes, truncation indicated by the three
+    // companion fields when present).
     responseShape:
       '200: env | ' +
       '400: {error:invalid-symbol|invalid-symbol-or-path,' +
-      'message,expected?,didYouMean?,path,method} | ' +
+      'message,expected?,didYouMean?,path*,method} | ' +
       '404: {error,message,symbol,configured,configuredSymbols,' +
       'configuredSymbolCount,didYouMean?,source?}; ' +
       'tail: timestamp,timestampIso',
@@ -431,6 +435,64 @@ const MALFORMED_URI_EXPECTED = Object.freeze({
   percentEncoding: '%XX',
   hexDigits: '0-9A-Fa-f',
 });
+
+/**
+ * Cap on the verbatim prefix of `req.path` echoed back in any 4xx error
+ * envelope. 128 bytes is wide enough that every legitimate documented
+ * route (`/docs/source-reasons` is 20 bytes; `/quotes/<16-char ticker>`
+ * is 24 bytes) rides verbatim, but tight enough that a 5 KB hostile
+ * input is bounded to ~150 B for the path field. See task 0058.
+ */
+export const MAX_ECHOED_PATH_BYTES = 128;
+
+/**
+ * Verbatim-prefix echo of `req.path` plus, when the input was longer
+ * than the cap, three companion fields that let an operator
+ *
+ *   1. detect truncation without special-casing a Unicode glyph
+ *      (`pathTruncated:true`),
+ *   2. sort 4xx logs by request size to find length-attack bursts
+ *      (`pathOriginalLength`, BYTES not codepoints), and
+ *   3. round-trip `body.path === req.originalUrl.slice(0, pathPrefixLength)`
+ *      as an exact-match consumer assertion (`pathPrefixLength`).
+ *
+ * Truncation fields are absent on under-cap inputs — absence
+ * encodes "verbatim" so the show-iff-deprecated policy used elsewhere
+ * applies here too.
+ */
+export interface EchoedPath {
+  path: string;
+  pathTruncated?: true;
+  pathOriginalLength?: number;
+  pathPrefixLength?: number;
+}
+
+/**
+ * Bound the echoed `req.path` to `MAX_ECHOED_PATH_BYTES` of verbatim
+ * prefix and, when the input was longer, attach truncation metadata.
+ * UTF-8-safe: trims one JS codepoint at a time until the prefix
+ * round-trips under the byte cap, so a multi-byte trailing rune is
+ * never split mid-character. The U+2026 horizontal ellipsis is REMOVED
+ * from the wire entirely — no non-ASCII byte ever appears in `path`,
+ * which lets log tooling consume the field as plain ASCII.
+ */
+export function echoPath(rawPath: string): EchoedPath {
+  const fullBytes = Buffer.byteLength(rawPath, 'utf8');
+  if (fullBytes <= MAX_ECHOED_PATH_BYTES) return { path: rawPath };
+  let prefix = rawPath;
+  while (
+    prefix.length > 0 &&
+    Buffer.byteLength(prefix, 'utf8') > MAX_ECHOED_PATH_BYTES
+  ) {
+    prefix = prefix.slice(0, -1);
+  }
+  return {
+    path: prefix,
+    pathTruncated: true,
+    pathOriginalLength: fullBytes,
+    pathPrefixLength: Buffer.byteLength(prefix, 'utf8'),
+  };
+}
 
 /**
  * Static enrichment shipped on every 405 `method-not-allowed` envelope so
@@ -1127,10 +1189,6 @@ export function createServer(
     const now = Date.now();
     const result = normalizeSymbol(req.params.symbol);
     if (!result.ok) {
-      // Bound the reflected path so a 5KB symbol can't yield a 5KB body.
-      // Truncate at 32 chars (the same limit `normalizeSymbol` enforces
-      // on the raw input) plus the `/quotes/` prefix.
-      const path = req.path.length > 48 ? `${req.path.slice(0, 48)}…` : req.path;
       // Pick the message based on which gate failed so the caller knows
       // exactly what to fix. Pure-special inputs (all dots/dashes/
       // underscores) don't deserve the 404 "edit ORACLE_SYMBOLS and
@@ -1141,12 +1199,17 @@ export function createServer(
         result.reason === 'no-alnum'
           ? 'symbol must contain at least one letter or digit'
           : INVALID_SYMBOL_SHAPE_MESSAGE;
+      // `echoPath` bounds the reflected URL to MAX_ECHOED_PATH_BYTES
+      // bytes verbatim and, when truncated, attaches three companion
+      // fields (pathTruncated/pathOriginalLength/pathPrefixLength) so
+      // a 5 KB hostile symbol still ships a ~150 B path field with full
+      // forensic metadata. See task 0058.
       const body: Record<string, unknown> = {
         error: 'invalid-symbol',
         message,
         expected: INVALID_SYMBOL_EXPECTED,
         deprecations: INVALID_SYMBOL_DEPRECATIONS,
-        path,
+        ...echoPath(req.path),
         method: req.method,
       };
       res.status(400).json(finalizeTimestamps(body, now));
@@ -1168,7 +1231,7 @@ export function createServer(
           `the path segment '${lowered}' is a known sibling-route ` +
           `prefix; did you mean ${hint}?`,
         didYouMean: hint,
-        path: req.path,
+        ...echoPath(req.path),
         method: req.method,
       };
       res.status(400).json(finalizeTimestamps(body, now));
@@ -1342,15 +1405,16 @@ export function createServer(
       // documented responseShape (error → human copy → machine
       // bookkeeping → meta tail) reads top-to-bottom against the wire
       // body. `finalizeTimestamps` re-anchors timestamp+timestampIso last.
+      const echoed = echoPath(req.path);
       const body: Record<string, unknown> = {
         error: 'method-not-allowed',
-        message: buildMethodNotAllowedMessage(req.method, allowed, req.path),
+        message: buildMethodNotAllowedMessage(req.method, allowed, echoed.path),
         humanReason: METHOD_NOT_ALLOWED_HUMAN_REASON,
         severity: METHOD_NOT_ALLOWED_SEVERITY,
         nextStep: METHOD_NOT_ALLOWED_NEXT_STEP,
         allowed,
         method: req.method,
-        path: req.path,
+        ...echoed,
       };
       res.status(405).json(finalizeTimestamps(body, now));
       return;
@@ -1364,11 +1428,12 @@ export function createServer(
       endpoints.push({ path: ws.url, methods: ['CONNECT'] });
     }
     const didYouMean = canonicalSuggestion(req.path);
+    const echoed = echoPath(req.path);
     const body: Record<string, unknown> = {
       error: 'not-found',
     };
     if (req.path === '/quotes/') body.message = PARAMETRIC_PARENT_MESSAGE;
-    body.path = req.path;
+    Object.assign(body, echoed);
     body.method = req.method;
     body.discovery = '/';
     if (didYouMean !== undefined) body.didYouMean = didYouMean;
@@ -1388,13 +1453,14 @@ export function createServer(
       const ws = buildWsAdvertisement(req);
       if (ws) endpoints.push({ path: ws.url, methods: ['CONNECT'] });
       const didYouMean = suggestCleanedPath(req.path);
+      const echoed = echoPath(req.path);
       const body: Record<string, unknown> = {
         error: 'malformed-uri',
         message: MALFORMED_URI_MESSAGE,
         expected: MALFORMED_URI_EXPECTED,
       };
       if (didYouMean !== undefined) body.didYouMean = didYouMean;
-      body.path = req.path;
+      Object.assign(body, echoed);
       body.method = req.method;
       body.discovery = '/';
       body.endpoints = endpoints;
@@ -1418,7 +1484,7 @@ export function createServer(
     const body: Record<string, unknown> = {
       error: code,
       message,
-      path: req.path,
+      ...echoPath(req.path),
       method: req.method,
     };
     res.status(status).json(finalizeTimestamps(body, now));
