@@ -363,3 +363,91 @@ describe('REST Server — error handling envelope', () => {
     expect(res.headers.get('x-powered-by')).toBeNull();
   });
 });
+
+describe('REST Server — 404 and 405 envelopes', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('GET /unknown returns JSON 404 envelope (no HTML)', async () => {
+    const res = await fetch(`${baseUrl}/this-does-not-exist`);
+    const text = await res.text();
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(res.headers.get('content-type') || '').toMatch(/^application\/json/);
+    expect(body.error).toBe('not-found');
+    expect(body.path).toBe('/this-does-not-exist');
+    expect(body.method).toBe('GET');
+    expect(typeof body.timestamp).toBe('number');
+    expect(text).not.toContain('<!DOCTYPE');
+    expect(text).not.toContain('<html');
+    expect(text).not.toContain('Cannot GET');
+  });
+
+  it('POST /quotes returns JSON 405 with Allow: GET', async () => {
+    const res = await fetch(`${baseUrl}/quotes`, { method: 'POST' });
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(405);
+    expect(res.headers.get('allow')).toBe('GET');
+    expect(body.error).toBe('method-not-allowed');
+    expect(body.allowed).toEqual(['GET']);
+    expect(body.path).toBe('/quotes');
+    expect(body.method).toBe('POST');
+    expect(typeof body.timestamp).toBe('number');
+  });
+
+  it('PUT /quotes/AAPL returns JSON 405 with Allow: GET', async () => {
+    const res = await fetch(`${baseUrl}/quotes/AAPL`, { method: 'PUT' });
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(405);
+    expect(res.headers.get('allow')).toBe('GET');
+    expect(body.error).toBe('method-not-allowed');
+    expect(body.allowed).toEqual(['GET']);
+    expect(body.path).toBe('/quotes/AAPL');
+    expect(body.method).toBe('PUT');
+  });
+
+  it('DELETE /audit/stats returns JSON 405', async () => {
+    const res = await fetch(`${baseUrl}/audit/stats`, { method: 'DELETE' });
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(405);
+    expect(body.error).toBe('method-not-allowed');
+    expect(body.allowed).toEqual(['GET']);
+  });
+
+  it('GET /quotes// returns JSON 404 (not Express HTML default)', async () => {
+    const res = await fetch(`${baseUrl}/quotes//`);
+    const text = await res.text();
+    expect(res.status).toBe(404);
+    expect(text).not.toContain('Cannot GET');
+    expect(text).not.toContain('<!DOCTYPE');
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(body.error).toBe('not-found');
+  });
+
+  it('GET /quotes/.. returns JSON 404 with normalized path', async () => {
+    const res = await fetch(`${baseUrl}/quotes/..`);
+    const text = await res.text();
+    expect(res.status).toBe(404);
+    expect(text).not.toContain('Cannot GET');
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(body.error).toBe('not-found');
+  });
+});

@@ -5,6 +5,20 @@ import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats } from './types';
 export type IngestStatsGetter = () => IngestStats;
 
 /**
+ * Map of exact known paths to the methods they accept. Keep grep-friendly:
+ * downstreams (oracle-signer, frontend) match on path → 405 Allow header.
+ * The parametric `/quotes/:symbol` route is matched by `QUOTES_SYMBOL_RE`.
+ */
+const KNOWN_ROUTES: ReadonlyMap<string, readonly string[]> = new Map([
+  ['/health', ['GET']],
+  ['/quotes', ['GET']],
+  ['/quotes/fresh/all', ['GET']],
+  ['/audit/stats', ['GET']],
+  ['/status/quotes', ['GET']],
+]);
+const QUOTES_SYMBOL_RE = /^\/quotes\/[^/]+$/;
+
+/**
  * `ingested / (ingested + rejected)`. Returns 1 when nothing has been
  * ingested yet (no data => no rejections => effectively healthy).
  */
@@ -138,6 +152,29 @@ export function createServer(
       totalCount: all.size,
       quotes,
       timestamp: now,
+    });
+  });
+
+  app.all('*', (req: Request, res: Response) => {
+    const allowed =
+      KNOWN_ROUTES.get(req.path) ??
+      (QUOTES_SYMBOL_RE.test(req.path) ? ['GET'] : undefined);
+    if (allowed && !allowed.includes(req.method)) {
+      res.setHeader('Allow', allowed.join(', '));
+      res.status(405).json({
+        error: 'method-not-allowed',
+        allowed,
+        path: req.path,
+        method: req.method,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+    res.status(404).json({
+      error: 'not-found',
+      path: req.path,
+      method: req.method,
+      timestamp: Date.now(),
     });
   });
 
