@@ -54,6 +54,21 @@ export interface EtoroClientConstructorConfig
    * `node_modules`.
    */
   auditLogPath?: string;
+  /**
+   * Tunables for the live-quote notional resolver. When unset, market
+   * orders fall through to the (frozen) reference-price fallback after
+   * the default 60 s freshness window expires.
+   */
+  notional?: {
+    /** Live-quote freshness window (ms). Default 60_000. */
+    maxQuoteAgeMs?: number;
+    /**
+     * If set, reject orders whose live-quote diverges from the reference
+     * by more than this absolute ratio (`|live - ref| / ref`). Default:
+     * unset (no drift check).
+     */
+    maxReferenceDriftRatio?: number;
+  };
 }
 
 export class EtoroClient {
@@ -128,6 +143,12 @@ export class EtoroClient {
         const sym = symbol as keyof typeof mergedInstruments;
         return mergedInstruments[sym]?.referencePriceUsd;
       },
+      liveQuoteSource: (symbol) => {
+        const cached = this.marketData.getCachedQuote?.(symbol);
+        return cached ? { mid: cached.mid, timestamp: cached.timestamp } : undefined;
+      },
+      maxQuoteAgeMs: config?.notional?.maxQuoteAgeMs,
+      maxReferenceDriftRatio: config?.notional?.maxReferenceDriftRatio,
     });
     this.account = new AccountModule(this.http, this.audit);
   }
