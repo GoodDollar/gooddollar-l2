@@ -5,6 +5,7 @@ jest.mock('../oracle-submitter', () => {
   return {
     OracleSubmitter: jest.fn().mockImplementation(() => ({
       signerAddress: '0x1111111111111111111111111111111111111111',
+      provider: { getNetwork: jest.fn().mockResolvedValue({ chainId: 31337n }) },
       submitBatch: jest.fn().mockImplementation((updates: unknown[]) => Promise.resolve({
         txHash: '0xabc123',
         gasUsed: BigInt(150000),
@@ -39,9 +40,12 @@ function makeConfig(overrides: Partial<OracleSignerConfig> = {}): OracleSignerCo
     minDeviationBps: 0,
     txTimeoutMs: 60000,
     symbols: ['AAPL', 'TSLA'],
+    allowedChainIds: [31337, 1337],
     ...overrides,
   };
 }
+
+const ALLOWED_DEVNET = async () => 31337;
 
 describe('OracleSignerService', () => {
   afterEach(() => {
@@ -49,7 +53,7 @@ describe('OracleSignerService', () => {
   });
 
   it('starts and stops cleanly', async () => {
-    const service = new OracleSignerService(makeConfig());
+    const service = new OracleSignerService(makeConfig(), { getChainId: ALLOWED_DEVNET });
     await service.start();
     expect(service.isRunning).toBe(true);
 
@@ -58,13 +62,13 @@ describe('OracleSignerService', () => {
   });
 
   it('tick returns null when no quotes buffered', async () => {
-    const service = new OracleSignerService(makeConfig());
+    const service = new OracleSignerService(makeConfig(), { getChainId: ALLOWED_DEVNET });
     const result = await service.tick();
     expect(result).toBeNull();
   });
 
   it('tick submits buffered quotes', async () => {
-    const service = new OracleSignerService(makeConfig());
+    const service = new OracleSignerService(makeConfig(), { getChainId: ALLOWED_DEVNET });
 
     service.getBuffer().update({
       source: 'etoro',
@@ -89,7 +93,7 @@ describe('OracleSignerService', () => {
 
   it('filters symbols not in config', async () => {
     const config = makeConfig({ symbols: ['AAPL'] });
-    const service = new OracleSignerService(config);
+    const service = new OracleSignerService(config, { getChainId: ALLOWED_DEVNET });
     await service.start();
 
     // Simulate WS quote for a non-configured symbol
@@ -131,7 +135,7 @@ describe('OracleSignerService', () => {
 
   it('accepts all symbols when config list is empty', async () => {
     const config = makeConfig({ symbols: [] });
-    const service = new OracleSignerService(config);
+    const service = new OracleSignerService(config, { getChainId: ALLOWED_DEVNET });
     await service.start();
 
     const wsClient = (service as any).wsClient;
@@ -151,5 +155,62 @@ describe('OracleSignerService', () => {
 
     expect(service.getBuffer().getLatestQuote('GOOGL')).toBeDefined();
     service.stop();
+  });
+
+  describe('chain-guard integration', () => {
+    const origEnv = { ...process.env };
+    afterEach(() => {
+      delete process.env.SERVICE_HEALTH_STATUS;
+      delete process.env.SERVICE_DISABLED_REASON;
+      process.env = { ...origEnv };
+    });
+
+    it('refuses to start when chain id is not in allowlist', async () => {
+      const service = new OracleSignerService(makeConfig(), { getChainId: async () => 1 });
+      await service.start();
+      expect(service.isRunning).toBe(false);
+      expect(service.isRefused).toBe(true);
+      expect(service.getRefusalReason()).toMatch(/non-devnet chain id 1/);
+      expect(process.env.SERVICE_HEALTH_STATUS).toBe('degraded');
+      expect(process.env.SERVICE_DISABLED_REASON).toContain('1');
+    });
+
+    it('does not connect WS or schedule interval when refused', async () => {
+      const service = new OracleSignerService(makeConfig(), { getChainId: async () => 1 });
+      await service.start();
+      const wsClient = (service as any).wsClient;
+      expect(wsClient.connect).not.toHaveBeenCalled();
+      expect((service as any).intervalHandle).toBeNull();
+    });
+
+    it('starts normally when chain id matches allowlist override', async () => {
+      const service = new OracleSignerService(
+        makeConfig({ allowedChainIds: [9999] }),
+        { getChainId: async () => 9999 },
+      );
+      await service.start();
+      expect(service.isRunning).toBe(true);
+      expect(service.isRefused).toBe(false);
+      service.stop();
+    });
+
+    it('refuses repeatedly: start() is idempotent on refusal', async () => {
+      const service = new OracleSignerService(makeConfig(), { getChainId: async () => 1 });
+      await service.start();
+      await service.start();
+      expect(service.isRefused).toBe(true);
+      expect(service.isRunning).toBe(false);
+    });
+
+    it('marks degraded when getChainId throws (e.g. RPC unreachable)', async () => {
+      const service = new OracleSignerService(makeConfig(), {
+        getChainId: async () => { throw new Error('econnrefused'); },
+      });
+      await service.start();
+      expect(service.isRunning).toBe(false);
+      expect(service.isRefused).toBe(true);
+      expect(process.env.SERVICE_HEALTH_STATUS).toBe('degraded');
+      expect(service.getRefusalReason()).toMatch(/chain-guard probe failed/);
+    });
   });
 });

@@ -3,6 +3,12 @@ import { QuoteBuffer } from './quote-buffer';
 import { OracleSubmitter } from './oracle-submitter';
 import { OracleSignerConfig, UpdateResult } from './types';
 import { startHealthServer } from './healthServer';
+import { assertDevnetChain, parseAllowedChainIds } from './chain-guard';
+
+export interface OracleSignerDeps {
+  /** Optional chain-id getter. Defaults to reading from the submitter's provider. Tests inject a stub to avoid a real RPC. */
+  getChainId?: () => Promise<number>;
+}
 
 export class OracleSignerService {
   private wsClient: PriceWsClient;
@@ -10,10 +16,13 @@ export class OracleSignerService {
   private submitter: OracleSubmitter;
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private readonly config: OracleSignerConfig;
+  private readonly getChainId: () => Promise<number>;
   private running = false;
   private updateCount = 0;
+  private refused = false;
+  private refusalReason: string | null = null;
 
-  constructor(config: OracleSignerConfig) {
+  constructor(config: OracleSignerConfig, deps: OracleSignerDeps = {}) {
     this.config = config;
     this.buffer = new QuoteBuffer(config.minDeviationBps);
     this.submitter = new OracleSubmitter(config.rpcUrl, config.oracleAddress, config.signerKey, config.txTimeoutMs);
@@ -22,16 +31,50 @@ export class OracleSignerService {
         this.buffer.update(quote);
       }
     });
+    this.getChainId = deps.getChainId ?? (async () => {
+      const net = await this.submitter.provider.getNetwork();
+      return Number(net.chainId);
+    });
   }
 
   async start(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
+    if (this.running || this.refused) return;
 
+    // Devnet chain-id guard — last line of defence against an accidentally
+    // mainnet-pointed signer. Must run BEFORE WS connect and BEFORE setInterval.
+    const allowed = new Set(this.config.allowedChainIds);
+    let guard;
+    try {
+      guard = await assertDevnetChain(this.getChainId, allowed);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.refused = true;
+      this.refusalReason = `chain-guard probe failed: ${msg}`;
+      process.env.SERVICE_HEALTH_STATUS = 'degraded';
+      process.env.SERVICE_DISABLED_REASON = this.refusalReason;
+      console.warn(`[oracle-signer] ${this.refusalReason} — submission loop disabled, health server stays up`);
+      return;
+    }
+
+    if (!guard.allowed) {
+      this.refused = true;
+      this.refusalReason = `refused: non-devnet chain id ${guard.chainId}`;
+      process.env.SERVICE_HEALTH_STATUS = 'degraded';
+      process.env.SERVICE_DISABLED_REASON = this.refusalReason;
+      console.warn(
+        `[oracle-signer] ${this.refusalReason} — submission loop disabled, health server stays up. ` +
+        `Allowed chain ids: [${Array.from(allowed).sort((a, b) => a - b).join(', ')}]. ` +
+        `Set ORACLE_SIGNER_ALLOWED_CHAIN_IDS to override (devnet-only).`,
+      );
+      return;
+    }
+
+    this.running = true;
     this.wsClient.connect();
     console.log(`[oracle-signer] Connected to price service at ${this.config.priceServiceUrl}`);
     console.log(`[oracle-signer] Signer: ${this.submitter.signerAddress}`);
     console.log(`[oracle-signer] Oracle: ${this.config.oracleAddress}`);
+    console.log(`[oracle-signer] Chain id: ${guard.chainId} (allowlist OK)`);
     console.log(`[oracle-signer] Interval: ${this.config.updateIntervalMs}ms, deviation: ${this.config.minDeviationBps}bps`);
 
     this.intervalHandle = setInterval(() => {
@@ -86,6 +129,16 @@ export class OracleSignerService {
     return this.buffer.symbolCount;
   }
 
+  /** True when the chain-guard refused to start the loop. The health server still answers; the interval is not scheduled. */
+  get isRefused(): boolean {
+    return this.refused;
+  }
+
+  /** Human-readable refusal reason, or null. */
+  getRefusalReason(): string | null {
+    return this.refusalReason;
+  }
+
   /** Exposed for testing */
   getBuffer(): QuoteBuffer {
     return this.buffer;
@@ -115,6 +168,7 @@ function loadConfig(): OracleSignerConfig {
       .split(',')
       .map(s => s.trim())
       .filter(Boolean),
+    allowedChainIds: Array.from(parseAllowedChainIds(process.env.ORACLE_SIGNER_ALLOWED_CHAIN_IDS)),
   };
 }
 

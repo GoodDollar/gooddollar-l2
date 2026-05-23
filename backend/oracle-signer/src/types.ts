@@ -40,6 +40,13 @@ export interface OracleSignerConfig {
   minDeviationBps: number;
   symbols: string[];
   txTimeoutMs: number;
+  /**
+   * Devnet chain-id allowlist. The service refuses to start the submission
+   * loop when `provider.getNetwork().chainId` is not in this list — a
+   * defence-in-depth guard against accidentally publishing keeper-signed
+   * batches to mainnet. Defaults to [31337, 1337].
+   */
+  allowedChainIds: number[];
 }
 
 export interface PendingUpdate {

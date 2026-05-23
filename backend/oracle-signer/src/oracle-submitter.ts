@@ -13,13 +13,19 @@ const STOCK_ORACLE_V2_ABI = [
 export class OracleSubmitter {
   private readonly contract: ethers.Contract;
   private readonly wallet: ethers.Wallet;
+  private readonly _provider: ethers.JsonRpcProvider;
   private readonly txTimeoutMs: number;
 
   constructor(rpcUrl: string, oracleAddress: string, signerKey: string, txTimeoutMs = 60000) {
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    this.wallet = new ethers.Wallet(signerKey, provider);
+    this._provider = new ethers.JsonRpcProvider(rpcUrl);
+    this.wallet = new ethers.Wallet(signerKey, this._provider);
     this.contract = new ethers.Contract(oracleAddress, STOCK_ORACLE_V2_ABI, this.wallet);
     this.txTimeoutMs = txTimeoutMs;
+  }
+
+  /** Underlying JSON-RPC provider — exposed so the chain-guard can query the chain id without standing up a second provider. */
+  get provider(): ethers.JsonRpcProvider {
+    return this._provider;
   }
 
   async submitBatch(updates: PendingUpdate[]): Promise<UpdateResult> {
