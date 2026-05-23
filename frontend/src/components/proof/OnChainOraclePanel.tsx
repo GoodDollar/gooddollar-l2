@@ -210,19 +210,35 @@ export function OnChainOraclePanel() {
         </div>
       )}
 
-      <div className="sr-only">
-        <dl>
-          {COLUMNS.map((col) => (
-            <div key={col.key}>
-              <dt>{col.label}</dt>
-              <dd id={descIdFor(col.key)}>{col.shortDescription}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+      {!isLoading && !error && rows.length === 0 && (
+        <div
+          data-testid="onchain-oracle-awaiting"
+          className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200"
+        >
+          <div className="font-semibold">Awaiting first on-chain write</div>
+          <div className="mt-1 text-yellow-300/80">
+            The oracle contract exists at the address above but no symbol has a
+            non-zero price yet. The oracle-signer keeper writes{' '}
+            <code className="text-yellow-100">setPrice</code> transactions on a
+            fixed cadence — this panel will populate as soon as the first round
+            lands. Expected symbols ({tickers.length}):{' '}
+            <span className="font-mono text-yellow-100/80">{tickers.join(', ')}</span>.
+          </div>
+        </div>
+      )}
 
-      {!isLoading && !error && (
+      {!isLoading && !error && rows.length > 0 && (
         <div className="overflow-x-auto">
+          <div className="sr-only">
+            <dl>
+              {COLUMNS.map((col) => (
+                <div key={col.key}>
+                  <dt>{col.label}</dt>
+                  <dd id={descIdFor(col.key)}>{col.shortDescription}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wider text-gray-500">
@@ -232,54 +248,26 @@ export function OnChainOraclePanel() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
-                <>
-                  <tr>
-                    <td
-                      colSpan={6}
-                      data-testid="onchain-oracle-empty-banner"
-                      className="border-b border-white/5 py-2 pr-3 text-xs text-gray-500"
-                    >
-                      Waiting for on-chain prices · {tickers.length} symbol{tickers.length === 1 ? '' : 's'} expected from oracle-signer keeper
+              {rows.map((row) => {
+                const sessionLabel = SESSION_LABELS[row.session] ?? `enum(${row.session})`
+                return (
+                  <tr key={row.symbol} className="border-b border-white/5 last:border-0">
+                    <td className="py-2 pr-3 font-medium text-white">{row.symbol}</td>
+                    <td className="py-2 pr-3 text-right font-mono text-gray-100">{formatUsd8(row.symbol, row.price8)}</td>
+                    <td className="py-2 pr-3">
+                      <span
+                        data-testid={`session-pill-${row.symbol}`}
+                        className={`rounded-md px-2 py-0.5 text-xs ${sessionPillClass(sessionLabel)}`}
+                      >
+                        {sessionLabel}
+                      </span>
                     </td>
+                    <td className="py-2 pr-3 text-right font-mono text-gray-300">{row.confidence}%</td>
+                    <td className="py-2 pr-3 text-right font-mono text-gray-300">{row.signerCount}</td>
+                    <td className="py-2 pr-3 text-right text-xs text-gray-400">{formatAgo(row.timestamp)}</td>
                   </tr>
-                  {tickers.map((symbol) => (
-                    <tr
-                      key={symbol}
-                      data-testid={`onchain-oracle-placeholder-${symbol}`}
-                      className="border-b border-white/5 last:border-0"
-                    >
-                      <td className="py-2 pr-3 font-medium text-white">{symbol}</td>
-                      <td className="py-2 pr-3 text-right font-mono text-gray-500">—</td>
-                      <td className="py-2 pr-3 text-gray-500">—</td>
-                      <td className="py-2 pr-3 text-right font-mono text-gray-500">—</td>
-                      <td className="py-2 pr-3 text-right font-mono text-gray-500">—</td>
-                      <td className="py-2 pr-3 text-right text-xs text-gray-500">—</td>
-                    </tr>
-                  ))}
-                </>
-              ) : (
-                rows.map((row) => {
-                  const sessionLabel = SESSION_LABELS[row.session] ?? `enum(${row.session})`
-                  return (
-                    <tr key={row.symbol} className="border-b border-white/5 last:border-0">
-                      <td className="py-2 pr-3 font-medium text-white">{row.symbol}</td>
-                      <td className="py-2 pr-3 text-right font-mono text-gray-100">{formatUsd8(row.symbol, row.price8)}</td>
-                      <td className="py-2 pr-3">
-                        <span
-                          data-testid={`session-pill-${row.symbol}`}
-                          className={`rounded-md px-2 py-0.5 text-xs ${sessionPillClass(sessionLabel)}`}
-                        >
-                          {sessionLabel}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3 text-right font-mono text-gray-300">{row.confidence}%</td>
-                      <td className="py-2 pr-3 text-right font-mono text-gray-300">{row.signerCount}</td>
-                      <td className="py-2 pr-3 text-right text-xs text-gray-400">{formatAgo(row.timestamp)}</td>
-                    </tr>
-                  )
-                })
-              )}
+                )
+              })}
             </tbody>
           </table>
         </div>

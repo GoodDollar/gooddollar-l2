@@ -122,37 +122,13 @@ describe('OnChainOraclePanel', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('renders one placeholder row per ticker when no on-chain prices are available', () => {
-    useReadContractsMock.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: null,
-    } as unknown as ReturnType<typeof useReadContracts>)
-
-    render(<OnChainOraclePanel />)
-
-    for (const symbol of ['AAPL', 'TSLA', 'NVDA']) {
-      const row = screen.getByTestId(`onchain-oracle-placeholder-${symbol}`)
-      expect(row).toBeInTheDocument()
-      expect(within(row).getByText(symbol)).toBeInTheDocument()
-    }
-  })
-
-  it('renders the onchain-oracle-empty-banner with the expected symbol count', () => {
-    useReadContractsMock.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: null,
-    } as unknown as ReturnType<typeof useReadContracts>)
-
-    render(<OnChainOraclePanel />)
-
-    const banner = screen.getByTestId('onchain-oracle-empty-banner')
-    expect(banner).toBeInTheDocument()
-    expect(banner.textContent).toMatch(/Waiting for on-chain prices/)
-    expect(banner.textContent).toMatch(/3 symbols/)
-    expect(banner.textContent).toMatch(/oracle-signer keeper/)
-  })
+  // Removed by lane6-reviewer-callout-empty-rule-contradicts-oracle-placeholder-table:
+  // the rows.length === 0 path used to render 12 dash placeholder rows + a
+  // "Waiting for on-chain prices" colspan banner, but that contradicted the
+  // "if a panel is empty, that service is unreachable" reviewer rule on the
+  // proof page. The new contract is now covered by the
+  // 'awaiting-first-write empty state' describe block below: a single yellow
+  // notice replaces both the banner and the per-ticker placeholder rows.
 
   it('colours the session pill green when getPriceData decodes session=0 (Open)', () => {
     useReadContractsMock.mockReturnValue({
@@ -322,8 +298,26 @@ describe('OnChainOraclePanel', () => {
     const EXPECTED_COLUMNS = ['symbol', 'price', 'session', 'conf', 'signers', 'updated']
 
     beforeEach(() => {
+      // The table (and its <thead> + sr-only <dl>) only renders when
+      // rows.length > 0 after lane6-reviewer-callout-empty-rule-…; the
+      // empty-data branch now shows a yellow "awaiting" notice instead.
+      // Mock one populated row so the header help contract is exercised
+      // in its real rendering condition.
       useReadContractsMock.mockReturnValue({
-        data: undefined,
+        data: [
+          {
+            status: 'success',
+            result: {
+              price8: 17_860_000_000n,
+              timestamp: BigInt(Math.floor(Date.now() / 1000)),
+              session: 0,
+              confidence: 95,
+              signerCount: 1,
+            },
+          },
+          { status: 'failure', error: new Error('skip') },
+          { status: 'failure', error: new Error('skip') },
+        ],
         isLoading: false,
         error: null,
       } as unknown as ReturnType<typeof useReadContracts>)
@@ -372,11 +366,86 @@ describe('OnChainOraclePanel', () => {
       }
     })
 
-    it('placeholder body rows render one cell per header', () => {
+    it('populated body rows render one cell per header', () => {
+      // After lane6-reviewer-callout-empty-rule-contradicts-oracle-placeholder-table,
+      // the rows.length === 0 path no longer renders a 12-row dash table — a
+      // yellow "awaiting" notice takes its place. The header help describe
+      // block now exercises the populated branch (see beforeEach above), so
+      // this test asserts the populated row also has one <td> per header.
       render(<OnChainOraclePanel />)
-      const row = screen.getByTestId('onchain-oracle-placeholder-AAPL')
-      const cells = row.querySelectorAll('td')
-      expect(cells.length).toBe(EXPECTED_COLUMNS.length)
+      const populatedRows = document.querySelectorAll('tbody tr')
+      expect(populatedRows.length).toBe(1)
+      expect((populatedRows[0] as HTMLElement).querySelectorAll('td').length).toBe(
+        EXPECTED_COLUMNS.length,
+      )
+    })
+  })
+
+  // Task lane6-reviewer-callout-empty-rule-contradicts-oracle-placeholder-table:
+  // The aside's "if a panel is empty, that service is unreachable" rule was
+  // contradicted by the panel rendering a full 12-row dash table when degraded.
+  // The empty-data branch now collapses to a single yellow "awaiting first
+  // on-chain write" notice so the visual matches the rule.
+  describe('awaiting-first-write empty state', () => {
+    it('rows.length === 0 path renders the awaiting-first-write notice (yellow box, no placeholder rows)', () => {
+      useReadContractsMock.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+      } as unknown as ReturnType<typeof useReadContracts>)
+
+      render(<OnChainOraclePanel />)
+
+      expect(screen.getByTestId('onchain-oracle-awaiting')).toBeInTheDocument()
+      expect(
+        document.querySelectorAll('[data-testid^="onchain-oracle-placeholder-"]').length,
+      ).toBe(0)
+      expect(screen.queryByTestId('onchain-oracle-empty-banner')).not.toBeInTheDocument()
+    })
+
+    it('awaiting notice lists the expected ticker count and joined symbols', () => {
+      useReadContractsMock.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+      } as unknown as ReturnType<typeof useReadContracts>)
+
+      render(<OnChainOraclePanel />)
+
+      const box = screen.getByTestId('onchain-oracle-awaiting')
+      expect(box.textContent).toMatch(/AAPL/)
+      expect(box.textContent).toMatch(/TSLA/)
+      expect(box.textContent).toMatch(/NVDA/)
+      expect(box.textContent).toMatch(/Awaiting first on-chain write/i)
+      expect(box.className).toMatch(/border-yellow/)
+    })
+
+    it('rows.length > 0 path renders the table without the awaiting notice', () => {
+      useReadContractsMock.mockReturnValue({
+        data: [
+          {
+            status: 'success',
+            result: {
+              price8: 17_860_000_000n,
+              timestamp: BigInt(Math.floor(Date.now() / 1000)),
+              session: 0,
+              confidence: 95,
+              signerCount: 1,
+            },
+          },
+          { status: 'failure', error: new Error('skip') },
+          { status: 'failure', error: new Error('skip') },
+        ],
+        isLoading: false,
+        error: null,
+      } as unknown as ReturnType<typeof useReadContracts>)
+
+      render(<OnChainOraclePanel />)
+
+      expect(screen.queryByTestId('onchain-oracle-awaiting')).not.toBeInTheDocument()
+      const populatedRows = document.querySelectorAll('tbody tr')
+      expect(populatedRows.length).toBe(1)
+      expect(within(populatedRows[0] as HTMLElement).getByText('AAPL')).toBeInTheDocument()
     })
   })
 })

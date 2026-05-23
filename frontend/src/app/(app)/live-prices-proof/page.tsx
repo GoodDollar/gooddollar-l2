@@ -43,9 +43,11 @@ export default function LivePricesProofPage() {
           <div>
             <span className="font-semibold text-white">How to read this page:</span>{' '}
             Each panel below is the live output of one service in the live-prices
-            pipeline. If a panel is empty, that service is unreachable. Yellow
-            &ldquo;degraded&rdquo; boxes are inline error states, intentional and not
-            silently swallowed.
+            pipeline. A panel rendering numbers means that service is alive and
+            producing data. A panel rendering a yellow &ldquo;degraded&rdquo; or
+            &ldquo;awaiting&rdquo; notice is the service&apos;s own intentional
+            fallback &mdash; the page never silently swallows an error or an
+            empty feed.
           </div>
         </aside>
       </header>

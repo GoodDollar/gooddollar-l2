@@ -73,12 +73,19 @@ describe('LivePricesProofPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('header renders the How to read this page aside with the interpretation rules', () => {
+  it('header renders the How to read this page aside with the rewritten interpretation rules', () => {
+    // Updated by lane6-reviewer-callout-empty-rule-contradicts-oracle-placeholder-table.
+    // The old "If a panel is empty, that service is unreachable" rule contradicted
+    // the On-Chain Oracle panel's degraded rendering (which now shows a yellow
+    // "awaiting" notice rather than the previous 12-row dash placeholder table).
+    // The aside now teaches a single inclusive rule: numbers = alive,
+    // yellow degraded/awaiting = intentional fallback.
     render(<LivePricesProofPage />)
     const aside = screen.getByTestId('reviewer-context')
     expect(aside.getAttribute('aria-label')).toBe('How to read this page')
-    expect(aside).toHaveTextContent(/If a panel is empty/i)
-    expect(aside).toHaveTextContent(/degraded.*box(?:es)?/i)
+    expect(aside).not.toHaveTextContent(/If a panel is empty/i)
+    expect(aside).toHaveTextContent(/yellow.*(degraded|awaiting)/i)
+    expect(aside).toHaveTextContent(/never silently swallows/i)
   })
 
   it('reviewer-context aside is structurally aligned with the data panels (rounded-2xl, panel background, accent border, info icon)', () => {
