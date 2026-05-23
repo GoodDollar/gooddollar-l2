@@ -299,6 +299,114 @@ describe('HedgeStatusCard', () => {
     expect(screen.queryAllByTestId('hedge-degraded-hint')).toHaveLength(0);
   });
 
+  it('discards a slow earlier response when a faster newer one has already won', async () => {
+    // Two pending fetches: A (mount) resolves slowly with an error body;
+    // B (triggered via the imperative ref, mirroring analytics' page-level
+    // Refresh) resolves quickly with the healthy snapshot. We assert the
+    // late A response does NOT clobber the freshly-applied B state.
+    let resolveA: (value: Response) => void = () => {};
+    let resolveB: (value: Response) => void = () => {};
+    const pendingA = new Promise<Response>((r) => { resolveA = r; });
+    const pendingB = new Promise<Response>((r) => { resolveB = r; });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockReturnValueOnce(pendingA)
+      .mockReturnValueOnce(pendingB);
+
+    const ref = createRef<HedgeStatusCardHandle>();
+    render(<HedgeStatusCard ref={ref} />);
+    await waitFor(() => {
+      expect(fetchSpy.mock.calls.length).toBe(1);
+    });
+
+    // Imperative refresh while mount fetch is still pending → triggers B.
+    await act(async () => {
+      void ref.current?.refresh();
+      await Promise.resolve();
+    });
+    expect(fetchSpy.mock.calls.length).toBe(2);
+
+    // Resolve B first → card flips to healthy snapshot.
+    await act(async () => {
+      resolveB(new Response(JSON.stringify(BASE_RESPONSE), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+      await pendingB.catch(() => {});
+    });
+    expect(await screen.findByTestId('hedge-mode-badge')).toHaveTextContent('demo');
+
+    // Now resolve A with an error body. The stale response must be
+    // dropped — the card must still show the healthy snapshot.
+    await act(async () => {
+      resolveA(new Response(JSON.stringify({
+        error: 'engine timeout', snapshot: null, mode: null, receipts: [], proof: null,
+      }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+      await pendingA.catch(() => {});
+    });
+    expect(screen.queryByTestId('hedge-status-error')).toBeNull();
+    expect(screen.getByTestId('hedge-mode-badge')).toHaveTextContent('demo');
+  });
+
+  it('auto-poll skips when a fetch is still in flight (no stacking)', async () => {
+    vi.useFakeTimers();
+    try {
+      // First fetch never resolves — we want to confirm the poll silently
+      // coalesces rather than kicking off a second concurrent fetch.
+      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+        .mockReturnValue(new Promise(() => {}));
+      render(<HedgeStatusCard />);
+      // mount fetch is fired synchronously
+      expect(fetchSpy.mock.calls.length).toBe(1);
+      // advance well past the 10 s poll interval
+      await act(async () => {
+        vi.advanceTimersByTime(35_000);
+      });
+      expect(fetchSpy.mock.calls.length).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('header refresh button is disabled while any fetch (including the mount fetch) is in flight', async () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    render(<HedgeStatusCard />);
+    const headerBtn = await screen.findByTestId('hedge-header-refresh-button');
+    expect((headerBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('imperative refresh() returns a promise that resolves only after the underlying fetch settles', async () => {
+    let resolveFetch: (value: Response) => void = () => {};
+    const pending = new Promise<Response>((r) => { resolveFetch = r; });
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify(BASE_RESPONSE), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }))
+      .mockReturnValueOnce(pending);
+    const ref = createRef<HedgeStatusCardHandle>();
+    render(<HedgeStatusCard ref={ref} />);
+    await screen.findByTestId('hedge-mode-badge');
+
+    let refreshSettled = false;
+    let refreshPromise: Promise<void> | undefined;
+    await act(async () => {
+      refreshPromise = ref.current?.refresh();
+      void refreshPromise?.then(() => { refreshSettled = true; });
+      await Promise.resolve();
+    });
+    expect(refreshSettled).toBe(false);
+
+    await act(async () => {
+      resolveFetch(new Response(JSON.stringify(BASE_RESPONSE), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+      await refreshPromise;
+    });
+    expect(refreshSettled).toBe(true);
+  });
+
   it('awaiting tick: snapshot null, no error → grid shows ENGINE: awaiting tick in neutral grey', async () => {
     mockFetchOnce({
       snapshot: null,

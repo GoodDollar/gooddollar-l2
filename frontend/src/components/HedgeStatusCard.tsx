@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -159,7 +160,7 @@ function resolveMode(data: HedgeStatusResponse | null, error: string | null): He
 }
 
 export interface HedgeStatusCardHandle {
-  refresh: () => void
+  refresh: () => Promise<void>
 }
 
 const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCard(_, ref) {
@@ -168,14 +169,35 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchOnce = useCallback(async (signal?: AbortSignal) => {
+  // Race-condition guards: many call sites (mount, poll, header button,
+  // retry button, imperative refresh) all write to the same state. Without
+  // sequencing, a slow earlier response can clobber a fast newer one.
+  //   - genRef:       monotonic call counter; only the latest call writes state.
+  //   - abortRef:     latest controller so a new call cancels its predecessor
+  //                   and unmount cancels whichever is in flight.
+  //   - inFlightRef:  synchronous read for the poll guard. `isFetching` lags
+  //                   by a render and is unsafe to read inside setInterval.
+  const genRef = useRef(0)
+  const abortRef = useRef<AbortController | null>(null)
+  const inFlightRef = useRef(false)
+
+  const fetchOnce = useCallback(async (): Promise<void> => {
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    const gen = ++genRef.current
+    inFlightRef.current = true
     setIsFetching(true)
     try {
-      const res = await fetch('/api/hedge/status', { cache: 'no-store', signal })
+      const res = await fetch('/api/hedge/status', {
+        cache: 'no-store',
+        signal: ctrl.signal,
+      })
       if (!res.ok && res.status !== 503) {
         throw new Error(`HTTP ${res.status}`)
       }
       const body = (await res.json()) as HedgeStatusResponse & { error?: string }
+      if (gen !== genRef.current) return
       if (body.error && !body.snapshot) {
         setError(body.error)
         setData(body)
@@ -185,24 +207,30 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
+      if (gen !== genRef.current) return
       setError(err instanceof Error ? err.message : 'unknown')
     } finally {
-      setLoading(false)
-      setIsFetching(false)
+      if (gen === genRef.current) {
+        inFlightRef.current = false
+        setLoading(false)
+        setIsFetching(false)
+      }
     }
   }, [])
 
   useEffect(() => {
-    const ctrl = new AbortController()
-    void fetchOnce(ctrl.signal)
-    const t = setInterval(() => void fetchOnce(), POLL_INTERVAL_MS)
+    void fetchOnce()
+    const t = setInterval(() => {
+      if (inFlightRef.current) return
+      void fetchOnce()
+    }, POLL_INTERVAL_MS)
     return () => {
-      ctrl.abort()
       clearInterval(t)
+      abortRef.current?.abort()
     }
   }, [fetchOnce])
 
-  useImperativeHandle(ref, () => ({ refresh: () => void fetchOnce() }), [fetchOnce])
+  useImperativeHandle(ref, () => ({ refresh: () => fetchOnce() }), [fetchOnce])
 
   const receipts = data?.receipts ?? []
   const mode = resolveMode(data, error)
