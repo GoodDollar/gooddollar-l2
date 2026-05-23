@@ -4,6 +4,7 @@ import { LastDemoHedgePanel } from '@/components/proof/LastDemoHedgePanel'
 import { LiveQuotesPanel } from '@/components/proof/LiveQuotesPanel'
 import { OnChainOraclePanel } from '@/components/proof/OnChainOraclePanel'
 import { OracleUpdatesPanel } from '@/components/proof/OracleUpdatesPanel'
+import { PipelineFlowDiagram } from '@/components/proof/PipelineFlowDiagram'
 import { PipelineStatusBanner } from '@/components/proof/PipelineStatusBanner'
 import { ProofPanelBoundary } from '@/components/proof/ProofPanelBoundary'
 import { SafetyBanner } from '@/components/proof/SafetyBanner'
@@ -37,6 +38,12 @@ export default function LivePricesProofPage() {
       <div className="mt-4">
         <ProofPanelBoundary label="Pipeline Status">
           <PipelineStatusBanner />
+        </ProofPanelBoundary>
+      </div>
+
+      <div className="mt-3">
+        <ProofPanelBoundary label="Pipeline Flow">
+          <PipelineFlowDiagram />
         </ProofPanelBoundary>
       </div>
 

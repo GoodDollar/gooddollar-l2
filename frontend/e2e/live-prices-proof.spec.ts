@@ -50,6 +50,12 @@ test.describe('Lane 6 — /live-prices-proof', () => {
       /^(green|amber|red)$/,
     )
 
+    // Pipeline flow diagram visualises the eToro → … → demo-hedge chain.
+    const flow = page.getByTestId('pipeline-flow-diagram')
+    await expect(flow).toBeVisible()
+    const nodes = page.locator('[data-testid^="pipeline-node-"]')
+    expect(await nodes.count()).toBeGreaterThanOrEqual(6)
+
     // On-chain oracle address must be surfaced as either a link to the
     // configured explorer or a span carrying the full address. Whichever
     // variant the harness env produces, the full 0x-prefixed address must

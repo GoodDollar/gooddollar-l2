@@ -5907,6 +5907,324 @@ function OracleUpdatesPanel() {
     }, this);
 }
 }),
+"[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "PipelineFlowDiagram",
+    ()=>PipelineFlowDiagram
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$wagmi$2f$dist$2f$esm$2f$hooks$2f$useReadContract$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/wagmi/dist/esm/hooks/useReadContract.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$chain$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/frontend/src/lib/chain.ts [app-ssr] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$devnet$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/frontend/src/lib/devnet.ts [app-ssr] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$abi$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/abi.ts [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$sanitiseClientError$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/sanitiseClientError.ts [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$stockData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/stockData.ts [app-ssr] (ecmascript)");
+'use client';
+;
+;
+;
+;
+;
+;
+;
+const DEFAULT_PRICE_SERVICE_URL = 'http://localhost:9300';
+const DEFAULT_STALENESS_THRESHOLD_MS = 30_000;
+const DEFAULT_POLL_INTERVAL_MS = 15_000;
+const REASON_BY_AXIS = {
+    quotes: 'price-service unreachable',
+    onChain: 'no on-chain prices',
+    hedgeProof: 'hedge-proof missing'
+};
+const NODES = [
+    {
+        id: 'etoro',
+        label: 'eToro',
+        axis: 'quotes',
+        subtitle: 'demo'
+    },
+    {
+        id: 'price-service',
+        label: 'price-service',
+        axis: 'quotes'
+    },
+    {
+        id: 'oracle-signer',
+        label: 'oracle-signer',
+        axis: 'onChain'
+    },
+    {
+        id: 'chain',
+        label: 'chain',
+        axis: 'onChain'
+    },
+    {
+        id: 'frontend',
+        label: 'frontend',
+        axis: 'onChain'
+    },
+    {
+        id: 'demo-hedge',
+        label: 'demo hedge',
+        axis: 'hedgeProof'
+    }
+];
+const EDGES = [
+    {
+        id: 'etoro-price-service',
+        axis: 'quotes'
+    },
+    {
+        id: 'price-service-oracle-signer',
+        axis: 'onChain'
+    },
+    {
+        id: 'oracle-signer-chain',
+        axis: 'onChain'
+    },
+    {
+        id: 'chain-frontend',
+        axis: 'onChain'
+    },
+    {
+        id: 'frontend-demo-hedge',
+        axis: 'hedgeProof'
+    }
+];
+const TONE_NODE_CLASS = {
+    healthy: 'border-green-500/40 bg-green-500/10 text-green-200',
+    degraded: 'border-yellow-500/40 bg-yellow-500/10 text-yellow-100',
+    unknown: 'border-white/10 bg-white/5 text-gray-400 animate-pulse'
+};
+const TONE_EDGE_CLASS = {
+    healthy: 'bg-green-500/40',
+    degraded: 'bg-yellow-500/40',
+    unknown: 'bg-white/20'
+};
+function isFreshQuotes(payload, stalenessMs) {
+    if (typeof payload !== 'object' || payload === null) return false;
+    const r = payload;
+    const quotes = r.quotes;
+    if (typeof quotes !== 'object' || quotes === null || Array.isArray(quotes)) return false;
+    const values = Object.values(quotes);
+    if (values.length === 0) return false;
+    let freshestAge = Number.POSITIVE_INFINITY;
+    for (const v of values){
+        if (typeof v !== 'object' || v === null) continue;
+        const q = v;
+        if (typeof q.cacheAge !== 'number') continue;
+        if (q.cacheAge < freshestAge) freshestAge = q.cacheAge;
+    }
+    if (!Number.isFinite(freshestAge)) return false;
+    return freshestAge <= stalenessMs;
+}
+function isHealthyOnChain(data) {
+    if (typeof data !== 'object' || data === null) return false;
+    const r = data;
+    const price8 = r.price8;
+    const timestamp = r.timestamp;
+    if (typeof price8 !== 'bigint' || typeof timestamp !== 'bigint') return false;
+    return price8 > 0n && timestamp > 0n;
+}
+function axisToTone(axis) {
+    switch(axis){
+        case 'healthy':
+            return 'healthy';
+        case 'degraded':
+            return 'degraded';
+        case 'unknown':
+            return 'unknown';
+    }
+}
+function PipelineFlowDiagram({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? DEFAULT_PRICE_SERVICE_URL, hedgeProofEndpoint = '/api/hedge-proof/latest', intervalMs = DEFAULT_POLL_INTERVAL_MS, stalenessThresholdMs = DEFAULT_STALENESS_THRESHOLD_MS }) {
+    const oracleAddress = __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$devnet$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["CONTRACTS"].StocksPriceOracle;
+    const probeTicker = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
+        const tickers = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$stockData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getAllTickers"])();
+        return tickers.length > 0 ? tickers[0] : null;
+    }, []);
+    const onChainReadEnabled = Boolean(oracleAddress) && probeTicker !== null;
+    const { data: onChainData, error: onChainError } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$wagmi$2f$dist$2f$esm$2f$hooks$2f$useReadContract$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useReadContract"])({
+        address: oracleAddress || undefined,
+        abi: __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$abi$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PriceOracleABI"],
+        functionName: 'getPriceData',
+        args: probeTicker ? [
+            probeTicker
+        ] : undefined,
+        query: {
+            enabled: onChainReadEnabled,
+            refetchInterval: intervalMs,
+            staleTime: intervalMs
+        }
+    });
+    const [offChain, setOffChain] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])({
+        quotes: 'unknown',
+        hedgeProof: 'unknown'
+    });
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        let cancelled = false;
+        const checkQuotes = async ()=>{
+            try {
+                const res = await fetch(`${priceServiceUrl}/quotes`, {
+                    cache: 'no-store'
+                });
+                if (!res.ok) return 'degraded';
+                const body = await res.json();
+                return isFreshQuotes(body, stalenessThresholdMs) ? 'healthy' : 'degraded';
+            } catch (err) {
+                (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$sanitiseClientError$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["sanitiseClientError"])('price-service', err);
+                return 'degraded';
+            }
+        };
+        const checkHedgeProof = async ()=>{
+            try {
+                const res = await fetch(hedgeProofEndpoint, {
+                    cache: 'no-store'
+                });
+                return res.ok ? 'healthy' : 'degraded';
+            } catch (err) {
+                (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$sanitiseClientError$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["sanitiseClientError"])('hedge-proof', err);
+                return 'degraded';
+            }
+        };
+        const tick = async ()=>{
+            const [quotesResult, hedgeProofResult] = await Promise.allSettled([
+                checkQuotes(),
+                checkHedgeProof()
+            ]);
+            if (cancelled) return;
+            setOffChain({
+                quotes: quotesResult.status === 'fulfilled' ? quotesResult.value : 'degraded',
+                hedgeProof: hedgeProofResult.status === 'fulfilled' ? hedgeProofResult.value : 'degraded'
+            });
+        };
+        void tick();
+        const timer = setInterval(()=>void tick(), intervalMs);
+        return ()=>{
+            cancelled = true;
+            clearInterval(timer);
+        };
+    }, [
+        priceServiceUrl,
+        hedgeProofEndpoint,
+        intervalMs,
+        stalenessThresholdMs
+    ]);
+    const onChain = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
+        if (!onChainReadEnabled) return 'degraded';
+        if (onChainError) {
+            (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$sanitiseClientError$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["sanitiseClientError"])('oracle-multicall', onChainError);
+            return 'degraded';
+        }
+        if (onChainData === undefined) return 'unknown';
+        return isHealthyOnChain(onChainData) ? 'healthy' : 'degraded';
+    }, [
+        onChainReadEnabled,
+        onChainError,
+        onChainData
+    ]);
+    const axes = {
+        quotes: offChain.quotes,
+        onChain,
+        hedgeProof: offChain.hedgeProof
+    };
+    const failedReasons = Object.keys(axes).filter((axis)=>axes[axis] === 'degraded').map((axis)=>REASON_BY_AXIS[axis]);
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
+        "aria-label": "Pipeline flow",
+        "data-testid": "pipeline-flow-diagram",
+        className: "rounded-2xl border border-white/10 bg-dark-100/40 px-4 py-3",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ol", {
+                className: "flex flex-wrap items-center gap-2 text-xs",
+                children: NODES.map((node, idx)=>{
+                    const nodeTone = axisToTone(axes[node.axis]);
+                    const elements = [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FlowNode, {
+                            spec: node,
+                            tone: nodeTone
+                        }, `node-${node.id}`, false, {
+                            fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                            lineNumber: 222,
+                            columnNumber: 13
+                        }, this)
+                    ];
+                    const edge = EDGES[idx];
+                    if (edge) {
+                        elements.push(/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FlowEdge, {
+                            spec: edge,
+                            tone: axisToTone(axes[edge.axis])
+                        }, `edge-${edge.id}`, false, {
+                            fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                            lineNumber: 227,
+                            columnNumber: 15
+                        }, this));
+                    }
+                    return elements;
+                })
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 218,
+                columnNumber: 7
+            }, this),
+            failedReasons.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                "data-testid": "pipeline-flow-degradation",
+                className: "mt-2 text-xs text-yellow-200/80",
+                children: failedReasons.join(' · ')
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 234,
+                columnNumber: 9
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+        lineNumber: 213,
+        columnNumber: 5
+    }, this);
+}
+function FlowNode({ spec, tone }) {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+        "data-testid": `pipeline-node-${spec.id}`,
+        "data-tone": tone,
+        className: `inline-flex flex-col items-start rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`,
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                className: "font-mono uppercase tracking-wider",
+                children: spec.label
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 252,
+                columnNumber: 7
+            }, this),
+            spec.subtitle && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                className: "text-[10px] text-gray-400",
+                children: spec.subtitle
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 253,
+                columnNumber: 25
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+        lineNumber: 247,
+        columnNumber: 5
+    }, this);
+}
+function FlowEdge({ spec, tone }) {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+        "aria-hidden": true,
+        "data-testid": `pipeline-edge-${spec.id}`,
+        "data-tone": tone,
+        className: `h-px w-6 self-center sm:w-8 ${TONE_EDGE_CLASS[tone]}`
+    }, void 0, false, {
+        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+        lineNumber: 260,
+        columnNumber: 5
+    }, this);
+}
+}),
 "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
@@ -6664,10 +6982,12 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$component
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$LiveQuotesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/LiveQuotesPanel.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OnChainOraclePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/OnChainOraclePanel.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OracleUpdatesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PipelineFlowDiagram$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PipelineStatusBanner$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/PipelineStatusBanner.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/ProofPanelBoundary.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$SafetyBanner$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/SafetyBanner.tsx [app-ssr] (ecmascript)");
 'use client';
+;
 ;
 ;
 ;
@@ -6759,35 +7079,30 @@ function LivePricesProofPage() {
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "mt-3",
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
+                    label: "Pipeline Flow",
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PipelineFlowDiagram$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PipelineFlowDiagram"], {}, void 0, false, {
+                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                        lineNumber: 46,
+                        columnNumber: 11
+                    }, this)
+                }, void 0, false, {
+                    fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                    lineNumber: 45,
+                    columnNumber: 9
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                lineNumber: 44,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2",
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
                         label: "Live Quotes",
                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$LiveQuotesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LiveQuotesPanel"], {}, void 0, false, {
-                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                            lineNumber: 46,
-                            columnNumber: 11
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 45,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
-                        label: "On-chain Oracle",
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OnChainOraclePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OnChainOraclePanel"], {}, void 0, false, {
-                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                            lineNumber: 49,
-                            columnNumber: 11
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 48,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
-                        label: "Oracle Updates",
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OracleUpdatesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OracleUpdatesPanel"], {}, void 0, false, {
                             fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
                             lineNumber: 52,
                             columnNumber: 11
@@ -6798,8 +7113,8 @@ function LivePricesProofPage() {
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
-                        label: "Last Demo Hedge",
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$LastDemoHedgePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LastDemoHedgePanel"], {}, void 0, false, {
+                        label: "On-chain Oracle",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OnChainOraclePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OnChainOraclePanel"], {}, void 0, false, {
                             fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
                             lineNumber: 55,
                             columnNumber: 11
@@ -6808,11 +7123,35 @@ function LivePricesProofPage() {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
                         lineNumber: 54,
                         columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
+                        label: "Oracle Updates",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OracleUpdatesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OracleUpdatesPanel"], {}, void 0, false, {
+                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                            lineNumber: 58,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                        lineNumber: 57,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
+                        label: "Last Demo Hedge",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$LastDemoHedgePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LastDemoHedgePanel"], {}, void 0, false, {
+                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                            lineNumber: 61,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                        lineNumber: 60,
+                        columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 44,
+                lineNumber: 50,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("footer", {
@@ -6820,7 +7159,7 @@ function LivePricesProofPage() {
                 children: "Reviewers: this page is the canonical Lane 6 proof artifact. If any panel is empty, the corresponding service is unreachable; degraded states are surfaced inline, not silently swallowed."
             }, void 0, false, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 59,
+                lineNumber: 65,
                 columnNumber: 7
             }, this)
         ]
@@ -6831,26 +7170,6 @@ function LivePricesProofPage() {
     }, this);
 }
 }),
-"[project]/frontend/src/app/(app)/proof/page.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
-"use strict";
-
-__turbopack_context__.s([
-    "default",
-    ()=>ProofAliasPage
-]);
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$app$2f28$app$292f$live$2d$prices$2d$proof$2f$page$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/app/(app)/live-prices-proof/page.tsx [app-ssr] (ecmascript)");
-'use client';
-;
-;
-function ProofAliasPage() {
-    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$app$2f28$app$292f$live$2d$prices$2d$proof$2f$page$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
-        fileName: "[project]/frontend/src/app/(app)/proof/page.tsx",
-        lineNumber: 6,
-        columnNumber: 10
-    }, this);
-}
-}),
 ];
 
-//# sourceMappingURL=frontend_src_0p6_bus._.js.map
+//# sourceMappingURL=frontend_src_0_8fg4t._.js.map

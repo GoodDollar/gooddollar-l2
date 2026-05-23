@@ -7,6 +7,9 @@ vi.mock('@/components/proof/SafetyBanner', () => ({
 vi.mock('@/components/proof/PipelineStatusBanner', () => ({
   PipelineStatusBanner: () => <div data-testid="mock-pipeline-status-banner" />,
 }))
+vi.mock('@/components/proof/PipelineFlowDiagram', () => ({
+  PipelineFlowDiagram: () => <div data-testid="mock-pipeline-flow-diagram" />,
+}))
 vi.mock('@/components/proof/LiveQuotesPanel', () => ({
   LiveQuotesPanel: () => <div data-testid="mock-live-quotes-panel" />,
 }))
@@ -50,5 +53,16 @@ describe('LivePricesProofPage', () => {
     const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING
     expect(safety.compareDocumentPosition(pipeline) & FOLLOWING).toBe(FOLLOWING)
     expect(pipeline.compareDocumentPosition(firstPanel) & FOLLOWING).toBe(FOLLOWING)
+  })
+
+  it('renders the pipeline flow diagram between the status banner and the panel grid', () => {
+    render(<LivePricesProofPage />)
+    const pipeline = screen.getByTestId('mock-pipeline-status-banner')
+    const flow = screen.getByTestId('mock-pipeline-flow-diagram')
+    const firstPanel = screen.getByTestId('mock-live-quotes-panel')
+
+    const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING
+    expect(pipeline.compareDocumentPosition(flow) & FOLLOWING).toBe(FOLLOWING)
+    expect(flow.compareDocumentPosition(firstPanel) & FOLLOWING).toBe(FOLLOWING)
   })
 })
