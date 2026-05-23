@@ -31,10 +31,17 @@ import { CryptoSymbolMap, parseCryptoSymbolMap } from './crypto-symbol-map';
 import { NormalizedQuote, OracleSignerConfig, UpdateResult } from './types';
 import { startHealthServer } from './healthServer';
 import { assertDevnetChain, parseAllowedChainIds } from './chain-guard';
+import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY } from './proof-store';
+import { AuditLog } from './audit-log';
+import * as path from 'path';
 
 export interface OracleSignerDeps {
   /** Optional chain-id getter. Defaults to reading from a rail's provider. Tests inject a stub to avoid a real RPC. */
   getChainId?: () => Promise<number>;
+  /** Optional ProofStore. Defaults to a fresh in-memory store. */
+  proofStore?: ProofStore;
+  /** Optional AuditLog. Defaults to a writer under `.autobuilder/logs/oracle-signer/`. */
+  auditLog?: AuditLog;
 }
 
 export interface RailStats {
@@ -72,8 +79,17 @@ export class OracleSignerService {
   private refused = false;
   private refusalReason: string | null = null;
 
+  private readonly proofStore: ProofStore;
+  private readonly auditLog: AuditLog;
+
   constructor(config: OracleSignerConfig, deps: OracleSignerDeps = {}) {
     this.config = config;
+    this.proofStore = deps.proofStore ?? new ProofStore(
+      parseInt(process.env.ORACLE_PROOF_CAPACITY || String(DEFAULT_PROOF_CAPACITY), 10),
+    );
+    this.auditLog = deps.auditLog ?? new AuditLog({
+      dir: process.env.ORACLE_AUDIT_LOG_DIR || path.join(process.cwd(), '.autobuilder', 'logs', 'oracle-signer'),
+    });
 
     // ---- Stocks rail wiring (enabled when STOCK_ORACLE_V2_ADDRESS is set) ----
     const stocksEnabled = Boolean(config.oracleAddress && config.oracleAddress.length > 0);
@@ -248,10 +264,34 @@ export class OracleSignerService {
     const updates = this.buffer.getPendingUpdates();
     if (updates.length === 0) return null;
 
+    const symbols = updates.map(u => u.symbol);
+    const mids: Record<string, number> = {};
+    for (const u of updates) {
+      const q = this.buffer.getLatestQuote(u.symbol);
+      if (q) mids[u.symbol] = q.mid;
+    }
+
     try {
+      const submittedAtMs = Date.now();
       const result = await this.submitter.submitBatch(updates);
-      this.buffer.markSubmitted(updates.map(u => u.symbol));
+      this.buffer.markSubmitted(symbols);
       this.stocksUpdateCount++;
+
+      this.proofStore.record('stocks', {
+        txHash: result.txHash,
+        blockNumber: result.blockNumber ?? 0,
+        gasUsed: result.gasUsed.toString(),
+        symbols,
+        roundTripMs: result.roundTripMs,
+        submittedAtMs,
+        mids,
+      });
+      void this.auditLog.append({
+        rail: 'stocks', event: 'submit_ok',
+        txHash: result.txHash, symbols,
+        blockNumber: result.blockNumber, gasUsed: result.gasUsed.toString(),
+        roundTripMs: result.roundTripMs,
+      });
 
       console.log(
         `[oracle-signer:stocks] Update #${this.stocksUpdateCount}: ${result.symbolCount} symbols, ` +
@@ -262,6 +302,7 @@ export class OracleSignerService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[oracle-signer:stocks] Submission failed: ${msg}`);
+      void this.auditLog.append({ rail: 'stocks', event: 'submit_fail', error: msg, symbols });
       throw err;
     }
   }
@@ -272,10 +313,34 @@ export class OracleSignerService {
     const updates = this.cryptoBuffer.getPendingUpdates();
     if (updates.length === 0) return null;
 
+    const symbols = updates.map(u => u.symbol);
+    const mids: Record<string, number> = {};
+    for (const u of updates) {
+      const q = this.cryptoBuffer.getLatestQuote(u.symbol);
+      if (q) mids[u.symbol] = q.mid;
+    }
+
     try {
+      const submittedAtMs = Date.now();
       const result = await this.cryptoSubmitter.submitBatch(updates);
-      this.cryptoBuffer.markSubmitted(updates.map(u => u.symbol));
+      this.cryptoBuffer.markSubmitted(symbols);
       this.cryptoUpdateCount++;
+
+      this.proofStore.record('crypto', {
+        txHash: result.txHash,
+        blockNumber: result.blockNumber ?? 0,
+        gasUsed: result.gasUsed.toString(),
+        symbols,
+        roundTripMs: result.roundTripMs,
+        submittedAtMs,
+        mids,
+      });
+      void this.auditLog.append({
+        rail: 'crypto', event: 'submit_ok',
+        txHash: result.txHash, symbols,
+        blockNumber: result.blockNumber, gasUsed: result.gasUsed.toString(),
+        roundTripMs: result.roundTripMs,
+      });
 
       console.log(
         `[oracle-signer:crypto] Update #${this.cryptoUpdateCount}: ${result.symbolCount} symbols, ` +
@@ -286,8 +351,14 @@ export class OracleSignerService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[oracle-signer:crypto] Submission failed: ${msg}`);
+      void this.auditLog.append({ rail: 'crypto', event: 'submit_fail', error: msg, symbols });
       throw err;
     }
+  }
+
+  /** Public getter for the proof snapshot — wired into the health server's `/proof` route. */
+  getProofSnapshot(): ProofSnapshot {
+    return this.proofStore.snapshot();
   }
 
   /** Back-compat alias. Today this returns the stocks-rail tick result. */
