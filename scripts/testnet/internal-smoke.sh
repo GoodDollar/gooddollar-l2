@@ -217,13 +217,26 @@ trap 'rm -f "$TMP_BODY"' EXIT
 # subshells. Designed as a drop-in replacement for the previous `http_body`
 # helper which discarded everything except the body.
 http_probe() {
+  # Drop any prior probe's body so transport-level failures
+  # (curl_exit ≠ 0, e.g. connection refused / DNS / timeout) don't
+  # leak the previous probe's response into this probe's diag row.
+  # `curl -o "$TMP_BODY"` opens the file lazily on the first response
+  # byte; failures before any response leave the file untouched.
+  : > "$TMP_BODY"
   local meta
   meta="$(curl -k -sS --max-time 10 -o "$TMP_BODY" \
     -w '%{http_code}\t%{content_type}' "$1" 2>/dev/null)"
   CURL_EXIT=$?
   HTTP_CODE="${meta%%$'\t'*}"
   HTTP_CT="${meta#*$'\t'}"
-  HTTP_BODY="$(cat "$TMP_BODY" 2>/dev/null || true)"
+  # Belt-and-suspenders: if curl reported any error, don't trust the
+  # tempfile contents — a future curl version could short-write `-o`
+  # output even after our truncate (e.g. partial chunked response).
+  if (( CURL_EXIT == 0 )); then
+    HTTP_BODY="$(cat "$TMP_BODY" 2>/dev/null || true)"
+  else
+    HTTP_BODY=""
+  fi
 }
 
 # Trim a body to a single line of 80 bytes and redact 20+ char
