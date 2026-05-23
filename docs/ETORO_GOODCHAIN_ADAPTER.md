@@ -127,10 +127,42 @@ source of truth for the accepted shapes.
 - **Daily**: running total of accepted orders for the current UTC day
   must, after the new order, be ≤ `MAX_DAILY_DEMO_NOTIONAL_USD`.
 
-Notional is computed as `price × amount` when price is available, falling
-back to `amount` (USD-stake) when price is missing. Both checks throw a
-typed `DemoCapExceededError` and audit-log the attempt with redacted detail
-(`{cap, attempted, capLimit, dailyTotal}` — never order metadata).
+### Notional resolution (five-tier order)
+
+The USD notional handed to the cap enforcer is resolved by
+`TradingModule.computeNotional`, in this priority order:
+
+1. **`notionalSizer(order)`** — operator-supplied sizing hook. Whatever
+   it returns (finite, > 0) is used as-is.
+2. **`order.price × order.amount`** — limit/stop orders only, using the
+   operator-supplied price.
+3. **`liveQuoteSource(symbol).mid × order.amount`** — the SDK's most
+   recently cached quote, used only when the snapshot is fresher than
+   `maxQuoteAgeMs` (default 60 s). The default `EtoroClient` wires this
+   to `marketData.getCachedQuote`. Audit log records
+   `notionalSource: 'live-quote'` and `quoteAgeMs`.
+4. **`symbolReferencePriceUsd(symbol) × order.amount`** — degraded
+   fallback against the hardcoded `INSTRUMENT_MAP.referencePriceUsd`
+   constants. Audit log records `notionalSource: 'reference-fallback'`.
+   These constants do NOT track the market — prefer tier 3 in production.
+5. **Throw** `MissingNotionalError` — the SDK refuses to size an order
+   against a unit count alone.
+
+### Reference-drift guardrail
+
+When `EtoroClientConstructorConfig.notional.maxReferenceDriftRatio` is
+set, a fresh live quote that diverges from the reference price by more
+than the ratio (absolute, `|live − ref| / ref`) is rejected with
+`DemoCapExceededError({ cap: 'reference-drift' })` before any HTTP call.
+The guardrail is opt-in — unset means "no second-guess" — and exists to
+catch situations where the SDK has clearly lost its grip on the market
+(stale feed, exchange halt, oracle drift) rather than silently letting
+the live quote override the cap math.
+
+Both `maxQuoteAgeMs` and `maxReferenceDriftRatio` are also accepted via
+the constructor's `notional` slot. The audit log records `cap`,
+`attempted`, `capLimit`, and `dailyTotal` on every refusal (never order
+metadata).
 
 The day bucket rolls at UTC midnight in-process. Process restart resets
 the bucket; persistence is intentionally out of scope for this lane (see

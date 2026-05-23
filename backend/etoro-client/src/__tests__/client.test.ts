@@ -152,6 +152,26 @@ describe('EtoroClient — audit-log path surfacing', () => {
   });
 });
 
+describe('EtoroClient — live-quote wiring through MockEtoroSource', () => {
+  const MOCK_CREDENTIALS: EtoroCredentials = {
+    apiKey: 'mock-api-key',
+    apiSecret: 'mock-api-secret',
+    baseUrl: 'mock://etoro.local',
+    wsUrl: 'mock://etoro.local/ws',
+    mode: 'mock',
+  };
+
+  it('feeds MockEtoroSource.getCachedQuote into TradingModule.liveQuoteSource', () => {
+    const client = new EtoroClient({ credentials: MOCK_CREDENTIALS });
+    client.marketData.subscribe(['BTC']);
+    const source = client.marketData as MockEtoroSource;
+    source.tick();
+    const cached = client.marketData.getCachedQuote?.('BTC');
+    expect(cached).toBeDefined();
+    expect(cached?.mid).toBeGreaterThan(0);
+  });
+});
+
 describe('EtoroClient — config-loaded audit line', () => {
   it('writes exactly one config-loaded entry with cap values and overrides applied', () => {
     const writes: string[] = [];

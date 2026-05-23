@@ -138,7 +138,6 @@ export class TradingModule {
   private readonly liveQuoteSource?: (symbol: string) => LiveQuoteSnapshot | undefined;
   private readonly maxQuoteAgeMs: number;
   private readonly maxReferenceDriftRatio?: number;
-  private readonly clock: () => number;
   private readonly disableCapsForTestsOnly: boolean;
 
   constructor(http: AxiosInstance, audit: AuditLogger, options: TradingModuleOptions = {}) {
@@ -159,7 +158,6 @@ export class TradingModule {
     this.liveQuoteSource = options.liveQuoteSource;
     this.maxQuoteAgeMs = options.maxQuoteAgeMs ?? DEFAULT_MAX_QUOTE_AGE_MS;
     this.maxReferenceDriftRatio = options.maxReferenceDriftRatio;
-    this.clock = Date.now;
     this.disableCapsForTestsOnly = disableCapsForTestsOnly;
   }
 
@@ -638,7 +636,7 @@ export class TradingModule {
     if (!snapshot) return undefined;
     if (!Number.isFinite(snapshot.mid) || snapshot.mid <= 0) return undefined;
     if (!Number.isFinite(snapshot.timestamp)) return undefined;
-    const ageMs = this.clock() - snapshot.timestamp;
+    const ageMs = Date.now() - snapshot.timestamp;
     if (ageMs > this.maxQuoteAgeMs) return undefined;
     return { mid: snapshot.mid, ageMs: Math.max(0, ageMs) };
   }
