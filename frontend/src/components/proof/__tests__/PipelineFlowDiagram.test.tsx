@@ -237,7 +237,11 @@ describe('PipelineFlowDiagram', () => {
     expect(upstreamEdge.getAttribute('data-tone')).toBe('degraded')
   })
 
-  it('surfaces REASON_BY_AXIS strings below the diagram when any axis is degraded', async () => {
+  it('does NOT render a trailing degradation paragraph when axes are degraded — the rollup chip row above is the single authority (#0052)', async () => {
+    // Before #0052 the flow band trailed a `<p data-testid="pipeline-
+    // flow-degradation">` paragraph that re-stated the same failing
+    // axes already covered by the AlivenessRollup chips. Deleted in
+    // favour of a single source of truth (the chip row).
     mockOnChainDegraded()
     installFetchMock((url) => {
       if (url.includes('/quotes')) throw new Error('boom')
@@ -249,12 +253,11 @@ describe('PipelineFlowDiagram', () => {
     renderFlow({ offChainIntervalMs: 60_000 })
 
     await vi.waitFor(() => {
-      const el = screen.getByTestId('pipeline-flow-degradation')
-      const text = el.textContent ?? ''
-      expect(text).toContain('price-service unreachable')
-      expect(text).toContain('no on-chain prices')
-      expect(text).toContain('hedge-proof missing')
+      expect(screen.getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
+        'degraded',
+      )
     })
+    expect(screen.queryByTestId('pipeline-flow-degradation')).toBeNull()
   })
 
   it('renders no standalone edge `<li>` past the last node — every edge sits inside a node `<li>`', async () => {

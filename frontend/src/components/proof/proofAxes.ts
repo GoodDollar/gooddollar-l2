@@ -61,6 +61,32 @@ export function isHealthyOnChain(data: unknown): boolean {
   return price8 > 0n && timestamp > 0n
 }
 
+export interface PanelLink {
+  /** Human-readable failure reason rendered in the rollup chip. */
+  reason: string
+  /** Stable `id` of the corresponding panel `<section>` — drives the chip's jump anchor. */
+  anchor: string
+}
+
+/**
+ * Canonical mapping from axis to (failure-reason copy, panel anchor id).
+ * The single source of truth for the rollup's reason chips and any
+ * future axis-aware consumer (e.g. the in-page jump-link table). Lifted
+ * out of `PipelineStatusBanner` and `PipelineFlowDiagram` so a future
+ * copy edit ("price-service unreachable" → "live-quotes feed unreachable")
+ * lands in one place — see task lane6-pipeline-flow-trailing-degradation-
+ * text-duplicates-rollup-chips (0052).
+ */
+export const PANEL_BY_AXIS: Record<AxisKey, PanelLink> = {
+  quotes: { reason: 'price-service unreachable', anchor: 'panel-live-quotes' },
+  onChain: { reason: 'no on-chain prices', anchor: 'panel-onchain-oracle' },
+  hedgeProof: { reason: 'hedge-proof missing', anchor: 'panel-last-hedge' },
+}
+
+export function reasonForAxis(axis: AxisKey): string {
+  return PANEL_BY_AXIS[axis].reason
+}
+
 export function deriveVerdict(axes: AxisState): Verdict {
   const values: AxisHealth[] = [axes.quotes, axes.onChain, axes.hedgeProof]
   let unknownCount = 0

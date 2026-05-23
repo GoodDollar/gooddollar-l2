@@ -5,12 +5,6 @@ import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 type Tone = 'unknown' | 'healthy' | 'degraded'
 
-const REASON_BY_AXIS: Record<AxisKey, string> = {
-  quotes: 'price-service unreachable',
-  onChain: 'no on-chain prices',
-  hedgeProof: 'hedge-proof missing',
-}
-
 interface NodeSpec {
   id: string
   label: string
@@ -119,10 +113,6 @@ function resolveAxisForSegment(axis: AxisKey, axes: AxisState): ResolvedAxis {
 export function PipelineFlowDiagram() {
   const { axes } = useProofPipelineAxesContext()
 
-  const failedReasons = (Object.keys(axes) as AxisKey[])
-    .filter((axis) => axes[axis] === 'degraded')
-    .map((axis) => REASON_BY_AXIS[axis])
-
   return (
     <section
       aria-label="Pipeline flow"
@@ -149,14 +139,6 @@ export function PipelineFlowDiagram() {
           )
         })}
       </ol>
-      {failedReasons.length > 0 && (
-        <p
-          data-testid="pipeline-flow-degradation"
-          className="mt-2 text-xs text-yellow-200/80"
-        >
-          {failedReasons.join(' · ')}
-        </p>
-      )}
     </section>
   )
 }

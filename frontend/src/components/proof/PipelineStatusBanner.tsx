@@ -1,19 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AxisState, Verdict } from './proofAxes'
+import { AxisKey, AxisState, PANEL_BY_AXIS, PanelLink, Verdict } from './proofAxes'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
-
-interface PanelLink {
-  reason: string
-  anchor: string
-}
-
-const PANEL_BY_AXIS: Record<keyof AxisState, PanelLink> = {
-  quotes: { reason: 'price-service unreachable', anchor: 'panel-live-quotes' },
-  onChain: { reason: 'no on-chain prices', anchor: 'panel-onchain-oracle' },
-  hedgeProof: { reason: 'hedge-proof missing', anchor: 'panel-last-hedge' },
-}
 
 /**
  * Renders the AlivenessRollup chip + reason chips at the top of the
@@ -96,7 +85,7 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }: PipelineSt
     )
   }
 
-  const degradedEntries = (Object.keys(axes) as (keyof AxisState)[])
+  const degradedEntries = (Object.keys(axes) as AxisKey[])
     .filter((axis) => axes[axis] === 'degraded')
     .map((axis) => PANEL_BY_AXIS[axis])
 

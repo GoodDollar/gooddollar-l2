@@ -2967,8 +2967,18 @@ var _s = __turbopack_context__.k.signature();
 ;
 const DEFAULT_PRICE_SERVICE_URL = 'http://localhost:9300';
 const DEFAULT_STALENESS_THRESHOLD_MS = 30_000;
-const DEFAULT_POLL_INTERVAL_MS = 15_000;
-function useProofPipelineAxes({ priceServiceUrl = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? DEFAULT_PRICE_SERVICE_URL, hedgeProofEndpoint = '/api/hedge-proof/latest', intervalMs = DEFAULT_POLL_INTERVAL_MS, stalenessThresholdMs = DEFAULT_STALENESS_THRESHOLD_MS } = {}) {
+/**
+ * Off-chain `/quotes` and `/api/hedge-proof/latest` poll cadence (5s).
+ * Matches the LiveQuotesPanel's "refreshes every Ns" pill so the
+ * rollup/flow tone and the panel's freshness chip can never disagree
+ * on whether the service is reachable in the same render frame — see
+ * task lane6-three-independent-quotes-pollers-at-conflicting-cadences (0051).
+ */ const DEFAULT_OFF_CHAIN_INTERVAL_MS = 5_000;
+/**
+ * Chain `useReadContract` cadence (15s). On-chain prices update on
+ * block boundaries; polling faster is wasted RPC traffic.
+ */ const DEFAULT_CHAIN_INTERVAL_MS = 15_000;
+function useProofPipelineAxes({ priceServiceUrl = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? DEFAULT_PRICE_SERVICE_URL, hedgeProofEndpoint = '/api/hedge-proof/latest', offChainIntervalMs = DEFAULT_OFF_CHAIN_INTERVAL_MS, chainIntervalMs = DEFAULT_CHAIN_INTERVAL_MS, stalenessThresholdMs = DEFAULT_STALENESS_THRESHOLD_MS } = {}) {
     _s();
     const oracleAddress = __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$devnet$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["CONTRACTS"].StocksPriceOracle;
     const probeTicker = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
@@ -2987,12 +2997,17 @@ function useProofPipelineAxes({ priceServiceUrl = __TURBOPACK__imported__module_
         ] : undefined,
         query: {
             enabled: onChainReadEnabled,
-            refetchInterval: intervalMs,
-            staleTime: intervalMs
+            refetchInterval: chainIntervalMs,
+            staleTime: chainIntervalMs
         }
     });
     const [offChain, setOffChain] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
-        quotes: 'unknown',
+        quotes: {
+            axis: 'unknown',
+            status: 'loading',
+            payload: null,
+            at: null
+        },
         hedgeProof: 'unknown'
     });
     /**
@@ -3006,16 +3021,33 @@ function useProofPipelineAxes({ priceServiceUrl = __TURBOPACK__imported__module_
             let cancelled = false;
             const checkQuotes = {
                 "useProofPipelineAxes.useEffect.checkQuotes": async ()=>{
+                    const at = Date.now();
                     try {
                         const res = await fetch(`${priceServiceUrl}/quotes`, {
                             cache: 'no-store'
                         });
-                        if (!res.ok) return 'degraded';
+                        if (!res.ok) return {
+                            axis: 'degraded',
+                            status: 'error',
+                            payload: null,
+                            at
+                        };
                         const body = await res.json();
-                        return (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["isFreshQuotes"])(body, stalenessThresholdMs) ? 'healthy' : 'degraded';
+                        const axis = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["isFreshQuotes"])(body, stalenessThresholdMs) ? 'healthy' : 'degraded';
+                        return {
+                            axis,
+                            status: 'ok',
+                            payload: body,
+                            at
+                        };
                     } catch (err) {
                         (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$sanitiseClientError$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["sanitiseClientError"])('price-service', err);
-                        return 'degraded';
+                        return {
+                            axis: 'degraded',
+                            status: 'error',
+                            payload: null,
+                            at
+                        };
                     }
                 }
             }["useProofPipelineAxes.useEffect.checkQuotes"];
@@ -3040,7 +3072,12 @@ function useProofPipelineAxes({ priceServiceUrl = __TURBOPACK__imported__module_
                     ]);
                     if (cancelled) return;
                     setOffChain({
-                        quotes: quotesResult.status === 'fulfilled' ? quotesResult.value : 'degraded',
+                        quotes: quotesResult.status === 'fulfilled' ? quotesResult.value : {
+                            axis: 'degraded',
+                            status: 'error',
+                            payload: null,
+                            at: Date.now()
+                        },
                         hedgeProof: hedgeProofResult.status === 'fulfilled' ? hedgeProofResult.value : 'degraded'
                     });
                     setPollSeq({
@@ -3051,7 +3088,7 @@ function useProofPipelineAxes({ priceServiceUrl = __TURBOPACK__imported__module_
             void tick();
             const timer = setInterval({
                 "useProofPipelineAxes.useEffect.timer": ()=>void tick()
-            }["useProofPipelineAxes.useEffect.timer"], intervalMs);
+            }["useProofPipelineAxes.useEffect.timer"], offChainIntervalMs);
             return ({
                 "useProofPipelineAxes.useEffect": ()=>{
                     cancelled = true;
@@ -3062,7 +3099,7 @@ function useProofPipelineAxes({ priceServiceUrl = __TURBOPACK__imported__module_
     }["useProofPipelineAxes.useEffect"], [
         priceServiceUrl,
         hedgeProofEndpoint,
-        intervalMs,
+        offChainIntervalMs,
         stalenessThresholdMs
     ]);
     const onChain = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
@@ -3082,12 +3119,12 @@ function useProofPipelineAxes({ priceServiceUrl = __TURBOPACK__imported__module_
     ]);
     const axes = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
         "useProofPipelineAxes.useMemo[axes]": ()=>({
-                quotes: offChain.quotes,
+                quotes: offChain.quotes.axis,
                 onChain,
                 hedgeProof: offChain.hedgeProof
             })
     }["useProofPipelineAxes.useMemo[axes]"], [
-        offChain.quotes,
+        offChain.quotes.axis,
         offChain.hedgeProof,
         onChain
     ]);
@@ -3112,15 +3149,27 @@ function useProofPipelineAxes({ priceServiceUrl = __TURBOPACK__imported__module_
         "useProofPipelineAxes.useMemo": ()=>({
                 axes,
                 verdict,
-                lastFullyAliveAt
+                lastFullyAliveAt,
+                lastQuotesPayload: offChain.quotes.payload,
+                lastQuotesAt: offChain.quotes.at,
+                lastQuotesStatus: offChain.quotes.status,
+                cadenceMs: offChainIntervalMs,
+                priceServiceUrl,
+                stalenessThresholdMs
             })
     }["useProofPipelineAxes.useMemo"], [
         axes,
         verdict,
-        lastFullyAliveAt
+        lastFullyAliveAt,
+        offChain.quotes.payload,
+        offChain.quotes.at,
+        offChain.quotes.status,
+        offChainIntervalMs,
+        priceServiceUrl,
+        stalenessThresholdMs
     ]);
 }
-_s(useProofPipelineAxes, "gzSL9rgCi+dGTEpZpS1beMx8/p8=", false, function() {
+_s(useProofPipelineAxes, "3nVAaSkc45UOfVNX7f4egklpAVo=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$wagmi$2f$dist$2f$esm$2f$hooks$2f$useReadContract$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useReadContract"]
     ];
