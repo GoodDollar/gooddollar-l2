@@ -120,8 +120,15 @@ export { validateWcProjectId } from './wagmi-helpers'
 // ./chain.ts) by also collapsing reads that don't go through
 // `useReadContracts` (raw `useReadContract`, `getBlockNumber`, ENS
 // lookups, balance reads). See task 0059.
+//
+// Bump `batch.wait` above viem's default 0 ms so concurrent wagmi hook
+// reads scheduled on different microtasks collapse into one /api/rpc
+// POST instead of 2–3. 10 ms is below the 60 fps frame budget so the
+// extra flush latency is imperceptible. See task 0052 for the
+// network-capture evidence (3-POST bursts within 1 ms on /perps cold
+// load → 1 batched POST per refetch tick after the change).
 const transports = {
-  [gooddollarL2.id]: http('/api/rpc', { batch: true }),
+  [gooddollarL2.id]: http('/api/rpc', { batch: { wait: 10 } }),
 } as const
 
 // Branch on whether we have a real, 32-char-hex WalletConnect project
