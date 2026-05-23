@@ -13,24 +13,37 @@ function resolveProofDir(): string {
   return path.resolve(process.cwd(), '..', 'qa-proof', 'hedges')
 }
 
+/**
+ * Stable, repository-relative locator exposed to clients in place of the
+ * resolved absolute path. The on-disk filename is fixed; the absolute
+ * path stays internal to the handler so we never leak deployment
+ * topology (home dir, OS user, project root) through the API or the
+ * proof page.
+ */
+export const RELATIVE_SOURCE_LOCATOR = 'qa-proof/hedges/latest.json'
+
 async function handleGet(_req: NextRequest) {
   const proofPath = path.join(resolveProofDir(), 'latest.json')
   try {
     const raw = await fs.readFile(proofPath, 'utf8')
     const proof = JSON.parse(raw)
     return NextResponse.json(
-      { proof, source: proofPath },
+      { proof, source: RELATIVE_SOURCE_LOCATOR },
       { headers: { 'Cache-Control': 'no-store' } },
     )
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       return NextResponse.json(
-        { error: 'no_proof', message: 'No hedge proof has been recorded yet.', source: proofPath },
+        {
+          error: 'no_proof',
+          message: 'No hedge proof has been recorded yet.',
+          source: RELATIVE_SOURCE_LOCATOR,
+        },
         { status: 404, headers: { 'Cache-Control': 'no-store' } },
       )
     }
     return NextResponse.json(
-      { error: 'read_failed', message: (err as Error).message, source: proofPath },
+      { error: 'read_failed', message: (err as Error).message },
       { status: 500 },
     )
   }

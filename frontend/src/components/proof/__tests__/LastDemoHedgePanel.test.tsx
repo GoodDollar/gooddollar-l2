@@ -16,7 +16,7 @@ const PROOF_OK = {
     etoroMode: 'sandbox',
     realTradingEnabled: false,
   },
-  source: '/repo/qa-proof/hedges/latest.json',
+  source: 'qa-proof/hedges/latest.json',
 }
 
 describe('LastDemoHedgePanel', () => {
@@ -43,6 +43,8 @@ describe('LastDemoHedgePanel', () => {
     // orderId is rendered in mono in the field grid, and the panel header
     // also says "dry-run" — assert at least one match.
     expect(screen.getAllByText('dry-run').length).toBeGreaterThan(0)
+    expect(screen.getByText(/qa-proof\/hedges\/latest\.json/)).toBeInTheDocument()
+    expect(screen.queryByText(/\/home\//)).not.toBeInTheDocument()
   })
 
   it('renders the missing-proof state on a 404', async () => {

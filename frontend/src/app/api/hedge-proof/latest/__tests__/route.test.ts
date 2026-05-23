@@ -1,9 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { GET } from '../route'
+import { GET, RELATIVE_SOURCE_LOCATOR } from '../route'
+
+const ABSOLUTE_PATH_PATTERNS = [/\/home\//, /\/Users\//, /\/var\//, /\/tmp\//]
+
+function expectNoAbsolutePaths(serialised: string): void {
+  for (const pattern of ABSOLUTE_PATH_PATTERNS) {
+    expect(serialised).not.toMatch(pattern)
+  }
+}
 
 const ORIGINAL_DIR = process.env.HEDGE_PROOF_DIR
 
@@ -35,13 +43,15 @@ describe('/api/hedge-proof/latest', () => {
     else process.env.HEDGE_PROOF_DIR = ORIGINAL_DIR
   })
 
-  it('returns 404 with a structured error when no proof file exists', async () => {
+  it('returns 404 with a structured error and a relative source locator when no proof file exists', async () => {
     const req = new NextRequest('http://localhost/api/hedge-proof/latest')
     const res = await GET(req)
     expect(res.status).toBe(404)
     const body = await res.json()
     expect(body.error).toBe('no_proof')
-    expect(typeof body.source).toBe('string')
+    expect(body.source).toBe(RELATIVE_SOURCE_LOCATOR)
+    expect(body.source).not.toMatch(/^\//)
+    expectNoAbsolutePaths(JSON.stringify(body))
   })
 
   it('returns 200 and the parsed proof JSON when latest.json is present', async () => {
@@ -51,6 +61,30 @@ describe('/api/hedge-proof/latest', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.proof).toEqual(SAMPLE_PROOF)
-    expect(body.source).toContain('latest.json')
+    expect(body.source).toBe(RELATIVE_SOURCE_LOCATOR)
+    expect(body.source).not.toMatch(/^\//)
+    expectNoAbsolutePaths(JSON.stringify(body))
+  })
+
+  it('returns 500 without any source field or absolute path on corrupt JSON', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'latest.json'), '{ broken')
+    const req = new NextRequest('http://localhost/api/hedge-proof/latest')
+    const res = await GET(req)
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toBe('read_failed')
+    expect('source' in body).toBe(false)
+    expectNoAbsolutePaths(JSON.stringify(body))
+  })
+
+  it('returns 500 without leaking the path when fs.readFile throws a non-ENOENT error', async () => {
+    const eaccess = Object.assign(new Error('permission denied'), { code: 'EACCES' })
+    vi.spyOn(fs.promises, 'readFile').mockRejectedValueOnce(eaccess)
+    const req = new NextRequest('http://localhost/api/hedge-proof/latest')
+    const res = await GET(req)
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect('source' in body).toBe(false)
+    expectNoAbsolutePaths(JSON.stringify(body))
   })
 })
