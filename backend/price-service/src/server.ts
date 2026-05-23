@@ -165,6 +165,10 @@ export function isoFromMs(ms: number | null): string | null {
  * 140 chars (asserted in the test suite) so a grep through the live
  * discovery payload stays readable.
  *
+ * `responseShape` is a compact TypeScript-ish sketch of the JSON the
+ * endpoint returns; capped at 240 chars so a fresh integrator reading
+ * `GET /` can write the consumer types without a second request.
+ *
  * `parametric: true` marks routes whose path shape carries a placeholder
  * (`/quotes/:symbol`). They are matched by a single regex below rather
  * than by exact-string lookup.
@@ -173,6 +177,7 @@ interface EndpointDoc {
   path: string;
   methods: readonly string[];
   summary: string;
+  responseShape: string;
   parametric?: boolean;
 }
 
@@ -181,21 +186,36 @@ const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     path: '/',
     methods: ['GET'],
     summary: 'Service discovery: lists endpoints, version, docs.',
+    responseShape:
+      '{ service, description, version, docs, endpoints[], quickstart[], ' +
+      "sourceReasonCatalog, websocket?, status: 'ok'|'degraded', " +
+      'timestamp, timestampIso }',
   },
   {
     path: '/health',
     methods: ['GET'],
     summary: 'Liveness + readiness for load balancers; 503 when degraded.',
+    responseShape:
+      '{ freshQuotes, totalCached, configuredSymbols, symbols[], ' +
+      "status: 'ok'|'degraded', source?, websocket?, bootAtMs?, " +
+      'bootAtIso?, uptimeMs?, timestamp, timestampIso } -- 200 ok / ' +
+      '503 degraded',
   },
   {
     path: '/quotes',
     methods: ['GET'],
     summary: 'Every cached quote with cache age and per-quote filter verdict.',
+    responseShape:
+      '{ count, totalCached, degraded?, message?, quotes: ' +
+      'Record<string, NormalizedQuote & {cacheAge, filterAccepted, ' +
+      'filterReason}>, source?, timestamp, timestampIso }',
   },
   {
     path: '/quotes/fresh/all',
     methods: ['GET'],
     summary: 'Only quotes that are non-stale AND accepted by the risk filter.',
+    responseShape:
+      '{ quotes: NormalizedQuote[], count, source?, timestamp, timestampIso }',
   },
   {
     path: '/quotes/:symbol',
@@ -204,6 +224,11 @@ const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'Single symbol; 400 invalid-symbol, 404 symbol-not-configured or ' +
       'no-quote, 200 quote envelope.',
     parametric: true,
+    responseShape:
+      '200: NormalizedQuote & {cacheAge, filterAccepted, filterReason, ' +
+      'source?} | 400: {error, message, path, method, timestamp, ' +
+      'timestampIso} | 404: {error, message, symbol, configured, ' +
+      'source?, timestamp, timestampIso}',
   },
   {
     path: '/status/quotes',
@@ -211,6 +236,10 @@ const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary:
       'Per-symbol freshness (last-update age, session state, confidence) ' +
       'for dashboards.',
+    responseShape:
+      '{ healthy, freshCount, totalCount, quotes: Array<{symbol, ' +
+      'lastUpdateMs, sessionState, confidence}>, source?, timestamp, ' +
+      'timestampIso } -- 200 healthy / 503 degraded',
   },
   {
     path: '/audit/stats',
@@ -218,6 +247,10 @@ const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary:
       'Ingested vs rejected counts, rejection breakdown, acceptance ratio, ' +
       'uptime.',
+    responseShape:
+      '{ ingested, rejected, byReason, acceptanceRatio, firstAt, ' +
+      'firstAtIso, lastAt, lastAtIso, writeErrors, bootAtMs?, ' +
+      'bootAtIso?, uptimeMs?, timestamp, timestampIso }',
   },
   {
     path: '/docs/source-reasons',
@@ -225,8 +258,29 @@ const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary:
       'Reference catalog: enum values that may appear as `source.reason` ' +
       'on data endpoints (NOT live state).',
+    responseShape:
+      '{ reasons: Record<string, {humanReason, nextStep, ' +
+      "severity:'info'|'degraded'|'critical'}>, count, timestamp, " +
+      'timestampIso }',
   },
 ];
+
+/**
+ * Boot-time guard: a future edit that pushes a `responseShape` over the
+ * 240-char wire contract should fail at import, not in CI.
+ */
+for (const e of ENDPOINT_CATALOG) {
+  if (e.responseShape.length > 240) {
+    throw new Error(
+      `responseShape for ${e.path} exceeds 240 chars: ${e.responseShape.length}`,
+    );
+  }
+}
+
+const WS_SYNTHETIC_RESPONSE_SHAPE =
+  'snapshot frame on connect: {symbols[], quotes: Record<string, ' +
+  'NormalizedQuote & {cacheAge, filterAccepted, filterReason}>, ' +
+  'timestamp} | quote frame: NormalizedQuote';
 
 /**
  * Pointer object replacing the inline `sourceReasons` block on `GET /`.
@@ -271,11 +325,19 @@ function findCatalogEntry(reqPath: string): EndpointDoc | undefined {
   return undefined;
 }
 
-function buildEndpointIndex(): Array<{ path: string; methods: readonly string[]; summary: string }> {
+interface EndpointIndexEntry {
+  path: string;
+  methods: readonly string[];
+  summary: string;
+  responseShape: string;
+}
+
+function buildEndpointIndex(): EndpointIndexEntry[] {
   return ENDPOINT_CATALOG.map((e) => ({
     path: e.path,
     methods: e.methods,
     summary: e.summary,
+    responseShape: e.responseShape,
   }));
 }
 
@@ -641,14 +703,14 @@ export function createServer(
       });
       return;
     }
-    const endpoints: Array<{ path: string; methods: readonly string[]; summary: string }> =
-      buildEndpointIndex();
+    const endpoints: EndpointIndexEntry[] = buildEndpointIndex();
     const ws = buildWsAdvertisement(req);
     if (ws) {
       endpoints.push({
         path: ws.url,
         methods: ['CONNECT'],
         summary: 'WebSocket broadcaster: snapshot on connect, then live quote frames.',
+        responseShape: WS_SYNTHETIC_RESPONSE_SHAPE,
       });
     }
     res.status(404).json({
