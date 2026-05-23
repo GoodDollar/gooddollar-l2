@@ -110,7 +110,10 @@ describe('ProofPipelineAxesProvider', () => {
     for (const id of ['oracle-signer', 'chain', 'frontend']) {
       const node = screen.getByTestId(`pipeline-node-${id}`)
       expect(node.getAttribute('data-tone')).toBe('degraded')
-      const pill = node.querySelector(':scope > span:first-child') as HTMLElement
+      // The pill element is the LI's first child. Axis-bound nodes wrap
+      // it in an <a> jump-link (per #0054); eToro remains a <span>.
+      // Either way the per-tone border class lives on this element.
+      const pill = node.firstElementChild as HTMLElement
       expect(pill.className).toMatch(/border-yellow-500\/40/)
       expect(pill.className).not.toMatch(/animate-pulse/)
     }
