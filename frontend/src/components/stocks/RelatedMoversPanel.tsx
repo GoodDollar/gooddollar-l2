@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Stock } from '@/lib/stockData'
 import { formatStockPrice } from '@/lib/stockData'
+import { hasLiveOracleChange } from '@/lib/oracleHonesty'
 
 export function RelatedMoversPanel({
   currentTicker,
@@ -11,6 +12,14 @@ export function RelatedMoversPanel({
   related: Stock[]
   movers: Stock[]
 }) {
+  // Filter to peers with a real 24h-change reading. Without this gate the
+  // "Daily movers" rail ranks the entire universe by +0.00% and renders
+  // a flat-green wall of zeros that the user reads as a real signal.
+  const liveMovers = movers
+    .filter((stock) => stock.ticker !== currentTicker)
+    .filter(hasLiveOracleChange)
+    .slice(0, 3)
+
   return (
     <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-4">
       <h3 className="text-sm font-semibold text-white">Discover More Stocks</h3>
@@ -38,11 +47,11 @@ export function RelatedMoversPanel({
 
       <div className="mt-3">
         <p className="text-[11px] text-gray-500 mb-1.5">Daily movers</p>
-        {movers.length === 0 ? (
-          <p className="text-xs text-gray-400">Mover data unavailable.</p>
+        {liveMovers.length === 0 ? (
+          <p className="text-xs text-gray-400">No 24h-change data from the oracle yet.</p>
         ) : (
           <div className="space-y-1.5">
-            {movers.filter((stock) => stock.ticker !== currentTicker).slice(0, 3).map((stock) => (
+            {liveMovers.map((stock) => (
               <Link
                 key={`mov-${stock.ticker}`}
                 href={`/stocks/${stock.ticker}`}

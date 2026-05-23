@@ -12,6 +12,7 @@ import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
+import { hasLiveOracleChange } from '@/lib/oracleHonesty'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
@@ -27,6 +28,8 @@ import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
 import { StockLogo } from '@/components/ui/stock-logo'
 import { StockStatsBar } from '@/components/stocks/StockStatsBar'
+import { KeyStatistics } from '@/components/stocks/KeyStatistics'
+import { PeerComparePanel, type PeerMetric } from '@/components/stocks/PeerComparePanel'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
 const AnalystOutlookCard = lazy(() => import('@/components/stocks/AnalystOutlookCard').then((mod) => ({ default: mod.AnalystOutlookCard })))
@@ -74,7 +77,6 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 }
 
 const TIMEFRAMES: Timeframe[] = ['1H', '4H', '1D', '1W', '1M', '3M', '1Y']
-type PeerMetric = 'change24h' | 'marketCap' | 'peRatio'
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const DETAIL_BACK_LINKS: Record<string, { label: string; href: string }> = {
   watchlist: { label: 'Back to Watchlist', href: '/stocks/watchlist' },
@@ -664,9 +666,22 @@ export default function StockDetailPage() {
 
           <div className="flex items-baseline gap-3 mb-2">
             <span className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
-            <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
-            </span>
+            {hasLiveOracleChange(stock) ? (
+              <span
+                data-testid="headline-change-24h"
+                className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}
+              >
+                {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
+              </span>
+            ) : (
+              <span
+                data-testid="headline-change-24h"
+                aria-label="24-hour change unavailable"
+                className="text-sm font-medium text-gray-500"
+              >
+                —
+              </span>
+            )}
           </div>
           <div className="mb-4 min-h-[1.75rem]">
             {chartMounted ? (
@@ -749,55 +764,7 @@ export default function StockDetailPage() {
           </div>
 
           {activeTab === 'overview' && (
-            <>
-              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
-                <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">Market Cap</div>
-                    <div className="text-white font-medium truncate">{formatLargeNumber(stock.marketCap)}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
-                    <div className="text-white font-medium truncate">{formatLargeNumber(stock.volume24h)}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">Sector</div>
-                    <div className="text-white font-medium truncate">{stock.sector}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">52W High</div>
-                    <div className="text-white font-medium truncate">{formatStockPrice(stock.high52w)}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
-                    <div className="text-white font-medium truncate">{formatStockPrice(stock.low52w)}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
-                    <div className={`font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 text-xs mb-0.5">P/E Ratio</div>
-                    <div className="text-white font-medium">{stock.peRatio.toFixed(1)}x</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 text-xs mb-0.5">EPS</div>
-                    <div className={`font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>${stock.eps.toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 text-xs mb-0.5">Dividend Yield</div>
-                    <div className="text-white font-medium">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : '—'}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 text-xs mb-0.5">Avg Volume</div>
-                    <div className="text-white font-medium">{formatLargeNumber(stock.avgVolume).replace('$', '')}</div>
-                  </div>
-                </div>
-              </div>
-            </>
+            <KeyStatistics stock={stock} />
           )}
 
           {activeTab === 'fundamentals' && (
@@ -870,36 +837,7 @@ export default function StockDetailPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300">Peer Compare</h3>
-                    <div className="flex flex-wrap gap-1">
-                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'change24h' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('change24h')}>24h%</button>
-                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'marketCap' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('marketCap')}>Mkt Cap</button>
-                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'peRatio' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('peRatio')}>P/E</button>
-                    </div>
-                  </div>
-                  {peerCandidates.length === 0 ? (
-                    <p className="text-xs text-gray-500">Peer data unavailable right now.</p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {peerCandidates
-                        .toSorted((a, b) => (b[peerMetric] - a[peerMetric]))
-                        .map((peer) => (
-                          <div key={peer.ticker} className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2 text-xs">
-                            <Link href={`/stocks/${peer.ticker}`} className="font-medium text-white hover:text-goodgreen transition-colors">{peer.ticker}</Link>
-                            {peerMetric === 'change24h' && (
-                              <span className={peer.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                {peer.change24h >= 0 ? '+' : ''}{peer.change24h.toFixed(2)}%
-                              </span>
-                            )}
-                            {peerMetric === 'marketCap' && <span className="text-gray-200">{formatLargeNumber(peer.marketCap)}</span>}
-                            {peerMetric === 'peRatio' && <span className="text-gray-200">{peer.peRatio.toFixed(1)}x</span>}
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                <PeerComparePanel peers={peerCandidates} metric={peerMetric} onMetricChange={setPeerMetric} />
 
                 <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300 mb-2">Trend Summary</h3>
@@ -969,7 +907,7 @@ export default function StockDetailPage() {
           </div>
 
           <Suspense fallback={<div className="mt-4 h-28 rounded-2xl bg-dark-100 animate-pulse" />}>
-            <StockMarketData markPrice={stock.price} />
+            <StockMarketData markPrice={stock.price} symbol={stock.ticker} />
           </Suspense>
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
