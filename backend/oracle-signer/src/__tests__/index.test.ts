@@ -133,6 +133,7 @@ describe('OracleSignerService', () => {
   it('loadConfig defaults symbols to DEFAULT_LANE_SYMBOLS when ORACLE_SYMBOLS unset', () => {
     const env: NodeJS.ProcessEnv = {
       ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      RPC_URL: 'https://rpc.example.com',
     };
     const config = loadConfig(env);
     expect(config.symbols).toEqual([...DEFAULT_LANE_SYMBOLS]);
@@ -162,12 +163,52 @@ describe('OracleSignerService', () => {
   it('loadConfig degrades + filters out unknown symbols passed via ORACLE_SYMBOLS', () => {
     const env: NodeJS.ProcessEnv = {
       ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      RPC_URL: 'https://rpc.example.com',
       ORACLE_SYMBOLS: 'MSFT,BTC,AAPL',
     };
     const config = loadConfig(env);
     expect(config.symbols).toEqual(['BTC', 'AAPL']);
     expect(env.SERVICE_HEALTH_STATUS).toBe('degraded');
     expect(env.SERVICE_DISABLED_REASON).toBe('Unknown symbols: MSFT');
+  });
+
+  it('loadConfig honors RPC_URL alias for parity with hedge-engine + .env.example', () => {
+    const env: NodeJS.ProcessEnv = {
+      ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      RPC_URL: 'https://goerli.example.com',
+    };
+    const config = loadConfig(env);
+    expect(config.rpcUrl).toBe('https://goerli.example.com');
+    expect(env.SERVICE_HEALTH_STATUS).toBeUndefined();
+  });
+
+  it('loadConfig prefers L2_RPC_URL over RPC_URL (documented precedence)', () => {
+    const env: NodeJS.ProcessEnv = {
+      ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      L2_RPC_URL: 'https://l2.example.com',
+      RPC_URL: 'https://l1.example.com',
+    };
+    expect(loadConfig(env).rpcUrl).toBe('https://l2.example.com');
+  });
+
+  it('loadConfig degrades when both L2_RPC_URL and RPC_URL are unset', () => {
+    const env: NodeJS.ProcessEnv = {
+      ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+    };
+    const config = loadConfig(env);
+    expect(config.rpcUrl).toBe('http://localhost:8545');
+    expect(env.SERVICE_HEALTH_STATUS).toBe('degraded');
+    expect(env.SERVICE_DISABLED_REASON).toMatch(/L2_RPC_URL\/RPC_URL/);
+  });
+
+  it('loadConfig ignores the legacy `RPC` typo (alias dropped)', () => {
+    const env: NodeJS.ProcessEnv = {
+      ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      RPC: 'https://typo.example.com',
+    };
+    const config = loadConfig(env);
+    expect(config.rpcUrl).toBe('http://localhost:8545');
+    expect(env.SERVICE_HEALTH_STATUS).toBe('degraded');
   });
 
   it('accepts all symbols when config list is empty', async () => {

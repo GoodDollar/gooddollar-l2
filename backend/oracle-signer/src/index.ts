@@ -124,9 +124,23 @@ export function loadConfig(
     env.SERVICE_DISABLED_REASON = `Unknown symbols: ${unknown.join(',')}`;
   }
 
+  // RPC alias chain. `.env.example` documents L2_RPC_URL as an alias
+  // for RPC_URL — honor both. The legacy `env.RPC` (no `_URL`) read
+  // was an undocumented typo and is no longer accepted. Mark the
+  // service degraded when neither is set so the silent-localhost
+  // fallback surfaces on `/health` instead of looking like a working
+  // boot pointed at a non-existent local Anvil. Don't clobber an
+  // earlier degrade reason (e.g. unknown symbols) — first cause wins.
+  const rpcUrl = env.L2_RPC_URL || env.RPC_URL || 'http://localhost:8545';
+  if (!env.L2_RPC_URL && !env.RPC_URL && !env.SERVICE_DISABLED_REASON) {
+    env.SERVICE_HEALTH_STATUS = 'degraded';
+    env.SERVICE_DISABLED_REASON =
+      'L2_RPC_URL/RPC_URL not set; signer points at default localhost:8545';
+  }
+
   return {
     priceServiceUrl: env.PRICE_SERVICE_URL || 'ws://localhost:9301',
-    rpcUrl: env.L2_RPC_URL || env.RPC || 'http://localhost:8545',
+    rpcUrl,
     oracleAddress: env.STOCK_ORACLE_V2_ADDRESS || '',
     signerKey,
     updateIntervalMs: parseInt(env.ORACLE_UPDATE_INTERVAL || '5000', 10),

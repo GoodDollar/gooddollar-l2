@@ -89,6 +89,11 @@ ORACLE_SYMBOLS=BTC,AAPL \
 Leaving `PRICE_SERVICE_URL` unset is correct — the default tracks the
 price-service WS port (`ws://localhost:9301`).
 
+`L2_RPC_URL` is the preferred name for `oracle-signer`; `RPC_URL` is
+accepted as an alias for parity with `hedge-engine` and the demo-proof
+script. If neither is set, the signer flips to `degraded` on `/health`
+instead of silently dialling `localhost:8545`.
+
 Verification:
 
 ```bash
