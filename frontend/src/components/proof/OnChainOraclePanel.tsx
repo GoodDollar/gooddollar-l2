@@ -103,6 +103,7 @@ export function OnChainOraclePanel() {
 
   return (
     <section
+      id="panel-onchain-oracle"
       aria-labelledby="onchain-oracle-heading"
       className="rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >

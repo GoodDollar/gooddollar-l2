@@ -49,6 +49,16 @@ describe('OnChainOraclePanel', () => {
     useReadContractsMock.mockReset()
   })
 
+  it('renders the outer section with the stable jump-target id', () => {
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+    const { container } = render(<OnChainOraclePanel />)
+    expect(container.querySelector('section[id="panel-onchain-oracle"]')).not.toBeNull()
+  })
+
   it('renders the sanitised oracle copy and leaks no wagmi internals in the error block', async () => {
     useReadContractsMock.mockReturnValue({
       data: undefined,

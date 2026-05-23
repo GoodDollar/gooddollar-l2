@@ -222,6 +222,75 @@ describe('PipelineStatusBanner', () => {
     expect(region).not.toHaveTextContent(/super-secret-host/)
   })
 
+  it('renders one chip-anchor per degraded axis with the correct href', async () => {
+    mockOnChainHealthy()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) throw new Error('boom')
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: false, status: 500, body: {} }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineStatusBanner intervalMs={60_000} />)
+
+    const liveQuotesChip = await screen.findByTestId('reason-chip-panel-live-quotes')
+    expect(liveQuotesChip.getAttribute('href')).toBe('#panel-live-quotes')
+    const hedgeChip = await screen.findByTestId('reason-chip-panel-last-hedge')
+    expect(hedgeChip.getAttribute('href')).toBe('#panel-last-hedge')
+    expect(screen.queryByTestId('reason-chip-panel-onchain-oracle')).not.toBeInTheDocument()
+  })
+
+  it('renders zero chips when every axis is healthy', async () => {
+    mockOnChainHealthy()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineStatusBanner intervalMs={60_000} />)
+    const region = await screen.findByTestId('pipeline-status-banner')
+    await vi.waitFor(() => {
+      expect(region.getAttribute('data-status')).toBe('green')
+    })
+    expect(screen.queryAllByTestId(/^reason-chip-/)).toHaveLength(0)
+  })
+
+  it('in red verdict, chips render with the red tone', async () => {
+    mockOnChainDegraded()
+    installFetchMock(() => {
+      throw new Error('connection refused')
+    })
+
+    render(<PipelineStatusBanner intervalMs={60_000} />)
+
+    const chips = await vi.waitFor(() => {
+      const els = screen.queryAllByTestId(/^reason-chip-/)
+      expect(els.length).toBeGreaterThan(0)
+      return els
+    })
+    chips.forEach((chip) => {
+      expect(chip.className).toMatch(/text-red-200/)
+    })
+  })
+
+  it('chips are focusable anchors, not buttons', async () => {
+    mockOnChainHealthy()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) throw new Error('boom')
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineStatusBanner intervalMs={60_000} />)
+
+    const chip = await screen.findByTestId('reason-chip-panel-live-quotes')
+    expect(chip.tagName).toBe('A')
+    expect(chip.getAttribute('aria-label')).toMatch(/jump to/i)
+  })
+
   it('clears the interval on unmount', async () => {
     vi.useFakeTimers()
     mockOnChainHealthy()

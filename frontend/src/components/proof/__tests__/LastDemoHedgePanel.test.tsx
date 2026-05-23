@@ -72,6 +72,12 @@ describe('LastDemoHedgePanel', () => {
     vi.restoreAllMocks()
   })
 
+  it('renders the outer section with the stable jump-target id', () => {
+    globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
+    const { container } = render(<LastDemoHedgePanel intervalMs={60_000} />)
+    expect(container.querySelector('section[id="panel-last-hedge"]')).not.toBeNull()
+  })
+
   it('renders the no-op sentinel as a "below-threshold tick" card without a BUY badge', async () => {
     mockFetchOk(envelope(PROOF_NO_OP))
 

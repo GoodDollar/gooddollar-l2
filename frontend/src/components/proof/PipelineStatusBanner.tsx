@@ -21,10 +21,15 @@ const DEFAULT_PRICE_SERVICE_URL = 'http://localhost:9300'
 const DEFAULT_STALENESS_THRESHOLD_MS = 30_000
 const DEFAULT_POLL_INTERVAL_MS = 15_000
 
-const REASON_BY_AXIS: Record<keyof AxisState, string> = {
-  quotes: 'price-service unreachable',
-  onChain: 'no on-chain prices',
-  hedgeProof: 'hedge-proof missing',
+interface PanelLink {
+  reason: string
+  anchor: string
+}
+
+const PANEL_BY_AXIS: Record<keyof AxisState, PanelLink> = {
+  quotes: { reason: 'price-service unreachable', anchor: 'panel-live-quotes' },
+  onChain: { reason: 'no on-chain prices', anchor: 'panel-onchain-oracle' },
+  hedgeProof: { reason: 'hedge-proof missing', anchor: 'panel-last-hedge' },
 }
 
 function isFreshQuotes(payload: unknown, stalenessMs: number): boolean {
@@ -216,9 +221,9 @@ function PipelineStatusView({ axes, verdict }: PipelineStatusViewProps) {
     )
   }
 
-  const degradedReasons = (Object.keys(axes) as (keyof AxisState)[])
+  const degradedEntries = (Object.keys(axes) as (keyof AxisState)[])
     .filter((axis) => axes[axis] === 'degraded')
-    .map((axis) => REASON_BY_AXIS[axis])
+    .map((axis) => PANEL_BY_AXIS[axis])
 
   if (verdict === 'red') {
     return (
@@ -238,7 +243,7 @@ function PipelineStatusView({ axes, verdict }: PipelineStatusViewProps) {
               All upstreams unreachable; this release is not verifiable.
             </span>
           </div>
-          <ReasonChips reasons={degradedReasons} tone="red" />
+          <ReasonChips entries={degradedEntries} tone="red" />
         </div>
       </section>
     )
@@ -261,23 +266,35 @@ function PipelineStatusView({ axes, verdict }: PipelineStatusViewProps) {
             Pipeline partially alive — investigate the listed axes before shipping.
           </span>
         </div>
-        <ReasonChips reasons={degradedReasons} tone="amber" />
+        <ReasonChips entries={degradedEntries} tone="amber" />
       </div>
     </section>
   )
 }
 
-function ReasonChips({ reasons, tone }: { reasons: string[]; tone: 'amber' | 'red' }) {
-  if (reasons.length === 0) return null
-  const chipClass =
-    tone === 'amber'
-      ? 'rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-[11px] font-medium text-yellow-200'
-      : 'rounded-full bg-red-500/15 px-2.5 py-0.5 text-[11px] font-medium text-red-200'
+const CHIP_BASE_CLASS =
+  'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-100'
+
+const CHIP_TONE_CLASS: Record<'amber' | 'red', string> = {
+  amber: 'bg-yellow-500/10 text-yellow-200 hover:bg-yellow-500/20 focus:ring-yellow-400/50',
+  red: 'bg-red-500/15 text-red-200 hover:bg-red-500/25 focus:ring-red-400/50',
+}
+
+function ReasonChips({ entries, tone }: { entries: PanelLink[]; tone: 'amber' | 'red' }) {
+  if (entries.length === 0) return null
   return (
     <ul className="mt-2 flex flex-wrap gap-1.5">
-      {reasons.map((r) => (
-        <li key={r} className={chipClass}>
-          {r}
+      {entries.map((e) => (
+        <li key={e.anchor}>
+          <a
+            href={`#${e.anchor}`}
+            data-testid={`reason-chip-${e.anchor}`}
+            className={`${CHIP_BASE_CLASS} ${CHIP_TONE_CLASS[tone]}`}
+            aria-label={`Jump to ${e.reason}, opens the corresponding panel`}
+          >
+            <span>{e.reason}</span>
+            <span aria-hidden>↓</span>
+          </a>
         </li>
       ))}
     </ul>

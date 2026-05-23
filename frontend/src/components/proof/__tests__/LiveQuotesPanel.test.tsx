@@ -61,6 +61,12 @@ describe('LiveQuotesPanel', () => {
     expect(screen.getByText(/0\.112%/)).toBeInTheDocument()
   })
 
+  it('renders the outer section with the stable jump-target id', () => {
+    globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
+    const { container } = render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+    expect(container.querySelector('section[id="panel-live-quotes"]')).not.toBeNull()
+  })
+
   it('renders a stale badge when cacheAge exceeds the threshold', async () => {
     mockFetchOnce(QUOTES_STALE)
 

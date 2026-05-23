@@ -130,6 +130,7 @@ export function LastDemoHedgePanel({
 
   return (
     <section
+      id="panel-last-hedge"
       aria-labelledby="last-hedge-heading"
       className="rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >

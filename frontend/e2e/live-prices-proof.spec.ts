@@ -56,6 +56,31 @@ test.describe('Lane 6 — /live-prices-proof', () => {
     const nodes = page.locator('[data-testid^="pipeline-node-"]')
     expect(await nodes.count()).toBeGreaterThanOrEqual(6)
 
+    // Every panel exposes the stable `panel-*` id used by the degraded-
+    // reason chips for in-page jump links. The OracleUpdatesPanel also
+    // carries an id for consistency though no axis points at it today.
+    for (const panelId of [
+      'panel-live-quotes',
+      'panel-onchain-oracle',
+      'panel-oracle-updates',
+      'panel-last-hedge',
+    ]) {
+      await expect(page.locator(`section#${panelId}`)).toHaveCount(1)
+    }
+
+    // When the banner is degraded, the reason chips render as anchors
+    // pointing at their corresponding panel. Click the first chip and
+    // confirm the matching panel scrolls into view.
+    const status = await pipelineBanner.getAttribute('data-status')
+    if (status === 'amber' || status === 'red') {
+      const chip = page.locator('[data-testid^="reason-chip-"]').first()
+      const href = await chip.getAttribute('href')
+      expect(href).toMatch(/^#panel-/)
+      await chip.click()
+      const target = page.locator(href ?? '#panel-live-quotes')
+      await expect(target).toBeInViewport()
+    }
+
     // On-chain oracle address must be surfaced as either a link to the
     // configured explorer or a span carrying the full address. Whichever
     // variant the harness env produces, the full 0x-prefixed address must

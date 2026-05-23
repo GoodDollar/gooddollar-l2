@@ -150,6 +150,7 @@ export function LiveQuotesPanel({
 
   return (
     <section
+      id="panel-live-quotes"
       aria-labelledby="live-quotes-heading"
       className="rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >

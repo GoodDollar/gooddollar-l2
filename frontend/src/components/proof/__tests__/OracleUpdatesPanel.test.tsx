@@ -46,6 +46,11 @@ describe('OracleUpdatesPanel', () => {
     expect(screen.queryByText(/Oracle event subscription degraded/i)).not.toBeInTheDocument()
   })
 
+  it('renders the outer section with the stable jump-target id', () => {
+    const { container } = render(<OracleUpdatesPanel />)
+    expect(container.querySelector('section[id="panel-oracle-updates"]')).not.toBeNull()
+  })
+
   it('renders the canned degraded card when wagmi invokes onError, without leaking the raw error', () => {
     render(<OracleUpdatesPanel />)
 

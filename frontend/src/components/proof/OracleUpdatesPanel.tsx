@@ -93,6 +93,7 @@ export function OracleUpdatesPanel() {
 
   return (
     <section
+      id="panel-oracle-updates"
       aria-labelledby="oracle-updates-heading"
       className="rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
