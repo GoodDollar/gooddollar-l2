@@ -98,6 +98,29 @@ function timeAgo(ms: number | undefined): string {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
+function isoTitle(ms: number | undefined): string | undefined {
+  if (!ms || !Number.isFinite(ms)) return undefined
+  return new Date(ms).toISOString()
+}
+
+interface ExposureDeltaParts {
+  display: string
+  deltaSigned: string
+  deltaClass: string
+}
+
+function formatExposureDelta(before: number, after: number): ExposureDeltaParts {
+  const delta = after - before
+  const display = `${before} → ${after}`
+  if (!Number.isFinite(delta) || delta === 0) {
+    return { display, deltaSigned: '0', deltaClass: 'text-gray-500' }
+  }
+  if (delta > 0) {
+    return { display, deltaSigned: `+${delta}`, deltaClass: 'text-goodgreen' }
+  }
+  return { display, deltaSigned: `−${Math.abs(delta)}`, deltaClass: 'text-red-300' }
+}
+
 type EngineState =
   | { label: 'ok'; color: 'text-goodgreen' }
   | { label: 'degraded'; color: 'text-yellow-400' }
@@ -406,35 +429,62 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-gray-500 uppercase">
+                <th className="text-left py-1 pr-2">time</th>
                 <th className="text-left py-1 pr-2">id</th>
                 <th className="text-left py-1 pr-2">symbol</th>
                 <th className="text-left py-1 pr-2">side</th>
                 <th className="text-right py-1 pr-2">notional</th>
+                <th className="text-left py-1 pr-2">exposure Δ</th>
                 <th className="text-left py-1">status</th>
               </tr>
             </thead>
             <tbody>
-              {receipts.map((r) => (
-                <tr
-                  key={r.id}
-                  data-testid="hedge-receipt-row"
-                  className="border-t border-dark-100 font-mono"
-                >
-                  <td className="py-1.5 pr-2 text-xs text-gray-300">{shortId(r.id)}</td>
-                  <td className="py-1.5 pr-2 text-white">{r.symbol}</td>
-                  <td className="py-1.5 pr-2 text-gray-300">{r.side}</td>
-                  <td className="py-1.5 pr-2 text-right text-gray-200">
-                    ${r.notionalUsd.toFixed(2)}
-                  </td>
-                  <td className="py-1.5 text-xs">
-                    {r.success ? (
-                      <span className="text-goodgreen">ok</span>
-                    ) : (
-                      <span className="text-yellow-400">{r.error ?? 'failed'}</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {receipts.map((r) => {
+                const delta = formatExposureDelta(r.beforeExposure, r.afterExposure)
+                return (
+                  <tr
+                    key={r.id}
+                    data-testid="hedge-receipt-row"
+                    title={r.id}
+                    className="border-t border-dark-100 font-mono"
+                  >
+                    <td
+                      className="py-1.5 pr-2 text-xs text-gray-300"
+                      title={isoTitle(r.timestamp)}
+                    >
+                      {timeAgo(r.timestamp)}
+                    </td>
+                    <td className="py-1.5 pr-2 text-xs text-gray-300">
+                      <div>{shortId(r.id)}</div>
+                      <div
+                        data-testid="hedge-receipt-etoro-id"
+                        className="text-gray-500"
+                      >
+                        eToro: <span className="text-gray-400">{r.etoroOrderId ?? '—'}</span>
+                      </div>
+                    </td>
+                    <td className="py-1.5 pr-2 text-white">{r.symbol}</td>
+                    <td className="py-1.5 pr-2 text-gray-300">{r.side}</td>
+                    <td className="py-1.5 pr-2 text-right text-gray-200">
+                      ${r.notionalUsd.toFixed(2)}
+                    </td>
+                    <td
+                      data-testid="hedge-receipt-exposure-delta"
+                      className="py-1.5 pr-2 text-xs text-gray-300"
+                    >
+                      <div>{delta.display}</div>
+                      <div className={delta.deltaClass}>({delta.deltaSigned})</div>
+                    </td>
+                    <td className="py-1.5 text-xs">
+                      {r.success ? (
+                        <span className="text-goodgreen">ok</span>
+                      ) : (
+                        <span className="text-yellow-400">{r.error ?? 'failed'}</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}

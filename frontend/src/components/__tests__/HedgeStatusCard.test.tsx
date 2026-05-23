@@ -407,6 +407,35 @@ describe('HedgeStatusCard', () => {
     expect(refreshSettled).toBe(true);
   });
 
+  it('receipts table renders eToro order id, exposure delta, and a timestamp tooltip', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const row = await screen.findByTestId('hedge-receipt-row');
+    // full internal id reachable via row title
+    expect(row.getAttribute('title')).toBe('abc12345defg');
+    // eToro id rendered in its dedicated cell
+    const etoro = screen.getByTestId('hedge-receipt-etoro-id');
+    expect(etoro).toHaveTextContent('etoro-1');
+    // exposure delta cell: before → after + signed delta
+    const delta = screen.getByTestId('hedge-receipt-exposure-delta');
+    expect(delta).toHaveTextContent('100 → 50');
+    expect(delta).toHaveTextContent('−50');
+    // time cell ISO title equals the receipt timestamp in UTC
+    const timeCell = row.querySelector('td[title]');
+    expect(timeCell?.getAttribute('title')).toBe(new Date(1700000000000).toISOString());
+  });
+
+  it('receipts table renders an em-dash placeholder when etoroOrderId is missing', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: [{ ...BASE_RESPONSE.receipts[0], etoroOrderId: undefined }],
+    });
+    render(<HedgeStatusCard />);
+    const etoro = await screen.findByTestId('hedge-receipt-etoro-id');
+    expect(etoro).toHaveTextContent('—');
+    expect(etoro).not.toHaveTextContent('etoro-1');
+  });
+
   it('awaiting tick: snapshot null, no error → grid shows ENGINE: awaiting tick in neutral grey', async () => {
     mockFetchOnce({
       snapshot: null,
