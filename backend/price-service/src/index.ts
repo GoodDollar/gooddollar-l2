@@ -78,6 +78,7 @@ export class PriceService {
       () => this.getIngestStats(),
       () => this.getSourceStatus(),
       () => this.bootAtMs,
+      () => ({ port: this.config.wsPort }),
     );
     this.httpServer = app.listen(this.config.port, () => {
       console.log(`[price-service] REST server listening on port ${this.config.port}`);

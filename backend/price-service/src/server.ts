@@ -6,6 +6,48 @@ import { sanitizeSourceStatus } from './source-status';
 export type IngestStatsGetter = () => IngestStats;
 export type SourceStatusGetter = () => SourceStatus;
 export type BootAtGetter = () => number;
+export type WsAddressGetter = () => { port: number; host?: string };
+
+/**
+ * Frame schema docs for the WS broadcaster, surfaced on both `GET /` and
+ * `GET /health` so an integrator who finds only the REST URL can still
+ * discover the live-tick feed without cloning the repo. The strings are
+ * coupled to the broadcaster contract in `ws-broadcaster.ts`; any future
+ * frame-shape change there must also update this constant.
+ */
+const WS_FRAME_DOCS = {
+  snapshot:
+    "sent on connect; { type:'snapshot', data: NormalizedQuote[], " +
+    'count, timestamp, source? }',
+  quote:
+    "broadcast per accepted tick; " +
+    "{ type:'quote', data: NormalizedQuote, timestamp }",
+} as const;
+
+/**
+ * Pull the bare hostname out of an HTTP `Host:` header so we can rewrite
+ * the port for the WS advertisement. Strips the trailing `:port`,
+ * preserves bracketed IPv6 literals (`[::1]:3122` → `[::1]`), and falls
+ * back to `localhost` when the header is missing (some raw `http.request`
+ * paths don't send one).
+ */
+export function hostnameFromHostHeader(h: string | undefined): string {
+  if (!h) return 'localhost';
+  if (h.startsWith('[')) {
+    const end = h.indexOf(']');
+    return end > 0 ? h.slice(0, end + 1) : h;
+  }
+  const idx = h.indexOf(':');
+  return idx > 0 ? h.slice(0, idx) : h;
+}
+
+export interface WsAdvertisement {
+  url: string;
+  port: number;
+  frames: readonly ['snapshot', 'quote'];
+  snapshot: string;
+  quote: string;
+}
 
 /**
  * Top-level discovery copy for `GET /`. Static so the body assembly stays a
@@ -162,6 +204,7 @@ export function createServer(
   statsGetter?: IngestStatsGetter,
   sourceStatusGetter?: SourceStatusGetter,
   bootAtGetter?: BootAtGetter,
+  wsAddressGetter?: WsAddressGetter,
 ): express.Express {
   const app = express();
   app.disable('x-powered-by');
@@ -170,6 +213,24 @@ export function createServer(
   // entry so deploys with mixed-case `ORACLE_SYMBOLS` still match the
   // upper-cased request path produced by `normalizeSymbol`.
   const configuredSet = new Set(cfg.symbols.map((s) => s.toUpperCase()));
+
+  // Single helper so the `/`, `/health`, and 404 surfaces emit identical
+  // advertisements off the same input. Returns `undefined` when wiring
+  // is absent so call sites can omit the field cleanly (preserves the
+  // backward-compat contract for fixtures constructed with the old
+  // 5-arg `createServer`).
+  function buildWsAdvertisement(req: Request): WsAdvertisement | undefined {
+    if (!wsAddressGetter) return undefined;
+    const { port, host } = wsAddressGetter();
+    const hostname = host ?? hostnameFromHostHeader(req.get('host'));
+    return {
+      url: `ws://${hostname}:${port}`,
+      port,
+      frames: ['snapshot', 'quote'] as const,
+      snapshot: WS_FRAME_DOCS.snapshot,
+      quote: WS_FRAME_DOCS.quote,
+    };
+  }
 
   app.use((req: Request, res: Response, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -183,19 +244,22 @@ export function createServer(
     next();
   });
 
-  app.get('/', (_req: Request, res: Response) => {
-    res.json({
+  app.get('/', (req: Request, res: Response) => {
+    const body: Record<string, unknown> = {
       service: 'price-service',
       description: SERVICE_DESCRIPTION,
       version: PACKAGE_VERSION,
       docs: DOCS_URL,
       endpoints: buildEndpointIndex(),
       examples: EXAMPLES,
-      timestamp: Date.now(),
-    });
+    };
+    const ws = buildWsAdvertisement(req);
+    if (ws) body.websocket = ws;
+    body.timestamp = Date.now();
+    res.json(body);
   });
 
-  app.get('/health', (_req: Request, res: Response) => {
+  app.get('/health', (req: Request, res: Response) => {
     const fresh = cache.getFresh();
     const body: Record<string, unknown> = {
       freshQuotes: fresh.length,
@@ -212,6 +276,8 @@ export function createServer(
     }
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
     if (src) body.source = src;
+    const ws = buildWsAdvertisement(req);
+    if (ws) body.websocket = ws;
     body.status = degraded ? 'degraded' : 'ok';
     if (bootAtGetter) {
       const bootAt = bootAtGetter();
@@ -385,11 +451,14 @@ export function createServer(
       });
       return;
     }
+    const endpoints: string[] = buildEndpointPaths();
+    const ws = buildWsAdvertisement(req);
+    if (ws) endpoints.push(ws.url);
     res.status(404).json({
       error: 'not-found',
       path: req.path,
       method: req.method,
-      endpoints: buildEndpointPaths(),
+      endpoints,
       timestamp: Date.now(),
     });
   });
