@@ -127,6 +127,17 @@ export class MockEtoroSource {
     return this.latest.get(upper);
   }
 
+  /**
+   * Mirrors `MarketDataModule.getCachedQuote` so the SDK's
+   * `EtoroMarketDataSource.getCachedQuote?` interface is satisfied in
+   * mock mode. `TradingModule.computeNotional` consults this to size
+   * market orders against the most recent emitted tick instead of the
+   * frozen `referencePriceUsd` constants.
+   */
+  getCachedQuote(symbol: string): NormalizedQuote | undefined {
+    return this.getLatest(symbol);
+  }
+
   private buildQuote(inst: LaneInstrument): NormalizedQuote {
     const drift = (this.nextRandom() - 0.5) * 0.01; // ±0.5% walk
     const mid = inst.referencePriceUsd * (1 + drift);

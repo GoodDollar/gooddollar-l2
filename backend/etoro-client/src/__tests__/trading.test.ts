@@ -577,7 +577,7 @@ describe('TradingModule — audit-log resolvedNotionalUsd + notionalSource', () 
       .find((e) => e.action === 'openPosition' && e.method === 'POST');
     expect(openLine).toBeDefined();
     expect(openLine?.resolvedNotionalUsd).toBeCloseTo(600, 5);
-    expect(openLine?.notionalSource).toBe('reference');
+    expect(openLine?.notionalSource).toBe('reference-fallback');
   });
 });
 
