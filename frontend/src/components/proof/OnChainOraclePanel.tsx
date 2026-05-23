@@ -17,6 +17,70 @@ const SESSION_LABELS: Record<number, string> = {
   4: 'Halted',
 }
 
+interface ColumnSpec {
+  key: 'symbol' | 'price' | 'session' | 'conf' | 'signers' | 'updated'
+  label: string
+  shortDescription: string
+  align: 'left' | 'right'
+}
+
+/**
+ * Source-of-truth for the On-Chain Oracle table layout. Both the header
+ * row and the screen-reader `<dl>` consume this array, so adding or
+ * renaming a column is a one-line change. The descriptions are written
+ * for a fresh non-engineer reviewer; they surface via the native `title=`
+ * tooltip on hover and via `aria-describedby` for screen readers (see
+ * task lane6-onchain-oracle-column-headers-unexplained-jargon).
+ */
+const COLUMNS: readonly ColumnSpec[] = [
+  {
+    key: 'symbol',
+    label: 'Symbol',
+    shortDescription:
+      'Ticker the oracle is publishing for. One row per ticker the keeper expects to write.',
+    align: 'left',
+  },
+  {
+    key: 'price',
+    label: 'Price (8-dec → USD)',
+    shortDescription:
+      'On-chain price stored as an unsigned integer with 8 decimals of precision, divided by 1e8 to render as USD.',
+    align: 'right',
+  },
+  {
+    key: 'session',
+    label: 'Session',
+    shortDescription:
+      'Market session enum reported by the keeper: Open, PreMarket, AfterHours, Closed, or Halted.',
+    align: 'left',
+  },
+  {
+    key: 'conf',
+    label: 'Conf',
+    shortDescription:
+      'Confidence score (0-100) reported by the keeper for this round: how strongly the upstream feeds agreed on the price.',
+    align: 'right',
+  },
+  {
+    key: 'signers',
+    label: 'Signers',
+    shortDescription:
+      'Number of distinct authorised keeper keys that signed this price round (k-of-n multisig).',
+    align: 'right',
+  },
+  {
+    key: 'updated',
+    label: 'Updated',
+    shortDescription:
+      'How long ago this row was last written on-chain, derived from the row\u2019s on-chain timestamp.',
+    align: 'right',
+  },
+]
+
+function descIdFor(key: ColumnSpec['key']): string {
+  return `onchain-oracle-col-desc-${key}`
+}
+
 interface DecodedPriceData {
   symbol: string
   price8: bigint
@@ -146,17 +210,25 @@ export function OnChainOraclePanel() {
         </div>
       )}
 
+      <div className="sr-only">
+        <dl>
+          {COLUMNS.map((col) => (
+            <div key={col.key}>
+              <dt>{col.label}</dt>
+              <dd id={descIdFor(col.key)}>{col.shortDescription}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
       {!isLoading && !error && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wider text-gray-500">
-                <th className="py-2 pr-3 font-medium">Symbol</th>
-                <th className="py-2 pr-3 font-medium text-right">Price (8-dec → USD)</th>
-                <th className="py-2 pr-3 font-medium">Session</th>
-                <th className="py-2 pr-3 font-medium text-right">Conf</th>
-                <th className="py-2 pr-3 font-medium text-right">Signers</th>
-                <th className="py-2 pr-3 font-medium text-right">Updated</th>
+                {COLUMNS.map((col) => (
+                  <OracleHeaderCell key={col.key} col={col} />
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -213,5 +285,28 @@ export function OnChainOraclePanel() {
         </div>
       )}
     </section>
+  )
+}
+
+function OracleHeaderCell({ col }: { col: ColumnSpec }) {
+  const alignClass = col.align === 'right' ? 'py-2 pr-3 font-medium text-right' : 'py-2 pr-3 font-medium'
+  return (
+    <th
+      scope="col"
+      className={alignClass}
+      title={col.shortDescription}
+      aria-describedby={descIdFor(col.key)}
+      data-testid={`onchain-oracle-header-${col.key}`}
+    >
+      <span className="inline-flex items-center gap-1">
+        <span>{col.label}</span>
+        <span
+          aria-hidden
+          className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white/20 bg-white/5 text-[9px] font-bold text-gray-400"
+        >
+          ?
+        </span>
+      </span>
+    </th>
   )
 }

@@ -311,4 +311,72 @@ describe('OnChainOraclePanel', () => {
     render(<OnChainOraclePanel />)
     expect(screen.getByTestId('oracle-address-text').getAttribute('title')).toBe(ORACLE_ADDRESS)
   })
+
+  // Task lane6-onchain-oracle-column-headers-unexplained-jargon:
+  // The centerpiece table's column shorthands ("8-dec", "Conf",
+  // "Signers", "Session") must expose a plain-English explanation via
+  // the `title=` attribute (mouse hover) and `aria-describedby` →
+  // sr-only `<dd>` (screen reader) so a fresh non-engineer reviewer
+  // can read every column.
+  describe('column header help', () => {
+    const EXPECTED_COLUMNS = ['symbol', 'price', 'session', 'conf', 'signers', 'updated']
+
+    beforeEach(() => {
+      useReadContractsMock.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+      } as unknown as ReturnType<typeof useReadContracts>)
+    })
+
+    it('columns render in the documented order and count', () => {
+      render(<OnChainOraclePanel />)
+      const headers = EXPECTED_COLUMNS.map((key) =>
+        screen.getByTestId(`onchain-oracle-header-${key}`),
+      )
+      expect(headers).toHaveLength(EXPECTED_COLUMNS.length)
+      const all = document.querySelectorAll('[data-testid^="onchain-oracle-header-"]')
+      expect(all.length).toBe(EXPECTED_COLUMNS.length)
+      EXPECTED_COLUMNS.forEach((key, i) => {
+        expect(all[i].getAttribute('data-testid')).toBe(`onchain-oracle-header-${key}`)
+      })
+    })
+
+    it.each([
+      ['symbol', /ticker/i],
+      ['price', /8 decimals|1e8/i],
+      ['session', /open/i],
+      ['conf', /confidence/i],
+      ['signers', /keeper keys/i],
+      ['updated', /timestamp|ago/i],
+    ])(
+      'each column header (%s) carries a non-empty title tooltip mentioning %s',
+      (key, keyword) => {
+        render(<OnChainOraclePanel />)
+        const th = screen.getByTestId(`onchain-oracle-header-${key}`)
+        const title = th.getAttribute('title')
+        expect(title).toBeTruthy()
+        expect(title).toMatch(keyword)
+      },
+    )
+
+    it('each column header is described by a hidden description node', () => {
+      render(<OnChainOraclePanel />)
+      for (const key of EXPECTED_COLUMNS) {
+        const th = screen.getByTestId(`onchain-oracle-header-${key}`)
+        const ariaId = th.getAttribute('aria-describedby')
+        expect(ariaId).toBeTruthy()
+        const desc = document.getElementById(ariaId as string)
+        expect(desc).not.toBeNull()
+        expect((desc as HTMLElement).textContent).toBe(th.getAttribute('title'))
+      }
+    })
+
+    it('placeholder body rows render one cell per header', () => {
+      render(<OnChainOraclePanel />)
+      const row = screen.getByTestId('onchain-oracle-placeholder-AAPL')
+      const cells = row.querySelectorAll('td')
+      expect(cells.length).toBe(EXPECTED_COLUMNS.length)
+    })
+  })
 })
