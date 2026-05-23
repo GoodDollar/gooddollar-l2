@@ -501,55 +501,70 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             data-testid="hedge-header-refresh-button"
             onClick={() => void fetchOnce()}
             disabled={fetchBusy}
-            aria-label="Refresh hedge status"
+            aria-label={
+              isThrottled
+                ? `Retry available in ${throttleRemainingSeconds} seconds`
+                : isFetching
+                ? 'Refreshing hedge status'
+                : 'Refresh hedge status'
+            }
             title={
               isThrottled
                 ? `Retry available in ${throttleRemainingSeconds}s`
                 : 'Refresh hedge status'
             }
-            className="shrink-0 text-xs px-2 py-1 rounded-md border border-dark-50 text-gray-400 hover:text-white hover:bg-dark-50 disabled:opacity-50"
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-dark-50 text-gray-300 hover:text-white hover:bg-dark-50 disabled:opacity-50"
           >
-            {isThrottled ? `${throttleRemainingSeconds}s` : isFetching ? '…' : '↻'}
+            <ArrowPathIcon spinning={isFetching && !isThrottled} />
+            <span>
+              {isThrottled
+                ? `Retry in ${throttleRemainingSeconds}s`
+                : isFetching
+                ? 'Refreshing…'
+                : 'Refresh'}
+            </span>
           </button>
         </div>
-        {(data?.snapshot?.timestamp || data?.degraded?.proof || data?.proof) && (
-          <div
-            data-testid="hedge-header-row2"
-            className="mt-2 flex items-center gap-2 flex-wrap text-xs"
-          >
-            {data?.snapshot?.timestamp && (
-              <span className="text-gray-500">
-                Last tick {timeAgo(data.snapshot.timestamp)}
-              </span>
-            )}
-            {data?.degraded?.proof && (
-              <DegradedHint>proof: {data.degraded.proof}</DegradedHint>
-            )}
-            {data?.proof && (
-              <div className="flex items-center gap-2 flex-wrap">
-                {data.proof.summary && (
-                  <span
-                    data-testid="hedge-proof-summary"
-                    className="text-gray-400 font-mono truncate max-w-[28ch]"
-                    title={data.proof.summary}
-                  >
-                    {data.proof.summary}
-                  </span>
-                )}
-                <a
-                  data-testid="hedge-proof-link"
-                  href="/api/hedge/proof/latest"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-goodgreen hover:underline font-mono"
-                  title={data.proof.path}
+        <div
+          data-testid="hedge-header-row2"
+          className="mt-2 flex items-center gap-2 flex-wrap text-xs"
+        >
+          <span data-testid="hedge-last-success" className="text-gray-500">
+            Updated {timeAgo(lastSuccessAt ?? undefined)} ·
+            auto-refresh {Math.round(POLL_INTERVAL_MS / 1000)}s
+          </span>
+          {data?.snapshot?.timestamp && (
+            <span className="text-gray-500">
+              · last tick {timeAgo(data.snapshot.timestamp)}
+            </span>
+          )}
+          {data?.degraded?.proof && (
+            <DegradedHint>proof: {data.degraded.proof}</DegradedHint>
+          )}
+          {data?.proof && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {data.proof.summary && (
+                <span
+                  data-testid="hedge-proof-summary"
+                  className="text-gray-400 font-mono truncate max-w-[28ch]"
+                  title={data.proof.summary}
                 >
-                  latest proof →
-                </a>
-              </div>
-            )}
-          </div>
-        )}
+                  {data.proof.summary}
+                </span>
+              )}
+              <a
+                data-testid="hedge-proof-link"
+                href="/api/hedge/proof/latest"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-goodgreen hover:underline font-mono"
+                title={data.proof.path}
+              >
+                latest proof →
+              </a>
+            </div>
+          )}
+        </div>
       </header>
 
       {isThrottled && (
