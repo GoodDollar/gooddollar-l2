@@ -743,16 +743,19 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         ) : (
           <>
             <Stat
+              testId="hedge-notional-stat"
               label="Today's notional"
               value={cap ? formatNotionalUsd(cap.dailyNotionalUsd) : '—'}
               sub={cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'}
             />
             <Stat
+              testId="hedge-cycle-orders-stat"
               label="Cycle orders"
               value={cap ? `${cap.cycleOrders}` : '—'}
               sub={cap ? `day ${cap.dayKey}` : hasSnapshot ? 'no data' : 'awaiting tick'}
             />
             <Stat
+              testId="hedge-receipts-visible-stat"
               label="Receipts visible"
               value={hasSnapshot ? `${receipts.length}` : '—'}
               sub={hasSnapshot ? 'newest 5' : 'awaiting tick'}
@@ -889,7 +892,7 @@ function Stat({
     .join(' ')
   return (
     <div className="bg-dark-50 rounded-xl p-3 flex flex-col gap-0.5">
-      <span className="text-xs text-gray-400 uppercase tracking-wide">{label}</span>
+      <span className="text-xs text-gray-400 uppercase tracking-wide min-h-[2lh] sm:min-h-0">{label}</span>
       <span
         data-testid={testId}
         className={`text-lg font-bold ${color ?? 'text-white'}`}

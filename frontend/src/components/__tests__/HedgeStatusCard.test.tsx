@@ -1139,6 +1139,38 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  describe('stat tiles align on shared baseline (#0029)', () => {
+    const TILE_TEST_IDS = [
+      'hedge-notional-stat',
+      'hedge-cycle-orders-stat',
+      'hedge-receipts-visible-stat',
+      'hedge-engine-stat',
+    ] as const;
+
+    it('all four stat tiles expose a testId on their value span', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      for (const id of TILE_TEST_IDS) {
+        const span = await screen.findByTestId(id);
+        expect(span).toBeInTheDocument();
+      }
+    });
+
+    it('all four tile labels reserve a two-line height on mobile, collapse at sm', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      for (const id of TILE_TEST_IDS) {
+        const valueSpan = await screen.findByTestId(id);
+        const tile = valueSpan.closest('.bg-dark-50');
+        expect(tile).not.toBeNull();
+        const labelSpan = tile!.querySelector('span:first-child');
+        expect(labelSpan).not.toBeNull();
+        expect(labelSpan!.className).toMatch(/min-h-\[2lh\]/);
+        expect(labelSpan!.className).toMatch(/sm:min-h-0/);
+      }
+    });
+  });
+
   describe('normalizeHedgeError (#0022)', () => {
     it('strips the "Hedge engine" subject prefix', () => {
       expect(normalizeHedgeError('Hedge engine unreachable')).toBe('unreachable');
