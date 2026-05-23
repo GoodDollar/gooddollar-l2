@@ -1088,12 +1088,12 @@ const Stat = memo(function Stat({
     .filter(Boolean)
     .join(' ')
   const containerClasses = [
-    'bg-dark-50 rounded-xl p-3 flex flex-col gap-0.5',
+    'bg-dark-50 rounded-xl p-4 flex flex-col gap-1',
     stale ? 'opacity-60' : '',
   ]
     .filter(Boolean)
     .join(' ')
-  const valueClasses = `text-lg font-bold ${valueColor ?? color ?? 'text-white'} ${
+  const valueClasses = `text-2xl font-bold ${valueColor ?? color ?? 'text-white'} ${
     placeholder ? 'inline-flex items-center' : ''
   }`.trim()
   return (
@@ -1105,7 +1105,7 @@ const Stat = memo(function Stat({
             <span
               data-testid="hedge-stat-placeholder"
               aria-hidden="true"
-              className="h-4 w-12 bg-dark-100 rounded animate-pulse inline-block"
+              className="h-6 w-16 bg-dark-100 rounded animate-pulse inline-block"
             />
             <span className="sr-only">{value}</span>
           </>

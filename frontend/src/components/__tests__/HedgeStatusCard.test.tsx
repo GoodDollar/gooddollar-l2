@@ -1746,6 +1746,74 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  describe('stat tiles match analytics page-level type scale (#0058)', () => {
+    // The page-level analytics StatCard helper in
+    // `frontend/src/app/(app)/analytics/page.tsx` uses
+    // `bg-dark-50 rounded-xl p-4 flex flex-col gap-1` with a
+    // `text-2xl font-bold` value span. The hedge proof tiles render on
+    // the same page and must read at the same visual weight, otherwise
+    // the lane's deliverable looks like a sub-section of someone else's
+    // dashboard. The assertions below pin the structural utility classes
+    // on the file-local <Stat> component so a future refactor can't
+    // silently regress to the original p-3 / text-lg / gap-0.5 mismatch.
+    const TILE_TEST_IDS = [
+      'hedge-notional-stat',
+      'hedge-cycle-orders-stat',
+      'hedge-receipts-visible-stat',
+      'hedge-engine-stat',
+    ] as const;
+
+    it('tile container uses p-4 + gap-1 to match the analytics page-level StatCard', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      for (const id of TILE_TEST_IDS) {
+        const valueSpan = await screen.findByTestId(id);
+        const tile = valueSpan.closest('.bg-dark-50') as HTMLElement | null;
+        expect(tile).not.toBeNull();
+        const classes = tile!.className.split(/\s+/);
+        expect(classes).toContain('p-4');
+        expect(classes).toContain('gap-1');
+        expect(classes).not.toContain('p-3');
+        expect(classes).not.toContain('gap-0.5');
+      }
+    });
+
+    it('value span uses text-2xl font-bold to match the analytics page-level StatCard', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      for (const id of TILE_TEST_IDS) {
+        const valueSpan = await screen.findByTestId(id);
+        const classes = valueSpan.className.split(/\s+/);
+        expect(classes).toContain('text-2xl');
+        expect(classes).toContain('font-bold');
+        expect(classes).not.toContain('text-lg');
+      }
+    });
+
+    it('shimmer placeholder bar grows to h-6 w-16 so its vertical extent matches text-2xl line height', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          capSnapshot: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const placeholders = await screen.findAllByTestId('hedge-stat-placeholder');
+      expect(placeholders.length).toBeGreaterThan(0);
+      for (const bar of placeholders) {
+        const classes = bar.className.split(/\s+/);
+        expect(classes).toContain('h-6');
+        expect(classes).toContain('w-16');
+        expect(classes).not.toContain('h-4');
+        expect(classes).not.toContain('w-12');
+      }
+    });
+  });
+
   describe('no duplicate engine-down copy in same card (#0030)', () => {
     it('error path: the "hedge engine ... unreachable" sentence appears exactly once (banner only)', async () => {
       mockFetchOnce(
