@@ -118,12 +118,6 @@ function formatEventDate(offsetDays: number): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
-function formatCalendarDate(dateInput: Date | string): string {
-  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-}
-
 type StockOrderType = 'market' | 'limit' | 'stop-limit'
 
 function OrderForm({
@@ -490,7 +484,7 @@ export default function StockDetailPage() {
   const orderFormRef = useRef<HTMLDivElement | null>(null)
   const [analystLoading, setAnalystLoading] = useState(true)
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
-  const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
+  const { isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const chartMounted = useMounted()
@@ -525,18 +519,11 @@ export default function StockDetailPage() {
   const backLink = DETAIL_BACK_LINKS[searchParams.get('from') ?? ''] ?? DEFAULT_DETAIL_BACK_LINK
   const eventTimeline = useMemo(() => {
     if (!stock) return []
-    const upcoming = [
+    return [
       { id: `${stock.ticker}-earnings-next`, label: 'Earnings call', date: formatEventDate(7), status: 'Upcoming' },
       { id: `${stock.ticker}-dividend-next`, label: 'Dividend ex-date', date: stock.dividendYield > 0 ? formatEventDate(13) : 'Not scheduled', status: stock.dividendYield > 0 ? 'Upcoming' : 'Info' },
     ]
-    const recent = newsItems.slice(0, 2).map((item, idx) => ({
-      id: item.id,
-      label: item.headline,
-      date: formatCalendarDate(item.publishedAt),
-      status: idx === 0 ? 'Recent' : 'Catalyst',
-    }))
-    return [...upcoming, ...recent]
-  }, [newsItems, stock])
+  }, [stock])
 
   useEffect(() => {
     setAnalystLoading(true)
@@ -880,7 +867,6 @@ export default function StockDetailPage() {
                 ticker={stock.ticker}
                 isLoading={newsLoading}
                 error={newsError}
-                items={newsItems}
               />
             </Suspense>
           )}

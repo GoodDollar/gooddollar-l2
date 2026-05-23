@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getAnalystOutlook, type AnalystOutlook } from './stockInsights'
+import { getAnalystOutlook, getStockNews, type AnalystOutlook } from './stockInsights'
 
 const TICKERS = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'AMD']
 
@@ -72,5 +72,20 @@ describe('AnalystOutlook — rating distribution', () => {
       const negative = outlook.ratings.sell + outlook.ratings.strongSell
       expect(negative, `Bearish ticker ${ticker} must have negative > positive`).toBeGreaterThan(positive)
     }
+  })
+})
+
+// Task 0034 — the News & Events panel previously rendered three fabricated
+// headlines per ticker (with example.com URLs and rotating "X days ago"
+// timestamps) on every detail page render. There is no real news feed wired
+// up yet, so getStockNews must return an honest empty list for every
+// ticker until a real provider exists.
+describe('getStockNews — honest empty state', () => {
+  it.each(TICKERS)('returns [] for %s', (ticker) => {
+    expect(getStockNews(ticker)).toEqual([])
+  })
+
+  it('returns [] for an unknown ticker', () => {
+    expect(getStockNews('ZZZZ')).toEqual([])
   })
 })

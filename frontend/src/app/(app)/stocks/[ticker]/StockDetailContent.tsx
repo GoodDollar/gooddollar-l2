@@ -451,7 +451,7 @@ export function StockDetailContent() {
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
-  const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
+  const { isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const chartMounted = useMounted()
@@ -655,7 +655,6 @@ export function StockDetailContent() {
             ticker={stock.ticker}
             isLoading={newsLoading}
             error={newsError}
-            items={newsItems}
           />
         </div>
 
