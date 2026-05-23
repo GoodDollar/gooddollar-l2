@@ -395,6 +395,69 @@ function resolveMode(data: HedgeStatusResponse | null, error: string | null): He
   return 'unknown'
 }
 
+interface EngineStatePillCopy {
+  label: string
+  cls: string
+}
+
+// Engine-state pill replaces the trading-mode badge in the header when the
+// engine has gone into an abnormal state. The header severity now mirrors
+// the body's red `ENGINE: unreachable` stat tile instead of contradicting
+// it with a calm grey `unknown`. Exhaustive switch forces a deliberate
+// copy decision when a new engine state is added.
+function resolveEngineStatePill(state: EngineStateLabel): EngineStatePillCopy | null {
+  switch (state) {
+    case 'unreachable':
+      return {
+        label: 'engine down',
+        cls: 'bg-red-500/15 text-red-300 border-red-500/30',
+      }
+    case 'halted':
+      return {
+        label: 'engine halted',
+        cls: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30',
+      }
+    case 'degraded':
+      return {
+        label: 'engine degraded',
+        cls: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30',
+      }
+    case 'ok':
+    case 'awaiting tick':
+      return null
+  }
+}
+
+function HeaderStatusPill({
+  engineState,
+  mode,
+  lastReceiptMode,
+}: {
+  engineState: EngineState
+  mode: HedgeMode
+  lastReceiptMode: string | undefined
+}) {
+  const pill = resolveEngineStatePill(engineState.label)
+  const title = lastReceiptMode ? `last receipt mode: ${lastReceiptMode}` : undefined
+  if (pill) {
+    return (
+      <span title={title}>
+        <span
+          data-testid="hedge-engine-state-pill"
+          className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${pill.cls}`}
+        >
+          {pill.label}
+        </span>
+      </span>
+    )
+  }
+  return (
+    <span title={title}>
+      <ModeBadge mode={mode} />
+    </span>
+  )
+}
+
 export interface HedgeStatusCardHandle {
   refresh: () => Promise<void>
 }
@@ -583,11 +646,11 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             <h2 className="text-lg font-semibold text-white truncate">
               Demo hedge proof
             </h2>
-            <span
-              title={lastReceiptMode ? `last receipt mode: ${lastReceiptMode}` : undefined}
-            >
-              <ModeBadge mode={mode} />
-            </span>
+            <HeaderStatusPill
+              engineState={engineState}
+              mode={mode}
+              lastReceiptMode={lastReceiptMode}
+            />
           </div>
           <button
             type="button"

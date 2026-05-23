@@ -83,7 +83,7 @@ describe('HedgeStatusCard', () => {
     expect(badge.className).toContain('bg-red-500/15');
   });
 
-  it('renders the unknown mode badge in grey when the engine is unreachable', async () => {
+  it('engine unreachable: header pill reads "engine down" in red, no grey mode badge (#0024)', async () => {
     mockFetchOnce(
       {
         error: 'Hedge engine unreachable',
@@ -95,9 +95,48 @@ describe('HedgeStatusCard', () => {
       { status: 503 },
     );
     render(<HedgeStatusCard />);
+    const pill = await screen.findByTestId('hedge-engine-state-pill');
+    expect(pill).toHaveTextContent(/engine down/i);
+    expect(pill.className).toContain('text-red-300');
+    expect(screen.queryByTestId('hedge-mode-badge')).toBeNull();
+  });
+
+  it('kill switch engaged: header pill reads "engine halted" in yellow (#0024)', async () => {
+    mockFetchOnce({ ...BASE_RESPONSE, killSwitchEngaged: true });
+    render(<HedgeStatusCard />);
+    const pill = await screen.findByTestId('hedge-engine-state-pill');
+    expect(pill).toHaveTextContent(/engine halted/i);
+    expect(pill.className).toContain('text-yellow-300');
+    expect(screen.queryByTestId('hedge-mode-badge')).toBeNull();
+  });
+
+  it('breaker tripped: header pill reads "engine degraded" in yellow (#0024)', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      breakerState: { tripped: true, reason: 'exposure_stale' },
+    });
+    render(<HedgeStatusCard />);
+    const pill = await screen.findByTestId('hedge-engine-state-pill');
+    expect(pill).toHaveTextContent(/engine degraded/i);
+    expect(pill.className).toContain('text-yellow-300');
+    expect(screen.queryByTestId('hedge-mode-badge')).toBeNull();
+  });
+
+  it('happy path: header still renders ModeBadge with "demo" (no #0008 regression) (#0024)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
     const badge = await screen.findByTestId('hedge-mode-badge');
-    expect(badge).toHaveTextContent('unknown');
-    expect(badge.className).toContain('bg-gray-500/15');
+    expect(badge).toHaveTextContent('demo');
+    expect(screen.queryByTestId('hedge-engine-state-pill')).toBeNull();
+  });
+
+  it('header pill keeps a "last receipt mode" title attribute when a prior mode is known (#0024)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const badge = await screen.findByTestId('hedge-mode-badge');
+    const wrapper = badge.closest('[title]');
+    expect(wrapper).not.toBeNull();
+    expect(wrapper!.getAttribute('title')).toMatch(/last receipt mode:\s+demo/i);
   });
 
   it('renders a receipt row with short id and monospace styling', async () => {
@@ -239,10 +278,14 @@ describe('HedgeStatusCard', () => {
     );
     render(<HedgeStatusCard />);
     const refreshBtn = await screen.findByTestId('hedge-header-refresh-button');
-    const modeBadge = await screen.findByTestId('hedge-mode-badge');
+    // After #0024 the engine-unreachable header pill is the engine-state
+    // pill, not the trading-mode badge. Either pill must live in row 1.
+    const headerPill =
+      (await screen.findByTestId('hedge-engine-state-pill').catch(() => null)) ??
+      (await screen.findByTestId('hedge-mode-badge'));
     const titleRow = refreshBtn.closest('[data-testid="hedge-header-row1"]');
     expect(titleRow).not.toBeNull();
-    expect(titleRow!.contains(modeBadge)).toBe(true);
+    expect(titleRow!.contains(headerPill)).toBe(true);
     expect(screen.queryByTestId('hedge-proof-link')).toBeNull();
     // After 0020 lands, row 2 always renders to host the "Updated"
     // timestamp + auto-refresh hint, but it must NOT contain the
