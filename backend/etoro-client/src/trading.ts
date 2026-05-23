@@ -1,12 +1,21 @@
 import { AxiosInstance } from 'axios';
 import { AuditLogger } from './audit-logger';
-import { OrderRequest, OrderResult, Position } from './types';
+import { DemoCapEnforcer, computeNotionalUsd } from './demo-cap-enforcer';
+import { assertDemoModeOrThrow } from './safety';
+import { EtoroMode, OrderRequest, OrderResult, Position } from './types';
 
 export interface LimitOrderRequest extends OrderRequest {
   type: 'limit' | 'stop';
   price: number;
   /** Time-in-force: 'GTC' (default), 'DAY', 'IOC' */
   timeInForce?: 'GTC' | 'DAY' | 'IOC';
+}
+
+export interface TradingModuleOptions {
+  /** Active eToro mode — gates the source-level safety fence. */
+  mode?: EtoroMode;
+  /** Optional cap enforcer; constructed from env defaults if omitted. */
+  capEnforcer?: DemoCapEnforcer;
 }
 
 export interface TradeHistoryEntry {
@@ -24,14 +33,46 @@ export interface TradeHistoryEntry {
 export class TradingModule {
   private readonly http: AxiosInstance;
   private readonly audit: AuditLogger;
+  private readonly mode: EtoroMode;
+  private readonly capEnforcer: DemoCapEnforcer;
 
-  constructor(http: AxiosInstance, audit: AuditLogger) {
+  constructor(http: AxiosInstance, audit: AuditLogger, opts: TradingModuleOptions = {}) {
     this.http = http;
     this.audit = audit;
+    this.mode = opts.mode ?? 'sandbox';
+    this.capEnforcer = opts.capEnforcer ?? new DemoCapEnforcer();
+  }
+
+  /** Exposed for proof reporting; not for cap logic. */
+  getCapState(): ReturnType<DemoCapEnforcer['getState']> {
+    return this.capEnforcer.getState();
+  }
+
+  private enforcePreTrade(action: string, notional: number): void {
+    assertDemoModeOrThrow(this.mode);
+    try {
+      this.capEnforcer.check(notional, action);
+    } catch (err) {
+      const baseMsg = err instanceof Error ? err.message : String(err);
+      const code = (err as { code?: string }).code;
+      this.audit.log({
+        action,
+        method: 'POST',
+        path: '/trading/orders',
+        durationMs: 0,
+        error: code ? `[${code}] ${baseMsg}` : baseMsg,
+      });
+      throw err;
+    }
   }
 
   async openPosition(order: OrderRequest): Promise<OrderResult> {
     const start = Date.now();
+    const notional = computeNotionalUsd({
+      amount: order.amount,
+      leverage: order.leverage,
+    });
+    this.enforcePreTrade('openPosition', notional);
     try {
       const response = await this.http.post('/trading/orders', {
         instrumentId: order.instrumentId,
@@ -64,6 +105,12 @@ export class TradingModule {
 
   async placeLimitOrder(order: LimitOrderRequest): Promise<OrderResult> {
     const start = Date.now();
+    const notional = computeNotionalUsd({
+      amount: order.amount,
+      price: order.price,
+      leverage: order.leverage,
+    });
+    this.enforcePreTrade('placeLimitOrder', notional);
     try {
       const response = await this.http.post('/trading/orders', {
         instrumentId: order.instrumentId,

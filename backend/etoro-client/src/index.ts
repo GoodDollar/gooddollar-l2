@@ -5,6 +5,8 @@ import { AuditLogger } from './audit-logger';
 import { MarketDataModule } from './market-data';
 import { TradingModule } from './trading';
 import { AccountModule } from './account';
+import { DemoCapEnforcer } from './demo-cap-enforcer';
+import { assertDemoModeOrThrow } from './safety';
 import { EtoroClientConfig, EtoroCredentials, MarketDataConfig } from './types';
 
 export class EtoroClient {
@@ -18,8 +20,12 @@ export class EtoroClient {
   private readonly audit: AuditLogger;
   private sessionToken?: string;
 
-  constructor(config?: Partial<EtoroClientConfig & { rateLimiter?: RateLimiterConfig; marketData?: MarketDataConfig }>) {
+  constructor(config?: Partial<EtoroClientConfig & { rateLimiter?: RateLimiterConfig; marketData?: MarketDataConfig; capEnforcer?: DemoCapEnforcer }>) {
     this.credentials = config?.credentials ?? loadCredentialsFromEnv();
+    // Second fence: even if env tampering reached this point with mode=real,
+    // the hardcoded REAL_TRADING_ENABLED=false constant refuses to construct
+    // a client that would talk to the real eToro base URL.
+    assertDemoModeOrThrow(this.credentials.mode);
     this.rateLimiter = new RateLimiter(config?.rateLimiter);
     this.audit = new AuditLogger(this.credentials.mode);
 
@@ -34,7 +40,10 @@ export class EtoroClient {
     });
 
     this.marketData = new MarketDataModule(this.http, config?.marketData);
-    this.trading = new TradingModule(this.http, this.audit);
+    this.trading = new TradingModule(this.http, this.audit, {
+      mode: this.credentials.mode,
+      capEnforcer: config?.capEnforcer,
+    });
     this.account = new AccountModule(this.http, this.audit);
   }
 
@@ -136,6 +145,13 @@ export { loadCredentialsFromEnv, redactCredentials } from './auth';
 export { RateLimiter } from './rate-limiter';
 export { AuditLogger } from './audit-logger';
 export { MarketDataModule, computeConfidence } from './market-data';
-export { TradingModule } from './trading';
+export { TradingModule, TradingError } from './trading';
 export { AccountModule } from './account';
+export { DemoCapEnforcer, computeNotionalUsd } from './demo-cap-enforcer';
+export {
+  REAL_TRADING_ENABLED,
+  assertDemoModeOrThrow,
+  isRealTradingEnabled,
+  RealTradingDisabledError,
+} from './safety';
 export type * from './types';

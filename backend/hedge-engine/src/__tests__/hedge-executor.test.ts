@@ -1,4 +1,4 @@
-import { HedgeExecutor, EtoroAdapter } from '../hedge-executor';
+import { HedgeExecutor, EtoroAdapter, HEDGE_REAL_TRADING_ENABLED } from '../hedge-executor';
 import { HedgeOrder } from '../types';
 
 function makeMockAdapter(overrides?: Partial<EtoroAdapter>): EtoroAdapter {
@@ -113,5 +113,61 @@ describe('HedgeExecutor', () => {
     const results = await exec.executeAll(orders);
     expect(results).toHaveLength(2);
     expect(results.every((r) => r.success)).toBe(true);
+  });
+
+  describe('safety fence', () => {
+    it('exposes a literal-false HEDGE_REAL_TRADING_ENABLED constant', () => {
+      expect(HEDGE_REAL_TRADING_ENABLED).toBe(false);
+    });
+
+    it('sandbox mode lets non-dry-run orders through', async () => {
+      const adapter = makeMockAdapter();
+      const exec = new HedgeExecutor(adapter, instruments, {
+        dryRun: false,
+        safetyMode: 'sandbox',
+      });
+      const order: HedgeOrder = { symbol: 'AAPL', deltaToHedge: 100, reason: 'reconciliation' };
+      const result = await exec.execute(order);
+      expect(result.success).toBe(true);
+      expect(adapter.openPosition).toHaveBeenCalled();
+    });
+
+    it('real mode rejects non-dry-run orders without calling adapter', async () => {
+      const adapter = makeMockAdapter();
+      const exec = new HedgeExecutor(adapter, instruments, {
+        dryRun: false,
+        safetyMode: 'real',
+      });
+      const order: HedgeOrder = { symbol: 'AAPL', deltaToHedge: 100, reason: 'reconciliation' };
+      const result = await exec.execute(order);
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/HEDGE_REAL_TRADING_ENABLED|Refusing real-mode/);
+      expect(adapter.openPosition).not.toHaveBeenCalled();
+    });
+
+    it('real mode still allows dry-run (safety fence skipped in dry-run)', async () => {
+      const adapter = makeMockAdapter();
+      const exec = new HedgeExecutor(adapter, instruments, {
+        dryRun: true,
+        safetyMode: 'real',
+      });
+      const order: HedgeOrder = { symbol: 'AAPL', deltaToHedge: 100, reason: 'reconciliation' };
+      const result = await exec.execute(order);
+      expect(result.success).toBe(true);
+      expect(result.etoroOrderId).toBe('dry-run');
+      expect(adapter.openPosition).not.toHaveBeenCalled();
+    });
+
+    it('custom assertDemoModeOrThrow injection is invoked', async () => {
+      const adapter = makeMockAdapter();
+      const assertFn = jest.fn();
+      const exec = new HedgeExecutor(adapter, instruments, {
+        dryRun: false,
+        safetyMode: 'sandbox',
+        assertDemoModeOrThrow: assertFn,
+      });
+      await exec.execute({ symbol: 'AAPL', deltaToHedge: 100, reason: 'reconciliation' });
+      expect(assertFn).toHaveBeenCalledWith('sandbox');
+    });
   });
 });
