@@ -1,14 +1,27 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest'
 import type { NextRequest } from 'next/server'
 import { GET, redactUpstreamReason } from '../route'
+import { __resetOracleStatusCacheForTests } from '@/lib/oracleStatusCache'
 
 // Vitest tests don't need a real NextRequest — the handler only checks rate
 // limit headers via getRealIp(). A bare-bones stub typechecks and satisfies
 // the wrapper.
 const stubReq = new Request('http://localhost/api/oracle/status') as unknown as NextRequest
 
+const originalCacheMs = process.env.ORACLE_STATUS_CACHE_MS
+
 beforeEach(() => {
   vi.restoreAllMocks()
+  __resetOracleStatusCacheForTests()
+  // Default to a disabled cache for the existing test bodies that mock
+  // each call independently. The dedicated cache-wiring suite below
+  // re-enables it explicitly.
+  process.env.ORACLE_STATUS_CACHE_MS = '0'
+})
+
+afterEach(() => {
+  if (originalCacheMs === undefined) delete process.env.ORACLE_STATUS_CACHE_MS
+  else process.env.ORACLE_STATUS_CACHE_MS = originalCacheMs
 })
 
 const quotesBody = {
@@ -671,5 +684,114 @@ describe('redactUpstreamReason', () => {
     const err = new Error('fetch failed')
     ;(err as { cause?: { code?: string } }).cause = { code: 'ECONNREFUSED' }
     expect(redactUpstreamReason(err)).toBe('ECONNREFUSED: fetch failed')
+  })
+})
+
+describe('GET /api/oracle/status — TTL + single-flight cache (task 0048)', () => {
+  beforeEach(() => {
+    __resetOracleStatusCacheForTests()
+    process.env.ORACLE_STATUS_CACHE_MS = '1000'
+  })
+
+  function trackingMock(handlerByUrl: Record<string, () => Response | Promise<Response>>) {
+    return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      for (const key of Object.keys(handlerByUrl)) {
+        if (url.includes(key)) return handlerByUrl[key]()
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+  }
+
+  it('collapses two concurrent calls to ONE upstream pair fetch (single-flight)', async () => {
+    const spy = trackingMock({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody),  { status: 200 }),
+    })
+
+    const [resA, resB] = await Promise.all([GET(stubReq), GET(stubReq)])
+    expect(resA.status).toBe(200)
+    expect(resB.status).toBe(200)
+    // One call to /status/quotes and one to /proof — total 2 fetches across
+    // both clients (not 4, which is what fan-out without single-flight gives).
+    expect(spy).toHaveBeenCalledTimes(2)
+    const urls = spy.mock.calls.map((c) => String(c[0]))
+    expect(urls.filter((u) => u.includes('/status/quotes'))).toHaveLength(1)
+    expect(urls.filter((u) => u.includes('/proof'))).toHaveLength(1)
+  })
+
+  it('TTL hit: a second call within TTL serves from cache without re-fanout', async () => {
+    const spy = trackingMock({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody),  { status: 200 }),
+    })
+
+    const first = await GET(stubReq)
+    expect(first.status).toBe(200)
+    const second = await GET(stubReq)
+    expect(second.status).toBe(200)
+    // Both /status/quotes + /proof fetched exactly once across both calls.
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns identical body bytes on cache hit (response stream is single-use; cache rebuilds NextResponse each time)', async () => {
+    trackingMock({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody),  { status: 200 }),
+    })
+
+    const first = await GET(stubReq)
+    const firstBody = await first.json()
+    const second = await GET(stubReq)
+    const secondBody = await second.json()
+    // generatedAt is captured into the cached body, so it must be byte-identical
+    // on a cache hit — proving the response is rebuilt from the cached payload,
+    // not the same one-shot Response object.
+    expect(secondBody).toEqual(firstBody)
+  })
+
+  it('does NOT cache the both-upstreams-down 503; the next call retries upstream', async () => {
+    const spy = trackingMock({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const first = await GET(stubReq)
+    expect(first.status).toBe(503)
+    const second = await GET(stubReq)
+    expect(second.status).toBe(503)
+    // 4 fetches total: 2 per call (both upstreams), because the 503 path
+    // intentionally throws inside the cache fetcher so the cache never writes.
+    expect(spy).toHaveBeenCalledTimes(4)
+  })
+
+  it('DOES cache the degraded 200 path (one upstream up, one down)', async () => {
+    const spy = trackingMock({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const first = await GET(stubReq)
+    expect(first.status).toBe(200)
+    const firstBody = await first.json()
+    expect(firstBody.degraded).toBe(true)
+    const second = await GET(stubReq)
+    expect(second.status).toBe(200)
+    // 2 fetches total: only the first call hit upstream; the second was a
+    // cache hit because at least one upstream succeeded.
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('with ORACLE_STATUS_CACHE_MS=0, every call hits upstream (cache disabled)', async () => {
+    process.env.ORACLE_STATUS_CACHE_MS = '0'
+    const spy = trackingMock({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody),  { status: 200 }),
+    })
+
+    await GET(stubReq)
+    await GET(stubReq)
+    // 4 fetches: 2 per call, no cache.
+    expect(spy).toHaveBeenCalledTimes(4)
   })
 })

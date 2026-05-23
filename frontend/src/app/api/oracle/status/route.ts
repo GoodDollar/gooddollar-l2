@@ -16,12 +16,45 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 import { lastSessionAnchorMs } from '@/lib/sessionAnchor'
+import { getOrFetchOracleStatus } from '@/lib/oracleStatusCache'
 
 export const runtime = 'nodejs'
 
 const PRICE_SERVICE_URL = process.env.PRICE_SERVICE_URL ?? process.env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? 'http://localhost:9300'
 const ORACLE_SIGNER_URL = process.env.ORACLE_SIGNER_URL ?? 'http://localhost:9107'
 const TIMEOUT_MS = 5000
+
+const DEFAULT_CACHE_MS = 1000
+const CACHE_KEY = 'oracle-status:default'
+
+/**
+ * In-process TTL+single-flight cache for the merged upstream payload.
+ * Read once at module load. `0` (or any non-numeric value) disables
+ * the cache so every request hits both upstreams — matches the same
+ * operator-escape shape as `STATUS_AGGREGATOR_CACHE_MS` for the
+ * rebalance-status route.
+ */
+function readOracleStatusCacheMs(): number {
+  const raw = process.env.ORACLE_STATUS_CACHE_MS
+  if (raw === undefined || raw === '') return DEFAULT_CACHE_MS
+  const n = Number(raw)
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_CACHE_MS
+}
+
+/**
+ * Sentinel thrown from the cache fetcher when **both** upstreams fail
+ * (the hard-503 path). The cache helper's errors-not-cached semantics
+ * mean a throw frees the inflight slot without writing to `settled`,
+ * so the next call retries upstream — exactly the PRD's "503 is not
+ * cached" requirement. The route handler catches this throw and
+ * rebuilds the 503 envelope from the captured upstream metadata.
+ */
+class OracleStatusBothUpstreamsDownError extends Error {
+  constructor(public readonly upstreams: { priceService: UpstreamStatus; oracleSigner: UpstreamStatus }) {
+    super('oracle-status-both-upstreams-down')
+    this.name = 'OracleStatusBothUpstreamsDownError'
+  }
+}
 
 type QuoteRow = {
   symbol: string
@@ -296,7 +329,26 @@ type QuotesPayload = {
 
 const EMPTY_PROOF: ProofPayload = { generatedAt: 0, stocks: [], crypto: [] }
 
-async function handleGet(_req?: NextRequest) {
+interface CachedResponse {
+  status: number
+  body: Record<string, unknown>
+}
+
+/**
+ * Fetches the upstream pair and synthesizes the response payload as a
+ * plain `{ status, body }` object (NOT a `NextResponse`, whose body
+ * stream is single-use). The route wraps this in the oracle-status
+ * cache so concurrent and rapid-sequential calls within `CACHE_MS`
+ * collapse to one upstream pair fetch per worker.
+ *
+ * On the both-upstreams-failed path, throws `OracleStatusBothUpstreamsDownError`
+ * carrying the captured upstream metadata so the route handler can
+ * rebuild the 503 envelope. The throw also bypasses the cache write
+ * (errors-not-cached semantics in the helper), so the next poll
+ * re-fans-out to upstream — matching the PRD's "503 is not cached"
+ * requirement.
+ */
+async function fetchUpstreamPairAndBuildResponse(): Promise<CachedResponse> {
   const [quotesRes, proofRes] = await Promise.allSettled([
     fetchJson<QuotesPayload>(`${PRICE_SERVICE_URL}/status/quotes`),
     fetchJsonAllowDegraded<ProofPayload>(`${ORACLE_SIGNER_URL}/proof`),
@@ -317,26 +369,7 @@ async function handleGet(_req?: NextRequest) {
   const proofServiceOk = proofReachable && proofRes.value.ok
 
   if (!quotesOk && !proofReachable) {
-    return NextResponse.json(
-      {
-        error: 'Oracle status unavailable',
-        healthy: false,
-        degraded: true,
-        quotes: [],
-        proof: EMPTY_PROOF,
-        ingest: { ...DEFAULT_INGEST },
-        failures: { stocks: [], crypto: [] },
-        counts: { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } },
-        rails: { stocks: { ...DEFAULT_RAIL_STATUS }, crypto: { ...DEFAULT_RAIL_STATUS } },
-        service: { ...DEFAULT_SERVICE },
-        chain: { ...DEFAULT_CHAIN, oracleAddresses: { stocks: null, crypto: null } },
-        freshCount: 0,
-        totalCount: 0,
-        upstreams,
-        timestamp: Date.now(),
-      },
-      { status: 503 },
-    )
+    throw new OracleStatusBothUpstreamsDownError(upstreams)
   }
 
   const rawQuotes = quotesOk ? (quotesRes.value.quotes ?? []) : []
@@ -370,23 +403,66 @@ async function handleGet(_req?: NextRequest) {
   const freshCount = quotesOk ? (quotesRes.value.freshCount ?? quotes.length) : 0
   const totalCount = quotesOk ? (quotesRes.value.totalCount ?? quotes.length) : 0
 
-  return NextResponse.json({
-    healthy,
-    degraded: !healthy,
-    generatedAt: Date.now(),
-    quotes,
-    proof,
-    ingest,
-    failures,
-    counts,
-    rails,
-    service,
-    chain,
-    freshCount,
-    totalCount,
-    timestamp: quotesOk ? (quotesRes.value.timestamp ?? Date.now()) : Date.now(),
-    upstreams,
-  })
+  return {
+    status: 200,
+    body: {
+      healthy,
+      degraded: !healthy,
+      generatedAt: Date.now(),
+      quotes,
+      proof,
+      ingest,
+      failures,
+      counts,
+      rails,
+      service,
+      chain,
+      freshCount,
+      totalCount,
+      timestamp: quotesOk ? (quotesRes.value.timestamp ?? Date.now()) : Date.now(),
+      upstreams,
+    },
+  }
+}
+
+function buildBothDownResponse(err: OracleStatusBothUpstreamsDownError): CachedResponse {
+  return {
+    status: 503,
+    body: {
+      error: 'Oracle status unavailable',
+      healthy: false,
+      degraded: true,
+      quotes: [],
+      proof: EMPTY_PROOF,
+      ingest: { ...DEFAULT_INGEST },
+      failures: { stocks: [], crypto: [] },
+      counts: { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } },
+      rails: { stocks: { ...DEFAULT_RAIL_STATUS }, crypto: { ...DEFAULT_RAIL_STATUS } },
+      service: { ...DEFAULT_SERVICE },
+      chain: { ...DEFAULT_CHAIN, oracleAddresses: { stocks: null, crypto: null } },
+      freshCount: 0,
+      totalCount: 0,
+      upstreams: err.upstreams,
+      timestamp: Date.now(),
+    },
+  }
+}
+
+async function handleGet(_req?: NextRequest) {
+  try {
+    const { status, body } = await getOrFetchOracleStatus(
+      CACHE_KEY,
+      fetchUpstreamPairAndBuildResponse,
+      readOracleStatusCacheMs(),
+    )
+    return NextResponse.json(body, { status })
+  } catch (err) {
+    if (err instanceof OracleStatusBothUpstreamsDownError) {
+      const { status, body } = buildBothDownResponse(err)
+      return NextResponse.json(body, { status })
+    }
+    throw err
+  }
 }
 
 export const GET = withApiRateLimit(handleGet)
