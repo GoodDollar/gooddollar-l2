@@ -844,10 +844,12 @@ describe('HedgeStatusCard', () => {
     // eToro id rendered in its dedicated cell
     const etoro = screen.getByTestId('hedge-receipt-etoro-id');
     expect(etoro).toHaveTextContent('etoro-1');
-    // exposure delta cell: before → after + signed delta
+    // exposure delta cell: before → after + signed delta — both routed through
+    // formatNotionalUsd (task 0050) so no row leaks raw IEEE-754 subtraction
+    // noise like `−42.18000000000064`.
     const delta = screen.getByTestId('hedge-receipt-exposure-delta');
-    expect(delta).toHaveTextContent('100 → 50');
-    expect(delta).toHaveTextContent('−50');
+    expect(delta).toHaveTextContent('$100.00 → $50.00');
+    expect(delta).toHaveTextContent('−$50.00');
     // time cell ISO title equals the receipt timestamp in UTC
     const timeCell = row.querySelector('td[title]');
     expect(timeCell?.getAttribute('title')).toBe(new Date(1700000000000).toISOString());
