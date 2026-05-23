@@ -561,6 +561,67 @@ describe('MarketDataModule', () => {
       expect(mod.getStreamFailureCount('rest-fallback')).toBeGreaterThanOrEqual(1);
       mod.stopStreaming();
     });
+
+    it('does not fire listeners for an in-flight getQuotes that resolves after stopStreaming', async () => {
+      let resolveQuotes: (() => void) | undefined;
+      const get = jest.fn(() => new Promise<{ data: unknown; status: number }>((res) => {
+        resolveQuotes = () => res({ data: { rates: [freshQuote('BTC')] }, status: 200 });
+      }));
+      const mod = makeMod(makeStubHttp(get), { restFallbackIntervalMs: 1_000 }, {
+        consoleErrorImpl: () => undefined,
+      });
+      const cb = jest.fn();
+      mod.onQuote(cb);
+      mod.subscribe(['BTC']);
+      mod.startStreaming();
+
+      await tickFallback(1_000);
+      mod.stopStreaming();
+      resolveQuotes!();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(cb).toHaveBeenCalledTimes(0);
+    });
+
+    it('does not record rest-fallback failure for a getQuotes rejection that arrives after stopStreaming', async () => {
+      let rejectQuotes: ((err: Error) => void) | undefined;
+      const get = jest.fn(() => new Promise<{ data: unknown; status: number }>((_, rej) => {
+        rejectQuotes = (err) => rej(err);
+      }));
+      const mod = makeMod(makeStubHttp(get), { restFallbackIntervalMs: 1_000 }, {
+        consoleErrorImpl: () => undefined,
+      });
+      mod.subscribe(['BTC']);
+      mod.startStreaming();
+
+      await tickFallback(1_000);
+      mod.stopStreaming();
+      rejectQuotes!(new Error('HTTP 500'));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mod.getStreamFailureCount('rest-fallback')).toBe(0);
+    });
+  });
+
+  describe('handleWsMessage stop guard', () => {
+    it('drops a WS frame that arrives after stopStreaming', () => {
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = makeMod(http);
+      const cb = jest.fn();
+      mod.onQuote(cb);
+      mod.stopStreaming();
+
+      mod.handleWsMessage(JSON.stringify({
+        symbol: 'BTC', bid: 100, ask: 101, timestamp: Date.now(),
+      }));
+
+      expect(cb).not.toHaveBeenCalled();
+      expect(mod.getCachedQuote('BTC')).toBeUndefined();
+    });
   });
 
   describe('normalizeQuote malformed payloads', () => {

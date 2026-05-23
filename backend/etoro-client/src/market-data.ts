@@ -491,9 +491,10 @@ export class MarketDataModule {
   private startRestFallback(): void {
     if (this.stopped || this.restFallbackTimer) return;
     this.restFallbackTimer = setInterval(async () => {
-      if (this.subscribedSymbols.size === 0) return;
+      if (this.stopped || this.subscribedSymbols.size === 0) return;
       try {
         const fresh = await this.getQuotes([...this.subscribedSymbols]);
+        if (this.stopped) return;
         for (const quote of fresh) {
           if (!this.subscribedSymbols.has(quote.symbol)) continue;
           if (quote.stale) continue;
@@ -502,6 +503,7 @@ export class MarketDataModule {
           }
         }
       } catch (err: unknown) {
+        if (this.stopped) return;
         this.recordStreamFailure('rest-fallback', err);
       }
     }, this.config.restFallbackIntervalMs);
@@ -524,6 +526,7 @@ export class MarketDataModule {
    * not silently swallowed.
    */
   handleWsMessage(data: WebSocket.RawData | string): void {
+    if (this.stopped) return;
     let parsed: unknown;
     try {
       parsed = JSON.parse(typeof data === 'string' ? data : data.toString());
