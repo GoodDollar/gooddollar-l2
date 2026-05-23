@@ -598,7 +598,8 @@ if (( quote_flow_should_probe )); then
           }
           let freshestTs = 0;
           for (const q of j.quotes) {
-            if (q && typeof q.ts === "number" && q.ts > freshestTs) freshestTs = q.ts;
+            const ts = q && (typeof q.ts === "number" ? q.ts : q.timestamp);
+            if (typeof ts === "number" && ts > freshestTs) freshestTs = ts;
           }
           let firstSource = "";
           if (j.quotes.length > 0 && j.quotes[0] && j.quotes[0].source) {
@@ -635,8 +636,8 @@ if (( quote_flow_should_probe )); then
           age_s=-1
         fi
         if (( age_s < 0 )); then
-          add_summary "| freshest quote age | unknown (\`ts\` missing on quotes) | ⚠️  WARN |"
-          WARNINGS+=("price-service /quotes/fresh/all responses missing per-quote \`ts\` — cannot assess freshness")
+          add_summary "| freshest quote age | unknown (\`ts\`/\`timestamp\` missing on quotes) | ⚠️  WARN |"
+          WARNINGS+=("price-service /quotes/fresh/all responses missing per-quote \`ts\`/\`timestamp\` — cannot assess freshness")
         elif (( age_s > QUOTE_MAX_AGE_S )); then
           add_summary "| freshest quote age | ${age_s} s > ${QUOTE_MAX_AGE_S} s | ⚠️  WARN |"
           WARNINGS+=("freshest quote is ${age_s}s old (max ${QUOTE_MAX_AGE_S}s)")
