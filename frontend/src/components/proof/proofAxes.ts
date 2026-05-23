@@ -167,3 +167,62 @@ export function deriveVerdict(axes: AxisState): Verdict {
   if (degradedCount === 3) return 'red'
   return 'amber'
 }
+
+/**
+ * Total number of axes the proof page tracks. Constant — exposed as a
+ * named token so consumers (tests, the "computing N of M" caption)
+ * never hardcode the magic number.
+ */
+export const TOTAL_AXIS_COUNT = 3
+
+/**
+ * Number of axes (0–{@link TOTAL_AXIS_COUNT}) that have reported a
+ * healthy or degraded value since the page loaded. Useful for the
+ * partial-verdict caption ("computing N of M axes…").
+ */
+export function countResolvedAxes(axes: AxisState): number {
+  let resolved = 0
+  if (axes.quotes !== 'unknown') resolved += 1
+  if (axes.onChain !== 'unknown') resolved += 1
+  if (axes.hedgeProof !== 'unknown') resolved += 1
+  return resolved
+}
+
+/**
+ * Partial verdict — the rollup commits to amber/red/green as soon as
+ * axes start reporting, instead of holding the whole banner in
+ * `'loading'` until every axis has resolved (which is what
+ * {@link deriveVerdict} does).
+ *
+ * Rules:
+ *  - Zero axes resolved → `'loading'` (true first paint, no data yet).
+ *  - All resolved + all healthy → `'green'`.
+ *  - All resolved + all degraded → `'red'`.
+ *  - At least one degraded among resolved (regardless of remaining
+ *    `'unknown'`s) → `'amber'`.
+ *  - Resolved axes are all healthy but at least one is still
+ *    `'unknown'` → `'amber'` (provisional — we cannot promise green
+ *    until every axis has reported healthy).
+ *
+ * Exists because `PipelineStatusBanner` previously read
+ * {@link deriveVerdict} (strict) and so flashed an empty skeleton bar
+ * while `PipelineFlowDiagram` and the data panels had already
+ * rendered their resolved per-axis state — see task
+ * lane6-pipeline-status-rollup-blank-during-panel-first-paint (0059).
+ */
+export function derivePartialVerdict(axes: AxisState): Verdict {
+  const values: AxisHealth[] = [axes.quotes, axes.onChain, axes.hedgeProof]
+  let resolved = 0
+  let healthy = 0
+  let degraded = 0
+  for (const v of values) {
+    if (v === 'unknown') continue
+    resolved += 1
+    if (v === 'healthy') healthy += 1
+    else degraded += 1
+  }
+  if (resolved === 0) return 'loading'
+  if (resolved === TOTAL_AXIS_COUNT && healthy === TOTAL_AXIS_COUNT) return 'green'
+  if (resolved === TOTAL_AXIS_COUNT && degraded === TOTAL_AXIS_COUNT) return 'red'
+  return 'amber'
+}

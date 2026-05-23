@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   PANEL_BY_AXIS,
   ResolvedAxis,
+  TOTAL_AXIS_COUNT,
+  countResolvedAxes,
+  derivePartialVerdict,
   deriveVerdict,
   describeAxisForFlowNode,
   isFreshQuotes,
@@ -52,6 +55,64 @@ describe('proofAxes — deriveVerdict', () => {
     expect(
       deriveVerdict({ quotes: 'degraded', onChain: 'healthy', hedgeProof: 'healthy' }),
     ).toBe('amber')
+  })
+})
+
+describe('proofAxes — derivePartialVerdict (#0059)', () => {
+  it('returns loading only when zero axes have resolved', () => {
+    expect(
+      derivePartialVerdict({ quotes: 'unknown', onChain: 'unknown', hedgeProof: 'unknown' }),
+    ).toBe('loading')
+  })
+
+  it('returns amber as soon as one axis resolves degraded — even with two still loading', () => {
+    expect(
+      derivePartialVerdict({ quotes: 'degraded', onChain: 'unknown', hedgeProof: 'unknown' }),
+    ).toBe('amber')
+  })
+
+  it('returns amber (provisional) when one axis is healthy but others are still loading — never green until all settle', () => {
+    expect(
+      derivePartialVerdict({ quotes: 'healthy', onChain: 'unknown', hedgeProof: 'unknown' }),
+    ).toBe('amber')
+  })
+
+  it('returns amber when at least one axis is degraded among resolved values', () => {
+    expect(
+      derivePartialVerdict({ quotes: 'healthy', onChain: 'degraded', hedgeProof: 'healthy' }),
+    ).toBe('amber')
+  })
+
+  it('returns green only when every axis has resolved healthy', () => {
+    expect(
+      derivePartialVerdict({ quotes: 'healthy', onChain: 'healthy', hedgeProof: 'healthy' }),
+    ).toBe('green')
+  })
+
+  it('returns red only when every axis has resolved degraded', () => {
+    expect(
+      derivePartialVerdict({ quotes: 'degraded', onChain: 'degraded', hedgeProof: 'degraded' }),
+    ).toBe('red')
+  })
+})
+
+describe('proofAxes — countResolvedAxes (#0059)', () => {
+  it('returns 0 when every axis is unknown', () => {
+    expect(
+      countResolvedAxes({ quotes: 'unknown', onChain: 'unknown', hedgeProof: 'unknown' }),
+    ).toBe(0)
+  })
+
+  it('counts each healthy/degraded axis exactly once', () => {
+    expect(
+      countResolvedAxes({ quotes: 'healthy', onChain: 'unknown', hedgeProof: 'degraded' }),
+    ).toBe(2)
+  })
+
+  it('returns TOTAL_AXIS_COUNT when every axis has resolved', () => {
+    expect(
+      countResolvedAxes({ quotes: 'healthy', onChain: 'degraded', hedgeProof: 'healthy' }),
+    ).toBe(TOTAL_AXIS_COUNT)
   })
 })
 

@@ -10,6 +10,8 @@ import {
   AxisHealth,
   AxisState,
   Verdict,
+  countResolvedAxes,
+  derivePartialVerdict,
   deriveVerdict,
   isFreshQuotes,
   isHealthyOnChain,
@@ -48,7 +50,23 @@ export type QuotesFetchStatus = 'loading' | 'ok' | 'error'
 
 export interface ProofPipelineAxesState {
   axes: AxisState
+  /**
+   * Strict verdict — `'loading'` until every axis has reported. Kept for
+   * consumers that want the "all axes settled" semantics (e.g. the
+   * `LastAliveLine` "just now" branch).
+   */
   verdict: Verdict
+  /**
+   * Partial verdict — degrades to amber/red/green as axes report,
+   * never blocks on a single `'unknown'`. The `PipelineStatusBanner`
+   * reads this so its first non-skeleton render lands in the same
+   * frame as `PipelineFlowDiagram`'s first coloured pill — see
+   * task lane6-pipeline-status-rollup-blank-during-panel-first-paint
+   * (0059).
+   */
+  partialVerdict: Verdict
+  /** Number of axes (0–3) that have reported `healthy` or `degraded`. */
+  resolvedAxisCount: number
   /** Wallclock ms at the last poll where every axis was healthy, or null. */
   lastFullyAliveAt: number | null
   /** Raw JSON body of the most recent successful `/quotes` fetch, else null. */
@@ -196,6 +214,8 @@ export function useProofPipelineAxes({
     [offChain.quotes.axis, offChain.hedgeProof, onChain],
   )
   const verdict = useMemo(() => deriveVerdict(axes), [axes])
+  const partialVerdict = useMemo(() => derivePartialVerdict(axes), [axes])
+  const resolvedAxisCount = useMemo(() => countResolvedAxes(axes), [axes])
 
   useEffect(() => {
     if (
@@ -211,6 +231,8 @@ export function useProofPipelineAxes({
     () => ({
       axes,
       verdict,
+      partialVerdict,
+      resolvedAxisCount,
       lastFullyAliveAt,
       lastQuotesPayload: offChain.quotes.payload,
       lastQuotesAt: offChain.quotes.at,
@@ -222,6 +244,8 @@ export function useProofPipelineAxes({
     [
       axes,
       verdict,
+      partialVerdict,
+      resolvedAxisCount,
       lastFullyAliveAt,
       offChain.quotes.payload,
       offChain.quotes.at,

@@ -1,19 +1,60 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AxisKey, AxisState, PANEL_BY_AXIS, PanelLink, Verdict } from './proofAxes'
+import {
+  AxisKey,
+  AxisState,
+  PANEL_BY_AXIS,
+  PanelLink,
+  TOTAL_AXIS_COUNT,
+  Verdict,
+} from './proofAxes'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 /**
+ * Outer container className shared by every verdict branch (loading,
+ * amber, red, green). Hoisted so a layout-shift regression in one
+ * branch is impossible — the box height is pinned by `min-h` on every
+ * branch.
+ *
+ * `min-h-[4.75rem]` matches the typical resolved height (chip row +
+ * reason chips line + last-alive caption + `py-3`) so the page does
+ * NOT reflow when the rollup transitions from skeleton to coloured
+ * content.  See task lane6-pipeline-status-rollup-blank-during-panel-
+ * first-paint (0059).
+ */
+const BANNER_OUTER_BASE_CLASS = 'rounded-2xl px-4 py-3 min-h-[4.75rem]'
+
+const BANNER_TONE_CLASS: Record<Verdict, string> = {
+  loading: 'border border-white/10 bg-dark-100/60',
+  green: 'border border-green-500/30 bg-green-500/5',
+  amber: 'border border-yellow-500/40 bg-yellow-500/5',
+  red: 'border border-red-500/40 bg-red-500/10',
+}
+
+function bannerOuterClass(verdict: Verdict): string {
+  return `${BANNER_OUTER_BASE_CLASS} ${BANNER_TONE_CLASS[verdict]}`
+}
+
+/**
  * Renders the AlivenessRollup chip + reason chips at the top of the
- * proof page. Pulls `{ axes, verdict, lastFullyAliveAt }` from
- * `ProofPipelineAxesProvider` so the rollup, the PipelineFlowDiagram,
- * and any future axis-aware consumer always agree on the same axis
- * states in the same render frame — see task lane6-pipeline-flow-onchain-
- * nodes-render-unknown-while-rollup-says-degraded (0050).
+ * proof page. Pulls `{ axes, partialVerdict, resolvedAxisCount,
+ * lastFullyAliveAt }` from `ProofPipelineAxesProvider` so the rollup,
+ * the PipelineFlowDiagram, and any future axis-aware consumer always
+ * agree on the same axis states in the same render frame — see task
+ * lane6-pipeline-flow-onchain-nodes-render-unknown-while-rollup-says-degraded
+ * (0050).
+ *
+ * Uses {@link useProofPipelineAxesContext}'s `partialVerdict` (not the
+ * strict `verdict`) so the rollup commits to amber/red/green as soon
+ * as ANY axis resolves, instead of flashing a blank skeleton bar
+ * while the flow diagram and panels below render their per-axis
+ * state — see task lane6-pipeline-status-rollup-blank-during-panel-
+ * first-paint (0059).
  */
 export function PipelineStatusBanner() {
-  const { axes, verdict, lastFullyAliveAt } = useProofPipelineAxesContext()
+  const { axes, partialVerdict, resolvedAxisCount, lastFullyAliveAt } =
+    useProofPipelineAxesContext()
 
   /**
    * Drives the 1s "Xs ago" tick under the degraded/red verdict line.
@@ -22,16 +63,17 @@ export function PipelineStatusBanner() {
   const [now, setNow] = useState<number>(() => Date.now())
   useEffect(() => {
     if (lastFullyAliveAt === null) return
-    if (verdict === 'green' || verdict === 'loading') return
+    if (partialVerdict === 'green' || partialVerdict === 'loading') return
     setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), 1_000)
     return () => clearInterval(id)
-  }, [lastFullyAliveAt, verdict])
+  }, [lastFullyAliveAt, partialVerdict])
 
   return (
     <PipelineStatusView
       axes={axes}
-      verdict={verdict}
+      verdict={partialVerdict}
+      resolvedAxisCount={resolvedAxisCount}
       lastFullyAliveAt={lastFullyAliveAt}
       now={now}
     />
@@ -41,18 +83,25 @@ export function PipelineStatusBanner() {
 interface PipelineStatusViewProps {
   axes: AxisState
   verdict: Verdict
+  resolvedAxisCount: number
   lastFullyAliveAt: number | null
   now: number
 }
 
-function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }: PipelineStatusViewProps) {
+function PipelineStatusView({
+  axes,
+  verdict,
+  resolvedAxisCount,
+  lastFullyAliveAt,
+  now,
+}: PipelineStatusViewProps) {
   if (verdict === 'loading') {
     return (
       <section
         aria-label="Pipeline status"
         data-testid="pipeline-status-banner"
         data-status="loading"
-        className="rounded-2xl border border-white/10 bg-dark-100/60 px-4 py-3"
+        className={bannerOuterClass(verdict)}
       >
         <div
           role="status"
@@ -69,7 +118,7 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }: PipelineSt
         aria-label="Pipeline status"
         data-testid="pipeline-status-banner"
         data-status="green"
-        className="rounded-2xl border border-green-500/30 bg-green-500/5 px-4 py-3"
+        className={bannerOuterClass(verdict)}
       >
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-green-300">
@@ -95,7 +144,7 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }: PipelineSt
         aria-label="Pipeline status"
         data-testid="pipeline-status-banner"
         data-status="red"
-        className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3"
+        className={bannerOuterClass(verdict)}
       >
         <div role="alert" key="red">
           <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -108,6 +157,7 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }: PipelineSt
             </span>
           </div>
           <ReasonChips entries={degradedEntries} tone="red" />
+          <RollupProgress resolvedAxisCount={resolvedAxisCount} />
           <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} now={now} />
         </div>
       </section>
@@ -119,7 +169,7 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }: PipelineSt
       aria-label="Pipeline status"
       data-testid="pipeline-status-banner"
       data-status="amber"
-      className="rounded-2xl border border-yellow-500/40 bg-yellow-500/5 px-4 py-3"
+      className={bannerOuterClass(verdict)}
     >
       <div role="alert" key="amber">
         <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -132,9 +182,27 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }: PipelineSt
           </span>
         </div>
         <ReasonChips entries={degradedEntries} tone="amber" />
+        <RollupProgress resolvedAxisCount={resolvedAxisCount} />
         <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} now={now} />
       </div>
     </section>
+  )
+}
+
+/**
+ * "Computing N of M axes…" caption rendered when at least one axis
+ * has reported but not all of them have. Disappears entirely once
+ * every axis has resolved — at which point the rollup either matches
+ * the strict {@link deriveVerdict} value or has already settled on a
+ * degraded/cold verdict that the caption can't refine.
+ */
+function RollupProgress({ resolvedAxisCount }: { resolvedAxisCount: number }) {
+  if (resolvedAxisCount <= 0 || resolvedAxisCount >= TOTAL_AXIS_COUNT) return null
+  return (
+    <p data-testid="rollup-progress" className="mt-1 text-[11px] text-gray-400">
+      Computing {resolvedAxisCount} of {TOTAL_AXIS_COUNT} axes — banner refines as remaining
+      axes report.
+    </p>
   )
 }
 

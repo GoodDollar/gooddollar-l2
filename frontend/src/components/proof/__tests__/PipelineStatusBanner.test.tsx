@@ -103,6 +103,19 @@ function mockOnChainDegraded() {
   } as unknown as ReturnType<typeof useReadContract>)
 }
 
+/**
+ * On-chain probe still in flight — `useReadContract` returns
+ * `data: undefined`. Mirrors the genuine first-paint state where
+ * wagmi has not yet resolved the multicall.
+ */
+function mockOnChainLoading() {
+  useReadContractMock.mockReturnValue({
+    data: undefined,
+    isLoading: true,
+    error: null,
+  } as unknown as ReturnType<typeof useReadContract>)
+}
+
 describe('PipelineStatusBanner', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -115,8 +128,11 @@ describe('PipelineStatusBanner', () => {
     cleanup()
   })
 
-  it('renders a loading skeleton on first paint with role=status and the loading aria-label', () => {
-    mockOnChainHealthy()
+  it('renders a loading skeleton on first paint when zero axes have resolved', () => {
+    // True first paint: on-chain is still loading AND quotes/hedge-proof
+    // fetches never settle — so `partialVerdict` legitimately stays
+    // `'loading'` (zero resolved axes) and the skeleton shows.
+    mockOnChainLoading()
     installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
 
     renderBanner({ offChainIntervalMs: 60_000 })
@@ -126,6 +142,90 @@ describe('PipelineStatusBanner', () => {
     const region = screen.getByTestId('pipeline-status-banner')
     expect(region).toBeInTheDocument()
     expect(region.getAttribute('data-status')).toBe('loading')
+  })
+
+  it('flips to amber the moment one axis resolves degraded, even while others are loading (#0059)', async () => {
+    // On-chain still loading; the off-chain tick completes with
+    // quotes degraded + hedge-proof healthy. Strict `verdict` would
+    // stay in `'loading'` waiting on on-chain; partial verdict commits
+    // to `'amber'` and surfaces the `price-service unreachable`
+    // chip in the same render cycle.
+    mockOnChainLoading()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) throw new Error('boom')
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    renderBanner({ offChainIntervalMs: 60_000 })
+
+    const region = await screen.findByTestId('pipeline-status-banner')
+    await vi.waitFor(() => {
+      expect(region.getAttribute('data-status')).toBe('amber')
+    })
+    expect(region).toHaveTextContent(/price-service unreachable/i)
+    const progress = screen.getByTestId('rollup-progress')
+    expect(progress.textContent).toMatch(/Computing 2 of 3 axes/i)
+  })
+
+  it('renders the "computing N of M axes" caption when only some axes have resolved healthy (#0059)', async () => {
+    // On-chain healthy resolves immediately; quotes + hedge-proof
+    // never settle. Resolved-axis count is 1 → amber + caption.
+    mockOnChainHealthy()
+    installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+
+    renderBanner({ offChainIntervalMs: 60_000 })
+
+    const region = await screen.findByTestId('pipeline-status-banner')
+    await vi.waitFor(() => {
+      expect(region.getAttribute('data-status')).toBe('amber')
+    })
+    const progress = screen.getByTestId('rollup-progress')
+    expect(progress.textContent).toMatch(/Computing 1 of 3 axes/i)
+  })
+
+  it('hides the "computing N of M" caption once every axis has reported (#0059)', async () => {
+    mockOnChainHealthy()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    renderBanner({ offChainIntervalMs: 60_000 })
+
+    const region = await screen.findByTestId('pipeline-status-banner')
+    await vi.waitFor(() => {
+      expect(region.getAttribute('data-status')).toBe('green')
+    })
+    expect(screen.queryByTestId('rollup-progress')).not.toBeInTheDocument()
+  })
+
+  it('keeps the same outer min-h class on every branch so the rollup never reflows the page (#0059)', async () => {
+    // Render in loading state first
+    mockOnChainLoading()
+    installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+    const { unmount } = renderBanner({ offChainIntervalMs: 60_000 })
+    const loadingRegion = screen.getByTestId('pipeline-status-banner')
+    expect(loadingRegion.className).toMatch(/min-h-\[4\.75rem\]/)
+    unmount()
+
+    // Re-render in amber state and assert the same min-h class is present
+    mockOnChainHealthy()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) throw new Error('boom')
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+    renderBanner({ offChainIntervalMs: 60_000 })
+    const amberRegion = await screen.findByTestId('pipeline-status-banner')
+    await vi.waitFor(() => {
+      expect(amberRegion.getAttribute('data-status')).toBe('amber')
+    })
+    expect(amberRegion.className).toMatch(/min-h-\[4\.75rem\]/)
   })
 
   it('renders green when all three axes are healthy', async () => {
@@ -282,11 +382,15 @@ describe('PipelineStatusBanner', () => {
 
     renderBanner({ offChainIntervalMs: 60_000 })
 
-    const chips = await vi.waitFor(() => {
-      const els = screen.queryAllByTestId(/^reason-chip-/)
-      expect(els.length).toBeGreaterThan(0)
-      return els
+    // Wait for the all-degraded steady state — partial verdict can
+    // surface intermediate amber chips while onChain is degraded but
+    // off-chain axes haven't reported yet (#0059).
+    await vi.waitFor(() => {
+      const region = screen.getByTestId('pipeline-status-banner')
+      expect(region.getAttribute('data-status')).toBe('red')
     })
+    const chips = screen.queryAllByTestId(/^reason-chip-/)
+    expect(chips.length).toBeGreaterThan(0)
     chips.forEach((chip) => {
       expect(chip.className).toMatch(/text-red-200/)
     })
@@ -319,7 +423,14 @@ describe('PipelineStatusBanner', () => {
 
     renderBanner({ offChainIntervalMs: 60_000 })
 
-    const line = await screen.findByTestId('last-fully-alive')
+    // Wait for the all-healthy steady state — under the partial
+    // verdict the line first renders "No all-green observation yet"
+    // while quotes/hedge-proof are still settling.
+    await vi.waitFor(() => {
+      const region = screen.getByTestId('pipeline-status-banner')
+      expect(region.getAttribute('data-status')).toBe('green')
+    })
+    const line = screen.getByTestId('last-fully-alive')
     expect(line.textContent).toMatch(/just now/i)
   })
 
@@ -361,10 +472,15 @@ describe('PipelineStatusBanner', () => {
 
     renderBanner({ offChainIntervalMs: 60_000 })
 
-    const line = await screen.findByTestId('last-fully-alive')
+    // Wait for the all-degraded steady state — under the partial
+    // verdict the rollup transitions from amber (1 resolved) to red
+    // (3 resolved degraded).
     await vi.waitFor(() => {
-      expect(line.textContent).toMatch(/No all-green observation yet this session/i)
+      const region = screen.getByTestId('pipeline-status-banner')
+      expect(region.getAttribute('data-status')).toBe('red')
     })
+    const line = screen.getByTestId('last-fully-alive')
+    expect(line.textContent).toMatch(/No all-green observation yet this session/i)
     expect(line.textContent).toMatch(/cold state since it loaded/i)
     expect(line.textContent).not.toMatch(/degraded state/i)
     expect(line.textContent?.trim().endsWith('?')).toBe(false)

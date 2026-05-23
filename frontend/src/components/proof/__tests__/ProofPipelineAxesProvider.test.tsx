@@ -83,6 +83,8 @@ describe('ProofPipelineAxesProvider', () => {
           value={{
             axes: { quotes: 'degraded', onChain: 'degraded', hedgeProof: 'degraded' },
             verdict: 'red',
+            partialVerdict: 'red',
+            resolvedAxisCount: 3,
             lastFullyAliveAt: null,
             lastQuotesPayload: null,
             lastQuotesAt: null,

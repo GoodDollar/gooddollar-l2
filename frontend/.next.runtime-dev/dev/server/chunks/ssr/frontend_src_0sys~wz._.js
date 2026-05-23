@@ -5243,8 +5243,16 @@ function getPortfolioSummary() {
  */ __turbopack_context__.s([
     "PANEL_BY_AXIS",
     ()=>PANEL_BY_AXIS,
+    "TOTAL_AXIS_COUNT",
+    ()=>TOTAL_AXIS_COUNT,
+    "countResolvedAxes",
+    ()=>countResolvedAxes,
+    "derivePartialVerdict",
+    ()=>derivePartialVerdict,
     "deriveVerdict",
     ()=>deriveVerdict,
+    "describeAxisForFlowNode",
+    ()=>describeAxisForFlowNode,
     "isFreshQuotes",
     ()=>isFreshQuotes,
     "isHealthyOnChain",
@@ -5294,6 +5302,27 @@ const PANEL_BY_AXIS = {
 function reasonForAxis(axis) {
     return PANEL_BY_AXIS[axis].reason;
 }
+/**
+ * User-facing word for each AxisHealth state. `unknown` renders as
+ * `loading first read` because that's the same vocabulary the rollup
+ * banner already uses on first paint ("Loading pipeline status"). The
+ * `Record<AxisHealth, string>` type makes the mapping exhaustive — adding
+ * a new AxisHealth value would be a compile-time error here.
+ */ const STATE_WORD = {
+    healthy: 'healthy',
+    degraded: 'degraded',
+    unknown: 'loading first read'
+};
+function describeAxisForFlowNode(nodeLabel, resolved, axisKey) {
+    if (resolved.subordinated) {
+        const underlying = resolved.ok ? STATE_WORD.healthy : `${STATE_WORD.degraded} — ${PANEL_BY_AXIS[axisKey].reason}`;
+        return `${nodeLabel}: ${underlying} (mirroring upstream tone)`;
+    }
+    if (resolved.axis === 'degraded') {
+        return `${nodeLabel}: ${STATE_WORD.degraded} — ${PANEL_BY_AXIS[axisKey].reason}`;
+    }
+    return `${nodeLabel}: ${STATE_WORD[resolved.axis]}`;
+}
 function deriveVerdict(axes) {
     const values = [
         axes.quotes,
@@ -5311,6 +5340,34 @@ function deriveVerdict(axes) {
     if (unknownCount > 0) return 'loading';
     if (healthyCount === 3) return 'green';
     if (degradedCount === 3) return 'red';
+    return 'amber';
+}
+const TOTAL_AXIS_COUNT = 3;
+function countResolvedAxes(axes) {
+    let resolved = 0;
+    if (axes.quotes !== 'unknown') resolved += 1;
+    if (axes.onChain !== 'unknown') resolved += 1;
+    if (axes.hedgeProof !== 'unknown') resolved += 1;
+    return resolved;
+}
+function derivePartialVerdict(axes) {
+    const values = [
+        axes.quotes,
+        axes.onChain,
+        axes.hedgeProof
+    ];
+    let resolved = 0;
+    let healthy = 0;
+    let degraded = 0;
+    for (const v of values){
+        if (v === 'unknown') continue;
+        resolved += 1;
+        if (v === 'healthy') healthy += 1;
+        else degraded += 1;
+    }
+    if (resolved === 0) return 'loading';
+    if (resolved === TOTAL_AXIS_COUNT && healthy === TOTAL_AXIS_COUNT) return 'green';
+    if (resolved === TOTAL_AXIS_COUNT && degraded === TOTAL_AXIS_COUNT) return 'red';
     return 'amber';
 }
 }),
@@ -5482,6 +5539,12 @@ function useProofPipelineAxes({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_
     const verdict = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["deriveVerdict"])(axes), [
         axes
     ]);
+    const partialVerdict = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["derivePartialVerdict"])(axes), [
+        axes
+    ]);
+    const resolvedAxisCount = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["countResolvedAxes"])(axes), [
+        axes
+    ]);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         if (axes.quotes === 'healthy' && axes.onChain === 'healthy' && axes.hedgeProof === 'healthy') {
             setLastFullyAliveAt(Date.now());
@@ -5495,6 +5558,8 @@ function useProofPipelineAxes({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>({
             axes,
             verdict,
+            partialVerdict,
+            resolvedAxisCount,
             lastFullyAliveAt,
             lastQuotesPayload: offChain.quotes.payload,
             lastQuotesAt: offChain.quotes.at,
@@ -5505,6 +5570,8 @@ function useProofPipelineAxes({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_
         }), [
         axes,
         verdict,
+        partialVerdict,
+        resolvedAxisCount,
         lastFullyAliveAt,
         offChain.quotes.payload,
         offChain.quotes.at,
@@ -6948,10 +7015,23 @@ __turbopack_context__.s([
     ()=>PipelineFlowDiagram
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/proofAxes.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPipelineAxesProvider$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/ProofPipelineAxesProvider.tsx [app-ssr] (ecmascript)");
 'use client';
 ;
 ;
+;
+/**
+ * Human-readable panel name per axis. Used by the jump-link `aria-label`
+ * on each flow node so screen readers announce the navigation intent
+ * ("Jump to live quotes panel") instead of repeating the node label.
+ * Lives next to `PANEL_BY_AXIS` (which carries the anchor id and chip
+ * reason copy) so future copy edits land in one file — see #0054.
+ */ const PANEL_HUMAN_NAME = {
+    quotes: 'live quotes',
+    onChain: 'on-chain oracle',
+    hedgeProof: 'last demo hedge'
+};
 const NODES = [
     {
         id: 'etoro',
@@ -7077,76 +7157,239 @@ function PipelineFlowDiagram() {
         "aria-label": "Pipeline flow",
         "data-testid": "pipeline-flow-diagram",
         className: "rounded-2xl border border-white/10 bg-dark-100/40 px-4 py-3",
-        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ol", {
-            className: "flex flex-wrap items-center gap-y-2 text-xs",
-            children: NODES.map((node, idx)=>{
-                const resolved = resolveAxisForSegment(node.axis, axes);
-                const edge = EDGES[idx];
-                const edgeResolved = edge ? resolveAxisForSegment(edge.axis, axes) : null;
-                return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FlowNode, {
-                    spec: node,
-                    tone: axisToTone(resolved.axis),
-                    showHedgeProofIndicator: node.id === 'demo-hedge' && resolved.subordinated && resolved.ok,
-                    trailingEdge: edge && edgeResolved ? {
-                        spec: edge,
-                        tone: axisToTone(edgeResolved.axis)
-                    } : null
-                }, `node-${node.id}`, false, {
-                    fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                    lineNumber: 128,
-                    columnNumber: 13
-                }, this);
-            })
-        }, void 0, false, {
-            fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-            lineNumber: 122,
-            columnNumber: 7
-        }, this)
-    }, void 0, false, {
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ol", {
+                className: "flex flex-wrap items-center gap-y-2 text-xs",
+                children: NODES.map((node, idx)=>{
+                    const resolved = resolveAxisForSegment(node.axis, axes);
+                    const edge = EDGES[idx];
+                    const edgeResolved = edge ? resolveAxisForSegment(edge.axis, axes) : null;
+                    const statusSentence = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["describeAxisForFlowNode"])(node.label, resolved, node.axis);
+                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FlowNode, {
+                        spec: node,
+                        tone: axisToTone(resolved.axis),
+                        statusSentence: statusSentence,
+                        showHedgeProofIndicator: node.id === 'demo-hedge' && resolved.subordinated && resolved.ok,
+                        trailingEdge: edge && edgeResolved ? {
+                            spec: edge,
+                            tone: axisToTone(edgeResolved.axis)
+                        } : null
+                    }, `node-${node.id}`, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 141,
+                        columnNumber: 13
+                    }, this);
+                })
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 134,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ToneLegend, {}, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 156,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 117,
+        lineNumber: 129,
         columnNumber: 5
     }, this);
 }
-function FlowNode({ spec, tone, trailingEdge, showHedgeProofIndicator }) {
+/**
+ * Inline three-entry tone legend mapping each pipeline-flow tone family
+ * to its user-facing word — see #0057. The legend is descriptive
+ * content, not interactive, and is wrapped in an `aria-label`-ed `<ul>`
+ * so screen readers announce it as a single grouped region.
+ *
+ * Layout: on viewports ≥ sm the legend right-aligns on the same row as
+ * the node strip wraps onto when there's space; on smaller viewports it
+ * wraps below. The swatch uses a tiny ringed circle (not the node's
+ * rounded-lg rectangle) so the visual primitive is clearly "swatch",
+ * not "pill".
+ */ function ToneLegend() {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
+        "aria-label": "Pipeline tone legend",
+        "data-testid": "pipeline-flow-legend",
+        className: "mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-wider text-gray-400 sm:mt-1 sm:justify-end",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                className: "inline-flex items-center gap-1.5",
+                "data-testid": "pipeline-legend-healthy",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        "aria-hidden": true,
+                        className: "inline-block h-2 w-2 rounded-full border border-green-500/50 bg-green-500/20"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 181,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        children: "healthy"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 185,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 180,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                className: "inline-flex items-center gap-1.5",
+                "data-testid": "pipeline-legend-degraded",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        "aria-hidden": true,
+                        className: "inline-block h-2 w-2 rounded-full border border-yellow-500/50 bg-yellow-500/20"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 188,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        children: "degraded"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 192,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 187,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                className: "inline-flex items-center gap-1.5",
+                "data-testid": "pipeline-legend-loading",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        "aria-hidden": true,
+                        className: "inline-block h-2 w-2 rounded-full border border-white/15 bg-white/5"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 195,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        children: "loading"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 199,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 194,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                className: "inline-flex items-center gap-1.5 sm:ml-2",
+                "data-testid": "pipeline-legend-hedge-subordinated",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        "aria-hidden": true,
+                        className: "inline-block h-1.5 w-1.5 rounded-full bg-green-400/80"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 215,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        children: "hedge-proof healthy (mirroring upstream tone)"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 219,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 211,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+        lineNumber: 175,
+        columnNumber: 5
+    }, this);
+}
+const PILL_BASE_CLASS = 'inline-flex items-baseline gap-1.5 rounded-lg border px-3 py-1.5';
+const PILL_INTERACTIVE_CLASS = 'no-underline transition-colors hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 focus-visible:ring-accent/60';
+function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndicator }) {
+    // The upstream `eToro` source has no first-class panel; rendering it as
+    // an anchor that links to the live-quotes panel would duplicate the
+    // adjacent `price-service` click target. All other nodes carry a stable
+    // anchor in `PANEL_BY_AXIS`, so the jump map is exhaustive over the
+    // remaining `AxisKey` values without a switch.
+    const anchor = spec.id === 'etoro' ? null : __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PANEL_BY_AXIS"][spec.axis].anchor;
+    const pillClass = `${PILL_BASE_CLASS} ${TONE_NODE_CLASS[tone]}`;
+    const pillContent = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                className: "font-mono uppercase tracking-wider",
+                children: spec.label
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 253,
+                columnNumber: 7
+            }, this),
+            spec.subtitle && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                className: "text-[10px] uppercase tracking-wider text-gray-400",
+                children: spec.subtitle
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 255,
+                columnNumber: 9
+            }, this),
+            showHedgeProofIndicator && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                "aria-hidden": true,
+                "data-testid": `pipeline-node-${spec.id}-indicator`,
+                title: "hedge-proof axis healthy — pill colour mirrors upstream tone",
+                className: "ml-1 inline-block h-1.5 w-1.5 self-center rounded-full bg-green-400/80"
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 258,
+                columnNumber: 9
+            }, this)
+        ]
+    }, void 0, true);
+    // When the node is an anchor, the aria-label overrides the rendered
+    // text for screen readers — append the jump intent so both halves are
+    // announced (the axis state from #0055 plus the panel-jump from #0054).
+    const linkAriaLabel = `${statusSentence} — jump to ${PANEL_HUMAN_NAME[spec.axis]} panel`;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
         "data-testid": `pipeline-node-${spec.id}`,
         "data-tone": tone,
         className: "inline-flex items-center",
         children: [
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                className: `inline-flex items-baseline gap-1.5 rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`,
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "font-mono uppercase tracking-wider",
-                        children: spec.label
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 166,
-                        columnNumber: 9
-                    }, this),
-                    spec.subtitle && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "text-[10px] uppercase tracking-wider text-gray-400",
-                        children: spec.subtitle
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 168,
-                        columnNumber: 11
-                    }, this),
-                    showHedgeProofIndicator && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        "aria-hidden": true,
-                        "data-testid": `pipeline-node-${spec.id}-indicator`,
-                        className: "ml-1 inline-block h-1.5 w-1.5 self-center rounded-full bg-green-400/80"
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 171,
-                        columnNumber: 11
-                    }, this)
-                ]
-            }, void 0, true, {
+            anchor ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                href: `#${anchor}`,
+                "data-testid": `pipeline-node-${spec.id}-link`,
+                className: `${pillClass} ${PILL_INTERACTIVE_CLASS}`,
+                title: statusSentence,
+                "aria-label": linkAriaLabel,
+                children: pillContent
+            }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 163,
-                columnNumber: 7
+                lineNumber: 280,
+                columnNumber: 9
+            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                className: pillClass,
+                title: statusSentence,
+                "aria-label": statusSentence,
+                children: pillContent
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                lineNumber: 290,
+                columnNumber: 9
             }, this),
             trailingEdge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                 "aria-hidden": true,
@@ -7156,13 +7399,13 @@ function FlowNode({ spec, tone, trailingEdge, showHedgeProofIndicator }) {
                 children: "→"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 179,
+                lineNumber: 295,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 158,
+        lineNumber: 274,
         columnNumber: 5
     }, this);
 }
@@ -7183,52 +7426,74 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$component
 ;
 ;
 ;
+/**
+ * Outer container className shared by every verdict branch (loading,
+ * amber, red, green). Hoisted so a layout-shift regression in one
+ * branch is impossible — the box height is pinned by `min-h` on every
+ * branch.
+ *
+ * `min-h-[4.75rem]` matches the typical resolved height (chip row +
+ * reason chips line + last-alive caption + `py-3`) so the page does
+ * NOT reflow when the rollup transitions from skeleton to coloured
+ * content.  See task lane6-pipeline-status-rollup-blank-during-panel-
+ * first-paint (0059).
+ */ const BANNER_OUTER_BASE_CLASS = 'rounded-2xl px-4 py-3 min-h-[4.75rem]';
+const BANNER_TONE_CLASS = {
+    loading: 'border border-white/10 bg-dark-100/60',
+    green: 'border border-green-500/30 bg-green-500/5',
+    amber: 'border border-yellow-500/40 bg-yellow-500/5',
+    red: 'border border-red-500/40 bg-red-500/10'
+};
+function bannerOuterClass(verdict) {
+    return `${BANNER_OUTER_BASE_CLASS} ${BANNER_TONE_CLASS[verdict]}`;
+}
 function PipelineStatusBanner() {
-    const { axes, verdict, lastFullyAliveAt } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPipelineAxesProvider$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useProofPipelineAxesContext"])();
+    const { axes, partialVerdict, resolvedAxisCount, lastFullyAliveAt } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPipelineAxesProvider$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useProofPipelineAxesContext"])();
     /**
    * Drives the 1s "Xs ago" tick under the degraded/red verdict line.
    * Pure presentation — does not own the underlying timestamp.
    */ const [now, setNow] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(()=>Date.now());
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         if (lastFullyAliveAt === null) return;
-        if (verdict === 'green' || verdict === 'loading') return;
+        if (partialVerdict === 'green' || partialVerdict === 'loading') return;
         setNow(Date.now());
         const id = setInterval(()=>setNow(Date.now()), 1_000);
         return ()=>clearInterval(id);
     }, [
         lastFullyAliveAt,
-        verdict
+        partialVerdict
     ]);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(PipelineStatusView, {
         axes: axes,
-        verdict: verdict,
+        verdict: partialVerdict,
+        resolvedAxisCount: resolvedAxisCount,
         lastFullyAliveAt: lastFullyAliveAt,
         now: now
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-        lineNumber: 32,
+        lineNumber: 73,
         columnNumber: 5
     }, this);
 }
-function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
+function PipelineStatusView({ axes, verdict, resolvedAxisCount, lastFullyAliveAt, now }) {
     if (verdict === 'loading') {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
             "aria-label": "Pipeline status",
             "data-testid": "pipeline-status-banner",
             "data-status": "loading",
-            className: "rounded-2xl border border-white/10 bg-dark-100/60 px-4 py-3",
+            className: bannerOuterClass(verdict),
             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 role: "status",
                 "aria-label": "Loading pipeline status",
                 className: "h-5 w-56 animate-pulse rounded bg-white/10"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                lineNumber: 57,
+                lineNumber: 106,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-            lineNumber: 51,
+            lineNumber: 100,
             columnNumber: 7
         }, this);
     }
@@ -7237,7 +7502,7 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
             "aria-label": "Pipeline status",
             "data-testid": "pipeline-status-banner",
             "data-status": "green",
-            className: "rounded-2xl border border-green-500/30 bg-green-500/5 px-4 py-3",
+            className: bannerOuterClass(verdict),
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "flex flex-wrap items-center gap-3 text-sm",
@@ -7250,14 +7515,14 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                                     "aria-hidden": true
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                    lineNumber: 76,
+                                    lineNumber: 125,
                                     columnNumber: 13
                                 }, this),
                                 "Alive"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 75,
+                            lineNumber: 124,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7265,13 +7530,13 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                             children: "Live quotes fresh · on-chain oracle returning data · hedge-proof artifact present"
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 79,
+                            lineNumber: 128,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 74,
+                    lineNumber: 123,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(LastAliveLine, {
@@ -7280,13 +7545,13 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                     now: now
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 83,
+                    lineNumber: 132,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-            lineNumber: 68,
+            lineNumber: 117,
             columnNumber: 7
         }, this);
     }
@@ -7296,7 +7561,7 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
             "aria-label": "Pipeline status",
             "data-testid": "pipeline-status-banner",
             "data-status": "red",
-            className: "rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3",
+            className: bannerOuterClass(verdict),
             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 role: "alert",
                 children: [
@@ -7311,14 +7576,14 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                                         "aria-hidden": true
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                        lineNumber: 103,
+                                        lineNumber: 152,
                                         columnNumber: 15
                                     }, this),
                                     "Cold"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                lineNumber: 102,
+                                lineNumber: 151,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7326,13 +7591,13 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                                 children: "All upstreams unreachable; this release is not verifiable."
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                lineNumber: 106,
+                                lineNumber: 155,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                        lineNumber: 101,
+                        lineNumber: 150,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ReasonChips, {
@@ -7340,7 +7605,14 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                         tone: "red"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                        lineNumber: 110,
+                        lineNumber: 159,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(RollupProgress, {
+                        resolvedAxisCount: resolvedAxisCount
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                        lineNumber: 160,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(LastAliveLine, {
@@ -7349,18 +7621,18 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                         now: now
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                        lineNumber: 111,
+                        lineNumber: 161,
                         columnNumber: 11
                     }, this)
                 ]
             }, "red", true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                lineNumber: 100,
+                lineNumber: 149,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-            lineNumber: 94,
+            lineNumber: 143,
             columnNumber: 7
         }, this);
     }
@@ -7368,7 +7640,7 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
         "aria-label": "Pipeline status",
         "data-testid": "pipeline-status-banner",
         "data-status": "amber",
-        className: "rounded-2xl border border-yellow-500/40 bg-yellow-500/5 px-4 py-3",
+        className: bannerOuterClass(verdict),
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             role: "alert",
             children: [
@@ -7383,14 +7655,14 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                                     "aria-hidden": true
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                    lineNumber: 127,
+                                    lineNumber: 177,
                                     columnNumber: 13
                                 }, this),
                                 "Degraded"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 126,
+                            lineNumber: 176,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7398,13 +7670,13 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                             children: "Pipeline partially alive — investigate the listed axes before shipping."
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 130,
+                            lineNumber: 180,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 125,
+                    lineNumber: 175,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ReasonChips, {
@@ -7412,7 +7684,14 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                     tone: "amber"
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 134,
+                    lineNumber: 184,
+                    columnNumber: 9
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(RollupProgress, {
+                    resolvedAxisCount: resolvedAxisCount
+                }, void 0, false, {
+                    fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                    lineNumber: 185,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(LastAliveLine, {
@@ -7421,18 +7700,42 @@ function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
                     now: now
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 135,
+                    lineNumber: 186,
                     columnNumber: 9
                 }, this)
             ]
         }, "amber", true, {
             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-            lineNumber: 124,
+            lineNumber: 174,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-        lineNumber: 118,
+        lineNumber: 168,
+        columnNumber: 5
+    }, this);
+}
+/**
+ * "Computing N of M axes…" caption rendered when at least one axis
+ * has reported but not all of them have. Disappears entirely once
+ * every axis has resolved — at which point the rollup either matches
+ * the strict {@link deriveVerdict} value or has already settled on a
+ * degraded/cold verdict that the caption can't refine.
+ */ function RollupProgress({ resolvedAxisCount }) {
+    if (resolvedAxisCount <= 0 || resolvedAxisCount >= __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TOTAL_AXIS_COUNT"]) return null;
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+        "data-testid": "rollup-progress",
+        className: "mt-1 text-[11px] text-gray-400",
+        children: [
+            "Computing ",
+            resolvedAxisCount,
+            " of ",
+            __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TOTAL_AXIS_COUNT"],
+            " axes — banner refines as remaining axes report."
+        ]
+    }, void 0, true, {
+        fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+        lineNumber: 202,
         columnNumber: 5
     }, this);
 }
@@ -7451,7 +7754,7 @@ function LastAliveLine({ verdict, lastFullyAliveAt, now }) {
                 children: "Last fully alive: just now"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                lineNumber: 160,
+                lineNumber: 228,
                 columnNumber: 9
             }, this);
         case 'amber':
@@ -7469,7 +7772,7 @@ function LastAliveLine({ verdict, lastFullyAliveAt, now }) {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                        lineNumber: 169,
+                        lineNumber: 237,
                         columnNumber: 11
                     }, this);
                 }
@@ -7487,7 +7790,7 @@ function LastAliveLine({ verdict, lastFullyAliveAt, now }) {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 177,
+                    lineNumber: 245,
                     columnNumber: 9
                 }, this);
             }
@@ -7513,7 +7816,7 @@ function ReasonChips({ entries, tone }) {
                             children: e.reason
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 205,
+                            lineNumber: 273,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7521,23 +7824,23 @@ function ReasonChips({ entries, tone }) {
                             children: "↓"
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 206,
+                            lineNumber: 274,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 199,
+                    lineNumber: 267,
                     columnNumber: 11
                 }, this)
             }, e.anchor, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                lineNumber: 198,
+                lineNumber: 266,
                 columnNumber: 9
             }, this))
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-        lineNumber: 196,
+        lineNumber: 264,
         columnNumber: 5
     }, this);
 }
@@ -7996,16 +8299,151 @@ function LivePricesProofPage() {
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                         className: "font-semibold text-white",
-                                        children: "How to read this page:"
+                                        children: "How to read this page"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
                                         lineNumber: 54,
                                         columnNumber: 13
                                     }, this),
-                                    ' ',
-                                    "Each panel below is the live output of one service in the live-prices pipeline. A panel rendering numbers means that service is alive and producing data. A panel rendering a yellow “degraded” or “awaiting” notice is the service's own intentional fallback — the page never silently swallows an error or an empty feed."
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "mt-1 text-sm text-gray-300",
+                                        children: "The page reads top-to-bottom as a single pipeline check. Each section below tells you something different:"
+                                    }, void 0, false, {
+                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                        lineNumber: 55,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ol", {
+                                        className: "mt-3 space-y-1.5 text-sm text-gray-300",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "font-semibold text-white",
+                                                        children: "1. Safety banner"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                        lineNumber: 61,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    ' — ',
+                                                    "confirms real trading is fenced off (",
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
+                                                        className: "text-accent",
+                                                        children: "REAL_TRADING_ENABLED = false"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                        lineNumber: 63,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    ",",
+                                                    ' ',
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
+                                                        className: "text-accent",
+                                                        children: "ETORO_MODE = sandbox"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                        lineNumber: 64,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    ")."
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                lineNumber: 60,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "font-semibold text-white",
+                                                        children: "2. Verdict banner"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                        lineNumber: 67,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    ' — ',
+                                                    "one-line rollup of the whole pipeline (",
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "text-green-300",
+                                                        children: "Alive"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                        lineNumber: 69,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    ",",
+                                                    ' ',
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "text-yellow-200",
+                                                        children: "Degraded"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                        lineNumber: 70,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    ", or",
+                                                    ' ',
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "text-red-300",
+                                                        children: "Cold"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                        lineNumber: 71,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    "). Any failing axis becomes a clickable chip that jumps to the corresponding panel below."
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                lineNumber: 66,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "font-semibold text-white",
+                                                        children: "3. Pipeline flow"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                        lineNumber: 75,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    ' — ',
+                                                    "the six services that data passes through. Each pill is coloured by health (green = healthy, yellow = degraded, gray = loading first read), and clicking a pill jumps to the matching panel."
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                lineNumber: 74,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "font-semibold text-white",
+                                                        children: "4. Data panels"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                        lineNumber: 81,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    ' — ',
+                                                    "per-service deep-dive: live quotes, on-chain oracle, recent oracle updates, last demo hedge. A panel rendering numbers means that service is alive and producing data; a yellow “degraded” or “awaiting” notice is the service's own intentional fallback — the page never silently swallows an error or an empty feed."
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                                lineNumber: 80,
+                                                columnNumber: 15
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                                        lineNumber: 59,
+                                        columnNumber: 13
+                                    }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
@@ -8028,12 +8466,12 @@ function LivePricesProofPage() {
                 label: "Safety Banner",
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$SafetyBanner$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SafetyBanner"], {}, void 0, false, {
                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                    lineNumber: 66,
+                    lineNumber: 95,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 65,
+                lineNumber: 94,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPipelineAxesProvider$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPipelineAxesProvider"], {
@@ -8044,17 +8482,17 @@ function LivePricesProofPage() {
                             label: "Pipeline Status",
                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PipelineStatusBanner$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PipelineStatusBanner"], {}, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                lineNumber: 72,
+                                lineNumber: 101,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                            lineNumber: 71,
+                            lineNumber: 100,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 70,
+                        lineNumber: 99,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8063,17 +8501,17 @@ function LivePricesProofPage() {
                             label: "Pipeline Flow",
                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PipelineFlowDiagram$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PipelineFlowDiagram"], {}, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                lineNumber: 78,
+                                lineNumber: 107,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                            lineNumber: 77,
+                            lineNumber: 106,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 76,
+                        lineNumber: 105,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8083,60 +8521,60 @@ function LivePricesProofPage() {
                                 label: "Live Quotes",
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$LiveQuotesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LiveQuotesPanel"], {}, void 0, false, {
                                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                    lineNumber: 84,
+                                    lineNumber: 113,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                lineNumber: 83,
+                                lineNumber: 112,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
                                 label: "On-chain Oracle",
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OnChainOraclePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OnChainOraclePanel"], {}, void 0, false, {
                                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                    lineNumber: 87,
+                                    lineNumber: 116,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                lineNumber: 86,
+                                lineNumber: 115,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
                                 label: "Oracle Updates",
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OracleUpdatesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OracleUpdatesPanel"], {}, void 0, false, {
                                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                    lineNumber: 90,
+                                    lineNumber: 119,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                lineNumber: 89,
+                                lineNumber: 118,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
                                 label: "Last Demo Hedge",
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$LastDemoHedgePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LastDemoHedgePanel"], {}, void 0, false, {
                                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                    lineNumber: 93,
+                                    lineNumber: 122,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                lineNumber: 92,
+                                lineNumber: 121,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 82,
+                        lineNumber: 111,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 69,
+                lineNumber: 98,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("footer", {
@@ -8151,19 +8589,19 @@ function LivePricesProofPage() {
                             children: "0007f-qa-proof-release"
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                            lineNumber: 104,
+                            lineNumber: 133,
                             columnNumber: 11
                         }, this),
                         " (Lane 6)."
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                    lineNumber: 102,
+                    lineNumber: 131,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 98,
+                lineNumber: 127,
                 columnNumber: 7
             }, this)
         ]
