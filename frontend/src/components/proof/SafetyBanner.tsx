@@ -1,7 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { REAL_TRADING_ENABLED, type SafetyStateResponse } from '@/lib/safety'
+import {
+  ALLOWED_ETORO_MODES,
+  REAL_TRADING_ENABLED,
+  isEtoroModeAllowed,
+  type SafetyStateResponse,
+} from '@/lib/safety'
 
 type FetchState =
   | { status: 'loading' }
@@ -58,9 +63,15 @@ export function SafetyBanner({ endpoint = '/api/safety-state' }: SafetyBannerPro
 
   const apiOk = state.data.realTradingEnabled === false
   const frontendOk = REAL_TRADING_ENABLED === false
-  const safe = apiOk && frontendOk
+  const modeOk = isEtoroModeAllowed(state.data.etoroMode)
+  const safe = apiOk && frontendOk && modeOk
 
   if (!safe) {
+    const realTradingTripped = !apiOk || !frontendOk
+    const headline = realTradingTripped
+      ? 'REFUSAL: real trading flag tripped. This release is NOT safe to ship.'
+      : 'REFUSAL: ETORO_MODE is outside the allowed demo set. This release is NOT safe to ship.'
+    const allowedList = ALLOWED_ETORO_MODES.join(', ')
     return (
       <div
         role="alert"
@@ -68,13 +79,18 @@ export function SafetyBanner({ endpoint = '/api/safety-state' }: SafetyBannerPro
       >
         <div className="flex items-center gap-2 text-sm font-semibold text-red-200">
           <span className="inline-block h-2 w-2 rounded-full bg-red-400" aria-hidden />
-          REFUSAL: real trading flag tripped. This release is NOT safe to ship.
+          {headline}
         </div>
         <div className="mt-1 text-xs text-red-300/80">
           frontend.REAL_TRADING_ENABLED = {String(frontendOk ? false : true)} ·
           server.realTradingEnabled = {String(state.data.realTradingEnabled)} ·
-          ETORO_MODE = {state.data.etoroMode}
+          ETORO_MODE = {state.data.etoroMode || '(unset)'}
         </div>
+        {!modeOk && (
+          <div className="mt-1 text-xs text-red-300/80">
+            failed: ETORO_MODE (allowed: {allowedList})
+          </div>
+        )}
       </div>
     )
   }

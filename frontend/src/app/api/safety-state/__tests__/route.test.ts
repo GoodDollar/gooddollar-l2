@@ -30,4 +30,13 @@ describe('/api/safety-state', () => {
     expect(body.realTradingEnabled).toBe(false)
     expect(body.etoroMode).toBe('real')
   })
+
+  it('echoes unknown ETORO_MODE values verbatim — the API is a passthrough', async () => {
+    process.env.ETORO_MODE = 'mock'
+    const req = new NextRequest('http://localhost/api/safety-state')
+    const res = await GET(req)
+    const body = await res.json()
+    expect(body.realTradingEnabled).toBe(false)
+    expect(body.etoroMode).toBe('mock')
+  })
 })
