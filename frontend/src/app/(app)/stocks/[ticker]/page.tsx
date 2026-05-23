@@ -13,6 +13,7 @@ import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { hasLiveOracleChange } from '@/lib/oracleHonesty'
 import { AnalysisGrid } from '@/components/stocks/AnalysisGrid'
+import { DemoChartOverlay } from '@/components/stocks/DemoChartOverlay'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
@@ -685,7 +686,8 @@ export default function StockDetailPage() {
             <AnalystOutlookCard isLoading={analystLoading} />
           </Suspense>
 
-          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
+          <div className="relative bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
+            {chartView === 'price' && <DemoChartOverlay isLive={isLive} />}
             <div className="flex items-center justify-between mb-3">
               <div className="flex gap-1">
                 {chartView === 'price' && TIMEFRAMES.map(tf => (

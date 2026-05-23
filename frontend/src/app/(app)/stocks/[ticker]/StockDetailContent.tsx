@@ -27,6 +27,7 @@ import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/wa
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { BidAskSpread, PriceWithTick } from '@/components/BidAskSpread'
 import { SentimentCard } from '@/components/SentimentCard'
+import { DemoChartOverlay } from '@/components/stocks/DemoChartOverlay'
 
 const DeferredPriceChart = dynamic(
   () => import('@/components/PriceChart').then((module) => module.PriceChart),
@@ -573,7 +574,8 @@ export function StockDetailContent() {
 
           <DeferredAnalystOutlookCard isLoading={false} />
 
-          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
+          <div className="relative bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
+            <DemoChartOverlay isLive={isLive} />
             <div className="flex gap-1 mb-3">
               {TIMEFRAMES.map(tf => (
                 <button key={tf} onClick={() => setTimeframe(tf)}
