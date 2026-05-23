@@ -211,13 +211,19 @@ describe('HedgeStatusCard', () => {
     expect(empty).toHaveTextContent(/cache miss/i);
   });
 
-  it('shows an error fallback when the API rejects', async () => {
+  it('shows the canonical "is unreachable" banner when the API rejects with an unknown error (#0034)', async () => {
+    // The legacy banner leaked the raw runtime message verbatim
+    // (`ECONNREFUSED`, `Failed to fetch`, `Unexpected token '<'`). After
+    // #0034 every catch-arm error flows through `classifyClientError` so
+    // the banner reads as a single branded sentence.
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
     render(<HedgeStatusCard />);
     await waitFor(() => {
       expect(screen.getByTestId('hedge-status-error')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('hedge-status-error')).toHaveTextContent('ECONNREFUSED');
+    const banner = screen.getByTestId('hedge-status-error');
+    expect(banner.textContent).toMatch(/Hedge engine is unreachable/i);
+    expect(banner.textContent).not.toContain('ECONNREFUSED');
   });
 
   it('error banner has bottom-margin (mb-3) so it does not butt against the receipts panel', async () => {
@@ -973,6 +979,96 @@ describe('HedgeStatusCard', () => {
       await waitFor(() => {
         expect(fetchSpy.mock.calls.length).toBeGreaterThan(before);
       });
+    });
+  });
+
+  describe('non-503 banner copy (#0034)', () => {
+    it('renders the server-provided reason on 502 instead of "HTTP 502"', async () => {
+      mockFetchOnce(
+        { error: 'Hedge engine returned an error', httpStatus: 502 },
+        { status: 502 },
+      );
+      render(<HedgeStatusCard />);
+      const banner = await screen.findByTestId('hedge-status-error');
+      expect(banner.textContent).toMatch(/Hedge engine returned an error\./i);
+      expect(banner.textContent).not.toContain('HTTP 502');
+    });
+
+    it('falls back to "upstream error (HTTP 500)" when body has no error field', async () => {
+      mockFetchOnce({}, { status: 500 });
+      render(<HedgeStatusCard />);
+      const banner = await screen.findByTestId('hedge-status-error');
+      expect(banner.textContent).toContain('upstream error (HTTP 500)');
+      expect(banner.textContent).not.toMatch(/^Hedge engine is HTTP 500\.$/i);
+    });
+
+    it('classifies a "Failed to fetch" rejection into branded copy without leaking the raw string', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+      render(<HedgeStatusCard />);
+      const banner = await screen.findByTestId('hedge-status-error');
+      expect(banner.textContent ?? '').toMatch(/no network connection|unreachable/i);
+      expect(banner.textContent).not.toContain('Failed to fetch');
+    });
+
+    it('classifies a NetworkError rejection (Firefox) into branded copy', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+        new TypeError('NetworkError when attempting to fetch resource.'),
+      );
+      render(<HedgeStatusCard />);
+      const banner = await screen.findByTestId('hedge-status-error');
+      expect(banner.textContent ?? '').toMatch(/no network connection|unreachable/i);
+      expect(banner.textContent).not.toContain('NetworkError');
+    });
+
+    it('classifies a JSON parse failure (HTML body) into "unreadable response"', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response('<!DOCTYPE html><html></html>', {
+          status: 502,
+          headers: { 'Content-Type': 'text/html' },
+        }),
+      );
+      render(<HedgeStatusCard />);
+      const banner = await screen.findByTestId('hedge-status-error');
+      expect(banner.textContent ?? '').toMatch(/unreadable response/i);
+      expect(banner.textContent).not.toContain('<!DOCTYPE');
+      expect(banner.textContent).not.toMatch(/Unexpected token/i);
+    });
+
+    it('falls back to "Hedge engine is unreachable" for a non-Error rejection', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue('kaboom');
+      render(<HedgeStatusCard />);
+      const banner = await screen.findByTestId('hedge-status-error');
+      expect(banner.textContent ?? '').toMatch(/Hedge engine is unreachable/i);
+      expect(banner.textContent).not.toContain('unknown');
+      expect(banner.textContent).not.toContain('kaboom');
+    });
+
+    it('regression: 503 envelope still reads "Hedge engine is unreachable."', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const banner = await screen.findByTestId('hedge-status-error');
+      expect(banner.textContent).toMatch(/Hedge engine is unreachable/i);
+    });
+
+    it('regression: 429 path still triggers the throttle banner, not the error banner', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 5 }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', 'Retry-After': '5' },
+        }),
+      );
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-status-throttled');
+      expect(screen.queryByTestId('hedge-status-error')).toBeNull();
     });
   });
 
