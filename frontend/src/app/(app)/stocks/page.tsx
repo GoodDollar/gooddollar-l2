@@ -223,16 +223,21 @@ export default function StocksPage() {
     }
   }
 
-  const filtered = useMemo(() => {
+  // The `filteredStocks` predicate is the single source of truth for which
+  // symbols pass the active filters. Hoisted so per-symbol modules above the
+  // Browse table (Drift & Rebalance dashboard, Top Movers) honour the same
+  // filters — the user expects the page to narrow as a unit, not to leave
+  // a three-screen-tall page where half the modules ignore their selection.
+  const filteredStocks = useMemo(() => {
     let stocks = data
     if (watchlistActive) {
-      stocks = stocks.filter(s => favorites.has(s.ticker))
+      stocks = stocks.filter((s) => favorites.has(s.ticker))
     }
     const trimmed = query.trim()
     if (trimmed) {
       const q = trimmed.toLowerCase()
-      stocks = stocks.filter(s =>
-        s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
+      stocks = stocks.filter(
+        (s) => s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q),
       )
     }
     if (sectorFilter !== 'all') {
@@ -246,16 +251,33 @@ export default function StocksPage() {
       })
     }
     if (momentumFilter !== 'all') {
-      stocks = stocks.filter((s) => momentumFilter === 'gainers' ? s.change24h >= 0 : s.change24h < 0)
+      stocks = stocks.filter((s) => (momentumFilter === 'gainers' ? s.change24h >= 0 : s.change24h < 0))
     }
     if (liquidityFilter !== 'all') {
-      stocks = stocks.filter((s) => liquidityFilter === 'active' ? s.volume24h >= 50_000_000 : s.volume24h < 50_000_000)
+      stocks = stocks.filter((s) =>
+        liquidityFilter === 'active' ? s.volume24h >= 50_000_000 : s.volume24h < 50_000_000,
+      )
     }
-    return [...stocks].sort((a, b) => {
-      const mul = sortDir === 'asc' ? 1 : -1
-      return (a[sortField] - b[sortField]) * mul
-    })
-  }, [data, query, sortField, sortDir, sectorFilter, capFilter, momentumFilter, liquidityFilter, watchlistActive, favorites])
+    return stocks
+  }, [data, query, sectorFilter, capFilter, momentumFilter, liquidityFilter, watchlistActive, favorites])
+
+  const filtered = useMemo(() => {
+    const mul = sortDir === 'asc' ? 1 : -1
+    return [...filteredStocks].sort((a, b) => (a[sortField] - b[sortField]) * mul)
+  }, [filteredStocks, sortField, sortDir])
+
+  const filteredTickerSet = useMemo(
+    () => new Set(filteredStocks.map((s) => s.ticker)),
+    [filteredStocks],
+  )
+
+  const filteredRebalanceSymbols = useMemo(() => {
+    const all = rebalanceStatus?.symbols ?? []
+    if (filteredStocks.length === data.length) return all
+    return all.filter((entry) => filteredTickerSet.has(entry.symbol))
+  }, [data.length, filteredStocks.length, filteredTickerSet, rebalanceStatus?.symbols])
+
+  const isFiltered = filteredStocks.length < data.length
 
   const activeFilterCount = Number(sectorFilter !== 'all') + Number(capFilter !== 'all') + Number(momentumFilter !== 'all') + Number(liquidityFilter !== 'all')
   const hasSearchQuery = query.trim().length > 0
@@ -416,7 +438,8 @@ export default function StocksPage() {
       )}
 
       <MarketIntelligencePanel
-        stocks={data}
+        stocks={filteredStocks}
+        globalStocks={data}
         isLive={isLive}
         isLoading={isLoading}
         onSelectTicker={pushTickerRoute}
@@ -495,7 +518,9 @@ export default function StocksPage() {
       </div>
       <div className="mb-4">
         <StocksRebalanceDashboard
-          symbols={rebalanceStatus?.symbols ?? []}
+          symbols={filteredRebalanceSymbols}
+          totalCount={rebalanceStatus?.symbols?.length ?? 0}
+          isFiltered={isFiltered}
           isLoading={rebalanceLoading}
           error={rebalanceError}
         />

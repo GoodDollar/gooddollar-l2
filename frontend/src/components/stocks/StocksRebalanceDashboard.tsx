@@ -5,6 +5,14 @@ import { NO_DATA_DASH } from '@/lib/formatNoData'
 
 interface StocksRebalanceDashboardProps {
   symbols: RebalanceInvariantResult[]
+  /**
+   * Unfiltered symbol count for the heading "Showing N of M (filtered)" hint.
+   * When the parent narrows `symbols` via the page filters, surface the
+   * total here so users can see how many rows the filter hid.
+   */
+  totalCount?: number
+  /** Hint that the parent's filter is currently narrowing `symbols`. */
+  isFiltered?: boolean
   isLoading?: boolean
   error?: string | null
 }
@@ -29,12 +37,26 @@ function statusLabel(entry: RebalanceInvariantResult): string {
   return entry.riskIncreaseAllowed ? 'Open' : 'Stopped'
 }
 
-export function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }: StocksRebalanceDashboardProps) {
+export function StocksRebalanceDashboard({
+  symbols,
+  totalCount,
+  isFiltered = false,
+  isLoading = false,
+  error = null,
+}: StocksRebalanceDashboardProps) {
+  const showFilteredHeading = isFiltered && typeof totalCount === 'number'
   return (
     <section className="rounded-2xl border border-gray-700/20 bg-dark-100/50 p-4 sm:p-5" aria-label="Stocks drift and rebalance dashboard">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div>
-          <h2 className="text-sm sm:text-base font-semibold text-white">Drift & Rebalance</h2>
+          <h2 className="text-sm sm:text-base font-semibold text-white" data-testid="rebalance-heading">
+            Drift &amp; Rebalance
+            {showFilteredHeading && (
+              <span className="text-gray-400 font-normal">
+                {` · Showing ${symbols.length} of ${totalCount} (filtered)`}
+              </span>
+            )}
+          </h2>
           <p className="text-xs text-gray-400">Per-symbol block coherence across AMM, perps, prediction, lend, and yield.</p>
         </div>
       </div>
@@ -52,7 +74,9 @@ export function StocksRebalanceDashboard({ symbols, isLoading = false, error = n
       )}
 
       {!isLoading && !error && symbols.length === 0 && (
-        <p className="text-xs text-gray-400">No active symbols reported.</p>
+        <p className="text-xs text-gray-400" data-testid="rebalance-empty">
+          {isFiltered ? 'No symbols match the current filters.' : 'No active symbols reported.'}
+        </p>
       )}
 
       {!isLoading && !error && symbols.length > 0 && (

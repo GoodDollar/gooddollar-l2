@@ -23,15 +23,27 @@ function buildFallbackHeadlines(stocks: Stock[]) {
 
 export function MarketIntelligencePanel({
   stocks,
+  globalStocks,
   isLive,
   isLoading,
   onSelectTicker,
 }: {
+  /** Filtered stock set — drives the per-symbol Top Movers section. */
   stocks: Stock[]
+  /**
+   * Unfiltered stock set — drives the Upcoming Earnings + News Flow sections,
+   * which intentionally stay global so an "Automotive" filter doesn't blank
+   * the news/earnings calendar. Falls back to `stocks` for callers that
+   * haven't migrated yet.
+   */
+  globalStocks?: Stock[]
   isLive: boolean
   isLoading: boolean
   onSelectTicker: (ticker: string) => void
 }) {
+  const earningsSource = globalStocks ?? stocks
+  const headlinesSource = globalStocks ?? stocks
+  const isFiltered = !!globalStocks && globalStocks.length > stocks.length
   const [mode, setMode] = useState<MoversMode>('gainers')
 
   // Only consider symbols whose 24h change actually came from a live feed.
@@ -60,16 +72,17 @@ export function MarketIntelligencePanel({
   }, [mode, liveMovers])
 
   const earnings = useMemo(() => {
-    return stocks.slice(0, 5).map((stock, idx) => ({
+    return earningsSource.slice(0, 5).map((stock, idx) => ({
       ticker: stock.ticker,
       date: formatEventDate(idx + 1),
       period: `Q${(idx % 4) + 1} FY${new Date().getFullYear()}`,
     }))
-  }, [stocks])
+  }, [earningsSource])
 
-  const headlines = useMemo(() => buildFallbackHeadlines(stocks), [stocks])
+  const headlines = useMemo(() => buildFallbackHeadlines(headlinesSource), [headlinesSource])
   const isDemo = !isLive
   const hasData = stocks.length > 0
+  const hasGlobalData = (globalStocks ?? stocks).length > 0
 
   return (
     <section className="mb-4 rounded-2xl border border-gray-700/20 bg-dark-100 p-3 sm:p-4" aria-label="Market Intelligence">
@@ -139,14 +152,22 @@ export function MarketIntelligencePanel({
         </article>
 
         <article className="rounded-xl border border-gray-700/20 bg-dark-50/30 p-3">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">Upcoming Earnings</h3>
+          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-300">Upcoming Earnings</h3>
+          {isFiltered && (
+            <p
+              className="mb-2 text-[10px] text-gray-500"
+              data-testid="earnings-global-caption"
+            >
+              Always shows all markets · filters apply to Browse table and Rebalance dashboard.
+            </p>
+          )}
           {isLoading ? (
             <div className="space-y-1.5" aria-busy="true">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="animate-pulse h-8 rounded-lg bg-dark-50/30" />
               ))}
             </div>
-          ) : !hasData ? (
+          ) : !hasGlobalData ? (
             <p className="text-xs text-gray-500">No earnings events available.</p>
           ) : (
             <ul className="space-y-1.5">
@@ -167,14 +188,22 @@ export function MarketIntelligencePanel({
         </article>
 
         <article className="rounded-xl border border-gray-700/20 bg-dark-50/30 p-3">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">News Flow</h3>
+          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-300">News Flow</h3>
+          {isFiltered && (
+            <p
+              className="mb-2 text-[10px] text-gray-500"
+              data-testid="news-global-caption"
+            >
+              Always shows all markets · filters apply to Browse table and Rebalance dashboard.
+            </p>
+          )}
           {isLoading ? (
             <div className="space-y-1.5" aria-busy="true">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="animate-pulse h-8 rounded-lg bg-dark-50/30" />
               ))}
             </div>
-          ) : !hasData ? (
+          ) : !hasGlobalData ? (
             <p className="text-xs text-gray-500">No headlines available.</p>
           ) : (
             <ul className="space-y-2">
@@ -186,7 +215,7 @@ export function MarketIntelligencePanel({
                       <span className="text-[10px] text-gray-500">{item.age}</span>
                     </div>
                     <p className="text-gray-300">{item.title}</p>
-                    <p className="mt-1 text-[10px] text-gray-500">{item.source} · {formatStockPrice(stocks.find((s) => s.ticker === item.ticker)?.price ?? 0)}</p>
+                    <p className="mt-1 text-[10px] text-gray-500">{item.source} · {formatStockPrice(headlinesSource.find((s) => s.ticker === item.ticker)?.price ?? 0)}</p>
                   </button>
                 </li>
               ))}
