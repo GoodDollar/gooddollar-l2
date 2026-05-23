@@ -57,6 +57,27 @@ any of the four documented modes — that requires a fifth mode.
 | `MAX_DEMO_ORDER_NOTIONAL_USD` | `1000` | demo-trading | Per-order USD cap. |
 | `MAX_DAILY_DEMO_NOTIONAL_USD` | `10000` | demo-trading | Cumulative daily USD cap (UTC bucket). |
 | `ETORO_INSTRUMENT_OVERRIDES` | `{}` | optional | JSON object overriding the lane instrument map. |
+| `ETORO_AUDIT_LOG_PATH` | resolved per below | optional | Explicit audit-log file path; bypasses default resolution. |
+
+### Audit log path resolution
+
+`AuditLogger` resolves its target file in priority order, falling through
+when each tier is unavailable:
+
+1. `EtoroClientConstructorConfig.auditLogPath` (constructor argument).
+2. `ETORO_AUDIT_LOG_PATH` (env override).
+3. `<process.cwd()>/.etoro-audit/<mode>.log` — skipped if `cwd` lives
+   under any `node_modules` segment so audit evidence is never written
+   into a directory that `npm install` will wipe.
+4. `<os.tmpdir()>/etoro-audit/<mode>.log` — final fallback.
+
+The resolved path is published on `EtoroClient.getSummary().auditLogPath`
+and on the `mode-resolved` audit entry as `resolvedAuditLogPath`. When
+audit writes fail (full disk, read-only mount, missing directory), the
+SDK does NOT throw or silently drop the line: it increments
+`getSummary().auditWriteFailures` and emits one
+`[etoro-audit] write failed (n=N): <reason>` message to `stderr` per
+60 s window.
 
 ## Endpoints
 
