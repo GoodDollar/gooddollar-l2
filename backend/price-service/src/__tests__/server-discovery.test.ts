@@ -1,5 +1,5 @@
 import express from 'express';
-import { createServer, readPackageVersion, EXAMPLES } from '../server';
+import { createServer, readPackageVersion, QUICKSTART } from '../server';
 import { QuoteCache } from '../quote-cache';
 import { DEFAULT_CONFIG } from '../types';
 
@@ -25,7 +25,7 @@ describe('REST Server — GET / discovery payload', () => {
     server.close(done);
   });
 
-  it('GET / includes description, version, docs, examples', async () => {
+  it('GET / includes description, version, docs, quickstart', async () => {
     const res = await fetch(`${baseUrl}/`);
     const body = (await res.json()) as Record<string, unknown>;
     expect(res.status).toBe(200);
@@ -39,19 +39,18 @@ describe('REST Server — GET / discovery payload', () => {
     expect(typeof body.docs).toBe('string');
     expect(body.docs).toMatch(/^https?:\/\//);
 
-    const examples = body.examples as Record<string, string> | undefined;
-    expect(examples && typeof examples === 'object').toBe(true);
-    expect(Object.keys(examples!).length).toBeGreaterThanOrEqual(3);
-    for (const value of Object.values(examples!)) {
-      expect(typeof value).toBe('string');
-      expect(value.startsWith('GET /')).toBe(true);
+    expect(Array.isArray(body.quickstart)).toBe(true);
+    const qs = body.quickstart as Array<Record<string, unknown>>;
+    expect(qs.length).toBeGreaterThanOrEqual(3);
+    for (const step of qs) {
+      expect(typeof step.request).toBe('string');
     }
   });
 
-  it('GET / examples reference symbols that exist in DEFAULT_CONFIG.symbols', () => {
+  it('GET / quickstart references symbols from DEFAULT_CONFIG.symbols', () => {
     const configured = new Set(DEFAULT_CONFIG.symbols.map((s) => s.toUpperCase()));
-    for (const value of Object.values(EXAMPLES) as string[]) {
-      const match = value.match(/\/quotes\/([A-Z0-9._-]+)(?:$|\?)/i);
+    for (const step of QUICKSTART) {
+      const match = step.request.match(/\/quotes\/([A-Z0-9._-]+)(?:$|\?)/i);
       if (!match) continue;
       const symbol = match[1].toUpperCase();
       // Skip parametric placeholders that aren't real symbols.

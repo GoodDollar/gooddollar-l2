@@ -67,16 +67,52 @@ const DOCS_URL =
   'ab/0007-lane2-price-service/backend/price-service/README.md';
 
 /**
- * curl-friendly example calls. Each must be a real, currently-supported
- * request against a symbol in `DEFAULT_CONFIG.symbols` so a fresh deploy
- * works out of the box.
+ * Sequenced fresh-user walk-through emitted on `GET /`. Replaces the old
+ * unordered `examples` map: a fresh integrator gets a step-by-step
+ * runbook (verify alive → see all quotes → fetch one symbol → subscribe
+ * to live ticks) instead of four parallel options with no "start here".
+ * Each step records the user *goal*, the *request* line, and what to
+ * *expect* back so the consumer code can be written from this payload
+ * alone.
  */
-export const EXAMPLES: Readonly<Record<string, string>> = Object.freeze({
-  health: 'GET /health',
-  allQuotes: 'GET /quotes',
-  symbolQuote: 'GET /quotes/AAPL',
-  freshOnly: 'GET /quotes/fresh/all',
-});
+export interface QuickstartStep {
+  readonly step: number;
+  readonly goal: string;
+  readonly request: string;
+  readonly expect: string;
+}
+
+export const QUICKSTART: readonly QuickstartStep[] = Object.freeze([
+  Object.freeze({
+    step: 1,
+    goal: "Verify the service is alive and see what's configured",
+    request: 'GET /health',
+    expect:
+      '200 ok / 503 degraded; body carries status, configured symbols, ' +
+      'source.reason',
+  }),
+  Object.freeze({
+    step: 2,
+    goal: 'See every cached quote at once',
+    request: 'GET /quotes',
+    expect: '200; body { count, totalCached, quotes, source, degraded }',
+  }),
+  Object.freeze({
+    step: 3,
+    goal: 'Fetch a single symbol (substitute any from /health.symbols)',
+    request: 'GET /quotes/AAPL',
+    expect:
+      "200 with quote envelope, or 404 { error: 'no-quote' } before " +
+      'first tick',
+  }),
+  Object.freeze({
+    step: 4,
+    goal: 'Subscribe to live ticks',
+    request: 'CONNECT ws://<host>:9301',
+    expect:
+      'snapshot frame on connect, then quote frames per accepted tick',
+  }),
+]) as readonly QuickstartStep[];
 
 /**
  * Pull the version string off a `package.json`-shaped object. Defaults to
@@ -353,7 +389,7 @@ export function createServer(
       version: PACKAGE_VERSION,
       docs: DOCS_URL,
       endpoints: buildEndpointIndex(),
-      examples: EXAMPLES,
+      quickstart: QUICKSTART,
       sourceReasonCatalog: SOURCE_REASON_CATALOG_POINTER,
     };
     const ws = buildWsAdvertisement(req);
