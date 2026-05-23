@@ -70,7 +70,7 @@ export function LivePriceStrip({
           <div
             data-testid="live-price-empty"
             role="status"
-            className="flex-1 min-w-0 flex items-center gap-2 rounded-xl bg-dark-100/70 border border-gray-700/30 px-3 py-3 text-xs text-gray-400"
+            className="flex-1 min-w-0 flex items-center gap-2 rounded-xl bg-dark-100/70 border border-gray-700/30 p-3 text-xs text-gray-400"
           >
             <span
               aria-hidden="true"

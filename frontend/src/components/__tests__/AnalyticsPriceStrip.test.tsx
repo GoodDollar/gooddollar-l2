@@ -38,16 +38,32 @@ describe('AnalyticsPriceStrip', () => {
     expect(screen.getByText('WBTC')).toBeInTheDocument()
   })
 
-  it('renders fallback badge on every card when price-service status errors out', () => {
+  it('keeps each card on its CoinGecko source when only the status feed is offline', () => {
     vi.mocked(usePriceServiceStatus).mockReturnValue({
       status: null, isLoading: false, error: 'status feed unavailable', nextRetryAt: null,
     })
 
     render(<AnalyticsPriceStrip />)
-    // Some cards reflect fallback. Because all sources start as coingecko and
-    // error is set, they all downgrade to fallback.
-    const fallbackLabels = screen.getAllByText('Fallback price')
-    expect(fallbackLabels.length).toBe(4)
+    // Cards stay on their truthful source — the status outage no longer poisons them.
+    expect(screen.queryAllByText('Fallback price')).toHaveLength(0)
+    expect(screen.getAllByText('Cached (CoinGecko)').length).toBe(4)
+  })
+
+  it('renders the price-status-offline chip when the status feed errors out', () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null, isLoading: false, error: 'status feed unavailable', nextRetryAt: null,
+    })
+
+    render(<AnalyticsPriceStrip />)
+    const chip = screen.getByTestId('price-status-offline')
+    expect(chip).toBeInTheDocument()
+    expect(chip).toHaveTextContent(/Status feed offline/i)
+    expect(chip).toHaveTextContent(/CoinGecko \/ chain only/i)
+  })
+
+  it('does not render the price-status-offline chip when the status feed is healthy', () => {
+    render(<AnalyticsPriceStrip />)
+    expect(screen.queryByTestId('price-status-offline')).not.toBeInTheDocument()
   })
 
   it('honours stale state from price-service status', () => {

@@ -360,7 +360,7 @@ function LivePriceStrip({ entries, compact = false, className = '', title, loadi
                     isEmpty && !loading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         "data-testid": "live-price-empty",
                         role: "status",
-                        className: "flex-1 min-w-0 flex items-center gap-2 rounded-xl bg-dark-100/70 border border-gray-700/30 px-3 py-3 text-xs text-gray-400",
+                        className: "flex-1 min-w-0 flex items-center gap-2 rounded-xl bg-dark-100/70 border border-gray-700/30 p-3 text-xs text-gray-400",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                 "aria-hidden": "true",
@@ -915,10 +915,7 @@ function AnalyticsPriceStrip() {
     const entries = ANALYTICS_SYMBOLS.map((sym)=>{
         let source = sources[sym] ?? 'unknown';
         const sq = status?.quotes.find((q)=>q.symbol === sym);
-        if (error && source !== 'chain-oracle') {
-            // Price-service down → demote to fallback if we don't have a chain truth
-            source = 'fallback';
-        } else if (sq) {
+        if (sq) {
             const sessionSource = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$priceSource$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["resolvePriceSource"])({
                 chainOk: source === 'chain-oracle',
                 coinGeckoLive: source === 'coingecko',
@@ -929,7 +926,6 @@ function AnalyticsPriceStrip() {
                     source: sq.source
                 }
             });
-            // Only downgrade — never silently upgrade.
             if (sessionSource === 'stale' || sessionSource === 'closed') source = sessionSource;
         }
         return {
@@ -940,12 +936,41 @@ function AnalyticsPriceStrip() {
             updatedAgoMs
         };
     });
-    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$LivePriceStrip$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LivePriceStrip"], {
-        entries: entries
-    }, void 0, false, {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        className: "flex flex-col gap-2",
+        children: [
+            error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                "data-testid": "price-status-offline",
+                role: "status",
+                className: "self-start inline-flex items-center gap-2 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-xs text-amber-300",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        "aria-hidden": "true",
+                        className: "w-1.5 h-1.5 rounded-full bg-amber-400"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/AnalyticsPriceStrip.tsx",
+                        lineNumber: 64,
+                        columnNumber: 11
+                    }, this),
+                    "Status feed offline — per-symbol freshness unavailable; values below come from CoinGecko / chain only."
+                ]
+            }, void 0, true, {
+                fileName: "[project]/frontend/src/components/AnalyticsPriceStrip.tsx",
+                lineNumber: 59,
+                columnNumber: 9
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$LivePriceStrip$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LivePriceStrip"], {
+                entries: entries
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/AnalyticsPriceStrip.tsx",
+                lineNumber: 68,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
         fileName: "[project]/frontend/src/components/AnalyticsPriceStrip.tsx",
-        lineNumber: 56,
-        columnNumber: 10
+        lineNumber: 57,
+        columnNumber: 5
     }, this);
 }
 }),
