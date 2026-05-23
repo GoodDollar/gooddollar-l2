@@ -1,12 +1,10 @@
 'use client'
 
-import { useState, useMemo, memo } from 'react'
-import { getChartData, type Timeframe } from '@/lib/chartData'
+import { useMemo, memo } from 'react'
+import { getChartData } from '@/lib/chartData'
 import { usePriceFeeds, getPrice } from '@/lib/usePriceFeeds'
 import { useAttributedPrices } from '@/lib/useAttributedPrice'
 import { PriceSourceBadge } from './PriceSourceBadge'
-
-const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M']
 
 interface SwapPriceChartProps {
   inputSymbol: string
@@ -21,6 +19,19 @@ function formatRate(rate: number): string {
   return rate.toLocaleString('en-US', { maximumFractionDigits: 6 })
 }
 
+/**
+ * Landing-page hero rate + illustrative price chart.
+ *
+ * The drawn line is an intentionally illustrative synthetic walk
+ * (`chartData.ts`) — it is NOT a real OHLC series. Because of that:
+ *
+ *  - We display the input symbol's `change24h` from `useAttributedPrice`
+ *    so the percent next to the CoinGecko badge actually comes from
+ *    CoinGecko (task 0035).
+ *  - We do NOT render a `1D / 1W / 1M` selector — every selection used to
+ *    re-derive a synthetic percent from `Math.random()` under a CoinGecko
+ *    badge. The illustrative SVG is pinned to a single window.
+ */
 export const SwapPriceChart = memo(function SwapPriceChart({
   inputSymbol,
   outputSymbol,
@@ -35,18 +46,18 @@ export const SwapPriceChart = memo(function SwapPriceChart({
   const outputPrice = outputAttr?.priceUsd ?? 0
 
   // Chart series stays on usePriceFeeds — the time-series array is
-  // illustrative and never the source of the visible rate.
+  // illustrative and never the source of the visible rate or percent.
   const { prices: feedPrices } = usePriceFeeds([inputSymbol])
   const seriesAnchor = getPrice(feedPrices, inputSymbol) || inputPrice
-  const [timeframe, setTimeframe] = useState<Timeframe>('1W')
 
   const exchangeRate = outputPrice > 0 ? inputPrice / outputPrice : 0
   const bothUnknown = inputAttr?.source === 'unknown' && outputAttr?.source === 'unknown'
   const bothFallback = inputAttr?.source === 'fallback' && outputAttr?.source === 'fallback'
+  const change24h = inputAttr?.change24h ?? null
 
   const chartData = useMemo(
-    () => getChartData(inputSymbol, timeframe, seriesAnchor),
-    [inputSymbol, timeframe, seriesAnchor],
+    () => getChartData(inputSymbol, '1W', seriesAnchor),
+    [inputSymbol, seriesAnchor],
   )
 
   const closePrices = useMemo(
@@ -54,14 +65,7 @@ export const SwapPriceChart = memo(function SwapPriceChart({
     [chartData, outputPrice],
   )
 
-  const changePercent = useMemo(() => {
-    if (closePrices.length < 2) return 0
-    const first = closePrices[0]
-    const last = closePrices[closePrices.length - 1]
-    return first > 0 ? ((last - first) / first) * 100 : 0
-  }, [closePrices])
-
-  const isPositive = changePercent >= 0
+  const isPositive = (change24h ?? 0) >= 0
   const color = isPositive ? '#4ade80' : '#f87171'
 
   const w = 400
@@ -94,9 +98,14 @@ export const SwapPriceChart = memo(function SwapPriceChart({
             1 {inputSymbol} = <span className="text-white font-medium">{formatRate(exchangeRate)} {outputSymbol}</span>
           </div>
           <div className="mt-0.5 flex items-center gap-1.5">
-            <span className={`text-xs font-medium ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-              {isPositive ? '▲' : '▼'} {Math.abs(changePercent).toFixed(2)}%
-            </span>
+            {change24h !== null && (
+              <span
+                data-testid="hero-change-percent"
+                className={`text-xs font-medium ${isPositive ? 'text-green-400' : 'text-red-400'}`}
+              >
+                {isPositive ? '▲' : '▼'} {Math.abs(change24h).toFixed(2)}%
+              </span>
+            )}
             {inputAttr && <PriceSourceBadge source={inputAttr.source} size="sm" />}
             {bothFallback && (
               <span className="text-[10px] text-amber-300/80" data-testid="hero-indicative">
@@ -104,21 +113,6 @@ export const SwapPriceChart = memo(function SwapPriceChart({
               </span>
             )}
           </div>
-        </div>
-        <div className="flex gap-1">
-          {TIMEFRAMES.map(tf => (
-            <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                timeframe === tf
-                  ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20'
-                  : 'text-gray-500 hover:text-gray-300 bg-dark-100 border border-gray-700/20'
-              }`}
-            >
-              {tf}
-            </button>
-          ))}
         </div>
       </div>
 

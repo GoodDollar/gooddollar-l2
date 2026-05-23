@@ -94,4 +94,44 @@ describe('SwapPriceChart — uses canonical useAttributedPrices (task 0027)', ()
     render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
     expect(screen.queryByTestId('hero-indicative')).not.toBeInTheDocument()
   })
+
+  // Task 0035 — the percentage displayed next to the CoinGecko badge must
+  // come from CoinGecko's `change24h`, not from a Math.random() walk in
+  // chartData.ts. We also drop the 1D/1W/1M selector because we have no
+  // multi-timeframe real series to back it up — every selection used to
+  // render the same synthetic walk under a "CoinGecko" badge.
+  it('renders the input change24h next to the badge (not a synthetic walk %)', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 2069,   source: 'coingecko', change24h: -0.95 }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102, source: 'coingecko', change24h: 0.12 }),
+    })
+
+    render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
+    const percent = screen.getByTestId('hero-change-percent')
+    expect(percent).toHaveTextContent(/0\.95\s*%/)
+    expect(percent).toHaveTextContent('▼')
+    expect(screen.queryByText(/33\.83/)).not.toBeInTheDocument()
+  })
+
+  it('hides the percentage entirely when change24h is null', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 2069,   source: 'coingecko', change24h: null }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102, source: 'coingecko', change24h: null }),
+    })
+
+    render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
+    expect(screen.queryByTestId('hero-change-percent')).toBeNull()
+  })
+
+  it('no longer renders the 1D / 1W / 1M timeframe selector', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 2069,   source: 'coingecko', change24h: -0.95 }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102, source: 'coingecko', change24h: 0.12 }),
+    })
+
+    render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
+    expect(screen.queryByRole('button', { name: '1D' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '1W' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '1M' })).toBeNull()
+  })
 })
