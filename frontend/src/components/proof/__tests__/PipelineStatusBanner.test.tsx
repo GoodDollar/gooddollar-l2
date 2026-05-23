@@ -306,7 +306,12 @@ describe('PipelineStatusBanner', () => {
     expect(line.textContent).toMatch(/just now/i)
   })
 
-  it('renders "Not yet observed all-green this session" copy when the very first poll is amber', async () => {
+  it('amber + never-fully-alive renders a confident statement, not a question', async () => {
+    // Updated by lane6-pipeline-status-last-alive-line-asks-user-a-question:
+    // the line below the DEGRADED pill used to read
+    // "Not yet observed all-green this session, page just loaded?" (a
+    // literal question mark addressed at the reader). It now reads a
+    // verdict-matched statement with no trailing "?".
     mockOnChainHealthy()
     installFetchMock((url) => {
       if (url.includes('/quotes')) throw new Error('boom')
@@ -319,8 +324,34 @@ describe('PipelineStatusBanner', () => {
 
     const line = await screen.findByTestId('last-fully-alive')
     await vi.waitFor(() => {
-      expect(line.textContent).toMatch(/Not yet observed all-green this session/i)
+      expect(line.textContent).toMatch(/No all-green observation yet this session/i)
     })
+    expect(line.textContent).toMatch(/degraded state since it loaded/i)
+    expect(line.textContent?.trim().endsWith('?')).toBe(false)
+    expect(line.className).toMatch(/text-yellow/)
+  })
+
+  it('red + never-fully-alive renders a cold statement, not a question', async () => {
+    // Same task as above; the red variant must use vocabulary that
+    // matches the "Cold" pill above the line.
+    mockOnChainDegraded()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) throw new Error('boom')
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: false, status: 503, body: {} }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineStatusBanner intervalMs={60_000} />)
+
+    const line = await screen.findByTestId('last-fully-alive')
+    await vi.waitFor(() => {
+      expect(line.textContent).toMatch(/No all-green observation yet this session/i)
+    })
+    expect(line.textContent).toMatch(/cold state since it loaded/i)
+    expect(line.textContent).not.toMatch(/degraded state/i)
+    expect(line.textContent?.trim().endsWith('?')).toBe(false)
+    expect(line.className).toMatch(/text-red/)
   })
 
   it('records the all-green timestamp and surfaces it as HH:MM:SS UTC, Xs ago on subsequent amber polls', async () => {
@@ -431,7 +462,8 @@ describe('PipelineStatusBanner', () => {
     render(<PipelineStatusBanner intervalMs={60_000} />)
     await vi.waitFor(() => {
       const line = screen.getByTestId('last-fully-alive')
-      expect(line.textContent).toMatch(/Not yet observed all-green this session/i)
+      // Updated copy (see lane6-pipeline-status-last-alive-line-asks-user-a-question).
+      expect(line.textContent).toMatch(/No all-green observation yet this session/i)
     })
   })
 

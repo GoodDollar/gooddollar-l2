@@ -331,9 +331,10 @@ function LastAliveLine({
     case 'amber':
     case 'red': {
       if (lastFullyAliveAt === null) {
+        const stateWord = verdict === 'red' ? 'cold' : 'degraded'
         return (
-          <p data-testid="last-fully-alive" className="mt-1 text-[11px] text-gray-400">
-            Not yet observed all-green this session, page just loaded?
+          <p data-testid="last-fully-alive" className={LAST_ALIVE_TONE_CLASS[verdict]}>
+            No all-green observation yet this session — the page has been in a {stateWord} state since it loaded.
           </p>
         )
       }
