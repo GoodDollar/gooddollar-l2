@@ -276,12 +276,18 @@ module.exports = {
     // oracle-signer entry below points its PRICE_SERVICE_URL at this
     // service's WS broadcaster (9301). Set ETORO_MODE (and demo creds)
     // via the host's environment to switch to live demo.
+    //
+    // Lane-7 (0007g/0004) fence: REAL_TRADING_ENABLED defaults to 'false'
+    // so the price producer cannot issue real eToro execution calls until
+    // the operator explicitly opts in via the host environment. Lane-7's
+    // initiative spec mandates this default for any testnet host.
     app({
       name: 'price-service',
       script: 'price-service/dist/index.js',
       env: {
         ...BASE_ENV,
         ETORO_MODE: pick('ETORO_MODE', 'mock'),
+        REAL_TRADING_ENABLED: pick('REAL_TRADING_ENABLED', 'false'),
         ORACLE_SYMBOLS: pick('ORACLE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ,NFLX'),
       },
     }),
