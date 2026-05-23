@@ -19,6 +19,8 @@ import { SwapWalletActions } from './SwapWalletActions'
 import { usePriceFeeds, getPrice } from '@/lib/usePriceFeeds'
 import { useSwapQuote } from '@/lib/useOnChainSwap'
 import { AnimatedNumber } from './ui/animated-number'
+import { PriceSourceBadge } from './PriceSourceBadge'
+import type { PriceSource } from '@/lib/priceSource'
 
 function getLiveRate(prices: Record<string, number>, from: string, to: string): number {
   if (from === to) return 1
@@ -54,7 +56,23 @@ export function SwapCard() {
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   // Live price feeds — falls back to static prices when CoinGecko is unreachable
-  const { prices, isLive } = usePriceFeeds(TOKENS.map(t => t.symbol))
+  const feed = usePriceFeeds(TOKENS.map(t => t.symbol))
+  const { prices, isLive } = feed
+  // Defensive read: some legacy tests mock `usePriceFeeds` without the
+  // lane-4 `sources` field. Treat that as "we don't know" instead of crashing.
+  const sources: Record<string, PriceSource> = feed.sources ?? {}
+
+  // Pick the "less authoritative" source between the two legs so the badge
+  // honestly reflects the weakest link in the rate calculation. Chain wins
+  // when both sides have it; if either side is fallback, the rate is fallback.
+  const rateSource: PriceSource = (() => {
+    const fromSrc = sources[inputToken.symbol] ?? 'unknown'
+    const toSrc   = sources[outputToken.symbol] ?? 'unknown'
+    const order: PriceSource[] = ['chain-oracle', 'etoro-demo', 'coingecko', 'stale', 'closed', 'fallback', 'unknown']
+    const fromRank = order.indexOf(fromSrc)
+    const toRank   = order.indexOf(toSrc)
+    return order[Math.max(fromRank, toRank)] ?? 'unknown'
+  })()
 
   useEffect(() => {
     const buyParam = searchParams.get('buy')
@@ -351,7 +369,7 @@ export function SwapCard() {
 
         {/* Rate */}
         {hasAmount && showAdvanced && (
-          <div className="mx-4 mt-3 px-4 py-2 text-xs text-gray-400 flex justify-between items-center">
+          <div className="mx-4 mt-3 px-4 py-2 text-xs text-gray-400 flex justify-between items-center gap-2">
             <span className="flex items-center gap-1.5">
               Rate
               {isLive && (
@@ -360,8 +378,17 @@ export function SwapCard() {
                   live
                 </span>
               )}
+              <PriceSourceBadge source={rateSource} size="sm" />
             </span>
             <span>{exchangeRate}</span>
+          </div>
+        )}
+
+        {/* Always-on inline badge near rate row, even when Advanced is closed —
+            keeps the source attribution visible in the simple-mode default UI. */}
+        {hasAmount && !showAdvanced && (
+          <div className="mx-4 mt-3 px-4 py-1 flex justify-end">
+            <PriceSourceBadge source={rateSource} size="sm" />
           </div>
         )}
 

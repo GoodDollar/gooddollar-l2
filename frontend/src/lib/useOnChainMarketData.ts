@@ -33,6 +33,7 @@ import { CONTRACTS } from './chain'
 import { ERC20ABI, GoodPoolABI, GoodLendPriceOracleABI } from './abi'
 import type { TokenMarketData } from './marketData'
 import { generateSeededSparkline } from './sparklineSeed'
+import type { PriceSource } from './priceSource'
 import {
   computeSpotPrice,
   formatPoolAmount,
@@ -146,15 +147,29 @@ export function useOnChainMarketData(): {
   tokens: TokenMarketData[]
   isLive: boolean
   isLoading: boolean
+  /**
+   * Per-symbol price provenance for the symbols rendered in `tokens`.
+   * Lane 4 (task 0007d/0002): consumers can render a single source badge
+   * per symbol without re-deriving "did chain win or did CG?" themselves.
+   */
+  sources: Record<string, PriceSource>
 } {
-  const { prices: cgPrices, quotes: cgQuotes, isLive: isCgLive } = usePriceFeeds(ALL_SYMBOLS)
+  const {
+    prices: cgPrices,
+    quotes: cgQuotes,
+    isLive: isCgLive,
+    sources: cgSources,
+  } = usePriceFeeds(ALL_SYMBOLS)
 
   const { data: onChainData, isLoading: isOnChainLoading } = useReadContracts({
     contracts: ON_CHAIN_CONTRACTS,
     query: { refetchInterval: 30_000 },
   })
 
-  const tokens = useMemo<TokenMarketData[]>(() => {
+  const { tokens, sources } = useMemo<{
+    tokens: TokenMarketData[]
+    sources: Record<string, PriceSource>
+  }>(() => {
     // ── Parse on-chain results (undefined on failure — falls back to CoinGecko) ─
     const gdTotalSupplyRaw = onChainData?.[0]?.status === 'success'
       ? (onChainData[0].result as bigint)
@@ -199,20 +214,26 @@ export function useOnChainMarketData(): {
 
     // ── Merge prices: on-chain wins, CoinGecko is fallback ────────────────────
     const prices: Record<string, number> = { ...cgPrices }
+    // Start from the CG-tagged map and overwrite when chain answered.
+    const sourcesOut: Record<string, PriceSource> = { ...cgSources }
 
     if (gdPriceOnChain !== null && gdPriceOnChain > 0) {
       prices['G$'] = gdPriceOnChain
+      sourcesOut['G$'] = 'chain-oracle'
     }
     if (wethPriceOnChain !== null && wethPriceOnChain > 0) {
       prices['ETH']  = wethPriceOnChain
       prices['WETH'] = wethPriceOnChain
+      sourcesOut['ETH']  = 'chain-oracle'
+      sourcesOut['WETH'] = 'chain-oracle'
     }
     if (usdcPriceOnChain !== null && usdcPriceOnChain > 0) {
       prices['USDC'] = usdcPriceOnChain
+      sourcesOut['USDC'] = 'chain-oracle'
     }
 
     // ── Build token market data ───────────────────────────────────────────────
-    return TOKENS
+    const builtTokens = TOKENS
       .filter(t => prices[t.symbol] !== undefined || FALLBACK_PRICES[t.symbol] !== undefined)
       .map(t => {
         const price = prices[t.symbol] ?? FALLBACK_PRICES[t.symbol] ?? 0
@@ -250,12 +271,24 @@ export function useOnChainMarketData(): {
         }
       })
       .filter(Boolean) as TokenMarketData[]
-  }, [cgPrices, cgQuotes, onChainData])
+
+    // For tokens that fell through to FALLBACK_PRICES (chain miss + no CG
+    // entry), make sure the source is `fallback` rather than the absent
+    // initial value. We mark every TOKENS symbol explicitly so the consumer
+    // never sees `undefined` for a price it can read.
+    for (const t of TOKENS) {
+      if (sourcesOut[t.symbol] === undefined) {
+        sourcesOut[t.symbol] = 'fallback'
+      }
+    }
+
+    return { tokens: builtTokens, sources: sourcesOut }
+  }, [cgPrices, cgQuotes, cgSources, onChainData])
 
   const hasOnChainSuccess = onChainData?.some(d => d?.status === 'success') ?? false
   const isLive = isCgLive || hasOnChainSuccess
 
-  return { tokens, isLive, isLoading: isOnChainLoading }
+  return { tokens, isLive, isLoading: isOnChainLoading, sources }
 }
 
 export { TOKEN_COLORS }
