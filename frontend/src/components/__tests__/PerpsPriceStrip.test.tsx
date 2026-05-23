@@ -96,6 +96,7 @@ describe('PerpsPriceStrip', () => {
     })
 
     render(<PerpsPriceStrip activeSymbol="BTC-USD" />)
-    expect(screen.getByText('Market closed')).toBeInTheDocument()
+    // Badge label AND freshness footer both render "Market closed"; assert at least one.
+    expect(screen.getAllByText('Market closed').length).toBeGreaterThan(0)
   })
 })

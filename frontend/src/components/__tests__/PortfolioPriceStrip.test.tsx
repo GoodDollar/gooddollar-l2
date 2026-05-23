@@ -72,7 +72,8 @@ describe('PortfolioPriceStrip', () => {
     })
 
     render(<PortfolioPriceStrip stockTickers={['AAPL']} cryptoSymbols={[]} />)
-    expect(screen.getByText('Market closed')).toBeInTheDocument()
+    // The badge label and the freshness footer both read "Market closed"; both are intentional.
+    expect(screen.getAllByText('Market closed').length).toBeGreaterThan(0)
   })
 
   it('shows "Stale" badge when AAPL last update is older than 60s', () => {

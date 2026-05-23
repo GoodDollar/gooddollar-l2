@@ -33,7 +33,7 @@ describe('LivePriceCard', () => {
     expect(change.textContent).toMatch(/-?0\.42%/)
   })
 
-  it('renders an "Updated …" footer reflecting updatedAgoMs', () => {
+  it('renders an "Updated …" footer reflecting updatedAgoMs for live sources', () => {
     render(
       <LivePriceCard
         symbol="G$"
@@ -43,7 +43,80 @@ describe('LivePriceCard', () => {
         updatedAgoMs={5000}
       />,
     )
-    expect(screen.getByText(/Updated 5s ago/)).toBeInTheDocument()
+    const freshness = screen.getByTestId('live-price-freshness')
+    expect(freshness).toHaveTextContent('Updated 5s ago')
+  })
+
+  it('renders "Updated …" for coingecko source (regression guard)', () => {
+    render(
+      <LivePriceCard
+        symbol="ETH"
+        price={3500}
+        change24h={1.0}
+        source="coingecko"
+        updatedAgoMs={4000}
+      />,
+    )
+    expect(screen.getByTestId('live-price-freshness')).toHaveTextContent('Updated 4s ago')
+  })
+
+  it('renders "No live data" (no age) when source is fallback — even if updatedAgoMs is set', () => {
+    render(
+      <LivePriceCard
+        symbol="G$"
+        price={0.0102}
+        change24h={null}
+        source="fallback"
+        updatedAgoMs={35_000}
+      />,
+    )
+    const freshness = screen.getByTestId('live-price-freshness')
+    expect(freshness).toHaveTextContent('No live data')
+    expect(freshness.textContent ?? '').not.toMatch(/Updated/)
+    expect(freshness.textContent ?? '').not.toMatch(/35s/)
+  })
+
+  it('renders "Last seen …" with warning tone when source is stale', () => {
+    render(
+      <LivePriceCard
+        symbol="AAPL"
+        price={195}
+        change24h={null}
+        source="stale"
+        updatedAgoMs={120_000}
+      />,
+    )
+    const freshness = screen.getByTestId('live-price-freshness')
+    expect(freshness).toHaveTextContent('Last seen 2m ago')
+    expect(freshness.className).toMatch(/text-amber-400/)
+  })
+
+  it('renders "Market closed" (no age) when source is closed', () => {
+    render(
+      <LivePriceCard
+        symbol="AAPL"
+        price={195}
+        change24h={null}
+        source="closed"
+        updatedAgoMs={1_000}
+      />,
+    )
+    const freshness = screen.getByTestId('live-price-freshness')
+    expect(freshness).toHaveTextContent('Market closed')
+    expect(freshness.textContent ?? '').not.toMatch(/Updated/)
+  })
+
+  it('renders "No data" when source is unknown', () => {
+    render(
+      <LivePriceCard
+        symbol="???"
+        price={0}
+        change24h={null}
+        source="unknown"
+        updatedAgoMs={null}
+      />,
+    )
+    expect(screen.getByTestId('live-price-freshness')).toHaveTextContent('No data')
   })
 
   it('renders fallback in a dimmed style with a regression marker for E2E', () => {

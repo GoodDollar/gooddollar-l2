@@ -63,6 +63,7 @@ describe('ActivityPriceStrip', () => {
     })
 
     render(<ActivityPriceStrip />)
-    expect(screen.getByText('Market closed')).toBeInTheDocument()
+    // Both the badge and the freshness footer read "Market closed" — that's by design.
+    expect(screen.getAllByText('Market closed').length).toBeGreaterThan(0)
   })
 })

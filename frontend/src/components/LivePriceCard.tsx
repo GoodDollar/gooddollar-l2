@@ -34,6 +34,34 @@ function formatAge(ms: number | null): string {
   return `${Math.floor(ms / 3_600_000)}h ago`
 }
 
+interface FreshnessLine {
+  text: string
+  tone: 'normal' | 'warning'
+}
+
+/**
+ * Source-aware freshness line. Honest about whether the displayed value is
+ * actually fresh: `fallback` / `closed` / `unknown` carry no age (because the
+ * underlying number isn't the result of a refresh tick), `stale` reads
+ * "Last seen" not "Updated", and only the live sources show "Updated …".
+ */
+function freshnessText(source: PriceSource, ms: number | null): FreshnessLine {
+  switch (source) {
+    case 'chain-oracle':
+    case 'etoro-demo':
+    case 'coingecko':
+      return { text: `Updated ${formatAge(ms)}`, tone: 'normal' }
+    case 'stale':
+      return { text: `Last seen ${formatAge(ms)}`, tone: 'warning' }
+    case 'closed':
+      return { text: 'Market closed', tone: 'normal' }
+    case 'fallback':
+      return { text: 'No live data', tone: 'normal' }
+    case 'unknown':
+      return { text: 'No data', tone: 'normal' }
+  }
+}
+
 const WARNING_SOURCES = new Set<PriceSource>(['closed', 'stale'])
 
 /**
@@ -96,9 +124,17 @@ export function LivePriceCard(props: LivePriceCardProps) {
 
       <div className="flex items-center justify-between mt-2 gap-2">
         <PriceSourceBadge source={source} size="sm" />
-        <span className="text-[10px] text-gray-500 shrink-0">
-          Updated {formatAge(updatedAgoMs)}
-        </span>
+        {(() => {
+          const { text, tone } = freshnessText(source, updatedAgoMs)
+          return (
+            <span
+              data-testid="live-price-freshness"
+              className={`text-[10px] shrink-0 ${tone === 'warning' ? 'text-amber-400' : 'text-gray-500'}`}
+            >
+              {text}
+            </span>
+          )
+        })()}
       </div>
     </div>
   )
