@@ -1,6 +1,8 @@
 import { ExposureReader } from './exposure-reader';
 import { DeltaCalculator } from './delta-calculator';
 import { HedgeExecutor } from './hedge-executor';
+import { CapEnforcer, CapSnapshot } from './cap-enforcer';
+import { KillSwitchProbe } from './kill-switch';
 import {
   HedgeEngineConfig,
   HedgeResult,
@@ -8,19 +10,27 @@ import {
   StockSymbol,
 } from './types';
 
+export interface HedgeEngineDeps {
+  capEnforcer?: CapEnforcer;
+  killSwitch?: KillSwitchProbe;
+}
+
 /**
  * Main hedge engine loop. Each tick:
  * 1. Read on-chain exposure from UnifiedRiskEngine
  * 2. Read current eToro positions
  * 3. Compute residual delta
- * 4. Execute hedge orders that breach threshold
- * 5. Log reconciliation snapshot
+ * 4. Run safety gates (cap enforcer + kill switch) per order
+ * 5. Execute approved hedge orders
+ * 6. Log reconciliation snapshot
  */
 export class HedgeEngine {
   private readonly reader: ExposureReader;
   private readonly calculator: DeltaCalculator;
   private readonly executor: HedgeExecutor;
   private readonly config: HedgeEngineConfig;
+  private readonly capEnforcer?: CapEnforcer;
+  private readonly killSwitch?: KillSwitchProbe;
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
   private tickInProgress = false;
@@ -32,11 +42,14 @@ export class HedgeEngine {
     calculator: DeltaCalculator,
     executor: HedgeExecutor,
     config: HedgeEngineConfig,
+    deps: HedgeEngineDeps = {},
   ) {
     this.reader = reader;
     this.calculator = calculator;
     this.executor = executor;
     this.config = config;
+    this.capEnforcer = deps.capEnforcer;
+    this.killSwitch = deps.killSwitch;
   }
 
   async tick(): Promise<ReconciliationSnapshot | null> {
@@ -51,9 +64,40 @@ export class HedgeEngine {
       const etoroPositions = await this.executor.fetchPositions();
 
       const orders = this.calculator.calculate(exposures, etoroPositions);
-      const hedgesExecuted: HedgeResult[] = orders.length
-        ? await this.executor.executeAll(orders)
-        : [];
+
+      // Tick-start kill-switch probe — short-circuits the whole tick.
+      const killEngagedAtStart = this.killSwitch?.isEngaged() ?? false;
+
+      let hedgesExecuted: HedgeResult[] = [];
+      if (orders.length === 0) {
+        hedgesExecuted = [];
+      } else if (killEngagedAtStart) {
+        hedgesExecuted = orders.map((order) => ({
+          order,
+          success: false,
+          error: 'kill_switch',
+          timestamp: Date.now(),
+        }));
+      } else if (this.capEnforcer) {
+        this.capEnforcer.startCycle();
+        for (const order of orders) {
+          const decision = this.capEnforcer.evaluate(order);
+          if (!decision.approved) {
+            hedgesExecuted.push({
+              order,
+              success: false,
+              error: decision.reason ?? 'cap_rejected',
+              timestamp: Date.now(),
+            });
+            continue;
+          }
+          const result = await this.executor.execute(order);
+          if (result.success) this.capEnforcer.recordFill(order);
+          hedgesExecuted.push(result);
+        }
+      } else {
+        hedgesExecuted = await this.executor.executeAll(orders);
+      }
 
       const residuals = this.calculator.getResiduals(exposures, etoroPositions);
 
@@ -111,6 +155,14 @@ export class HedgeEngine {
     return this.lastSnapshot;
   }
 
+  getCapSnapshot(): CapSnapshot | null {
+    return this.capEnforcer ? this.capEnforcer.snapshot() : null;
+  }
+
+  isKillSwitchEngaged(): boolean {
+    return this.killSwitch?.isEngaged() ?? false;
+  }
+
   private logSnapshot(snap: ReconciliationSnapshot): void {
     const symbols = snap.exposures.map((e) => e.symbol);
     const hedgeCount = snap.hedgesExecuted.length;
@@ -126,3 +178,7 @@ export class HedgeEngine {
     );
   }
 }
+
+// Re-export StockSymbol to satisfy `import { StockSymbol } from './engine'`
+// callers (no current ones, but keeps the surface stable for future moves).
+export type { StockSymbol };

@@ -1,4 +1,6 @@
 import { HedgeOrder, HedgeResult, EtoroPosition, StockSymbol } from './types';
+import { KillSwitchProbe } from './kill-switch';
+import { InstrumentResolver } from './instrument-resolver';
 
 /**
  * Adapter interface so we can inject the real eToro client or a mock.
@@ -11,7 +13,7 @@ export interface EtoroAdapter {
     side: 'buy' | 'sell';
     amount: number;
     leverage?: number;
-  }): Promise<{ orderId: string; status: string }>;
+  }): Promise<{ orderId: string; status: string; executionPrice?: number }>;
 
   closePosition(positionId: string): Promise<{ orderId: string }>;
 
@@ -25,23 +27,37 @@ export interface EtoroAdapter {
   >;
 }
 
+export interface HedgeExecutorOptions {
+  killSwitch?: KillSwitchProbe;
+  resolver?: InstrumentResolver;
+}
+
 /**
  * Executes hedge orders on eToro and reads current eToro positions.
  * Wraps all calls in try/catch to produce HedgeResult.
+ *
+ * Per-order safety net: the kill switch is re-checked at the top of every
+ * `execute()` call so creating the kill-switch file mid-tick still halts
+ * orders that have not yet been sent.
  */
 export class HedgeExecutor {
   private readonly adapter: EtoroAdapter;
   private readonly instrumentMap: Map<StockSymbol, string>;
   private readonly dryRun: boolean;
+  private readonly killSwitch?: KillSwitchProbe;
+  private readonly resolver?: InstrumentResolver;
 
   constructor(
     adapter: EtoroAdapter,
     instrumentMap: Map<StockSymbol, string>,
     dryRun = false,
+    options: HedgeExecutorOptions = {},
   ) {
     this.adapter = adapter;
     this.instrumentMap = instrumentMap;
     this.dryRun = dryRun;
+    this.killSwitch = options.killSwitch;
+    this.resolver = options.resolver;
   }
 
   async fetchPositions(): Promise<EtoroPosition[]> {
@@ -61,7 +77,18 @@ export class HedgeExecutor {
       return { order, success: true, etoroOrderId: 'dry-run', timestamp: ts };
     }
 
-    const instrumentId = this.instrumentMap.get(order.symbol);
+    if (this.killSwitch?.isEngaged()) {
+      return {
+        order,
+        success: false,
+        error: 'kill_switch',
+        timestamp: ts,
+      };
+    }
+
+    const instrumentId =
+      (await this.resolver?.resolve(order.symbol)) ??
+      this.instrumentMap.get(order.symbol);
     if (!instrumentId) {
       return {
         order,

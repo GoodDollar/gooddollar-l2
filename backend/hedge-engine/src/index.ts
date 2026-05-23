@@ -3,6 +3,10 @@ import { ExposureReader } from './exposure-reader';
 import { DeltaCalculator } from './delta-calculator';
 import { HedgeExecutor, EtoroAdapter } from './hedge-executor';
 import { HedgeEngine } from './engine';
+import { CapEnforcer } from './cap-enforcer';
+import { KillSwitchProbe } from './kill-switch';
+import { EtoroClientAdapter, EtoroClientLike } from './etoro-adapter';
+import { InstrumentResolver, MarketDataLike } from './instrument-resolver';
 import { HedgeEngineConfig, StockSymbol } from './types';
 import { startHealthServer } from './healthServer';
 import {
@@ -16,6 +20,11 @@ export { DeltaCalculator } from './delta-calculator';
 export { HedgeExecutor } from './hedge-executor';
 export type { EtoroAdapter } from './hedge-executor';
 export { HedgeEngine } from './engine';
+export { CapEnforcer } from './cap-enforcer';
+export type { CapEnforcerConfig, CapDecision, CapSnapshot } from './cap-enforcer';
+export { KillSwitchProbe } from './kill-switch';
+export { EtoroClientAdapter } from './etoro-adapter';
+export { InstrumentResolver } from './instrument-resolver';
 export {
   REAL_TRADING_ENABLED,
   RealTradingFenceError,
@@ -62,23 +71,67 @@ function loadInstrumentMap(): Map<StockSymbol, string> {
 }
 
 /**
- * Placeholder adapter — real adapter wires into EtoroClient from etoro-client.
- * In production this file would import { createEtoroClient } and wrap it.
+ * Dry-run-only adapter. The real adapter wires into `@goodchain/etoro-client`
+ * via `EtoroClientAdapter.create()` below. We only fall back to this no-op
+ * shape when `HEDGE_DRY_RUN=true` — in that path the executor short-circuits
+ * before any adapter call, so the body never runs.
  */
-function createPlaceholderAdapter(): EtoroAdapter {
+function createDryRunOnlyAdapter(): EtoroAdapter {
   return {
     async openPosition(params) {
-      console.log(`[PlaceholderAdapter] openPosition: ${JSON.stringify(params)}`);
+      console.log(`[DryRunAdapter] openPosition: ${JSON.stringify(params)}`);
       return { orderId: `sim-${Date.now()}`, status: 'filled' };
     },
     async closePosition(positionId) {
-      console.log(`[PlaceholderAdapter] closePosition: ${positionId}`);
+      console.log(`[DryRunAdapter] closePosition: ${positionId}`);
       return { orderId: `sim-close-${Date.now()}` };
     },
     async getPositions() {
       return [];
     },
   };
+}
+
+interface CapEnvConfig {
+  maxOrderNotionalUsd: number;
+  maxDailyNotionalUsd: number;
+  maxOrdersPerCycle: number;
+  maxOrdersPerDay: number;
+}
+
+/** Caps are clamped to the spec's hard ceilings ($100 / $300) for safety. */
+function loadCapConfig(): CapEnvConfig {
+  const orderCap = Math.min(
+    100,
+    Number(getEnvOrDefault('MAX_DEMO_ORDER_NOTIONAL_USD', '100')),
+  );
+  const dailyCap = Math.min(
+    300,
+    Number(getEnvOrDefault('MAX_DAILY_DEMO_NOTIONAL_USD', '300')),
+  );
+  return {
+    maxOrderNotionalUsd: orderCap,
+    maxDailyNotionalUsd: dailyCap,
+    maxOrdersPerCycle: Number(getEnvOrDefault('HEDGE_MAX_ORDERS_PER_CYCLE', '3')),
+    maxOrdersPerDay: Number(getEnvOrDefault('HEDGE_MAX_ORDERS_PER_DAY', '10')),
+  };
+}
+
+async function createLiveAdapterOrFallback(): Promise<{
+  adapter: EtoroAdapter;
+  marketData: MarketDataLike | null;
+}> {
+  try {
+    const live = await EtoroClientAdapter.create();
+    // The live client also exposes marketData; we can lift it for the resolver.
+    const client = (live as unknown as { client?: EtoroClientLike }).client;
+    const marketData = (client as unknown as { marketData?: MarketDataLike })?.marketData ?? null;
+    return { adapter: live, marketData };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[HedgeEngine] eToro client unavailable (${msg}); using dry-run adapter.`);
+    return { adapter: createDryRunOnlyAdapter(), marketData: null };
+  }
 }
 
 async function main(): Promise<void> {
@@ -120,10 +173,37 @@ async function main(): Promise<void> {
   const reader = new ExposureReader(config.rpcUrl, config.riskEngineAddress);
   const calculator = new DeltaCalculator(config);
   const instrumentMap = loadInstrumentMap();
-  const adapter = createPlaceholderAdapter();
-  const executor = new HedgeExecutor(adapter, instrumentMap, config.dryRun);
 
-  const engine = new HedgeEngine(reader, calculator, executor, config);
+  // Dry-run path never opens orders, so we keep a cheap no-op adapter.
+  // Non-dry-run path requires a real eToro client; if that import fails
+  // we degrade to dry-run-only rather than crash.
+  let adapter: EtoroAdapter;
+  let marketData: MarketDataLike | null = null;
+  if (config.dryRun) {
+    adapter = createDryRunOnlyAdapter();
+  } else {
+    const live = await createLiveAdapterOrFallback();
+    adapter = live.adapter;
+    marketData = live.marketData;
+  }
+
+  const resolver = new InstrumentResolver(instrumentMap, marketData);
+
+  const killSwitch = new KillSwitchProbe(process.env.HEDGE_KILL_SWITCH_FILE);
+  const capEnforcer = new CapEnforcer(loadCapConfig());
+
+  const executor = new HedgeExecutor(adapter, instrumentMap, config.dryRun, {
+    killSwitch,
+    resolver,
+  });
+
+  const engine = new HedgeEngine(
+    reader,
+    calculator,
+    executor,
+    config,
+    { capEnforcer, killSwitch },
+  );
 
   const shutdown = () => {
     console.log('[HedgeEngine] Shutting down...');
