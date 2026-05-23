@@ -35,6 +35,7 @@ import {
   SyntheticStockHeaderBadge,
   useSyntheticStockHeader,
 } from '@/components/stocks/SyntheticStockHeaderBadge'
+import { useStockSources } from '@/lib/useStockSources'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
 import { StockLogo } from '@/components/ui/stock-logo'
@@ -492,6 +493,7 @@ export default function StockDetailPage() {
   const riskStopReasons = tickerRebalance?.stopReasons ?? []
   const stock = stocks.find(s => s.ticker === ticker)
   const syntheticHeader = useSyntheticStockHeader()
+  const stockSources = useStockSources()
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
   const [chartView, setChartView] = useState<'price' | 'depth'>('price')
@@ -1044,7 +1046,11 @@ export default function StockDetailPage() {
           </div>
 
           <Suspense fallback={<div className="mt-4 h-28 rounded-2xl bg-dark-100 animate-pulse" />}>
-            <StockMarketData markPrice={stock.price} />
+            <StockMarketData
+              ticker={stock.ticker}
+              markPrice={stock.price}
+              source={stockSources[stock.ticker] ?? 'unknown'}
+            />
           </Suspense>
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
