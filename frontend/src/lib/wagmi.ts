@@ -9,6 +9,7 @@ import {
 import { createConfig } from 'wagmi'
 import { http } from 'viem'
 import { gooddollarL2 } from './chain'
+import { installRpcBackoff } from './rpcBackoff'
 import { validateWcProjectId } from './wagmi-helpers'
 import { isWalletConnectConfigured, validatedWcProjectId } from './walletConnectConfig'
 
@@ -85,6 +86,15 @@ function installReownConsoleFilter(): void {
 }
 
 installReownConsoleFilter()
+
+// Install the /api/rpc exponential-backoff fetch wrapper exactly once
+// per page lifetime. When devnet is unreachable the proxy returns 502
+// with a -32000 envelope; without this wrapper wagmi/React Query keeps
+// firing the configured refetchInterval (15/30/60 s) waves of 8–12
+// batches forever. The wrapper short-circuits those waves with a
+// synthetic 502 during the cooldown so the proxy isn't hammered. See
+// task 0050 and `./rpcBackoff.ts`.
+installRpcBackoff()
 
 if (typeof window !== 'undefined' && !isValidWcProjectId) {
   const w = window as unknown as { __wagmiMissingProjectIdWarned?: boolean }
