@@ -105,6 +105,67 @@ describe('HedgeProofViewerPage', () => {
     expect(container.querySelector('script')).toBeNull();
   });
 
+  it('renders the empty-body state with retry + raw link when markdown is "" (#0037)', async () => {
+    mockJson({
+      status: 'ok',
+      markdown: '',
+      pointer: {
+        path: '.autobuilder/initiatives/0007e-hedging-demo/proofs/run-0.md',
+        timestamp: 1700000000000,
+        summary: 'demo — 0 receipts',
+      },
+    });
+    render(<HedgeProofViewerPage />);
+    const empty = await screen.findByTestId('hedge-proof-empty-body');
+    expect(empty.textContent).toMatch(/Proof body is empty/i);
+    // Metadata strip stays above the empty-state card so the operator
+    // keeps pointer context (#0037 PRD: Proposed UX).
+    expect(screen.getByTestId('hedge-proof-timestamp')).toBeInTheDocument();
+    expect(screen.getByTestId('hedge-proof-summary')).toBeInTheDocument();
+    expect(screen.getByTestId('hedge-proof-retry')).toBeInTheDocument();
+    const raw = screen.getByTestId('hedge-proof-raw-link');
+    expect(raw.getAttribute('href')).toBe('/api/hedge/proof/latest');
+    expect(raw.getAttribute('target')).toBe('_blank');
+    // Back-to-dashboard link still points at /analytics on this state.
+    expect(screen.getByTestId('hedge-proof-back-link').getAttribute('href')).toBe(
+      '/analytics',
+    );
+    // The OK body must not render alongside the empty-state shell.
+    expect(screen.queryByTestId('hedge-proof-body')).toBeNull();
+  });
+
+  it('treats whitespace-only markdown as empty body (#0037)', async () => {
+    mockJson({
+      status: 'ok',
+      markdown: '   \n\t\n ',
+      pointer: {
+        path: '.autobuilder/initiatives/0007e-hedging-demo/proofs/run-0.md',
+        timestamp: 1700000000000,
+        summary: 'demo — 0 receipts',
+      },
+    });
+    render(<HedgeProofViewerPage />);
+    const empty = await screen.findByTestId('hedge-proof-empty-body');
+    expect(empty.textContent).toMatch(/Proof body is empty/i);
+    expect(screen.queryByTestId('hedge-proof-body')).toBeNull();
+  });
+
+  it('renders the OK body unchanged for non-empty markdown (no regression #0037)', async () => {
+    mockJson({
+      status: 'ok',
+      markdown: '# hello',
+      pointer: {
+        path: '.autobuilder/initiatives/0007e-hedging-demo/proofs/run-1.md',
+        timestamp: 1700000000000,
+        summary: 'demo — 1 receipts',
+      },
+    });
+    render(<HedgeProofViewerPage />);
+    const body = await screen.findByTestId('hedge-proof-body');
+    expect(body.querySelector('h1')?.textContent).toBe('hello');
+    expect(screen.queryByTestId('hedge-proof-empty-body')).toBeNull();
+  });
+
   it('retry on a network rejection re-fetches and recovers to the happy view', async () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')

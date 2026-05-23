@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/goodclaw/goodchain-live-prices-lanes/lane5-hedging-demo/frontend/src/app/%28app%29/analytics/hedge/proof/latest/loading.tsx"],"sourcesContent":["import { CardSkeleton } from '@/components/ui/PageSkeleton'\n\nexport default function HedgeProofLoading() {\n  return (\n    <div className=\"w-full max-w-3xl mx-auto px-4 py-6 animate-pulse\">\n      <div className=\"mb-6\">\n        <div className=\"h-3 w-32 bg-dark-50/40 rounded mb-2\" />\n        <div className=\"h-7 w-40 bg-dark-50/40 rounded\" />\n      </div>\n      <CardSkeleton rows={6} />\n    </div>\n  )\n}\n"],"names":["HedgeProofLoading","className","rows"],"mappings":";;;;;AAAA;;;AAEe,SAASA;IACtB,qBACE,8OAAC;QAAIC,WAAU;;0BACb,8OAAC;gBAAIA,WAAU;;kCACb,8OAAC;wBAAIA,WAAU;;;;;;kCACf,8OAAC;wBAAIA,WAAU;;;;;;;;;;;;0BAEjB,8OAAC,oKAAY;gBAACC,MAAM;;;;;;;;;;;;AAG1B"}}]
+}

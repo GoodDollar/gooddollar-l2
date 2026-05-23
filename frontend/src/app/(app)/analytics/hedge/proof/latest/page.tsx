@@ -33,9 +33,12 @@ type ProofResponse =
   | { status: 'forbidden'; reason: string }
   | { status: 'missing'; reason: string }
 
+type OkData = Extract<ProofResponse, { status: 'ok' }>
+
 type ViewState =
   | { kind: 'loading' }
-  | { kind: 'ok'; data: Extract<ProofResponse, { status: 'ok' }> }
+  | { kind: 'ok'; data: OkData }
+  | { kind: 'empty_body'; data: OkData }
   | { kind: 'no_proof' }
   | { kind: 'error'; copy: ErrorCopy }
 
@@ -122,7 +125,17 @@ export default function HedgeProofViewerPage() {
       return
     }
     if (body.status === 'ok') {
-      setView({ kind: 'ok', data: body })
+      // An OK response with an empty / whitespace-only body is reachable
+      // when the engine emits the `latest.json` pointer at cycle start
+      // but flushes the markdown body at cycle end, after a header-only
+      // no-op cycle, or after a `> latest.md` truncation. Route those
+      // into a dedicated empty-state instead of rendering an outlined
+      // void in the OK shell (task 0037).
+      if (body.markdown.trim().length === 0) {
+        setView({ kind: 'empty_body', data: body })
+      } else {
+        setView({ kind: 'ok', data: body })
+      }
       return
     }
     if (body.status === 'no_proof') {
@@ -141,6 +154,9 @@ export default function HedgeProofViewerPage() {
       <PageHeader />
       {view.kind === 'loading' && <LoadingState />}
       {view.kind === 'ok' && <OkState data={view.data} />}
+      {view.kind === 'empty_body' && (
+        <EmptyBodyState data={view.data} onRetry={load} />
+      )}
       {view.kind === 'no_proof' && (
         <NotFoundState
           title="No hedge proof yet"
@@ -190,37 +206,10 @@ function LoadingState() {
   )
 }
 
-function OkState({
-  data,
-}: {
-  data: Extract<ProofResponse, { status: 'ok' }>
-}) {
-  const ts = renderTimestamp(data.pointer.timestamp)
+function OkState({ data }: { data: OkData }) {
   return (
     <article data-testid="hedge-proof-viewer">
-      <div className="mb-4 flex items-center gap-3 flex-wrap text-xs text-gray-400">
-        <span title={ts.iso} data-testid="hedge-proof-timestamp">
-          {ts.relative}
-        </span>
-        {data.pointer.summary && (
-          <span
-            data-testid="hedge-proof-summary"
-            className="rounded-md bg-dark-50 px-2 py-0.5 font-mono text-gray-300"
-            title={data.pointer.summary}
-          >
-            {data.pointer.summary}
-          </span>
-        )}
-        <a
-          data-testid="hedge-proof-raw-link"
-          href="/api/hedge/proof/latest"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-goodgreen hover:underline"
-        >
-          View raw markdown
-        </a>
-      </div>
+      <ProofMetadataStrip pointer={data.pointer} />
       <div
         data-testid="hedge-proof-body"
         className="prose prose-invert max-w-none rounded-xl border border-dark-50 bg-dark-100/40 p-5"
@@ -231,16 +220,70 @@ function OkState({
   )
 }
 
+// Metadata strip (relative time + summary chip + raw-markdown link)
+// rendered above both the OK body and the empty-body fallback so the
+// operator keeps pointer context across both states (task 0037).
+function ProofMetadataStrip({ pointer }: { pointer: OkData['pointer'] }) {
+  const ts = renderTimestamp(pointer.timestamp)
+  return (
+    <div className="mb-4 flex items-center gap-3 flex-wrap text-xs text-gray-400">
+      <span title={ts.iso} data-testid="hedge-proof-timestamp">
+        {ts.relative}
+      </span>
+      {pointer.summary && (
+        <span
+          data-testid="hedge-proof-summary"
+          className="rounded-md bg-dark-50 px-2 py-0.5 font-mono text-gray-300"
+          title={pointer.summary}
+        >
+          {pointer.summary}
+        </span>
+      )}
+      <a
+        data-testid="hedge-proof-raw-link"
+        href="/api/hedge/proof/latest"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-goodgreen hover:underline"
+      >
+        View raw markdown
+      </a>
+    </div>
+  )
+}
+
+function EmptyBodyState({
+  data,
+  onRetry,
+}: {
+  data: OkData
+  onRetry: () => void | Promise<void>
+}) {
+  return (
+    <article>
+      <ProofMetadataStrip pointer={data.pointer} />
+      <NotFoundState
+        testid="hedge-proof-empty-body"
+        title="Proof body is empty"
+        detail="The engine wrote a pointer but the markdown body is empty. This usually means the current cycle is still in progress — try again in a few seconds, or view the raw file."
+        onRetry={onRetry}
+      />
+    </article>
+  )
+}
+
 function NotFoundState({
   title,
   detail,
   onRetry,
   variant = 'neutral',
+  testid = 'hedge-proof-error',
 }: {
   title: string
   detail: string
   onRetry: () => void | Promise<void>
   variant?: 'error' | 'neutral'
+  testid?: string
 }) {
   const wrapperClass =
     variant === 'error'
@@ -249,7 +292,7 @@ function NotFoundState({
   const titleColor = variant === 'error' ? 'text-red-200' : 'text-white'
   return (
     <section
-      data-testid="hedge-proof-error"
+      data-testid={testid}
       className={`rounded-xl border ${wrapperClass} p-5`}
     >
       <h2 className={`text-base font-semibold ${titleColor}`}>{title}</h2>
