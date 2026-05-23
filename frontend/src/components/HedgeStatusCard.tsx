@@ -427,7 +427,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
       {!isThrottled && error && !data?.snapshot && (
         <div
           data-testid="hedge-status-error"
-          className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300 flex items-center justify-between gap-3 flex-wrap"
+          className="mb-3 bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300 flex items-center justify-between gap-3 flex-wrap"
         >
           <div>
             <span className="font-medium">Hedge engine unavailable:</span> {error}

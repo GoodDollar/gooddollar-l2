@@ -145,6 +145,16 @@ describe('HedgeStatusCard', () => {
     expect(screen.getByTestId('hedge-status-error')).toHaveTextContent('ECONNREFUSED');
   });
 
+  it('error banner has bottom-margin (mb-3) so it does not butt against the receipts panel', async () => {
+    // Regression guard for #0018: every other callout (throttle, kill-switch,
+    // breaker) carries `mb-3`; the error banner had no margin, causing the
+    // red pill to touch the dark "Recent receipts" panel below it.
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
+    render(<HedgeStatusCard />);
+    const banner = await screen.findByTestId('hedge-status-error');
+    expect(banner.className.split(/\s+/)).toContain('mb-3');
+  });
+
   it('shows a loading skeleton before the first fetch resolves', () => {
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
     render(<HedgeStatusCard />);
