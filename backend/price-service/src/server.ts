@@ -486,6 +486,18 @@ export function build404BodySize(): number {
 const ASCII_TICKER_RAW = /^[A-Za-z0-9._-]{1,16}$/;
 
 /**
+ * Second gate: require at least one alphanumeric character in the raw
+ * input. Without this, `[._-]{1,16}` strings (`................`,
+ * `----------------`, `.-_`) pass the shape check, land on the
+ * `symbol-not-configured` 404, and tell the operator to add the junk
+ * string to ORACLE_SYMBOLS — which can never work. Real-world tickers
+ * (eToro / OPRA / RIC / Bloomberg) always carry at least one letter
+ * or digit, so this gate has zero false positives on any instrument
+ * in current or planned subscription sets.
+ */
+const HAS_ALNUM = /[A-Za-z0-9]/;
+
+/**
  * eToro / standard ticker shape: 1..16 chars of upper-case letters,
  * digits, dot, dash, underscore. Matches every symbol in
  * DEFAULT_CONFIG.symbols (`AAPL`, `TSLA`, ...) and the standard eToro
@@ -496,17 +508,21 @@ const ASCII_TICKER_RAW = /^[A-Za-z0-9._-]{1,16}$/;
  */
 const VALID_SYMBOL = /^[A-Z0-9._-]{1,16}$/;
 
-export function normalizeSymbol(
-  raw: string,
-): { ok: true; symbol: string } | { ok: false } {
-  if (typeof raw !== 'string') return { ok: false };
-  if (raw.length === 0 || raw.length > 16) return { ok: false };
-  if (!ASCII_TICKER_RAW.test(raw)) return { ok: false };
+export type NormalizeSymbolResult =
+  | { ok: true; symbol: string }
+  | { ok: false; reason: 'shape' | 'no-alnum' };
+
+export function normalizeSymbol(raw: string): NormalizeSymbolResult {
+  if (typeof raw !== 'string') return { ok: false, reason: 'shape' };
+  if (raw.length === 0 || raw.length > 16) return { ok: false, reason: 'shape' };
+  if (!ASCII_TICKER_RAW.test(raw)) return { ok: false, reason: 'shape' };
+  if (!HAS_ALNUM.test(raw)) return { ok: false, reason: 'no-alnum' };
   const upper = raw.toUpperCase();
-  // Defensive: `ASCII_TICKER_RAW` already accepted the raw shape, and
-  // `.toUpperCase()` on ASCII letters is provably 1:1. Unreachable in
-  // production; guards against a future refactor that loosens the gate.
-  if (!VALID_SYMBOL.test(upper)) return { ok: false };
+  // Defensive: `ASCII_TICKER_RAW` + `HAS_ALNUM` already accepted the
+  // raw shape, and `.toUpperCase()` on ASCII letters is provably 1:1.
+  // Unreachable in production; guards against a future refactor that
+  // loosens the gates.
+  if (!VALID_SYMBOL.test(upper)) return { ok: false, reason: 'shape' };
   return { ok: true, symbol: upper };
 }
 
@@ -764,10 +780,19 @@ export function createServer(
       // Truncate at 32 chars (the same limit `normalizeSymbol` enforces
       // on the raw input) plus the `/quotes/` prefix.
       const path = req.path.length > 48 ? `${req.path.slice(0, 48)}…` : req.path;
+      // Pick the message based on which gate failed so the caller knows
+      // exactly what to fix. Pure-special inputs (all dots/dashes/
+      // underscores) don't deserve the 404 "edit ORACLE_SYMBOLS and
+      // restart" framing — that copy is for legitimate-but-unconfigured
+      // tickers, not for inputs that can never be a ticker on any market.
       // 400 is input validation — intentionally does NOT carry source state.
+      const message =
+        result.reason === 'no-alnum'
+          ? 'symbol must contain at least one letter or digit'
+          : 'symbol must match /^[A-Z0-9._-]{1,16}$/';
       res.status(400).json({
         error: 'invalid-symbol',
-        message: 'symbol must match /^[A-Z0-9._-]{1,16}$/',
+        message,
         path,
         method: req.method,
         timestamp: now,

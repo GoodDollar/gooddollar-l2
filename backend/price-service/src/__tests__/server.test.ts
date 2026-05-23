@@ -590,7 +590,7 @@ describe('REST Server — 404 and 405 envelopes', () => {
     expect(body.error).toBe('not-found');
   });
 
-  it('GET /quotes/.. (raw, unnormalized) returns JSON 404 with no HTML default', async () => {
+  it('GET /quotes/.. (raw, unnormalized) returns JSON 400 invalid-symbol with no HTML default (task 0036)', async () => {
     const addr = (server.address() as import('net').AddressInfo);
     const result = await new Promise<{ status: number; body: string }>((resolve, reject) => {
       const req = http.request(
@@ -605,13 +605,16 @@ describe('REST Server — 404 and 405 envelopes', () => {
       req.end();
     });
     // Raw `/quotes/..` matches the parametric `/quotes/:symbol` route; the
-    // symbol `..` passes the shape regex but is not in cfg.symbols, so the
-    // response is a JSON 404 `symbol-not-configured` — no HTML default leaks.
-    expect(result.status).toBe(404);
+    // symbol `..` passes the shape regex but contains zero alphanumeric
+    // characters, so it gets rejected at the no-alnum gate (task 0036)
+    // with a JSON 400 `invalid-symbol` body — no HTML default leaks, and
+    // the operator isn't told to add `..` to ORACLE_SYMBOLS.
+    expect(result.status).toBe(400);
     expect(result.body).not.toContain('Cannot GET');
     expect(result.body).not.toContain('<!DOCTYPE');
     const body = JSON.parse(result.body) as Record<string, unknown>;
-    expect(body.error).toBe('symbol-not-configured');
+    expect(body.error).toBe('invalid-symbol');
+    expect((body.message as string).toLowerCase()).toMatch(/letter or digit/);
   });
 });
 
