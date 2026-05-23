@@ -17,7 +17,10 @@ import { PriceSourceBadge } from '@/components/PriceSourceBadge'
 import { useStockSources } from '@/lib/useStockSources'
 import type { PriceSource } from '@/lib/priceSource'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
-import { MarketSessionBadge } from '@/components/stocks/MarketSessionBadge'
+import {
+  SyntheticStockHeaderBadge,
+  useSyntheticStockHeader,
+} from '@/components/stocks/SyntheticStockHeaderBadge'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { StockLogo } from '@/components/ui/stock-logo'
@@ -191,6 +194,7 @@ export default function StocksPage() {
   const searchParams = useSearchParams()
   const { address } = useAccount()
   const mounted = useMounted()
+  const syntheticHeader = useSyntheticStockHeader()
   const initialScreenerState = useMemo(
     () => parseStocksScreenerState(searchParams),
     [searchParams],
@@ -369,9 +373,9 @@ export default function StocksPage() {
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-white">Tokenized Stocks</h1>
-              <MarketSessionBadge />
+              <SyntheticStockHeaderBadge />
             </div>
-            <p className="text-sm text-gray-400"><span>Trade synthetic equities 24/7 with fractional shares</span>. Every trade funds UBI.</p>
+            <p data-testid="stocks-hero-subhead" className="text-sm text-gray-400">{syntheticHeader.subheadText}</p>
           </div>
         </div>
       </div>
@@ -379,7 +383,7 @@ export default function StocksPage() {
       <div className="mb-2 sm:mb-4">
         <InfoBanner
           title="How Tokenized Stocks Work"
-          description="Synthetic stock tokens track real equity prices via StockOracleV2 multi-signer oracles. Trade 24/7 with fractional amounts starting at $1. Every trade routes 33% of fees to UBI."
+          description={syntheticHeader.infoBannerDescription}
           storageKey="gd-banner-dismissed-stocks"
         />
       </div>

@@ -28,6 +28,10 @@ import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
 import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/walletCapabilities'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import {
+  SyntheticStockHeaderBadge,
+  useSyntheticStockHeader,
+} from '@/components/stocks/SyntheticStockHeaderBadge'
 import { useStockSources } from '@/lib/useStockSources'
 import { BidAskSpread, PriceWithTick } from '@/components/BidAskSpread'
 import { SentimentCard } from '@/components/SentimentCard'
@@ -452,6 +456,7 @@ export function StockDetailContent() {
   const { stocks, isLoading: stocksLoading, isLive } = useOnChainStocks()
   const stockSources = useStockSources()
   const stock = stocks.find(s => s.ticker === ticker)
+  const syntheticHeader = useSyntheticStockHeader()
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
   const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
@@ -542,9 +547,15 @@ export function StockDetailContent() {
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-goodgreen/30 to-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-xs font-bold text-goodgreen">
               {stock.ticker.slice(0, 2)}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
+                <SyntheticStockHeaderBadge />
+              </div>
               <p className="text-sm text-gray-400">{stock.name} · {stock.sector}</p>
+              <p data-testid="ticker-hero-subhead" className="mt-1 text-xs text-gray-500 leading-snug">
+                {syntheticHeader.subheadText}
+              </p>
             </div>
           </div>
 
