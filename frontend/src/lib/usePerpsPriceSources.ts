@@ -103,10 +103,12 @@ export function usePerpsPriceSources(): PerpsPriceSources {
     const buildEntries = (symbols: string[]): LivePriceEntry[] => {
       return symbols.map(symbol => {
         const pair = pairs.find(p => p.symbol === symbol)
-        if (!pair) {
+        if (!pair || pair.markPrice <= 0) {
+          // Task 0036: never render `$0.000000` for a missing pair; the
+          // LivePriceCard surfaces `null` as an em-dash + "Feed pending".
           return {
             symbol,
-            price: 0,
+            price: null,
             change24h: null,
             source: 'unknown' as const,
             updatedAgoMs: null,

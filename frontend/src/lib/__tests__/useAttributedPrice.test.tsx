@@ -228,9 +228,14 @@ describe('useAttributedPrice — cross-page shared source-of-truth (lane 4 / 002
       })
       mockFeeds({})
 
+      // Task 0036: when the chain pair is in fallback mode, its `markPrice`
+      // is the canonical demo price the rest of /perps already renders
+      // (PairSelector tabs, Active pair info bar). Prefer it over the
+      // older `FALLBACK_PRICES['WBTC']` constant so every BTC-USD cell on
+      // /perps agrees on one number with one badge.
       const { result } = renderHook(() => useAttributedPrice('WBTC'))
       expect(result.current.source).toBe('fallback')
-      expect(result.current.priceUsd).toBe(60125.80)
+      expect(result.current.priceUsd).toBe(84_250)
       expect(result.current.divergent).toBe(false)
     })
 

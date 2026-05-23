@@ -42,21 +42,23 @@ export function PerpsPriceStrip({ activeSymbol, className = '' }: PerpsPriceStri
 
   const headlineEntries: LivePriceEntry[] = ALWAYS_ON_PAIRS.map(pairSym => {
     const attr = attributed[PAIR_TO_BASE[pairSym]]
-    if (!attr) {
-      return { symbol: pairSym, price: 0, change24h: null, source: 'unknown', updatedAgoMs: null }
-    }
     // /perps-specific session-state policy (closed/halted) wins over the
     // generic resolver — preserved from usePerpsPriceSources. Everything
     // else (chain-oracle / coingecko / fallback) takes the attributed
     // source so prices and badges match Activity/Analytics/Portfolio.
     const perpsSource = perpsSources[pairSym]
     const source = perpsSource === 'closed' ? 'closed' : attr.source
+    // Task 0036: when no source has a value for this asset, render an
+    // em-dash with a "Feed pending" badge instead of `$0.000000` with
+    // "Unknown · No data". Trust collapses when the strip card lies
+    // about $0 alongside an active-pair tab showing $84,250.
+    const isMissing = source === 'unknown' || attr.priceUsd <= 0
     return {
       symbol: pairSym,
-      price: attr.priceUsd,
-      change24h: attr.change24h,
+      price: isMissing ? null : attr.priceUsd,
+      change24h: isMissing ? null : attr.change24h,
       source,
-      updatedAgoMs: attr.ageMs,
+      updatedAgoMs: isMissing ? null : attr.ageMs,
       divergent: attr.divergent,
     }
   })

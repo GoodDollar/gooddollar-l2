@@ -27,6 +27,8 @@ import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
 import { PerpsPriceStrip } from '@/components/PerpsPriceStrip'
 import { PriceSourceBadge } from '@/components/PriceSourceBadge'
 import { usePerpsPriceSources } from '@/lib/usePerpsPriceSources'
+import { useAttributedPrice } from '@/lib/useAttributedPrice'
+import type { PriceSource } from '@/lib/priceSource'
 
 function WalletGatedTradeButton({ hasSize, exceedsMargin, children }: { hasSize: boolean; exceedsMargin: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -187,13 +189,22 @@ function PairSelector({ pairs, selected, onSelect }: { pairs: PerpPair[]; select
   )
 }
 
-function PairInfoBar({ pair }: { pair: PerpPair }) {
+interface AttributedMark {
+  /** Mark price from `useAttributedPrice` for the active pair, or `null` when
+   * no source has data (em-dashes the cell). Task 0036 — strip + Mark cell
+   * read from the same hook so they cannot disagree. */
+  price: number | null
+  source: PriceSource
+}
+
+function PairInfoBar({ pair, mark }: { pair: PerpPair; mark: AttributedMark }) {
   // Mobile (≤640px): 2-column grid of stacked label/value tiles, so each
   // stat reads as a single unit. Desktop (≥640px): inline flex-wrap, identical
   // to the previous layout. See task 0099.
   const tileCls = "flex flex-col sm:flex-row sm:items-baseline"
   const labelCls =
     "text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs sm:normal-case sm:tracking-normal"
+  const markText = mark.price === null ? '—' : formatPerpsPrice(mark.price)
   return (
     <div
       data-testid="pair-info-bar"
@@ -201,7 +212,10 @@ function PairInfoBar({ pair }: { pair: PerpPair }) {
     >
       <div className={tileCls}>
         <span className={labelCls}>Mark</span>
-        <span className="text-white font-medium sm:ml-1.5">{formatPerpsPrice(pair.markPrice)}</span>
+        <span
+          data-testid="pair-info-bar-mark"
+          className={`font-medium sm:ml-1.5 ${mark.price === null ? 'text-gray-500' : 'text-white'}`}
+        >{markText}</span>
       </div>
       <div className={tileCls}>
         <span className={labelCls}>24h</span>
@@ -886,6 +900,17 @@ export default function PerpsPage() {
   const { sources: priceSources } = usePerpsPriceSources()
   const activePairSource = pair ? (priceSources[pair.symbol] ?? 'unknown') : 'unknown'
 
+  // Mark cell on the Active pair info bar reads from the same
+  // `useAttributedPrice` resolver the headline strip uses, so the two
+  // numbers can never disagree. Task 0036. When `attr.source === 'unknown'`
+  // (no chain / CG / fallback for this asset), the cell renders an em-dash
+  // and the strip card does the same — one honest "Feed pending" instead of
+  // contradictory `$0.000000` vs `$84,250` cells on the same viewport.
+  const activeAttr = useAttributedPrice(pair?.baseAsset ?? '')
+  const activeMark: AttributedMark = activeAttr && activeAttr.priceUsd > 0 && activeAttr.source !== 'unknown'
+    ? { price: activeAttr.priceUsd, source: activeAttr.source }
+    : { price: null, source: activeAttr?.source ?? 'unknown' }
+
   const chartData = useMemo(() => {
     if (!pair) return []
     return getChartData(pair.symbol, timeframe, pair.markPrice)
@@ -924,7 +949,7 @@ export default function PerpsPage() {
             <PriceSourceBadge source={activePairSource} size="sm" />
           </span>
         </div>
-        <PairInfoBar pair={pair} />
+        <PairInfoBar pair={pair} mark={activeMark} />
         <div className="flex items-center gap-3 pt-1 text-xs">
           <Link href={`/explore/${pair.baseAsset === 'BTC' ? 'WBTC' : pair.baseAsset}`}
             className="text-gray-500 hover:text-goodgreen transition-colors inline-flex items-center gap-1">

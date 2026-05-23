@@ -93,6 +93,9 @@ export function priceSourceLabel(source: PriceSource): string {
     case 'fallback':     return 'Fallback price'
     case 'stale':        return 'Stale'
     case 'closed':       return 'Market closed'
-    case 'unknown':      return 'Unknown'
+    // "Feed pending" matches the empty-state vocabulary established by
+    // tasks 0028/0029/0030 (`Source: feed pending` captions on Top
+    // Movers / Analyst Outlook / News & Events). Task 0036.
+    case 'unknown':      return 'Feed pending'
   }
 }

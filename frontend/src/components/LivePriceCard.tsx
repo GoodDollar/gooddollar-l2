@@ -6,8 +6,13 @@ import type { PriceSource } from '@/lib/priceSource'
 
 export interface LivePriceCardProps {
   symbol: string
-  /** USD price as a plain number. Renders dimmed when `source === 'fallback'`. */
-  price: number
+  /**
+   * USD price as a plain number, or `null` when no source has a value
+   * (`source === 'unknown'`). `null` renders an em-dash so the card never
+   * shows `$0.000000` as if zero were a real price. Lane 4 / task 0036.
+   * Renders dimmed when `source === 'fallback'`.
+   */
+  price: number | null
   /** 24h change in percent (e.g. 1.42 → +1.42%). null hides the row. */
   change24h: number | null
   source: PriceSource
@@ -24,7 +29,10 @@ export interface LivePriceCardProps {
   className?: string
 }
 
-function formatPrice(value: number): string {
+const NO_DATA_DASH = '—'
+
+function formatPrice(value: number | null): string {
+  if (value === null) return NO_DATA_DASH
   if (!Number.isFinite(value)) return '$–'
   if (Math.abs(value) >= 1000) return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   if (Math.abs(value) >= 1)    return `$${value.toFixed(2)}`
@@ -64,7 +72,9 @@ function freshnessText(source: PriceSource, ms: number | null): FreshnessLine {
     case 'fallback':
       return { text: 'No live data', tone: 'normal' }
     case 'unknown':
-      return { text: 'No data', tone: 'normal' }
+      // Badge already says "Feed pending"; right-aligned em-dash keeps the
+      // card visually balanced without doubling up the same message. Task 0036.
+      return { text: NO_DATA_DASH, tone: 'normal' }
   }
 }
 
@@ -81,7 +91,8 @@ export function LivePriceCard(props: LivePriceCardProps) {
     divergent = false, compact = false, className = '',
   } = props
 
-  const isFallback = source === 'fallback'
+  const isFallback = source === 'fallback' && price !== null
+  const isMissing = price === null
   const showWarning = WARNING_SOURCES.has(source)
 
   const changeColor =
@@ -116,8 +127,7 @@ export function LivePriceCard(props: LivePriceCardProps) {
 
       <div
         data-testid="live-price"
-        className={`font-semibold ${compact ? 'text-sm' : 'text-base'} ${isFallback ? 'text-gray-500 opacity-70' : 'text-white'}`}
-        {...(isFallback ? { 'data-testid-fallback': '' } : {})}
+        className={`font-semibold ${compact ? 'text-sm' : 'text-base'} ${isFallback || isMissing ? 'text-gray-500 opacity-70' : 'text-white'}`}
       >
         <span data-testid={isFallback ? 'fallback-price' : undefined}>{formatPrice(price)}</span>
       </div>

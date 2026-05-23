@@ -99,6 +99,11 @@ interface ResolverContext {
   chainPrice: number
   cgPrice: number
   cgLive: boolean
+  /**
+   * Precomputed fallback price (already considering equivalents and any
+   * chain-pair fallback substitution from `useOnChainPairs`). 0 means none.
+   */
+  fallbackPrice: number
   change24h: number | null
   ageMs: number | null
   statusQuote?: { lastUpdateMs: number; sessionState: string; source?: string }
@@ -110,10 +115,8 @@ interface ResolverContext {
  * the resolution logic unit-testable.
  */
 function resolveAttribution(ctx: ResolverContext): AttributedPrice {
-  const baseSymbol = normaliseSymbol(ctx.symbol)
   const chainOk = ctx.chainPrice > 0
-  const hasFallback = FALLBACK_PRICES[ctx.symbol] !== undefined
-    || FALLBACK_PRICES[baseSymbol] !== undefined
+  const hasFallback = ctx.fallbackPrice > 0
 
   const source = resolvePriceSource({
     chainOk,
@@ -121,8 +124,6 @@ function resolveAttribution(ctx: ResolverContext): AttributedPrice {
     hasFallback,
     statusQuote: ctx.statusQuote,
   })
-
-  const fallbackPrice = FALLBACK_PRICES[ctx.symbol] ?? FALLBACK_PRICES[baseSymbol] ?? 0
 
   let priceUsd: number
   switch (source) {
@@ -133,14 +134,14 @@ function resolveAttribution(ctx: ResolverContext): AttributedPrice {
       priceUsd = ctx.cgPrice
       break
     case 'fallback':
-      priceUsd = fallbackPrice
+      priceUsd = ctx.fallbackPrice
       break
     case 'stale':
     case 'closed':
     case 'etoro-demo':
       // Session-state overlays don't carry their own number; surface the
       // best last-known value so the UI still shows _something_ honest.
-      priceUsd = chainOk ? ctx.chainPrice : ctx.cgPrice || fallbackPrice
+      priceUsd = chainOk ? ctx.chainPrice : ctx.cgPrice || ctx.fallbackPrice
       break
     case 'unknown':
       priceUsd = 0
@@ -194,6 +195,16 @@ export function useAttributedPrices(symbols: string[]): Record<string, Attribute
       // so we fall through to coingecko → fallback → unknown.
       const chainAlive = !!chainPair && !chainPair.isFallback && chainPair.markPrice > 0
       const chainPrice = chainAlive ? chainPair!.markPrice : 0
+      // Task 0036: when the chain pair is in fallback mode, its `markPrice`
+      // is the most-recent demo number the app has for that pair and the
+      // same number every perps-specific surface (PairSelector tabs,
+      // Active pair info bar) already renders. Prefer it over the static
+      // `FALLBACK_PRICES` table so the strip, the active-pair tab, and the
+      // info-bar Mark cell all agree on one BTC price instead of three.
+      const chainFallbackPrice =
+        chainPair && chainPair.isFallback && chainPair.markPrice > 0
+          ? chainPair.markPrice
+          : 0
 
       const equivs = equivalents(sym)
       const cgPrice = equivs.reduce<number>((acc, s) => acc || (feeds.prices[s] ?? 0), 0)
@@ -201,6 +212,14 @@ export function useAttributedPrices(symbols: string[]): Record<string, Attribute
       const change24h = equivs.reduce<number | null>(
         (acc, s) => acc ?? feeds.quotes[s]?.change24h ?? null, null,
       )
+
+      // Static fallback consults *all* equivalents so asking for `BTC` finds
+      // `FALLBACK_PRICES['WBTC']` (the BTC↔WBTC asymmetry that hid the strip
+      // bug — task 0036). Chain-pair fallback wins when available.
+      const staticFallbackPrice = equivs.reduce<number>(
+        (acc, s) => acc || (FALLBACK_PRICES[s] ?? 0), 0,
+      )
+      const fallbackPrice = chainFallbackPrice || staticFallbackPrice
 
       const sq = status?.quotes.find(q =>
         q.symbol === sym || q.symbol === baseSym || q.symbol === `${baseSym}-USD`,
@@ -211,6 +230,7 @@ export function useAttributedPrices(symbols: string[]): Record<string, Attribute
         chainPrice,
         cgPrice,
         cgLive,
+        fallbackPrice,
         change24h,
         ageMs,
         statusQuote: sq && {

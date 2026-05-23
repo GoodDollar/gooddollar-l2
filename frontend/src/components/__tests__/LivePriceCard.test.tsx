@@ -106,17 +106,25 @@ describe('LivePriceCard', () => {
     expect(freshness.textContent ?? '').not.toMatch(/Updated/)
   })
 
-  it('renders "No data" when source is unknown', () => {
+  it('renders an em-dash price and a "Feed pending" badge when source is unknown (no data)', () => {
+    // Task 0036 — when no source has a value the card MUST NOT render
+    // `$0.000000` as if zero were a real price. The badge already says
+    // "Feed pending"; the right side renders an em-dash to keep the card
+    // visually balanced without doubling up the same copy.
     render(
       <LivePriceCard
         symbol="???"
-        price={0}
+        price={null}
         change24h={null}
         source="unknown"
         updatedAgoMs={null}
       />,
     )
-    expect(screen.getByTestId('live-price-freshness')).toHaveTextContent('No data')
+    const priceEl = screen.getByTestId('live-price')
+    expect(priceEl).toHaveTextContent('—')
+    expect(priceEl.textContent ?? '').not.toMatch(/\$0\.0+/)
+    expect(screen.getByText('Feed pending')).toBeInTheDocument()
+    expect(screen.getByTestId('live-price-freshness')).toHaveTextContent('—')
   })
 
   it('renders fallback in a dimmed style with a regression marker for E2E', () => {
