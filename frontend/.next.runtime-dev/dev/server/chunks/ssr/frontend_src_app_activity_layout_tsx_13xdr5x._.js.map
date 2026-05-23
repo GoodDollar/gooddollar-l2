@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/goodclaw/goodchain-live-prices-lanes/lane4-app-integration/frontend/src/app/activity/layout.tsx"],"sourcesContent":["import type { Metadata } from 'next'\n\nexport const metadata: Metadata = {\n  title: 'Live Activity',\n  description: 'Real-time on-chain activity on GoodDollar L2 — live transactions, block data, and protocol events.',\n}\n\nexport default function ActivityLayout({ children }: { children: React.ReactNode }) {\n  return <>{children}</>\n}\n"],"names":["metadata","title","description","ActivityLayout","children"],"mappings":";;;;;;;;AAEO,MAAMA,WAAqB;IAChCC,OAAO;IACPC,aAAa;AACf;AAEe,SAASC,eAAe,EAAEC,QAAQ,EAAiC;IAChF,qBAAO;kBAAGA;;AACZ"}}]
+}

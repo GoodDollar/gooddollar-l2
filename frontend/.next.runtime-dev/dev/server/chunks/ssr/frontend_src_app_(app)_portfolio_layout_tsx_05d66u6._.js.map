@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/goodclaw/goodchain-live-prices-lanes/lane4-app-integration/frontend/src/app/%28app%29/portfolio/layout.tsx"],"sourcesContent":["import type { Metadata } from 'next'\n\nexport const metadata: Metadata = {\n  title: 'My Portfolio',\n  description: 'Your GoodDollar L2 portfolio — stocks, positions, lending, and UBI balance at a glance.',\n}\n\nexport default function PortfolioLayout({ children }: { children: React.ReactNode }) {\n  return <>{children}</>\n}\n"],"names":["metadata","title","description","PortfolioLayout","children"],"mappings":";;;;;;;;AAEO,MAAMA,WAAqB;IAChCC,OAAO;IACPC,aAAa;AACf;AAEe,SAASC,gBAAgB,EAAEC,QAAQ,EAAiC;IACjF,qBAAO;kBAAGA;;AACZ"}}]
+}

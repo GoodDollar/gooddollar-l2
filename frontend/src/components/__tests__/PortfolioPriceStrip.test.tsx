@@ -50,9 +50,10 @@ describe('PortfolioPriceStrip', () => {
     expect(screen.getByText('BTC')).toBeInTheDocument()
   })
 
-  it('renders skeleton placeholders when both lists are empty', () => {
+  it('renders the empty state (not skeletons) when both lists are empty', () => {
     render(<PortfolioPriceStrip stockTickers={[]} cryptoSymbols={[]} />)
-    expect(screen.getAllByTestId('live-price-skeleton')).toHaveLength(3)
+    expect(screen.getByTestId('live-price-empty')).toBeInTheDocument()
+    expect(screen.queryAllByTestId('live-price-skeleton')).toHaveLength(0)
   })
 
   it('deduplicates repeated symbols within a list', () => {

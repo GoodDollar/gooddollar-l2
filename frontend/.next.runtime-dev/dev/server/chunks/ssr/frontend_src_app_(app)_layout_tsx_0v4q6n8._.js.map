@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/goodclaw/goodchain-live-prices-lanes/lane4-app-integration/frontend/src/app/%28app%29/layout.tsx"],"sourcesContent":["/**\n * Layout for the `(app)` route group.\n *\n * WalletProviders moved to the root Providers wrapper because the shared\n * Header contains the primary Connect Wallet button and must be inside wagmi /\n * RainbowKit on every route.\n */\nexport default function AppLayout({ children }: { children: React.ReactNode }) {\n  return <>{children}</>\n}\n"],"names":["AppLayout","children"],"mappings":"AAAA;;;;;;CAMC;;;;;;AACc,SAASA,UAAU,EAAEC,QAAQ,EAAiC;IAC3E,qBAAO;kBAAGA;;AACZ"}}]
+}
