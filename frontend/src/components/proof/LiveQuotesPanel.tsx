@@ -25,10 +25,12 @@ interface QuotesResponse {
   timestamp: number
 }
 
+type ErrorCtx = 'price-service' | 'price-service-shape'
+
 type FetchState =
   | { status: 'loading' }
   | { status: 'ok'; data: QuotesResponse }
-  | { status: 'error'; message: string }
+  | { status: 'error'; ctx: ErrorCtx }
 
 const DEFAULT_PRICE_SERVICE_URL = 'http://localhost:9300'
 const DEFAULT_STALENESS_THRESHOLD_MS = 30_000
@@ -142,11 +144,12 @@ export function LiveQuotesPanel({
         if (!cancelled) setState({ status: 'ok', data: raw })
       } catch (err) {
         if (!cancelled) {
-          const ctx =
+          const ctx: ErrorCtx =
             err instanceof Error && err.message === SHAPE_MISMATCH
               ? 'price-service-shape'
               : 'price-service'
-          setState({ status: 'error', message: sanitiseClientError(ctx, err) })
+          sanitiseClientError(ctx, err)
+          setState({ status: 'error', ctx })
         }
       }
     }
@@ -194,20 +197,7 @@ export function LiveQuotesPanel({
       )}
 
       {state.status === 'error' && (
-        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
-          <div className="font-semibold">price-service unreachable</div>
-          <div className="mt-1 text-yellow-300/80">
-            Live quotes feed at{' '}
-            <span
-              className="font-mono"
-              data-testid="price-service-url-inline"
-            >
-              {displayHost(priceServiceUrl)}
-            </span>{' '}
-            is unreachable. The price-service may be offline or restarting.
-          </div>
-          <div className="mt-1 text-yellow-200/60">{state.message}</div>
-        </div>
+        <DegradedBox ctx={state.ctx} host={displayHost(priceServiceUrl)} />
       )}
 
       {state.status === 'ok' && (
@@ -269,6 +259,45 @@ export function LiveQuotesPanel({
       )}
     </section>
   )
+}
+
+/**
+ * Render the yellow degraded box with copy that depends on whether the
+ * fetch failed at the network layer (price-service unreachable) or at
+ * the payload layer (service answered but the shape was wrong). Both
+ * branches surface the configured host so reviewers can see which
+ * endpoint was attempted without opening devtools.
+ *
+ * The canned sanitised string is still produced and console-logged by
+ * `sanitiseClientError` upstream — we just don't paint it twice into
+ * the DOM (see lane6-live-quotes-error-panel-says-unreachable-twice).
+ */
+function DegradedBox({ ctx, host }: { ctx: ErrorCtx; host: string }) {
+  const HostPill = (
+    <span className="font-mono" data-testid="price-service-url-inline">
+      {host}
+    </span>
+  )
+  switch (ctx) {
+    case 'price-service-shape':
+      return (
+        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
+          <div className="font-semibold">price-service returned an unexpected payload</div>
+          <div className="mt-1 text-yellow-300/80">
+            The feed at {HostPill} is up but the response shape did not match the schema this panel expects. Re-run the price-service or check its build version.
+          </div>
+        </div>
+      )
+    case 'price-service':
+      return (
+        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
+          <div className="font-semibold">price-service unreachable</div>
+          <div className="mt-1 text-yellow-300/80">
+            Live quotes feed at {HostPill} is unreachable. The price-service may be offline or restarting.
+          </div>
+        </div>
+      )
+  }
 }
 
 function FreshnessChip({ summary }: { summary: FreshnessSummary }) {

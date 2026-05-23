@@ -204,17 +204,72 @@ describe('LiveQuotesPanel', () => {
     ['top-level array', [1, 2, 3]],
     ['quote with wrong numeric type', { timestamp: 1, quotes: { AAPL: { symbol: 'AAPL', bid: '178', ask: 179, mid: 178.5, cacheAge: 1000, sessionState: 'Open' } } }],
   ])('renders shape-mismatch degraded copy without crashing when body is %s', async (_label, body) => {
+    // Updated by lane6-live-quotes-error-panel-says-unreachable-twice: shape
+    // mismatch now renders distinct "unexpected payload" copy and must NOT
+    // print the "unreachable" header — the service answered, just with a
+    // bad payload.
     mockFetchOnce(body)
 
     render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
 
     await waitFor(() => {
-      expect(screen.getByText(/unexpected payload shape/i)).toBeInTheDocument()
+      expect(screen.getByText(/unexpected payload/i)).toBeInTheDocument()
     })
-    expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
+    expect(screen.queryByText(/price-service unreachable/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/SHAPE_MISMATCH/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Cannot read properties/)).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('fetch failure renders one unreachable sentence, not two', async () => {
+    globalThis.fetch = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')))
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
+    })
+
+    const alert = screen
+      .getByText(/price-service unreachable/i)
+      .closest('div[class*="border-yellow"]') as HTMLElement
+    expect(alert).not.toBeNull()
+
+    expect(within(alert).queryAllByText(/is unreachable/i)).toHaveLength(1)
+  })
+
+  it('shape mismatch renders a payload-mismatch sentence, not "unreachable"', async () => {
+    mockFetchOnce({ timestamp: 0, quotes: { BAD: 42 } })
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/unexpected payload/i)).toBeInTheDocument()
+    })
+
+    const alert = screen
+      .getByText(/unexpected payload/i)
+      .closest('div[class*="border-yellow"]') as HTMLElement
+    expect(alert).not.toBeNull()
+    const inside = within(alert)
+
+    expect(inside.queryByText(/unreachable/i)).not.toBeInTheDocument()
+    expect(inside.getByTestId('price-service-url-inline')).toHaveTextContent('mock-host:9300')
+  })
+
+  it('degraded box still surfaces the configured URL exactly once', async () => {
+    globalThis.fetch = vi.fn(() => Promise.reject(new Error('boom')))
+
+    render(<LiveQuotesPanel priceServiceUrl="http://example.test:9400" intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
+    })
+
+    const alert = screen
+      .getByText(/price-service unreachable/i)
+      .closest('div[class*="border-yellow"]') as HTMLElement
+    expect(within(alert).queryAllByText(/example\.test:9400/)).toHaveLength(1)
   })
 
   it('renders the configured price-service URL in the header', async () => {
