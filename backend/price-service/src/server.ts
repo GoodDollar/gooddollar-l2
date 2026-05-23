@@ -324,6 +324,26 @@ function findCatalogEntry(reqPath: string): EndpointDoc | undefined {
 }
 
 /**
+ * Compute the `Allow` (RFC 7231 §4.3.7 / §6.5.5) list for a given
+ * request path. Single source of truth read by the OPTIONS short-circuit
+ * (which carries it via the `Allow` header on 204 No Content) and the
+ * 405 branch (which also ships the list in the body's `allowed` field).
+ *
+ * For unregistered paths the global default `['GET','OPTIONS']` is
+ * returned: every documented endpoint today is GET-only, and OPTIONS
+ * is universally honoured by the CORS middleware. A future POST/PUT
+ * endpoint flows through this helper unchanged — only the catalog
+ * entry needs to grow. See task 0059.
+ */
+const DEFAULT_ALLOWED_METHODS: readonly string[] = ['GET', 'OPTIONS'];
+
+function allowedMethodsForPath(reqPath: string): readonly string[] {
+  const entry = findCatalogEntry(reqPath);
+  if (entry) return [...entry.methods, 'OPTIONS'];
+  return DEFAULT_ALLOWED_METHODS;
+}
+
+/**
  * The /quotes/:symbol parametric parent (`/quotes/`) is uniquely worth
  * disambiguating: a developer who typed a stray trailing slash on the
  * bulk endpoint and a developer who forgot the symbol on the parametric
@@ -1042,7 +1062,6 @@ export function createServer(
 
   app.use((req: Request, res: Response, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Max-Age', '600');
     // RFC 9111 §5.2.2.5 — `no-store` forbids any storage of the
@@ -1055,6 +1074,15 @@ export function createServer(
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Pragma', 'no-cache');
     if (req.method === 'OPTIONS') {
+      // RFC 7231 §4.3.7 — a successful OPTIONS response (200 or 204) MUST
+      // generate an `Allow` field. The CORS preflight header
+      // (`Access-Control-Allow-Methods`) ships the same list, sourced
+      // from `allowedMethodsForPath` so the two headers can never drift.
+      // Non-CORS clients (curl, Go net/http, Python requests, k6) read
+      // the RFC-track header; browsers read the CORS one. See task 0059.
+      const allowList = allowedMethodsForPath(req.path).join(', ');
+      res.setHeader('Allow', allowList);
+      res.setHeader('Access-Control-Allow-Methods', allowList);
       res.status(204).end();
       return;
     }
@@ -1398,8 +1426,12 @@ export function createServer(
     if (entry && !entry.methods.includes(req.method)) {
       // OPTIONS is appended at the call site (rather than stored in the
       // catalog) so the discovery payload stays clean of the CORS
-      // transport verb while the 405 still advertises it.
-      const allowed = [...entry.methods, 'OPTIONS'];
+      // transport verb while the 405 still advertises it. Both the
+      // OPTIONS short-circuit and this 405 branch read the list off
+      // `allowedMethodsForPath` so the `Allow` header on a successful
+      // capability-discovery probe and the `Allow` header on a
+      // wrong-verb 405 cannot drift. See task 0059.
+      const allowed = [...allowedMethodsForPath(req.path)];
       res.setHeader('Allow', allowed.join(', '));
       // Field order matches the source-block convention so the catalog's
       // documented responseShape (error → human copy → machine
