@@ -10,13 +10,24 @@ import { memo } from 'react'
  * `InstrumentBadge` renders a tiny 16-px monogram chip next to the
  * ticker so the table reads as a polished proof artifact (task 0046).
  *
+ * Symbol shapes supported (task 0051):
+ *   - Pure ticker:           `BTC`, `AAPL`, `EURUSD`
+ *   - `BASE-QUOTE` (engine canonical): `BTC-USD`, `ETH-USDT`, `EUR-USD`
+ *   - `BASE/QUOTE`:          `BTC/USD`, `EUR/USD`
+ *   - 6-char FX concat:      `EURUSD`
+ *   - Crypto with suffix:    `BTCUSD`, `ETHUSDT`
+ *
+ * Every classifier / colour / monogram path pivots off a single
+ * `splitPair(t)` helper so we have one place that knows what a
+ * "BASE-QUOTE" pair looks like. Classification order is FX (both
+ * sides currency codes) → crypto (base in CRYPTO_TICKERS) → stock
+ * (regex), matching retail convention (BTC/EUR is a crypto market,
+ * not FX, because BTC isn't a currency code).
+ *
  * Resolution is offline-friendly: no network calls, no remote logos,
- * no IntersectionObserver. The asset class is derived purely from the
- * ticker string via `resolveAssetClass`, the visible glyph from
- * `monogram`, and the colour from a small inline allow-list. The chip
- * is `aria-hidden="true"` so screen readers still announce the ticker
- * exactly once (via the visible sibling label that the receipts table
- * owns).
+ * no IntersectionObserver. The chip is `aria-hidden="true"` so screen
+ * readers still announce the ticker exactly once via the visible
+ * sibling label the receipts table owns.
  */
 
 export type InstrumentClass = 'crypto' | 'fx' | 'stock' | 'unknown'
@@ -81,28 +92,54 @@ function normalize(ticker: string): string {
   return (ticker ?? '').trim().toUpperCase()
 }
 
+/**
+ * Split a `BASE-QUOTE` or `BASE/QUOTE` pair into its two halves.
+ * Returns `null` for pure tickers, dash-less concats, multi-separator
+ * symbols, or any shape where either half is empty. Both halves are
+ * already upper-cased because `splitPair` is only ever called against
+ * a `normalize`d ticker.
+ */
+function splitPair(t: string): { base: string; quote: string } | null {
+  const dash = t.indexOf('-')
+  const slash = t.indexOf('/')
+  const sep = dash === -1 ? slash : slash === -1 ? dash : -1
+  if (sep <= 0 || sep === t.length - 1) return null
+  // Reject multi-separator symbols (`BTC-USD-PERP`, `AAPL.US.OPT`).
+  if (t.indexOf('-', sep + 1) !== -1) return null
+  if (t.indexOf('/', sep + 1) !== -1) return null
+  return { base: t.slice(0, sep), quote: t.slice(sep + 1) }
+}
+
 function isFxPair(t: string): boolean {
-  if (t.includes('/')) {
-    const [a, b] = t.split('/').map((s) => s.trim().toUpperCase())
-    return CURRENCY_CODES.has(a) && CURRENCY_CODES.has(b)
-  }
+  const pair = splitPair(t)
+  if (pair) return CURRENCY_CODES.has(pair.base) && CURRENCY_CODES.has(pair.quote)
   if (t.length === 6) {
-    const a = t.slice(0, 3)
-    const b = t.slice(3)
-    return CURRENCY_CODES.has(a) && CURRENCY_CODES.has(b)
+    return CURRENCY_CODES.has(t.slice(0, 3)) && CURRENCY_CODES.has(t.slice(3))
   }
   return false
 }
 
-function isCrypto(t: string): boolean {
-  if (CRYPTO_TICKERS.has(t)) return true
+/**
+ * Resolve the crypto base ticker from any supported symbol shape, or
+ * `null` if the ticker is not crypto under our classifier. One helper
+ * for every path that needs the base (classification, monogram, brand
+ * colors) so BTC, BTC-USD, BTC/USD, and BTCUSD all produce `'BTC'`.
+ */
+function cryptoBase(t: string): string | null {
+  if (CRYPTO_TICKERS.has(t)) return t
+  const pair = splitPair(t)
+  if (pair && CRYPTO_TICKERS.has(pair.base)) return pair.base
   for (const suffix of CRYPTO_SUFFIXES) {
     if (t.endsWith(suffix) && t.length > suffix.length) {
       const base = t.slice(0, t.length - suffix.length)
-      if (CRYPTO_TICKERS.has(base)) return true
+      if (CRYPTO_TICKERS.has(base)) return base
     }
   }
-  return false
+  return null
+}
+
+function isCrypto(t: string): boolean {
+  return cryptoBase(t) !== null
 }
 
 export function resolveAssetClass(rawTicker: string): InstrumentClass {
@@ -118,15 +155,18 @@ export function monogram(rawTicker: string, cls: InstrumentClass): string {
   const t = normalize(rawTicker)
   switch (cls) {
     case 'fx': {
-      if (t.includes('/')) {
-        const [a, b] = t.split('/')
-        return `${a.slice(0, 2)}/${b.slice(0, 2)}`
-      }
+      const pair = splitPair(t)
+      if (pair) return `${pair.base.slice(0, 2)}/${pair.quote.slice(0, 2)}`
       return `${t.slice(0, 2)}/${t.slice(3, 5)}`
     }
-    case 'crypto':
-    case 'stock':
-      return t.slice(0, 2) || '?'
+    case 'crypto': {
+      const base = cryptoBase(t) ?? splitPair(t)?.base ?? t
+      return base.slice(0, 2) || '?'
+    }
+    case 'stock': {
+      const base = splitPair(t)?.base ?? t
+      return base.slice(0, 2) || '?'
+    }
     case 'unknown':
       return '?'
   }
@@ -134,8 +174,8 @@ export function monogram(rawTicker: string, cls: InstrumentClass): string {
 
 function colorsFor(cls: InstrumentClass, ticker: string): ClassColors {
   if (cls === 'crypto') {
-    const t = normalize(ticker)
-    if (CRYPTO_BRAND_COLORS[t]) return CRYPTO_BRAND_COLORS[t]
+    const base = cryptoBase(normalize(ticker))
+    if (base && CRYPTO_BRAND_COLORS[base]) return CRYPTO_BRAND_COLORS[base]
   }
   return CLASS_COLORS[cls]
 }
