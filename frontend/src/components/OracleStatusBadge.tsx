@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePriceServiceStatus, getSessionLabel, getDominantSession, type QuoteStatus } from '@/lib/usePriceServiceStatus'
-import { deriveStocksOracleHealth, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
+import { deriveStocksOracleHealth, getStocksKeeperAgeMs, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
 
 function formatAge(ms: number): string {
   if (ms < 1000) return 'just now'
@@ -71,14 +71,20 @@ interface FallbackQuoteResult {
   quotesBySymbol: Record<string, QuoteStatus>
 }
 
-const FALLBACK_STATUS_TTL_MS = 30_000
+interface FallbackHealthResult {
+  health: StocksOracleHealth
+  ageMs: number | null
+}
 
-let fallbackCache: { value: StocksOracleHealth; expiresAt: number } | null = null
-let fallbackInFlight: Promise<StocksOracleHealth> | null = null
+const FALLBACK_STATUS_TTL_MS = 30_000
+const FALLBACK_OFFLINE: FallbackHealthResult = { health: 'offline', ageMs: null }
+
+let fallbackCache: { value: FallbackHealthResult; expiresAt: number } | null = null
+let fallbackInFlight: Promise<FallbackHealthResult> | null = null
 let quoteFallbackCache: { value: FallbackQuoteResult; expiresAt: number } | null = null
 let quoteFallbackInFlight: Promise<FallbackQuoteResult> | null = null
 
-async function resolveStocksFallbackStatus({ force = false }: { force?: boolean } = {}): Promise<StocksOracleHealth> {
+async function resolveStocksFallbackStatus({ force = false }: { force?: boolean } = {}): Promise<FallbackHealthResult> {
   const now = Date.now()
   if (!force && fallbackCache && fallbackCache.expiresAt > now) {
     return fallbackCache.value
@@ -87,14 +93,14 @@ async function resolveStocksFallbackStatus({ force = false }: { force?: boolean 
     return fallbackInFlight
   }
 
-  let request: Promise<StocksOracleHealth>
+  let request: Promise<FallbackHealthResult>
   request = fetch('/api/status', { cache: 'no-store' })
     .then(async (res) => {
       if (!res.ok) throw new Error(`status ${res.status}`)
       const data = await res.json()
-      return deriveStocksOracleHealth(data)
+      return { health: deriveStocksOracleHealth(data), ageMs: getStocksKeeperAgeMs(data) }
     })
-    .catch(() => 'offline' as const)
+    .catch(() => FALLBACK_OFFLINE)
     .then((value) => {
       fallbackCache = { value, expiresAt: Date.now() + FALLBACK_STATUS_TTL_MS }
       return value
@@ -172,7 +178,7 @@ async function resolveStocksFallbackQuoteAndHealth({ force = false }: { force?: 
 
 export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallback = false }: OracleStatusBadgeProps) {
   const { status, error } = usePriceServiceStatus()
-  const [fallbackState, setFallbackState] = useState<StocksOracleHealth>('offline')
+  const [fallbackState, setFallbackState] = useState<FallbackHealthResult>(FALLBACK_OFFLINE)
   const [fallbackQuote, setFallbackQuote] = useState<FallbackQuoteResult>({ health: 'offline', quotesBySymbol: {} })
   const [fallbackLoading, setFallbackLoading] = useState(false)
   const [fallbackReady, setFallbackReady] = useState(false)
@@ -216,7 +222,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
           if (cancelled) return
           clearTimers()
           setFallbackQuote(next)
-          setFallbackState(next.health)
+          setFallbackState({ health: next.health, ageMs: null })
         })
       : resolveStocksFallbackStatus({ force }).then((next) => {
           if (cancelled) return
@@ -261,7 +267,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
           </div>
         )
       }
-      if (fallbackState === 'live') {
+      if (fallbackState.health === 'live') {
         if (useQuoteFallback && symbol) {
           const quoteStatus = fallbackQuote.quotesBySymbol[symbol]
           if (quoteStatus) {
@@ -280,12 +286,18 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
           <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
             <span className={STATUS_DOT_LIVE} />
             <span>Live</span>
+            {fallbackState.ageMs !== null && Number.isFinite(fallbackState.ageMs) && (
+              <>
+                <span className="text-gray-600">·</span>
+                <span>Updated {formatAge(fallbackState.ageMs)}</span>
+              </>
+            )}
             <span className="text-gray-600">·</span>
             <span>{SOURCE_LABEL}</span>
           </div>
         )
       }
-      if (fallbackState === 'degraded') {
+      if (fallbackState.health === 'degraded') {
         return (
           <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
             <span className={STATUS_DOT_STALE} />
@@ -331,6 +343,12 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
       <span className={dotClass} />
       <span>{freshCount}/{totalCount} feeds</span>
+      {Number.isFinite(maxAge) && maxAge > 0 && quotes.length > 0 && (
+        <>
+          <span className="text-gray-600">·</span>
+          <span>Updated {formatAge(maxAge)}</span>
+        </>
+      )}
       <span className="text-gray-600">·</span>
       <span>{getSessionLabel(dominantSession)}</span>
       {anyStale && (

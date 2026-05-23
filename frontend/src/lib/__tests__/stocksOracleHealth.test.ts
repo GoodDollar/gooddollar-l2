@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveStocksOracleHealth } from '../stocksOracleHealth'
+import { deriveStocksOracleHealth, getStocksKeeperAgeMs } from '../stocksOracleHealth'
 
 describe('deriveStocksOracleHealth', () => {
   const now = Date.parse('2026-05-20T07:30:00.000Z')
@@ -102,5 +102,60 @@ describe('deriveStocksOracleHealth', () => {
       const state = deriveStocksOracleHealth(stalePayload, now, false)
       expect(state).toBe('degraded')
     })
+  })
+})
+
+describe('getStocksKeeperAgeMs', () => {
+  const now = Date.parse('2026-05-20T07:30:00.000Z')
+
+  it('returns the heartbeat age when stocks-keeper has a recent lastChecked', () => {
+    const age = getStocksKeeperAgeMs(
+      {
+        overall: 'healthy',
+        services: [{ name: 'stocks-keeper', status: 'ok', lastChecked: '2026-05-20T07:29:55.000Z' }],
+      },
+      now,
+    )
+    expect(age).toBe(5_000)
+  })
+
+  it('returns null when payload is missing', () => {
+    expect(getStocksKeeperAgeMs(null, now)).toBeNull()
+    expect(getStocksKeeperAgeMs(undefined, now)).toBeNull()
+  })
+
+  it('returns null when stocks-keeper service is absent', () => {
+    expect(
+      getStocksKeeperAgeMs({ overall: 'healthy', services: [] }, now),
+    ).toBeNull()
+  })
+
+  it('returns null when lastChecked is missing or unparseable', () => {
+    expect(
+      getStocksKeeperAgeMs(
+        { overall: 'healthy', services: [{ name: 'stocks-keeper', status: 'ok' }] },
+        now,
+      ),
+    ).toBeNull()
+    expect(
+      getStocksKeeperAgeMs(
+        {
+          overall: 'healthy',
+          services: [{ name: 'stocks-keeper', status: 'ok', lastChecked: 'not-a-date' }],
+        },
+        now,
+      ),
+    ).toBeNull()
+  })
+
+  it('clamps a negative age (clock skew) to zero', () => {
+    const age = getStocksKeeperAgeMs(
+      {
+        overall: 'healthy',
+        services: [{ name: 'stocks-keeper', status: 'ok', lastChecked: '2026-05-20T07:30:30.000Z' }],
+      },
+      now,
+    )
+    expect(age).toBe(0)
   })
 })

@@ -215,3 +215,75 @@ describe('OracleStatusBadge dot size invariant', () => {
     expect(skeleton).not.toHaveClass('h-5')
   })
 })
+
+describe('OracleStatusBadge freshness age', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    __resetOracleStatusFallbackForTests()
+  })
+
+  it('shows Updated <age> on compact happy-path when status quotes are fresh', () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: {
+        healthy: true,
+        freshCount: 1,
+        totalCount: 1,
+        quotes: [{ symbol: 'AAPL', lastUpdateMs: 4000, sessionState: 'open', confidence: 95 }],
+        timestamp: Date.now(),
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<OracleStatusBadge />)
+    expect(screen.getByText(/4s/)).toBeInTheDocument()
+    expect(screen.getByText(/Updated/)).toBeInTheDocument()
+  })
+
+  it('shows Updated <age> on compact fallback when stocks-keeper lastChecked is recent', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          overall: 'healthy',
+          services: [
+            { name: 'stocks-keeper', status: 'ok', lastChecked: new Date(Date.now() - 5000).toISOString() },
+          ],
+        }),
+        { status: 200 },
+      ),
+    )
+
+    render(<OracleStatusBadge useStocksFallback />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeInTheDocument())
+    expect(screen.getByText(/5s/)).toBeInTheDocument()
+    expect(screen.getByText(/Updated/)).toBeInTheDocument()
+  })
+
+  it('falls back gracefully when no age data is available — no NaN, undefined, or stray Updated', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          overall: 'healthy',
+          services: [{ name: 'stocks-keeper', status: 'ok' }],
+        }),
+        { status: 200 },
+      ),
+    )
+
+    render(<OracleStatusBadge useStocksFallback />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeInTheDocument())
+    expect(screen.queryByText(/NaN/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Updated/)).not.toBeInTheDocument()
+  })
+})
