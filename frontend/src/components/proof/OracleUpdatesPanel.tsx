@@ -5,7 +5,8 @@ import { useWatchContractEvent } from 'wagmi'
 import { CONTRACTS } from '@/lib/chain'
 import { PriceOracleABI } from '@/lib/abi'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
-import { MonoSourceAtom, PanelHeaderMeta, shortAddress } from './PanelHeaderMeta'
+import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
+import { shortAddress } from './panelHeaderMetaUtils'
 
 interface UpdateEntry {
   txHash: string

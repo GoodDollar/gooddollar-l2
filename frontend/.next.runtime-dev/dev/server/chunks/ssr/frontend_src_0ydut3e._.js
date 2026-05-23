@@ -85,11 +85,7 @@ __turbopack_context__.s([
     "MonoSourceAtom",
     ()=>MonoSourceAtom,
     "PanelHeaderMeta",
-    ()=>PanelHeaderMeta,
-    "shortAddress",
-    ()=>shortAddress,
-    "shortenSourcePath",
-    ()=>shortenSourcePath
+    ()=>PanelHeaderMeta
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
 ;
@@ -145,16 +141,6 @@ function MonoLinkAtom({ value, href, title, ...rest }) {
         lineNumber: 64,
         columnNumber: 5
     }, this);
-}
-function shortAddress(addr) {
-    if (!addr || addr.length < 10) return addr;
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
-function shortenSourcePath(path) {
-    if (!path) return path;
-    const parts = path.split('/').filter(Boolean);
-    if (parts.length <= 2) return parts.join('/');
-    return parts.slice(-2).join('/');
 }
 }),
 "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
@@ -7843,6 +7829,13 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$component
 ;
 ;
 ;
+/**
+ * Single source of truth for the inter-section vertical rhythm on the
+ * proof page. The header above the section stack uses `mb-6` (24 px)
+ * and the footer below uses `mt-8` (32 px); the data-panel grid uses
+ * `gap-5` (20 px) for inner cell separation. Everything between the
+ * SafetyBanner and the data grid sits on this 16 px cadence.
+ */ const SECTION_GAP_CLASS = 'mt-4';
 function LivePricesProofPage() {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
         "aria-labelledby": "proof-page-heading",
@@ -7857,7 +7850,7 @@ function LivePricesProofPage() {
                         children: "Release gate · GoodChain live-prices pipeline"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 20,
+                        lineNumber: 29,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -7866,7 +7859,7 @@ function LivePricesProofPage() {
                         children: "Live Prices Proof"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 23,
+                        lineNumber: 32,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7878,14 +7871,14 @@ function LivePricesProofPage() {
                                 children: "PriceUpdated"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                lineNumber: 29,
+                                lineNumber: 38,
                                 columnNumber: 18
                             }, this),
                             " events are observed, and the demo-hedge proof artifact reflects the latest hedge run."
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 26,
+                        lineNumber: 35,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("aside", {
@@ -7899,7 +7892,7 @@ function LivePricesProofPage() {
                                 children: "i"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                lineNumber: 37,
+                                lineNumber: 46,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7909,7 +7902,7 @@ function LivePricesProofPage() {
                                         children: "How to read this page:"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                        lineNumber: 44,
+                                        lineNumber: 53,
                                         columnNumber: 13
                                     }, this),
                                     ' ',
@@ -7917,113 +7910,77 @@ function LivePricesProofPage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                                lineNumber: 43,
+                                lineNumber: 52,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 32,
+                        lineNumber: 41,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 19,
+                lineNumber: 28,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
                 label: "Safety Banner",
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$SafetyBanner$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SafetyBanner"], {}, void 0, false, {
                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                    lineNumber: 56,
+                    lineNumber: 65,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 55,
+                lineNumber: 64,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "mt-4",
+                className: SECTION_GAP_CLASS,
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
                     label: "Pipeline Status",
                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PipelineStatusBanner$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PipelineStatusBanner"], {}, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 61,
+                        lineNumber: 70,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                    lineNumber: 60,
+                    lineNumber: 69,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 59,
+                lineNumber: 68,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "mt-3",
+                className: SECTION_GAP_CLASS,
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
                     label: "Pipeline Flow",
                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PipelineFlowDiagram$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PipelineFlowDiagram"], {}, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 67,
+                        lineNumber: 76,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                    lineNumber: 66,
+                    lineNumber: 75,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 65,
+                lineNumber: 74,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2",
+                className: `${SECTION_GAP_CLASS} grid grid-cols-1 gap-5 lg:grid-cols-2`,
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
                         label: "Live Quotes",
                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$LiveQuotesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LiveQuotesPanel"], {}, void 0, false, {
-                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                            lineNumber: 73,
-                            columnNumber: 11
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 72,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
-                        label: "On-chain Oracle",
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OnChainOraclePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OnChainOraclePanel"], {}, void 0, false, {
-                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                            lineNumber: 76,
-                            columnNumber: 11
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 75,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
-                        label: "Oracle Updates",
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OracleUpdatesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OracleUpdatesPanel"], {}, void 0, false, {
-                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                            lineNumber: 79,
-                            columnNumber: 11
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                        lineNumber: 78,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
-                        label: "Last Demo Hedge",
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$LastDemoHedgePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LastDemoHedgePanel"], {}, void 0, false, {
                             fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
                             lineNumber: 82,
                             columnNumber: 11
@@ -8032,11 +7989,47 @@ function LivePricesProofPage() {
                         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
                         lineNumber: 81,
                         columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
+                        label: "On-chain Oracle",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OnChainOraclePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OnChainOraclePanel"], {}, void 0, false, {
+                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                            lineNumber: 85,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                        lineNumber: 84,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
+                        label: "Oracle Updates",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$OracleUpdatesPanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OracleUpdatesPanel"], {}, void 0, false, {
+                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                            lineNumber: 88,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                        lineNumber: 87,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPanelBoundary$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProofPanelBoundary"], {
+                        label: "Last Demo Hedge",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$LastDemoHedgePanel$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["LastDemoHedgePanel"], {}, void 0, false, {
+                            fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                            lineNumber: 91,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
+                        lineNumber: 90,
+                        columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 71,
+                lineNumber: 80,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("footer", {
@@ -8051,25 +8044,25 @@ function LivePricesProofPage() {
                             children: "0007f-qa-proof-release"
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                            lineNumber: 92,
+                            lineNumber: 101,
                             columnNumber: 11
                         }, this),
                         " (Lane 6)."
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                    lineNumber: 90,
+                    lineNumber: 99,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-                lineNumber: 86,
+                lineNumber: 95,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/app/(app)/live-prices-proof/page.tsx",
-        lineNumber: 14,
+        lineNumber: 23,
         columnNumber: 5
     }, this);
 }

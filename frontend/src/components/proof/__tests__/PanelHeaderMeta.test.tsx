@@ -5,9 +5,8 @@ import {
   MonoLinkAtom,
   MonoSourceAtom,
   PanelHeaderMeta,
-  shortAddress,
-  shortenSourcePath,
 } from '../PanelHeaderMeta'
+import { shortAddress, shortenSourcePath } from '../panelHeaderMetaUtils'
 
 describe('PanelHeaderMeta', () => {
   it('renders source-only rail without a middot separator', () => {

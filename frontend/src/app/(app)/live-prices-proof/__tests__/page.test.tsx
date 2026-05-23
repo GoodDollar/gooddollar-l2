@@ -141,6 +141,38 @@ describe('LivePricesProofPage', () => {
     )
   })
 
+  it('top-level proof sections use a uniform vertical gap (#0043)', () => {
+    // The PipelineStatus banner, PipelineFlow diagram, and the data-panel
+    // grid all wrap in a <div> whose only job is the inter-section
+    // vertical gap. They must all share the same gap class (mt-4) so the
+    // page's top-to-bottom rhythm is even.
+    const { container } = render(<LivePricesProofPage />)
+
+    const pipelineStatus = screen.getByTestId('mock-pipeline-status-banner')
+    const pipelineFlow = screen.getByTestId('mock-pipeline-flow-diagram')
+    const dataGrid = container.querySelector(
+      'div.grid.grid-cols-1.lg\\:grid-cols-2',
+    ) as HTMLElement | null
+    expect(dataGrid).not.toBeNull()
+
+    const statusWrapper = pipelineStatus.parentElement?.parentElement
+    const flowWrapper = pipelineFlow.parentElement?.parentElement
+    for (const wrapper of [statusWrapper, flowWrapper, dataGrid]) {
+      expect(wrapper).not.toBeNull()
+      const cls = (wrapper as HTMLElement).className
+      expect(cls, `wrapper className: ${cls}`).toMatch(/\bmt-4\b/)
+      expect(cls, `wrapper className: ${cls}`).not.toMatch(/\bmt-3\b/)
+      expect(cls, `wrapper className: ${cls}`).not.toMatch(/\bmt-5\b/)
+    }
+
+    // SafetyBanner sits directly below the header's `mb-6` and has no
+    // outer mt-* of its own — the header owns the gap.
+    const safety = screen.getByTestId('mock-safety-banner')
+    const safetyWrapper = safety.parentElement?.parentElement
+    expect(safetyWrapper).not.toBeNull()
+    expect((safetyWrapper as HTMLElement).className).not.toMatch(/\bmt-\d+\b/)
+  })
+
   it('each grid panel section carries the h-full + flex flex-col shell so short rows fill their grid cell', () => {
     // Guards lane6-proof-grid-left-column-ends-short-leaves-dead-space (#0039):
     // when a left-column panel renders a short error/empty box, the row must

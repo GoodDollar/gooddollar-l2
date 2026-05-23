@@ -6284,6 +6284,30 @@ function OracleHeaderCell({ col }) {
     }, this);
 }
 }),
+"[project]/frontend/src/components/proof/panelHeaderMetaUtils.ts [app-ssr] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+/**
+ * Pure helpers consumed by the proof-page header rails. Kept in a
+ * separate module from `PanelHeaderMeta.tsx` so the component file
+ * only exports components (fast-refresh friendly).
+ */ /** Render an address as `0x{first4}…{last4}` for inline rail metadata. */ __turbopack_context__.s([
+    "shortAddress",
+    ()=>shortAddress,
+    "shortenSourcePath",
+    ()=>shortenSourcePath
+]);
+function shortAddress(addr) {
+    if (!addr || addr.length < 10) return addr;
+    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+function shortenSourcePath(path) {
+    if (!path) return path;
+    const parts = path.split('/').filter(Boolean);
+    if (parts.length <= 2) return parts.join('/');
+    return parts.slice(-2).join('/');
+}
+}),
 "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
@@ -6299,7 +6323,9 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$de
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$abi$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/abi.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$sanitiseClientError$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/sanitiseClientError.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/PanelHeaderMeta.tsx [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$panelHeaderMetaUtils$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/panelHeaderMetaUtils.ts [app-ssr] (ecmascript)");
 'use client';
+;
 ;
 ;
 ;
@@ -6385,16 +6411,16 @@ function OracleUpdatesPanel() {
                         children: "Recent Oracle Updates"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 102,
+                        lineNumber: 103,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PanelHeaderMeta"], {
                         source: oracleAddress ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["MonoSourceAtom"], {
-                            value: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["shortAddress"])(oracleAddress),
+                            value: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$panelHeaderMetaUtils$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["shortAddress"])(oracleAddress),
                             title: oracleAddress
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                            lineNumber: 108,
+                            lineNumber: 109,
                             columnNumber: 15
                         }, this) : undefined,
                         cadence: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6405,18 +6431,18 @@ function OracleUpdatesPanel() {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                            lineNumber: 111,
+                            lineNumber: 112,
                             columnNumber: 20
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 105,
+                        lineNumber: 106,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                lineNumber: 101,
+                lineNumber: 102,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6430,7 +6456,7 @@ function OracleUpdatesPanel() {
                                 children: "Oracle event subscription degraded"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                lineNumber: 118,
+                                lineNumber: 119,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6438,13 +6464,13 @@ function OracleUpdatesPanel() {
                                 children: subscriptionError
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                lineNumber: 119,
+                                lineNumber: 120,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 117,
+                        lineNumber: 118,
                         columnNumber: 9
                     }, this),
                     events.length === 0 ? subscriptionError ? null : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6456,7 +6482,7 @@ function OracleUpdatesPanel() {
                                 children: "PriceUpdated"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                lineNumber: 126,
+                                lineNumber: 127,
                                 columnNumber: 27
                             }, this),
                             " events. None observed yet; this populates as the oracle-signer keeper writes to the chain.",
@@ -6464,7 +6490,7 @@ function OracleUpdatesPanel() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 125,
+                        lineNumber: 126,
                         columnNumber: 11
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
                         className: "divide-y divide-white/5",
@@ -6481,7 +6507,7 @@ function OracleUpdatesPanel() {
                                                 children: e.symbol
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 138,
+                                                lineNumber: 139,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6489,13 +6515,13 @@ function OracleUpdatesPanel() {
                                                 children: formatUsd8(e.price8)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 139,
+                                                lineNumber: 140,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                        lineNumber: 137,
+                                        lineNumber: 138,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6509,7 +6535,7 @@ function OracleUpdatesPanel() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 142,
+                                                lineNumber: 143,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6517,7 +6543,7 @@ function OracleUpdatesPanel() {
                                                 children: "·"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 143,
+                                                lineNumber: 144,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6525,7 +6551,7 @@ function OracleUpdatesPanel() {
                                                 children: formatRelative(e.capturedAt)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 144,
+                                                lineNumber: 145,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6533,7 +6559,7 @@ function OracleUpdatesPanel() {
                                                 children: "·"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 145,
+                                                lineNumber: 146,
                                                 columnNumber: 19
                                             }, this),
                                             link ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -6547,44 +6573,44 @@ function OracleUpdatesPanel() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 147,
+                                                lineNumber: 148,
                                                 columnNumber: 21
                                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 className: "font-mono text-gray-300",
                                                 children: shortHash(e.txHash)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 156,
+                                                lineNumber: 157,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                        lineNumber: 141,
+                                        lineNumber: 142,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, `${e.txHash}-${e.symbol}`, true, {
                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                lineNumber: 136,
+                                lineNumber: 137,
                                 columnNumber: 15
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 132,
+                        lineNumber: 133,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                lineNumber: 115,
+                lineNumber: 116,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-        lineNumber: 96,
+        lineNumber: 97,
         columnNumber: 5
     }, this);
 }
@@ -8069,4 +8095,4 @@ function LivePricesProofPage() {
 }),
 ];
 
-//# sourceMappingURL=frontend_src_0zpv-wm._.js.map
+//# sourceMappingURL=frontend_src_0vfnc27._.js.map

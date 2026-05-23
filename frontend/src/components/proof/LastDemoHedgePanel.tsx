@@ -5,7 +5,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { type ExposureSnapshot, type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
 import { parseRunId } from '@/lib/parseRunId'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
-import { MonoSourceAtom, PanelHeaderMeta, shortenSourcePath } from './PanelHeaderMeta'
+import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
+import { shortenSourcePath } from './panelHeaderMetaUtils'
 
 // Shared chip family for the LastDemoHedge header row. All status pills
 // (side, threshold, dry-run flag, real-trading flag) render through this

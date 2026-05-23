@@ -9,6 +9,15 @@ import { PipelineStatusBanner } from '@/components/proof/PipelineStatusBanner'
 import { ProofPanelBoundary } from '@/components/proof/ProofPanelBoundary'
 import { SafetyBanner } from '@/components/proof/SafetyBanner'
 
+/**
+ * Single source of truth for the inter-section vertical rhythm on the
+ * proof page. The header above the section stack uses `mb-6` (24 px)
+ * and the footer below uses `mt-8` (32 px); the data-panel grid uses
+ * `gap-5` (20 px) for inner cell separation. Everything between the
+ * SafetyBanner and the data grid sits on this 16 px cadence.
+ */
+const SECTION_GAP_CLASS = 'mt-4'
+
 export default function LivePricesProofPage() {
   return (
     <section
@@ -56,19 +65,19 @@ export default function LivePricesProofPage() {
         <SafetyBanner />
       </ProofPanelBoundary>
 
-      <div className="mt-4">
+      <div className={SECTION_GAP_CLASS}>
         <ProofPanelBoundary label="Pipeline Status">
           <PipelineStatusBanner />
         </ProofPanelBoundary>
       </div>
 
-      <div className="mt-3">
+      <div className={SECTION_GAP_CLASS}>
         <ProofPanelBoundary label="Pipeline Flow">
           <PipelineFlowDiagram />
         </ProofPanelBoundary>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className={`${SECTION_GAP_CLASS} grid grid-cols-1 gap-5 lg:grid-cols-2`}>
         <ProofPanelBoundary label="Live Quotes">
           <LiveQuotesPanel />
         </ProofPanelBoundary>

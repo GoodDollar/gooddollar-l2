@@ -143,6 +143,30 @@ function MonoLinkAtom({ value, href, title, ...rest }) {
     }, this);
 }
 }),
+"[project]/frontend/src/components/proof/panelHeaderMetaUtils.ts [app-ssr] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+/**
+ * Pure helpers consumed by the proof-page header rails. Kept in a
+ * separate module from `PanelHeaderMeta.tsx` so the component file
+ * only exports components (fast-refresh friendly).
+ */ /** Render an address as `0x{first4}…{last4}` for inline rail metadata. */ __turbopack_context__.s([
+    "shortAddress",
+    ()=>shortAddress,
+    "shortenSourcePath",
+    ()=>shortenSourcePath
+]);
+function shortAddress(addr) {
+    if (!addr || addr.length < 10) return addr;
+    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+function shortenSourcePath(path) {
+    if (!path) return path;
+    const parts = path.split('/').filter(Boolean);
+    if (parts.length <= 2) return parts.join('/');
+    return parts.slice(-2).join('/');
+}
+}),
 "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
@@ -156,7 +180,9 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$he
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$parseRunId$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/parseRunId.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$sanitiseClientError$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/sanitiseClientError.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/PanelHeaderMeta.tsx [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$panelHeaderMetaUtils$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/panelHeaderMetaUtils.ts [app-ssr] (ecmascript)");
 'use client';
+;
 ;
 ;
 ;
@@ -177,7 +203,7 @@ function StatusPill({ tone, children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 28,
+        lineNumber: 29,
         columnNumber: 10
     }, this);
 }
@@ -190,7 +216,7 @@ function SymbolLabel({ symbol, notionalUsd }) {
                 children: symbol
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 34,
+                lineNumber: 35,
                 columnNumber: 7
             }, this),
             notionalUsd !== undefined && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -198,13 +224,13 @@ function SymbolLabel({ symbol, notionalUsd }) {
                 children: formatUsd(notionalUsd)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 36,
+                lineNumber: 37,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 33,
+        lineNumber: 34,
         columnNumber: 5
     }, this);
 }
@@ -268,7 +294,7 @@ function RelativeTimestamp({ ms }) {
             children: "—"
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-            lineNumber: 137,
+            lineNumber: 138,
             columnNumber: 12
         }, this);
     }
@@ -293,13 +319,13 @@ function RelativeTimestamp({ ms }) {
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 149,
+                lineNumber: 150,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 143,
+        lineNumber: 144,
         columnNumber: 5
     }, this);
 }
@@ -370,34 +396,34 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                         children: "Last Demo Hedge"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 207,
+                        lineNumber: 208,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PanelHeaderMeta"], {
                         source: state.status === 'ok' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["MonoSourceAtom"], {
-                            value: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["shortenSourcePath"])(state.data.source),
+                            value: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$panelHeaderMetaUtils$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["shortenSourcePath"])(state.data.source),
                             title: state.data.source
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                            lineNumber: 213,
+                            lineNumber: 214,
                             columnNumber: 15
                         }, this) : undefined,
                         cadence: state.status === 'ok' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                             children: state.data.proof.dryRun ? 'dry-run' : 'demo trade'
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                            lineNumber: 221,
+                            lineNumber: 222,
                             columnNumber: 15
                         }, this) : undefined
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 210,
+                        lineNumber: 211,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 206,
+                lineNumber: 207,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -409,7 +435,7 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                         "aria-label": "Loading hedge proof"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 229,
+                        lineNumber: 230,
                         columnNumber: 9
                     }, this),
                     state.status === 'missing' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -420,7 +446,7 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                 children: "No proof yet."
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 234,
+                                lineNumber: 235,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -432,7 +458,7 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                         children: "npm run hedge:demo -- --dry-run"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                        lineNumber: 236,
+                                        lineNumber: 237,
                                         columnNumber: 17
                                     }, this),
                                     " in",
@@ -441,20 +467,20 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                         children: " backend/hedge-engine"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                        lineNumber: 237,
+                                        lineNumber: 238,
                                         columnNumber: 13
                                     }, this),
                                     " to generate one."
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 235,
+                                lineNumber: 236,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 233,
+                        lineNumber: 234,
                         columnNumber: 9
                     }, this),
                     state.status === 'error' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -465,7 +491,7 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                 children: "Hedge proof unavailable"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 244,
+                                lineNumber: 245,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -473,13 +499,13 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                 children: state.message
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 245,
+                                lineNumber: 246,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 243,
+                        lineNumber: 244,
                         columnNumber: 9
                     }, this),
                     state.status === 'ok' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ProofCard, {
@@ -487,19 +513,19 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                         source: state.data.source
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 250,
+                        lineNumber: 251,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 227,
+                lineNumber: 228,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 201,
+        lineNumber: 202,
         columnNumber: 5
     }, this);
 }
@@ -510,7 +536,7 @@ function ProofCard({ proof, source }) {
             source: source
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-            lineNumber: 259,
+            lineNumber: 260,
             columnNumber: 12
         }, this);
     }
@@ -519,7 +545,7 @@ function ProofCard({ proof, source }) {
         source: source
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 261,
+        lineNumber: 262,
         columnNumber: 10
     }, this);
 }
@@ -535,7 +561,7 @@ function HedgeCard({ proof, source }) {
                         children: proof.side
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 268,
+                        lineNumber: 269,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SymbolLabel, {
@@ -543,7 +569,7 @@ function HedgeCard({ proof, source }) {
                         notionalUsd: proof.notionalUsd
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 269,
+                        lineNumber: 270,
                         columnNumber: 9
                     }, this),
                     proof.dryRun && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
@@ -551,7 +577,7 @@ function HedgeCard({ proof, source }) {
                         children: "DRY-RUN"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 270,
+                        lineNumber: 271,
                         columnNumber: 26
                     }, this),
                     !proof.realTradingEnabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
@@ -559,20 +585,20 @@ function HedgeCard({ proof, source }) {
                         children: "real trading: false"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 272,
+                        lineNumber: 273,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 267,
+                lineNumber: 268,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ProofMeta, {
                 proof: proof
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 276,
+                lineNumber: 277,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -583,7 +609,7 @@ function HedgeCard({ proof, source }) {
                         children: "netDelta (before → after)"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 279,
+                        lineNumber: 280,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -594,7 +620,7 @@ function HedgeCard({ proof, source }) {
                                 children: formatUsd(proof.beforeExposure.netDelta)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 281,
+                                lineNumber: 282,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -602,7 +628,7 @@ function HedgeCard({ proof, source }) {
                                 children: "→"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 282,
+                                lineNumber: 283,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -610,13 +636,13 @@ function HedgeCard({ proof, source }) {
                                 children: formatUsd(proof.afterExposure.netDelta)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 283,
+                                lineNumber: 284,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 280,
+                        lineNumber: 281,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -629,26 +655,26 @@ function HedgeCard({ proof, source }) {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 285,
+                        lineNumber: 286,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 278,
+                lineNumber: 279,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SourceFooter, {
                 source: source
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 290,
+                lineNumber: 291,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 266,
+        lineNumber: 267,
         columnNumber: 5
     }, this);
 }
@@ -664,14 +690,14 @@ function NoOpCard({ proof, source }) {
                         children: "Below-threshold tick"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 299,
+                        lineNumber: 300,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SymbolLabel, {
                         symbol: proof.symbol
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 300,
+                        lineNumber: 301,
                         columnNumber: 9
                     }, this),
                     proof.dryRun && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
@@ -679,7 +705,7 @@ function NoOpCard({ proof, source }) {
                         children: "DRY-RUN"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 301,
+                        lineNumber: 302,
                         columnNumber: 26
                     }, this),
                     !proof.realTradingEnabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
@@ -687,13 +713,13 @@ function NoOpCard({ proof, source }) {
                         children: "real trading: false"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 303,
+                        lineNumber: 304,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 298,
+                lineNumber: 299,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -701,14 +727,14 @@ function NoOpCard({ proof, source }) {
                 children: "No hedge needed — exposure stayed inside the configured threshold; the engine still recorded a proof so the pipeline is observable."
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 307,
+                lineNumber: 308,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ProofMeta, {
                 proof: proof
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 312,
+                lineNumber: 313,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -721,7 +747,7 @@ function NoOpCard({ proof, source }) {
                         children: formatUsd(proof.beforeExposure.netDelta)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 316,
+                        lineNumber: 317,
                         columnNumber: 9
                     }, this),
                     ' ',
@@ -730,20 +756,20 @@ function NoOpCard({ proof, source }) {
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 314,
+                lineNumber: 315,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SourceFooter, {
                 source: source
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 320,
+                lineNumber: 321,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 297,
+        lineNumber: 298,
         columnNumber: 5
     }, this);
 }
@@ -757,7 +783,7 @@ function ProofMeta({ proof }) {
                 mono: true
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 328,
+                lineNumber: 329,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FieldNode, {
@@ -766,12 +792,12 @@ function ProofMeta({ proof }) {
                     raw: proof.runId
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                    lineNumber: 330,
+                    lineNumber: 331,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 329,
+                lineNumber: 330,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FieldNode, {
@@ -780,12 +806,12 @@ function ProofMeta({ proof }) {
                     ms: proof.timestamp
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                    lineNumber: 333,
+                    lineNumber: 334,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 332,
+                lineNumber: 333,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(Field, {
@@ -793,13 +819,13 @@ function ProofMeta({ proof }) {
                 value: proof.etoroMode
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 335,
+                lineNumber: 336,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 327,
+        lineNumber: 328,
         columnNumber: 5
     }, this);
 }
@@ -813,7 +839,7 @@ function RunIdValue({ raw }) {
             children: raw
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-            lineNumber: 344,
+            lineNumber: 345,
             columnNumber: 7
         }, this);
     }
@@ -828,7 +854,7 @@ function RunIdValue({ raw }) {
                 children: wallclock
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 356,
+                lineNumber: 357,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -837,7 +863,7 @@ function RunIdValue({ raw }) {
                 children: "·"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 357,
+                lineNumber: 358,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -845,20 +871,20 @@ function RunIdValue({ raw }) {
                 children: parsed.tag
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 358,
+                lineNumber: 359,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(CopyRunIdButton, {
                 raw: raw
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 359,
+                lineNumber: 360,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 351,
+        lineNumber: 352,
         columnNumber: 5
     }, this);
 }
@@ -883,7 +909,7 @@ function CopyRunIdButton({ raw }) {
         children: copied ? 'copied' : 'copy'
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 380,
+        lineNumber: 381,
         columnNumber: 5
     }, this);
 }
@@ -896,13 +922,13 @@ function SourceFooter({ source }) {
                 children: source
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 394,
+                lineNumber: 395,
                 columnNumber: 66
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 394,
+        lineNumber: 395,
         columnNumber: 5
     }, this);
 }
@@ -914,7 +940,7 @@ function Field({ label, value, mono = false }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 401,
+                lineNumber: 402,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -922,13 +948,13 @@ function Field({ label, value, mono = false }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 402,
+                lineNumber: 403,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 400,
+        lineNumber: 401,
         columnNumber: 5
     }, this);
 }
@@ -940,7 +966,7 @@ function FieldNode({ label, children }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 410,
+                lineNumber: 411,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -948,13 +974,13 @@ function FieldNode({ label, children }) {
                 children: children
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 411,
+                lineNumber: 412,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 409,
+        lineNumber: 410,
         columnNumber: 5
     }, this);
 }
@@ -6299,7 +6325,9 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$de
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$abi$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/abi.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$sanitiseClientError$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/sanitiseClientError.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/PanelHeaderMeta.tsx [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$panelHeaderMetaUtils$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/proof/panelHeaderMetaUtils.ts [app-ssr] (ecmascript)");
 'use client';
+;
 ;
 ;
 ;
@@ -6385,16 +6413,16 @@ function OracleUpdatesPanel() {
                         children: "Recent Oracle Updates"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 102,
+                        lineNumber: 103,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PanelHeaderMeta"], {
                         source: oracleAddress ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["MonoSourceAtom"], {
-                            value: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$PanelHeaderMeta$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["shortAddress"])(oracleAddress),
+                            value: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$panelHeaderMetaUtils$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["shortAddress"])(oracleAddress),
                             title: oracleAddress
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                            lineNumber: 108,
+                            lineNumber: 109,
                             columnNumber: 15
                         }, this) : undefined,
                         cadence: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6405,18 +6433,18 @@ function OracleUpdatesPanel() {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                            lineNumber: 111,
+                            lineNumber: 112,
                             columnNumber: 20
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 105,
+                        lineNumber: 106,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                lineNumber: 101,
+                lineNumber: 102,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6430,7 +6458,7 @@ function OracleUpdatesPanel() {
                                 children: "Oracle event subscription degraded"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                lineNumber: 118,
+                                lineNumber: 119,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6438,13 +6466,13 @@ function OracleUpdatesPanel() {
                                 children: subscriptionError
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                lineNumber: 119,
+                                lineNumber: 120,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 117,
+                        lineNumber: 118,
                         columnNumber: 9
                     }, this),
                     events.length === 0 ? subscriptionError ? null : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6456,7 +6484,7 @@ function OracleUpdatesPanel() {
                                 children: "PriceUpdated"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                lineNumber: 126,
+                                lineNumber: 127,
                                 columnNumber: 27
                             }, this),
                             " events. None observed yet; this populates as the oracle-signer keeper writes to the chain.",
@@ -6464,7 +6492,7 @@ function OracleUpdatesPanel() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 125,
+                        lineNumber: 126,
                         columnNumber: 11
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
                         className: "divide-y divide-white/5",
@@ -6481,7 +6509,7 @@ function OracleUpdatesPanel() {
                                                 children: e.symbol
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 138,
+                                                lineNumber: 139,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6489,13 +6517,13 @@ function OracleUpdatesPanel() {
                                                 children: formatUsd8(e.price8)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 139,
+                                                lineNumber: 140,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                        lineNumber: 137,
+                                        lineNumber: 138,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6509,7 +6537,7 @@ function OracleUpdatesPanel() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 142,
+                                                lineNumber: 143,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6517,7 +6545,7 @@ function OracleUpdatesPanel() {
                                                 children: "·"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 143,
+                                                lineNumber: 144,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6525,7 +6553,7 @@ function OracleUpdatesPanel() {
                                                 children: formatRelative(e.capturedAt)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 144,
+                                                lineNumber: 145,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6533,7 +6561,7 @@ function OracleUpdatesPanel() {
                                                 children: "·"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 145,
+                                                lineNumber: 146,
                                                 columnNumber: 19
                                             }, this),
                                             link ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -6547,44 +6575,44 @@ function OracleUpdatesPanel() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 147,
+                                                lineNumber: 148,
                                                 columnNumber: 21
                                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 className: "font-mono text-gray-300",
                                                 children: shortHash(e.txHash)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                                lineNumber: 156,
+                                                lineNumber: 157,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                        lineNumber: 141,
+                                        lineNumber: 142,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, `${e.txHash}-${e.symbol}`, true, {
                                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                                lineNumber: 136,
+                                lineNumber: 137,
                                 columnNumber: 15
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                        lineNumber: 132,
+                        lineNumber: 133,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-                lineNumber: 115,
+                lineNumber: 116,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/OracleUpdatesPanel.tsx",
-        lineNumber: 96,
+        lineNumber: 97,
         columnNumber: 5
     }, this);
 }
@@ -8067,6 +8095,26 @@ function LivePricesProofPage() {
     }, this);
 }
 }),
+"[project]/frontend/src/app/(app)/proof/page.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>ProofAliasPage
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$app$2f28$app$292f$live$2d$prices$2d$proof$2f$page$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/app/(app)/live-prices-proof/page.tsx [app-ssr] (ecmascript)");
+'use client';
+;
+;
+function ProofAliasPage() {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$app$2f28$app$292f$live$2d$prices$2d$proof$2f$page$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
+        fileName: "[project]/frontend/src/app/(app)/proof/page.tsx",
+        lineNumber: 6,
+        columnNumber: 10
+    }, this);
+}
+}),
 ];
 
-//# sourceMappingURL=frontend_src_0zpv-wm._.js.map
+//# sourceMappingURL=frontend_src_0hjl0tc._.js.map
