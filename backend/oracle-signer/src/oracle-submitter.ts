@@ -58,6 +58,7 @@ export class OracleSubmitter {
       gasUsed: receipt.gasUsed,
       symbolCount: updates.length,
       roundTripMs: Date.now() - start,
+      blockNumber: receipt.blockNumber,
     };
   }
 

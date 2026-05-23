@@ -19,14 +19,38 @@ export interface HealthServerOptions {
   name: string;
   port: number;
   chainCheck?: () => Promise<number>; // resolves with latest block number
+  /**
+   * Optional callback that returns a JSON-serialisable proof snapshot to be
+   * served by `GET /proof`. Wired up by oracle-signer to expose its in-memory
+   * proof store. When undefined the route 404s.
+   */
+  proofProvider?: () => unknown;
 }
 
 const startedAt = Date.now();
 
 export function startHealthServer(opts: HealthServerOptions): http.Server {
-  const { name, port, chainCheck } = opts;
+  const { name, port, chainCheck, proofProvider } = opts;
 
   const server = http.createServer(async (req, res) => {
+    // /proof — proof-store snapshot for the status UI.
+    if (req.url === '/proof' && req.method === 'GET') {
+      if (!proofProvider) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Not found' }));
+        return;
+      }
+      try {
+        const body = proofProvider();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(body));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', service: name, error: String(err) }));
+      }
+      return;
+    }
+
     if (req.url !== '/health' || req.method !== 'GET') {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));
