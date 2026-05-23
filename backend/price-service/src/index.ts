@@ -32,6 +32,7 @@ export class PriceService {
   readonly cache: QuoteCache;
   readonly broadcaster: WsBroadcaster;
   readonly auditLogger: AuditLogger;
+  readonly bootAtMs: number;
   private readonly config: PriceServiceConfig;
   private httpServer?: ReturnType<typeof import('http').createServer>;
   private sourceStatus: SourceStatus = {
@@ -45,6 +46,7 @@ export class PriceService {
     this.cache = new QuoteCache(config);
     this.broadcaster = new WsBroadcaster();
     this.auditLogger = options?.auditLogger ?? new AuditLogger();
+    this.bootAtMs = Date.now();
   }
 
   ingestQuote(quote: NormalizedQuote): RiskFilterResult {
@@ -75,6 +77,7 @@ export class PriceService {
       this.config,
       () => this.getIngestStats(),
       () => this.getSourceStatus(),
+      () => this.bootAtMs,
     );
     this.httpServer = app.listen(this.config.port, () => {
       console.log(`[price-service] REST server listening on port ${this.config.port}`);

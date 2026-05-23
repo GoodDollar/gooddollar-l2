@@ -133,6 +133,27 @@ describe('PriceService', () => {
     });
   });
 
+  describe('bootAtMs', () => {
+    it('PriceService.start wires bootAtMs through to /health and /audit/stats', async () => {
+      const service = new PriceService({ port: 0, wsPort: 0 });
+      service.start();
+      try {
+        const httpServer = (service as unknown as { httpServer: import('http').Server }).httpServer;
+        const addr = httpServer.address() as import('net').AddressInfo;
+        const baseUrl = `http://127.0.0.1:${addr.port}`;
+        const hRes = (await (await fetch(`${baseUrl}/health`)).json()) as Record<string, number>;
+        const aRes = (await (await fetch(`${baseUrl}/audit/stats`)).json()) as Record<string, number>;
+        expect(typeof hRes.bootAtMs).toBe('number');
+        expect(hRes.bootAtMs).toBe(service.bootAtMs);
+        expect(aRes.bootAtMs).toBe(service.bootAtMs);
+        expect(hRes.uptimeMs).toBeGreaterThanOrEqual(0);
+        expect(aRes.uptimeMs).toBeGreaterThanOrEqual(0);
+      } finally {
+        service.stop();
+      }
+    });
+  });
+
   describe('envPort', () => {
     const ENV_NAME = '__TEST_PRICE_SERVICE_PORT__';
 

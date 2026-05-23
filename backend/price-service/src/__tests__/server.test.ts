@@ -1186,3 +1186,124 @@ describe('REST Server — root index and 404 endpoint discovery', () => {
     expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
   });
 });
+
+describe('REST Server — bootAtMs / uptimeMs on /health and /audit/stats', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+  let bootAtMs: number;
+  let stats: IngestStats;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    bootAtMs = Date.now() - 1000;
+    stats = {
+      ingested: 0,
+      rejected: 0,
+      byReason: {},
+      firstAt: null,
+      lastAt: null,
+      writeErrors: 0,
+    };
+    app = createServer(
+      cache,
+      { symbols: ['AAPL'] },
+      () => stats,
+      undefined,
+      () => bootAtMs,
+    );
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('GET /health includes bootAtMs and uptimeMs when bootAtGetter wired', async () => {
+    const res = await fetch(`${baseUrl}/health`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body.bootAtMs).toBe(bootAtMs);
+    expect(typeof body.uptimeMs).toBe('number');
+    expect(body.uptimeMs as number).toBeGreaterThanOrEqual(1000);
+    expect(body.uptimeMs as number).toBeLessThan(60_000);
+  });
+
+  it('GET /audit/stats includes bootAtMs and uptimeMs when bootAtGetter wired', async () => {
+    const res = await fetch(`${baseUrl}/audit/stats`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body.bootAtMs).toBe(bootAtMs);
+    expect(typeof body.uptimeMs).toBe('number');
+    expect(body.uptimeMs as number).toBeGreaterThanOrEqual(0);
+  });
+
+  it('uptimeMs is monotonic across two requests separated by setTimeout(15)', async () => {
+    const r1 = (await (await fetch(`${baseUrl}/health`)).json()) as Record<string, number>;
+    await new Promise((r) => setTimeout(r, 15));
+    const r2 = (await (await fetch(`${baseUrl}/health`)).json()) as Record<string, number>;
+    expect(r2.uptimeMs).toBeGreaterThanOrEqual(r1.uptimeMs + 10);
+  });
+
+  it('bootAtMs is stable across requests to the same server instance', async () => {
+    const r1 = (await (await fetch(`${baseUrl}/health`)).json()) as Record<string, number>;
+    const r2 = (await (await fetch(`${baseUrl}/audit/stats`)).json()) as Record<string, number>;
+    expect(r1.bootAtMs).toBe(r2.bootAtMs);
+  });
+
+  it('uptimeMs is non-negative', async () => {
+    const r = (await (await fetch(`${baseUrl}/health`)).json()) as Record<string, number>;
+    expect(r.uptimeMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('REST Server — bootAtMs/uptimeMs omitted when no getter (regression)', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] }, () => ({
+      ingested: 0,
+      rejected: 0,
+      byReason: {},
+      firstAt: null,
+      lastAt: null,
+      writeErrors: 0,
+    }));
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('/health omits bootAtMs and uptimeMs when no bootAtGetter supplied', async () => {
+    const res = await fetch(`${baseUrl}/health`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(body, 'bootAtMs')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(body, 'uptimeMs')).toBe(false);
+  });
+
+  it('/audit/stats omits bootAtMs and uptimeMs when no bootAtGetter supplied', async () => {
+    const res = await fetch(`${baseUrl}/audit/stats`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(body, 'bootAtMs')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(body, 'uptimeMs')).toBe(false);
+  });
+});

@@ -5,6 +5,7 @@ import { sanitizeSourceStatus } from './source-status';
 
 export type IngestStatsGetter = () => IngestStats;
 export type SourceStatusGetter = () => SourceStatus;
+export type BootAtGetter = () => number;
 
 /**
  * Map of exact known paths to the methods they accept. Keep grep-friendly:
@@ -105,6 +106,7 @@ export function createServer(
   config?: Partial<PriceServiceConfig>,
   statsGetter?: IngestStatsGetter,
   sourceStatusGetter?: SourceStatusGetter,
+  bootAtGetter?: BootAtGetter,
 ): express.Express {
   const app = express();
   app.disable('x-powered-by');
@@ -147,6 +149,11 @@ export function createServer(
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
     if (src) body.source = src;
     body.status = degraded ? 'degraded' : 'ok';
+    if (bootAtGetter) {
+      const bootAt = bootAtGetter();
+      body.bootAtMs = bootAt;
+      body.uptimeMs = Math.max(0, Date.now() - bootAt);
+    }
     res.status(degraded ? 503 : 200).json(body);
   });
 
@@ -224,7 +231,7 @@ export function createServer(
           lastAt: null,
           writeErrors: 0,
         };
-    res.json({
+    const body: Record<string, unknown> = {
       ingested: stats.ingested,
       rejected: stats.rejected,
       byReason: stats.byReason,
@@ -232,8 +239,14 @@ export function createServer(
       firstAt: stats.firstAt,
       lastAt: stats.lastAt,
       writeErrors: stats.writeErrors,
-      timestamp: Date.now(),
-    });
+    };
+    if (bootAtGetter) {
+      const bootAt = bootAtGetter();
+      body.bootAtMs = bootAt;
+      body.uptimeMs = Math.max(0, Date.now() - bootAt);
+    }
+    body.timestamp = Date.now();
+    res.json(body);
   });
 
   app.get('/status/quotes', (_req: Request, res: Response) => {
