@@ -44,18 +44,20 @@ describe('REST Server — ENDPOINT_CATALOG drives /, 404, and 405', () => {
     }
   });
 
-  it('GET /no-such-path 404 endpoints array uses {path, methods, summary} shape', async () => {
+  it('GET /no-such-path 404 endpoints array uses compact {path, methods} shape', async () => {
     const res = await fetch(`${baseUrl}/no-such-path`);
     expect(res.status).toBe(404);
     const body = (await res.json()) as {
-      endpoints: Array<{ path: string; methods: string[]; summary: string }>;
+      endpoints: Array<Record<string, unknown>>;
     };
     expect(Array.isArray(body.endpoints)).toBe(true);
     const first = body.endpoints[0];
     expect(typeof first.path).toBe('string');
     expect(Array.isArray(first.methods)).toBe(true);
-    expect(typeof first.summary).toBe('string');
-    expect(first.summary.length).toBeGreaterThan(0);
+    // Compact projection (task 0027): full discovery (summary +
+    // responseShape) lives on GET /, not on every wrong-URL response.
+    expect('summary' in first).toBe(false);
+    expect('responseShape' in first).toBe(false);
   });
 
   it('every endpoint in GET / also appears in the 404 list (no drift between callers)', async () => {

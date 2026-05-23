@@ -1174,13 +1174,13 @@ describe('REST Server — root index and 404 endpoint discovery', () => {
     expect(body.allowed).toEqual(['GET', 'OPTIONS']);
   });
 
-  it('GET /openapi.json returns 404 with a catalog-shaped endpoints array', async () => {
+  it('GET /openapi.json returns 404 with a compact endpoints hint list', async () => {
     const res = await fetch(`${baseUrl}/openapi.json`);
     const body = (await res.json()) as Record<string, unknown>;
     expect(res.status).toBe(404);
     expect(body.error).toBe('not-found');
     expect(Array.isArray(body.endpoints)).toBe(true);
-    const eps = body.endpoints as Array<{ path: string; methods: string[]; summary: string }>;
+    const eps = body.endpoints as Array<{ path: string; methods: string[] }>;
     const paths = eps.map((e) => e.path);
     expect(paths).toEqual(
       expect.arrayContaining(['/health', '/quotes', '/quotes/:symbol']),
@@ -1189,8 +1189,10 @@ describe('REST Server — root index and 404 endpoint discovery', () => {
       expect(typeof e.path).toBe('string');
       expect(e.path.length).toBeGreaterThan(0);
       expect(Array.isArray(e.methods)).toBe(true);
-      expect(typeof e.summary).toBe('string');
-      expect(e.summary.length).toBeGreaterThan(0);
+      // The 404 hint list ships only the minimum needed to recover from a typo.
+      // Full per-endpoint discovery (summary + responseShape) lives at GET /.
+      expect('summary' in e).toBe(false);
+      expect('responseShape' in e).toBe(false);
     }
   });
 
@@ -1211,6 +1213,95 @@ describe('REST Server — root index and 404 endpoint discovery', () => {
     });
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
+  });
+});
+
+describe('REST Server — 404 hint list is compact (task 0027)', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  const COMPACT_404_PATHS = ['/favicon.ico', '/nope', '/quotes//x'];
+
+  for (const p of COMPACT_404_PATHS) {
+    it(`GET ${p} 404 body ≤ 700 bytes`, async () => {
+      const r = await fetch(`${baseUrl}${p}`);
+      expect(r.status).toBe(404);
+      const buf = Buffer.from(await r.arrayBuffer());
+      expect(buf.byteLength).toBeLessThanOrEqual(700);
+    });
+  }
+
+  it('404 endpoint entries carry only {path, methods} — no summary, no responseShape', async () => {
+    const body = (await (await fetch(`${baseUrl}/healt`)).json()) as Record<string, unknown>;
+    expect(Array.isArray(body.endpoints)).toBe(true);
+    const eps = body.endpoints as Array<Record<string, unknown>>;
+    expect(eps.length).toBeGreaterThan(0);
+    for (const e of eps) {
+      expect(Object.keys(e).sort()).toEqual(['methods', 'path']);
+    }
+  });
+
+  it('404 body includes a discovery pointer to /', async () => {
+    const body = (await (await fetch(`${baseUrl}/healt`)).json()) as Record<string, unknown>;
+    expect(body.discovery).toBe('/');
+  });
+
+  it('404 hint list includes the existing real routes (typo recovery still works)', async () => {
+    const body = (await (await fetch(`${baseUrl}/healt`)).json()) as {
+      endpoints: Array<{ path: string }>;
+    };
+    const paths = body.endpoints.map((e) => e.path);
+    expect(paths).toContain('/health');
+    expect(paths).toContain('/quotes');
+    expect(paths).toContain('/quotes/fresh/all');
+  });
+
+  it('405 method-not-allowed body is unchanged (still compact, no endpoints[])', async () => {
+    const r = await fetch(`${baseUrl}/health`, { method: 'POST' });
+    expect(r.status).toBe(405);
+    const body = (await r.json()) as Record<string, unknown>;
+    expect(body.error).toBe('method-not-allowed');
+    expect(Array.isArray(body.allowed)).toBe(true);
+    expect('endpoints' in body).toBe(false);
+  });
+
+  it('GET / still ships full catalog (summary + responseShape) — unchanged', async () => {
+    const body = (await (await fetch(`${baseUrl}/`)).json()) as {
+      endpoints: Array<{ summary: string; responseShape: string }>;
+    };
+    expect(Array.isArray(body.endpoints)).toBe(true);
+    for (const e of body.endpoints) {
+      expect(typeof e.summary).toBe('string');
+      expect(typeof e.responseShape).toBe('string');
+      expect(e.summary.length).toBeGreaterThan(0);
+      expect(e.responseShape.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('Boot-time guard: 404 body size cap (task 0027)', () => {
+  it('the catch-all 404 body built off the live catalog is ≤ 1024 bytes', async () => {
+    const mod = await import('../server');
+    expect(typeof mod.build404BodySize).toBe('function');
+    expect(mod.build404BodySize()).toBeLessThanOrEqual(1024);
   });
 });
 

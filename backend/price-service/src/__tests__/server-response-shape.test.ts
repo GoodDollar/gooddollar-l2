@@ -79,24 +79,16 @@ describe('REST Server — endpoint responseShape catalog', () => {
     expect(s!.responseShape as string).toMatch(/degraded|503/);
   });
 
-  it('404 hint list propagates responseShape from catalog', async () => {
+  it('404 hint list intentionally drops responseShape (task 0027: compact 404)', async () => {
+    // Full per-endpoint discovery (summary + responseShape) lives on
+    // `GET /`; the 404 ships only `{path, methods}` so wrong-URL traffic
+    // (typos, /favicon.ico, misconfigured probes) doesn't pay a 2.8 KB tax.
     const body = (await (await fetch(`${baseUrl}/no-such-path`)).json()) as Record<string, unknown>;
     expect(Array.isArray(body.endpoints)).toBe(true);
     const eps = body.endpoints as Array<Record<string, unknown>>;
     for (const e of eps) {
-      expect('responseShape' in e).toBe(true);
-      expect(typeof e.responseShape).toBe('string');
-      expect((e.responseShape as string).length).toBeGreaterThan(0);
+      expect('responseShape' in e).toBe(false);
+      expect('summary' in e).toBe(false);
     }
-  });
-
-  it('synthetic websocket entry on 404 also carries a responseShape', async () => {
-    const body = (await (await fetch(`${baseUrl}/no-such-path`)).json()) as Record<string, unknown>;
-    const eps = body.endpoints as Array<Record<string, unknown>>;
-    const wsEntry = eps.find((e) => typeof e.path === 'string' && (e.path as string).startsWith('ws://'));
-    expect(wsEntry).toBeDefined();
-    expect(typeof wsEntry!.responseShape).toBe('string');
-    expect((wsEntry!.responseShape as string).length).toBeGreaterThan(0);
-    expect(wsEntry!.responseShape as string).toMatch(/snapshot|quote/i);
   });
 });

@@ -277,11 +277,6 @@ for (const e of ENDPOINT_CATALOG) {
   }
 }
 
-const WS_SYNTHETIC_RESPONSE_SHAPE =
-  'snapshot frame on connect: {symbols[], quotes: Record<string, ' +
-  'NormalizedQuote & {cacheAge, filterAccepted, filterReason}>, ' +
-  'timestamp} | quote frame: NormalizedQuote';
-
 /**
  * Pointer object replacing the inline `sourceReasons` block on `GET /`.
  * Naming the field `sourceReasonCatalog` (singular, with the `Catalog`
@@ -332,6 +327,11 @@ interface EndpointIndexEntry {
   responseShape: string;
 }
 
+interface EndpointIndexCompactEntry {
+  path: string;
+  methods: readonly string[];
+}
+
 function buildEndpointIndex(): EndpointIndexEntry[] {
   return ENDPOINT_CATALOG.map((e) => ({
     path: e.path,
@@ -339,6 +339,70 @@ function buildEndpointIndex(): EndpointIndexEntry[] {
     summary: e.summary,
     responseShape: e.responseShape,
   }));
+}
+
+/**
+ * Compact projection used by the catch-all 404 hint list. Drops `summary`
+ * and `responseShape` so wrong-URL responses (typos, /favicon.ico,
+ * misconfigured probes, crawler scans) stay small. Full discovery
+ * payload lives on `GET /`; the 404 only needs `{path, methods}` for a
+ * caller to recognise the right route and retry.
+ */
+function buildEndpointIndexCompact(): EndpointIndexCompactEntry[] {
+  return ENDPOINT_CATALOG.map((e) => ({
+    path: e.path,
+    methods: e.methods,
+  }));
+}
+
+/**
+ * Boot-time invariant: the catch-all 404 body must stay ≤ 1024 bytes so
+ * automated unknown-URL traffic (browser auto-fetches, misconfigured
+ * probes) never pays a multi-KB tax per request. Sits next to the
+ * 240-char `responseShape` guard above so both invariants are visible
+ * at a glance to anyone touching `ENDPOINT_CATALOG`.
+ *
+ * Uses a worst-case oversize WS hostname so the cap bounds the full body
+ * including the largest reasonable advertisement URL.
+ */
+const WS_GUARD_SYNTHETIC_PATH =
+  'ws://very-long-hostname-for-bound.example.com:65535';
+
+function build404SyntheticBody(): Record<string, unknown> {
+  return {
+    error: 'not-found',
+    path: '/__boot_guard_synthetic__',
+    method: 'GET',
+    discovery: '/',
+    endpoints: [
+      ...buildEndpointIndexCompact(),
+      { path: WS_GUARD_SYNTHETIC_PATH, methods: ['CONNECT'] },
+    ],
+    timestamp: 0,
+    timestampIso: '1970-01-01T00:00:00.000Z',
+  };
+}
+
+const MAX_404_BODY_BYTES = 1024;
+
+{
+  const bytes = Buffer.byteLength(JSON.stringify(build404SyntheticBody()), 'utf8');
+  if (bytes > MAX_404_BODY_BYTES) {
+    throw new Error(
+      `catch-all 404 body would exceed ${MAX_404_BODY_BYTES} bytes: ${bytes}. ` +
+        'Trim ENDPOINT_CATALOG paths or split the 404 hint list.',
+    );
+  }
+}
+
+/**
+ * Test-only inspection of the boot-time invariant. Re-measures the
+ * synthetic body the boot guard above asserted against, so a unit test
+ * can confirm the live catalog stays under cap without re-implementing
+ * the recipe.
+ */
+export function build404BodySize(): number {
+  return Buffer.byteLength(JSON.stringify(build404SyntheticBody()), 'utf8');
 }
 
 /**
@@ -703,20 +767,19 @@ export function createServer(
       });
       return;
     }
-    const endpoints: EndpointIndexEntry[] = buildEndpointIndex();
+    // Compact hint list: every wrong-URL response (typos, /favicon.ico,
+    // crawler scans, misconfigured probes) gets a small body. Full
+    // per-endpoint discovery (summary + responseShape) lives at GET /.
+    const endpoints: EndpointIndexCompactEntry[] = buildEndpointIndexCompact();
     const ws = buildWsAdvertisement(req);
     if (ws) {
-      endpoints.push({
-        path: ws.url,
-        methods: ['CONNECT'],
-        summary: 'WebSocket broadcaster: snapshot on connect, then live quote frames.',
-        responseShape: WS_SYNTHETIC_RESPONSE_SHAPE,
-      });
+      endpoints.push({ path: ws.url, methods: ['CONNECT'] });
     }
     res.status(404).json({
       error: 'not-found',
       path: req.path,
       method: req.method,
+      discovery: '/',
       endpoints,
       timestamp: now,
       timestampIso: isoFromMs(now)!,
