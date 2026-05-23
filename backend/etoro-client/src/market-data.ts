@@ -347,13 +347,33 @@ export class MarketDataModule {
 
   // --- Session state ---
 
-  detectSessionState(symbol?: string, now?: Date): SessionState {
-    const date = now ?? new Date();
-    return detectUSMarketSession(date, symbol);
+  /**
+   * Resolve session state for a quote, branching on asset class so that
+   * 24/7 markets (crypto, forex) are never falsely labeled `'closed'` on
+   * weekends and only US-equity-shaped classes are routed through the
+   * US-equity calendar. Classes we don't have a calendar for return
+   * `'unknown'` — strictly safer than `'closed'`, which can trip
+   * downstream signer guards.
+   */
+  detectSessionState(
+    symbol?: string,
+    assetClass: EtoroAssetClass = 'unknown',
+    now?: Date,
+  ): SessionState {
+    return resolveSessionState(assetClass, now ?? new Date(), symbol);
   }
 
   async getSessionState(symbol: string): Promise<SessionState> {
-    return this.detectSessionState(symbol);
+    return this.detectSessionState(symbol, this.lookupAssetClassFor(symbol));
+  }
+
+  /**
+   * Look up the asset class for a symbol from the instrument cache.
+   * Returns `'unknown'` on cache miss so the session detector falls
+   * through to the conservative branch.
+   */
+  private lookupAssetClassFor(symbol: string): EtoroAssetClass {
+    return this.instrumentCache.get(symbol.toUpperCase())?.assetClass ?? 'unknown';
   }
 
   // --- WebSocket streaming ---
@@ -539,8 +559,11 @@ export class MarketDataModule {
 
     const timestamp = ts.ms;
     const stale = now - timestamp > this.config.maxQuoteAgeMs;
-    const assetClass = normalizeAssetClass(pickStr(src, ['assetClass', 'instrumentType', 'type']));
-    const sessionState = this.detectSessionState(symbol.toUpperCase());
+    const payloadClass = normalizeAssetClass(pickStr(src, ['assetClass', 'instrumentType', 'type']));
+    const assetClass = payloadClass !== 'unknown'
+      ? payloadClass
+      : this.lookupAssetClassFor(symbol);
+    const sessionState = this.detectSessionState(symbol.toUpperCase(), assetClass);
 
     return {
       source: 'etoro',
@@ -654,7 +677,8 @@ export class MarketDataModule {
 
     const timestamp = ts.ms;
     const stale = now - timestamp > this.config.maxQuoteAgeMs;
-    const sessionState = this.detectSessionState(symbol.toUpperCase());
+    const assetClass = this.lookupAssetClassFor(symbol);
+    const sessionState = this.detectSessionState(symbol.toUpperCase(), assetClass);
 
     return {
       source: 'etoro',
@@ -667,6 +691,7 @@ export class MarketDataModule {
       timestamp,
       sessionState,
       confidence: computeConfidence({ bid, ask, mid, price, stale }),
+      assetClass,
       currency: pickStr(src, ['currency', 'quoteCurrency']) ?? 'USD',
       stale,
     };
@@ -693,7 +718,49 @@ export class MarketDataModule {
 
 // --- Market hours detection ---
 
-export function detectUSMarketSession(date: Date, _symbol?: string): SessionState {
+/**
+ * Resolve session state from asset class. 24/7 markets short-circuit
+ * to `'open'`; US-equity-shaped classes route through the equity
+ * calendar; everything else returns `'unknown'` (never the stricter
+ * `'closed'`, which can trip downstream signer guards).
+ *
+ * The `symbol` argument is reserved for a future per-symbol holiday
+ * calendar; it is currently unused.
+ */
+function resolveSessionState(
+  assetClass: EtoroAssetClass,
+  now: Date,
+  symbol?: string,
+): SessionState {
+  switch (assetClass) {
+    case 'crypto':
+    case 'forex':
+      return 'open';
+    case 'equity':
+    case 'etf':
+    case 'index':
+      return detectUSMarketSession(now, symbol);
+    case 'commodity':
+    case 'unknown':
+      return 'unknown';
+    default: {
+      const exhaustive: never = assetClass;
+      return exhaustive;
+    }
+  }
+}
+
+/**
+ * US-equity market hours detector. Pre-market 04:00-09:30 ET, regular
+ * session 09:30-16:00 ET, after-hours 16:00-20:00 ET. Saturday/Sunday
+ * are unconditionally `'closed'`. Holidays are NOT modeled — separate
+ * follow-up.
+ *
+ * The `symbol` argument is reserved for a future per-symbol holiday
+ * calendar; it is currently unused.
+ */
+export function detectUSMarketSession(date: Date, symbol?: string): SessionState {
+  void symbol;
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: US_MARKET_TZ,
     hour: 'numeric',
@@ -709,11 +776,8 @@ export function detectUSMarketSession(date: Date, _symbol?: string): SessionStat
 
   if (['Sat', 'Sun'].includes(weekday)) return 'closed';
 
-  // Pre-market: 4:00 - 9:30 ET
   if (timeMinutes >= 240 && timeMinutes < 570) return 'pre-market';
-  // Regular: 9:30 - 16:00 ET
   if (timeMinutes >= 570 && timeMinutes < 960) return 'open';
-  // After-hours: 16:00 - 20:00 ET
   if (timeMinutes >= 960 && timeMinutes < 1200) return 'after-hours';
 
   return 'closed';

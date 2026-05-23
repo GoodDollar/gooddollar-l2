@@ -275,6 +275,85 @@ describe('MarketDataModule', () => {
     });
   });
 
+  describe('session state is asset-class aware', () => {
+    function saturdayNoonEt(): Date {
+      const sat = new Date();
+      sat.setUTCDate(sat.getUTCDate() + ((6 - sat.getUTCDay() + 7) % 7));
+      sat.setUTCHours(17, 0, 0, 0);
+      return sat;
+    }
+
+    it('crypto symbols are open on a Saturday', () => {
+      const http = createMockAxios({});
+      const mod = makeMod(http);
+      expect(mod.detectSessionState('BTC', 'crypto', saturdayNoonEt())).toBe('open');
+    });
+
+    it('forex symbols are open on a Saturday', () => {
+      const http = createMockAxios({});
+      const mod = makeMod(http);
+      expect(mod.detectSessionState('EURUSD', 'forex', saturdayNoonEt())).toBe('open');
+    });
+
+    it('equity symbols are closed on a Saturday', () => {
+      const http = createMockAxios({});
+      const mod = makeMod(http);
+      expect(mod.detectSessionState('AAPL', 'equity', saturdayNoonEt())).toBe('closed');
+    });
+
+    it('unknown asset class returns unknown (never lies with closed)', () => {
+      const http = createMockAxios({});
+      const mod = makeMod(http);
+      expect(mod.detectSessionState('???', 'unknown', saturdayNoonEt())).toBe('unknown');
+    });
+
+    it('commodity returns unknown rather than US-equity-shaped', () => {
+      const http = createMockAxios({});
+      const mod = makeMod(http);
+      expect(mod.detectSessionState('GOLD', 'commodity', saturdayNoonEt())).toBe('unknown');
+    });
+
+    it('WS frame with assetClass=crypto is labeled open on a Saturday', () => {
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = makeMod(http);
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      mod.handleWsMessage(JSON.stringify({
+        symbol: 'BTC', assetClass: 'crypto', bid: 100, ask: 101,
+        timestamp: Date.now(),
+      }));
+
+      expect(cb).toHaveBeenCalledTimes(1);
+      const quote = cb.mock.calls[0][0] as NormalizedQuote;
+      expect(quote.assetClass).toBe('crypto');
+      expect(quote.sessionState).toBe('open');
+    });
+
+    it('REST rates path looks up asset class from instrument cache', async () => {
+      const http = createMockAxios({
+        rates: [toRateRecord({ instrumentID: 'INST_2001', bid: 100, ask: 101, lastExecution: 100.5, date: Date.now() })],
+      });
+      const mod = makeMod(http);
+      const instrumentCache = (mod as unknown as { instrumentCache: Map<string, InstrumentMetadata> }).instrumentCache;
+      instrumentCache.set('BTC', {
+        instrumentId: 'INST_2001',
+        symbol: 'BTC',
+        displayName: 'Bitcoin',
+        exchange: '',
+        currency: 'USD',
+        assetClass: 'crypto',
+        minTradeSize: 1,
+        maxLeverage: 1,
+      });
+      (mod as unknown as { instrumentCacheExpiry: number }).instrumentCacheExpiry = Date.now() + 60_000;
+
+      const [q] = await mod.getQuotes(['BTC']);
+      expect(q.assetClass).toBe('crypto');
+      expect(q.sessionState).toBe('open');
+    });
+  });
+
   describe('streaming lifecycle', () => {
     it('starts REST fallback when no wsUrl', () => {
       const http = createMockAxios({ rates: MOCK_RATES });
