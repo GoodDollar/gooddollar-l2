@@ -47,6 +47,13 @@ export interface EtoroClientConstructorConfig
   rateLimiter?: RateLimiterConfig;
   marketData?: MarketDataConfig;
   capConfig?: DemoCapConfig;
+  /**
+   * Explicit audit log path override. Falls through to
+   * `ETORO_AUDIT_LOG_PATH` env, then `<cwd>/.etoro-audit/<mode>.log`, then
+   * `<os.tmpdir()>/etoro-audit/<mode>.log`. The default NEVER lands under
+   * `node_modules`.
+   */
+  auditLogPath?: string;
 }
 
 export class EtoroClient {
@@ -65,13 +72,16 @@ export class EtoroClient {
     const modeSource: 'env' | 'explicit' = config?.credentials ? 'explicit' : 'env';
     this.credentials = config?.credentials ?? loadCredentialsFromEnv();
     this.rateLimiter = new RateLimiter(config?.rateLimiter);
-    this.audit = new AuditLogger(this.credentials.mode);
+    this.audit = new AuditLogger(this.credentials.mode, {
+      logPath: config?.auditLogPath,
+    });
     this.audit.log({
       action: 'mode-resolved',
       method: 'INIT',
       path: '/mode',
       resolvedMode: this.credentials.mode,
       modeSource,
+      resolvedAuditLogPath: this.audit.getResolvedLogPath(),
     });
     const capConfig = config?.capConfig ?? loadDemoCapConfig();
     this.capEnforcer = new DemoCapEnforcer(capConfig);
@@ -189,6 +199,8 @@ export class EtoroClient {
       ...redactCredentials(this.credentials),
       authenticated: String(this.isAuthenticated()),
       realTradingEnabled: String(REAL_TRADING_ENABLED),
+      auditLogPath: this.audit.getResolvedLogPath(),
+      auditWriteFailures: String(this.audit.getWriteFailureCount()),
     };
   }
 

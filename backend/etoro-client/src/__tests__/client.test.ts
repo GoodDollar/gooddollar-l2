@@ -1,9 +1,11 @@
+import path from 'path';
 import { EtoroClient, InvalidModeError } from '../index';
 import { MockEtoroSource } from '../mock-source';
 import { EtoroCredentials } from '../types';
 
 jest.mock('fs', () => ({
   appendFileSync: jest.fn(),
+  mkdirSync: jest.fn(),
 }));
 
 const DEMO_CREDENTIALS: EtoroCredentials = {
@@ -109,6 +111,44 @@ describe('InvalidModeError export', () => {
     const err = new InvalidModeError('demo', ['mock', 'demo-readonly', 'demo-trading', 'real-disabled']);
     expect(err.name).toBe('InvalidModeError');
     expect(err.rawValue).toBe('demo');
+  });
+});
+
+describe('EtoroClient — audit-log path surfacing', () => {
+  it('honors EtoroClientConstructorConfig.auditLogPath end-to-end', () => {
+    const client = new EtoroClient({
+      credentials: DEMO_CREDENTIALS,
+      auditLogPath: '/tmp/audit-explicit.log',
+    });
+    const summary = client.getSummary();
+    expect(summary.auditLogPath).toBe('/tmp/audit-explicit.log');
+    expect(summary.auditWriteFailures).toBe('0');
+  });
+
+  it('default-resolved auditLogPath never lives under node_modules and getSummary exposes failure count', () => {
+    const client = new EtoroClient({ credentials: DEMO_CREDENTIALS });
+    const summary = client.getSummary();
+    expect(summary.auditLogPath).toBeDefined();
+    expect(summary.auditLogPath.split(path.sep)).not.toContain('node_modules');
+    expect(summary.auditWriteFailures).toBe('0');
+  });
+
+  it('records resolvedAuditLogPath on the mode-resolved audit line', () => {
+    const writes: string[] = [];
+    const fsMock = jest.requireMock('fs') as { appendFileSync: jest.Mock };
+    fsMock.appendFileSync.mockClear();
+    fsMock.appendFileSync.mockImplementation((_p: string, line: string) => { writes.push(line); });
+
+    new EtoroClient({
+      credentials: DEMO_CREDENTIALS,
+      auditLogPath: '/tmp/audit-resolved.log',
+    });
+
+    const lines = writes
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+      .filter((e) => e.action === 'mode-resolved');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].resolvedAuditLogPath).toBe('/tmp/audit-resolved.log');
   });
 });
 

@@ -176,4 +176,6 @@ export interface AuditLogEntry {
   capDailyUsd?: number;
   /** Symbols whose instrument overrides were applied at construction. */
   instrumentOverridesApplied?: string[];
+  /** Resolved audit-log file path captured on the mode-resolved entry. */
+  resolvedAuditLogPath?: string;
 }
