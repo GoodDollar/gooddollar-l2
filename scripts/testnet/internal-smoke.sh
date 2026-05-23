@@ -536,25 +536,45 @@ else
       AGG_STATUS[$name]="$st"
     done < <(printf "%s\n" "$parsed")
 
+    # Classify each svc against HEALTH-CONTRACT.md. The awk in
+    # lib/classify-health-contract.awk walks all three section types
+    # (EXCLUDED / REQUIRED / PUBLIC-SURFACE) and emits the discovered
+    # section name. Pre-fix the awk hardcoded "EXCLUDED" and was
+    # blind to REQUIRED, so promotion (contract line 69) silently
+    # fired phantom MISSING-FROM-CONTRACT BLOCKERs on green services
+    # (task 0029).
+    CLASSIFIER_AWK="$(dirname "$0")/lib/classify-health-contract.awk"
     for svc in oracle-signer hedge-engine; do
       st="${AGG_STATUS[$svc]:-MISSING}"
-      cls="$(awk -v s="$svc" '
-        /^## / { in_excl = (index($0, "Documented exclusions") > 0) ? 1 : 0; next }
-        in_excl && /^\| *`[a-zA-Z0-9_-]+` *\|/ {
-          n = split($0, parts, "|"); gsub(/[ `]/, "", parts[2])
-          if (parts[2] == s) { print "EXCLUDED"; exit }
-        }
-      ' "$HEALTH_CONTRACT" 2>/dev/null)"
+      cls="$(awk -v s="$svc" -f "$CLASSIFIER_AWK" "$HEALTH_CONTRACT" 2>/dev/null)"
 
       st_md="$(escape_md_cell "$st")"
       add_summary "| \`$svc\` | $st_md | ${cls:-MISSING-FROM-CONTRACT} |"
       if [[ "$st" == "MISSING" ]]; then
         BLOCKERS+=("$svc not reported by status-aggregator")
-      elif [[ -z "$cls" ]]; then
-        BLOCKERS+=("$svc not classified in HEALTH-CONTRACT.md exclusions table")
-      else
-        WARNINGS+=("$svc classified as $cls in contract — confirm before public testnet promotion")
+        continue
       fi
+      case "$cls" in
+        EXCLUDED)
+          WARNINGS+=("$svc is EXCLUDED in contract — confirm before public testnet promotion")
+          ;;
+        REQUIRED)
+          # Post-promotion path: healthy = no-op (row already ✅);
+          # degraded = contract promoted ahead of reality, BLOCKER.
+          case "$st" in
+            ok|health-only) : ;;
+            *) BLOCKERS+=("$svc is REQUIRED in contract but reports status=$st") ;;
+          esac
+          ;;
+        PUBLIC-SURFACE)
+          # Public-surface rows are URLs, not services — collision is
+          # a contract authoring bug.
+          BLOCKERS+=("$svc collides with a public-surface name in contract — fix the contract")
+          ;;
+        *)
+          BLOCKERS+=("$svc not classified in HEALTH-CONTRACT.md (no Required or Documented exclusions row matches)")
+          ;;
+      esac
     done
   fi
 fi
