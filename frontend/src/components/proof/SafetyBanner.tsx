@@ -56,7 +56,7 @@ export function SafetyBanner({
       <div
         role="status"
         aria-label="Loading safety state"
-        className="w-full rounded-xl border border-white/10 bg-dark-50/40 px-4 py-3"
+        className="w-full rounded-2xl border border-white/10 bg-dark-50/40 px-4 py-3"
       >
         <div className="h-5 w-48 animate-pulse rounded bg-white/10" />
       </div>
@@ -67,7 +67,7 @@ export function SafetyBanner({
     return (
       <div
         role="alert"
-        className="w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3"
+        className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3"
       >
         <div className="text-sm font-semibold text-red-200">
           Safety state unverified.
@@ -94,7 +94,7 @@ export function SafetyBanner({
     return (
       <div
         role="alert"
-        className="w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3"
+        className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3"
       >
         <div className="flex items-center gap-2 text-sm font-semibold text-red-200">
           <span className="inline-block h-2 w-2 rounded-full bg-red-400" aria-hidden />
@@ -117,7 +117,7 @@ export function SafetyBanner({
   return (
     <div
       role="status"
-      className="w-full rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-3"
+      className="w-full rounded-2xl border border-green-500/30 bg-green-500/5 px-4 py-3"
     >
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-green-300">

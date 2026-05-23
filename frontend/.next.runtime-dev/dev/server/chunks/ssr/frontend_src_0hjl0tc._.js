@@ -7692,7 +7692,7 @@ function SafetyBanner({ endpoint = '/api/safety-state', intervalMs = POLL_INTERV
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             role: "status",
             "aria-label": "Loading safety state",
-            className: "w-full rounded-xl border border-white/10 bg-dark-50/40 px-4 py-3",
+            className: "w-full rounded-2xl border border-white/10 bg-dark-50/40 px-4 py-3",
             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "h-5 w-48 animate-pulse rounded bg-white/10"
             }, void 0, false, {
@@ -7709,7 +7709,7 @@ function SafetyBanner({ endpoint = '/api/safety-state', intervalMs = POLL_INTERV
     if (state.status === 'error') {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             role: "alert",
-            className: "w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3",
+            className: "w-full rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3",
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "text-sm font-semibold text-red-200",
@@ -7744,7 +7744,7 @@ function SafetyBanner({ endpoint = '/api/safety-state', intervalMs = POLL_INTERV
         const allowedList = __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$safety$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ALLOWED_ETORO_MODES"].join(', ');
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             role: "alert",
-            className: "w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3",
+            className: "w-full rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3",
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "flex items-center gap-2 text-sm font-semibold text-red-200",
@@ -7800,7 +7800,7 @@ function SafetyBanner({ endpoint = '/api/safety-state', intervalMs = POLL_INTERV
     }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         role: "status",
-        className: "w-full rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-3",
+        className: "w-full rounded-2xl border border-green-500/30 bg-green-500/5 px-4 py-3",
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex flex-wrap items-center gap-3 text-sm",
             children: [

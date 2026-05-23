@@ -177,6 +177,48 @@ describe('SafetyBanner', () => {
     expect(clearIntervalSpy.mock.calls.length).toBeGreaterThan(callsBefore)
   })
 
+  // #0048 — the SafetyBanner was the only top-level container on
+  // /live-prices-proof still wearing `rounded-xl` (12 px). Every
+  // neighbouring section (reviewer callout, both pipeline banners,
+  // pipeline flow diagram, all four data panels) uses `rounded-2xl`
+  // (16 px). Align the outlier so the page reads as one stack of
+  // consistently-cornered containers.
+  describe('outer container radius (#0048)', () => {
+    function assertRoundedTwoXL(el: HTMLElement) {
+      const tokens = el.className.split(/\s+/)
+      expect(tokens).toContain('rounded-2xl')
+      expect(tokens).not.toContain('rounded-xl')
+    }
+
+    it('loading state outer div uses rounded-2xl, not rounded-xl', () => {
+      globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
+      render(<SafetyBanner />)
+      assertRoundedTwoXL(screen.getByLabelText(/Loading safety state/i))
+    })
+
+    it('error state outer div uses rounded-2xl, not rounded-xl', async () => {
+      globalThis.fetch = vi.fn(() => Promise.reject(new Error('Failed to fetch')))
+      render(<SafetyBanner />)
+      const alert = await screen.findByRole('alert')
+      assertRoundedTwoXL(alert)
+    })
+
+    it('refusal state outer div uses rounded-2xl, not rounded-xl', async () => {
+      mockFetchResponse({ realTradingEnabled: true, etoroMode: 'real', version: 1 })
+      render(<SafetyBanner />)
+      const alert = await screen.findByRole('alert')
+      assertRoundedTwoXL(alert)
+    })
+
+    it('safe state outer div uses rounded-2xl, not rounded-xl', async () => {
+      mockFetchResponse({ realTradingEnabled: false, etoroMode: 'sandbox', version: 1 })
+      render(<SafetyBanner />)
+      await waitFor(() => expect(screen.getByText(/Safe/i)).toBeInTheDocument())
+      const status = screen.getByRole('status')
+      assertRoundedTwoXL(status)
+    })
+  })
+
   it('does not re-show the loading skeleton between polls', async () => {
     vi.useFakeTimers()
     globalThis.fetch = vi.fn(() =>
