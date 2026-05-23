@@ -108,6 +108,39 @@ describe('LivePricesProofPage', () => {
     expect(aside).toHaveTextContent(/never silently swallows/i)
   })
 
+  it('reviewer-context callout names the four UI surfaces in render order (#0056)', () => {
+    // After #0020/#0023/#0024/#0050 added the verdict banner, chip jump
+    // links, and pipeline flow diagram ABOVE the panels, the callout's
+    // original "Each panel below" copy stopped describing what a reviewer
+    // sees first. The callout now walks the four surfaces top-to-bottom.
+    render(<LivePricesProofPage />)
+    const aside = screen.getByTestId('reviewer-context')
+    const labels = ['Safety banner', 'Verdict banner', 'Pipeline flow', 'Data panels']
+    for (const label of labels) {
+      expect(aside, `callout should name "${label}"`).toHaveTextContent(
+        new RegExp(label, 'i'),
+      )
+    }
+    // The labels must appear in render order (matching the page's top-to-
+    // bottom layout) so a reviewer reading top-down sees the same names
+    // as they scroll. The ordered list inside the callout drives this.
+    const text = aside.textContent ?? ''
+    const positions = labels.map((l) => text.toLowerCase().indexOf(l.toLowerCase()))
+    expect(positions.every((p) => p >= 0)).toBe(true)
+    for (let i = 1; i < positions.length; i += 1) {
+      expect(
+        positions[i],
+        `"${labels[i]}" should come after "${labels[i - 1]}" in the callout text`,
+      ).toBeGreaterThan(positions[i - 1])
+    }
+    // The numbered guide is rendered as an <ol> so screen readers
+    // announce the sequence; the "never silently swallows" guarantee
+    // moves inside the Data panels item (regression guard).
+    const list = aside.querySelector('ol')
+    expect(list).not.toBeNull()
+    expect(list?.children.length).toBe(4)
+  })
+
   it('reviewer-context aside is structurally aligned with the data panels (rounded-2xl, panel background, accent border, info icon)', () => {
     render(<LivePricesProofPage />)
     const aside = screen.getByTestId('reviewer-context')

@@ -51,13 +51,42 @@ export default function LivePricesProofPage() {
             i
           </span>
           <div>
-            <span className="font-semibold text-white">How to read this page:</span>{' '}
-            Each panel below is the live output of one service in the live-prices
-            pipeline. A panel rendering numbers means that service is alive and
-            producing data. A panel rendering a yellow &ldquo;degraded&rdquo; or
-            &ldquo;awaiting&rdquo; notice is the service&apos;s own intentional
-            fallback &mdash; the page never silently swallows an error or an
-            empty feed.
+            <p className="font-semibold text-white">How to read this page</p>
+            <p className="mt-1 text-sm text-gray-300">
+              The page reads top-to-bottom as a single pipeline check. Each section
+              below tells you something different:
+            </p>
+            <ol className="mt-3 space-y-1.5 text-sm text-gray-300">
+              <li>
+                <span className="font-semibold text-white">1. Safety banner</span>
+                {' — '}confirms real trading is fenced off (
+                <code className="text-accent">REAL_TRADING_ENABLED = false</code>,{' '}
+                <code className="text-accent">ETORO_MODE = sandbox</code>).
+              </li>
+              <li>
+                <span className="font-semibold text-white">2. Verdict banner</span>
+                {' — '}one-line rollup of the whole pipeline (
+                <span className="text-green-300">Alive</span>,{' '}
+                <span className="text-yellow-200">Degraded</span>, or{' '}
+                <span className="text-red-300">Cold</span>). Any failing axis becomes
+                a clickable chip that jumps to the corresponding panel below.
+              </li>
+              <li>
+                <span className="font-semibold text-white">3. Pipeline flow</span>
+                {' — '}the six services that data passes through. Each pill is
+                coloured by health (green = healthy, yellow = degraded, gray =
+                loading first read), and clicking a pill jumps to the matching panel.
+              </li>
+              <li>
+                <span className="font-semibold text-white">4. Data panels</span>
+                {' — '}per-service deep-dive: live quotes, on-chain oracle, recent
+                oracle updates, last demo hedge. A panel rendering numbers means that
+                service is alive and producing data; a yellow &ldquo;degraded&rdquo;
+                or &ldquo;awaiting&rdquo; notice is the service&apos;s own intentional
+                fallback &mdash; the page never silently swallows an error or an
+                empty feed.
+              </li>
+            </ol>
           </div>
         </aside>
       </header>
