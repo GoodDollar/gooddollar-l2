@@ -768,6 +768,28 @@ describe('HedgeStatusCard', () => {
     expect(classes).toContain('inline-block');
   });
 
+  it('receipts table renders em-dash placeholder when exposure fields are null (#0040)', async () => {
+    // The engine can omit beforeExposure / afterExposure on initial dry-run,
+    // no-op, or malformed receipts. The legacy formatter happily produced
+    // literal "null → null (0)" in the dashboard. Defensive guard now
+    // routes any non-finite input through the em-dash placeholder.
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: [
+        {
+          ...BASE_RESPONSE.receipts[0],
+          beforeExposure: null as unknown as number,
+          afterExposure: null as unknown as number,
+        },
+      ],
+    });
+    render(<HedgeStatusCard />);
+    const cell = await screen.findByTestId('hedge-receipt-exposure-delta');
+    expect(cell.textContent).toBe('— → —(—)');
+    expect(cell.textContent).not.toContain('null');
+    expect(cell.textContent).not.toContain('undefined');
+  });
+
   it('receipts table renders short eToro ids without overflow chrome (no regression #0039)', async () => {
     mockFetchOnce({
       ...BASE_RESPONSE,

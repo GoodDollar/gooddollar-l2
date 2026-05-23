@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 
+import { formatExposureDelta } from '@/lib/format-exposure-delta'
 import { formatNotionalUsd } from '@/lib/format-notional'
 import { buildHedgeErrorHeadline, classifyClientError } from '@/lib/hedge-error'
 import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
@@ -199,24 +200,6 @@ function ThrottleCountdown({
       {remaining}s
     </span>
   )
-}
-
-interface ExposureDeltaParts {
-  display: string
-  deltaSigned: string
-  deltaClass: string
-}
-
-function formatExposureDelta(before: number, after: number): ExposureDeltaParts {
-  const delta = after - before
-  const display = `${before} → ${after}`
-  if (!Number.isFinite(delta) || delta === 0) {
-    return { display, deltaSigned: '0', deltaClass: 'text-gray-500' }
-  }
-  if (delta > 0) {
-    return { display, deltaSigned: `+${delta}`, deltaClass: 'text-goodgreen' }
-  }
-  return { display, deltaSigned: `−${Math.abs(delta)}`, deltaClass: 'text-red-300' }
 }
 
 type EngineStateLabel = 'ok' | 'degraded' | 'halted' | 'unreachable' | 'awaiting tick'
