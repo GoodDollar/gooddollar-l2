@@ -316,7 +316,7 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'on data endpoints (NOT live state).',
     responseShape:
       '{ reasons: Record<string, {humanReason, nextStep, ' +
-      "severity:'info'|'degraded'|'critical'}>, count, timestamp, " +
+      "severity:'ok'|'info'|'degraded'|'critical'}>, count, timestamp, " +
       'timestampIso }',
   },
 ];

@@ -70,11 +70,15 @@ describe('redactSourceReason', () => {
 });
 
 describe('sanitizeSourceStatus', () => {
-  it('passes a connected status through, adding the ISO companion + deprecation alias (task 0039)', () => {
+  it('passes a connected status through, adding the catalog enrichment + ISO companion + deprecation alias (tasks 0039, 0050)', () => {
     const lastAttachAt = 1700000000000;
     const status = { connected: true as const, symbols: ['AAPL'], lastAttachAt };
     expect(sanitizeSourceStatus(status)).toEqual({
       connected: true,
+      reason: 'connected',
+      humanReason: REASON_CATALOG['connected'].humanReason,
+      nextStep: REASON_CATALOG['connected'].nextStep,
+      severity: 'ok',
       symbols: ['AAPL'],
       lastAttachAtMs: lastAttachAt,
       lastAttachAtIso: new Date(lastAttachAt).toISOString(),
@@ -114,7 +118,8 @@ describe('sanitizeSourceStatus', () => {
 });
 
 describe('REASON_CATALOG and enrichSourceReason', () => {
-  it('catalog covers the three known reason slugs', () => {
+  it('catalog covers the four known reason slugs (task 0050 added "connected")', () => {
+    expect(REASON_CATALOG['connected'].severity).toBe('ok');
     expect(REASON_CATALOG['not-attached'].severity).toBe('info');
     expect(REASON_CATALOG['etoro-client-not-installed'].severity).toBe('critical');
     expect(REASON_CATALOG['source-unavailable'].severity).toBe('degraded');

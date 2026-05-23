@@ -92,7 +92,7 @@ describe('REST Server — source reason enrichment surfaces', () => {
     }
   });
 
-  it('connected source block stays unchanged (no enrichment fields)', async () => {
+  it('connected source block ships catalog enrichment (task 0050: symmetric branches)', async () => {
     const cache = new QuoteCache({ cacheTtlMs: 30_000 });
     const app = createServer(
       cache,
@@ -106,9 +106,10 @@ describe('REST Server — source reason enrichment surfaces', () => {
       const body = (await res.json()) as Record<string, unknown>;
       const src = body.source as Record<string, unknown>;
       expect(src.connected).toBe(true);
-      expect(src.humanReason).toBeUndefined();
-      expect(src.nextStep).toBeUndefined();
-      expect(src.severity).toBeUndefined();
+      expect(src.reason).toBe('connected');
+      expect(typeof src.humanReason).toBe('string');
+      expect(typeof src.nextStep).toBe('string');
+      expect(src.severity).toBe('ok');
     } finally {
       await new Promise<void>((resolve) => s2.close(() => resolve()));
     }

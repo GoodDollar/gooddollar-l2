@@ -60,6 +60,10 @@ describe('finalizeEnvelope — canonical meta-tail order', () => {
     finalizeEnvelope(body, NOW, {
       src: {
         connected: true,
+        reason: 'connected',
+        humanReason: 'connected',
+        nextStep: 'subscribe',
+        severity: 'ok',
         symbols: ['AAPL'],
         lastAttachAtMs: 1,
         lastAttachAtIso: new Date(1).toISOString(),
@@ -94,6 +98,10 @@ describe('finalizeEnvelope — canonical meta-tail order', () => {
     finalizeEnvelope(body, NOW, {
       src: {
         connected: true,
+        reason: 'connected',
+        humanReason: 'connected',
+        nextStep: 'subscribe',
+        severity: 'ok',
         symbols: [],
         lastAttachAtMs: 1,
         lastAttachAtIso: new Date(1).toISOString(),

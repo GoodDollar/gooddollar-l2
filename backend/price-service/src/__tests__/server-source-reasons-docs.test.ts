@@ -74,7 +74,7 @@ describe('REST Server — GET /docs/source-reasons', () => {
       const d = doc as Record<string, unknown>;
       expect(typeof d.humanReason).toBe('string');
       expect(typeof d.nextStep).toBe('string');
-      expect(d.severity).toMatch(/^(info|degraded|critical)$/);
+      expect(d.severity).toMatch(/^(ok|info|degraded|critical)$/);
     }
   });
 

@@ -31,7 +31,14 @@ export interface WsErrorShape {
   port: number;
   humanReason: string;
   nextStep: string;
-  severity: 'info' | 'degraded' | 'critical';
+  // The severity ladder is the same string union published by
+  // `SourceSeverity` (`'ok' | 'info' | 'degraded' | 'critical'`); kept
+  // string-shaped here to keep `envelope.ts` free of a circular
+  // dependency on `source-status.ts`. WS bind errors only ever emit
+  // the failure-side values, but the type needs to accept the full
+  // ladder so `WsErrorBlock` (typed against `SourceSeverity`) flows
+  // through `EnvelopeCtx.wsErr` without a cast.
+  severity: 'ok' | 'info' | 'degraded' | 'critical';
 }
 
 /**

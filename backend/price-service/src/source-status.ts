@@ -1,7 +1,13 @@
 import { SourceStatus } from './types';
 import { isoFromMs } from './iso';
 
-export type SourceSeverity = 'info' | 'degraded' | 'critical';
+/**
+ * Severity ladder shipped on every `source.severity` field. `'ok'` was
+ * added by task 0050 so the connected branch can render through the
+ * same coloured-badge code path as the failure branches — no consumer
+ * has to special-case "field absent ⇒ healthy".
+ */
+export type SourceSeverity = 'ok' | 'info' | 'degraded' | 'critical';
 
 /**
  * In-band deprecation message attached to the `source` block on every
@@ -56,6 +62,10 @@ export type SanitizedSourceStatus =
     }
   | {
       connected: true;
+      reason: 'connected';
+      humanReason: string;
+      nextStep: string;
+      severity: SourceSeverity;
       symbols: string[];
       lastAttachAtMs: number;
       lastAttachAtIso: string;
@@ -69,6 +79,16 @@ export type SanitizedSourceStatus =
  * `enrichSourceReason` can look them up by exact match.
  */
 export const REASON_CATALOG: Readonly<Record<string, SourceReasonDoc>> = Object.freeze({
+  'connected': {
+    code: 'connected',
+    humanReason:
+      'Service is attached to the upstream market-data source and ' +
+      'receiving ticks for the configured symbol set.',
+    nextStep:
+      'No action required. Subscribe to the WebSocket feed for live ' +
+      'ticks or poll /quotes for snapshots.',
+    severity: 'ok',
+  },
   'not-attached': {
     code: 'not-attached',
     humanReason:
@@ -190,8 +210,13 @@ export function sanitizeSourceStatus(status: SourceStatus): SanitizedSourceStatu
     lastAttachAt: LAST_ATTACH_AT_DEPRECATION,
   };
   if (status.connected) {
+    const doc = REASON_CATALOG['connected'];
     return {
       connected: true,
+      reason: 'connected',
+      humanReason: doc.humanReason,
+      nextStep: doc.nextStep,
+      severity: doc.severity,
       symbols: status.symbols,
       lastAttachAtMs: status.lastAttachAt,
       lastAttachAtIso: isoFromMs(status.lastAttachAt)!,
