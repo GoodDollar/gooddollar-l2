@@ -131,7 +131,7 @@ describe('PipelineFlowDiagram', () => {
     mockOnChainUnknown()
     installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
 
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     const section = screen.getByTestId('pipeline-flow-diagram')
     expect(section).toBeInTheDocument()
@@ -153,7 +153,7 @@ describe('PipelineFlowDiagram', () => {
     mockOnChainUnknown()
     installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
 
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     for (const id of ALL_NODE_IDS) {
       const node = screen.getByTestId(`pipeline-node-${id}`)
@@ -170,7 +170,7 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     await vi.waitFor(() => {
       for (const id of ALL_NODE_IDS) {
@@ -197,7 +197,7 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     await vi.waitFor(() => {
       expect(screen.getByTestId('pipeline-node-oracle-signer').getAttribute('data-tone')).toBe(
@@ -224,7 +224,7 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     await vi.waitFor(() => {
       expect(screen.getByTestId('pipeline-node-etoro').getAttribute('data-tone')).toBe('degraded')
@@ -246,7 +246,7 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     await vi.waitFor(() => {
       const el = screen.getByTestId('pipeline-flow-degradation')
@@ -266,7 +266,7 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     await vi.waitFor(() => {
       expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
@@ -298,7 +298,7 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     await vi.waitFor(() => {
       const onChainEdge = screen.getByTestId('pipeline-edge-oracle-signer-chain')
@@ -313,7 +313,7 @@ describe('PipelineFlowDiagram', () => {
       throw new Error('ECONNREFUSED 10.0.0.42 super-secret-host')
     })
 
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     const section = await vi.waitFor(() => {
       const el = screen.getByTestId('pipeline-flow-diagram')
@@ -344,7 +344,7 @@ describe('PipelineFlowDiagram', () => {
         return { ok: false, status: 404, body: {} }
       })
 
-      renderFlow({ intervalMs: 60_000 })
+      renderFlow({ offChainIntervalMs: 60_000 })
 
       await vi.waitFor(() => {
         expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
@@ -366,7 +366,7 @@ describe('PipelineFlowDiagram', () => {
         return { ok: false, status: 404, body: {} }
       })
 
-      renderFlow({ intervalMs: 60_000 })
+      renderFlow({ offChainIntervalMs: 60_000 })
 
       await vi.waitFor(() => {
         expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
@@ -386,7 +386,7 @@ describe('PipelineFlowDiagram', () => {
         return { ok: false, status: 404, body: {} }
       })
 
-      renderFlow({ intervalMs: 60_000 })
+      renderFlow({ offChainIntervalMs: 60_000 })
 
       // Wait for the off-chain fetches to resolve so quotes flips to
       // healthy and hedgeProof flips to healthy; on-chain stays
@@ -413,7 +413,7 @@ describe('PipelineFlowDiagram', () => {
         return { ok: false, status: 404, body: {} }
       })
 
-      renderFlow({ intervalMs: 60_000 })
+      renderFlow({ offChainIntervalMs: 60_000 })
 
       await vi.waitFor(() => {
         expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
@@ -431,7 +431,7 @@ describe('PipelineFlowDiagram', () => {
     // as the label so all six pipeline pills share one pill height.
     mockOnChainUnknown()
     installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-    renderFlow({ intervalMs: 60_000 })
+    renderFlow({ offChainIntervalMs: 60_000 })
 
     const etoroLi = screen.getByTestId('pipeline-node-etoro')
     const pill = etoroLi.querySelector(':scope > span:first-child') as HTMLElement

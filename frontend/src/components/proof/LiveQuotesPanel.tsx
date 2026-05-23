@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { sanitiseClientError } from '@/lib/sanitiseClientError'
+import { useMemo } from 'react'
 import { formatProofUsd } from '@/lib/proofFormat'
 import { sessionPillClass } from './sessionPill'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
+import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 interface Quote {
   source?: string
@@ -32,10 +32,6 @@ type FetchState =
   | { status: 'loading' }
   | { status: 'ok'; data: QuotesResponse }
   | { status: 'error'; ctx: ErrorCtx }
-
-const DEFAULT_PRICE_SERVICE_URL = 'http://localhost:9300'
-const DEFAULT_STALENESS_THRESHOLD_MS = 30_000
-const POLL_INTERVAL_MS = 5_000
 
 /**
  * Render a compact host form of the configured price-service URL.
@@ -117,51 +113,31 @@ function isQuotesResponse(x: unknown): x is QuotesResponse {
   return true
 }
 
-const SHAPE_MISMATCH = 'SHAPE_MISMATCH'
+/**
+ * Render the live quotes table. Reads `{ lastQuotesPayload,
+ * lastQuotesStatus, cadenceMs, priceServiceUrl, stalenessThresholdMs }`
+ * from `ProofPipelineAxesProvider` so the panel and the AlivenessRollup
+ * always agree on whether the price-service is reachable in the same
+ * render frame — see task lane6-three-independent-quotes-pollers-at-conflicting-cadences
+ * (0051).
+ */
+export function LiveQuotesPanel() {
+  const {
+    lastQuotesPayload,
+    lastQuotesStatus,
+    cadenceMs,
+    priceServiceUrl,
+    stalenessThresholdMs,
+  } = useProofPipelineAxesContext()
 
-interface LiveQuotesPanelProps {
-  priceServiceUrl?: string
-  stalenessThresholdMs?: number
-  intervalMs?: number
-}
-
-export function LiveQuotesPanel({
-  priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? DEFAULT_PRICE_SERVICE_URL,
-  stalenessThresholdMs = DEFAULT_STALENESS_THRESHOLD_MS,
-  intervalMs = POLL_INTERVAL_MS,
-}: LiveQuotesPanelProps) {
-  const [state, setState] = useState<FetchState>({ status: 'loading' })
-
-  useEffect(() => {
-    let cancelled = false
-    let timer: ReturnType<typeof setInterval> | undefined
-
-    const fetchQuotes = async () => {
-      try {
-        const res = await fetch(`${priceServiceUrl}/quotes`, { cache: 'no-store' })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const raw = (await res.json()) as unknown
-        if (!isQuotesResponse(raw)) throw new Error(SHAPE_MISMATCH)
-        if (!cancelled) setState({ status: 'ok', data: raw })
-      } catch (err) {
-        if (!cancelled) {
-          const ctx: ErrorCtx =
-            err instanceof Error && err.message === SHAPE_MISMATCH
-              ? 'price-service-shape'
-              : 'price-service'
-          sanitiseClientError(ctx, err)
-          setState({ status: 'error', ctx })
-        }
-      }
+  const state: FetchState = useMemo(() => {
+    if (lastQuotesStatus === 'loading') return { status: 'loading' }
+    if (lastQuotesStatus === 'error') return { status: 'error', ctx: 'price-service' }
+    if (!isQuotesResponse(lastQuotesPayload)) {
+      return { status: 'error', ctx: 'price-service-shape' }
     }
-
-    void fetchQuotes()
-    timer = setInterval(() => void fetchQuotes(), intervalMs)
-    return () => {
-      cancelled = true
-      if (timer) clearInterval(timer)
-    }
-  }, [priceServiceUrl, intervalMs])
+    return { status: 'ok', data: lastQuotesPayload }
+  }, [lastQuotesPayload, lastQuotesStatus])
 
   return (
     <section
@@ -181,7 +157,7 @@ export function LiveQuotesPanel({
                 data-testid="price-service-url"
               />
             }
-            cadence={<span>refreshes every {intervalMs / 1000}s</span>}
+            cadence={<span>refreshes every {cadenceMs / 1000}s</span>}
           />
           {state.status === 'ok' && <FreshnessChip
             summary={computeFreshnessSummary(Object.values(state.data.quotes), stalenessThresholdMs)}

@@ -84,6 +84,12 @@ describe('ProofPipelineAxesProvider', () => {
             axes: { quotes: 'degraded', onChain: 'degraded', hedgeProof: 'degraded' },
             verdict: 'red',
             lastFullyAliveAt: null,
+            lastQuotesPayload: null,
+            lastQuotesAt: null,
+            lastQuotesStatus: 'error',
+            cadenceMs: 5_000,
+            priceServiceUrl: 'http://localhost:9300',
+            stalenessThresholdMs: 30_000,
           }}
         >
           {children}
@@ -119,7 +125,7 @@ describe('ProofPipelineAxesProvider', () => {
     })
 
     render(
-      <ProofPipelineAxesProvider intervalMs={60_000}>
+      <ProofPipelineAxesProvider offChainIntervalMs={60_000}>
         <PipelineStatusBanner />
         <PipelineFlowDiagram />
       </ProofPipelineAxesProvider>,
