@@ -28,17 +28,19 @@
 #
 # Override env (all optional):
 #   LANE7_BASE                default http://localhost
-#   PRICE_SERVICE_PORT        default 4000
-#   ORACLE_SIGNER_PORT        default 9107
-#   HEDGE_ENGINE_PORT         default 9106
-#   STATUS_AGGREGATOR_PORT    default 9200
+#   PRICE_SERVICE_PORT        default 4000           (integer, 1..65535)
+#   ORACLE_SIGNER_PORT        default 9107           (integer, 1..65535)
+#   HEDGE_ENGINE_PORT         default 9106           (integer, 1..65535)
+#   STATUS_AGGREGATOR_PORT    default 9200           (integer, 1..65535)
 #   PRICE_SERVICE_URL         override the price-service /health URL
 #   ORACLE_SIGNER_URL         override the oracle-signer /health URL
 #   HEDGE_ENGINE_URL          override the hedge-engine /health URL
 #   STATUS_AGGREGATOR_URL     override the status-aggregator /status.json URL
 #   LANE7_RPC                 default http://localhost:8545 — unset => skip on-chain
 #   STOCK_ORACLE_V2_ADDRESS   default reads from op-stack/addresses.json
-#   STALENESS_THRESHOLD_S     default 600
+#   STALENESS_THRESHOLD_S     default 600            (non-negative integer seconds;
+#                                                     duration suffixes like `10m`
+#                                                     are NOT supported — fails fast)
 #   LANE7_ENV_FILE            default .env at repo root
 #   REPORT                    default docs/testnet/iter05-internal-smoke.md
 #
@@ -76,8 +78,34 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 LANE7_ENV_FILE="${LANE7_ENV_FILE:-$REPO_ROOT/.env}"
 REPORT="${REPORT:-$REPO_ROOT/docs/testnet/iter05-internal-smoke.md}"
 HEALTH_CONTRACT="${HEALTH_CONTRACT:-$REPO_ROOT/docs/testnet/HEALTH-CONTRACT.md}"
-STALENESS_THRESHOLD_S="${STALENESS_THRESHOLD_S:-600}"
+STALENESS_THRESHOLD_S="${STALENESS_THRESHOLD_S-600}"
 LANE7_RPC="${LANE7_RPC-}"
+
+# Numeric-input preflight. STALENESS_THRESHOLD_S participates in `(( ))`
+# arithmetic; any non-digit value (e.g. systemd-style `10m`) used to raise
+# a raw bash error mid-run and produce a misleading verdict. Validate up
+# front so operators get a single FATAL line that names the offending
+# variable. Ports are constrained to TCP range so 99999-style typos fail
+# here instead of cascading into "unreachable" blockers downstream.
+require_uint() {
+  local name="$1" value="$2" min="${3:-0}" max="${4:-}"
+  case "$value" in
+    ''|*[!0-9]*)
+      echo "FATAL: $name='$value' must be a non-negative integer (seconds)" >&2
+      exit 2
+      ;;
+  esac
+  if [[ -n "$max" ]] && { (( value < min )) || (( value > max )); }; then
+    echo "FATAL: $name='$value' out of range [${min}, ${max}]" >&2
+    exit 2
+  fi
+}
+
+require_uint STALENESS_THRESHOLD_S  "$STALENESS_THRESHOLD_S"
+require_uint PRICE_SERVICE_PORT     "$PRICE_SERVICE_PORT"     1 65535
+require_uint ORACLE_SIGNER_PORT     "$ORACLE_SIGNER_PORT"     1 65535
+require_uint HEDGE_ENGINE_PORT      "$HEDGE_ENGINE_PORT"      1 65535
+require_uint STATUS_AGGREGATOR_PORT "$STATUS_AGGREGATOR_PORT" 1 65535
 
 declare -a BLOCKERS=()
 declare -a WARNINGS=()

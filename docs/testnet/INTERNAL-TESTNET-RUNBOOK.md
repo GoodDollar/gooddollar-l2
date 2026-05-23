@@ -190,6 +190,16 @@ The smoke probes (in order):
    exported, otherwise from `LANE7_ENV_FILE` (default `.env` at repo
    root). **Only env-presence is logged — values are never printed.**
 
+### Smoke env contract
+
+`STALENESS_THRESHOLD_S` and `*_PORT` overrides must be plain integers
+(seconds for the threshold, TCP ports `1..65535` for the port vars).
+Duration suffixes such as `10m` or `1h` are **not** supported — the
+smoke fails fast with `FATAL: <VAR>='<value>' must be a non-negative
+integer (seconds)` and exits 2 before running any probe. Use a literal
+seconds value (e.g. `STALENESS_THRESHOLD_S=600`) and convert by hand
+if your operator habit is duration syntax.
+
 The smoke writes `docs/testnet/iter05-internal-smoke.md` and exits 0
 (green or green-with-warnings) or 1 (one or more blockers). Wire it
 into your post-deploy step:
