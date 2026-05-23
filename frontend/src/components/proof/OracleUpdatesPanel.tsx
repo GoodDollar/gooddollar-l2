@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { useWatchContractEvent } from 'wagmi'
 import { CONTRACTS } from '@/lib/chain'
 import { PriceOracleABI } from '@/lib/abi'
+import { sanitiseClientError } from '@/lib/sanitiseClientError'
 
 interface UpdateEntry {
   txHash: string
@@ -52,8 +53,10 @@ export function OracleUpdatesPanel() {
     process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL ??
     ''
   const [events, setEvents] = useState<UpdateEntry[]>([])
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null)
 
   const onLogs = useCallback((logs: readonly unknown[]) => {
+    setSubscriptionError(null)
     setEvents((prev) => {
       const next: UpdateEntry[] = [...prev]
       for (const log of logs) {
@@ -75,11 +78,16 @@ export function OracleUpdatesPanel() {
     })
   }, [])
 
+  const onError = useCallback((err: Error) => {
+    setSubscriptionError(sanitiseClientError('oracle-subscription', err))
+  }, [])
+
   useWatchContractEvent({
     address: oracleAddress,
     abi: PriceOracleABI,
     eventName: 'PriceUpdated',
     onLogs,
+    onError,
     enabled: Boolean(oracleAddress),
   })
 
@@ -95,12 +103,21 @@ export function OracleUpdatesPanel() {
         <span className="text-xs text-gray-500">last {MAX_EVENTS} PriceUpdated events</span>
       </header>
 
-      {events.length === 0 ? (
-        <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 text-xs text-gray-500">
-          Listening for <code className="text-gray-400">PriceUpdated</code> events. None observed yet;
-          this populates as the oracle-signer keeper writes to the chain.
-          {SESSION_LABEL[0] /* keep tree-shaker honest */ ? null : null}
+      {subscriptionError && (
+        <div className="mb-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
+          <div className="font-semibold">Oracle event subscription degraded</div>
+          <div className="mt-1 text-yellow-300/80">{subscriptionError}</div>
         </div>
+      )}
+
+      {events.length === 0 ? (
+        subscriptionError ? null : (
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 text-xs text-gray-500">
+            Listening for <code className="text-gray-400">PriceUpdated</code> events. None observed yet;
+            this populates as the oracle-signer keeper writes to the chain.
+            {SESSION_LABEL[0] /* keep tree-shaker honest */ ? null : null}
+          </div>
+        )
       ) : (
         <ul className="divide-y divide-white/5">
           {events.map((e) => {

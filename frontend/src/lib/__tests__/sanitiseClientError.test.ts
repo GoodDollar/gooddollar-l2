@@ -64,4 +64,15 @@ describe('sanitiseClientError', () => {
     expect(out).toMatch(/unexpected shape/i)
     expect(out).not.toMatch(/SHAPE_MISMATCH/)
   })
+
+  it('returns the canned oracle-subscription copy and never leaks the raw wagmi error', () => {
+    const wagmiErr = new Error(
+      'filter not found\n\nURL: https://rpc.gooddollar.org\nDetails: connect ECONNREFUSED',
+    )
+    const out = sanitiseClientError('oracle-subscription', wagmiErr)
+    expect(out).toMatch(/PriceUpdated subscription is in an error state/i)
+    expect(out).not.toMatch(/filter not found/)
+    expect(out).not.toMatch(/ECONNREFUSED/)
+    expect(out).not.toMatch(/https?:\/\//)
+  })
 })

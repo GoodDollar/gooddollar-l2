@@ -4,6 +4,7 @@ export type ClientErrorContext =
   | 'oracle-multicall'
   | 'hedge-proof'
   | 'hedge-proof-shape'
+  | 'oracle-subscription'
 
 /**
  * Convert a raw client-side error (fetch, wagmi, JSON parser, etc.) into a
@@ -32,5 +33,7 @@ export function sanitiseClientError(
       return 'Hedge proof endpoint is unreachable. The /api/hedge-proof/latest route may be restarting.'
     case 'hedge-proof-shape':
       return 'Hedge proof file has an unexpected shape. Re-run the hedge engine to regenerate it.'
+    case 'oracle-subscription':
+      return 'PriceUpdated subscription is in an error state. The chain RPC may be unreachable or the WebSocket filter may have expired.'
   }
 }
