@@ -770,26 +770,21 @@ export default function LendPage() {
   // fresh chain read. The fixture stays for the not-yet-deployed roadmap
   // rows + the utilisation-curve chart, but the totals must reflect real
   // devnet activity only.
-  const liveOnChainRows = useMemo(
-    () => reserves
-      .filter(r => isLiveReserve(r.symbol))
-      .map(r => {
-        const state = chainStates[r.symbol]
-        if (!state || state.source !== 'chain-oracle' || !state.data) return null
-        const decimals = DEVNET_DECIMALS[r.symbol] ?? r.decimals
-        const totalSupplied = formatTokenAmount(state.data.totalDeposits, decimals)
-        const totalBorrowed = formatTokenAmount(state.data.totalBorrows, decimals)
-        const price = r.symbol === 'WETH'
-          ? (ethPriceKnown ? ethPriceUsd : null)
-          : r.symbol === 'USDC'
-            ? 1
-            : r.price
-        if (price === null) return null
-        return { reserveFactorBPS: r.reserveFactorBPS, totalSupplied, totalBorrowed, borrowAPY: state.data.borrowAPY, price }
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null),
-    [reserves, chainStates, ethPriceKnown, ethPriceUsd],
-  )
+  const liveOnChainRows = useMemo(() => reserves.flatMap(r => {
+    if (!isLiveReserve(r.symbol)) return []
+    const state = chainStates[r.symbol]
+    if (!state || state.source !== 'chain-oracle' || !state.data) return []
+    const price = r.symbol === 'WETH' ? (ethPriceKnown ? ethPriceUsd : null) : 1
+    if (price === null) return []
+    const decimals = DEVNET_DECIMALS[r.symbol] ?? r.decimals
+    return [{
+      reserveFactorBPS: r.reserveFactorBPS,
+      totalSupplied: formatTokenAmount(state.data.totalDeposits, decimals),
+      totalBorrowed: formatTokenAmount(state.data.totalBorrows, decimals),
+      borrowAPY: state.data.borrowAPY,
+      price,
+    }]
+  }), [reserves, chainStates, ethPriceKnown, ethPriceUsd])
 
   const { address, isConnected } = useConnectedAccount()
   const { data: onChainAccount } = useOnChainAccountData(address)
