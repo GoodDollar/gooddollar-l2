@@ -15,7 +15,7 @@ import {
   finalizeTimestamps,
   isoFromMs,
 } from './envelope';
-import { WsAdvertisement } from './ws-advertisement';
+import { WsAdvertisement, WsHostnameSource } from './ws-advertisement';
 import { buildQuickstart } from './quickstart';
 
 // Re-export the quickstart + WS types and helpers off `./server` so
@@ -29,7 +29,7 @@ export {
   buildWsQuickstartAlternatives,
   buildWsQuickstartStep,
 } from './quickstart';
-export type { WsAdvertisement } from './ws-advertisement';
+export type { WsAdvertisement, WsHostnameSource } from './ws-advertisement';
 
 // Re-exported so the existing public surface keeps working: tests and
 // downstream callers can keep importing `isoFromMs` from `./server`.
@@ -81,6 +81,12 @@ const WS_FRAME_DOCS = {
  * preserves bracketed IPv6 literals (`[::1]:3122` → `[::1]`), and falls
  * back to `localhost` when the header is missing (some raw `http.request`
  * paths don't send one).
+ *
+ * NOTE: this parser does NOT validate the remaining hostname against
+ * the RFC 1123 character set — that gate lives in
+ * `resolveAdvertisedHostname` (task 0062) so a malicious `Host: foo bar`
+ * value falls back to the allowlist default rather than being echoed
+ * verbatim into `ws://foo bar:9301`.
  */
 export function hostnameFromHostHeader(h: string | undefined): string {
   if (!h) return 'localhost';
@@ -90,6 +96,76 @@ export function hostnameFromHostHeader(h: string | undefined): string {
   }
   const idx = h.indexOf(':');
   return idx > 0 ? h.slice(0, idx) : h;
+}
+
+/**
+ * Default `PRICE_SERVICE_HOSTNAME_ALLOWLIST`. When the env var is unset
+ * (typical local-dev path), these three values keep `curl
+ * http://localhost:3122/` and the in-process integration tests working
+ * without any configuration. A production deploy that wants to use the
+ * `Host:` header (e.g. when behind a trusted reverse proxy that pins
+ * the header) overrides this with a deploy-specific list.
+ */
+export const DEFAULT_HOSTNAME_ALLOWLIST: readonly string[] = Object.freeze([
+  'localhost',
+  '127.0.0.1',
+  '[::1]',
+]);
+
+/**
+ * Validity gate for a header-supplied hostname. Accepts the conservative
+ * superset of RFC 1123 LDH characters plus the colon + brackets that
+ * `hostnameFromHostHeader` preserves for IPv6 literals (`[::1]`).
+ * Anything that contains whitespace, control characters, or a literal
+ * `/` is rejected — those can never be a valid hostname and are the
+ * exact poisoning vectors the live reproducer demonstrated.
+ */
+const VALID_HEADER_HOSTNAME = /^[A-Za-z0-9.\-_:[\]]+$/;
+
+export type HostnameSource = WsHostnameSource;
+
+export interface ResolvedHostname {
+  hostname: string;
+  source: HostnameSource;
+}
+
+/**
+ * Resolve the advertised hostname through the three-step gate
+ * (task 0062):
+ *
+ *   1. **env pin wins**. When `PRICE_SERVICE_PUBLIC_HOSTNAME` is set, it
+ *      overrides any inbound `Host:` header — a misbehaving proxy or a
+ *      direct attacker can't influence the advertisement.
+ *   2. **validity gate**. The header value must round-trip through
+ *      `VALID_HEADER_HOSTNAME`; whitespace, control chars, and `/`
+ *      collapse to the allowlist default.
+ *   3. **allowlist gate**. The validated value must appear in the
+ *      allowlist (case-insensitive); on a miss, fall through to the
+ *      first allowlist entry.
+ *
+ * Returned `source` is the verdict an operator can read off the wire to
+ * confirm the deploy is fenced.
+ */
+export function resolveAdvertisedHostname(args: {
+  headerHostname: string;
+  envPin?: string;
+  allowlist: readonly string[];
+}): ResolvedHostname {
+  const { headerHostname, envPin, allowlist } = args;
+  if (envPin && envPin.length > 0) {
+    return { hostname: envPin, source: 'env-pinned' };
+  }
+  const fallback = allowlist[0] ?? 'localhost';
+  if (!VALID_HEADER_HOSTNAME.test(headerHostname)) {
+    return { hostname: fallback, source: 'allowlist-default' };
+  }
+  const loweredHeader = headerHostname.toLowerCase();
+  for (const entry of allowlist) {
+    if (entry.toLowerCase() === loweredHeader) {
+      return { hostname: headerHostname, source: 'host-header' };
+    }
+  }
+  return { hostname: fallback, source: 'allowlist-default' };
 }
 
 /**
@@ -1007,23 +1083,48 @@ export function createServer(
   // upper-cased request path produced by `normalizeSymbol`.
   const configuredSet = new Set(cfg.symbols.map((s) => s.toUpperCase()));
 
+  // Hostname-resolution config read once at server-creation time (task
+  // 0062). The env pin overrides any inbound `Host:` header; the
+  // allowlist gates the fallback path; both fields are immutable per
+  // server instance so a single boot reads consistent values across
+  // every request handled.
+  const hostnameEnvPin =
+    process.env.PRICE_SERVICE_PUBLIC_HOSTNAME?.trim() || undefined;
+  const allowlistFromEnv = (process.env.PRICE_SERVICE_HOSTNAME_ALLOWLIST ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  const hostnameAllowlist: readonly string[] =
+    allowlistFromEnv.length > 0 ? allowlistFromEnv : DEFAULT_HOSTNAME_ALLOWLIST;
+
   // Single helper so the `/`, `/health`, and 404 surfaces emit identical
   // advertisements off the same input. Returns `undefined` when wiring
   // is absent OR when the broadcaster has not actually bound (avoids
   // handing out a poisoned `ws://` URL — see task 0032). The 5-arg
   // backward-compat fixture path keeps working: with no wsStatusGetter,
   // the bind state is treated as "trust the address getter".
+  //
+  // Hostname assembly threads through `resolveAdvertisedHostname` so a
+  // caller-supplied `Host:` header can never write arbitrary bytes
+  // (whitespace, slashes, attacker-controlled DNS names) into the
+  // advertised URL — see task 0062.
   function buildWsAdvertisement(req: Request): WsAdvertisement | undefined {
     if (!wsAddressGetter) return undefined;
     if (wsStatusGetter && !wsStatusGetter().listening) return undefined;
     const { port, host } = wsAddressGetter();
-    const hostname = host ?? hostnameFromHostHeader(req.get('host'));
+    const headerHostname = host ?? hostnameFromHostHeader(req.get('host'));
+    const resolved = resolveAdvertisedHostname({
+      headerHostname,
+      envPin: hostnameEnvPin,
+      allowlist: hostnameAllowlist,
+    });
     return {
-      url: `ws://${hostname}:${port}`,
+      url: `ws://${resolved.hostname}:${port}`,
       port,
       frames: ['snapshot', 'quote'] as const,
       snapshot: WS_FRAME_DOCS.snapshot,
       quote: WS_FRAME_DOCS.quote,
+      hostnameSource: resolved.source,
     };
   }
 

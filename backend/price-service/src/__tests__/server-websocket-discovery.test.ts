@@ -52,6 +52,7 @@ describe('REST Server — websocket discoverability when getter wired', () => {
     expect((ws.snapshot as string).length).toBeGreaterThan(0);
     expect(typeof ws.quote).toBe('string');
     expect((ws.quote as string).length).toBeGreaterThan(0);
+    expect(['env-pinned', 'allowlist-default', 'host-header']).toContain(ws.hostnameSource);
   });
 
   it('GET /health includes the same websocket block', async () => {
@@ -79,7 +80,7 @@ describe('REST Server — websocket discoverability when getter wired', () => {
     expect(wsEntry).toBeDefined();
   });
 
-  it('websocket.url uses req.get("host") for the hostname, not a hardcoded localhost', async () => {
+  it('websocket.url falls back to allowlist default when Host is not allow-listed (task 0062)', async () => {
     const body = await new Promise<Record<string, unknown>>((resolve, reject) => {
       const req = http.request(
         {
@@ -99,7 +100,8 @@ describe('REST Server — websocket discoverability when getter wired', () => {
       req.end();
     });
     const ws = body.websocket as Record<string, unknown>;
-    expect(ws.url).toBe('ws://example.test:9301');
+    expect(ws.url).toBe('ws://localhost:9301');
+    expect(ws.hostnameSource).toBe('allowlist-default');
   });
 });
 

@@ -24,6 +24,7 @@ export interface WsAdvertisementShape {
   frames: readonly ['snapshot', 'quote'];
   snapshot: string;
   quote: string;
+  hostnameSource: 'env-pinned' | 'allowlist-default' | 'host-header';
 }
 
 export interface WsErrorShape {

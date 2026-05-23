@@ -16,6 +16,11 @@ import { isoFromMs } from './iso';
  *   - `network`              `PRICE_SERVICE_NETWORK` env value, default `'testnet'`
  *   - `fixtureOnly`          `true` when the upstream eToro source has not
  *                            attached (the only field that flips per request)
+ *   - `publicHostname`       deploy-pinned hostname used to assemble the
+ *                            advertised `websocket.url`; rides on the wire
+ *                            iff `PRICE_SERVICE_PUBLIC_HOSTNAME` is set so
+ *                            an operator can confirm the deploy is fenced
+ *                            against `Host:` header poisoning (task 0062).
  *   - `configuredAtMs` /
  *     `configuredAtIso`      boot epoch when the runtime block was assembled
  */
@@ -24,6 +29,7 @@ export interface RuntimeBlock {
   realTradingEnabled: boolean;
   network: string;
   fixtureOnly: boolean;
+  publicHostname?: string;
   configuredAtMs: number;
   configuredAtIso: string;
 }
@@ -45,7 +51,8 @@ export function resolveRuntime(
   sourceStatus: SourceStatus,
 ): RuntimeBlock {
   const env = process.env;
-  return {
+  const publicHostname = env.PRICE_SERVICE_PUBLIC_HOSTNAME?.trim();
+  const out: RuntimeBlock = {
     etoroMode: env.ETORO_MODE ?? DEFAULT_ETORO_MODE,
     realTradingEnabled: env.REAL_TRADING_ENABLED === 'true',
     network: env.PRICE_SERVICE_NETWORK ?? DEFAULT_NETWORK,
@@ -53,6 +60,8 @@ export function resolveRuntime(
     configuredAtMs,
     configuredAtIso: isoFromMs(configuredAtMs)!,
   };
+  if (publicHostname) out.publicHostname = publicHostname;
+  return out;
 }
 
 /**
