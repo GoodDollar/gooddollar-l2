@@ -1,7 +1,5 @@
 'use client'
 
-import Link from 'next/link'
-
 import {
   ExclamationCircleIcon,
   InformationCircleIcon,
@@ -12,10 +10,13 @@ import {
  *
  * Extracted from `HedgeProofViewer.tsx` so every proof-related fallback
  * (engine_down, no_proof, invalid receipt id, malformed pathname) lands
- * on identical chrome — same red-bordered shell, same Retry / Back to
- * dashboard affordances. Keeping a single component prevents the two
- * sibling surfaces (`HedgeProofViewer` and the malformed-id entry-point
- * at `/analytics/hedge/proof/invalid`) from drifting visually.
+ * on identical chrome — same red-bordered shell, same Retry affordance.
+ * Keeping a single component prevents the two sibling surfaces
+ * (`HedgeProofViewer` and the malformed-id entry-point at
+ * `/analytics/hedge/proof/invalid`) from drifting visually. The
+ * page-level breadcrumb in `<PageHeader>` / the invalid-id page header
+ * is the single source of "back to dashboard" navigation (#0060) — the
+ * card itself only ships the Retry recovery action.
  */
 
 export interface HedgeProofErrorCardProps {
@@ -77,8 +78,8 @@ export default function HedgeProofErrorCard({
           <p className="mt-1 text-sm text-gray-300">{detail}</p>
         </div>
       </div>
-      <div className="mt-4 flex items-center gap-3 flex-wrap">
-        {onRetry && (
+      {onRetry && (
+        <div className="mt-4 flex items-center gap-3 flex-wrap">
           <button
             type="button"
             data-testid="hedge-proof-retry"
@@ -87,14 +88,8 @@ export default function HedgeProofErrorCard({
           >
             Retry
           </button>
-        )}
-        <Link
-          href="/analytics"
-          className="text-xs text-gray-400 hover:text-white"
-        >
-          ← Back to dashboard
-        </Link>
-      </div>
+        </div>
+      )}
     </section>
   )
 }

@@ -47,7 +47,7 @@ describe('HedgeProofErrorCard', () => {
     expect(retry.className).not.toContain('text-red-200')
   })
 
-  it('keeps the back-to-dashboard link styled as a quiet text link in both variants (#0055)', () => {
+  it('does not render an inline back-to-dashboard link in either variant (#0060 — breadcrumb is the single source)', () => {
     const { unmount } = render(
       <HedgeProofErrorCard
         title="x"
@@ -56,15 +56,11 @@ describe('HedgeProofErrorCard', () => {
         onRetry={() => {}}
       />,
     )
-    const errorBack = screen.getByRole('link', { name: /back to dashboard/i })
-    expect(errorBack.className).toContain('text-gray-400')
-    expect(errorBack.className).toContain('hover:text-white')
+    expect(screen.queryByRole('link', { name: /back to dashboard/i })).toBeNull()
     unmount()
 
     render(<HedgeProofErrorCard title="x" detail="y" onRetry={() => {}} />)
-    const neutralBack = screen.getByRole('link', { name: /back to dashboard/i })
-    expect(neutralBack.className).toContain('text-gray-400')
-    expect(neutralBack.className).toContain('hover:text-white')
+    expect(screen.queryByRole('link', { name: /back to dashboard/i })).toBeNull()
   })
 
   it('omits the Retry button when no onRetry is provided (regression for /invalid)', () => {
@@ -76,6 +72,33 @@ describe('HedgeProofErrorCard', () => {
       />,
     )
     expect(screen.queryByTestId('hedge-proof-retry')).toBeNull()
+  })
+
+  it('omits the action-row wrapper entirely when no onRetry is provided (no orphan mt-4 whitespace) (#0060)', () => {
+    render(
+      <HedgeProofErrorCard
+        title="Receipt id is not valid"
+        detail="The id couldn't be decoded."
+        variant="error"
+      />,
+    )
+    const card = screen.getByTestId('hedge-proof-error')
+    expect(card.querySelectorAll('.mt-4').length).toBe(0)
+    expect(card.querySelector('button')).toBeNull()
+    expect(card.querySelector('a')).toBeNull()
+  })
+
+  it('renders the action row with only the Retry button when onRetry is provided (#0060)', () => {
+    render(
+      <HedgeProofErrorCard
+        title="Hedge engine unreachable"
+        detail="Engine offline"
+        variant="error"
+        onRetry={() => {}}
+      />,
+    )
+    expect(screen.getByTestId('hedge-proof-retry')).toBeInTheDocument()
+    expect(screen.queryAllByRole('link', { name: /back to dashboard/i }).length).toBe(0)
   })
 
   describe('status icon anchor (#0057)', () => {
