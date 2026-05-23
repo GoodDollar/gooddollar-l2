@@ -1,0 +1,110 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, within, waitFor } from '@testing-library/react'
+
+vi.mock('wagmi', () => ({
+  useReadContracts: vi.fn(),
+}))
+
+vi.mock('@/lib/stockData', () => ({
+  getAllTickers: () => ['AAPL'],
+}))
+
+vi.mock('@/lib/chain', () => ({
+  CONTRACTS: {
+    StocksPriceOracle: '0x1111111111111111111111111111111111111111',
+  },
+}))
+
+vi.mock('@/lib/abi', () => ({
+  PriceOracleABI: [],
+}))
+
+import { useReadContracts } from 'wagmi'
+import { OnChainOraclePanel } from '../OnChainOraclePanel'
+
+const useReadContractsMock = vi.mocked(useReadContracts)
+
+const VERBOSE_WAGMI_ERROR = new Error(
+  [
+    'HTTP request failed.',
+    '',
+    'URL: https://rpc.gooddollar.org',
+    'Request body: {"method":"eth_call","params":[{"to":"0xa4899d35897033b927acfcf422bc7459161397ab"}]}',
+    '',
+    'Details: connect ECONNREFUSED 10.0.0.42:8545',
+    'Version: viem@2.x.x',
+  ].join('\n'),
+)
+
+describe('OnChainOraclePanel', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    useReadContractsMock.mockReset()
+  })
+
+  it('renders the sanitised oracle copy and leaks no wagmi internals in the error block', async () => {
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: VERBOSE_WAGMI_ERROR,
+    // The wagmi mock is intentionally loose; we only consume the three fields above.
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Oracle multicall failed/i)).toBeInTheDocument()
+    })
+
+    const headline = screen.getByText(/Oracle multicall failed/i)
+    const errorBlock = headline.parentElement as HTMLElement
+    expect(errorBlock).not.toBeNull()
+
+    const inside = within(errorBlock)
+    expect(inside.getByText(/On-chain oracle reads are unavailable/i)).toBeInTheDocument()
+    expect(inside.queryByText(/eth_call/)).not.toBeInTheDocument()
+    expect(inside.queryByText(/https?:\/\//)).not.toBeInTheDocument()
+    expect(inside.queryByText(/0x[a-f0-9]{40}/i)).not.toBeInTheDocument()
+    expect(inside.queryByText(/ECONNREFUSED/)).not.toBeInTheDocument()
+    expect(inside.queryByText(/viem/)).not.toBeInTheDocument()
+  })
+
+  it('logs the underlying error to console.error with the [proof-panel] tag', async () => {
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: VERBOSE_WAGMI_ERROR,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Oracle multicall failed/i)).toBeInTheDocument()
+    })
+
+    const calls = (console.error as ReturnType<typeof vi.fn>).mock.calls
+    const tagged = calls.find((c) => c[0] === '[proof-panel]')
+    expect(tagged).toBeDefined()
+    expect(tagged?.[1]).toBe('oracle-multicall')
+    expect(tagged?.[2]).toBe(VERBOSE_WAGMI_ERROR)
+  })
+
+  it('renders the empty-state row on the happy path with no error', () => {
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    expect(screen.queryByText(/Oracle multicall failed/i)).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/No on-chain price data available/i),
+    ).toBeInTheDocument()
+  })
+})

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { LiveQuotesPanel } from '../LiveQuotesPanel'
 
@@ -41,6 +41,10 @@ function mockFetchOnce(body: unknown, ok = true) {
 }
 
 describe('LiveQuotesPanel', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -68,14 +72,19 @@ describe('LiveQuotesPanel', () => {
     expect(screen.getByText(/stale/i)).toBeInTheDocument()
   })
 
-  it('renders inline degraded state when the price-service is unreachable', async () => {
-    globalThis.fetch = vi.fn(() => Promise.reject(new Error('ECONNREFUSED')))
+  it('renders sanitised degraded copy when the price-service is unreachable, leaking no raw error / URL / port', async () => {
+    globalThis.fetch = vi.fn(() => Promise.reject(new Error('ECONNREFUSED 127.0.0.1:9300')))
 
-    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
 
     await waitFor(() => {
       expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
     })
-    expect(screen.getByText(/ECONNREFUSED/)).toBeInTheDocument()
+    expect(screen.getByText(/Live quotes feed is unreachable/i)).toBeInTheDocument()
+    expect(screen.queryByText(/ECONNREFUSED/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/http:\/\//)).not.toBeInTheDocument()
+    expect(screen.queryByText(/mock-host/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/9300/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Endpoint:/i)).not.toBeInTheDocument()
   })
 })

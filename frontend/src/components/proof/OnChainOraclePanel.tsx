@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { useReadContracts } from 'wagmi'
 import { CONTRACTS } from '@/lib/chain'
 import { PriceOracleABI } from '@/lib/abi'
+import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { getAllTickers } from '@/lib/stockData'
 
 const SESSION_LABELS: Record<number, string> = {
@@ -66,6 +67,11 @@ export function OnChainOraclePanel() {
     },
   })
 
+  const sanitisedErrorMessage = useMemo(
+    () => (error ? sanitiseClientError('oracle-multicall', error) : null),
+    [error],
+  )
+
   const rows = useMemo<DecodedPriceData[]>(() => {
     if (!data) return []
     const out: DecodedPriceData[] = []
@@ -111,10 +117,10 @@ export function OnChainOraclePanel() {
         </div>
       )}
 
-      {error && (
+      {sanitisedErrorMessage && (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
           <div className="font-semibold">Oracle multicall failed</div>
-          <div className="mt-1 text-yellow-300/80">{error.message}</div>
+          <div className="mt-1 text-yellow-300/80">{sanitisedErrorMessage}</div>
         </div>
       )}
 

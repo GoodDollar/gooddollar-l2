@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { sanitiseClientError } from '@/lib/sanitiseClientError'
 
 interface Quote {
   source?: string
@@ -78,7 +79,7 @@ export function LiveQuotesPanel({
         if (!cancelled) setState({ status: 'ok', data })
       } catch (err) {
         if (!cancelled) {
-          setState({ status: 'error', message: (err as Error).message })
+          setState({ status: 'error', message: sanitiseClientError('price-service', err) })
         }
       }
     }
@@ -115,7 +116,6 @@ export function LiveQuotesPanel({
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
           <div className="font-semibold">price-service unreachable</div>
           <div className="mt-1 text-yellow-300/80">{state.message}</div>
-          <div className="mt-1 text-gray-400">Endpoint: <code>{priceServiceUrl}/quotes</code></div>
         </div>
       )}
 
