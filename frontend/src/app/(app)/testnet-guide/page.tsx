@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { DEVNET_RPC_URL, DEVNET_CHAIN_ID, DEVNET_EXPLORER_URL } from '@/lib/devnet'
 import { AddNetworkButton } from '@/components/AddNetworkButton'
 import { GITHUB_LINKS } from '@/lib/links'
@@ -304,6 +305,20 @@ export default function TestnetGuidePage() {
                 >
                   docs/TESTNET_README.md →
                 </a>
+              </li>
+              <li>
+                Lane 6 release proof page:{' '}
+                <Link
+                  className="text-accent underline hover:text-white"
+                  href="/live-prices-proof"
+                  data-testid="dev-link-live-prices-proof"
+                  prefetch={false}
+                >
+                  /live-prices-proof →
+                </Link>{' '}
+                <span className="text-xs text-gray-500">
+                  (live eToro quotes, on-chain oracle reads, recent tx hashes, last demo hedge)
+                </span>
               </li>
             </ul>
           </section>
