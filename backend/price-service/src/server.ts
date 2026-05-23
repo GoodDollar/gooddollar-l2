@@ -260,8 +260,9 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary:
       'Fresh + risk-accepted quotes only; 503 when source/WS is dead.',
     responseShape:
-      '{ quotes: NormalizedQuote[], count, degraded?, message?, ' +
-      'source?, timestamp, timestampIso } -- 200 healthy / 503 degraded',
+      '{ quotes: NormalizedQuote[], freshCount, ' +
+      'count (deprecated→freshCount), degraded?, message?, source?, ' +
+      'deprecations, timestamp, timestampIso } -- 200/503',
   },
   {
     path: '/quotes/:symbol',
@@ -1244,7 +1245,17 @@ export function createServer(
     // 200-always behaviour is preserved (cache-only verdict on an empty
     // cache is "not degraded" — the warmup window).
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
-    const body: Record<string, unknown> = { quotes: fresh, count: fresh.length };
+    // `count` is the legacy alias for `freshCount`; the canonical
+    // matches `/status/quotes.freshCount` so a consumer typing
+    // `body.freshCount` against either endpoint reads the same field.
+    // The two ship together for one deprecation window with a rename
+    // pointer (same cadence as `/quotes.count → totalCached` from
+    // task 0035). See task 0054.
+    const body: Record<string, unknown> = {
+      quotes: fresh,
+      freshCount: fresh.length,
+      count: fresh.length,
+    };
     if (sourceStatusGetter) {
       body.degraded = degraded;
       if (fresh.length === 0) {
@@ -1255,7 +1266,14 @@ export function createServer(
             'accepted tick';
       }
     }
-    res.status(degraded ? 503 : 200).json(finalizeEnvelope(body, now, { src }));
+    res.status(degraded ? 503 : 200).json(
+      finalizeEnvelope(body, now, {
+        src,
+        deprecations: {
+          count: 'rename → freshCount; will be removed in the next release',
+        },
+      }),
+    );
   });
 
   app.get('/audit/stats', (_req: Request, res: Response) => {

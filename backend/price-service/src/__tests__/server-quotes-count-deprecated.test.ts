@@ -151,7 +151,7 @@ describe('cross-endpoint count/totalCached scope (task 0035 regression gate)', (
     }
   });
 
-  it('/quotes/fresh/all.count unchanged — different semantic; no deprecations block', async () => {
+  it('/quotes/fresh/all migrates count → freshCount (task 0054); count rides as legacy alias with rename pointer', async () => {
     const cache = new QuoteCache({ cacheTtlMs: 30_000 });
     cache.update(makeQuote({ symbol: 'AAPL' }));
     const app = createServer(cache, { symbols: ['AAPL'] });
@@ -161,8 +161,11 @@ describe('cross-endpoint count/totalCached scope (task 0035 regression gate)', (
         string,
         unknown
       >;
+      expect(body.freshCount).toBe(1);
       expect(body.count).toBe(1);
-      expect(body.deprecations).toBeUndefined();
+      const dep = body.deprecations as Record<string, string>;
+      expect(dep).toBeDefined();
+      expect(dep.count).toMatch(/freshCount/);
     } finally {
       await close(server);
     }
