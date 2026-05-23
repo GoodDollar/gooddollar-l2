@@ -180,4 +180,14 @@ export interface AuditLogEntry {
   instrumentOverridesApplied?: string[];
   /** Resolved audit-log file path captured on the mode-resolved entry. */
   resolvedAuditLogPath?: string;
+  /**
+   * Number of attempts the rate-limited dispatcher made for this HTTP
+   * call. `1` means "no retry"; `N` means "N-1 backoffs absorbed".
+   */
+  attempts?: number;
+  /**
+   * Sum (ms) of all backoffs slept-for across the call's retries. `0`
+   * on a no-throttle happy path.
+   */
+  totalBackoffMs?: number;
 }
