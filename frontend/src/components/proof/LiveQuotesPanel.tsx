@@ -32,6 +32,24 @@ const DEFAULT_PRICE_SERVICE_URL = 'http://localhost:9300'
 const DEFAULT_STALENESS_THRESHOLD_MS = 30_000
 const POLL_INTERVAL_MS = 5_000
 
+/**
+ * Render a compact host form of the configured price-service URL.
+ * Drops the scheme, drops a bare trailing slash, and (critically) drops
+ * any userinfo (URL.host excludes it by construction) so neither the
+ * visible pill nor the tooltip leaks credentials. Malformed strings fall
+ * back to their raw form so the pill remains informative even when
+ * NEXT_PUBLIC_PRICE_SERVICE_URL is set to something unusual.
+ */
+function displayHost(url: string): string {
+  try {
+    const u = new URL(url)
+    const pathSuffix = u.pathname === '/' ? '' : u.pathname
+    return `${u.host}${pathSuffix}`
+  } catch {
+    return url
+  }
+}
+
 function spreadPct(bid: number, ask: number): number {
   if (!Number.isFinite(bid) || !Number.isFinite(ask) || bid <= 0) return 0
   return ((ask - bid) / ((ask + bid) / 2)) * 100
@@ -139,7 +157,17 @@ export function LiveQuotesPanel({
         <h2 id="live-quotes-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           Live Quotes (price-service)
         </h2>
-        <span className="text-xs text-gray-500">refreshes every {intervalMs / 1000}s</span>
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          <span
+            className="font-mono truncate max-w-[55%]"
+            title={displayHost(priceServiceUrl)}
+            data-testid="price-service-url"
+          >
+            {displayHost(priceServiceUrl)}
+          </span>
+          <span aria-hidden>·</span>
+          <span>refreshes every {intervalMs / 1000}s</span>
+        </div>
       </header>
 
       {state.status === 'loading' && (
@@ -153,7 +181,17 @@ export function LiveQuotesPanel({
       {state.status === 'error' && (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
           <div className="font-semibold">price-service unreachable</div>
-          <div className="mt-1 text-yellow-300/80">{state.message}</div>
+          <div className="mt-1 text-yellow-300/80">
+            Live quotes feed at{' '}
+            <span
+              className="font-mono"
+              data-testid="price-service-url-inline"
+            >
+              {displayHost(priceServiceUrl)}
+            </span>{' '}
+            is unreachable. The price-service may be offline or restarting.
+          </div>
+          <div className="mt-1 text-yellow-200/60">{state.message}</div>
         </div>
       )}
 

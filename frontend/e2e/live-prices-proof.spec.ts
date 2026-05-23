@@ -36,6 +36,13 @@ test.describe('Lane 6 — /live-prices-proof', () => {
     await expect(page.getByRole('heading', { name: /Recent Oracle Updates/i })).toBeVisible()
     await expect(page.getByRole('heading', { name: /Last Demo Hedge/i })).toBeVisible()
 
+    // Live-quotes header pill exposes which price-service URL was attempted
+    // so reviewers can validate the build without devtools.
+    const pricePill = page.getByTestId('price-service-url')
+    await expect(pricePill).toBeVisible()
+    const pillText = (await pricePill.textContent()) ?? ''
+    expect(pillText.trim().length).toBeGreaterThan(0)
+
     // Pipeline status rollup must be visible above the panel grid.
     const pipelineBanner = page.getByTestId('pipeline-status-banner')
     await expect(pipelineBanner).toBeVisible()

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { LiveQuotesPanel } from '../LiveQuotesPanel'
 
 const QUOTES_FRESH = {
@@ -72,7 +72,7 @@ describe('LiveQuotesPanel', () => {
     expect(screen.getByText(/stale/i)).toBeInTheDocument()
   })
 
-  it('renders sanitised degraded copy when the price-service is unreachable, leaking no raw error / URL / port', async () => {
+  it('renders sanitised degraded copy when the price-service is unreachable, leaking no raw error inside the alert region', async () => {
     globalThis.fetch = vi.fn(() => Promise.reject(new Error('ECONNREFUSED 127.0.0.1:9300')))
 
     render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
@@ -80,12 +80,22 @@ describe('LiveQuotesPanel', () => {
     await waitFor(() => {
       expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
     })
-    expect(screen.getByText(/Live quotes feed is unreachable/i)).toBeInTheDocument()
-    expect(screen.queryByText(/ECONNREFUSED/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/http:\/\//)).not.toBeInTheDocument()
-    expect(screen.queryByText(/mock-host/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/9300/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Endpoint:/i)).not.toBeInTheDocument()
+
+    const alert = screen
+      .getByText(/price-service unreachable/i)
+      .closest('div[class*="border-yellow"]') as HTMLElement
+    expect(alert).not.toBeNull()
+    const inside = within(alert)
+
+    expect(inside.queryByText(/ECONNREFUSED/)).not.toBeInTheDocument()
+    expect(inside.queryByText(/Endpoint:/i)).not.toBeInTheDocument()
+    expect(alert.textContent).toMatch(/is unreachable/)
+
+    // The configured host IS intentionally surfaced — in the header pill
+    // and again inline in the alert body — so reviewers can tell which
+    // endpoint was attempted without devtools.
+    expect(screen.getByTestId('price-service-url')).toHaveTextContent('mock-host:9300')
+    expect(inside.getByTestId('price-service-url-inline')).toHaveTextContent('mock-host:9300')
   })
 
   it.each([
@@ -108,5 +118,78 @@ describe('LiveQuotesPanel', () => {
     expect(screen.queryByText(/SHAPE_MISMATCH/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Cannot read properties/)).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('renders the configured price-service URL in the header', async () => {
+    mockFetchOnce(QUOTES_FRESH)
+
+    render(<LiveQuotesPanel priceServiceUrl="https://price.example.com/v1" intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('AAPL')).toBeInTheDocument()
+    })
+
+    const pill = screen.getByTestId('price-service-url')
+    expect(pill).toHaveTextContent('price.example.com/v1')
+    expect(pill.getAttribute('title')).toBe('price.example.com/v1')
+  })
+
+  it('renders the URL in the header even when the fetch is failing', async () => {
+    globalThis.fetch = vi.fn(() => Promise.reject(new Error('boom')))
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
+    })
+
+    expect(screen.getByTestId('price-service-url')).toHaveTextContent('mock-host:9300')
+    expect(screen.getByTestId('price-service-url-inline')).toHaveTextContent('mock-host:9300')
+    const alert = screen
+      .getByText(/price-service unreachable/i)
+      .closest('div[class*="border-yellow"]') as HTMLElement
+    expect(alert.textContent).toMatch(/Live quotes feed at/i)
+  })
+
+  it('renders the URL in the header during the loading state', () => {
+    globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock-host:9300" intervalMs={60_000} />)
+
+    expect(screen.getByTestId('price-service-url')).toHaveTextContent('mock-host:9300')
+  })
+
+  it.each([
+    ['http://localhost:9300', 'localhost:9300'],
+    ['https://example.com/', 'example.com'],
+    ['https://example.com/v1', 'example.com/v1'],
+    ['not a url', 'not a url'],
+  ])('renders %s as %s in the header pill', async (input, expected) => {
+    mockFetchOnce(QUOTES_FRESH)
+    render(<LiveQuotesPanel priceServiceUrl={input} intervalMs={60_000} />)
+    await waitFor(() => {
+      expect(screen.getByTestId('price-service-url')).toHaveTextContent(expected)
+    })
+  })
+
+  it('strips userinfo from the rendered URL and the title', async () => {
+    mockFetchOnce(QUOTES_FRESH)
+
+    render(
+      <LiveQuotesPanel
+        priceServiceUrl="https://user:pass@host.example.com/v1"
+        intervalMs={60_000}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('AAPL')).toBeInTheDocument()
+    })
+
+    const pill = screen.getByTestId('price-service-url')
+    expect(pill.textContent).toBe('host.example.com/v1')
+    expect(pill.getAttribute('title')).toBe('host.example.com/v1')
+    expect(pill.textContent).not.toMatch(/user|pass/)
+    expect(pill.getAttribute('title')).not.toMatch(/user|pass/)
   })
 })

@@ -1344,6 +1344,10 @@ img, video {
   max-width: 20rem;
 }
 
+.max-w-\[55\%\] {
+  max-width: 55%;
+}
+
 .flex-1 {
   flex: 1;
 }
@@ -4156,6 +4160,10 @@ img, video {
 
 .text-yellow-100\/80 {
   color: #fef9c3cc;
+}
+
+.text-yellow-200\/60 {
+  color: #fef08a99;
 }
 
 .underline {
