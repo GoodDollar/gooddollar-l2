@@ -16,9 +16,7 @@ vi.mock('@/lib/useStockTrades', () => ({
 }))
 
 vi.mock('@/components/OrderBook', () => ({
-  OrderBook: ({ markPrice }: { markPrice: number }) => (
-    <div data-testid="order-book">OrderBook: {markPrice}</div>
-  ),
+  OrderBook: () => <div data-testid="order-book">OrderBook</div>,
 }))
 vi.mock('@/components/RecentTrades', () => ({
   RecentTrades: ({ trades, symbol, markPrice }: { trades: unknown[]; symbol?: string; markPrice?: number }) => (
@@ -56,11 +54,11 @@ describe('StockMarketData', () => {
     expect(screen.queryByTestId('order-book')).not.toBeInTheDocument()
   })
 
-  it('forwards markPrice and symbol to the children', async () => {
+  it('forwards markPrice and symbol to the Trades tab and renders OrderBook prop-free', async () => {
     const user = userEvent.setup()
     render(<StockMarketData markPrice={345.67} symbol="AAPL" />)
 
-    expect(screen.getByText('OrderBook: 345.67')).toBeInTheDocument()
+    expect(screen.getByTestId('order-book')).toHaveTextContent('OrderBook')
     await user.click(screen.getByRole('tab', { name: /trades/i }))
     expect(screen.getByText(/RecentTrades\(symbol=AAPL, mark=345.67/)).toBeInTheDocument()
   })

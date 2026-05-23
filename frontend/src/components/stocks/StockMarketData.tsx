@@ -50,7 +50,7 @@ export function StockMarketData({ markPrice, symbol }: StockMarketDataProps) {
       </div>
 
       <div className="p-0">
-        {activeTab === 'orderbook' && <OrderBook markPrice={markPrice} />}
+        {activeTab === 'orderbook' && <OrderBook />}
         {activeTab === 'trades' && (
           <RecentTrades trades={symbolTrades} symbol={symbol} markPrice={markPrice} />
         )}
