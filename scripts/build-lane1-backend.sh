@@ -9,17 +9,20 @@
 # Order matters: `etoro-client` is built first because its `dist/` is the
 # resolution target for the three consumer packages' `file:` deps.
 #
-# Idempotent by default — skips a package whose `dist/index.js` already
-# exists. Pass `--force` (or set `FORCE=1`) to rebuild every package
-# regardless. The install script also runs `npm run build` for any
-# package missing `dist/index.js`, so this script is purely for the
-# iterative dev loop.
+# Idempotent by default — skips a package whose `dist/index.js` exists
+# AND is newer than every file under `src/` and `tsconfig.json`. After a
+# `git pull` (or any local source edit), the freshness probe trips and
+# the package rebuilds automatically. Pass `--force` (or set `FORCE=1`)
+# to rebuild every package regardless of staleness.
 #
 # POSIX-bash; tested on macOS bash 3.2 and Linux bash 5+.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+
+# shellcheck source=./_lane1_lib.sh
+. "$ROOT/scripts/_lane1_lib.sh"
 
 FORCE="${FORCE:-0}"
 for arg in "$@"; do
@@ -40,11 +43,15 @@ for pkg in "${PKGS[@]}"; do
     printf '[skip] %s — directory missing\n' "$pkg"
     continue
   fi
-  if [ "$FORCE" != "1" ] && [ -e "$pkg/dist/index.js" ]; then
-    printf '[skip] %s — dist/index.js already present (pass --force to rebuild)\n' "$pkg"
+  if [ "$FORCE" != "1" ] && ! needs_rebuild "$pkg"; then
+    printf '[skip] %s — dist is fresh (pass --force to rebuild)\n' "$pkg"
     continue
   fi
-  printf '[build] %s\n' "$pkg"
+  if [ "$FORCE" = "1" ]; then
+    printf '[build] %s (--force)\n' "$pkg"
+  else
+    printf '[build] %s (%s)\n' "$pkg" "$(rebuild_reason "$pkg")"
+  fi
   (cd "$pkg" && npm run build)
 done
 

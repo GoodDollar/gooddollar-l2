@@ -24,9 +24,12 @@ The two are produced independently and can be run in either order.
   works without them.
 - Lane installed **and built**: `npm run install:lane1` from the repo
   root. This installs deps AND runs `tsc` in each of the four lane-1
-  packages so `dist/index.js` is present for `npm start`. If you edit
-  source after install, run `npm run build:lane1` to rebuild before
-  starting any service.
+  packages so `dist/index.js` is present for `npm start`. After a
+  `git pull`, re-run `npm run install:lane1` — stale `dist/` bytecode
+  is detected automatically (any change to `src/` or `tsconfig.json`
+  newer than `dist/index.js` triggers a rebuild). To force a full
+  rebuild ignoring freshness, run `FORCE=1 npm run build:lane1` or
+  pass `--force` to either script.
 - For the **on-chain leg** (Step 2 + Step 3): a JSON-RPC URL for the L2
   that hosts `StockOracleV2`, the deployed `STOCK_ORACLE_V2_ADDRESS`,
   and a funded `ORACLE_SIGNER_KEY`. Without all three the oracle-signer

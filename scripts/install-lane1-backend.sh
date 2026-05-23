@@ -19,9 +19,16 @@
 # the build-only loop for iterative development (edit source → rebuild
 # without re-installing).
 #
-# Idempotency: a package whose `node_modules/.bin/jest` AND
-# `dist/index.js` both exist is skipped entirely. Wiping `dist/` will
-# trigger a rebuild on the next run even if `node_modules` is populated.
+# Idempotency:
+#   - `npm install` is skipped when `node_modules/.bin/jest` already
+#     exists (cheap proxy for a hydrated install).
+#   - `npm run build` is skipped only when `dist/index.js` exists AND is
+#     newer than every file under `src/` and `tsconfig.json`. This means
+#     a `git pull` that updates source files automatically triggers a
+#     rebuild on the next install run — no more silent stale-bytecode
+#     boots after pulling lane updates.
+#   - Pass `--force` / `-f` (or `FORCE=1`) to rebuild every package
+#     regardless of dist freshness.
 # Adding a fifth lane-1 package later requires editing the `PKGS` array
 # below.
 #
@@ -30,6 +37,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+
+# shellcheck source=./_lane1_lib.sh
+. "$ROOT/scripts/_lane1_lib.sh"
+
+FORCE="${FORCE:-0}"
+for arg in "$@"; do
+  if [ "$arg" = "--force" ] || [ "$arg" = "-f" ]; then
+    FORCE=1
+  fi
+done
 
 # Order matters: etoro-client first because its `dist/` is the resolution
 # target for the three consumer packages' `file:` dependencies. The three
@@ -52,10 +69,13 @@ for pkg in "${PKGS[@]}"; do
     printf '[install] %s\n' "$pkg"
     (cd "$pkg" && npm install)
   fi
-  if [ -e "$pkg/dist/index.js" ]; then
-    printf '[skip-build] %s — dist/index.js already present\n' "$pkg"
-  else
-    printf '[build] %s\n' "$pkg"
+  if [ "$FORCE" = "1" ]; then
+    printf '[build] %s (--force)\n' "$pkg"
     (cd "$pkg" && npm run build)
+  elif needs_rebuild "$pkg"; then
+    printf '[build] %s (%s)\n' "$pkg" "$(rebuild_reason "$pkg")"
+    (cd "$pkg" && npm run build)
+  else
+    printf '[skip-build] %s — dist is fresh\n' "$pkg"
   fi
 done
