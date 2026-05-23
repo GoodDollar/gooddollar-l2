@@ -273,10 +273,17 @@ const runtime = 'nodejs';
 const SNAPSHOT_URL = process.env.HEDGE_STATUS_URL ?? 'http://localhost:9116/hedge/snapshot';
 const RECEIPTS_URL_BASE = process.env.HEDGE_RECEIPTS_URL ?? 'http://localhost:9116/hedge/receipts';
 const PROOF_URL = process.env.HEDGE_PROOF_URL ?? 'http://localhost:9116/hedge/proof/latest';
-const TIMEOUT_MS = 5_000;
-async function timedFetch(url) {
+const DEFAULT_TIMEOUT_MS = 5_000;
+function resolveTimeoutMs() {
+    const raw = process.env.HEDGE_STATUS_TIMEOUT_MS;
+    if (!raw) return DEFAULT_TIMEOUT_MS;
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_TIMEOUT_MS;
+    return parsed;
+}
+async function timedFetch(url, timeoutMs) {
     const controller = new AbortController();
-    const timer = setTimeout(()=>controller.abort(), TIMEOUT_MS);
+    const timer = setTimeout(()=>controller.abort(), timeoutMs);
     try {
         return await fetch(url, {
             signal: controller.signal,
@@ -286,34 +293,54 @@ async function timedFetch(url) {
         clearTimeout(timer);
     }
 }
-async function handleGet(_req) {
+function reasonFromRejection(err) {
+    if (err && typeof err === 'object' && 'name' in err) {
+        const name = err.name;
+        if (name === 'AbortError') return 'timeout';
+    }
+    return 'unreachable';
+}
+async function classifyJson(result, opts = {}) {
+    if (result.status === 'rejected') {
+        return {
+            ok: false,
+            reason: reasonFromRejection(result.reason)
+        };
+    }
+    const res = result.value;
+    if (opts.allow404 && res.status === 404) {
+        return {
+            ok: false,
+            reason: 'not_found'
+        };
+    }
+    if (!res.ok) {
+        return {
+            ok: false,
+            reason: `http_${res.status}`
+        };
+    }
     try {
-        const [snapRes, receiptsRes, proofRes] = await Promise.all([
-            timedFetch(SNAPSHOT_URL),
-            timedFetch(`${RECEIPTS_URL_BASE}?limit=5`),
-            timedFetch(PROOF_URL)
-        ]);
-        if (!snapRes.ok && snapRes.status !== 503) {
-            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: 'Hedge engine returned an error',
-                httpStatus: snapRes.status
-            }, {
-                status: 502
-            });
-        }
-        const snapshotEnvelope = snapRes.ok ? await snapRes.json() : null;
-        const receipts = receiptsRes.ok ? (await receiptsRes.json()).receipts ?? [] : [];
-        const proof = proofRes.ok ? await proofRes.json() : null;
-        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            snapshot: snapshotEnvelope?.snapshot ?? null,
-            capSnapshot: snapshotEnvelope?.capSnapshot ?? null,
-            breakerState: snapshotEnvelope?.breakerState ?? null,
-            killSwitchEngaged: Boolean(snapshotEnvelope?.killSwitchEngaged),
-            mode: snapshotEnvelope?.mode ?? null,
-            receipts,
-            proof
-        });
+        const value = await res.json();
+        return {
+            ok: true,
+            value
+        };
     } catch  {
+        return {
+            ok: false,
+            reason: 'parse_error'
+        };
+    }
+}
+async function handleGet(_req) {
+    const timeoutMs = resolveTimeoutMs();
+    const [snapSettled, receiptsSettled, proofSettled] = await Promise.allSettled([
+        timedFetch(SNAPSHOT_URL, timeoutMs),
+        timedFetch(`${RECEIPTS_URL_BASE}?limit=5`, timeoutMs),
+        timedFetch(PROOF_URL, timeoutMs)
+    ]);
+    if (snapSettled.status === 'rejected') {
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             error: 'Hedge engine unreachable',
             snapshot: null,
@@ -324,6 +351,57 @@ async function handleGet(_req) {
             status: 503
         });
     }
+    const snapRes = snapSettled.value;
+    if (!snapRes.ok && snapRes.status !== 503) {
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            error: 'Hedge engine returned an error',
+            httpStatus: snapRes.status
+        }, {
+            status: 502
+        });
+    }
+    let snapshotEnvelope = null;
+    if (snapRes.ok) {
+        try {
+            snapshotEnvelope = await snapRes.json();
+        } catch  {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: 'Hedge engine returned malformed snapshot'
+            }, {
+                status: 502
+            });
+        }
+    }
+    const receiptsClassified = await classifyJson(receiptsSettled);
+    const proofClassified = await classifyJson(proofSettled, {
+        allow404: true
+    });
+    const degraded = {};
+    let receipts = [];
+    if (receiptsClassified.ok) {
+        receipts = receiptsClassified.value.receipts ?? [];
+    } else {
+        degraded.receipts = receiptsClassified.reason;
+    }
+    let proof = null;
+    if (proofClassified.ok) {
+        proof = proofClassified.value;
+    } else if (proofClassified.reason !== 'not_found') {
+        degraded.proof = proofClassified.reason;
+    }
+    const body = {
+        snapshot: snapshotEnvelope?.snapshot ?? null,
+        capSnapshot: snapshotEnvelope?.capSnapshot ?? null,
+        breakerState: snapshotEnvelope?.breakerState ?? null,
+        killSwitchEngaged: Boolean(snapshotEnvelope?.killSwitchEngaged),
+        mode: snapshotEnvelope?.mode ?? null,
+        receipts,
+        proof
+    };
+    if (Object.keys(degraded).length > 0) {
+        body.degraded = degraded;
+    }
+    return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(body);
 }
 const GET = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$withApiRateLimit$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["withApiRateLimit"])(handleGet);
 const ALLOWED = [

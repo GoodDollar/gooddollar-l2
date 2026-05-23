@@ -140,6 +140,91 @@ describe('GET /api/hedge/status', () => {
   });
 });
 
+describe('GET /api/hedge/status — partial failures', () => {
+  function setupFetch(handlers: {
+    snapshot?: () => Promise<Response> | Response;
+    receipts?: () => Promise<Response> | Response;
+    proof?: () => Promise<Response> | Response;
+  }) {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const u = url.toString();
+      if (u.includes('/hedge/snapshot')) {
+        return handlers.snapshot
+          ? handlers.snapshot()
+          : new Response(JSON.stringify(SNAPSHOT_ENVELOPE), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (u.includes('/hedge/receipts')) {
+        return handlers.receipts
+          ? handlers.receipts()
+          : new Response(JSON.stringify(RECEIPTS_RESPONSE), { status: 200 });
+      }
+      if (u.includes('/hedge/proof/latest')) {
+        return handlers.proof
+          ? handlers.proof()
+          : new Response(JSON.stringify(PROOF_RESPONSE), { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${u}`);
+    });
+  }
+
+  it('snapshot 200 + receipts AbortError → 200 with snapshot + degraded.receipts=timeout', async () => {
+    setupFetch({
+      receipts: () => {
+        const err = new Error('aborted') as Error & { name: string };
+        err.name = 'AbortError';
+        return Promise.reject(err);
+      },
+    });
+    const res = await GET(dummyReq);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.snapshot).toEqual(SNAPSHOT_ENVELOPE.snapshot);
+    expect(body.receipts).toEqual([]);
+    expect(body.degraded?.receipts).toBe('timeout');
+  });
+
+  it('snapshot 200 + receipts http 500 → 200 with degraded.receipts=http_500', async () => {
+    setupFetch({
+      receipts: () => new Response('boom', { status: 500 }),
+    });
+    const res = await GET(dummyReq);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.snapshot).toEqual(SNAPSHOT_ENVELOPE.snapshot);
+    expect(body.degraded?.receipts).toBe('http_500');
+  });
+
+  it('snapshot 200 + proof http 500 → 200 with proof:null and degraded.proof=http_500', async () => {
+    setupFetch({
+      proof: () => new Response('boom', { status: 500 }),
+    });
+    const res = await GET(dummyReq);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.proof).toBeNull();
+    expect(body.degraded?.proof).toBe('http_500');
+  });
+
+  it('snapshot 200 + proof 404 → 200 with proof:null and NO degraded.proof (404 is normal)', async () => {
+    setupFetch({
+      proof: () => new Response(JSON.stringify({ error: 'no_proof_yet' }), { status: 404 }),
+    });
+    const res = await GET(dummyReq);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.proof).toBeNull();
+    expect(body.degraded?.proof).toBeUndefined();
+  });
+
+  it('all three healthy → no degraded field', async () => {
+    setupFetch({});
+    const res = await GET(dummyReq);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.degraded).toBeUndefined();
+  });
+});
+
 describe('POST /api/hedge/status', () => {
   it('rejects non-GET methods with 405', async () => {
     const req = new NextRequest('http://localhost/api/hedge/status', { method: 'POST' });

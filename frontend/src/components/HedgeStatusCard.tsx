@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 /**
  * Lane 5 — demo hedge proof surface.
@@ -58,6 +58,11 @@ interface ProofPointer {
 
 type HedgeMode = 'sandbox' | 'real' | 'demo' | 'unknown'
 
+interface DegradedFlags {
+  receipts?: string
+  proof?: string
+}
+
 interface HedgeStatusResponse {
   snapshot: SnapshotPayload | null
   capSnapshot: CapSnapshot | null
@@ -66,6 +71,7 @@ interface HedgeStatusResponse {
   mode: HedgeMode | null
   receipts: HedgeReceipt[]
   proof: ProofPointer | null
+  degraded?: DegradedFlags
 }
 
 const POLL_INTERVAL_MS = 10_000
@@ -106,6 +112,17 @@ function resolveEngineState(input: {
   if (input.killSwitch) return { label: 'halted', color: 'text-yellow-400' }
   if (input.breaker?.tripped) return { label: 'degraded', color: 'text-yellow-400' }
   return { label: 'ok', color: 'text-goodgreen' }
+}
+
+function DegradedHint({ children }: { children: ReactNode }) {
+  return (
+    <span
+      data-testid="hedge-degraded-hint"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border bg-yellow-500/10 text-yellow-300 border-yellow-500/30"
+    >
+      {children}
+    </span>
+  )
 }
 
 function ModeBadge({ mode }: { mode: HedgeMode }) {
@@ -197,29 +214,34 @@ export default function HedgeStatusCard() {
             </span>
           )}
         </div>
-        {data?.proof && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {data.proof.summary && (
-              <span
-                data-testid="hedge-proof-summary"
-                className="text-xs text-gray-400 font-mono truncate max-w-[28ch]"
-                title={data.proof.summary}
+        <div className="flex items-center gap-2 flex-wrap">
+          {data?.degraded?.proof && (
+            <DegradedHint>proof: {data.degraded.proof}</DegradedHint>
+          )}
+          {data?.proof && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {data.proof.summary && (
+                <span
+                  data-testid="hedge-proof-summary"
+                  className="text-xs text-gray-400 font-mono truncate max-w-[28ch]"
+                  title={data.proof.summary}
+                >
+                  {data.proof.summary}
+                </span>
+              )}
+              <a
+                data-testid="hedge-proof-link"
+                href="/api/hedge/proof/latest"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-goodgreen hover:underline font-mono"
+                title={data.proof.path}
               >
-                {data.proof.summary}
-              </span>
-            )}
-            <a
-              data-testid="hedge-proof-link"
-              href="/api/hedge/proof/latest"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-goodgreen hover:underline font-mono"
-              title={data.proof.path}
-            >
-              latest proof →
-            </a>
-          </div>
-        )}
+                latest proof →
+              </a>
+            </div>
+          )}
+        </div>
       </header>
 
       {loading && !data && (
@@ -301,7 +323,12 @@ export default function HedgeStatusCard() {
       )}
 
       <div className="bg-dark-50 rounded-lg p-3 overflow-x-auto">
-        <h3 className="text-sm font-medium text-gray-300 mb-2">Recent receipts</h3>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <h3 className="text-sm font-medium text-gray-300">Recent receipts</h3>
+          {data?.degraded?.receipts && (
+            <DegradedHint>receipts source degraded: {data.degraded.receipts}</DegradedHint>
+          )}
+        </div>
         {receipts.length === 0 ? (
           <p
             data-testid="hedge-receipts-empty"

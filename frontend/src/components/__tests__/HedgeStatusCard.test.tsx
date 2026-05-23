@@ -207,6 +207,33 @@ describe('HedgeStatusCard', () => {
     expect(summary).toHaveTextContent('demo — 1 receipts');
   });
 
+  it('renders a degraded hint when body.degraded.receipts is set', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      degraded: { receipts: 'timeout' },
+    });
+    render(<HedgeStatusCard />);
+    const hint = await screen.findByTestId('hedge-degraded-hint');
+    expect(hint).toHaveTextContent('receipts source degraded: timeout');
+  });
+
+  it('renders a degraded hint near the proof link when body.degraded.proof is set', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      degraded: { proof: 'http_500' },
+    });
+    render(<HedgeStatusCard />);
+    const hints = await screen.findAllByTestId('hedge-degraded-hint');
+    expect(hints.some((h) => h.textContent?.includes('http_500'))).toBe(true);
+  });
+
+  it('renders no degraded hints when body.degraded is absent', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    await screen.findByTestId('hedge-mode-badge');
+    expect(screen.queryAllByTestId('hedge-degraded-hint')).toHaveLength(0);
+  });
+
   it('awaiting tick: snapshot null, no error → grid shows ENGINE: awaiting tick in neutral grey', async () => {
     mockFetchOnce({
       snapshot: null,
