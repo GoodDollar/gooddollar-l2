@@ -20,7 +20,8 @@ need to set them.
 ## Endpoints
 
 - `GET /health` — service health + (when stats are wired) `ingested`,
-  `rejected`, `acceptanceRatio`.
+  `rejected`, `acceptanceRatio` (number in `[0,1]` or `null` on cold
+  start) and `acceptanceRatioStatus` (`'ok'` | `'no-data'`).
 - `GET /quotes` — every cached quote with `spread`, `spreadPct`,
   `cacheAge`, `filterAccepted`, `filterReason`.
 - `GET /quotes/:symbol` — single symbol.
@@ -28,7 +29,9 @@ need to set them.
 - `GET /status/quotes` — per-symbol last-update age, session state,
   confidence.
 - `GET /audit/stats` — `{ ingested, rejected, byReason,
-  acceptanceRatio, firstAt, lastAt, writeErrors, timestamp }`.
+  acceptanceRatio, acceptanceRatioStatus, firstAt, lastAt,
+  writeErrors, timestamp }`. `acceptanceRatio` is `null` and
+  `acceptanceRatioStatus` is `'no-data'` until the first tick lands.
 
 ## Env
 

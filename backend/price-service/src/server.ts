@@ -197,9 +197,10 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary: 'Liveness + readiness for load balancers; 503 when degraded.',
     responseShape:
       '{ freshQuotes, totalCached, configuredSymbols, symbols[], ' +
-      "status: 'ok'|'degraded', source?, websocket?, bootAtMs?, " +
-      'bootAtIso?, uptimeMs?, timestamp, timestampIso } -- 200 ok / ' +
-      '503 degraded',
+      "status:'ok'|'degraded', source?, websocket?, ingested?, " +
+      'rejected?, acceptanceRatio?: number|null, ' +
+      "acceptanceRatioStatus?:'ok'|'no-data', bootAt*?, uptimeMs?, " +
+      'ts } -- 200/503',
   },
   {
     path: '/quotes',
@@ -248,9 +249,10 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'Ingested vs rejected counts, rejection breakdown, acceptance ratio, ' +
       'uptime.',
     responseShape:
-      '{ ingested, rejected, byReason, acceptanceRatio, firstAt, ' +
-      'firstAtIso, lastAt, lastAtIso, writeErrors, bootAtMs?, ' +
-      'bootAtIso?, uptimeMs?, timestamp, timestampIso }',
+      '{ ingested, rejected, byReason, ' +
+      'acceptanceRatio: number|null, ' +
+      "acceptanceRatioStatus:'ok'|'no-data', firstAt, firstAtIso, " +
+      'lastAt, lastAtIso, writeErrors, bootAt*?, uptimeMs?, ts }',
   },
   {
     path: '/docs/source-reasons',
@@ -488,13 +490,33 @@ export function normalizeSymbol(
 }
 
 /**
- * `ingested / (ingested + rejected)`. Returns 1 when nothing has been
- * ingested yet (no data => no rejections => effectively healthy).
+ * Status of the acceptance ratio. The "no-data" state — distinct from
+ * real 100% acceptance — keeps dashboards honest: a service that has
+ * never seen a tick is NOT the same as a service that accepted every
+ * tick it saw. Future states (`'stale'` when ingest is old,
+ * `'low-sample'` when the denominator is small) are non-breaking
+ * additions; consumers should default-case unknown values.
  */
-function computeAcceptanceRatio(stats: IngestStats): number {
+export type AcceptanceRatioStatus = 'ok' | 'no-data';
+
+export interface AcceptanceRatioResult {
+  ratio: number | null;
+  status: AcceptanceRatioStatus;
+}
+
+/**
+ * `ingested / (ingested + rejected)`. The vacuous case
+ * (`ingested + rejected === 0`) is reported as
+ * `{ratio: null, status: 'no-data'}` so dashboards can render
+ * "warming up / N/A" instead of the same 100% green they'd render
+ * a real perfect-acceptance moment.
+ */
+export function computeAcceptanceRatio(
+  stats: IngestStats,
+): AcceptanceRatioResult {
   const total = stats.ingested + stats.rejected;
-  if (total === 0) return 1;
-  return stats.ingested / total;
+  if (total === 0) return { ratio: null, status: 'no-data' };
+  return { ratio: stats.ingested / total, status: 'ok' };
 }
 
 /**
@@ -619,7 +641,9 @@ export function createServer(
       const stats = statsGetter();
       body.ingested = stats.ingested;
       body.rejected = stats.rejected;
-      body.acceptanceRatio = computeAcceptanceRatio(stats);
+      const ratio = computeAcceptanceRatio(stats);
+      body.acceptanceRatio = ratio.ratio;
+      body.acceptanceRatioStatus = ratio.status;
     }
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
     if (src) body.source = src;
@@ -780,11 +804,13 @@ export function createServer(
           lastAt: null,
           writeErrors: 0,
         };
+    const ratio = computeAcceptanceRatio(stats);
     const body: Record<string, unknown> = {
       ingested: stats.ingested,
       rejected: stats.rejected,
       byReason: stats.byReason,
-      acceptanceRatio: computeAcceptanceRatio(stats),
+      acceptanceRatio: ratio.ratio,
+      acceptanceRatioStatus: ratio.status,
       firstAt: stats.firstAt,
       firstAtIso: isoFromMs(stats.firstAt),
       lastAt: stats.lastAt,

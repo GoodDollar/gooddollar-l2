@@ -1,5 +1,5 @@
 import http from 'http';
-import { createServer, normalizeSymbol } from '../server';
+import { createServer, normalizeSymbol, computeAcceptanceRatio } from '../server';
 import { QuoteCache } from '../quote-cache';
 import { DEFAULT_CONFIG, NormalizedQuote, IngestStats, SourceStatus, computeSpread } from '../types';
 import express from 'express';
@@ -218,14 +218,21 @@ describe('REST Server with stats getter', () => {
   });
 
   describe('GET /audit/stats', () => {
-    it('returns empty stats shape when nothing ingested', async () => {
+    it('returns empty stats shape when nothing ingested (task 0031: null + no-data)', async () => {
+      stats.ingested = 0;
+      stats.rejected = 0;
+      stats.byReason = {};
+      stats.firstAt = null;
+      stats.lastAt = null;
+      stats.writeErrors = 0;
       const res = await fetch(`${baseUrl}/audit/stats`);
       const body = (await res.json()) as Record<string, unknown>;
       expect(res.status).toBe(200);
       expect(body.ingested).toBe(0);
       expect(body.rejected).toBe(0);
       expect(body.byReason).toEqual({});
-      expect(body.acceptanceRatio).toBe(1);
+      expect(body.acceptanceRatio).toBeNull();
+      expect(body.acceptanceRatioStatus).toBe('no-data');
       expect(body.firstAt).toBeNull();
       expect(body.lastAt).toBeNull();
       expect(body.timestamp).toBeGreaterThan(0);
@@ -246,18 +253,20 @@ describe('REST Server with stats getter', () => {
       expect(body.rejected).toBe(3);
       expect(body.byReason).toEqual({ stale: 2, halted: 1 });
       expect(body.acceptanceRatio).toBeCloseTo(0.7, 6);
+      expect(body.acceptanceRatioStatus).toBe('ok');
       expect(body.firstAt).toBe(1700000000000);
       expect(body.lastAt).toBe(1700000005000);
     });
 
-    it('returns acceptanceRatio = 1 when only ingested with no rejects', async () => {
+    it('returns acceptanceRatio = 1 when only ingested with no rejects (real 100%)', async () => {
       stats.ingested = 5;
       stats.rejected = 0;
       stats.byReason = {};
 
       const res = await fetch(`${baseUrl}/audit/stats`);
-      const body = (await res.json()) as Record<string, number>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.acceptanceRatio).toBe(1);
+      expect(body.acceptanceRatioStatus).toBe('ok');
     });
 
     it('returns acceptanceRatio = 0 when only rejected', async () => {
@@ -266,8 +275,9 @@ describe('REST Server with stats getter', () => {
       stats.byReason = { halted: 4 };
 
       const res = await fetch(`${baseUrl}/audit/stats`);
-      const body = (await res.json()) as Record<string, number>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.acceptanceRatio).toBe(0);
+      expect(body.acceptanceRatioStatus).toBe('ok');
     });
 
     it('exposes writeErrors counter', async () => {
@@ -279,7 +289,7 @@ describe('REST Server with stats getter', () => {
   });
 
   describe('GET /health with stats wired', () => {
-    it('includes ingested, rejected, and acceptanceRatio', async () => {
+    it('includes ingested, rejected, and acceptanceRatio + status', async () => {
       stats.ingested = 9;
       stats.rejected = 1;
       stats.byReason = { stale: 1 };
@@ -290,7 +300,120 @@ describe('REST Server with stats getter', () => {
       expect(body.ingested).toBe(9);
       expect(body.rejected).toBe(1);
       expect(body.acceptanceRatio).toBeCloseTo(0.9, 6);
+      expect(body.acceptanceRatioStatus).toBe('ok');
     });
+  });
+});
+
+describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => {
+  it('ingested=0, rejected=0 → {ratio: null, status: "no-data"}', () => {
+    const r = computeAcceptanceRatio({
+      ingested: 0, rejected: 0,
+      byReason: {}, firstAt: null, lastAt: null, writeErrors: 0,
+    });
+    expect(r).toEqual({ ratio: null, status: 'no-data' });
+  });
+
+  it('ingested=1, rejected=0 (perfect acceptance, real data) → {1, "ok"}', () => {
+    const r = computeAcceptanceRatio({
+      ingested: 1, rejected: 0,
+      byReason: {}, firstAt: 0, lastAt: 0, writeErrors: 0,
+    });
+    expect(r).toEqual({ ratio: 1, status: 'ok' });
+  });
+
+  it('ingested=8, rejected=2 → {0.8, "ok"}', () => {
+    const r = computeAcceptanceRatio({
+      ingested: 8, rejected: 2,
+      byReason: {}, firstAt: 0, lastAt: 0, writeErrors: 0,
+    });
+    expect(r).toEqual({ ratio: 0.8, status: 'ok' });
+  });
+
+  it('ingested=0, rejected=5 (everything rejected) → {0, "ok"}', () => {
+    const r = computeAcceptanceRatio({
+      ingested: 0, rejected: 5,
+      byReason: { 'stale-price': 5 },
+      firstAt: 0, lastAt: 0, writeErrors: 0,
+    });
+    expect(r).toEqual({ ratio: 0, status: 'ok' });
+  });
+
+  it('warming-up (no-data) is distinguishable from real 100% acceptance', () => {
+    const warming = computeAcceptanceRatio({
+      ingested: 0, rejected: 0, byReason: {},
+      firstAt: null, lastAt: null, writeErrors: 0,
+    });
+    const real100 = computeAcceptanceRatio({
+      ingested: 100, rejected: 0, byReason: {},
+      firstAt: 0, lastAt: 0, writeErrors: 0,
+    });
+    expect(warming.ratio).toBeNull();
+    expect(warming.status).toBe('no-data');
+    expect(real100.ratio).toBe(1);
+    expect(real100.status).toBe('ok');
+    expect(warming).not.toEqual(real100);
+  });
+});
+
+describe('GET /audit/stats acceptanceRatio + acceptanceRatioStatus (task 0031)', () => {
+  it('cold start (no statsGetter wired) → null + "no-data"', async () => {
+    const cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    const app = createServer(cache, { symbols: ['AAPL'] });
+    const s = app.listen(0);
+    try {
+      await new Promise<void>((resolve) => s.on('listening', () => resolve()));
+      const addr = s.address() as import('net').AddressInfo;
+      const body = (await (await fetch(`http://127.0.0.1:${addr.port}/audit/stats`)).json()) as Record<string, unknown>;
+      expect(body.acceptanceRatio).toBeNull();
+      expect(body.acceptanceRatioStatus).toBe('no-data');
+    } finally {
+      await new Promise<void>((resolve) => s.close(() => resolve()));
+    }
+  });
+});
+
+describe('/health and /audit/stats responseShape self-describes no-data (task 0031)', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('/health responseShape mentions acceptanceRatioStatus and no-data; ≤ 240 chars', async () => {
+    const body = (await (await fetch(`${baseUrl}/`)).json()) as {
+      endpoints: Array<{ path: string; responseShape: string }>;
+    };
+    const h = body.endpoints.find((e) => e.path === '/health');
+    expect(h).toBeDefined();
+    expect(h!.responseShape).toMatch(/acceptanceRatioStatus/);
+    expect(h!.responseShape).toMatch(/no-data/);
+    expect(h!.responseShape.length).toBeLessThanOrEqual(240);
+  });
+
+  it('/audit/stats responseShape mentions acceptanceRatioStatus; ≤ 240 chars', async () => {
+    const body = (await (await fetch(`${baseUrl}/`)).json()) as {
+      endpoints: Array<{ path: string; responseShape: string }>;
+    };
+    const a = body.endpoints.find((e) => e.path === '/audit/stats');
+    expect(a).toBeDefined();
+    expect(a!.responseShape).toMatch(/acceptanceRatioStatus/);
+    expect(a!.responseShape.length).toBeLessThanOrEqual(240);
   });
 });
 
