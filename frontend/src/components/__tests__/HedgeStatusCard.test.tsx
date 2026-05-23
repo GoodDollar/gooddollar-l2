@@ -641,9 +641,12 @@ describe('HedgeStatusCard', () => {
     expect(engineStat.className).toContain('text-yellow-400');
   });
 
-  it('engine unreachable: still renders the stat grid with em-dash placeholders + unreachable engine label (#0016)', async () => {
+  it('engine unreachable: still renders the stat grid with shimmer placeholders + unreachable engine label (#0016, #0056)', async () => {
     // Layout-stability fix: the grid must stay mounted in all states so
     // the card height does not collapse + reflow as the engine flaps.
+    // After #0056 the three data tiles render an animate-pulse bar
+    // instead of a bare em-dash so the row reads as "awaiting tick"
+    // rather than "broken render" next to the bold red ENGINE tile.
     mockFetchOnce(
       {
         error: 'Hedge engine unreachable',
@@ -659,6 +662,18 @@ describe('HedgeStatusCard', () => {
     });
     const grid = screen.getByTestId('hedge-stat-grid');
     expect(grid).toBeInTheDocument();
+    // Three shimmer-bar placeholders, one per data tile (notional /
+    // cycle orders / receipts visible). The ENGINE tile is intentionally
+    // unaffected — it always carries a live state label.
+    const placeholders = screen.getAllByTestId('hedge-stat-placeholder');
+    expect(placeholders.length).toBe(3);
+    for (const bar of placeholders) {
+      expect(bar.className).toContain('animate-pulse');
+      // Slightly darker than the tile's `bg-dark-50` chrome so the bar
+      // reads as a subtle shimmer rather than blending into the tile.
+      expect(bar.className).toContain('bg-dark-100');
+      expect(bar.getAttribute('aria-hidden')).toBe('true');
+    }
     const engineStat = screen.getByTestId('hedge-engine-stat');
     // #0028: stat tile uses short "down" label to avoid mobile overflow;
     // banner + pill keep the long-form "unreachable" copy.
@@ -673,7 +688,7 @@ describe('HedgeStatusCard', () => {
     expect(screen.getByTestId('hedge-status-loading')).toBeInTheDocument();
   });
 
-  it('snapshot present but no cap: stat grid still renders with em-dash + awaiting-tick sub-copy (#0016)', async () => {
+  it('snapshot present but no cap: stat grid still renders with shimmer placeholders for the two cap tiles, real value on receipts-visible (#0016, #0056)', async () => {
     mockFetchOnce({
       ...BASE_RESPONSE,
       capSnapshot: null,
@@ -681,7 +696,16 @@ describe('HedgeStatusCard', () => {
     render(<HedgeStatusCard />);
     const grid = await screen.findByTestId('hedge-stat-grid');
     expect(grid).toBeInTheDocument();
-    expect(grid).toHaveTextContent('—');
+    // After #0056 the cap-driven tiles (notional + cycle orders) render
+    // shimmer-bar placeholders rather than a bare em-dash; the receipts-
+    // visible tile still has a snapshot, so it shows its real value (1).
+    const placeholders = screen.getAllByTestId('hedge-stat-placeholder');
+    expect(placeholders.length).toBe(2);
+    expect(grid).toHaveTextContent(/no caps/);
+    expect(grid).toHaveTextContent(/no data/);
+    expect(screen.getByTestId('hedge-receipts-visible-stat')).toHaveTextContent(
+      '1',
+    );
   });
 
   it('latest-proof link points at the in-app proof viewer and surfaces the summary chip (#0036)', async () => {
@@ -1569,6 +1593,112 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  describe('stat tile shimmer placeholder for awaiting-tick state (#0056)', () => {
+    it('engine unreachable: the three data tiles render shimmer bars, ENGINE tile keeps its live label', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          capSnapshot: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-status-error');
+      const placeholders = screen.getAllByTestId('hedge-stat-placeholder');
+      expect(placeholders.length).toBe(3);
+      // The bar lives inside the same value-slot of each data tile.
+      const slotIds = placeholders.map(
+        (bar) =>
+          bar.closest('[data-testid$="-stat"]')?.getAttribute('data-testid') ??
+          '',
+      );
+      expect(slotIds.sort()).toEqual([
+        'hedge-cycle-orders-stat',
+        'hedge-notional-stat',
+        'hedge-receipts-visible-stat',
+      ]);
+      // ENGINE tile is untouched — it always shows a live state label.
+      const engineStat = screen.getByTestId('hedge-engine-stat');
+      expect(engineStat.querySelector('[data-testid="hedge-stat-placeholder"]'))
+        .toBeNull();
+      expect(engineStat.textContent ?? '').toMatch(/down/i);
+    });
+
+    it('placeholder bar is aria-hidden + carries a screen-reader fallback span so SR users keep the value-slot context', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          capSnapshot: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const notional = await screen.findByTestId('hedge-notional-stat');
+      const bar = notional.querySelector(
+        '[data-testid="hedge-stat-placeholder"]',
+      ) as HTMLElement | null;
+      expect(bar).not.toBeNull();
+      expect(bar!.getAttribute('aria-hidden')).toBe('true');
+      const sr = notional.querySelector('.sr-only');
+      expect(sr).not.toBeNull();
+    });
+
+    it('snapshot arrives mid-render: shimmer bars vanish, formatted values appear in the same slot (#0056)', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              error: 'Hedge engine unreachable',
+              snapshot: null,
+              capSnapshot: null,
+              receipts: [],
+              proof: null,
+            }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValue(
+          new Response(JSON.stringify(BASE_RESPONSE), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      render(<HedgeStatusCard ref={ref} />);
+      await screen.findAllByTestId('hedge-stat-placeholder');
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      await waitFor(() => {
+        expect(screen.queryByTestId('hedge-stat-placeholder')).toBeNull();
+      });
+      expect(screen.getByTestId('hedge-notional-stat')).toHaveTextContent(
+        '$150.00',
+      );
+      expect(screen.getByTestId('hedge-cycle-orders-stat')).toHaveTextContent(
+        '1',
+      );
+      expect(screen.getByTestId('hedge-receipts-visible-stat')).toHaveTextContent(
+        '1',
+      );
+      expect(fetchSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('first-load skeleton still wins — Stat tiles do not render at all while loading && !data', () => {
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+      render(<HedgeStatusCard />);
+      expect(screen.getByTestId('hedge-status-loading')).toBeInTheDocument();
+      expect(screen.queryByTestId('hedge-stat-placeholder')).toBeNull();
+    });
+  });
+
   describe('stat tiles align on shared baseline (#0029)', () => {
     const TILE_TEST_IDS = [
       'hedge-notional-stat',
@@ -2064,7 +2194,7 @@ describe('HedgeStatusCard', () => {
       expect(screen.getByTestId('hedge-notional-stat')).toHaveTextContent('$200.00');
     });
 
-    it('first-ever-load + first-poll error renders em-dash placeholders (no prior data → no stale chip)', async () => {
+    it('first-ever-load + first-poll error renders shimmer placeholders (no prior data → no stale chip) (#0056)', async () => {
       mockFetchOnce(
         {
           error: 'Hedge engine unreachable',
@@ -2078,7 +2208,12 @@ describe('HedgeStatusCard', () => {
       render(<HedgeStatusCard />);
       await screen.findByTestId('hedge-status-error');
       const grid = screen.getByTestId('hedge-stat-grid');
-      expect(grid.textContent).toContain('—');
+      // After #0056 the three data tiles render animate-pulse shimmer
+      // bars in place of the bare em-dash so the row reads as
+      // "awaiting first tick" rather than "broken render".
+      expect(grid).toBeInTheDocument();
+      const placeholders = screen.getAllByTestId('hedge-stat-placeholder');
+      expect(placeholders.length).toBe(3);
       expect(screen.queryByTestId('hedge-receipts-stale')).toBeNull();
     });
 

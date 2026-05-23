@@ -870,6 +870,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
                   ? formatNotionalUsd(cap.dailyNotionalUsd)
                   : '—'
               }
+              placeholder={!cap}
               valueColor={notionalCrossedCap ? 'text-red-400' : undefined}
               sub={
                 cap
@@ -888,6 +889,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               testId="hedge-cycle-orders-stat"
               label="Cycle orders"
               value={cap ? `${cap.cycleOrders}` : '—'}
+              placeholder={!cap}
               valueColor={ordersCrossedCap ? 'text-red-400' : undefined}
               sub={
                 cap
@@ -906,6 +908,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               testId="hedge-receipts-visible-stat"
               label="Receipts visible"
               value={hasSnapshot ? `${receipts.length}` : '—'}
+              placeholder={!hasSnapshot}
               sub={
                 hasSnapshot
                   ? `newest 5${isStale ? ' · stale' : ''}`
@@ -1044,6 +1047,13 @@ interface StatProps {
   // color" while a separate, narrower prop can drive the headline value
   // color independently (red on cap breach, default white otherwise).
   valueColor?: string
+  // When true the value-slot renders a small animate-pulse shimmer bar
+  // instead of the raw `value` text. Used by the cap-driven tiles
+  // (notional / cycle orders) and the receipts-visible tile while the
+  // engine is unreachable, so the row reads as "awaiting first tick"
+  // rather than three half-empty em-dashes next to a bold red ENGINE
+  // tile (#0056). Boolean keeps the memo shallow-compare safe.
+  placeholder?: boolean
 }
 
 const Stat = memo(function Stat({
@@ -1061,6 +1071,7 @@ const Stat = memo(function Stat({
   capLine,
   crossedCap,
   sparklineTestId,
+  placeholder,
 }: StatProps) {
   const subClasses = [
     'text-xs',
@@ -1075,14 +1086,25 @@ const Stat = memo(function Stat({
   ]
     .filter(Boolean)
     .join(' ')
+  const valueClasses = `text-lg font-bold ${valueColor ?? color ?? 'text-white'} ${
+    placeholder ? 'inline-flex items-center' : ''
+  }`.trim()
   return (
     <div className={containerClasses}>
       <span className="text-xs text-gray-400 uppercase tracking-wide min-h-[2lh] sm:min-h-0">{label}</span>
-      <span
-        data-testid={testId}
-        className={`text-lg font-bold ${valueColor ?? color ?? 'text-white'}`}
-      >
-        {value}
+      <span data-testid={testId} className={valueClasses}>
+        {placeholder ? (
+          <>
+            <span
+              data-testid="hedge-stat-placeholder"
+              aria-hidden="true"
+              className="h-4 w-12 bg-dark-100 rounded animate-pulse inline-block"
+            />
+            <span className="sr-only">{value}</span>
+          </>
+        ) : (
+          value
+        )}
       </span>
       {series !== undefined && (
         <span className="flex items-center h-6 sm:h-7 text-gray-500">
