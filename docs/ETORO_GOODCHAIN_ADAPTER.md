@@ -118,6 +118,10 @@ source of truth for the accepted shapes.
 - Server messages may be a single quote object or an array of quote objects.
 - Reconnect uses exponential backoff (1s → 30s) and falls back to REST
   polling on disconnect.
+- The REST fallback emits exactly one listener call per fresh, currently
+  subscribed, non-stale quote per tick. Cache replay from prior
+  subscriptions is intentionally avoided so downstream consumers see
+  the true update rate instead of the cache size.
 
 ## Demo cap enforcement
 

@@ -298,6 +298,138 @@ describe('MarketDataModule', () => {
       unsub();
     });
   });
+
+  describe('REST fallback fanout', () => {
+    function makeStubHttp(getImpl: jest.Mock) {
+      return { get: getImpl } as unknown as AxiosInstance;
+    }
+
+    function freshQuote(symbol: string, overrides: Partial<{ bid: number; ask: number; timestamp: number }> = {}) {
+      return {
+        symbol,
+        instrumentId: `INST_${symbol}`,
+        bid: 100,
+        ask: 101,
+        last: 100.5,
+        timestamp: overrides.timestamp ?? Date.now(),
+        assetClass: 'equity',
+        currency: 'USD',
+        ...overrides,
+      };
+    }
+
+    async function tickFallback(intervalMs: number): Promise<void> {
+      jest.advanceTimersByTime(intervalMs);
+      // Drain microtasks for the async timer callback.
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('emits exactly one listener call per fresh subscribed quote per tick', async () => {
+      const get = jest.fn(async () => ({
+        data: { quotes: [freshQuote('BTC'), freshQuote('ETH')] },
+      }));
+      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 });
+      const cb = jest.fn();
+      mod.onQuote(cb);
+      mod.subscribe(['BTC', 'ETH']);
+      mod.startStreaming();
+
+      await tickFallback(1_000);
+
+      expect(cb).toHaveBeenCalledTimes(2);
+      const emitted = cb.mock.calls.map((c) => (c[0] as NormalizedQuote).symbol).sort();
+      expect(emitted).toEqual(['BTC', 'ETH']);
+      mod.stopStreaming();
+    });
+
+    it('does not replay cached quotes for symbols the consumer has unsubscribed from', async () => {
+      // First call returns three symbols; we keep them in the cache.
+      // After the first call we change the subscription to two symbols.
+      const calls: string[][] = [];
+      const get = jest.fn(async () => {
+        const tick = calls.length;
+        calls.push([]);
+        if (tick === 0) {
+          return { data: { quotes: [freshQuote('AAPL'), freshQuote('TSLA'), freshQuote('NVDA')] } };
+        }
+        return { data: { quotes: [freshQuote('BTC'), freshQuote('ETH')] } };
+      });
+      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 });
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      // Seed the cache via a direct getQuotes (does not invoke listeners).
+      await mod.getQuotes(['AAPL', 'TSLA', 'NVDA']);
+      expect(cb).toHaveBeenCalledTimes(0);
+
+      mod.subscribe(['BTC', 'ETH']);
+      mod.startStreaming();
+      await tickFallback(1_000);
+
+      expect(cb).toHaveBeenCalledTimes(2);
+      const emitted = cb.mock.calls.map((c) => (c[0] as NormalizedQuote).symbol).sort();
+      expect(emitted).toEqual(['BTC', 'ETH']);
+      mod.stopStreaming();
+    });
+
+    it('drops stale quotes from listener fanout', async () => {
+      const get = jest.fn(async () => ({
+        data: {
+          quotes: [
+            freshQuote('BTC'),
+            freshQuote('ETH', { timestamp: Date.now() - 30 * 60_000 }),
+          ],
+        },
+      }));
+      const mod = new MarketDataModule(makeStubHttp(get), {
+        restFallbackIntervalMs: 1_000,
+        maxQuoteAgeMs: 5 * 60_000,
+      });
+      const cb = jest.fn();
+      mod.onQuote(cb);
+      mod.subscribe(['BTC', 'ETH']);
+      mod.startStreaming();
+
+      await tickFallback(1_000);
+
+      expect(cb).toHaveBeenCalledTimes(1);
+      expect((cb.mock.calls[0][0] as NormalizedQuote).symbol).toBe('BTC');
+      mod.stopStreaming();
+    });
+
+    it('fires no listeners and keeps cache unchanged when getQuotes rejects', async () => {
+      let callCount = 0;
+      const get = jest.fn(async () => {
+        callCount += 1;
+        if (callCount === 1) return { data: { quotes: [freshQuote('BTC')] } };
+        throw new Error('HTTP 500');
+      });
+      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 });
+
+      await mod.getQuotes(['BTC']);
+      const before = mod.getCachedQuote('BTC');
+
+      const cb = jest.fn();
+      mod.onQuote(cb);
+      mod.subscribe(['BTC']);
+      mod.startStreaming();
+      await tickFallback(1_000);
+
+      expect(cb).toHaveBeenCalledTimes(0);
+      expect(mod.getCachedQuote('BTC')).toEqual(before);
+      mod.stopStreaming();
+    });
+  });
 });
 
 describe('detectUSMarketSession', () => {

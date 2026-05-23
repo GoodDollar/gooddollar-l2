@@ -244,10 +244,12 @@ export class MarketDataModule {
     this.restFallbackTimer = setInterval(async () => {
       if (this.subscribedSymbols.size === 0) return;
       try {
-        await this.getQuotes([...this.subscribedSymbols]);
-        for (const [, quote] of this.quoteCache) {
+        const fresh = await this.getQuotes([...this.subscribedSymbols]);
+        for (const quote of fresh) {
+          if (!this.subscribedSymbols.has(quote.symbol)) continue;
+          if (quote.stale) continue;
           for (const listener of this.listeners) {
-            try { listener(quote); } catch { /* ignore */ }
+            try { listener(quote); } catch { /* listener errors don't crash stream */ }
           }
         }
       } catch { /* REST fallback best-effort */ }
