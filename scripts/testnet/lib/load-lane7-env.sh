@@ -27,7 +27,7 @@
 # main script so a child shell substitution (`$(...)`) cannot
 # accidentally swallow updates.
 #
-# Two distinct categories of key are accepted:
+# Three distinct categories of key are accepted:
 #   - presence-only fence keys (REAL_TRADING_ENABLED, ETORO_MODE)
 #     land in ENV_PRESENCE[] and are NEVER exported into the shell.
 #     Exporting them would propagate into every child process the
@@ -38,10 +38,17 @@
 #     existing parameter-expansion defaults in the caller pick
 #     them up unchanged. Single code path through `require_uint` /
 #     `PROBE_URL_RE` — no validation duplication.
+#   - documented-but-smoke-doesn't-consume keys (PRIVATE_KEY,
+#     ORACLE_SIGNER_KEY, RISK_ENGINE_ADDRESS, HEDGE_DRY_RUN) live
+#     in the runbook's "One-time setup" block because OTHER lane-7
+#     tooling (foundry, deployer scripts, PM2 ecosystem config)
+#     consumes them — the smoke neither reads nor cares about
+#     them. Listed here as a no-op branch so the deferred unknown-
+#     key WARN doesn't false-fire on a freshly-bootstrapped .env.
 #
-# Unknown non-comment keys collect into a single deferred WARN so
-# typos like `PRICE_SERVICE_PROT=49300` surface once instead of
-# being silently discarded (pre-0026 behavior).
+# Truly unknown non-comment keys collect into a single deferred
+# WARN so typos like `PRICE_SERVICE_PROT=49300` surface once
+# instead of being silently discarded (pre-0026 behavior).
 #
 # Whitespace + quote handling (task 0027 convergence):
 #   - trim CR (Windows-CRLF), then leading + trailing ASCII
@@ -84,6 +91,9 @@ while IFS='=' read -r _key _val; do
       |PRICE_SERVICE_QUOTES_URL|STOCK_ORACLE_V2_ADDRESS \
       |HEALTH_CONTRACT|REPORT|L2_RPC_URL)
       if [[ -z "${!_key:-}" ]]; then export "$_key=$_val"; fi
+      ;;
+    PRIVATE_KEY|ORACLE_SIGNER_KEY|RISK_ENGINE_ADDRESS|HEDGE_DRY_RUN)
+      :
       ;;
     *)
       _LANE7_ENV_UNKNOWN+=("$_key")

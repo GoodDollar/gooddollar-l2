@@ -32,9 +32,24 @@ on the lane-7 worktree?"
 
 ## One-time setup
 
-1. **Lane-7 env file.** Create `/home/goodclaw/goodchain-live-prices-lanes/lane7-testnet-setup/.env`
-   with the lane-local overrides. Required keys (no secret values
-   committed — placeholders only):
+1. **Lane-7 env file.** The repository ships
+   [`.env.example`](../../.env.example) pre-filled with every key
+   this runbook references — mechanical / safety values default to
+   the lane-local settings shown below, secret-bearing keys ship
+   empty for the operator to fill in.
+
+   Bootstrap on a fresh host:
+
+   ```bash
+   cp .env.example .env
+   # Then fill in:
+   #   - PRIVATE_KEY (Anvil throwaway for local devnet)
+   #   - ORACLE_SIGNER_KEY      (only when coordinator provisions one)
+   #   - RISK_ENGINE_ADDRESS    (only when HEDGE_DRY_RUN=false is approved)
+   ```
+
+   The pre-filled keys (kept here as the documentation reference —
+   the smoke's `lib/load-lane7-env.sh` reads them at runtime):
 
    ```
    # Lane-local PM2 ports (avoid collision with production 9100-9200)
@@ -57,7 +72,8 @@ on the lane-7 worktree?"
    ```
 
    Do not commit `.env`. The repo's top-level `.gitignore` already
-   excludes it.
+   excludes it; `.env.example` itself is gitignore-allowlisted so
+   rewrites land cleanly.
 
 2. **Addresses source of truth.** Lane-7 reads contract addresses from
    `op-stack/addresses.json` (canonical) → `.autobuilder/addresses.env`
