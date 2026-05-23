@@ -144,6 +144,60 @@ describe('GET /api/oracle/status — merged response', () => {
   })
 })
 
+describe('GET /api/oracle/status — ingest counters', () => {
+  it('forwards ingest counters from upstream proof when present', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        ingest: {
+          accepted: 4221, droppedJsonParse: 1, droppedShape: 0,
+          droppedInvalidMid: 2, droppedMissingSymbol: 0,
+          lastDroppedAtMs: 1700000005000,
+          lastDroppedReason: 'SyntaxError: Unexpected token',
+          lastDroppedSnippet: 'not-json',
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.ingest.accepted).toBe(4221)
+    expect(data.ingest.droppedJsonParse).toBe(1)
+    expect(data.ingest.droppedInvalidMid).toBe(2)
+    expect(data.ingest.lastDroppedReason).toBe('SyntaxError: Unexpected token')
+    expect(data.ingest.lastDroppedSnippet).toBe('not-json')
+  })
+
+  it('defaults ingest counters to zero when upstream omits them (older signer)', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.ingest).toEqual({
+      accepted: 0, droppedJsonParse: 0, droppedShape: 0,
+      droppedInvalidMid: 0, droppedMissingSymbol: 0,
+    })
+  })
+
+  it('503 body includes a zero-ingest object so consumers can read it unconditionally', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.ingest).toBeDefined()
+    expect(data.ingest.accepted).toBe(0)
+    expect(data.ingest.droppedJsonParse).toBe(0)
+  })
+})
+
 describe('redactUpstreamReason', () => {
   it('strips long hex sequences (signer keys, addresses)', () => {
     const r = redactUpstreamReason(

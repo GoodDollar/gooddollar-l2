@@ -79,4 +79,20 @@ describe('GET /proof', () => {
     expect(body.status).toMatch(/ok|degraded/);
     await srv.close();
   });
+
+  it('forwards ingest counters when the proof provider includes them', async () => {
+    const store = new ProofStore();
+    const ingest = {
+      accepted: 42, droppedJsonParse: 3, droppedShape: 0,
+      droppedInvalidMid: 1, droppedMissingSymbol: 0,
+    };
+    const srv = await withServer({
+      proofProvider: () => ({ ...store.snapshot(), ingest }),
+    });
+    const res = await get(`http://127.0.0.1:${srv.port}/proof`);
+    expect(res.status).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.ingest).toEqual(ingest);
+    await srv.close();
+  });
 });

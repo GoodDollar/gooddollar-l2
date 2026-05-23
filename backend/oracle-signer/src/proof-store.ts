@@ -6,6 +6,8 @@
  * Pure / synchronous / no I/O — testable in isolation.
  */
 
+import type { IngestStats } from './price-ws-client';
+
 export type RailName = 'stocks' | 'crypto';
 
 export interface ProofEntryInput {
@@ -28,6 +30,9 @@ export interface ProofSnapshot {
   generatedAt: number;
   stocks: ProofEntry[];
   crypto: ProofEntry[];
+  /** Optional ingest counters, merged in by `OracleSignerService.getProofSnapshot()`.
+   *  Older signer builds may omit this; consumers must default to zero counters. */
+  ingest?: IngestStats;
 }
 
 export const DEFAULT_PROOF_CAPACITY = 50;

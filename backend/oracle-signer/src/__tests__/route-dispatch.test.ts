@@ -45,13 +45,21 @@ jest.mock('../crypto-oracle-submitter', () => {
   };
 });
 
-jest.mock('../price-ws-client', () => ({
-  PriceWsClient: jest.fn().mockImplementation((_url: string, onQuote: (q: unknown) => void) => ({
-    connect: jest.fn(),
-    close: jest.fn(),
-    _onQuote: onQuote,
-  })),
-}));
+jest.mock('../price-ws-client', () => {
+  const ZERO = {
+    accepted: 0, droppedJsonParse: 0, droppedShape: 0,
+    droppedInvalidMid: 0, droppedMissingSymbol: 0,
+  };
+  return {
+    PriceWsClient: jest.fn().mockImplementation((_url: string, onQuote: (q: unknown) => void) => ({
+      connect: jest.fn(),
+      close: jest.fn(),
+      _onQuote: onQuote,
+      getStats: jest.fn(() => ({ ...ZERO })),
+    })),
+    emptyIngestStats: () => ({ ...ZERO }),
+  };
+});
 
 function makeQuote(overrides: Partial<NormalizedQuote> = {}): NormalizedQuote {
   return {

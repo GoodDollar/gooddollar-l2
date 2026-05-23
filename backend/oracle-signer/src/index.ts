@@ -22,7 +22,7 @@
  *   ORACLE_SIGNER_ALLOWED_CHAIN_IDS (default 31337,1337).
  */
 
-import { PriceWsClient } from './price-ws-client';
+import { PriceWsClient, emptyIngestStats } from './price-ws-client';
 import { QuoteBuffer } from './quote-buffer';
 import { OracleSubmitter } from './oracle-submitter';
 import { CryptoOracleSubmitter } from './crypto-oracle-submitter';
@@ -373,9 +373,15 @@ export class OracleSignerService {
     }
   }
 
-  /** Public getter for the proof snapshot — wired into the health server's `/proof` route. */
+  /** Public getter for the proof snapshot — wired into the health server's `/proof` route.
+   *  Merges live ingest counters from the WS client so operators see drop diagnostics
+   *  alongside the on-chain proof tail. Defensive against stub WS clients in tests. */
   getProofSnapshot(): ProofSnapshot {
-    return this.proofStore.snapshot();
+    const base = this.proofStore.snapshot();
+    const ingest = typeof this.wsClient.getStats === 'function'
+      ? this.wsClient.getStats()
+      : emptyIngestStats();
+    return { ...base, ingest };
   }
 
   /** Back-compat alias. Today this returns the stocks-rail tick result. */

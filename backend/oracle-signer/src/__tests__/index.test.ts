@@ -28,6 +28,10 @@ jest.mock('../oracle-submitter', () => {
 });
 
 jest.mock('../price-ws-client', () => {
+  const ZERO = {
+    accepted: 0, droppedJsonParse: 0, droppedShape: 0,
+    droppedInvalidMid: 0, droppedMissingSymbol: 0,
+  };
   return {
     PriceWsClient: jest.fn().mockImplementation((_url: string, onQuote: (q: unknown) => void) => {
       return {
@@ -35,8 +39,10 @@ jest.mock('../price-ws-client', () => {
         close: jest.fn(),
         connected: true,
         _onQuote: onQuote,
+        getStats: jest.fn(() => ({ ...ZERO })),
       };
     }),
+    emptyIngestStats: () => ({ ...ZERO }),
   };
 });
 
@@ -141,6 +147,17 @@ describe('OracleSignerService', () => {
     expect(service.getBuffer().getLatestQuote('AAPL')).toBeDefined();
 
     service.stop();
+  });
+
+  it('getProofSnapshot includes ingest counters merged from the WS client', () => {
+    const service = new OracleSignerService(makeConfig(), withDeps({ getChainId: ALLOWED_DEVNET }));
+    const snap = service.getProofSnapshot();
+    expect(snap.ingest).toBeDefined();
+    expect(snap.ingest!.accepted).toBe(0);
+    expect(snap.ingest!.droppedJsonParse).toBe(0);
+    expect(snap.ingest!.droppedShape).toBe(0);
+    expect(snap.ingest!.droppedInvalidMid).toBe(0);
+    expect(snap.ingest!.droppedMissingSymbol).toBe(0);
   });
 
   it('accepts all symbols when config list is empty', async () => {

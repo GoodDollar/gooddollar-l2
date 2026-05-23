@@ -33,7 +33,49 @@ type ProofTail = {
   submittedAtMs: number
   mids: Record<string, number>
 }
-type ProofPayload = { generatedAt: number; stocks: ProofTail[]; crypto: ProofTail[] }
+export type IngestStatsPayload = {
+  accepted: number
+  droppedJsonParse: number
+  droppedShape: number
+  droppedInvalidMid: number
+  droppedMissingSymbol: number
+  lastDroppedAtMs?: number
+  lastDroppedReason?: string
+  lastDroppedSnippet?: string
+}
+type ProofPayload = {
+  generatedAt: number
+  stocks: ProofTail[]
+  crypto: ProofTail[]
+  ingest?: IngestStatsPayload
+}
+
+export const DEFAULT_INGEST: IngestStatsPayload = {
+  accepted: 0,
+  droppedJsonParse: 0,
+  droppedShape: 0,
+  droppedInvalidMid: 0,
+  droppedMissingSymbol: 0,
+}
+
+function pickIngest(p: { ingest?: unknown } | undefined): IngestStatsPayload {
+  const raw = p?.ingest
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_INGEST }
+  const r = raw as Record<string, unknown>
+  const num = (k: string): number => (typeof r[k] === 'number' && Number.isFinite(r[k] as number) ? (r[k] as number) : 0)
+  const optStr = (k: string): string | undefined => (typeof r[k] === 'string' ? (r[k] as string) : undefined)
+  const optNum = (k: string): number | undefined => (typeof r[k] === 'number' && Number.isFinite(r[k] as number) ? (r[k] as number) : undefined)
+  return {
+    accepted: num('accepted'),
+    droppedJsonParse: num('droppedJsonParse'),
+    droppedShape: num('droppedShape'),
+    droppedInvalidMid: num('droppedInvalidMid'),
+    droppedMissingSymbol: num('droppedMissingSymbol'),
+    lastDroppedAtMs: optNum('lastDroppedAtMs'),
+    lastDroppedReason: optStr('lastDroppedReason'),
+    lastDroppedSnippet: optStr('lastDroppedSnippet'),
+  }
+}
 
 export type UpstreamStatus = { status: 'ok' } | { status: 'down'; reason: string }
 
@@ -112,6 +154,7 @@ async function handleGet(_req?: NextRequest) {
         degraded: true,
         quotes: [],
         proof: EMPTY_PROOF,
+        ingest: { ...DEFAULT_INGEST },
         freshCount: 0,
         totalCount: 0,
         upstreams,
@@ -129,6 +172,7 @@ async function handleGet(_req?: NextRequest) {
         crypto: Array.isArray(proofRes.value.crypto) ? proofRes.value.crypto : [],
       }
     : EMPTY_PROOF
+  const ingest = proofOk ? pickIngest(proofRes.value) : { ...DEFAULT_INGEST }
 
   const healthy = quotesOk && proofOk && (quotesRes.value.healthy ?? true)
   const freshCount = quotesOk ? (quotesRes.value.freshCount ?? quotes.length) : 0
@@ -140,6 +184,7 @@ async function handleGet(_req?: NextRequest) {
     generatedAt: Date.now(),
     quotes,
     proof,
+    ingest,
     freshCount,
     totalCount,
     timestamp: quotesOk ? (quotesRes.value.timestamp ?? Date.now()) : Date.now(),
