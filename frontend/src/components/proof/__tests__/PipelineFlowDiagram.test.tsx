@@ -427,6 +427,107 @@ describe('PipelineFlowDiagram', () => {
     })
   })
 
+  // #0054 — flow nodes used to be inert <li>s (no role/href/onClick), so the
+  // larger and more eye-catching status surface on the proof page was a
+  // dead-end for the reviewer. The five axis-bound nodes now render as
+  // <a href="#panel-…"> anchors mirroring the rollup chip-row jump pattern;
+  // the upstream `eToro` pill remains a non-interactive <span> because it
+  // has no panel target.
+  describe('flow nodes as jump-links to panels (#0054)', () => {
+    it('price-service node renders as <a> with href="#panel-live-quotes"', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const link = screen.getByTestId('pipeline-node-price-service-link') as HTMLAnchorElement
+      expect(link.tagName).toBe('A')
+      expect(link.getAttribute('href')).toBe('#panel-live-quotes')
+    })
+
+    it('oracle-signer / chain / frontend nodes all link to #panel-onchain-oracle', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      for (const id of ['oracle-signer', 'chain', 'frontend']) {
+        const link = screen.getByTestId(`pipeline-node-${id}-link`) as HTMLAnchorElement
+        expect(link.tagName).toBe('A')
+        expect(link.getAttribute('href')).toBe('#panel-onchain-oracle')
+      }
+    })
+
+    it('demo-hedge node links to #panel-last-hedge', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const link = screen.getByTestId('pipeline-node-demo-hedge-link') as HTMLAnchorElement
+      expect(link.tagName).toBe('A')
+      expect(link.getAttribute('href')).toBe('#panel-last-hedge')
+    })
+
+    it('eToro node stays a non-interactive span (no href, no role=link)', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      expect(screen.queryByTestId('pipeline-node-etoro-link')).toBeNull()
+      const etoroLi = screen.getByTestId('pipeline-node-etoro')
+      const pill = etoroLi.querySelector(':scope > span:first-child') as HTMLElement
+      expect(pill).not.toBeNull()
+      expect(pill.tagName).toBe('SPAN')
+      expect(pill.getAttribute('href')).toBeNull()
+    })
+
+    it('each linked node carries an aria-label naming the target panel', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const expectations: Record<string, RegExp> = {
+        'price-service': /live quotes/i,
+        'oracle-signer': /on-chain oracle/i,
+        chain: /on-chain oracle/i,
+        frontend: /on-chain oracle/i,
+        'demo-hedge': /last demo hedge/i,
+      }
+      for (const [id, panelPattern] of Object.entries(expectations)) {
+        const link = screen.getByTestId(`pipeline-node-${id}-link`)
+        const aria = link.getAttribute('aria-label') ?? ''
+        expect(aria, `node ${id} aria-label: ${aria}`).toMatch(panelPattern)
+        expect(aria, `node ${id} aria-label: ${aria}`).toMatch(/jump/i)
+      }
+    })
+
+    it('tone="unknown" links still render as anchors with the same href', () => {
+      // The diagram is interactive once mounted — the loading affordance
+      // must not hide the jump-link, or a reviewer who lands during a
+      // slow first paint loses the navigation.
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const node = screen.getByTestId('pipeline-node-price-service')
+      expect(node.getAttribute('data-tone')).toBe('unknown')
+      const link = screen.getByTestId('pipeline-node-price-service-link') as HTMLAnchorElement
+      expect(link.tagName).toBe('A')
+      expect(link.getAttribute('href')).toBe('#panel-live-quotes')
+    })
+
+    it('linked pill carries hover + focus-visible affordances; per-tone border colour is preserved', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const link = screen.getByTestId('pipeline-node-price-service-link')
+      const cls = link.className
+      expect(cls).toMatch(/hover:bg-white\/5/)
+      expect(cls).toMatch(/focus-visible:ring/)
+      // Per-tone border class for the `unknown` tone — preserved on the anchor.
+      expect(cls).toMatch(/border-white\/10/)
+    })
+  })
+
   it('eToro pill renders the demo subtitle inline, not stacked (#0041)', () => {
     // Before the fix, only the eToro node carried a `subtitle: 'demo'`
     // and rendered as a 2-row flex-col pill that broke the diagram's
@@ -437,7 +538,11 @@ describe('PipelineFlowDiagram', () => {
     renderFlow({ offChainIntervalMs: 60_000 })
 
     const etoroLi = screen.getByTestId('pipeline-node-etoro')
-    const pill = etoroLi.querySelector(':scope > span:first-child') as HTMLElement
+    // The first child of the <li> is the pill element. For the eToro node
+    // this is still a <span> (it has no first-class panel target so #0054
+    // keeps it non-interactive); for axis-bound nodes the pill became an
+    // <a> in #0054.
+    const pill = etoroLi.firstElementChild as HTMLElement
     expect(pill).not.toBeNull()
     expect(pill.className).toMatch(/\bitems-baseline\b/)
     expect(pill.className).not.toMatch(/\bflex-col\b/)
@@ -449,7 +554,7 @@ describe('PipelineFlowDiagram', () => {
 
     const priceServicePill = screen
       .getByTestId('pipeline-node-price-service')
-      .querySelector(':scope > span:first-child') as HTMLElement
+      .firstElementChild as HTMLElement
     expect(priceServicePill).not.toBeNull()
     expect(priceServicePill.className).toMatch(/\bitems-baseline\b/)
     expect(priceServicePill.className).not.toMatch(/\bflex-col\b/)

@@ -84,6 +84,27 @@ test.describe('Lane 6 — /live-prices-proof', () => {
     const nodes = page.locator('[data-testid^="pipeline-node-"]')
     expect(await nodes.count()).toBeGreaterThanOrEqual(6)
 
+    // #0054 — every axis-bound flow node is itself a jump-link to the
+    // matching panel, mirroring the rollup chip-row pattern from #0024.
+    // The upstream `eToro` source has no first-class panel and stays a
+    // non-interactive span.
+    const flowNodeJumpMap: Record<string, string> = {
+      'price-service': '#panel-live-quotes',
+      'oracle-signer': '#panel-onchain-oracle',
+      chain: '#panel-onchain-oracle',
+      frontend: '#panel-onchain-oracle',
+      'demo-hedge': '#panel-last-hedge',
+    }
+    for (const [nodeId, expectedHref] of Object.entries(flowNodeJumpMap)) {
+      const link = page.getByTestId(`pipeline-node-${nodeId}-link`)
+      await expect(link).toBeVisible()
+      expect(await link.getAttribute('href')).toBe(expectedHref)
+    }
+    expect(await page.getByTestId('pipeline-node-etoro-link').count()).toBe(0)
+    const firstFlowLink = page.getByTestId('pipeline-node-price-service-link')
+    await firstFlowLink.click()
+    await expect(page.locator('#panel-live-quotes')).toBeInViewport()
+
     // Every panel exposes the stable `panel-*` id used by the degraded-
     // reason chips for in-page jump links. The OracleUpdatesPanel also
     // carries an id for consistency though no axis points at it today.

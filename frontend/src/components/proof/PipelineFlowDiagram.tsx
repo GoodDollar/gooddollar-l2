@@ -1,9 +1,22 @@
 'use client'
 
-import { AxisHealth, AxisKey, AxisState } from './proofAxes'
+import { AxisHealth, AxisKey, AxisState, PANEL_BY_AXIS } from './proofAxes'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 type Tone = 'unknown' | 'healthy' | 'degraded'
+
+/**
+ * Human-readable panel name per axis. Used by the jump-link `aria-label`
+ * on each flow node so screen readers announce the navigation intent
+ * ("Jump to live quotes panel") instead of repeating the node label.
+ * Lives next to `PANEL_BY_AXIS` (which carries the anchor id and chip
+ * reason copy) so future copy edits land in one file — see #0054.
+ */
+const PANEL_HUMAN_NAME: Record<AxisKey, string> = {
+  quotes: 'live quotes',
+  onChain: 'on-chain oracle',
+  hedgeProof: 'last demo hedge',
+}
 
 interface NodeSpec {
   id: string
@@ -143,6 +156,11 @@ export function PipelineFlowDiagram() {
   )
 }
 
+const PILL_BASE_CLASS = 'inline-flex items-baseline gap-1.5 rounded-lg border px-3 py-1.5'
+
+const PILL_INTERACTIVE_CLASS =
+  'no-underline transition-colors hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 focus-visible:ring-accent/60'
+
 function FlowNode({
   spec,
   tone,
@@ -154,27 +172,47 @@ function FlowNode({
   trailingEdge: { spec: EdgeSpec; tone: Tone } | null
   showHedgeProofIndicator: boolean
 }) {
+  // The upstream `eToro` source has no first-class panel; rendering it as
+  // an anchor that links to the live-quotes panel would duplicate the
+  // adjacent `price-service` click target. All other nodes carry a stable
+  // anchor in `PANEL_BY_AXIS`, so the jump map is exhaustive over the
+  // remaining `AxisKey` values without a switch.
+  const anchor = spec.id === 'etoro' ? null : PANEL_BY_AXIS[spec.axis].anchor
+  const pillClass = `${PILL_BASE_CLASS} ${TONE_NODE_CLASS[tone]}`
+  const pillContent = (
+    <>
+      <span className="font-mono uppercase tracking-wider">{spec.label}</span>
+      {spec.subtitle && (
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{spec.subtitle}</span>
+      )}
+      {showHedgeProofIndicator && (
+        <span
+          aria-hidden
+          data-testid={`pipeline-node-${spec.id}-indicator`}
+          className="ml-1 inline-block h-1.5 w-1.5 self-center rounded-full bg-green-400/80"
+        />
+      )}
+    </>
+  )
+
   return (
     <li
       data-testid={`pipeline-node-${spec.id}`}
       data-tone={tone}
       className="inline-flex items-center"
     >
-      <span
-        className={`inline-flex items-baseline gap-1.5 rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`}
-      >
-        <span className="font-mono uppercase tracking-wider">{spec.label}</span>
-        {spec.subtitle && (
-          <span className="text-[10px] uppercase tracking-wider text-gray-400">{spec.subtitle}</span>
-        )}
-        {showHedgeProofIndicator && (
-          <span
-            aria-hidden
-            data-testid={`pipeline-node-${spec.id}-indicator`}
-            className="ml-1 inline-block h-1.5 w-1.5 self-center rounded-full bg-green-400/80"
-          />
-        )}
-      </span>
+      {anchor ? (
+        <a
+          href={`#${anchor}`}
+          data-testid={`pipeline-node-${spec.id}-link`}
+          className={`${pillClass} ${PILL_INTERACTIVE_CLASS}`}
+          aria-label={`Jump to ${PANEL_HUMAN_NAME[spec.axis]} panel`}
+        >
+          {pillContent}
+        </a>
+      ) : (
+        <span className={pillClass}>{pillContent}</span>
+      )}
       {trailingEdge && (
         <span
           aria-hidden
