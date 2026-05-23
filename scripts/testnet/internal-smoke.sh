@@ -251,13 +251,38 @@ redact_snippet() {
     | head -c 80
 }
 
+# Escape bytes that break Markdown table-cell rendering. Untrusted
+# strings (response `status` field, status-aggregator status, server-
+# controlled `Content-Type` header) are substituted into 3-cell rows
+# verbatim today; a single `|` in the value silently splits the row
+# into 5+ cells, a backtick breaks the inline code span, a newline
+# produces an orphan fragment that breaks the table. Convergence:
+#   `|`  -> `\|`         (Markdown-escaped cell delimiter)
+#   '`'  -> `'`          (downgrade to apostrophe — `\`` would still
+#                         be parsed as a span opener in some renderers)
+#   CR   -> ''           (drop lone CR / CRLF row terminator)
+#   LF   -> ' '          (preserve readability, single-line cell)
+# Use ONLY in Markdown row cells. BLOCKERS[] / WARNINGS[] / console
+# echoes keep the raw value so operators see the original payload.
+# `sed` is already an implicit dependency (redact_snippet uses it).
+escape_md_cell() {
+  printf '%s' "$1" \
+    | tr -d '\r' \
+    | tr '\n' ' ' \
+    | sed -e 's/|/\\|/g' -e "s/\`/'/g"
+}
+
 # Emit a 3-column diagnostic table row capturing the last http_probe
 # globals. Designed to follow the canonical OK/BLOCKER row so the
 # operator sees the failure context inline (HTTP code, content-type,
 # curl exit code, redacted body snippet) without re-running curl by
-# hand.
+# hand. `Content-Type` is server-controlled and routes through
+# escape_md_cell so a `;` / `|` / unusual byte in it can't reshape
+# the row.
 add_diag_row() {
-  add_summary "| ↳ | HTTP ${HTTP_CODE:-000}, content-type ${HTTP_CT:-?}, curl_exit=${CURL_EXIT:-?} | body[:80]=\`$(redact_snippet "$HTTP_BODY")\` |"
+  local ct_md
+  ct_md="$(escape_md_cell "${HTTP_CT:-?}")"
+  add_summary "| ↳ | HTTP ${HTTP_CODE:-000}, content-type $ct_md, curl_exit=${CURL_EXIT:-?} | body[:80]=\`$(redact_snippet "$HTTP_BODY")\` |"
 }
 
 # Extract a string field from a JSON body via node -e. Prints empty on
@@ -293,12 +318,16 @@ probe_health() {
   else
     status="$(printf "%s" "$HTTP_BODY" | json_field status)"
     status="${status:-unknown}"
+    # Markdown row uses the escaped form; BLOCKERS[] keeps the raw
+    # value so operators see the unmodified payload in the console.
+    local status_md
+    status_md="$(escape_md_cell "$status")"
     case ",$want," in
       *,"$status",*)
-        add_summary "| \`$svc\` | $status | ✅ OK |"
+        add_summary "| \`$svc\` | $status_md | ✅ OK |"
         ;;
       *)
-        add_summary "| \`$svc\` | $status | ❌ BLOCKER |"
+        add_summary "| \`$svc\` | $status_md | ❌ BLOCKER |"
         BLOCKERS+=("$svc reported status=$status (want one of: $want)")
         diag=1
         ;;
@@ -385,7 +414,8 @@ else
         }
       ' "$HEALTH_CONTRACT" 2>/dev/null)"
 
-      add_summary "| \`$svc\` | $st | ${cls:-MISSING-FROM-CONTRACT} |"
+      st_md="$(escape_md_cell "$st")"
+      add_summary "| \`$svc\` | $st_md | ${cls:-MISSING-FROM-CONTRACT} |"
       if [[ "$st" == "MISSING" ]]; then
         BLOCKERS+=("$svc not reported by status-aggregator")
       elif [[ -z "$cls" ]]; then
