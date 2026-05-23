@@ -199,6 +199,7 @@ export class TradingModule {
         durationMs: Date.now() - start,
         resolvedNotionalUsd: notional.usd,
         notionalSource: notional.source,
+        quoteAgeMs: notional.quoteAgeMs,
       });
 
       return result;
@@ -242,6 +243,7 @@ export class TradingModule {
         durationMs: Date.now() - start,
         resolvedNotionalUsd: notional.usd,
         notionalSource: notional.source,
+        quoteAgeMs: notional.quoteAgeMs,
       });
 
       return result;
@@ -554,13 +556,21 @@ export class TradingModule {
   }
 
   /**
-   * Resolution order:
+   * Resolution order (5 tiers, highest priority first):
    *   1. `notionalSizer(order)` if it yields a finite positive USD value.
    *   2. `order.price * order.amount` for limit/stop orders.
-   *   3. `symbolReferencePriceUsd(order.symbol) * order.amount` for market
-   *      orders on known symbols.
-   *   4. Throw `MissingNotionalError` — never silently treat a unit count
+   *   3. `liveQuoteSource(symbol).mid * order.amount` when the snapshot
+   *      is fresher than `maxQuoteAgeMs`. Tagged `'live-quote'`.
+   *   4. `symbolReferencePriceUsd(order.symbol) * order.amount` as a
+   *      degraded fallback. Tagged `'reference-fallback'`.
+   *   5. Throw `MissingNotionalError` — never silently treat a unit count
    *      as USD.
+   *
+   * When `maxReferenceDriftRatio` is set AND both a fresh live quote and
+   * a reference price exist, divergence beyond the ratio aborts the order
+   * with `DemoCapExceededError({ cap: 'reference-drift' })` regardless of
+   * the USD caps — the divergence is treated as a safety signal that the
+   * SDK is operating on an unreliable view of the market.
    */
   private computeNotional(order: OrderRequest | LimitOrderRequest): ResolvedNotional {
     if (this.notionalSizer) {
@@ -584,11 +594,25 @@ export class TradingModule {
       }
     }
 
-    if (this.symbolReferencePriceUsd && Number.isFinite(order.amount) && order.amount > 0) {
-      const ref = this.symbolReferencePriceUsd(order.symbol);
-      if (typeof ref === 'number' && Number.isFinite(ref) && ref > 0) {
-        return { usd: ref * order.amount, source: 'reference' };
-      }
+    const reference = this.resolveReferencePrice(order.symbol);
+    const liveQuote = this.resolveFreshLiveQuote(order.symbol);
+
+    if (liveQuote) {
+      this.assertReferenceDriftWithinBounds({
+        symbol: order.symbol,
+        amount: order.amount,
+        live: liveQuote.mid,
+        reference,
+      });
+      return {
+        usd: liveQuote.mid * order.amount,
+        source: 'live-quote',
+        quoteAgeMs: liveQuote.ageMs,
+      };
+    }
+
+    if (reference !== undefined && Number.isFinite(order.amount) && order.amount > 0) {
+      return { usd: reference * order.amount, source: 'reference-fallback' };
     }
 
     throw new MissingNotionalError({
@@ -596,8 +620,57 @@ export class TradingModule {
       attemptedAmount: order.amount,
       reason: hasLimitPrice
         ? 'price * amount produced a non-positive notional'
-        : 'no notionalSizer match, no order.price, and no symbolReferencePriceUsd for the symbol',
+        : 'no notionalSizer match, no order.price, no fresh liveQuoteSource snapshot, and no symbolReferencePriceUsd for the symbol',
     });
+  }
+
+  private resolveReferencePrice(symbol: string): number | undefined {
+    if (!this.symbolReferencePriceUsd) return undefined;
+    const ref = this.symbolReferencePriceUsd(symbol);
+    return typeof ref === 'number' && Number.isFinite(ref) && ref > 0 ? ref : undefined;
+  }
+
+  private resolveFreshLiveQuote(
+    symbol: string,
+  ): { mid: number; ageMs: number } | undefined {
+    if (!this.liveQuoteSource) return undefined;
+    const snapshot = this.liveQuoteSource(symbol);
+    if (!snapshot) return undefined;
+    if (!Number.isFinite(snapshot.mid) || snapshot.mid <= 0) return undefined;
+    if (!Number.isFinite(snapshot.timestamp)) return undefined;
+    const ageMs = this.clock() - snapshot.timestamp;
+    if (ageMs > this.maxQuoteAgeMs) return undefined;
+    return { mid: snapshot.mid, ageMs: Math.max(0, ageMs) };
+  }
+
+  private assertReferenceDriftWithinBounds(input: {
+    symbol: string;
+    amount: number;
+    live: number;
+    reference: number | undefined;
+  }): void {
+    const ratio = this.maxReferenceDriftRatio;
+    if (ratio === undefined || !Number.isFinite(ratio) || ratio <= 0) return;
+    if (input.reference === undefined) return;
+
+    const drift = Math.abs(input.live - input.reference) / input.reference;
+    if (drift <= ratio) return;
+
+    const err = new DemoCapExceededError({
+      cap: 'reference-drift',
+      capLimitUsd: ratio,
+      attemptedNotionalUsd: input.live * input.amount,
+      currentDailyTotalUsd: this.capEnforcer?.getDailyTotalUsd() ?? 0,
+    });
+    this.audit.log({
+      action: 'computeNotional',
+      method: 'PRE-CHECK',
+      path: '/cap-enforcer',
+      error:
+        `${err.name}: cap=reference-drift symbol=${input.symbol} ` +
+        `live=${input.live} reference=${input.reference} drift=${drift.toFixed(4)} ratio=${ratio}`,
+    });
+    throw err;
   }
 
   private normalizeOrderResult(data: Record<string, unknown>): OrderResult {
