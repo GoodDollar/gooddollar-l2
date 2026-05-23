@@ -13,6 +13,12 @@ export interface LivePriceCardProps {
   source: PriceSource
   /** Age of the underlying price in ms, or null when unknown. */
   updatedAgoMs: number | null
+  /**
+   * Cross-page divergence flag. When true the card renders a "Source disagrees"
+   * chip next to the source badge — used by the `useAttributedPrice` hook to
+   * call out chain-vs-cache splits without removing the source attribution.
+   */
+  divergent?: boolean
   /** Compact mode drops the 24h change row and uses smaller padding. */
   compact?: boolean
   className?: string
@@ -70,7 +76,10 @@ const WARNING_SOURCES = new Set<PriceSource>(['closed', 'stale'])
  * lane-4 surface (Swap, Perps, Portfolio, Analytics, Activity, Stocks).
  */
 export function LivePriceCard(props: LivePriceCardProps) {
-  const { symbol, price, change24h, source, updatedAgoMs, compact = false, className = '' } = props
+  const {
+    symbol, price, change24h, source, updatedAgoMs,
+    divergent = false, compact = false, className = '',
+  } = props
 
   const isFallback = source === 'fallback'
   const showWarning = WARNING_SOURCES.has(source)
@@ -123,7 +132,18 @@ export function LivePriceCard(props: LivePriceCardProps) {
       )}
 
       <div className="flex items-center justify-between mt-2 gap-2">
-        <PriceSourceBadge source={source} size="sm" />
+        <div className="flex items-center gap-1 min-w-0">
+          <PriceSourceBadge source={source} size="sm" />
+          {divergent && (
+            <span
+              data-testid="live-price-divergent"
+              title="Chain oracle and cached feed disagree by more than 0.5%"
+              className="text-[10px] text-amber-400 shrink-0"
+            >
+              Source disagrees
+            </span>
+          )}
+        </div>
         {(() => {
           const { text, tone } = freshnessText(source, updatedAgoMs)
           return (

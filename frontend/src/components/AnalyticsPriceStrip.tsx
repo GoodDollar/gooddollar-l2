@@ -1,55 +1,35 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { LivePriceStrip, type LivePriceEntry } from './LivePriceStrip'
-import { usePriceFeeds } from '@/lib/usePriceFeeds'
+import { useAttributedPrices } from '@/lib/useAttributedPrice'
 import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
-import { resolvePriceSource, type PriceSource } from '@/lib/priceSource'
 
 const ANALYTICS_SYMBOLS = ['ETH', 'USDC', 'G$', 'WBTC'] as const
 
 /**
  * Top-of-page strip for /(app)/analytics. Renders the four protocol-critical
- * assets — ETH, USDC, G$, WBTC — with their source attribution.
+ * assets — ETH, USDC, G$, WBTC — with their source attribution resolved
+ * through the shared `useAttributedPrice` hook (task 0021). The numerator
+ * behind every badge is the same one /perps and /activity see.
  *
- * Failure-mode policy: a `/api/status/quotes` outage tells us the
- * per-symbol freshness feed is unavailable. It does NOT tell us that
- * CoinGecko or the on-chain oracle are down. We therefore keep each
- * card's source honest (whatever `usePriceFeeds.sources[sym]` reports)
- * and surface the status-feed outage as its own chip above the strip.
+ * Failure-mode policy preserved from task 0008: a `/api/status/quotes` outage
+ * tells us the per-symbol freshness feed is unavailable, not that the prices
+ * themselves are wrong — so each card stays on its truthful source and the
+ * outage surfaces as its own chip above the strip.
  */
 export function AnalyticsPriceStrip() {
-  const { prices, sources, quotes, lastUpdated } = usePriceFeeds([...ANALYTICS_SYMBOLS])
-  const { status, error } = usePriceServiceStatus()
-
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
-
-  const updatedAgoMs = lastUpdated ? now - lastUpdated.getTime() : null
+  const attributed = useAttributedPrices([...ANALYTICS_SYMBOLS])
+  const { error } = usePriceServiceStatus()
 
   const entries: LivePriceEntry[] = ANALYTICS_SYMBOLS.map(sym => {
-    let source: PriceSource = sources[sym] ?? 'unknown'
-    const sq = status?.quotes.find(q => q.symbol === sym)
-
-    if (sq) {
-      const sessionSource = resolvePriceSource({
-        chainOk: source === 'chain-oracle',
-        coinGeckoLive: source === 'coingecko',
-        hasFallback: true,
-        statusQuote: { lastUpdateMs: sq.lastUpdateMs, sessionState: sq.sessionState, source: sq.source },
-      })
-      if (sessionSource === 'stale' || sessionSource === 'closed') source = sessionSource
-    }
-
+    const a = attributed[sym]
     return {
       symbol: sym,
-      price: prices[sym] ?? 0,
-      change24h: quotes[sym]?.change24h ?? null,
-      source,
-      updatedAgoMs,
+      price: a.priceUsd,
+      change24h: a.change24h,
+      source: a.source,
+      updatedAgoMs: a.ageMs,
+      divergent: a.divergent,
     }
   })
 

@@ -10,6 +10,10 @@ vi.mock('@/lib/usePriceServiceStatus', () => ({
   usePriceServiceStatus: vi.fn(),
 }))
 
+vi.mock('@/lib/useOnChainPerps', () => ({
+  useOnChainPairs: () => ({ pairs: [], isLoading: false, isLive: false }),
+}))
+
 import { AnalyticsPriceStrip } from '@/components/AnalyticsPriceStrip'
 import { usePriceFeeds } from '@/lib/usePriceFeeds'
 import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'

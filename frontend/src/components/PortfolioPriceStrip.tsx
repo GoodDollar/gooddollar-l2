@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { LivePriceStrip, type LivePriceEntry } from './LivePriceStrip'
-import { usePriceFeeds } from '@/lib/usePriceFeeds'
+import { useAttributedPrices } from '@/lib/useAttributedPrice'
 import { useStockPrices } from '@/lib/useStockPrices'
 import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
 import { resolvePriceSource, type PriceSource } from '@/lib/priceSource'
@@ -17,12 +16,10 @@ interface PortfolioPriceStripProps {
 
 /**
  * Portfolio top-of-page strip. Renders one card per distinct symbol the user
- * currently has exposure to (stocks ∪ perp underlyings). Resolves source
- * attribution by composing the chain-backed `useStockPrices` for stocks and
- * the on-chain / CoinGecko mix from `usePriceFeeds` for crypto.
- *
- * Honors session state — sAAPL after-hours shows "Market closed" instead of
- * a bare price.
+ * currently has exposure to (stocks ∪ perp underlyings). Stock attribution
+ * still composes `useStockPrices` + session-state from `usePriceServiceStatus`
+ * (their pricing model is different). Crypto symbols go through the shared
+ * `useAttributedPrice` hook so the BTC tile here matches /perps and /activity.
  */
 export function PortfolioPriceStrip({
   stockTickers,
@@ -32,31 +29,24 @@ export function PortfolioPriceStrip({
   const stockTickersDedup = Array.from(new Set(stockTickers))
   const cryptoDedup = Array.from(new Set(cryptoSymbols))
 
-  const { prices: cryptoPrices, sources: cryptoSources, quotes, lastUpdated } = usePriceFeeds(cryptoDedup)
+  const attributedCrypto = useAttributedPrices(cryptoDedup)
   const { prices: stockPrices, sources: stockSources } = useStockPrices()
   const { status } = usePriceServiceStatus()
 
-  const [now, setNow] = useState<number>(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
-  const updatedAgoMs = lastUpdated ? now - lastUpdated.getTime() : null
+  // O(1) lookup per ticker instead of array.find inside the loop.
+  const statusBySymbol = new Map((status?.quotes ?? []).map(q => [q.symbol, q]))
 
   const entries: LivePriceEntry[] = []
 
   for (const ticker of stockTickersDedup) {
     const baseSource = stockSources[ticker] ?? 'fallback'
-    const sq = status?.quotes.find(q => q.symbol === ticker)
+    const sq = statusBySymbol.get(ticker)
 
-    // Stocks-specific override: when sessionState says closed/halted, show it
-    // even if the chain oracle has a last price. Stale → respect freshness.
     let finalSource: PriceSource = baseSource
     if (sq) {
       if (sq.sessionState === 'closed' || sq.sessionState === 'halted') {
         finalSource = 'closed'
       } else if (sq.lastUpdateMs > 60_000) {
-        // Only downgrade chain to stale; if it was already fallback, keep it.
         finalSource = baseSource === 'chain-oracle' ? 'stale' : baseSource
       } else if (baseSource !== 'chain-oracle') {
         finalSource = resolvePriceSource({
@@ -72,17 +62,22 @@ export function PortfolioPriceStrip({
       price: stockPrices[ticker] ?? 0,
       change24h: null,
       source: finalSource,
-      updatedAgoMs,
+      // Chain-stock oracle does not surface a per-symbol timestamp through
+      // useStockPrices, so the freshness footer falls back to "Updated just
+      // now" / "Market closed" depending on `source` — see LivePriceCard.
+      updatedAgoMs: null,
     })
   }
 
   for (const sym of cryptoDedup) {
+    const a = attributedCrypto[sym]
     entries.push({
       symbol: sym,
-      price: cryptoPrices[sym] ?? 0,
-      change24h: quotes[sym]?.change24h ?? null,
-      source: cryptoSources[sym] ?? 'unknown',
-      updatedAgoMs,
+      price: a?.priceUsd ?? 0,
+      change24h: a?.change24h ?? null,
+      source: a?.source ?? 'unknown',
+      updatedAgoMs: a?.ageMs ?? null,
+      divergent: a?.divergent ?? false,
     })
   }
 

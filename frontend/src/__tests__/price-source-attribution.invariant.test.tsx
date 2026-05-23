@@ -119,14 +119,17 @@ vi.mock('@/lib/useStockPrices', () => ({
   }),
 }))
 
-vi.mock('@/lib/useOnChainPairs', () => ({
+vi.mock('@/lib/useOnChainPerps', () => ({
   useOnChainPairs: () => ({
     pairs: [
-      { symbol: 'BTC-USD', basePrice: 60_000, derivedFromOracle: true, error: null },
-      { symbol: 'ETH-USD', basePrice: 3_000, derivedFromOracle: true, error: null },
+      { marketId: 0, symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', markPrice: 60_000, indexPrice: 60_000, change24h: 2.0, volume24h: 0, fundingRate: 0, nextFundingTime: 0, openInterest: 0, maxLeverage: 100, high24h: 0, low24h: 0 },
+      { marketId: 1, symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', markPrice: 3_000, indexPrice: 3_000, change24h: 1.0, volume24h: 0, fundingRate: 0, nextFundingTime: 0, openInterest: 0, maxLeverage: 50, high24h: 0, low24h: 0 },
     ],
     isLoading: false,
+    isLive: true,
   }),
+  useOnChainPositions: () => ({ positions: [], isLoading: false }),
+  useOnChainAccountSummary: () => ({ summary: { balance: 0, equity: 0, unrealizedPnl: 0, marginUsed: 0, availableMargin: 0, marginRatio: 0 }, isLoading: false }),
 }))
 
 import { LandingPriceStrip } from '@/components/LandingPriceStrip'
@@ -184,6 +187,42 @@ describe('Lane 4 — global price-source-badge invariant', () => {
       }
     })
   }
+
+  it('Cross-page BTC tile renders the same dollar number on Perps and Activity strips', () => {
+    // Same fixtures as the suite above:
+    //   on-chain BTC pair markPrice = $60,000 (mocked at the top of the file)
+    //   CoinGecko WBTC quote     = $60,000 (mocked above)
+    // With the shared `useAttributedPrice` hook, Activity's "WBTC" tile
+    // resolves to the chain BTC reading — same as the Perps strip — so the
+    // formatted dollar string MUST appear at least twice on the combined
+    // render.
+    const { container } = render(
+      <TestWrapper>
+        <>
+          <PerpsPriceStrip activeSymbol="BTC-USD" />
+          <ActivityPriceStrip />
+        </>
+      </TestWrapper>,
+    )
+
+    const priceEls = container.querySelectorAll('[data-testid="live-price"]')
+    const btcTexts: string[] = []
+    for (const el of Array.from(priceEls)) {
+      const card = el.closest('[data-testid="live-price-card"]')
+      if (!card) continue
+      const symbolText = card.querySelector('span')?.textContent ?? ''
+      if (symbolText === 'BTC-USD' || symbolText === 'WBTC' || symbolText === 'BTC') {
+        btcTexts.push((el.textContent ?? '').trim())
+      }
+    }
+
+    expect(btcTexts.length, 'expected at least a Perps BTC tile and an Activity WBTC tile').toBeGreaterThanOrEqual(2)
+    const unique = new Set(btcTexts)
+    expect(
+      unique.size,
+      `BTC tiles disagree across pages — saw: ${[...unique].join(' | ')}`,
+    ).toBe(1)
+  })
 
   it('Stocks page: every per-row price has a sibling source badge', async () => {
     vi.doMock('@/lib/useOnChainStocks', () => ({
