@@ -4,7 +4,7 @@
 
 __turbopack_context__.s([
     "default",
-    ()=>HedgeStatusCard
+    ()=>__TURBOPACK__default__export__
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
@@ -58,7 +58,7 @@ function DegradedHint({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 119,
+        lineNumber: 126,
         columnNumber: 5
     }, this);
 }
@@ -89,7 +89,7 @@ function ModeBadge({ mode }) {
         children: c.label
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 137,
+        lineNumber: 144,
         columnNumber: 5
     }, this);
 }
@@ -101,13 +101,15 @@ function resolveMode(data, error) {
     }
     return 'unknown';
 }
-function HedgeStatusCard() {
+const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["forwardRef"])(_c2 = _s(function HedgeStatusCard(_, ref) {
     _s();
     const [data, setData] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
+    const [isFetching, setIsFetching] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const fetchOnce = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "HedgeStatusCard.useCallback[fetchOnce]": async (signal)=>{
+        "HedgeStatusCard.HedgeStatusCard.useCallback[fetchOnce]": async (signal)=>{
+            setIsFetching(true);
             try {
                 const res = await fetch('/api/hedge/status', {
                     cache: 'no-store',
@@ -129,24 +131,34 @@ function HedgeStatusCard() {
                 setError(err instanceof Error ? err.message : 'unknown');
             } finally{
                 setLoading(false);
+                setIsFetching(false);
             }
         }
-    }["HedgeStatusCard.useCallback[fetchOnce]"], []);
+    }["HedgeStatusCard.HedgeStatusCard.useCallback[fetchOnce]"], []);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
-        "HedgeStatusCard.useEffect": ()=>{
+        "HedgeStatusCard.HedgeStatusCard.useEffect": ()=>{
             const ctrl = new AbortController();
             void fetchOnce(ctrl.signal);
             const t = setInterval({
-                "HedgeStatusCard.useEffect.t": ()=>void fetchOnce()
-            }["HedgeStatusCard.useEffect.t"], POLL_INTERVAL_MS);
+                "HedgeStatusCard.HedgeStatusCard.useEffect.t": ()=>void fetchOnce()
+            }["HedgeStatusCard.HedgeStatusCard.useEffect.t"], POLL_INTERVAL_MS);
             return ({
-                "HedgeStatusCard.useEffect": ()=>{
+                "HedgeStatusCard.HedgeStatusCard.useEffect": ()=>{
                     ctrl.abort();
                     clearInterval(t);
                 }
-            })["HedgeStatusCard.useEffect"];
+            })["HedgeStatusCard.HedgeStatusCard.useEffect"];
         }
-    }["HedgeStatusCard.useEffect"], [
+    }["HedgeStatusCard.HedgeStatusCard.useEffect"], [
+        fetchOnce
+    ]);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useImperativeHandle"])(ref, {
+        "HedgeStatusCard.HedgeStatusCard.useImperativeHandle": ()=>({
+                refresh: ({
+                    "HedgeStatusCard.HedgeStatusCard.useImperativeHandle": ()=>void fetchOnce()
+                })["HedgeStatusCard.HedgeStatusCard.useImperativeHandle"]
+            })
+    }["HedgeStatusCard.HedgeStatusCard.useImperativeHandle"], [
         fetchOnce
     ]);
     const receipts = data?.receipts ?? [];
@@ -170,7 +182,7 @@ function HedgeStatusCard() {
                                 children: "Demo hedge proof"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 205,
+                                lineNumber: 221,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -179,12 +191,12 @@ function HedgeStatusCard() {
                                     mode: mode
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                    lineNumber: 209,
+                                    lineNumber: 225,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 206,
+                                lineNumber: 222,
                                 columnNumber: 11
                             }, this),
                             data?.snapshot?.timestamp && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -195,18 +207,32 @@ function HedgeStatusCard() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 212,
+                                lineNumber: 228,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 204,
+                        lineNumber: 220,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "flex items-center gap-2 flex-wrap",
                         children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                "data-testid": "hedge-header-refresh-button",
+                                onClick: ()=>void fetchOnce(),
+                                disabled: isFetching,
+                                "aria-label": "Refresh hedge status",
+                                title: "Refresh hedge status",
+                                className: "text-xs px-2 py-1 rounded-md border border-dark-50 text-gray-400 hover:text-white hover:bg-dark-50 disabled:opacity-50",
+                                children: isFetching ? '…' : '↻'
+                            }, void 0, false, {
+                                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                                lineNumber: 234,
+                                columnNumber: 11
+                            }, this),
                             data?.degraded?.proof && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(DegradedHint, {
                                 children: [
                                     "proof: ",
@@ -214,7 +240,7 @@ function HedgeStatusCard() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 219,
+                                lineNumber: 246,
                                 columnNumber: 13
                             }, this),
                             data?.proof && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -227,7 +253,7 @@ function HedgeStatusCard() {
                                         children: data.proof.summary
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 224,
+                                        lineNumber: 251,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -240,25 +266,25 @@ function HedgeStatusCard() {
                                         children: "latest proof →"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 232,
+                                        lineNumber: 259,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 222,
+                                lineNumber: 249,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 217,
+                        lineNumber: 233,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 203,
+                lineNumber: 219,
                 columnNumber: 7
             }, this),
             loading && !data && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -269,47 +295,67 @@ function HedgeStatusCard() {
                         className: "h-4 bg-dark-50 rounded w-1/3"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 249,
+                        lineNumber: 276,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "h-4 bg-dark-50 rounded w-2/3"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 250,
+                        lineNumber: 277,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "h-4 bg-dark-50 rounded w-1/2"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 251,
+                        lineNumber: 278,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 248,
+                lineNumber: 275,
                 columnNumber: 9
             }, this),
             error && !data?.snapshot && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 "data-testid": "hedge-status-error",
-                className: "bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300",
+                className: "bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300 flex items-center justify-between gap-3 flex-wrap",
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "font-medium",
-                        children: "Hedge engine unavailable:"
-                    }, void 0, false, {
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                className: "font-medium",
+                                children: "Hedge engine unavailable:"
+                            }, void 0, false, {
+                                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                                lineNumber: 288,
+                                columnNumber: 13
+                            }, this),
+                            " ",
+                            error
+                        ]
+                    }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 260,
+                        lineNumber: 287,
                         columnNumber: 11
                     }, this),
-                    " ",
-                    error
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        "data-testid": "hedge-retry-button",
+                        onClick: ()=>void fetchOnce(),
+                        disabled: isFetching,
+                        className: "text-xs px-2.5 py-1 rounded-md border border-red-500/40 text-red-200 hover:bg-red-500/10 disabled:opacity-50",
+                        children: isFetching ? 'Retrying…' : 'Retry'
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                        lineNumber: 290,
+                        columnNumber: 11
+                    }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 256,
+                lineNumber: 283,
                 columnNumber: 9
             }, this),
             killSwitch && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -320,14 +366,14 @@ function HedgeStatusCard() {
                         children: "Kill switch engaged."
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 269,
+                        lineNumber: 307,
                         columnNumber: 11
                     }, this),
                     " No further orders will be sent until the kill-switch file is removed."
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 265,
+                lineNumber: 303,
                 columnNumber: 9
             }, this),
             breaker?.tripped && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -338,7 +384,7 @@ function HedgeStatusCard() {
                         children: "Breaker tripped:"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 279,
+                        lineNumber: 317,
                         columnNumber: 11
                     }, this),
                     ' ',
@@ -347,7 +393,7 @@ function HedgeStatusCard() {
                         children: breaker.reason
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 280,
+                        lineNumber: 318,
                         columnNumber: 11
                     }, this),
                     breaker.detail && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -358,13 +404,13 @@ function HedgeStatusCard() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 281,
+                        lineNumber: 319,
                         columnNumber: 30
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 275,
+                lineNumber: 313,
                 columnNumber: 9
             }, this),
             data && !(error && !data.snapshot) && (()=>{
@@ -385,7 +431,7 @@ function HedgeStatusCard() {
                             sub: cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                            lineNumber: 299,
+                            lineNumber: 337,
                             columnNumber: 15
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
@@ -394,7 +440,7 @@ function HedgeStatusCard() {
                             sub: cap ? `day ${cap.dayKey}` : hasSnapshot ? '' : 'awaiting tick'
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                            lineNumber: 304,
+                            lineNumber: 342,
                             columnNumber: 15
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
@@ -403,7 +449,7 @@ function HedgeStatusCard() {
                             sub: hasSnapshot ? 'newest 5' : 'awaiting tick'
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                            lineNumber: 309,
+                            lineNumber: 347,
                             columnNumber: 15
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
@@ -413,13 +459,13 @@ function HedgeStatusCard() {
                             color: engineState.color
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                            lineNumber: 314,
+                            lineNumber: 352,
                             columnNumber: 15
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                    lineNumber: 295,
+                    lineNumber: 333,
                     columnNumber: 13
                 }, this);
             })(),
@@ -434,7 +480,7 @@ function HedgeStatusCard() {
                                 children: "Recent receipts"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 327,
+                                lineNumber: 365,
                                 columnNumber: 11
                             }, this),
                             data?.degraded?.receipts && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(DegradedHint, {
@@ -444,13 +490,13 @@ function HedgeStatusCard() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 329,
+                                lineNumber: 367,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 326,
+                        lineNumber: 364,
                         columnNumber: 9
                     }, this),
                     receipts.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -459,7 +505,7 @@ function HedgeStatusCard() {
                         children: "No hedge activity yet."
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 333,
+                        lineNumber: 371,
                         columnNumber: 11
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
                         className: "w-full text-sm",
@@ -473,7 +519,7 @@ function HedgeStatusCard() {
                                             children: "id"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 343,
+                                            lineNumber: 381,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -481,7 +527,7 @@ function HedgeStatusCard() {
                                             children: "symbol"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 344,
+                                            lineNumber: 382,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -489,7 +535,7 @@ function HedgeStatusCard() {
                                             children: "side"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 345,
+                                            lineNumber: 383,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -497,7 +543,7 @@ function HedgeStatusCard() {
                                             children: "notional"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 346,
+                                            lineNumber: 384,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -505,18 +551,18 @@ function HedgeStatusCard() {
                                             children: "status"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 347,
+                                            lineNumber: 385,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                    lineNumber: 342,
+                                    lineNumber: 380,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 341,
+                                lineNumber: 379,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -529,7 +575,7 @@ function HedgeStatusCard() {
                                                 children: shortId(r.id)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 357,
+                                                lineNumber: 395,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -537,7 +583,7 @@ function HedgeStatusCard() {
                                                 children: r.symbol
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 358,
+                                                lineNumber: 396,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -545,7 +591,7 @@ function HedgeStatusCard() {
                                                 children: r.side
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 359,
+                                                lineNumber: 397,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -556,7 +602,7 @@ function HedgeStatusCard() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 360,
+                                                lineNumber: 398,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -566,53 +612,54 @@ function HedgeStatusCard() {
                                                     children: "ok"
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                    lineNumber: 365,
+                                                    lineNumber: 403,
                                                     columnNumber: 23
                                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                     className: "text-yellow-400",
                                                     children: r.error ?? 'failed'
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                    lineNumber: 367,
+                                                    lineNumber: 405,
                                                     columnNumber: 23
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 363,
+                                                lineNumber: 401,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, r.id, true, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 352,
+                                        lineNumber: 390,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 350,
+                                lineNumber: 388,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 340,
+                        lineNumber: 378,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 325,
+                lineNumber: 363,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 199,
+        lineNumber: 215,
         columnNumber: 5
     }, this);
-}
-_s(HedgeStatusCard, "uz8Q1x9Zm7pJrrbXU+1jX9lPIzY=");
-_c2 = HedgeStatusCard;
+}, "hJRemklkZObEnRc58dRVFt96VIE=")), "hJRemklkZObEnRc58dRVFt96VIE=");
+_c3 = HedgeStatusCard;
+HedgeStatusCard.displayName = 'HedgeStatusCard';
+const __TURBOPACK__default__export__ = HedgeStatusCard;
 function Stat({ label, value, sub, color, testId }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "bg-dark-50 rounded-xl p-3 flex flex-col gap-0.5",
@@ -622,7 +669,7 @@ function Stat({ label, value, sub, color, testId }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 395,
+                lineNumber: 436,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -631,7 +678,7 @@ function Stat({ label, value, sub, color, testId }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 396,
+                lineNumber: 437,
                 columnNumber: 7
             }, this),
             sub && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -639,22 +686,23 @@ function Stat({ label, value, sub, color, testId }) {
                 children: sub
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 402,
+                lineNumber: 443,
                 columnNumber: 15
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 394,
+        lineNumber: 435,
         columnNumber: 5
     }, this);
 }
-_c3 = Stat;
-var _c, _c1, _c2, _c3;
+_c4 = Stat;
+var _c, _c1, _c2, _c3, _c4;
 __turbopack_context__.k.register(_c, "DegradedHint");
 __turbopack_context__.k.register(_c1, "ModeBadge");
-__turbopack_context__.k.register(_c2, "HedgeStatusCard");
-__turbopack_context__.k.register(_c3, "Stat");
+__turbopack_context__.k.register(_c2, "HedgeStatusCard$forwardRef");
+__turbopack_context__.k.register(_c3, "HedgeStatusCard");
+__turbopack_context__.k.register(_c4, "Stat");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
@@ -792,6 +840,7 @@ function AnalyticsPage() {
     const [loadError, setLoadError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [lastFetched, setLastFetched] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [isRefetching, setIsRefetching] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const hedgeCardRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
     const fetchOverview = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "AnalyticsPage.useCallback[fetchOverview]": async (signal)=>{
             setIsRefetching(true);
@@ -866,7 +915,7 @@ function AnalyticsPage() {
                                 children: "Analytics Dashboard"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 257,
+                                lineNumber: 258,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -880,7 +929,7 @@ function AnalyticsPage() {
                                         children: "/api/analytics/overview"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 260,
+                                        lineNumber: 261,
                                         columnNumber: 13
                                     }, this),
                                     ' ',
@@ -892,19 +941,19 @@ function AnalyticsPage() {
                                         children: "/api/status"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 264,
+                                        lineNumber: 265,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 258,
+                                lineNumber: 259,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 256,
+                        lineNumber: 257,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -915,30 +964,33 @@ function AnalyticsPage() {
                                 children: lastFetched ? `Updated ${timeAgo(lastFetched)} · auto-refresh 30s` : 'Loading…'
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 270,
+                                lineNumber: 271,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                 type: "button",
-                                onClick: ()=>void fetchOverview(),
+                                onClick: ()=>{
+                                    void fetchOverview();
+                                    hedgeCardRef.current?.refresh();
+                                },
                                 disabled: isRefetching,
                                 className: "text-xs px-3 py-1 rounded-md border border-dark-50 text-gray-300 hover:bg-dark-50 disabled:opacity-50",
                                 children: isRefetching ? 'Refreshing…' : 'Refresh'
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 275,
+                                lineNumber: 276,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 269,
+                        lineNumber: 270,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                lineNumber: 255,
+                lineNumber: 256,
                 columnNumber: 7
             }, this),
             loadError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -947,12 +999,12 @@ function AnalyticsPage() {
                     message: loadError
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                    lineNumber: 288,
+                    lineNumber: 292,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                lineNumber: 287,
+                lineNumber: 291,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -964,7 +1016,7 @@ function AnalyticsPage() {
                         sub: summary ? `${summary.totalContracts} contracts` : 'address book'
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 294,
+                        lineNumber: 298,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -974,7 +1026,7 @@ function AnalyticsPage() {
                         color: indexer?.ok ? 'text-white' : 'text-red-400'
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 299,
+                        lineNumber: 303,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -984,7 +1036,7 @@ function AnalyticsPage() {
                         color: chain?.ok ? 'text-white' : 'text-red-400'
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 313,
+                        lineNumber: 317,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -994,13 +1046,13 @@ function AnalyticsPage() {
                         color: status?.overall === 'healthy' ? 'text-goodgreen' : status?.overall === 'degraded' ? 'text-yellow-400' : status?.overall === 'down' ? 'text-red-400' : 'text-white'
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 323,
+                        lineNumber: 327,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                lineNumber: 293,
+                lineNumber: 297,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -1011,7 +1063,7 @@ function AnalyticsPage() {
                         children: "Service Health"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 345,
+                        lineNumber: 349,
                         columnNumber: 9
                     }, this),
                     !data && isInitialLoad ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1019,7 +1071,7 @@ function AnalyticsPage() {
                         children: "Loading…"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 347,
+                        lineNumber: 351,
                         columnNumber: 11
                     }, this) : status?.ok ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "flex flex-wrap items-center gap-3 text-sm",
@@ -1033,7 +1085,7 @@ function AnalyticsPage() {
                                         children: status.overall
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 351,
+                                        lineNumber: 355,
                                         columnNumber: 31
                                     }, this),
                                     " —",
@@ -1045,7 +1097,7 @@ function AnalyticsPage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 350,
+                                lineNumber: 354,
                                 columnNumber: 13
                             }, this),
                             typeof status.aggregatorUptime === 'number' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1057,7 +1109,7 @@ function AnalyticsPage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 355,
+                                lineNumber: 359,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -1066,25 +1118,25 @@ function AnalyticsPage() {
                                 children: "raw JSON →"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 359,
+                                lineNumber: 363,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 349,
+                        lineNumber: 353,
                         columnNumber: 11
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(PanelError, {
                         message: status?.error ?? 'status aggregator unreachable'
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 367,
+                        lineNumber: 371,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                lineNumber: 344,
+                lineNumber: 348,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -1098,7 +1150,7 @@ function AnalyticsPage() {
                                 children: "Chain & Indexer Activity"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 374,
+                                lineNumber: 378,
                                 columnNumber: 11
                             }, this),
                             indexer && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(FreshnessBadge, {
@@ -1106,13 +1158,13 @@ function AnalyticsPage() {
                                 lagBlocks: indexer.lagBlocks
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 376,
+                                lineNumber: 380,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 373,
+                        lineNumber: 377,
                         columnNumber: 9
                     }, this),
                     indexer && indexer.lagStatus === 'db_ahead_of_chain' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1120,7 +1172,7 @@ function AnalyticsPage() {
                         children: "Indexer database holds blocks newer than the live chain. This usually indicates a chain reset since the last index. The dashboard surfaces this rather than hiding it (Non-Negotiable #8); track recovery in iter 28 (indexer reset playbook)."
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 381,
+                        lineNumber: 385,
                         columnNumber: 11
                     }, this),
                     !indexer && isInitialLoad && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1128,7 +1180,7 @@ function AnalyticsPage() {
                         children: "Loading indexer overview…"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 390,
+                        lineNumber: 394,
                         columnNumber: 11
                     }, this),
                     indexer?.ok && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1142,7 +1194,7 @@ function AnalyticsPage() {
                                         children: "Per-protocol events"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 396,
+                                        lineNumber: 400,
                                         columnNumber: 15
                                     }, this),
                                     indexer.protocols && indexer.protocols.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
@@ -1157,7 +1209,7 @@ function AnalyticsPage() {
                                                             children: "Protocol"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 401,
+                                                            lineNumber: 405,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1165,7 +1217,7 @@ function AnalyticsPage() {
                                                             children: "Events"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 402,
+                                                            lineNumber: 406,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1173,7 +1225,7 @@ function AnalyticsPage() {
                                                             children: "Last block"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 403,
+                                                            lineNumber: 407,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1181,18 +1233,18 @@ function AnalyticsPage() {
                                                             children: "Updated"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 404,
+                                                            lineNumber: 408,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                    lineNumber: 400,
+                                                    lineNumber: 404,
                                                     columnNumber: 21
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                lineNumber: 399,
+                                                lineNumber: 403,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1204,7 +1256,7 @@ function AnalyticsPage() {
                                                                 children: p.protocol
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 410,
+                                                                lineNumber: 414,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1212,7 +1264,7 @@ function AnalyticsPage() {
                                                                 children: p.total_events.toLocaleString()
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 411,
+                                                                lineNumber: 415,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1220,7 +1272,7 @@ function AnalyticsPage() {
                                                                 children: p.last_event_block.toLocaleString()
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 414,
+                                                                lineNumber: 418,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1228,37 +1280,37 @@ function AnalyticsPage() {
                                                                 children: timeAgo(p.last_updated)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 417,
+                                                                lineNumber: 421,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, p.protocol, true, {
                                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                        lineNumber: 409,
+                                                        lineNumber: 413,
                                                         columnNumber: 23
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                lineNumber: 407,
+                                                lineNumber: 411,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 398,
+                                        lineNumber: 402,
                                         columnNumber: 17
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                         className: "text-xs text-gray-500",
                                         children: "No protocol activity yet."
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 425,
+                                        lineNumber: 429,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 395,
+                                lineNumber: 399,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1269,7 +1321,7 @@ function AnalyticsPage() {
                                         children: "Top events"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 430,
+                                        lineNumber: 434,
                                         columnNumber: 15
                                     }, this),
                                     indexer.topEvents && indexer.topEvents.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -1282,7 +1334,7 @@ function AnalyticsPage() {
                                                         children: ev.event_name
                                                     }, void 0, false, {
                                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                        lineNumber: 438,
+                                                        lineNumber: 442,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1290,50 +1342,50 @@ function AnalyticsPage() {
                                                         children: ev.cnt.toLocaleString()
                                                     }, void 0, false, {
                                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                        lineNumber: 439,
+                                                        lineNumber: 443,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, ev.event_name, true, {
                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                lineNumber: 434,
+                                                lineNumber: 438,
                                                 columnNumber: 21
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 432,
+                                        lineNumber: 436,
                                         columnNumber: 17
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                         className: "text-xs text-gray-500",
                                         children: "No events recorded yet."
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 444,
+                                        lineNumber: 448,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 429,
+                                lineNumber: 433,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 394,
+                        lineNumber: 398,
                         columnNumber: 11
                     }, this),
                     indexer && !indexer.ok && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(PanelError, {
                         message: indexer.error ?? 'indexer unreachable'
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 451,
+                        lineNumber: 455,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                lineNumber: 372,
+                lineNumber: 376,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -1344,7 +1396,7 @@ function AnalyticsPage() {
                         children: "UBI Fee Landscape"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 457,
+                        lineNumber: 461,
                         columnNumber: 9
                     }, this),
                     !ubi && isInitialLoad && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1352,7 +1404,7 @@ function AnalyticsPage() {
                         children: "Loading…"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 459,
+                        lineNumber: 463,
                         columnNumber: 35
                     }, this),
                     ubi && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -1366,7 +1418,7 @@ function AnalyticsPage() {
                                         sub: "from address book"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 464,
+                                        lineNumber: 468,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -1376,7 +1428,7 @@ function AnalyticsPage() {
                                         color: ubi.pendingCount > 0 ? 'text-yellow-400' : 'text-goodgreen'
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 465,
+                                        lineNumber: 469,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -1385,7 +1437,7 @@ function AnalyticsPage() {
                                         sub: "canonical bps"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 471,
+                                        lineNumber: 475,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -1394,13 +1446,13 @@ function AnalyticsPage() {
                                         sub: "iter 26 artefact"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 476,
+                                        lineNumber: 480,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 463,
+                                lineNumber: 467,
                                 columnNumber: 13
                             }, this),
                             ubi.pendingSplitters.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1411,7 +1463,7 @@ function AnalyticsPage() {
                                         children: "Pending splitters"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 485,
+                                        lineNumber: 489,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1421,18 +1473,18 @@ function AnalyticsPage() {
                                                 children: name
                                             }, name, false, {
                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                lineNumber: 488,
+                                                lineNumber: 492,
                                                 columnNumber: 21
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 486,
+                                        lineNumber: 490,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 484,
+                                lineNumber: 488,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1443,7 +1495,7 @@ function AnalyticsPage() {
                                         children: "Fee route map"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 500,
+                                        lineNumber: 504,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
@@ -1458,7 +1510,7 @@ function AnalyticsPage() {
                                                             children: "Protocol"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 504,
+                                                            lineNumber: 508,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1466,7 +1518,7 @@ function AnalyticsPage() {
                                                             children: "Route"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 505,
+                                                            lineNumber: 509,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1474,7 +1526,7 @@ function AnalyticsPage() {
                                                             children: "Source"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 506,
+                                                            lineNumber: 510,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1482,7 +1534,7 @@ function AnalyticsPage() {
                                                             children: "Sink"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 507,
+                                                            lineNumber: 511,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1490,7 +1542,7 @@ function AnalyticsPage() {
                                                             children: "Method"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 508,
+                                                            lineNumber: 512,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1498,18 +1550,18 @@ function AnalyticsPage() {
                                                             children: "Status"
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 509,
+                                                            lineNumber: 513,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                    lineNumber: 503,
+                                                    lineNumber: 507,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                lineNumber: 502,
+                                                lineNumber: 506,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1521,7 +1573,7 @@ function AnalyticsPage() {
                                                                 children: r.protocol
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 515,
+                                                                lineNumber: 519,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1529,7 +1581,7 @@ function AnalyticsPage() {
                                                                 children: r.label
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 516,
+                                                                lineNumber: 520,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1537,7 +1589,7 @@ function AnalyticsPage() {
                                                                 children: r.source_contract
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 517,
+                                                                lineNumber: 521,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1545,7 +1597,7 @@ function AnalyticsPage() {
                                                                 children: r.sink_contract
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 520,
+                                                                lineNumber: 524,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1553,7 +1605,7 @@ function AnalyticsPage() {
                                                                 children: r.sink_method
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 523,
+                                                                lineNumber: 527,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1563,49 +1615,49 @@ function AnalyticsPage() {
                                                                     children: "pending"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                    lineNumber: 528,
+                                                                    lineNumber: 532,
                                                                     columnNumber: 27
                                                                 }, this) : r.event_contract_deployed ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                                     className: "text-goodgreen",
                                                                     children: "deployed"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                    lineNumber: 530,
+                                                                    lineNumber: 534,
                                                                     columnNumber: 27
                                                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                                     className: "text-gray-400",
                                                                     children: "unknown"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                    lineNumber: 532,
+                                                                    lineNumber: 536,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                                lineNumber: 526,
+                                                                lineNumber: 530,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, r.id, true, {
                                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                        lineNumber: 514,
+                                                        lineNumber: 518,
                                                         columnNumber: 21
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                lineNumber: 512,
+                                                lineNumber: 516,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 501,
+                                        lineNumber: 505,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 499,
+                                lineNumber: 503,
                                 columnNumber: 13
                             }, this),
                             ubi.splitDoc && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1617,13 +1669,13 @@ function AnalyticsPage() {
                                         children: ubi.splitDoc
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 543,
+                                        lineNumber: 547,
                                         columnNumber: 31
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 542,
+                                lineNumber: 546,
                                 columnNumber: 15
                             }, this)
                         ]
@@ -1631,19 +1683,21 @@ function AnalyticsPage() {
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                lineNumber: 456,
+                lineNumber: 460,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "mb-6",
-                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$HedgeStatusCard$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$HedgeStatusCard$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                    ref: hedgeCardRef
+                }, void 0, false, {
                     fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                    lineNumber: 552,
+                    lineNumber: 556,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                lineNumber: 551,
+                lineNumber: 555,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -1654,7 +1708,7 @@ function AnalyticsPage() {
                         children: "Protocols"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 557,
+                        lineNumber: 561,
                         columnNumber: 9
                     }, this),
                     protocols.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1662,7 +1716,7 @@ function AnalyticsPage() {
                         children: "No protocols loaded."
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 559,
+                        lineNumber: 563,
                         columnNumber: 11
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3",
@@ -1677,7 +1731,7 @@ function AnalyticsPage() {
                                                 children: p.label
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                lineNumber: 565,
+                                                lineNumber: 569,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1688,13 +1742,13 @@ function AnalyticsPage() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                lineNumber: 566,
+                                                lineNumber: 570,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 564,
+                                        lineNumber: 568,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -1708,7 +1762,7 @@ function AnalyticsPage() {
                                                             children: c.name
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 571,
+                                                            lineNumber: 575,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1716,13 +1770,13 @@ function AnalyticsPage() {
                                                             children: shortAddr(c.address)
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                            lineNumber: 572,
+                                                            lineNumber: 576,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, c.address, true, {
                                                     fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                    lineNumber: 570,
+                                                    lineNumber: 574,
                                                     columnNumber: 21
                                                 }, this)),
                                             p.count > p.sampleContracts.length && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
@@ -1734,30 +1788,30 @@ function AnalyticsPage() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                                lineNumber: 576,
+                                                lineNumber: 580,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                        lineNumber: 568,
+                                        lineNumber: 572,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, p.key, true, {
                                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                                lineNumber: 563,
+                                lineNumber: 567,
                                 columnNumber: 15
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 561,
+                        lineNumber: 565,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                lineNumber: 556,
+                lineNumber: 560,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1768,7 +1822,7 @@ function AnalyticsPage() {
                         children: "analytics/address-book.json"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 588,
+                        lineNumber: 592,
                         columnNumber: 18
                     }, this),
                     " (committed by iter 26), the status aggregator on ",
@@ -1776,7 +1830,7 @@ function AnalyticsPage() {
                         children: ":9200"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 589,
+                        lineNumber: 593,
                         columnNumber: 34
                     }, this),
                     ", the indexer on",
@@ -1785,7 +1839,7 @@ function AnalyticsPage() {
                         children: ":4200"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 590,
+                        lineNumber: 594,
                         columnNumber: 9
                     }, this),
                     ", and ",
@@ -1793,7 +1847,7 @@ function AnalyticsPage() {
                         children: "eth_blockNumber"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 590,
+                        lineNumber: 594,
                         columnNumber: 33
                     }, this),
                     " via",
@@ -1804,24 +1858,24 @@ function AnalyticsPage() {
                         children: "/api/rpc"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                        lineNumber: 591,
+                        lineNumber: 595,
                         columnNumber: 9
                     }, this),
                     "."
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-                lineNumber: 587,
+                lineNumber: 591,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/app/(app)/analytics/page.tsx",
-        lineNumber: 253,
+        lineNumber: 254,
         columnNumber: 5
     }, this);
 }
-_s(AnalyticsPage, "RRwp5ZQ/m0ieJ8CE73CwbXAXNvw=");
+_s(AnalyticsPage, "QYHMcBThDCC2J9c3NRW59pd69xY=");
 _c3 = AnalyticsPage;
 var _c, _c1, _c2, _c3;
 __turbopack_context__.k.register(_c, "StatCard");

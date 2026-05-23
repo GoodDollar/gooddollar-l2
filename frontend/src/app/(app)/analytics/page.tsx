@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import HedgeStatusCard from '@/components/HedgeStatusCard'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import HedgeStatusCard, { type HedgeStatusCardHandle } from '@/components/HedgeStatusCard'
 
 /**
  * Iter 27 — Internal analytics dashboard.
@@ -196,6 +196,7 @@ export default function AnalyticsPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [lastFetched, setLastFetched] = useState<number | null>(null)
   const [isRefetching, setIsRefetching] = useState(false)
+  const hedgeCardRef = useRef<HedgeStatusCardHandle>(null)
 
   const fetchOverview = useCallback(async (signal?: AbortSignal) => {
     setIsRefetching(true)
@@ -274,7 +275,10 @@ export default function AnalyticsPage() {
           </span>
           <button
             type="button"
-            onClick={() => void fetchOverview()}
+            onClick={() => {
+              void fetchOverview()
+              hedgeCardRef.current?.refresh()
+            }}
             disabled={isRefetching}
             className="text-xs px-3 py-1 rounded-md border border-dark-50 text-gray-300 hover:bg-dark-50 disabled:opacity-50"
           >
@@ -549,7 +553,7 @@ export default function AnalyticsPage() {
 
       {/* ── Demo Hedge Proof (lane 5) ────────────────────────────────────── */}
       <div className="mb-6">
-        <HedgeStatusCard />
+        <HedgeStatusCard ref={hedgeCardRef} />
       </div>
 
       {/* ── Protocols panel ──────────────────────────────────────────────── */}

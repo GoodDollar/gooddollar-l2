@@ -1,6 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+  type ReactNode,
+} from 'react'
 
 /**
  * Lane 5 — demo hedge proof surface.
@@ -151,12 +158,18 @@ function resolveMode(data: HedgeStatusResponse | null, error: string | null): He
   return 'unknown'
 }
 
-export default function HedgeStatusCard() {
+export interface HedgeStatusCardHandle {
+  refresh: () => void
+}
+
+const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCard(_, ref) {
   const [data, setData] = useState<HedgeStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchOnce = useCallback(async (signal?: AbortSignal) => {
+    setIsFetching(true)
     try {
       const res = await fetch('/api/hedge/status', { cache: 'no-store', signal })
       if (!res.ok && res.status !== 503) {
@@ -175,6 +188,7 @@ export default function HedgeStatusCard() {
       setError(err instanceof Error ? err.message : 'unknown')
     } finally {
       setLoading(false)
+      setIsFetching(false)
     }
   }, [])
 
@@ -187,6 +201,8 @@ export default function HedgeStatusCard() {
       clearInterval(t)
     }
   }, [fetchOnce])
+
+  useImperativeHandle(ref, () => ({ refresh: () => void fetchOnce() }), [fetchOnce])
 
   const receipts = data?.receipts ?? []
   const mode = resolveMode(data, error)
@@ -215,6 +231,17 @@ export default function HedgeStatusCard() {
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            data-testid="hedge-header-refresh-button"
+            onClick={() => void fetchOnce()}
+            disabled={isFetching}
+            aria-label="Refresh hedge status"
+            title="Refresh hedge status"
+            className="text-xs px-2 py-1 rounded-md border border-dark-50 text-gray-400 hover:text-white hover:bg-dark-50 disabled:opacity-50"
+          >
+            {isFetching ? '…' : '↻'}
+          </button>
           {data?.degraded?.proof && (
             <DegradedHint>proof: {data.degraded.proof}</DegradedHint>
           )}
@@ -255,9 +282,20 @@ export default function HedgeStatusCard() {
       {error && !data?.snapshot && (
         <div
           data-testid="hedge-status-error"
-          className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300"
+          className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300 flex items-center justify-between gap-3 flex-wrap"
         >
-          <span className="font-medium">Hedge engine unavailable:</span> {error}
+          <div>
+            <span className="font-medium">Hedge engine unavailable:</span> {error}
+          </div>
+          <button
+            type="button"
+            data-testid="hedge-retry-button"
+            onClick={() => void fetchOnce()}
+            disabled={isFetching}
+            className="text-xs px-2.5 py-1 rounded-md border border-red-500/40 text-red-200 hover:bg-red-500/10 disabled:opacity-50"
+          >
+            {isFetching ? 'Retrying…' : 'Retry'}
+          </button>
         </div>
       )}
 
@@ -375,7 +413,10 @@ export default function HedgeStatusCard() {
       </div>
     </section>
   )
-}
+})
+
+HedgeStatusCard.displayName = 'HedgeStatusCard'
+export default HedgeStatusCard
 
 function Stat({
   label,

@@ -1,6 +1,7 @@
+import { createRef } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import HedgeStatusCard from '../HedgeStatusCard';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import HedgeStatusCard, { type HedgeStatusCardHandle } from '../HedgeStatusCard';
 
 const BASE_RESPONSE = {
   snapshot: {
@@ -148,6 +149,70 @@ describe('HedgeStatusCard', () => {
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
     render(<HedgeStatusCard />);
     expect(screen.getByTestId('hedge-status-loading')).toBeInTheDocument();
+  });
+
+  it('renders a Retry button inside the error banner and refetches on click', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
+    render(<HedgeStatusCard />);
+    const retry = await screen.findByTestId('hedge-retry-button');
+    expect(retry).toBeInTheDocument();
+    const firstCallCount = fetchSpy.mock.calls.length;
+    fireEvent.click(retry);
+    await waitFor(() => {
+      expect(fetchSpy.mock.calls.length).toBeGreaterThan(firstCallCount);
+    });
+  });
+
+  it('shows "Retrying…" label and disables the Retry button while a refetch is in flight', async () => {
+    let resolveFn: (value: Response) => void = () => {};
+    const inFlight = new Promise<Response>((resolve) => { resolveFn = resolve; });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+      .mockReturnValueOnce(inFlight);
+    render(<HedgeStatusCard />);
+    const retry = await screen.findByTestId('hedge-retry-button');
+    expect(retry).toHaveTextContent('Retry');
+    fireEvent.click(retry);
+    await waitFor(() => {
+      expect(retry).toHaveTextContent('Retrying');
+    });
+    expect((retry as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => {
+      resolveFn(new Response(JSON.stringify(BASE_RESPONSE), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      await inFlight;
+    });
+    expect(fetchSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('renders a header refresh button that triggers a refetch on click', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(BASE_RESPONSE), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+    render(<HedgeStatusCard />);
+    const headerBtn = await screen.findByTestId('hedge-header-refresh-button');
+    expect(headerBtn).toBeInTheDocument();
+    const before = fetchSpy.mock.calls.length;
+    fireEvent.click(headerBtn);
+    await waitFor(() => {
+      expect(fetchSpy.mock.calls.length).toBeGreaterThan(before);
+    });
+  });
+
+  it('exposes an imperative refresh() method via ref', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(BASE_RESPONSE), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+    const ref = createRef<HedgeStatusCardHandle>();
+    render(<HedgeStatusCard ref={ref} />);
+    await screen.findByTestId('hedge-mode-badge');
+    const before = fetchSpy.mock.calls.length;
+    await act(async () => {
+      ref.current?.refresh();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(fetchSpy.mock.calls.length).toBeGreaterThan(before);
+    });
   });
 
   it('happy path: renders ENGINE: ok in green', async () => {
