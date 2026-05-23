@@ -1,5 +1,5 @@
 import path from 'path';
-import { EtoroClient, InvalidModeError } from '../index';
+import { EtoroClient, InvalidModeError, AccountUnavailableError } from '../index';
 import { MockEtoroSource } from '../mock-source';
 import { EtoroCredentials } from '../types';
 
@@ -149,6 +149,20 @@ describe('EtoroClient — audit-log path surfacing', () => {
       .filter((e) => e.action === 'mode-resolved');
     expect(lines).toHaveLength(1);
     expect(lines[0].resolvedAuditLogPath).toBe('/tmp/audit-resolved.log');
+  });
+});
+
+describe('EtoroClient — account mode-gate wiring', () => {
+  it('default mock-mode client refuses account.getBalance() with AccountUnavailableError', async () => {
+    const mockCreds: EtoroCredentials = {
+      apiKey: 'mock',
+      apiSecret: 'mock',
+      baseUrl: 'mock://etoro.local',
+      wsUrl: 'mock://etoro.local/ws',
+      mode: 'mock',
+    };
+    const client = new EtoroClient({ credentials: mockCreds });
+    await expect(client.account.getBalance()).rejects.toBeInstanceOf(AccountUnavailableError);
   });
 });
 

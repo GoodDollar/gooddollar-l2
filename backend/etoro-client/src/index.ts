@@ -157,7 +157,7 @@ export class EtoroClient {
       maxQuoteAgeMs: config?.notional?.maxQuoteAgeMs,
       maxReferenceDriftRatio: config?.notional?.maxReferenceDriftRatio,
     });
-    this.account = new AccountModule(this.http, this.audit);
+    this.account = new AccountModule(this.http, this.audit, this.credentials.mode);
   }
 
   async authenticate(): Promise<string> {
@@ -301,5 +301,6 @@ export {
   InvalidOrderError,
   InvalidCapConfigError,
   InvalidInstrumentOverridesError,
+  AccountUnavailableError,
 } from './errors';
 export type * from './types';

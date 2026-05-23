@@ -11,12 +11,19 @@ compatibility but **all new code must consume `@goodchain/etoro-client`**
 The SDK exposes exactly four modes. There is no `sandbox` or `real` mode
 under the lane-1 contract.
 
-| Mode            | Market data | Trading            | Credentials | Base URLs |
-|-----------------|-------------|--------------------|-------------|-----------|
-| `mock`          | Deterministic in-process fake (`MockEtoroSource`) | Disabled (throws `RealTradingDisabledError`) | None | `mock://etoro.local` |
-| `demo-readonly` | Live demo URLs | Disabled (throws `RealTradingDisabledError`) | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET` | `api.etoro.com/sapi/demo` |
-| `demo-trading`  | Live demo URLs | Enabled, capped by `DemoCapEnforcer` | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET` | `api.etoro.com/sapi/demo` |
-| `real-disabled` | Live demo URLs | Disabled by source-level fence | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET` | `api.etoro.com/sapi/demo` |
+| Mode            | Market data | Trading            | Account API | Credentials | Base URLs |
+|-----------------|-------------|--------------------|-------------|-------------|-----------|
+| `mock`          | Deterministic in-process fake (`MockEtoroSource`) | Disabled (throws `RealTradingDisabledError`) | Disabled (throws `AccountUnavailableError`) | None | `mock://etoro.local` |
+| `demo-readonly` | Live demo URLs | Disabled (throws `RealTradingDisabledError`) | Live | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET` | `api.etoro.com/sapi/demo` |
+| `demo-trading`  | Live demo URLs | Enabled, capped by `DemoCapEnforcer` | Live | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET` | `api.etoro.com/sapi/demo` |
+| `real-disabled` | Live demo URLs | Disabled by source-level fence | Live | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET` | `api.etoro.com/sapi/demo` |
+
+`AccountUnavailableError` is the read-side parallel of
+`RealTradingDisabledError`: every `account.*` method (`getBalance`,
+`getPositions`, `getPendingOrders`, `getPortfolioPnl`, `getMarginInfo`)
+refuses up-front when `ETORO_MODE=mock`, writes one `PRE-CHECK`
+audit line at `/mode-gate`, and never reaches the HTTP layer — so the
+old cryptic `AxiosError: Unsupported protocol mock:` is gone.
 
 `mock` is the default when `ETORO_MODE` is unset, so `npm test` and any
 boot-up smoke can run without secrets.

@@ -1,6 +1,7 @@
 import { AxiosInstance } from 'axios';
 import { AuditLogger } from './audit-logger';
-import { AccountBalance, Position } from './types';
+import { AccountUnavailableError } from './errors';
+import { AccountBalance, EtoroMode, Position } from './types';
 
 export interface PendingOrder {
   orderId: string;
@@ -31,155 +32,123 @@ export interface PortfolioPnl {
 export class AccountModule {
   private readonly http: AxiosInstance;
   private readonly audit: AuditLogger;
+  private readonly mode: EtoroMode;
 
-  constructor(http: AxiosInstance, audit: AuditLogger) {
+  constructor(http: AxiosInstance, audit: AuditLogger, mode: EtoroMode) {
     this.http = http;
     this.audit = audit;
+    this.mode = mode;
   }
 
   async getBalance(): Promise<AccountBalance> {
-    const start = Date.now();
-    const endpoint = '/account/balance';
-    try {
-      const response = await this.http.get(endpoint);
-      const data = asRecord(response.data);
-
+    return this.runRead('getBalance', '/account/balance', (data) => {
+      const record = asRecord(data);
       const balance: AccountBalance = {
-        totalEquity: pickNum(data, 'totalEquity', 'total_equity', 'equity'),
-        availableCash: pickNum(data, 'availableCash', 'available_cash', 'cash', 'available'),
-        usedMargin: pickNum(data, 'usedMargin', 'used_margin', 'margin'),
-        freeMargin: pickNum(data, 'freeMargin', 'free_margin'),
-        currency: pickStr(data, 'currency') || 'USD',
+        totalEquity: pickNum(record, 'totalEquity', 'total_equity', 'equity'),
+        availableCash: pickNum(record, 'availableCash', 'available_cash', 'cash', 'available'),
+        usedMargin: pickNum(record, 'usedMargin', 'used_margin', 'margin'),
+        freeMargin: pickNum(record, 'freeMargin', 'free_margin'),
+        currency: pickStr(record, 'currency') || 'USD',
       };
-
       if (balance.freeMargin === 0 && balance.totalEquity > 0) {
         balance.freeMargin = balance.totalEquity - balance.usedMargin;
       }
-
-      this.audit.log({
-        action: 'getBalance',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
       return balance;
-    } catch (error) {
-      this.logError('getBalance', 'GET', endpoint, start, error);
-      throw error;
-    }
+    });
   }
 
   async getPositions(): Promise<Position[]> {
-    const start = Date.now();
-    const endpoint = '/account/positions';
-    try {
-      const response = await this.http.get(endpoint);
-      const items = extractArray(response.data);
-      const positions = items.map((r) => normalizePosition(asRecord(r)));
-
-      this.audit.log({
-        action: 'getPositions',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
-      return positions;
-    } catch (error) {
-      this.logError('getPositions', 'GET', endpoint, start, error);
-      throw error;
-    }
+    return this.runRead('getPositions', '/account/positions', (data) =>
+      extractArray(data).map((r) => normalizePosition(asRecord(r))),
+    );
   }
 
   async getPendingOrders(): Promise<PendingOrder[]> {
-    const start = Date.now();
-    const endpoint = '/account/orders/pending';
-    try {
-      const response = await this.http.get(endpoint);
-      const items = extractArray(response.data);
-      const orders = items.map((r) => normalizePendingOrder(asRecord(r)));
-
-      this.audit.log({
-        action: 'getPendingOrders',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
-      return orders;
-    } catch (error) {
-      this.logError('getPendingOrders', 'GET', endpoint, start, error);
-      throw error;
-    }
+    return this.runRead('getPendingOrders', '/account/orders/pending', (data) =>
+      extractArray(data).map((r) => normalizePendingOrder(asRecord(r))),
+    );
   }
 
   async getPortfolioPnl(): Promise<PortfolioPnl> {
-    const start = Date.now();
-    const endpoint = '/account/pnl';
-    try {
-      const response = await this.http.get(endpoint);
-      const data = asRecord(response.data);
-
-      const pnl: PortfolioPnl = {
-        realized: pickNum(data, 'realized', 'realizedPnl', 'realized_pnl'),
-        unrealized: pickNum(data, 'unrealized', 'unrealizedPnl', 'unrealized_pnl'),
-        fees: pickNum(data, 'fees', 'totalFees', 'total_fees'),
-        overnightFees: pickNum(data, 'overnightFees', 'overnight_fees', 'swapFees'),
-        dividends: pickNum(data, 'dividends', 'totalDividends'),
+    return this.runRead('getPortfolioPnl', '/account/pnl', (data) => {
+      const record = asRecord(data);
+      return {
+        realized: pickNum(record, 'realized', 'realizedPnl', 'realized_pnl'),
+        unrealized: pickNum(record, 'unrealized', 'unrealizedPnl', 'unrealized_pnl'),
+        fees: pickNum(record, 'fees', 'totalFees', 'total_fees'),
+        overnightFees: pickNum(record, 'overnightFees', 'overnight_fees', 'swapFees'),
+        dividends: pickNum(record, 'dividends', 'totalDividends'),
       };
-
-      this.audit.log({
-        action: 'getPortfolioPnl',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
-      return pnl;
-    } catch (error) {
-      this.logError('getPortfolioPnl', 'GET', endpoint, start, error);
-      throw error;
-    }
+    });
   }
 
   async getMarginInfo(instrumentId: string): Promise<MarginInfo> {
+    return this.runRead('getMarginInfo', `/account/margin/${instrumentId}`, (data) => {
+      const record = asRecord(data);
+      return {
+        instrumentId,
+        symbol: pickStr(record, 'symbol', 'ticker') || '',
+        maxLeverage: pickNum(record, 'maxLeverage', 'max_leverage') || 1,
+        marginRequired: pickNum(record, 'marginRequired', 'margin_required', 'initialMargin'),
+        maintenanceMargin: pickNum(record, 'maintenanceMargin', 'maintenance_margin', 'mmr'),
+      };
+    });
+  }
+
+  /**
+   * Single read-pipeline that every public method funnels through. Order
+   * of operations is intentional:
+   *   1. Mode-gate refusal (PRE-CHECK audit + typed error, no HTTP).
+   *   2. HTTP call.
+   *   3. Success audit (GET/200 + duration).
+   *   4. On failure: error audit (GET/duration + masked error message),
+   *      rethrow.
+   */
+  private async runRead<T>(
+    action: string,
+    endpoint: string,
+    parse: (data: unknown) => T,
+  ): Promise<T> {
+    this.assertAccountReachable(action);
     const start = Date.now();
-    const endpoint = `/account/margin/${instrumentId}`;
     try {
       const response = await this.http.get(endpoint);
-      const data = asRecord(response.data);
-
-      const info: MarginInfo = {
-        instrumentId,
-        symbol: pickStr(data, 'symbol', 'ticker') || '',
-        maxLeverage: pickNum(data, 'maxLeverage', 'max_leverage') || 1,
-        marginRequired: pickNum(data, 'marginRequired', 'margin_required', 'initialMargin'),
-        maintenanceMargin: pickNum(data, 'maintenanceMargin', 'maintenance_margin', 'mmr'),
-      };
-
+      const value = parse(response.data);
       this.audit.log({
-        action: 'getMarginInfo',
+        action,
         method: 'GET',
         path: endpoint,
         statusCode: response.status,
         durationMs: Date.now() - start,
       });
-
-      return info;
+      return value;
     } catch (error) {
-      this.logError('getMarginInfo', 'GET', endpoint, start, error);
+      const msg = error instanceof Error ? error.message : String(error);
+      this.audit.log({
+        action,
+        method: 'GET',
+        path: endpoint,
+        durationMs: Date.now() - start,
+        error: msg,
+      });
       throw error;
     }
   }
 
-  private logError(action: string, method: string, path: string, start: number, error: unknown): void {
-    const msg = error instanceof Error ? error.message : String(error);
-    this.audit.log({ action, method, path, durationMs: Date.now() - start, error: msg });
+  private assertAccountReachable(action: string): void {
+    if (this.mode !== 'mock') return;
+    const error = new AccountUnavailableError({
+      action,
+      mode: this.mode,
+      reason: 'Account API has no demo HTTP base in mock mode',
+    });
+    this.audit.log({
+      action,
+      method: 'PRE-CHECK',
+      path: '/mode-gate',
+      error: `AccountUnavailableError: ${error.message}`,
+    });
+    throw error;
   }
 }
 

@@ -143,6 +143,35 @@ export class DemoCapExceededError extends Error {
 }
 
 /**
+ * Thrown by `AccountModule` read-only methods when the SDK is in a mode
+ * that has no demo HTTP base (i.e. `mock`). Parallel to
+ * `RealTradingDisabledError` for write paths: every public method on
+ * `AccountModule` checks the mode up-front and refuses with this typed
+ * error instead of letting axios surface `Unsupported protocol mock:`.
+ *
+ * `action`, `mode`, `reason` are readonly fields so consumers can pattern
+ * match without grepping the message string.
+ */
+export class AccountUnavailableError extends Error {
+  readonly action: string;
+  readonly mode: EtoroMode;
+  readonly reason: string;
+
+  constructor(input: { action: string; mode: EtoroMode; reason: string }) {
+    super(
+      `Account API unavailable in mode "${input.mode}". ` +
+      `Action "${input.action}" refused: ${input.reason}. ` +
+      `Set ETORO_MODE to one of: demo-readonly, demo-trading, real-disabled, ` +
+      `and provide ETORO_DEMO_KEY / ETORO_DEMO_SECRET.`,
+    );
+    this.name = 'AccountUnavailableError';
+    this.action = input.action;
+    this.mode = input.mode;
+    this.reason = input.reason;
+  }
+}
+
+/**
  * Thrown by `TradingModule` mutating methods when the caller hands in an
  * obviously invalid request (NaN amount, empty symbol, invalid side, etc.).
  * Caught and audit-logged as a PRE-CHECK entry; no HTTP call is ever made.

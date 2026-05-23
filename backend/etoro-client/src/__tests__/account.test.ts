@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { AccountModule } from '../account';
 import { AuditLogger } from '../audit-logger';
+import { AccountUnavailableError } from '../errors';
+import { AuditLogEntry, EtoroMode } from '../types';
 
 jest.mock('fs', () => ({
   appendFileSync: jest.fn(),
@@ -14,6 +16,17 @@ function mockAudit() {
   return new AuditLogger('demo-readonly', '/dev/null');
 }
 
+function recordingAudit(mode: EtoroMode = 'mock'): { audit: AuditLogger; entries: AuditLogEntry[] } {
+  const entries: AuditLogEntry[] = [];
+  const audit = new AuditLogger(mode, {
+    logPath: '/dev/null',
+    appendImpl: (_p, line) => { entries.push(JSON.parse(line) as AuditLogEntry); },
+    mkdirImpl: () => undefined,
+    consoleErrorImpl: () => undefined,
+  });
+  return { audit, entries };
+}
+
 describe('AccountModule', () => {
   let http: ReturnType<typeof mockHttp>;
   let audit: ReturnType<typeof mockAudit>;
@@ -22,7 +35,7 @@ describe('AccountModule', () => {
   beforeEach(() => {
     http = mockHttp();
     audit = mockAudit();
-    account = new AccountModule(http, audit);
+    account = new AccountModule(http, audit, 'demo-readonly');
   });
 
   describe('getBalance', () => {
@@ -167,5 +180,60 @@ describe('AccountModule', () => {
       expect(margin.marginRequired).toBe(4000);
       expect(margin.maintenanceMargin).toBe(2000);
     });
+  });
+});
+
+describe('AccountModule — mode-gate', () => {
+  const METHOD_CASES: Array<{
+    action: string;
+    invoke: (m: AccountModule) => Promise<unknown>;
+  }> = [
+    { action: 'getBalance',       invoke: (m) => m.getBalance() },
+    { action: 'getPositions',     invoke: (m) => m.getPositions() },
+    { action: 'getPendingOrders', invoke: (m) => m.getPendingOrders() },
+    { action: 'getPortfolioPnl',  invoke: (m) => m.getPortfolioPnl() },
+    { action: 'getMarginInfo',    invoke: (m) => m.getMarginInfo('AAPL-US') },
+  ];
+
+  it.each(METHOD_CASES)('refuses %s in mock mode without any HTTP call', async ({ action, invoke }) => {
+    const get = jest.fn();
+    const http = { get } as unknown as ReturnType<typeof mockHttp>;
+    const { audit, entries } = recordingAudit('mock');
+    const account = new AccountModule(http, audit, 'mock');
+
+    await expect(invoke(account)).rejects.toBeInstanceOf(AccountUnavailableError);
+    expect(get).not.toHaveBeenCalled();
+
+    const gateLines = entries.filter((e) => e.method === 'PRE-CHECK' && e.path === '/mode-gate');
+    expect(gateLines).toHaveLength(1);
+    expect(gateLines[0].action).toBe(action);
+    expect(gateLines[0].error).toMatch(/^AccountUnavailableError:/);
+  });
+
+  it.each(['demo-readonly', 'demo-trading', 'real-disabled'] as const)(
+    'lets %s proceed to HTTP (gate is mock-only)',
+    async (mode) => {
+      const get = jest.fn().mockResolvedValue({
+        status: 200,
+        data: { totalEquity: 100, availableCash: 50, usedMargin: 0, freeMargin: 50, currency: 'USD' },
+      });
+      const http = { get } as unknown as ReturnType<typeof mockHttp>;
+      const { audit } = recordingAudit(mode);
+      const account = new AccountModule(http, audit, mode);
+
+      const balance = await account.getBalance();
+      expect(balance.totalEquity).toBe(100);
+      expect(get).toHaveBeenCalledWith('/account/balance');
+    },
+  );
+
+  it('carries action/mode/reason as readonly fields on the typed error', () => {
+    const err = new AccountUnavailableError({ action: 'getBalance', mode: 'mock', reason: 'no demo URL' });
+    expect(err.name).toBe('AccountUnavailableError');
+    expect(err.action).toBe('getBalance');
+    expect(err.mode).toBe('mock');
+    expect(err.reason).toBe('no demo URL');
+    expect(err.message).toContain('Account API unavailable in mode "mock"');
+    expect(err.message).toContain('ETORO_DEMO_KEY');
   });
 });
