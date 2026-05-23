@@ -134,12 +134,16 @@ function pickQuoteRow(raw: unknown): QuoteStatus | null {
   if (!raw || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
   if (typeof r.symbol !== 'string') return null
-  return {
+  const out: QuoteStatus = {
     symbol: r.symbol,
     lastUpdateMs: typeof r.lastUpdateMs === 'number' ? r.lastUpdateMs : 0,
     sessionState: typeof r.sessionState === 'string' ? r.sessionState : 'unknown',
     confidence: typeof r.confidence === 'number' ? r.confidence : 0,
   }
+  if (typeof r.sessionAsOfMs === 'number' && Number.isFinite(r.sessionAsOfMs)) {
+    out.sessionAsOfMs = r.sessionAsOfMs
+  }
+  return out
 }
 
 function deriveQuoteFallback(data: unknown): FallbackQuoteResult {
@@ -260,6 +264,15 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     }
   }, [useStocksFallback, useQuoteFallback, status, error, retryCount, clearTimers])
 
+  // Detail variant is symbol-scoped (per-quote rail), listing variant is
+  // not. The footer reads chain/proof from `useOracleProvenance` directly.
+  const footerNode = symbol
+    ? <OracleBadgeFooter mode="detail" symbol={symbol} cached={false} />
+    : <OracleBadgeFooter mode="listing" cached={false} />
+  const cachedFooterNode = symbol
+    ? <OracleBadgeFooter mode="detail" symbol={symbol} cached={true} />
+    : <OracleBadgeFooter mode="listing" cached={true} />
+
   if (error || !status) {
     if (useStocksFallback) {
       if (fallbackLoading || !fallbackReady) {
@@ -288,30 +301,41 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         if (useQuoteFallback && symbol) {
           const quoteStatus = fallbackQuote.quotesBySymbol[symbol]
           if (quoteStatus) {
-            return renderDetailRow(quoteStatus)
+            return (
+              <>
+                {renderDetailRow(quoteStatus)}
+                {cachedFooterNode}
+              </>
+            )
           }
           return (
-            <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
-              <span className={STATUS_DOT_LIVE} />
-              <span>Live</span>
-              <span className="text-gray-600">·</span>
-              <span>no {symbol} feed yet</span>
-            </div>
+            <>
+              <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
+                <span className={STATUS_DOT_LIVE} />
+                <span>Live</span>
+                <span className="text-gray-600">·</span>
+                <span>no {symbol} feed yet</span>
+              </div>
+              {cachedFooterNode}
+            </>
           )
         }
         return (
-          <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
-            <span className={STATUS_DOT_LIVE} />
-            <span>Live</span>
-            {fallbackState.ageMs !== null && Number.isFinite(fallbackState.ageMs) && (
-              <>
-                <span className="text-gray-600">·</span>
-                <span>Updated {formatAge(fallbackState.ageMs)}</span>
-              </>
-            )}
-            <span className="text-gray-600">·</span>
-            <span>{SOURCE_LABEL}</span>
-          </div>
+          <>
+            <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
+              <span className={STATUS_DOT_LIVE} />
+              <span>Live</span>
+              {fallbackState.ageMs !== null && Number.isFinite(fallbackState.ageMs) && (
+                <>
+                  <span className="text-gray-600">·</span>
+                  <span>Updated {formatAge(fallbackState.ageMs)}</span>
+                </>
+              )}
+              <span className="text-gray-600">·</span>
+              <span>{SOURCE_LABEL}</span>
+            </div>
+            {cachedFooterNode}
+          </>
         )
       }
       if (fallbackState.health === 'degraded') {
@@ -344,7 +368,12 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       )
     }
 
-    return renderDetailRow(quoteStatus)
+    return (
+      <>
+        {renderDetailRow(quoteStatus)}
+        {footerNode}
+      </>
+    )
   }
 
   const dominantSession = getDominantSession(quotes)
@@ -357,6 +386,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       : STATUS_DOT_RED
 
   return (
+    <>
     <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
       <span className={dotClass} />
       <span>{freshCount}/{totalCount} feeds</span>
@@ -375,6 +405,8 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         </>
       )}
     </div>
+    {footerNode}
+    </>
   )
 }
 

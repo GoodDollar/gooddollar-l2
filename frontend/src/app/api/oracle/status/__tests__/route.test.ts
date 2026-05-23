@@ -562,6 +562,85 @@ describe('GET /api/oracle/status — chain info (task 0011)', () => {
   })
 })
 
+describe('GET /api/oracle/status — provenance envelope (label + sessionAsOfMs)', () => {
+  it('exposes priceService.label from NEXT_PUBLIC_PRICE_SOURCE_LABEL env', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const prev = process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL
+    process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL = 'eToro demo'
+    try {
+      const res = await GET(stubReq)
+      const data = await res.json()
+      expect(data.upstreams.priceService.label).toBe('eToro demo')
+    } finally {
+      if (prev === undefined) delete process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL
+      else process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL = prev
+    }
+  })
+
+  it('defaults priceService.label to "mock" when env is unset', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const prev = process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL
+    delete process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL
+    try {
+      const res = await GET(stubReq)
+      const data = await res.json()
+      expect(data.upstreams.priceService.label).toBe('mock')
+    } finally {
+      if (prev !== undefined) process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL = prev
+    }
+  })
+
+  it('synthesizes sessionAsOfMs for a closed-session quote when upstream omits it', async () => {
+    const closedQuote = {
+      ...quotesBody,
+      quotes: [{ symbol: 'AAPL', lastUpdateMs: 1200, sessionState: 'closed', confidence: 82 }],
+    }
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(closedQuote), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const res = await GET(stubReq)
+    const data = await res.json()
+    const q = data.quotes[0]
+    expect(typeof q.sessionAsOfMs).toBe('number')
+    expect(q.sessionAsOfMs).toBeGreaterThan(0)
+  })
+
+  it('forwards upstream sessionAsOfMs untouched when present', async () => {
+    const upstreamAnchor = Date.UTC(2026, 4, 15, 20, 0)
+    const closedQuote = {
+      ...quotesBody,
+      quotes: [{
+        symbol: 'AAPL', lastUpdateMs: 1200, sessionState: 'closed', confidence: 82,
+        sessionAsOfMs: upstreamAnchor,
+      }],
+    }
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(closedQuote), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.quotes[0].sessionAsOfMs).toBe(upstreamAnchor)
+  })
+
+  it('does not synthesize sessionAsOfMs for open sessions', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.quotes[0].sessionAsOfMs).toBeUndefined()
+  })
+})
+
 describe('redactUpstreamReason', () => {
   it('strips long hex sequences (signer keys, addresses)', () => {
     const r = redactUpstreamReason(
