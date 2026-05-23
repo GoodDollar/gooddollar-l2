@@ -36,8 +36,9 @@ test.describe('Home / Swap page', () => {
 
   test('flip button swaps input and output tokens', async ({ page }) => {
     const swapCard = page.locator('#swap-card')
-    // Read initial token labels from token selectors
+    // Wait for token selectors to load before reading them
     const selectors = swapCard.locator('button').filter({ hasText: /ETH|G\$|USDC|BTC/ })
+    await selectors.first().waitFor({ state: 'visible', timeout: 10_000 })
     const firstCount = await selectors.count()
     expect(firstCount).toBeGreaterThan(0)
 

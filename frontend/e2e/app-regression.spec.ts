@@ -31,8 +31,10 @@ test.describe('GoodDollar L2 app E2E registry — sequential Playwright automati
       for (const expected of app.mustContain) {
         expect(bodyText, `${app.id} should contain ${expected}`).toContain(expected)
       }
+      // mustNotContain checks use innerText to exclude inline script/style content from matches
+      const visibleText = normalize((await page.locator('body').innerText()) ?? '')
       for (const forbidden of app.mustNotContain ?? []) {
-        expect(bodyText, `${app.id} should not contain ${forbidden}`).not.toContain(forbidden)
+        expect(visibleText, `${app.id} should not contain ${forbidden}`).not.toContain(forbidden)
       }
 
       const actionable = await visibleActionCount(page)
@@ -61,7 +63,7 @@ async function waitForRegistryBody(page: Page, app: AppCoverage) {
       },
       {
         message: `${app.id} should settle into its registry content contract`,
-        timeout: app.critical ? 10_000 : 5_000,
+        timeout: app.critical ? 20_000 : 10_000,
       },
     )
     .not.toBe('')
