@@ -203,7 +203,10 @@ describe('LastDemoHedgePanel', () => {
     expect(screen.getByText('$250.00')).toBeInTheDocument()
     expect(screen.getByText(/DRY-RUN/)).toBeInTheDocument()
     expect(screen.queryByText(/Below-threshold tick/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/qa-proof\/hedges\/latest\.json/)).toBeInTheDocument()
+    // #0045: the source path now appears only in the header rail (truncated
+    // by shortenSourcePath); the bottom-of-card SourceFooter is gone.
+    const headerMeta = screen.getByTestId('panel-header-meta')
+    expect(headerMeta.textContent).toContain('hedges/latest.json')
   })
 
   it('renders a live demo hedge with the side badge but no DRY-RUN chip', async () => {
@@ -306,6 +309,36 @@ describe('LastDemoHedgePanel', () => {
     expect(cls).toMatch(/\btext-xs\b/)
     expect(cls).toMatch(/\btext-gray-100\b/)
     expect(cls).not.toMatch(/\btext-sm\b/)
+  })
+
+  // #0045 — the LAST DEMO HEDGE panel previously rendered the proof
+  // artifact's source path twice: once in the header rail (truncated)
+  // and once in a bottom-of-card `source: …` caption. After #0042
+  // promoted source metadata into the panel header rail for every panel
+  // family, the footer became a redundant duplicate. Delete it; the
+  // header rail's `title=` tooltip remains the path to the full string.
+  it('renders the source path once — in the header rail only, with no SourceFooter caption (#0045)', async () => {
+    mockFetchOk(envelope(PROOF_NO_OP))
+    render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+    const headerMeta = await screen.findByTestId('panel-header-meta')
+    expect(headerMeta.textContent).toContain('hedges/latest.json')
+
+    // No bottom-of-card "source: qa-proof/…" caption survives.
+    expect(screen.queryByText(/source:\s*qa-proof/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^source:/i)).not.toBeInTheDocument()
+    // The full path is reachable only via the rail's `title=` tooltip,
+    // not rendered as visible text anywhere.
+    const fullPathOccurrences = Array.from(
+      document.querySelectorAll('*'),
+    ).filter((el) => {
+      const ownText = Array.from(el.childNodes)
+        .filter((n) => n.nodeType === Node.TEXT_NODE)
+        .map((n) => n.textContent ?? '')
+        .join('')
+      return ownText.includes('qa-proof/hedges/latest.json')
+    })
+    expect(fullPathOccurrences).toHaveLength(0)
   })
 
   it('renders the missing-proof state on a 404', async () => {

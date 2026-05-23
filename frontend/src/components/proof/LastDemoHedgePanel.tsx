@@ -251,22 +251,20 @@ export function LastDemoHedgePanel({
         </div>
       )}
 
-      {state.status === 'ok' && (
-        <ProofCard proof={state.data.proof} source={state.data.source} />
-      )}
+      {state.status === 'ok' && <ProofCard proof={state.data.proof} />}
       </div>
     </section>
   )
 }
 
-function ProofCard({ proof, source }: { proof: HedgeProof; source: string }) {
+function ProofCard({ proof }: { proof: HedgeProof }) {
   if (isNoOpProof(proof)) {
-    return <NoOpCard proof={proof} source={source} />
+    return <NoOpCard proof={proof} />
   }
-  return <HedgeCard proof={proof} source={source} />
+  return <HedgeCard proof={proof} />
 }
 
-function HedgeCard({ proof, source }: { proof: HedgeProof; source: string }) {
+function HedgeCard({ proof }: { proof: HedgeProof }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
@@ -291,13 +289,11 @@ function HedgeCard({ proof, source }: { proof: HedgeProof; source: string }) {
           block #{proof.beforeExposure.blockNumber} → #{proof.afterExposure.blockNumber}
         </div>
       </div>
-
-      <SourceFooter source={source} />
     </div>
   )
 }
 
-function NoOpCard({ proof, source }: { proof: HedgeProof; source: string }) {
+function NoOpCard({ proof }: { proof: HedgeProof }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
@@ -321,8 +317,6 @@ function NoOpCard({ proof, source }: { proof: HedgeProof; source: string }) {
         <span className="font-mono text-gray-200">{formatUsd(proof.beforeExposure.netDelta)}</span>{' '}
         · block #{proof.beforeExposure.blockNumber}
       </div>
-
-      <SourceFooter source={source} />
     </div>
   )
 }
@@ -391,12 +385,6 @@ function CopyRunIdButton({ raw }: { raw: string }) {
     >
       {copied ? 'copied' : 'copy'}
     </button>
-  )
-}
-
-function SourceFooter({ source }: { source: string }) {
-  return (
-    <div className="text-[10px] text-gray-600 break-all">source: <code>{source}</code></div>
   )
 }
 
