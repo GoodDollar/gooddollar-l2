@@ -109,6 +109,17 @@ export function readPackageVersion(
 const PACKAGE_VERSION = readPackageVersion();
 
 /**
+ * Pair every absolute unix-ms timestamp with its ISO 8601 companion so
+ * a fresh user reading `1779547903356` doesn't have to reach for
+ * `date -d @<secs>` (and remember to divide by 1000) to know when
+ * something happened. Null-safe so handlers can pass nullable
+ * timestamps (`firstAt`/`lastAt`) directly without conditionals.
+ */
+export function isoFromMs(ms: number | null): string | null {
+  return ms === null ? null : new Date(ms).toISOString();
+}
+
+/**
  * Single source of truth for every endpoint the service exposes. The
  * discovery payload (`GET /`), the 404 hint list, and the 405 method
  * dispatch all read off this one array — there's no second place to
@@ -309,6 +320,7 @@ export function createServer(
   });
 
   app.get('/', (req: Request, res: Response) => {
+    const now = Date.now();
     const body: Record<string, unknown> = {
       service: 'price-service',
       description: SERVICE_DESCRIPTION,
@@ -322,18 +334,21 @@ export function createServer(
     if (ws) body.websocket = ws;
     const { degraded } = computeDegraded(cache, sourceStatusGetter);
     body.status = degraded ? 'degraded' : 'ok';
-    body.timestamp = Date.now();
+    body.timestamp = now;
+    body.timestampIso = isoFromMs(now)!;
     res.json(body);
   });
 
   app.get('/health', (req: Request, res: Response) => {
+    const now = Date.now();
     const fresh = cache.getFresh();
     const body: Record<string, unknown> = {
       freshQuotes: fresh.length,
       totalCached: cache.size,
       configuredSymbols: cfg.symbols.length,
       symbols: cfg.symbols,
-      timestamp: Date.now(),
+      timestamp: now,
+      timestampIso: isoFromMs(now)!,
     };
     if (statsGetter) {
       const stats = statsGetter();
@@ -349,18 +364,20 @@ export function createServer(
     if (bootAtGetter) {
       const bootAt = bootAtGetter();
       body.bootAtMs = bootAt;
-      body.uptimeMs = Math.max(0, Date.now() - bootAt);
+      body.bootAtIso = isoFromMs(bootAt)!;
+      body.uptimeMs = Math.max(0, now - bootAt);
     }
     res.status(degraded ? 503 : 200).json(body);
   });
 
   app.get('/quotes', (_req: Request, res: Response) => {
+    const now = Date.now();
     const all = cache.getAll();
     const quotes: Record<string, unknown> = {};
     for (const [symbol, entry] of all) {
       quotes[symbol] = {
         ...entry.quote,
-        cacheAge: Date.now() - entry.cachedAt,
+        cacheAge: now - entry.cachedAt,
         filterAccepted: entry.filterResult.accepted,
         filterReason: entry.filterResult.reason,
       };
@@ -384,11 +401,13 @@ export function createServer(
     } else {
       body.quotes = quotes;
     }
-    body.timestamp = Date.now();
+    body.timestamp = now;
+    body.timestampIso = isoFromMs(now)!;
     res.json(body);
   });
 
   app.get('/quotes/:symbol', (req: Request, res: Response) => {
+    const now = Date.now();
     const result = normalizeSymbol(req.params.symbol);
     if (!result.ok) {
       // Bound the reflected path so a 5KB symbol can't yield a 5KB body.
@@ -401,7 +420,8 @@ export function createServer(
         message: 'symbol must match /^[A-Z0-9._-]{1,16}$/',
         path,
         method: req.method,
-        timestamp: Date.now(),
+        timestamp: now,
+        timestampIso: isoFromMs(now)!,
       });
       return;
     }
@@ -419,7 +439,8 @@ export function createServer(
         configured: false,
       };
       if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
-      body.timestamp = Date.now();
+      body.timestamp = now;
+      body.timestampIso = isoFromMs(now)!;
       res.status(404).json(body);
       return;
     }
@@ -434,13 +455,14 @@ export function createServer(
         configured: true,
       };
       if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
-      body.timestamp = Date.now();
+      body.timestamp = now;
+      body.timestampIso = isoFromMs(now)!;
       res.status(404).json(body);
       return;
     }
     const body: Record<string, unknown> = {
       ...entry.quote,
-      cacheAge: Date.now() - entry.cachedAt,
+      cacheAge: now - entry.cachedAt,
       filterAccepted: entry.filterResult.accepted,
       filterReason: entry.filterResult.reason,
     };
@@ -449,14 +471,17 @@ export function createServer(
   });
 
   app.get('/quotes/fresh/all', (_req: Request, res: Response) => {
+    const now = Date.now();
     const fresh = cache.getFresh();
     const body: Record<string, unknown> = { quotes: fresh, count: fresh.length };
     if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
-    body.timestamp = Date.now();
+    body.timestamp = now;
+    body.timestampIso = isoFromMs(now)!;
     res.json(body);
   });
 
   app.get('/audit/stats', (_req: Request, res: Response) => {
+    const now = Date.now();
     const stats: IngestStats = statsGetter
       ? statsGetter()
       : {
@@ -473,15 +498,19 @@ export function createServer(
       byReason: stats.byReason,
       acceptanceRatio: computeAcceptanceRatio(stats),
       firstAt: stats.firstAt,
+      firstAtIso: isoFromMs(stats.firstAt),
       lastAt: stats.lastAt,
+      lastAtIso: isoFromMs(stats.lastAt),
       writeErrors: stats.writeErrors,
     };
     if (bootAtGetter) {
       const bootAt = bootAtGetter();
       body.bootAtMs = bootAt;
-      body.uptimeMs = Math.max(0, Date.now() - bootAt);
+      body.bootAtIso = isoFromMs(bootAt)!;
+      body.uptimeMs = Math.max(0, now - bootAt);
     }
-    body.timestamp = Date.now();
+    body.timestamp = now;
+    body.timestampIso = isoFromMs(now)!;
     res.json(body);
   });
 
@@ -515,12 +544,14 @@ export function createServer(
       totalCount: all.size,
       quotes,
       timestamp: now,
+      timestampIso: isoFromMs(now)!,
     };
     if (src) responseBody.source = src;
     res.status(degraded ? 503 : 200).json(responseBody);
   });
 
   app.all('*', (req: Request, res: Response) => {
+    const now = Date.now();
     const entry = findCatalogEntry(req.path);
     if (entry && !entry.methods.includes(req.method)) {
       // OPTIONS is appended at the call site (rather than stored in the
@@ -533,7 +564,8 @@ export function createServer(
         allowed,
         path: req.path,
         method: req.method,
-        timestamp: Date.now(),
+        timestamp: now,
+        timestampIso: isoFromMs(now)!,
       });
       return;
     }
@@ -552,11 +584,13 @@ export function createServer(
       path: req.path,
       method: req.method,
       endpoints,
-      timestamp: Date.now(),
+      timestamp: now,
+      timestampIso: isoFromMs(now)!,
     });
   });
 
   app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+    const now = Date.now();
     const e = (err && typeof err === 'object' ? err : {}) as {
       status?: unknown;
       expose?: unknown;
@@ -576,7 +610,8 @@ export function createServer(
       message,
       path: req.path,
       method: req.method,
-      timestamp: Date.now(),
+      timestamp: now,
+      timestampIso: isoFromMs(now)!,
     });
   });
 

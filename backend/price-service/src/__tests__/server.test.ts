@@ -550,7 +550,10 @@ describe('REST Server — GET /quotes/:symbol shape validation', () => {
     const body = JSON.parse(text) as Record<string, unknown>;
     expect(res.status).toBe(400);
     expect(body.error).toBe('invalid-symbol');
-    expect(text.length).toBeLessThan(200);
+    // Bound is large enough to fit the reflected (truncated) path plus
+    // the new timestampIso companion (~40 bytes). What matters is that
+    // it does NOT scale with the 5000-char input.
+    expect(text.length).toBeLessThan(260);
   });
 
   it('rejects NUL byte in symbol with no NUL in body', async () => {
