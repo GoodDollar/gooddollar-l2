@@ -2577,6 +2577,11 @@ function PipelineStatusBanner({ priceServiceUrl = __TURBOPACK__imported__module_
         quotes: 'unknown',
         hedgeProof: 'unknown'
     });
+    const [pollSeq, setPollSeq] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
+    const [lastFullyAliveAt, setLastFullyAliveAt] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [now, setNow] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
+        "PipelineStatusBanner.useState": ()=>Date.now()
+    }["PipelineStatusBanner.useState"]);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "PipelineStatusBanner.useEffect": ()=>{
             let cancelled = false;
@@ -2619,6 +2624,9 @@ function PipelineStatusBanner({ priceServiceUrl = __TURBOPACK__imported__module_
                         quotes: quotesResult.status === 'fulfilled' ? quotesResult.value : 'degraded',
                         hedgeProof: hedgeProofResult.status === 'fulfilled' ? hedgeProofResult.value : 'degraded'
                     });
+                    setPollSeq({
+                        "PipelineStatusBanner.useEffect.tick": (s)=>s + 1
+                    }["PipelineStatusBanner.useEffect.tick"]);
                 }
             }["PipelineStatusBanner.useEffect.tick"];
             void tick();
@@ -2659,22 +2667,53 @@ function PipelineStatusBanner({ priceServiceUrl = __TURBOPACK__imported__module_
         hedgeProof: offChain.hedgeProof
     };
     const verdict = deriveVerdict(axes);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "PipelineStatusBanner.useEffect": ()=>{
+            if (axes.quotes === 'healthy' && axes.onChain === 'healthy' && axes.hedgeProof === 'healthy') {
+                const t = Date.now();
+                setLastFullyAliveAt(t);
+                setNow(t);
+            }
+        }
+    }["PipelineStatusBanner.useEffect"], [
+        pollSeq,
+        axes.quotes,
+        axes.onChain,
+        axes.hedgeProof
+    ]);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "PipelineStatusBanner.useEffect": ()=>{
+            if (lastFullyAliveAt === null) return;
+            if (verdict === 'green' || verdict === 'loading') return;
+            const id = setInterval({
+                "PipelineStatusBanner.useEffect.id": ()=>setNow(Date.now())
+            }["PipelineStatusBanner.useEffect.id"], 1_000);
+            return ({
+                "PipelineStatusBanner.useEffect": ()=>clearInterval(id)
+            })["PipelineStatusBanner.useEffect"];
+        }
+    }["PipelineStatusBanner.useEffect"], [
+        lastFullyAliveAt,
+        verdict
+    ]);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(PipelineStatusView, {
         axes: axes,
-        verdict: verdict
+        verdict: verdict,
+        lastFullyAliveAt: lastFullyAliveAt,
+        now: now
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-        lineNumber: 176,
+        lineNumber: 199,
         columnNumber: 5
     }, this);
 }
-_s(PipelineStatusBanner, "9Co5wrIDq4RDSvm11Evd/7VAdv4=", false, function() {
+_s(PipelineStatusBanner, "i8X/XZr4qo+gaYw7bBYxcN59GVg=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$wagmi$2f$dist$2f$esm$2f$hooks$2f$useReadContract$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useReadContract"]
     ];
 });
 _c = PipelineStatusBanner;
-function PipelineStatusView({ axes, verdict }) {
+function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }) {
     if (verdict === 'loading') {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
             "aria-label": "Pipeline status",
@@ -2687,12 +2726,12 @@ function PipelineStatusView({ axes, verdict }) {
                 className: "h-5 w-56 animate-pulse rounded bg-white/10"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                lineNumber: 194,
+                lineNumber: 224,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-            lineNumber: 188,
+            lineNumber: 218,
             columnNumber: 7
         }, this);
     }
@@ -2702,44 +2741,55 @@ function PipelineStatusView({ axes, verdict }) {
             "data-testid": "pipeline-status-banner",
             "data-status": "green",
             className: "rounded-2xl border border-green-500/30 bg-green-500/5 px-4 py-3",
-            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "flex flex-wrap items-center gap-3 text-sm",
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-green-300",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                className: "inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse",
-                                "aria-hidden": true
-                            }, void 0, false, {
-                                fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                lineNumber: 213,
-                                columnNumber: 13
-                            }, this),
-                            "Alive"
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                        lineNumber: 212,
-                        columnNumber: 11
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "text-xs text-gray-300",
-                        children: "Live quotes fresh · on-chain oracle returning data · hedge-proof artifact present"
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                        lineNumber: 216,
-                        columnNumber: 11
-                    }, this)
-                ]
-            }, void 0, true, {
-                fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                lineNumber: 211,
-                columnNumber: 9
-            }, this)
-        }, void 0, false, {
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "flex flex-wrap items-center gap-3 text-sm",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                            className: "inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-green-300",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse",
+                                    "aria-hidden": true
+                                }, void 0, false, {
+                                    fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                                    lineNumber: 243,
+                                    columnNumber: 13
+                                }, this),
+                                "Alive"
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                            lineNumber: 242,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                            className: "text-xs text-gray-300",
+                            children: "Live quotes fresh · on-chain oracle returning data · hedge-proof artifact present"
+                        }, void 0, false, {
+                            fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                            lineNumber: 246,
+                            columnNumber: 11
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                    lineNumber: 241,
+                    columnNumber: 9
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(LastAliveLine, {
+                    verdict: verdict,
+                    lastFullyAliveAt: lastFullyAliveAt,
+                    now: now
+                }, void 0, false, {
+                    fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                    lineNumber: 250,
+                    columnNumber: 9
+                }, this)
+            ]
+        }, void 0, true, {
             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-            lineNumber: 205,
+            lineNumber: 235,
             columnNumber: 7
         }, this);
     }
@@ -2764,14 +2814,14 @@ function PipelineStatusView({ axes, verdict }) {
                                         "aria-hidden": true
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                        lineNumber: 239,
+                                        lineNumber: 270,
                                         columnNumber: 15
                                     }, this),
                                     "Cold"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                lineNumber: 238,
+                                lineNumber: 269,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2779,13 +2829,13 @@ function PipelineStatusView({ axes, verdict }) {
                                 children: "All upstreams unreachable; this release is not verifiable."
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                lineNumber: 242,
+                                lineNumber: 273,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                        lineNumber: 237,
+                        lineNumber: 268,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ReasonChips, {
@@ -2793,18 +2843,27 @@ function PipelineStatusView({ axes, verdict }) {
                         tone: "red"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                        lineNumber: 246,
+                        lineNumber: 277,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(LastAliveLine, {
+                        verdict: verdict,
+                        lastFullyAliveAt: lastFullyAliveAt,
+                        now: now
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                        lineNumber: 278,
                         columnNumber: 11
                     }, this)
                 ]
             }, "red", true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                lineNumber: 236,
+                lineNumber: 267,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-            lineNumber: 230,
+            lineNumber: 261,
             columnNumber: 7
         }, this);
     }
@@ -2827,14 +2886,14 @@ function PipelineStatusView({ axes, verdict }) {
                                     "aria-hidden": true
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                                    lineNumber: 262,
+                                    lineNumber: 294,
                                     columnNumber: 13
                                 }, this),
                                 "Degraded"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 261,
+                            lineNumber: 293,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2842,13 +2901,13 @@ function PipelineStatusView({ axes, verdict }) {
                             children: "Pipeline partially alive — investigate the listed axes before shipping."
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 265,
+                            lineNumber: 297,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 260,
+                    lineNumber: 292,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ReasonChips, {
@@ -2856,22 +2915,84 @@ function PipelineStatusView({ axes, verdict }) {
                     tone: "amber"
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 269,
+                    lineNumber: 301,
+                    columnNumber: 9
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(LastAliveLine, {
+                    verdict: verdict,
+                    lastFullyAliveAt: lastFullyAliveAt,
+                    now: now
+                }, void 0, false, {
+                    fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                    lineNumber: 302,
                     columnNumber: 9
                 }, this)
             ]
         }, "amber", true, {
             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-            lineNumber: 259,
+            lineNumber: 291,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-        lineNumber: 253,
+        lineNumber: 285,
         columnNumber: 5
     }, this);
 }
 _c1 = PipelineStatusView;
+const LAST_ALIVE_TONE_CLASS = {
+    amber: 'mt-1 text-[11px] text-yellow-100/70',
+    red: 'mt-1 text-[11px] text-red-200/70'
+};
+function LastAliveLine({ verdict, lastFullyAliveAt, now }) {
+    switch(verdict){
+        case 'loading':
+            return null;
+        case 'green':
+            return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                "data-testid": "last-fully-alive",
+                className: "mt-1 text-[11px] text-green-200/80",
+                children: "Last fully alive: just now"
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                lineNumber: 327,
+                columnNumber: 9
+            }, this);
+        case 'amber':
+        case 'red':
+            {
+                if (lastFullyAliveAt === null) {
+                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        "data-testid": "last-fully-alive",
+                        className: "mt-1 text-[11px] text-gray-400",
+                        children: "Not yet observed all-green this session, page just loaded?"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                        lineNumber: 335,
+                        columnNumber: 11
+                    }, this);
+                }
+                const ago = Math.max(0, Math.round((now - lastFullyAliveAt) / 1000));
+                const wallclock = new Date(lastFullyAliveAt).toISOString().slice(11, 19);
+                return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                    "data-testid": "last-fully-alive",
+                    className: LAST_ALIVE_TONE_CLASS[verdict],
+                    children: [
+                        "Last fully alive: ",
+                        wallclock,
+                        " UTC · ",
+                        ago,
+                        "s ago"
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
+                    lineNumber: 343,
+                    columnNumber: 9
+                }, this);
+            }
+    }
+}
+_c2 = LastAliveLine;
 const CHIP_BASE_CLASS = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-100';
 const CHIP_TONE_CLASS = {
     amber: 'bg-yellow-500/10 text-yellow-200 hover:bg-yellow-500/20 focus:ring-yellow-400/50',
@@ -2892,7 +3013,7 @@ function ReasonChips({ entries, tone }) {
                             children: e.reason
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 295,
+                            lineNumber: 371,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2900,31 +3021,32 @@ function ReasonChips({ entries, tone }) {
                             children: "↓"
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                            lineNumber: 296,
+                            lineNumber: 372,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                    lineNumber: 289,
+                    lineNumber: 365,
                     columnNumber: 11
                 }, this)
             }, e.anchor, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-                lineNumber: 288,
+                lineNumber: 364,
                 columnNumber: 9
             }, this))
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/PipelineStatusBanner.tsx",
-        lineNumber: 286,
+        lineNumber: 362,
         columnNumber: 5
     }, this);
 }
-_c2 = ReasonChips;
-var _c, _c1, _c2;
+_c3 = ReasonChips;
+var _c, _c1, _c2, _c3;
 __turbopack_context__.k.register(_c, "PipelineStatusBanner");
 __turbopack_context__.k.register(_c1, "PipelineStatusView");
-__turbopack_context__.k.register(_c2, "ReasonChips");
+__turbopack_context__.k.register(_c2, "LastAliveLine");
+__turbopack_context__.k.register(_c3, "ReasonChips");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }

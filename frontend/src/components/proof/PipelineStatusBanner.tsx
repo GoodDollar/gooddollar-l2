@@ -109,6 +109,9 @@ export function PipelineStatusBanner({
     quotes: 'unknown',
     hedgeProof: 'unknown',
   })
+  const [pollSeq, setPollSeq] = useState(0)
+  const [lastFullyAliveAt, setLastFullyAliveAt] = useState<number | null>(null)
+  const [now, setNow] = useState<number>(() => Date.now())
 
   useEffect(() => {
     let cancelled = false
@@ -145,6 +148,7 @@ export function PipelineStatusBanner({
         quotes: quotesResult.status === 'fulfilled' ? quotesResult.value : 'degraded',
         hedgeProof: hedgeProofResult.status === 'fulfilled' ? hedgeProofResult.value : 'degraded',
       })
+      setPollSeq((s) => s + 1)
     }
 
     void tick()
@@ -172,17 +176,43 @@ export function PipelineStatusBanner({
   }
   const verdict = deriveVerdict(axes)
 
+  useEffect(() => {
+    if (
+      axes.quotes === 'healthy' &&
+      axes.onChain === 'healthy' &&
+      axes.hedgeProof === 'healthy'
+    ) {
+      const t = Date.now()
+      setLastFullyAliveAt(t)
+      setNow(t)
+    }
+  }, [pollSeq, axes.quotes, axes.onChain, axes.hedgeProof])
+
+  useEffect(() => {
+    if (lastFullyAliveAt === null) return
+    if (verdict === 'green' || verdict === 'loading') return
+    const id = setInterval(() => setNow(Date.now()), 1_000)
+    return () => clearInterval(id)
+  }, [lastFullyAliveAt, verdict])
+
   return (
-    <PipelineStatusView axes={axes} verdict={verdict} />
+    <PipelineStatusView
+      axes={axes}
+      verdict={verdict}
+      lastFullyAliveAt={lastFullyAliveAt}
+      now={now}
+    />
   )
 }
 
 interface PipelineStatusViewProps {
   axes: AxisState
   verdict: Verdict
+  lastFullyAliveAt: number | null
+  now: number
 }
 
-function PipelineStatusView({ axes, verdict }: PipelineStatusViewProps) {
+function PipelineStatusView({ axes, verdict, lastFullyAliveAt, now }: PipelineStatusViewProps) {
   if (verdict === 'loading') {
     return (
       <section
@@ -217,6 +247,7 @@ function PipelineStatusView({ axes, verdict }: PipelineStatusViewProps) {
             Live quotes fresh · on-chain oracle returning data · hedge-proof artifact present
           </span>
         </div>
+        <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} now={now} />
       </section>
     )
   }
@@ -244,6 +275,7 @@ function PipelineStatusView({ axes, verdict }: PipelineStatusViewProps) {
             </span>
           </div>
           <ReasonChips entries={degradedEntries} tone="red" />
+          <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} now={now} />
         </div>
       </section>
     )
@@ -267,9 +299,53 @@ function PipelineStatusView({ axes, verdict }: PipelineStatusViewProps) {
           </span>
         </div>
         <ReasonChips entries={degradedEntries} tone="amber" />
+        <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} now={now} />
       </div>
     </section>
   )
+}
+
+const LAST_ALIVE_TONE_CLASS: Record<'amber' | 'red', string> = {
+  amber: 'mt-1 text-[11px] text-yellow-100/70',
+  red: 'mt-1 text-[11px] text-red-200/70',
+}
+
+function LastAliveLine({
+  verdict,
+  lastFullyAliveAt,
+  now,
+}: {
+  verdict: Verdict
+  lastFullyAliveAt: number | null
+  now: number
+}) {
+  switch (verdict) {
+    case 'loading':
+      return null
+    case 'green':
+      return (
+        <p data-testid="last-fully-alive" className="mt-1 text-[11px] text-green-200/80">
+          Last fully alive: just now
+        </p>
+      )
+    case 'amber':
+    case 'red': {
+      if (lastFullyAliveAt === null) {
+        return (
+          <p data-testid="last-fully-alive" className="mt-1 text-[11px] text-gray-400">
+            Not yet observed all-green this session, page just loaded?
+          </p>
+        )
+      }
+      const ago = Math.max(0, Math.round((now - lastFullyAliveAt) / 1000))
+      const wallclock = new Date(lastFullyAliveAt).toISOString().slice(11, 19)
+      return (
+        <p data-testid="last-fully-alive" className={LAST_ALIVE_TONE_CLASS[verdict]}>
+          Last fully alive: {wallclock} UTC · {ago}s ago
+        </p>
+      )
+    }
+  }
 }
 
 const CHIP_BASE_CLASS =

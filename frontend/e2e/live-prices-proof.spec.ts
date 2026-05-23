@@ -63,6 +63,15 @@ test.describe('Lane 6 — /live-prices-proof', () => {
       /^(green|amber|red)$/,
     )
 
+    // Session-local "last fully alive" recall — reviewers need to tell
+    // a 5-second blip from a 5-hour outage, so the banner always carries
+    // a non-empty line under the verdict (either "just now", a wallclock
+    // ago-string, or the "Not yet observed all-green" cold-start copy).
+    const lastAlive = page.getByTestId('last-fully-alive')
+    await expect(lastAlive).toBeVisible()
+    const lastAliveText = ((await lastAlive.textContent()) ?? '').trim()
+    expect(lastAliveText.length).toBeGreaterThan(0)
+
     // Pipeline flow diagram visualises the eToro → … → demo-hedge chain.
     const flow = page.getByTestId('pipeline-flow-diagram')
     await expect(flow).toBeVisible()

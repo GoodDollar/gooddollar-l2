@@ -4191,6 +4191,18 @@ img, video {
   color: rgb(82 82 91 / var(--tw-text-opacity, 1));
 }
 
+.text-green-200\/80 {
+  color: #bbf7d0cc;
+}
+
+.text-red-200\/70 {
+  color: #fecacab3;
+}
+
+.text-yellow-100\/70 {
+  color: #fef9c3b3;
+}
+
 .underline {
   text-decoration-line: underline;
 }

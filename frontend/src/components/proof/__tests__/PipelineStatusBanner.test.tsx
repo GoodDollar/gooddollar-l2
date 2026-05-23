@@ -291,6 +291,150 @@ describe('PipelineStatusBanner', () => {
     expect(chip.getAttribute('aria-label')).toMatch(/jump to/i)
   })
 
+  it('renders "just now" beneath the green verdict on a fresh all-green poll', async () => {
+    mockOnChainHealthy()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineStatusBanner intervalMs={60_000} />)
+
+    const line = await screen.findByTestId('last-fully-alive')
+    expect(line.textContent).toMatch(/just now/i)
+  })
+
+  it('renders "Not yet observed all-green this session" copy when the very first poll is amber', async () => {
+    mockOnChainHealthy()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) throw new Error('boom')
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineStatusBanner intervalMs={60_000} />)
+
+    const line = await screen.findByTestId('last-fully-alive')
+    await vi.waitFor(() => {
+      expect(line.textContent).toMatch(/Not yet observed all-green this session/i)
+    })
+  })
+
+  it('records the all-green timestamp and surfaces it as HH:MM:SS UTC, Xs ago on subsequent amber polls', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-23T13:00:00.000Z'))
+
+    mockOnChainHealthy()
+    let unhealthy = false
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) {
+        if (unhealthy) throw new Error('boom')
+        return { ok: true, status: 200, body: QUOTES_OK }
+      }
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineStatusBanner intervalMs={1_000} />)
+
+    await vi.waitFor(() => {
+      const region = screen.getByTestId('pipeline-status-banner')
+      expect(region.getAttribute('data-status')).toBe('green')
+    })
+
+    unhealthy = true
+    await act(async () => {
+      vi.setSystemTime(new Date('2026-05-23T13:00:14.000Z'))
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+
+    await vi.waitFor(() => {
+      const region = screen.getByTestId('pipeline-status-banner')
+      expect(region.getAttribute('data-status')).toBe('amber')
+    })
+
+    const line = screen.getByTestId('last-fully-alive')
+    expect(line.textContent).toMatch(/Last fully alive:\s*13:00:00 UTC/)
+    expect(line.textContent).toMatch(/\bago\b/i)
+  })
+
+  it('updates the "Xs ago" value at 1s cadence between polls', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-23T13:00:00.000Z'))
+
+    mockOnChainHealthy()
+    let unhealthy = false
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) {
+        if (unhealthy) throw new Error('boom')
+        return { ok: true, status: 200, body: QUOTES_OK }
+      }
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineStatusBanner intervalMs={60_000} />)
+
+    await vi.waitFor(() => {
+      const region = screen.getByTestId('pipeline-status-banner')
+      expect(region.getAttribute('data-status')).toBe('green')
+    })
+
+    unhealthy = true
+    await act(async () => {
+      vi.setSystemTime(new Date('2026-05-23T13:01:00.000Z'))
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+
+    await vi.waitFor(() => {
+      const region = screen.getByTestId('pipeline-status-banner')
+      expect(region.getAttribute('data-status')).toBe('amber')
+    })
+
+    const before = screen.getByTestId('last-fully-alive').textContent ?? ''
+    await act(async () => {
+      vi.setSystemTime(new Date('2026-05-23T13:01:03.000Z'))
+      await vi.advanceTimersByTimeAsync(3_000)
+    })
+    const after = screen.getByTestId('last-fully-alive').textContent ?? ''
+    expect(after).not.toEqual(before)
+  })
+
+  it('session timestamp resets to null on remount', async () => {
+    mockOnChainHealthy()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    const { unmount } = render(<PipelineStatusBanner intervalMs={60_000} />)
+    await vi.waitFor(() => {
+      const line = screen.getByTestId('last-fully-alive')
+      expect(line.textContent).toMatch(/just now/i)
+    })
+    unmount()
+
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) throw new Error('boom')
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineStatusBanner intervalMs={60_000} />)
+    await vi.waitFor(() => {
+      const line = screen.getByTestId('last-fully-alive')
+      expect(line.textContent).toMatch(/Not yet observed all-green this session/i)
+    })
+  })
+
   it('clears the interval on unmount', async () => {
     vi.useFakeTimers()
     mockOnChainHealthy()
