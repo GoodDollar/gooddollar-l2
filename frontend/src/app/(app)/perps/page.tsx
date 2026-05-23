@@ -846,6 +846,7 @@ export default function PerpsPage() {
   const searchParams = useSearchParams()
   const { pairs } = useOnChainPairs()
   const { summary: account } = useOnChainAccountSummary()
+  const { health: cryptoRailHealth } = useCryptoRailHealth()
   const [selectedSymbol, setSelectedSymbol] = useState(() => searchParams.get('market') || 'BTC-USD')
   const [timeframe, setTimeframe] = useState<Timeframe>('1M')
   const [mobileTab, setMobileTab] = useState<MobileTab>('trade')
@@ -889,7 +890,12 @@ export default function PerpsPage() {
 
       <PerpsOracleSurfaces />
 
-      <PairSelector pairs={pairs} selected={selectedSymbol} onSelect={setSelectedSymbol} />
+      <PairSelector
+        pairs={pairs}
+        selected={selectedSymbol}
+        onSelect={setSelectedSymbol}
+        railLive={cryptoRailHealth === 'live'}
+      />
 
       <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-3 mt-3 mb-3">
         <div className="flex items-center justify-end pb-2 border-b border-gray-700/10 mb-1.5">

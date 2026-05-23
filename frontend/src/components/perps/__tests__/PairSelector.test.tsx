@@ -66,4 +66,27 @@ describe('PairSelector', () => {
     const ethMeta = screen.getByTestId('pair-selector-meta-ETH-USD')
     expect(within(ethMeta).getByText(/-2.5%/)).toBeInTheDocument()
   })
+
+  it('renders muted em-dash for the price when the rail is offline (railLive=false)', () => {
+    render(<PairSelector pairs={pairs} selected="BTC-USD" onSelect={() => {}} railLive={false} />)
+    const ethMeta = screen.getByTestId('pair-selector-meta-ETH-USD')
+    expect(ethMeta.textContent).not.toMatch(/\$1,?820/)
+    expect(ethMeta.textContent).toContain('—')
+    expect(ethMeta.textContent).toContain('-2.5%')
+
+    const btcMeta = screen.getByTestId('pair-selector-meta-BTC-USD')
+    expect(btcMeta.textContent).not.toMatch(/\$84,?250/)
+  })
+
+  it('renders the formatted price when railLive=true (default)', () => {
+    render(<PairSelector pairs={pairs} selected="BTC-USD" onSelect={() => {}} railLive />)
+    const ethMeta = screen.getByTestId('pair-selector-meta-ETH-USD')
+    expect(ethMeta.textContent).toMatch(/\$1,?820/)
+  })
+
+  it('applies a min-width to the meta row so pill width stays stable when the price collapses to a dash', () => {
+    render(<PairSelector pairs={pairs} selected="BTC-USD" onSelect={() => {}} railLive={false} />)
+    const meta = screen.getByTestId('pair-selector-meta-BTC-USD')
+    expect(meta.className).toMatch(/min-w-\[5rem\]/)
+  })
 })
