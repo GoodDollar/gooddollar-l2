@@ -503,6 +503,12 @@ export default function StockDetailPage() {
     if (!stock || !chartMounted) return []
     return getChartData(stock.ticker, timeframe, stock.price)
   }, [chartMounted, stock, timeframe])
+  const chartLastClose = chartData.length > 0 ? chartData[chartData.length - 1].close : null
+  const chartDisagrees =
+    chartLastClose != null &&
+    stock != null &&
+    stock.price > 0 &&
+    Math.abs(stock.price - chartLastClose) / stock.price > 0.005
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
@@ -646,10 +652,14 @@ export default function StockDetailPage() {
           </div>
 
           <div className="flex items-baseline gap-3 mb-2">
-            <span className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
-            <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
-            </span>
+            <span data-testid="stock-spot-price" className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
+            {isNoData(stock.change24h) ? (
+              <span data-testid="stock-spot-change" className="text-sm font-medium text-gray-500">{NO_DATA_DASH}</span>
+            ) : (
+              <span data-testid="stock-spot-change" className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {pctOrDash(stock.change24h)}
+              </span>
+            )}
           </div>
           <div className="mb-4 min-h-[1.75rem]">
             {chartMounted ? (
@@ -694,9 +704,29 @@ export default function StockDetailPage() {
             </div>
             {chartView === 'price' ? (
               chartMounted ? (
-                <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
-                  <PriceChart data={chartData} height={350} />
-                </Suspense>
+                <div className="relative">
+                  <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
+                    <PriceChart data={chartData} height={350} />
+                  </Suspense>
+                  {chartLastClose != null && (
+                    <span
+                      data-testid="chart-last-close"
+                      data-value={chartLastClose}
+                      className="sr-only"
+                    >
+                      {formatStockPrice(chartLastClose)}
+                    </span>
+                  )}
+                  {chartDisagrees && (
+                    <div
+                      data-testid="chart-demo-ribbon"
+                      className="absolute top-2 left-2 right-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300 leading-snug"
+                    >
+                      Demo chart — not live oracle. Last close shown is procedural; spot
+                      header reflects the on-chain mark.
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
               )

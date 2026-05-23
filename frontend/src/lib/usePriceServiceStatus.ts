@@ -63,6 +63,47 @@ const store: StatusStore = {
   cooldownUntil: 0,
 }
 
+/**
+ * Per-symbol "when did the on-chain oracle last republish?" tracker
+ * (task 0023). The status feed refreshes independently of the oracle,
+ * so `quoteStatus.lastUpdateMs` only tells us when the price-service
+ * last polled — it does NOT tell us when a new oracle block landed.
+ *
+ * We update the tracker only when `quote.oracleBlock` strictly increases,
+ * so badges can render an honest "Oracle last published Xs ago (last
+ * close)" line instead of the misleading "Updated 1s ago" that used to
+ * lie about freshness on every status poll.
+ */
+interface OracleBlockTracker {
+  block: number
+  lastChangedAt: number
+}
+const oracleBlockTrackers = new Map<string, OracleBlockTracker>()
+
+function ingestOracleBlocks(quotes: QuoteStatus[], now: number): void {
+  for (const q of quotes) {
+    const block = q.oracleBlock
+    if (block == null || !Number.isFinite(block) || block <= 0) continue
+    const prev = oracleBlockTrackers.get(q.symbol)
+    if (!prev || block > prev.block) {
+      oracleBlockTrackers.set(q.symbol, { block, lastChangedAt: now })
+    }
+  }
+}
+
+/**
+ * Milliseconds since this symbol's on-chain oracle block last advanced.
+ * Returns `null` when we have no observation yet (i.e. the price-service
+ * has never reported an `oracleBlock` for this symbol).
+ *
+ * `now` is injectable so tests can advance the clock deterministically.
+ */
+export function getOracleAgeMs(symbol: string, now: number = Date.now()): number | null {
+  const tracker = oracleBlockTrackers.get(symbol)
+  if (!tracker) return null
+  return Math.max(0, now - tracker.lastChangedAt)
+}
+
 function notify(): void {
   for (const sub of store.subscribers) sub(store.state)
 }
@@ -81,6 +122,7 @@ async function fetchStatus(force = false): Promise<void> {
     const data: PriceServiceStatus = await res.json()
     store.failureCount = 0
     store.cooldownUntil = 0
+    ingestOracleBlocks(data.quotes, Date.now())
     store.state = { status: data, isLoading: false, error: null, nextRetryAt: null }
   } catch (err) {
     store.failureCount += 1
@@ -180,4 +222,18 @@ export function __resetPriceServiceStatusStoreForTests(): void {
   store.inFlight = false
   store.failureCount = 0
   store.cooldownUntil = 0
+  oracleBlockTrackers.clear()
+}
+
+/**
+ * Test-only seed for the oracle-block-age tracker. Sets the
+ * "last advanced" timestamp for a given symbol so badge tests can
+ * deterministically assert "Oracle last published X ago" copy.
+ */
+export function __seedOracleBlockTrackerForTests(
+  symbol: string,
+  block: number,
+  lastChangedAt: number,
+): void {
+  oracleBlockTrackers.set(symbol, { block, lastChangedAt })
 }

@@ -1,14 +1,36 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { usePriceServiceStatus, getSessionLabel, getDominantSession } from '@/lib/usePriceServiceStatus'
+import { getOracleAgeMs, usePriceServiceStatus, getSessionLabel, getDominantSession } from '@/lib/usePriceServiceStatus'
 import { deriveStocksOracleHealth, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
+
+const ORACLE_JUST_PUBLISHED_MS = 15_000
+const ORACLE_RECENT_PUBLISHED_MS = 60_000
 
 function formatAge(ms: number): string {
   if (ms < 1000) return 'just now'
   if (ms < 60_000) return `${Math.floor(ms / 1000)}s ago`
   if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`
   return `${Math.floor(ms / 3_600_000)}h ago`
+}
+
+/**
+ * Freshness copy that distinguishes "the status feed polled" from
+ * "the on-chain oracle actually republished" (task 0023). When the
+ * oracle hasn't advanced in over a minute, the badge says so plainly
+ * instead of falsely claiming "Updated 1s ago" every poll.
+ */
+function describeOracleFreshness(oracleAgeMs: number | null, statusAgeMs: number): string {
+  if (oracleAgeMs == null) {
+    return `Updated ${formatAge(statusAgeMs)}`
+  }
+  if (oracleAgeMs < ORACLE_JUST_PUBLISHED_MS) {
+    return 'Oracle just published'
+  }
+  if (oracleAgeMs < ORACLE_RECENT_PUBLISHED_MS) {
+    return `Oracle published ${formatAge(oracleAgeMs)}`
+  }
+  return `Oracle last published ${formatAge(oracleAgeMs)} (last close)`
 }
 
 type Variant = 'compact' | 'detail'
@@ -174,18 +196,20 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       )
     }
 
-    const isStale = quoteStatus.lastUpdateMs > 60_000
-    const dotColor = quoteStatus.lastUpdateMs < 15_000
+    const oracleAgeMs = getOracleAgeMs(symbol)
+    const freshnessAgeMs = oracleAgeMs ?? quoteStatus.lastUpdateMs
+    const isStale = freshnessAgeMs > 60_000
+    const dotColor = freshnessAgeMs < 15_000
       ? 'bg-green-400'
       : isStale
         ? 'bg-red-400'
         : 'bg-yellow-400'
 
     return (
-      <div className="inline-flex items-center gap-1.5 text-xs">
+      <div className="inline-flex items-center gap-1.5 text-xs" data-testid="oracle-status-detail">
         <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
         <span className="text-gray-400">
-          Updated {formatAge(quoteStatus.lastUpdateMs)}
+          {describeOracleFreshness(oracleAgeMs, quoteStatus.lastUpdateMs)}
         </span>
         <span className="text-gray-600">·</span>
         <span className="text-gray-400">
