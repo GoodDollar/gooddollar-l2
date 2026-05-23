@@ -93,6 +93,101 @@ describe('RiskFilter', () => {
     });
   });
 
+  describe('asset-class-aware session check', () => {
+    it('equity closed session is rejected', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'equity', sessionState: 'closed' }),
+      );
+      expect(result.accepted).toBe(false);
+      expect(result.reason).toContain('market-closed');
+    });
+
+    it('etf closed session is rejected', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'etf', sessionState: 'closed' }),
+      );
+      expect(result.accepted).toBe(false);
+      expect(result.reason).toContain('market-closed');
+    });
+
+    it('index closed session is rejected', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'index', sessionState: 'closed' }),
+      );
+      expect(result.accepted).toBe(false);
+      expect(result.reason).toContain('market-closed');
+    });
+
+    it('equity open session is accepted', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'equity', sessionState: 'open' }),
+      );
+      expect(result.accepted).toBe(true);
+    });
+
+    it('crypto closed session is accepted with confidence downgrade of 25', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'crypto', sessionState: 'closed', confidence: 90 }),
+      );
+      expect(result.accepted).toBe(true);
+      expect(result.quote.confidence).toBe(65);
+    });
+
+    it('crypto open session keeps confidence', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'crypto', sessionState: 'open', confidence: 90 }),
+      );
+      expect(result.accepted).toBe(true);
+      expect(result.quote.confidence).toBe(90);
+    });
+
+    it('crypto confidence downgrade clamps to 0', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'crypto', sessionState: 'closed', confidence: 10 }),
+      );
+      expect(result.accepted).toBe(true);
+      expect(result.quote.confidence).toBe(0);
+    });
+
+    it('forex closed session is accepted with confidence downgrade of 15', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'forex', sessionState: 'closed', confidence: 80 }),
+      );
+      expect(result.accepted).toBe(true);
+      expect(result.quote.confidence).toBe(65);
+    });
+
+    it('commodity closed session is accepted with confidence downgrade of 15', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'commodity', sessionState: 'closed', confidence: 80 }),
+      );
+      expect(result.accepted).toBe(true);
+      expect(result.quote.confidence).toBe(65);
+    });
+
+    it('unknown asset class still accepts closed (backwards-compat)', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: 'unknown', sessionState: 'closed' }),
+      );
+      expect(result.accepted).toBe(true);
+    });
+
+    it('no assetClass still accepts closed (backwards-compat)', () => {
+      const result = filter.apply(
+        makeQuote({ assetClass: undefined, sessionState: 'closed' }),
+      );
+      expect(result.accepted).toBe(true);
+    });
+
+    it('halted is rejected across every asset class', () => {
+      for (const assetClass of ['equity', 'etf', 'crypto', 'forex', 'index', 'commodity', 'unknown'] as const) {
+        const result = filter.apply(makeQuote({ assetClass, sessionState: 'halted' }));
+        expect(result.accepted).toBe(false);
+        expect(result.reason).toContain('halted');
+      }
+    });
+  });
+
   describe('TWAP deviation check', () => {
     it('skips deviation check with fewer than 5 samples', () => {
       for (let i = 0; i < 4; i++) {
