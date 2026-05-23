@@ -16,6 +16,11 @@ import { Sparkline } from '@/components/Sparkline'
 import { StockLogo } from '@/components/ui/stock-logo'
 import { getStockByTicker } from '@/lib/stockData'
 import { SummaryCard, SectionHeader, EmptyState } from '@/components/ui'
+import { PortfolioPriceStrip } from '@/components/PortfolioPriceStrip'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import { useStockPrices } from '@/lib/useStockPrices'
+import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
+import type { PriceSource } from '@/lib/priceSource'
 
 
 function HealthBadge({ value }: { value: number }) {
@@ -37,6 +42,30 @@ export default function PortfolioPage() {
   const { summary: perpsAccount } = useOnChainAccountSummary()
   const lend = useMockLendPositions()
   const yield_ = useMockYieldPositions()
+  const { sources: stockSources } = useStockPrices()
+  const { status: priceStatus } = usePriceServiceStatus()
+
+  // Resolve per-row source for the stocks panel — overlay session state
+  // from price-service status on the chain-oracle reading from useStockPrices.
+  const resolveStockSource = (ticker: string): PriceSource => {
+    const base = stockSources[ticker] ?? 'fallback'
+    const sq = priceStatus?.quotes.find(q => q.symbol === ticker)
+    if (sq && (sq.sessionState === 'closed' || sq.sessionState === 'halted')) return 'closed'
+    if (sq && sq.lastUpdateMs > 60_000 && base === 'chain-oracle') return 'stale'
+    return base
+  }
+
+  // Stocks tickers the user currently holds — strip header.
+  const stockTickers = useMemo(() => stockHoldings.map(h => h.ticker), [stockHoldings])
+  // Perp underlyings (e.g. BTC-USD → BTC). Used for the crypto cards.
+  const cryptoSymbols = useMemo(() => {
+    const set = new Set<string>()
+    for (const pos of perpsPositions) {
+      const base = pos.pair.split('-')[0]
+      if (base) set.add(base)
+    }
+    return Array.from(set)
+  }, [perpsPositions])
 
   // Build predict market lookup
   const predictMarketMap = useMemo(() => {
@@ -66,6 +95,11 @@ export default function PortfolioPage() {
     <ConnectWalletEmptyState>
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Portfolio Overview</h1>
+
+      {/* Lane 4: live-price strip with per-symbol source attribution. */}
+      <div className="mb-4">
+        <PortfolioPriceStrip stockTickers={stockTickers} cryptoSymbols={cryptoSymbols} />
+      </div>
 
       {/* CTA banner: prompts disconnected / wrong-chain users to take action.
           Renders nothing when connected to chain 42069. */}
@@ -123,9 +157,12 @@ export default function PortfolioPage() {
                 <Link key={h.ticker} href={`/stocks/${h.ticker}`} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
                   <div className="flex items-center gap-2.5">
                     <StockLogo ticker={h.ticker} size="sm" />
-                    <div>
-                      <span className="text-sm font-medium text-white">{h.ticker}</span>
-                      {stockName && <span className="text-xs text-gray-500 ml-1.5">{stockName}</span>}
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-white">
+                        {h.ticker}
+                        {stockName && <span className="text-xs text-gray-500 ml-1.5">{stockName}</span>}
+                      </span>
+                      <PriceSourceBadge source={resolveStockSource(h.ticker)} size="sm" />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

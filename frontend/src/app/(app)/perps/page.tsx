@@ -23,6 +23,9 @@ import { PercentageChange } from '@/components/ui/percentage-change'
 import { PriceDisplay } from '@/components/ui/price-display'
 import { AmountInput } from '@/components/ui/amount-input'
 import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
+import { PerpsPriceStrip } from '@/components/PerpsPriceStrip'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import { usePerpsPriceSources } from '@/lib/usePerpsPriceSources'
 
 function WalletGatedTradeButton({ hasSize, exceedsMargin, children }: { hasSize: boolean; exceedsMargin: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -829,6 +832,9 @@ export default function PerpsPage() {
 
   const pair = pairs.find(p => p.symbol === selectedSymbol) ?? pairs[0]
 
+  const { sources: priceSources } = usePerpsPriceSources()
+  const activePairSource = pair ? (priceSources[pair.symbol] ?? 'unknown') : 'unknown'
+
   const chartData = useMemo(() => {
     if (!pair) return []
     return getChartData(pair.symbol, timeframe, pair.markPrice)
@@ -852,9 +858,21 @@ export default function PerpsPage() {
         </div>
       </div>
 
+      <div className="mb-3">
+        <PerpsPriceStrip activeSymbol={selectedSymbol} />
+      </div>
+
       <PairSelector pairs={pairs} selected={selectedSymbol} onSelect={setSelectedSymbol} />
 
       <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-3 mt-3 mb-3">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <span className="text-xs text-gray-400">Active pair</span>
+          <span
+            data-testid={activePairSource === 'closed' ? 'perps-market-closed' : 'perps-source-badge'}
+          >
+            <PriceSourceBadge source={activePairSource} size="sm" />
+          </span>
+        </div>
         <PairInfoBar pair={pair} />
         <div className="flex items-center gap-3 pt-1 text-xs">
           <Link href={`/explore/${pair.baseAsset === 'BTC' ? 'WBTC' : pair.baseAsset}`}

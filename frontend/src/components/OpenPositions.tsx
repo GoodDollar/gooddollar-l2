@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { formatPerpsPrice, type OpenPosition } from '@/lib/perpsData'
 import { useOnChainPositions } from '@/lib/useOnChainPerps'
 import { calculatePnLPercent, getLiqProximity, type LiqProximity } from '@/lib/perpUtils'
+import { usePerpsPriceSources } from '@/lib/usePerpsPriceSources'
+import { PriceSourceBadge } from './PriceSourceBadge'
+import type { PriceSource } from '@/lib/priceSource'
 
 const LIQ_BADGE_STYLES: Record<LiqProximity, string> = {
   safe: '',
@@ -28,7 +31,7 @@ function LiqBadge({ proximity }: { proximity: LiqProximity }) {
   )
 }
 
-function PositionRow({ pos }: { pos: OpenPosition }) {
+function PositionRow({ pos, source }: { pos: OpenPosition; source: PriceSource }) {
   const [showClose, setShowClose] = useState(false)
   const [closing, setClosing] = useState(false)
 
@@ -54,6 +57,7 @@ function PositionRow({ pos }: { pos: OpenPosition }) {
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
             {pos.side.toUpperCase()} {pos.leverage}x
           </span>
+          <PriceSourceBadge source={source} size="sm" />
         </div>
         <div className="text-right">
           <div className={`text-sm font-semibold ${pnlColor}`}>
@@ -118,6 +122,7 @@ function PositionRow({ pos }: { pos: OpenPosition }) {
 
 export function OpenPositions() {
   const { positions } = useOnChainPositions()
+  const { sources } = usePerpsPriceSources()
 
   if (positions.length === 0) {
     return (
@@ -130,7 +135,11 @@ export function OpenPositions() {
   return (
     <div>
       {positions.map((pos, i) => (
-        <PositionRow key={`${pos.pair}-${i}`} pos={pos} />
+        <PositionRow
+          key={`${pos.pair}-${i}`}
+          pos={pos}
+          source={sources[pos.pair] ?? 'unknown'}
+        />
       ))}
     </div>
   )
