@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { describeNextPoll } from './panelCountdown'
 
 /**
  * Shared "Retry now" button used in every proof data panel header. Pulled
@@ -33,14 +34,14 @@ export function RetryButton({
   label = 'Retry now',
   ariaLabel,
 }: RetryButtonProps) {
-  const handleClick = () => {
+  const fireRetry = () => {
     if (busy) return
     void onRetry()
   }
   return (
     <button
       type="button"
-      onClick={handleClick}
+      onClick={fireRetry}
       disabled={busy}
       data-testid={testId}
       aria-label={ariaLabel ?? (busy ? `${label} — in flight` : label)}
@@ -117,31 +118,4 @@ export function NextPollCountdown({
       {text}
     </span>
   )
-}
-
-interface DescribeNextPollInputs {
-  lastPollAt: number | null
-  intervalMs: number
-  now: number
-  busy: boolean
-}
-
-/**
- * Pure formatter for the countdown caption. Lifted out of
- * {@link NextPollCountdown} so unit tests can pin the wording without
- * mocking timers.
- */
-export function describeNextPoll({
-  lastPollAt,
-  intervalMs,
-  now,
-  busy,
-}: DescribeNextPollInputs): string {
-  if (busy) return 'polling…'
-  if (lastPollAt === null) return 'next poll soon'
-  const elapsed = Math.max(0, now - lastPollAt)
-  const remainingMs = Math.max(0, intervalMs - elapsed)
-  if (remainingMs <= 0) return 'polling…'
-  const seconds = Math.max(1, Math.ceil(remainingMs / 1_000))
-  return `next poll in ${seconds}s`
 }
