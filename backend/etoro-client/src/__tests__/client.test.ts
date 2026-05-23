@@ -111,3 +111,25 @@ describe('InvalidModeError export', () => {
     expect(err.rawValue).toBe('demo');
   });
 });
+
+describe('EtoroClient — config-loaded audit line', () => {
+  it('writes exactly one config-loaded entry with cap values and overrides applied', () => {
+    const writes: string[] = [];
+    const fsMock = jest.requireMock('fs') as { appendFileSync: jest.Mock };
+    fsMock.appendFileSync.mockClear();
+    fsMock.appendFileSync.mockImplementation((_p: string, line: string) => { writes.push(line); });
+
+    new EtoroClient({
+      credentials: DEMO_CREDENTIALS,
+      capConfig: { maxOrderNotionalUsd: 250, maxDailyNotionalUsd: 2_500 },
+    });
+
+    const configLines = writes
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+      .filter((e) => e.action === 'config-loaded');
+    expect(configLines).toHaveLength(1);
+    expect(configLines[0].capOrderUsd).toBe(250);
+    expect(configLines[0].capDailyUsd).toBe(2_500);
+    expect(Array.isArray(configLines[0].instrumentOverridesApplied)).toBe(true);
+  });
+});

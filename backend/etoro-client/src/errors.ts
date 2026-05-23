@@ -7,6 +7,69 @@ import { EtoroMode } from './types';
  * names are not secret) and the list of valid modes so operators can fix
  * the typo without grepping source.
  */
+/**
+ * Thrown by `loadDemoCapConfig` when `MAX_DEMO_ORDER_NOTIONAL_USD` or
+ * `MAX_DAILY_DEMO_NOTIONAL_USD` is set to a value that cannot be a
+ * legitimate cap (negative or non-numeric). Note: `0` is explicitly valid
+ * and means "no orders may be placed" — it is NOT a parse failure.
+ */
+export class InvalidCapConfigError extends Error {
+  readonly field: 'maxOrder' | 'maxDaily';
+  readonly rawValue: string;
+  readonly reason: string;
+  readonly envKey: string;
+
+  constructor(input: {
+    field: 'maxOrder' | 'maxDaily';
+    rawValue: string;
+    reason: string;
+  }) {
+    const envKey = input.field === 'maxOrder'
+      ? 'MAX_DEMO_ORDER_NOTIONAL_USD'
+      : 'MAX_DAILY_DEMO_NOTIONAL_USD';
+    super(
+      `Invalid ${envKey}="${input.rawValue}": ${input.reason}. ` +
+      `Valid range is any finite non-negative number; 0 means "no orders allowed", ` +
+      `unset uses the default cap.`,
+    );
+    this.name = 'InvalidCapConfigError';
+    this.field = input.field;
+    this.rawValue = input.rawValue;
+    this.reason = input.reason;
+    this.envKey = envKey;
+  }
+}
+
+/**
+ * Thrown by `loadInstrumentOverrides` when `ETORO_INSTRUMENT_OVERRIDES` is
+ * set but cannot be parsed safely:
+ *   - `field: 'json'`   — JSON.parse failed
+ *   - `field: 'shape'`  — top-level is not an object, or per-symbol slice
+ *                          contains an empty `etoroInstrumentId`,
+ *                          empty `displayName`, or non-positive
+ *                          `referencePriceUsd`
+ *   - `field: 'symbol'` — key is not one of `INSTRUMENT_SYMBOLS`
+ */
+export class InvalidInstrumentOverridesError extends Error {
+  readonly field: 'json' | 'shape' | 'symbol';
+  readonly reason: string;
+  readonly offendingKey?: string;
+
+  constructor(input: {
+    field: 'json' | 'shape' | 'symbol';
+    reason: string;
+    offendingKey?: string;
+  }) {
+    super(
+      `Invalid ETORO_INSTRUMENT_OVERRIDES (field=${input.field}): ${input.reason}.`,
+    );
+    this.name = 'InvalidInstrumentOverridesError';
+    this.field = input.field;
+    this.reason = input.reason;
+    this.offendingKey = input.offendingKey;
+  }
+}
+
 export class InvalidModeError extends Error {
   readonly rawValue: string;
   readonly validModes: readonly EtoroMode[];

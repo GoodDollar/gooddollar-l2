@@ -96,10 +96,20 @@ export class EtoroClient {
       this.marketData = new MarketDataModule(this.http, mdConfig);
     }
 
+    const overrides = loadInstrumentOverrides();
     const mergedInstruments = applyInstrumentOverrides(
       INSTRUMENT_MAP,
-      loadInstrumentOverrides(),
+      overrides,
     );
+
+    this.audit.log({
+      action: 'config-loaded',
+      method: 'INIT',
+      path: '/config',
+      capOrderUsd: capConfig.maxOrderNotionalUsd,
+      capDailyUsd: capConfig.maxDailyNotionalUsd,
+      instrumentOverridesApplied: Object.keys(overrides),
+    });
 
     this.trading = new TradingModule(this.http, this.audit, {
       mode: this.credentials.mode,
@@ -248,5 +258,7 @@ export {
   MissingNotionalError,
   InvalidModeError,
   InvalidOrderError,
+  InvalidCapConfigError,
+  InvalidInstrumentOverridesError,
 } from './errors';
 export type * from './types';

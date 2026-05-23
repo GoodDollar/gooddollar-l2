@@ -1,4 +1,4 @@
-import { InvalidModeError } from './errors';
+import { InvalidCapConfigError, InvalidModeError } from './errors';
 import { DemoCapConfig, EtoroCredentials, EtoroMode } from './types';
 
 /**
@@ -122,13 +122,15 @@ export function loadCredentialsFromEnv(
 export function loadDemoCapConfig(
   env: Record<string, string | undefined> = process.env,
 ): DemoCapConfig {
-  const order = parsePositiveNumber(
+  const order = parseCapValue(
     env.MAX_DEMO_ORDER_NOTIONAL_USD,
     DEFAULT_CAP_PER_ORDER_USD,
+    'maxOrder',
   );
-  const daily = parsePositiveNumber(
+  const daily = parseCapValue(
     env.MAX_DAILY_DEMO_NOTIONAL_USD,
     DEFAULT_CAP_DAILY_USD,
+    'maxDaily',
   );
   return { maxOrderNotionalUsd: order, maxDailyNotionalUsd: daily };
 }
@@ -164,6 +166,42 @@ function parsePositiveNumber(raw: string | undefined, fallback: number): number 
   if (!raw) return fallback;
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return fallback;
+  return n;
+}
+
+/**
+ * Strict parser for the demo notional caps:
+ *   - unset / empty string         → fallback (default cap)
+ *   - finite number ≥ 0            → the parsed number (0 means "no orders")
+ *   - negative or non-numeric      → throw `InvalidCapConfigError`
+ *
+ * The `0`-is-valid carve-out is intentional: operators sometimes want to
+ * configure "block all trading from this process" without removing the
+ * enforcer entirely. The `DemoCapEnforcer` already returns a per-order
+ * error for any positive notional when `maxOrderNotionalUsd === 0`, so the
+ * semantics flow through end-to-end.
+ */
+function parseCapValue(
+  raw: string | undefined,
+  fallback: number,
+  field: 'maxOrder' | 'maxDaily',
+): number {
+  if (raw === undefined || raw === '') return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    throw new InvalidCapConfigError({
+      field,
+      rawValue: raw,
+      reason: 'value is not a finite number',
+    });
+  }
+  if (n < 0) {
+    throw new InvalidCapConfigError({
+      field,
+      rawValue: raw,
+      reason: 'value is negative',
+    });
+  }
   return n;
 }
 

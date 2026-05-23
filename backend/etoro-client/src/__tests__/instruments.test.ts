@@ -1,3 +1,4 @@
+import { InvalidInstrumentOverridesError } from '../errors';
 import {
   applyInstrumentOverrides,
   getInstrument,
@@ -35,8 +36,71 @@ describe('loadInstrumentOverrides', () => {
     expect(loadInstrumentOverrides({})).toEqual({});
   });
 
-  it('returns {} when env var is malformed JSON', () => {
-    expect(loadInstrumentOverrides({ ETORO_INSTRUMENT_OVERRIDES: 'not json' })).toEqual({});
+  it('returns {} when env var is the empty string', () => {
+    expect(loadInstrumentOverrides({ ETORO_INSTRUMENT_OVERRIDES: '' })).toEqual({});
+  });
+
+  it('throws InvalidInstrumentOverridesError({ field: "json" }) for malformed JSON', () => {
+    try {
+      loadInstrumentOverrides({ ETORO_INSTRUMENT_OVERRIDES: 'not json' });
+      fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidInstrumentOverridesError);
+      expect((e as InvalidInstrumentOverridesError).field).toBe('json');
+    }
+  });
+
+  it('throws field "shape" for array root', () => {
+    try {
+      loadInstrumentOverrides({ ETORO_INSTRUMENT_OVERRIDES: '[1,2,3]' });
+      fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidInstrumentOverridesError);
+      expect((e as InvalidInstrumentOverridesError).field).toBe('shape');
+    }
+  });
+
+  it('throws field "shape" for bare-string root', () => {
+    try {
+      loadInstrumentOverrides({ ETORO_INSTRUMENT_OVERRIDES: '"hello"' });
+      fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidInstrumentOverridesError);
+      expect((e as InvalidInstrumentOverridesError).field).toBe('shape');
+    }
+  });
+
+  it('throws field "symbol" for an unknown key, naming valid symbols', () => {
+    try {
+      loadInstrumentOverrides({
+        ETORO_INSTRUMENT_OVERRIDES: JSON.stringify({ DOGE: { etoroInstrumentId: 'X' } }),
+      });
+      fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidInstrumentOverridesError);
+      const err = e as InvalidInstrumentOverridesError;
+      expect(err.field).toBe('symbol');
+      expect(err.offendingKey).toBe('DOGE');
+      expect(err.message).toContain('BTC');
+    }
+  });
+
+  it('throws field "shape" for an empty-string etoroInstrumentId', () => {
+    try {
+      loadInstrumentOverrides({
+        ETORO_INSTRUMENT_OVERRIDES: JSON.stringify({ BTC: { etoroInstrumentId: '' } }),
+      });
+      fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidInstrumentOverridesError);
+      expect((e as InvalidInstrumentOverridesError).field).toBe('shape');
+    }
+  });
+
+  it('throws field "shape" for a negative referencePriceUsd', () => {
+    expect(() => loadInstrumentOverrides({
+      ETORO_INSTRUMENT_OVERRIDES: JSON.stringify({ BTC: { referencePriceUsd: -1 } }),
+    })).toThrow(InvalidInstrumentOverridesError);
   });
 
   it('parses valid override JSON for known symbols', () => {
@@ -51,22 +115,14 @@ describe('loadInstrumentOverrides', () => {
     expect(overrides.AAPL?.displayName).toBe('Apple Override');
   });
 
-  it('drops unknown symbols silently', () => {
+  it('keeps merged-override behavior for a clean BTC update', () => {
     const env = {
       ETORO_INSTRUMENT_OVERRIDES: JSON.stringify({
-        FOO: { etoroInstrumentId: 'INST-FOO' },
+        BTC: { etoroInstrumentId: 'real-id-123', referencePriceUsd: 65_000 },
       }),
     };
-    expect(loadInstrumentOverrides(env)).toEqual({});
-  });
-
-  it('rejects non-string ids and non-positive prices', () => {
-    const env = {
-      ETORO_INSTRUMENT_OVERRIDES: JSON.stringify({
-        BTC: { etoroInstrumentId: 123, referencePriceUsd: -10 },
-      }),
-    };
-    expect(loadInstrumentOverrides(env)).toEqual({});
+    const overrides = loadInstrumentOverrides(env);
+    expect(overrides.BTC).toEqual({ etoroInstrumentId: 'real-id-123', referencePriceUsd: 65_000 });
   });
 });
 

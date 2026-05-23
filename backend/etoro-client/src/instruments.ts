@@ -1,3 +1,4 @@
+import { InvalidInstrumentOverridesError } from './errors';
 import { EtoroAssetClass } from './types';
 
 /**
@@ -108,40 +109,85 @@ export function getInstrument(symbol: string): LaneInstrument | null {
 }
 
 /**
- * Reads `ETORO_INSTRUMENT_OVERRIDES` (JSON string) from env, returning
- * `{}` when unset or unparseable. Unknown symbols are dropped silently;
- * known symbols may override `etoroInstrumentId`, `displayName`, or
- * `referencePriceUsd` only.
+ * Reads `ETORO_INSTRUMENT_OVERRIDES` (JSON string) from env. Returns `{}`
+ * when the env var is unset. Throws `InvalidInstrumentOverridesError` for
+ * any malformed input — JSON parse errors, wrong shape (non-object root,
+ * array, bare string), unknown symbols, or per-symbol slices with empty
+ * string IDs / display names or non-positive reference prices. Operators
+ * notice the misconfig at deploy time instead of after the first hedge
+ * silently uses the placeholder IDs.
  */
 export function loadInstrumentOverrides(
   env: Record<string, string | undefined> = process.env,
 ): InstrumentOverrides {
   const raw = env.ETORO_INSTRUMENT_OVERRIDES;
-  if (!raw) return {};
+  if (raw === undefined || raw === '') return {};
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
-    return {};
+  } catch (e) {
+    throw new InvalidInstrumentOverridesError({
+      field: 'json',
+      reason: `JSON.parse failed (${e instanceof Error ? e.message : String(e)})`,
+    });
   }
 
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new InvalidInstrumentOverridesError({
+      field: 'shape',
+      reason: 'top-level value must be a JSON object',
+    });
+  }
 
   const out: InstrumentOverrides = {};
   for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-    if (!isLaneSymbol(key)) continue;
-    if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+    if (!isLaneSymbol(key)) {
+      throw new InvalidInstrumentOverridesError({
+        field: 'symbol',
+        offendingKey: key,
+        reason: `unknown symbol "${key}"; valid symbols are ${INSTRUMENT_SYMBOLS.join(', ')}`,
+      });
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new InvalidInstrumentOverridesError({
+        field: 'shape',
+        offendingKey: key,
+        reason: `entry for "${key}" must be an object`,
+      });
+    }
     const v = value as Record<string, unknown>;
     const slice: InstrumentOverrides[LaneSymbol] = {};
-    if (typeof v.etoroInstrumentId === 'string' && v.etoroInstrumentId.trim()) {
+    if (v.etoroInstrumentId !== undefined) {
+      if (typeof v.etoroInstrumentId !== 'string' || v.etoroInstrumentId.trim() === '') {
+        throw new InvalidInstrumentOverridesError({
+          field: 'shape',
+          offendingKey: key,
+          reason: `etoroInstrumentId for "${key}" must be a non-empty string`,
+        });
+      }
       slice.etoroInstrumentId = v.etoroInstrumentId.trim();
     }
-    if (typeof v.displayName === 'string' && v.displayName.trim()) {
+    if (v.displayName !== undefined) {
+      if (typeof v.displayName !== 'string' || v.displayName.trim() === '') {
+        throw new InvalidInstrumentOverridesError({
+          field: 'shape',
+          offendingKey: key,
+          reason: `displayName for "${key}" must be a non-empty string`,
+        });
+      }
       slice.displayName = v.displayName.trim();
     }
-    if (typeof v.referencePriceUsd === 'number' && Number.isFinite(v.referencePriceUsd)
-      && v.referencePriceUsd > 0) {
+    if (v.referencePriceUsd !== undefined) {
+      if (typeof v.referencePriceUsd !== 'number'
+        || !Number.isFinite(v.referencePriceUsd)
+        || v.referencePriceUsd <= 0) {
+        throw new InvalidInstrumentOverridesError({
+          field: 'shape',
+          offendingKey: key,
+          reason: `referencePriceUsd for "${key}" must be a finite number > 0`,
+        });
+      }
       slice.referencePriceUsd = v.referencePriceUsd;
     }
     if (Object.keys(slice).length > 0) {

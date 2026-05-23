@@ -9,7 +9,8 @@ import {
   resolveMode,
   resolveModeSource,
 } from '../auth';
-import { InvalidModeError } from '../errors';
+import { InvalidCapConfigError, InvalidModeError } from '../errors';
+import { DemoCapEnforcer } from '../cap-enforcer';
 
 describe('REAL_TRADING_ENABLED fence', () => {
   it('is a const set to false at the source level', () => {
@@ -220,13 +221,43 @@ describe('loadDemoCapConfig', () => {
     expect(cfg.maxDailyNotionalUsd).toBe(2500);
   });
 
-  it('falls back to defaults for non-positive or non-numeric values', () => {
-    const cfg = loadDemoCapConfig({
-      MAX_DEMO_ORDER_NOTIONAL_USD: '-5',
-      MAX_DAILY_DEMO_NOTIONAL_USD: 'abc',
-    });
+  it('throws InvalidCapConfigError for a negative MAX_DEMO_ORDER_NOTIONAL_USD', () => {
+    try {
+      loadDemoCapConfig({ MAX_DEMO_ORDER_NOTIONAL_USD: '-50' });
+      fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidCapConfigError);
+      expect((e as InvalidCapConfigError).field).toBe('maxOrder');
+      expect((e as InvalidCapConfigError).rawValue).toBe('-50');
+    }
+  });
+
+  it('throws InvalidCapConfigError for a non-numeric MAX_DAILY_DEMO_NOTIONAL_USD', () => {
+    try {
+      loadDemoCapConfig({ MAX_DAILY_DEMO_NOTIONAL_USD: 'banana' });
+      fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidCapConfigError);
+      expect((e as InvalidCapConfigError).field).toBe('maxDaily');
+    }
+  });
+
+  it('accepts "0" as an explicit "no orders allowed" cap', () => {
+    const cfg = loadDemoCapConfig({ MAX_DEMO_ORDER_NOTIONAL_USD: '0' });
+    expect(cfg.maxOrderNotionalUsd).toBe(0);
+    const cap = new DemoCapEnforcer(cfg);
+    expect(cap.wouldExceed(1)?.cap).toBe('per-order');
+    expect(cap.wouldExceed(0)).toBeNull();
+  });
+
+  it('treats empty-string env values as unset (returns default)', () => {
+    const cfg = loadDemoCapConfig({ MAX_DEMO_ORDER_NOTIONAL_USD: '' });
     expect(cfg.maxOrderNotionalUsd).toBe(1_000);
-    expect(cfg.maxDailyNotionalUsd).toBe(10_000);
+  });
+
+  it('throws for "NaN" as a configured cap value', () => {
+    expect(() => loadDemoCapConfig({ MAX_DEMO_ORDER_NOTIONAL_USD: 'NaN' }))
+      .toThrow(InvalidCapConfigError);
   });
 });
 
