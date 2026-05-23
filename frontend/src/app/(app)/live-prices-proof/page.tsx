@@ -8,12 +8,16 @@ import { SafetyBanner } from '@/components/proof/SafetyBanner'
 
 export default function LivePricesProofPage() {
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8" data-testid="live-prices-proof-page">
+    <section
+      aria-labelledby="proof-page-heading"
+      className="mx-auto max-w-7xl px-4 py-8"
+      data-testid="live-prices-proof-page"
+    >
       <header className="mb-6">
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
           Lane 6 · release proof
         </p>
-        <h1 className="text-2xl font-semibold text-white sm:text-3xl">
+        <h1 id="proof-page-heading" className="text-2xl font-semibold text-white sm:text-3xl">
           Live Prices Proof
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-400">
@@ -38,6 +42,6 @@ export default function LivePricesProofPage() {
         empty, the corresponding service is unreachable; degraded states are surfaced
         inline, not silently swallowed.
       </footer>
-    </main>
+    </section>
   )
 }
