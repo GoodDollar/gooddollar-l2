@@ -123,28 +123,80 @@ function formatExposureDelta(before: number, after: number): ExposureDeltaParts 
   return { display, deltaSigned: `−${Math.abs(delta)}`, deltaClass: 'text-red-300' }
 }
 
-type EngineState =
-  | { label: 'ok'; color: 'text-goodgreen' }
-  | { label: 'degraded'; color: 'text-yellow-400' }
-  | { label: 'halted'; color: 'text-yellow-400' }
-  | { label: 'unreachable'; color: 'text-red-400' }
-  | { label: 'awaiting tick'; color: 'text-gray-400' }
+type EngineStateLabel = 'ok' | 'degraded' | 'halted' | 'unreachable' | 'awaiting tick'
 
+interface EngineSubLine {
+  text: string
+  mono?: boolean
+  color?: string
+}
+
+interface EngineState {
+  label: EngineStateLabel
+  color: string
+  sub: EngineSubLine
+}
+
+// Resolves the engine's display model in one place so the header pill, stat
+// tile value, and sub-line copy can never disagree about severity.
+// Exhaustive switch on EngineStateLabel forces deliberate handling when a
+// new state is added.
 function resolveEngineState(input: {
   snapshot: SnapshotPayload | null
   error: string | null
   breaker: BreakerState | null | undefined
   killSwitch: boolean
+  pollIntervalMs: number
 }): EngineState {
-  if (input.error && !input.snapshot) {
-    return { label: 'unreachable', color: 'text-red-400' }
+  const label = resolveEngineLabel(input)
+  switch (label) {
+    case 'ok':
+      return {
+        label,
+        color: 'text-goodgreen',
+        sub: { text: `last tick ${timeAgo(input.snapshot?.timestamp)}` },
+      }
+    case 'degraded':
+      return {
+        label,
+        color: 'text-yellow-400',
+        sub: { text: input.breaker?.reason ?? 'degraded', mono: true },
+      }
+    case 'halted':
+      return {
+        label,
+        color: 'text-yellow-400',
+        sub: { text: 'kill-switch engaged' },
+      }
+    case 'unreachable':
+      return {
+        label,
+        color: 'text-red-400',
+        sub: {
+          text: `auto-retry ${Math.round(input.pollIntervalMs / 1000)}s`,
+          color: 'text-red-400/80',
+        },
+      }
+    case 'awaiting tick':
+      return {
+        label,
+        color: 'text-gray-400',
+        sub: { text: 'warming up' },
+      }
   }
-  if (!input.snapshot) {
-    return { label: 'awaiting tick', color: 'text-gray-400' }
-  }
-  if (input.killSwitch) return { label: 'halted', color: 'text-yellow-400' }
-  if (input.breaker?.tripped) return { label: 'degraded', color: 'text-yellow-400' }
-  return { label: 'ok', color: 'text-goodgreen' }
+}
+
+function resolveEngineLabel(input: {
+  snapshot: SnapshotPayload | null
+  error: string | null
+  breaker: BreakerState | null | undefined
+  killSwitch: boolean
+}): EngineStateLabel {
+  if (input.error && !input.snapshot) return 'unreachable'
+  if (!input.snapshot) return 'awaiting tick'
+  if (input.killSwitch) return 'halted'
+  if (input.breaker?.tripped) return 'degraded'
+  return 'ok'
 }
 
 function DegradedHint({ children }: { children: ReactNode }) {
@@ -475,6 +527,15 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const breaker = data?.breakerState
   const cap = data?.capSnapshot
   const killSwitch = Boolean(data?.killSwitchEngaged)
+  const hasSnapshot = Boolean(data?.snapshot)
+  const showSkeleton = loading && !data
+  const engineState = resolveEngineState({
+    snapshot: data?.snapshot ?? null,
+    error,
+    breaker,
+    killSwitch,
+    pollIntervalMs: POLL_INTERVAL_MS,
+  })
 
   return (
     <section
@@ -632,57 +693,49 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         </div>
       )}
 
-      {(() => {
-        const engineState = resolveEngineState({
-          snapshot: data?.snapshot ?? null,
-          error,
-          breaker,
-          killSwitch,
-        })
-        const hasSnapshot = Boolean(data?.snapshot)
-        const showSkeleton = loading && !data
-        return (
+      <div
+        data-testid="hedge-stat-grid"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4"
+      >
+        {showSkeleton ? (
           <div
-            data-testid="hedge-stat-grid"
-            className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4"
+            data-testid="hedge-status-loading"
+            className="col-span-2 sm:col-span-4 space-y-2 animate-pulse"
           >
-            {showSkeleton ? (
-              <div
-                data-testid="hedge-status-loading"
-                className="col-span-2 sm:col-span-4 space-y-2 animate-pulse"
-              >
-                <div className="h-4 bg-dark-50 rounded w-1/3" />
-                <div className="h-4 bg-dark-50 rounded w-2/3" />
-                <div className="h-4 bg-dark-50 rounded w-1/2" />
-              </div>
-            ) : (
-              <>
-                <Stat
-                  label="Today's notional"
-                  value={cap ? formatNotionalUsd(cap.dailyNotionalUsd) : '—'}
-                  sub={cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'}
-                />
-                <Stat
-                  label="Cycle orders"
-                  value={cap ? `${cap.cycleOrders}` : '—'}
-                  sub={cap ? `day ${cap.dayKey}` : hasSnapshot ? 'no data' : 'awaiting tick'}
-                />
-                <Stat
-                  label="Receipts visible"
-                  value={hasSnapshot ? `${receipts.length}` : '—'}
-                  sub={hasSnapshot ? 'newest 5' : 'awaiting tick'}
-                />
-                <Stat
-                  testId="hedge-engine-stat"
-                  label="Engine"
-                  value={engineState.label}
-                  color={engineState.color}
-                />
-              </>
-            )}
+            <div className="h-4 bg-dark-50 rounded w-1/3" />
+            <div className="h-4 bg-dark-50 rounded w-2/3" />
+            <div className="h-4 bg-dark-50 rounded w-1/2" />
           </div>
-        )
-      })()}
+        ) : (
+          <>
+            <Stat
+              label="Today's notional"
+              value={cap ? formatNotionalUsd(cap.dailyNotionalUsd) : '—'}
+              sub={cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'}
+            />
+            <Stat
+              label="Cycle orders"
+              value={cap ? `${cap.cycleOrders}` : '—'}
+              sub={cap ? `day ${cap.dayKey}` : hasSnapshot ? 'no data' : 'awaiting tick'}
+            />
+            <Stat
+              label="Receipts visible"
+              value={hasSnapshot ? `${receipts.length}` : '—'}
+              sub={hasSnapshot ? 'newest 5' : 'awaiting tick'}
+            />
+            <Stat
+              testId="hedge-engine-stat"
+              label="Engine"
+              value={engineState.label}
+              color={engineState.color}
+              sub={engineState.sub.text}
+              subColor={engineState.sub.color}
+              subMono={engineState.sub.mono}
+              subTestId="hedge-engine-stat-sub"
+            />
+          </>
+        )}
+      </div>
 
       <div className="bg-dark-50 rounded-lg p-3 overflow-x-auto">
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -775,13 +828,26 @@ function Stat({
   sub,
   color,
   testId,
+  subColor,
+  subMono,
+  subTestId,
 }: {
   label: string
   value: string
   sub?: string
   color?: string
   testId?: string
+  subColor?: string
+  subMono?: boolean
+  subTestId?: string
 }) {
+  const subClasses = [
+    'text-xs',
+    subColor ?? 'text-gray-500',
+    subMono ? 'font-mono truncate max-w-[14ch]' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
   return (
     <div className="bg-dark-50 rounded-xl p-3 flex flex-col gap-0.5">
       <span className="text-xs text-gray-400 uppercase tracking-wide">{label}</span>
@@ -791,7 +857,11 @@ function Stat({
       >
         {value}
       </span>
-      {sub && <span className="text-xs text-gray-500">{sub}</span>}
+      {sub && (
+        <span data-testid={subTestId} className={subClasses}>
+          {sub}
+        </span>
+      )}
     </div>
   )
 }

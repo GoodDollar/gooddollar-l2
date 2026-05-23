@@ -724,4 +724,68 @@ describe('HedgeStatusCard', () => {
     expect(engineStat).toHaveTextContent('awaiting tick');
     expect(engineStat.className).toContain('text-gray-400');
   });
+
+  it('engine stat sub line: ok state matches /last tick/i (#0021)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const engineStat = await screen.findByTestId('hedge-engine-stat');
+    const tile = engineStat.closest('div');
+    expect(tile).not.toBeNull();
+    expect(tile!.textContent ?? '').toMatch(/last tick/i);
+  });
+
+  it('engine stat sub line: unreachable state matches /auto-retry/i in red (#0021)', async () => {
+    mockFetchOnce(
+      {
+        error: 'Hedge engine unreachable',
+        snapshot: null,
+        mode: null,
+        receipts: [],
+        proof: null,
+      },
+      { status: 503 },
+    );
+    render(<HedgeStatusCard />);
+    const engineStat = await screen.findByTestId('hedge-engine-stat');
+    const tile = engineStat.closest('div');
+    expect(tile).not.toBeNull();
+    expect(tile!.textContent ?? '').toMatch(/auto-retry/i);
+    const subSpan = tile!.querySelector('[data-testid="hedge-engine-stat-sub"]');
+    expect(subSpan).not.toBeNull();
+    expect(subSpan!.className).toContain('text-red-400/80');
+  });
+
+  it('engine stat sub line: halted state reads /kill-switch engaged/i (#0021)', async () => {
+    mockFetchOnce({ ...BASE_RESPONSE, killSwitchEngaged: true });
+    render(<HedgeStatusCard />);
+    const engineStat = await screen.findByTestId('hedge-engine-stat');
+    const tile = engineStat.closest('div');
+    expect(tile!.textContent ?? '').toMatch(/kill-switch engaged/i);
+  });
+
+  it('engine stat sub line: degraded state shows breaker.reason (#0021)', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      breakerState: { tripped: true, reason: 'exposure_stale' },
+    });
+    render(<HedgeStatusCard />);
+    const engineStat = await screen.findByTestId('hedge-engine-stat');
+    const tile = engineStat.closest('div');
+    expect(tile!.textContent ?? '').toContain('exposure_stale');
+  });
+
+  it('engine stat sub line: awaiting tick state reads /warming up/i (#0021)', async () => {
+    mockFetchOnce({
+      snapshot: null,
+      capSnapshot: null,
+      breakerState: null,
+      killSwitchEngaged: false,
+      receipts: [],
+      proof: null,
+    });
+    render(<HedgeStatusCard />);
+    const engineStat = await screen.findByTestId('hedge-engine-stat');
+    const tile = engineStat.closest('div');
+    expect(tile!.textContent ?? '').toMatch(/warming up/i);
+  });
 });

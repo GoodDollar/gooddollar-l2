@@ -82,31 +82,63 @@ function formatExposureDelta(before, after) {
         deltaClass: 'text-red-300'
     };
 }
+// Resolves the engine's display model in one place so the header pill, stat
+// tile value, and sub-line copy can never disagree about severity.
+// Exhaustive switch on EngineStateLabel forces deliberate handling when a
+// new state is added.
 function resolveEngineState(input) {
-    if (input.error && !input.snapshot) {
-        return {
-            label: 'unreachable',
-            color: 'text-red-400'
-        };
+    const label = resolveEngineLabel(input);
+    switch(label){
+        case 'ok':
+            return {
+                label,
+                color: 'text-goodgreen',
+                sub: {
+                    text: `last tick ${timeAgo(input.snapshot?.timestamp)}`
+                }
+            };
+        case 'degraded':
+            return {
+                label,
+                color: 'text-yellow-400',
+                sub: {
+                    text: input.breaker?.reason ?? 'degraded',
+                    mono: true
+                }
+            };
+        case 'halted':
+            return {
+                label,
+                color: 'text-yellow-400',
+                sub: {
+                    text: 'kill-switch engaged'
+                }
+            };
+        case 'unreachable':
+            return {
+                label,
+                color: 'text-red-400',
+                sub: {
+                    text: `auto-retry ${Math.round(input.pollIntervalMs / 1000)}s`,
+                    color: 'text-red-400/80'
+                }
+            };
+        case 'awaiting tick':
+            return {
+                label,
+                color: 'text-gray-400',
+                sub: {
+                    text: 'warming up'
+                }
+            };
     }
-    if (!input.snapshot) {
-        return {
-            label: 'awaiting tick',
-            color: 'text-gray-400'
-        };
-    }
-    if (input.killSwitch) return {
-        label: 'halted',
-        color: 'text-yellow-400'
-    };
-    if (input.breaker?.tripped) return {
-        label: 'degraded',
-        color: 'text-yellow-400'
-    };
-    return {
-        label: 'ok',
-        color: 'text-goodgreen'
-    };
+}
+function resolveEngineLabel(input) {
+    if (input.error && !input.snapshot) return 'unreachable';
+    if (!input.snapshot) return 'awaiting tick';
+    if (input.killSwitch) return 'halted';
+    if (input.breaker?.tripped) return 'degraded';
+    return 'ok';
 }
 function DegradedHint({ children }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -115,7 +147,7 @@ function DegradedHint({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 152,
+        lineNumber: 204,
         columnNumber: 5
     }, this);
 }
@@ -137,34 +169,34 @@ function ArrowPathIcon({ spinning = false }) {
                 d: "M3 12a9 9 0 0 1 15.5-6.3L21 8"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 175,
+                lineNumber: 227,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                 d: "M21 4v4h-4"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 176,
+                lineNumber: 228,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                 d: "M21 12a9 9 0 0 1-15.5 6.3L3 16"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 177,
+                lineNumber: 229,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                 d: "M3 20v-4h4"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 178,
+                lineNumber: 230,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 163,
+        lineNumber: 215,
         columnNumber: 5
     }, this);
 }
@@ -185,34 +217,34 @@ function CloudOffIcon() {
                 d: "M2 2l20 20"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 196,
+                lineNumber: 248,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                 d: "M5.78 5.78A6 6 0 003 11a4 4 0 004 4h9.5"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 197,
+                lineNumber: 249,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                 d: "M21 17.5a4 4 0 00-1.83-3.36"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 198,
+                lineNumber: 250,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                 d: "M9 4.07A6 6 0 0119 8.5"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 199,
+                lineNumber: 251,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 185,
+        lineNumber: 237,
         columnNumber: 5
     }, this);
 }
@@ -233,14 +265,14 @@ function AlertTriangleIcon() {
                 d: "M12 3l10 18H2L12 3z"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 217,
+                lineNumber: 269,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                 d: "M12 10v5"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 218,
+                lineNumber: 270,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -250,13 +282,13 @@ function AlertTriangleIcon() {
                 fill: "currentColor"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 219,
+                lineNumber: 271,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 206,
+        lineNumber: 258,
         columnNumber: 5
     }, this);
 }
@@ -277,20 +309,20 @@ function InboxIcon() {
                 d: "M3 13l3-7h12l3 7"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 237,
+                lineNumber: 289,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                 d: "M3 13v6h18v-6h-6a3 3 0 01-6 0H3z"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 238,
+                lineNumber: 290,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 226,
+        lineNumber: 278,
         columnNumber: 5
     }, this);
 }
@@ -306,12 +338,12 @@ function EmptyReceiptsState({ error, hasSnapshot, degradedReceipts, pollInterval
                     className: "mt-0.5",
                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(CloudOffIcon, {}, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 262,
+                        lineNumber: 314,
                         columnNumber: 34
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                    lineNumber: 262,
+                    lineNumber: 314,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -323,13 +355,13 @@ function EmptyReceiptsState({ error, hasSnapshot, degradedReceipts, pollInterval
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                    lineNumber: 263,
+                    lineNumber: 315,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-            lineNumber: 258,
+            lineNumber: 310,
             columnNumber: 7
         }, this);
     }
@@ -342,12 +374,12 @@ function EmptyReceiptsState({ error, hasSnapshot, degradedReceipts, pollInterval
                     className: "mt-0.5",
                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(AlertTriangleIcon, {}, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 276,
+                        lineNumber: 328,
                         columnNumber: 34
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                    lineNumber: 276,
+                    lineNumber: 328,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -358,13 +390,13 @@ function EmptyReceiptsState({ error, hasSnapshot, degradedReceipts, pollInterval
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                    lineNumber: 277,
+                    lineNumber: 329,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-            lineNumber: 272,
+            lineNumber: 324,
             columnNumber: 7
         }, this);
     }
@@ -376,25 +408,25 @@ function EmptyReceiptsState({ error, hasSnapshot, degradedReceipts, pollInterval
                 className: "mt-0.5",
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(InboxIcon, {}, void 0, false, {
                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                    lineNumber: 288,
+                    lineNumber: 340,
                     columnNumber: 32
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 288,
+                lineNumber: 340,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                 children: "No hedge activity yet. Receipts will appear here once the engine sends an order."
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 289,
+                lineNumber: 341,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 284,
+        lineNumber: 336,
         columnNumber: 5
     }, this);
 }
@@ -425,7 +457,7 @@ function ModeBadge({ mode }) {
         children: c.label
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 306,
+        lineNumber: 358,
         columnNumber: 5
     }, this);
 }
@@ -610,6 +642,15 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
     const breaker = data?.breakerState;
     const cap = data?.capSnapshot;
     const killSwitch = Boolean(data?.killSwitchEngaged);
+    const hasSnapshot = Boolean(data?.snapshot);
+    const showSkeleton = loading && !data;
+    const engineState = resolveEngineState({
+        snapshot: data?.snapshot ?? null,
+        error,
+        breaker,
+        killSwitch,
+        pollIntervalMs: POLL_INTERVAL_MS
+    });
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
         "data-testid": "hedge-status-card",
         className: "bg-dark-100/50 rounded-xl border border-dark-50 p-5",
@@ -629,7 +670,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                         children: "Demo hedge proof"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 490,
+                                        lineNumber: 551,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -638,18 +679,18 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                             mode: mode
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 496,
+                                            lineNumber: 557,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 493,
+                                        lineNumber: 554,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 489,
+                                lineNumber: 550,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -665,26 +706,26 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                         spinning: isFetching && !isThrottled
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 518,
+                                        lineNumber: 579,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                         children: isThrottled ? `Retry in ${throttleRemainingSeconds}s` : isFetching ? 'Refreshing…' : 'Refresh'
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 519,
+                                        lineNumber: 580,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 499,
+                                lineNumber: 560,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 485,
+                        lineNumber: 546,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -703,7 +744,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 532,
+                                lineNumber: 593,
                                 columnNumber: 11
                             }, this),
                             data?.snapshot?.timestamp && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -714,7 +755,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 537,
+                                lineNumber: 598,
                                 columnNumber: 13
                             }, this),
                             data?.degraded?.proof && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(DegradedHint, {
@@ -724,7 +765,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 542,
+                                lineNumber: 603,
                                 columnNumber: 13
                             }, this),
                             data?.proof && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -737,7 +778,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                         children: data.proof.summary
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 547,
+                                        lineNumber: 608,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -750,25 +791,25 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                         children: "latest proof →"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 555,
+                                        lineNumber: 616,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 545,
+                                lineNumber: 606,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 528,
+                        lineNumber: 589,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 484,
+                lineNumber: 545,
                 columnNumber: 7
             }, this),
             isThrottled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -782,7 +823,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                 children: "Throttled."
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 576,
+                                lineNumber: 637,
                                 columnNumber: 13
                             }, this),
                             " Too many requests, retrying in",
@@ -796,14 +837,14 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 577,
+                                lineNumber: 638,
                                 columnNumber: 13
                             }, this),
                             "."
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 575,
+                        lineNumber: 636,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -819,13 +860,13 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 582,
+                        lineNumber: 643,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 571,
+                lineNumber: 632,
                 columnNumber: 9
             }, this),
             !isThrottled && error && !data?.snapshot && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -839,7 +880,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                 children: "Hedge engine unavailable:"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 600,
+                                lineNumber: 661,
                                 columnNumber: 13
                             }, this),
                             " ",
@@ -847,7 +888,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 599,
+                        lineNumber: 660,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -859,13 +900,13 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                         children: isFetching ? 'Retrying…' : 'Retry'
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 602,
+                        lineNumber: 663,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 595,
+                lineNumber: 656,
                 columnNumber: 9
             }, this),
             killSwitch && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -876,14 +917,14 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                         children: "Kill switch engaged."
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 619,
+                        lineNumber: 680,
                         columnNumber: 11
                     }, this),
                     " No further orders will be sent until the kill-switch file is removed."
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 615,
+                lineNumber: 676,
                 columnNumber: 9
             }, this),
             breaker?.tripped && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -894,7 +935,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                         children: "Breaker tripped:"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 629,
+                        lineNumber: 690,
                         columnNumber: 11
                     }, this),
                     ' ',
@@ -903,7 +944,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                         children: breaker.reason
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 630,
+                        lineNumber: 691,
                         columnNumber: 11
                     }, this),
                     breaker.detail && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -914,104 +955,98 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 631,
+                        lineNumber: 692,
                         columnNumber: 30
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 625,
+                lineNumber: 686,
                 columnNumber: 9
             }, this),
-            (()=>{
-                const engineState = resolveEngineState({
-                    snapshot: data?.snapshot ?? null,
-                    error,
-                    breaker,
-                    killSwitch
-                });
-                const hasSnapshot = Boolean(data?.snapshot);
-                const showSkeleton = loading && !data;
-                return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    "data-testid": "hedge-stat-grid",
-                    className: "grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4",
-                    children: showSkeleton ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        "data-testid": "hedge-status-loading",
-                        className: "col-span-2 sm:col-span-4 space-y-2 animate-pulse",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "h-4 bg-dark-50 rounded w-1/3"
-                            }, void 0, false, {
-                                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 654,
-                                columnNumber: 17
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "h-4 bg-dark-50 rounded w-2/3"
-                            }, void 0, false, {
-                                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 655,
-                                columnNumber: 17
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "h-4 bg-dark-50 rounded w-1/2"
-                            }, void 0, false, {
-                                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 656,
-                                columnNumber: 17
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 650,
-                        columnNumber: 15
-                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
-                                label: "Today's notional",
-                                value: cap ? (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$format$2d$notional$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNotionalUsd"])(cap.dailyNotionalUsd) : '—',
-                                sub: cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'
-                            }, void 0, false, {
-                                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 660,
-                                columnNumber: 17
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
-                                label: "Cycle orders",
-                                value: cap ? `${cap.cycleOrders}` : '—',
-                                sub: cap ? `day ${cap.dayKey}` : hasSnapshot ? 'no data' : 'awaiting tick'
-                            }, void 0, false, {
-                                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 665,
-                                columnNumber: 17
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
-                                label: "Receipts visible",
-                                value: hasSnapshot ? `${receipts.length}` : '—',
-                                sub: hasSnapshot ? 'newest 5' : 'awaiting tick'
-                            }, void 0, false, {
-                                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 670,
-                                columnNumber: 17
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
-                                testId: "hedge-engine-stat",
-                                label: "Engine",
-                                value: engineState.label,
-                                color: engineState.color
-                            }, void 0, false, {
-                                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 675,
-                                columnNumber: 17
-                            }, this)
-                        ]
-                    }, void 0, true)
-                }, void 0, false, {
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                "data-testid": "hedge-stat-grid",
+                className: "grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4",
+                children: showSkeleton ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    "data-testid": "hedge-status-loading",
+                    className: "col-span-2 sm:col-span-4 space-y-2 animate-pulse",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "h-4 bg-dark-50 rounded w-1/3"
+                        }, void 0, false, {
+                            fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                            lineNumber: 705,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "h-4 bg-dark-50 rounded w-2/3"
+                        }, void 0, false, {
+                            fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                            lineNumber: 706,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "h-4 bg-dark-50 rounded w-1/2"
+                        }, void 0, false, {
+                            fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                            lineNumber: 707,
+                            columnNumber: 13
+                        }, this)
+                    ]
+                }, void 0, true, {
                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                    lineNumber: 645,
+                    lineNumber: 701,
                     columnNumber: 11
-                }, this);
-            })(),
+                }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
+                            label: "Today's notional",
+                            value: cap ? (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$format$2d$notional$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNotionalUsd"])(cap.dailyNotionalUsd) : '—',
+                            sub: cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'
+                        }, void 0, false, {
+                            fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                            lineNumber: 711,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
+                            label: "Cycle orders",
+                            value: cap ? `${cap.cycleOrders}` : '—',
+                            sub: cap ? `day ${cap.dayKey}` : hasSnapshot ? 'no data' : 'awaiting tick'
+                        }, void 0, false, {
+                            fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                            lineNumber: 716,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
+                            label: "Receipts visible",
+                            value: hasSnapshot ? `${receipts.length}` : '—',
+                            sub: hasSnapshot ? 'newest 5' : 'awaiting tick'
+                        }, void 0, false, {
+                            fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                            lineNumber: 721,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stat, {
+                            testId: "hedge-engine-stat",
+                            label: "Engine",
+                            value: engineState.label,
+                            color: engineState.color,
+                            sub: engineState.sub.text,
+                            subColor: engineState.sub.color,
+                            subMono: engineState.sub.mono,
+                            subTestId: "hedge-engine-stat-sub"
+                        }, void 0, false, {
+                            fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                            lineNumber: 726,
+                            columnNumber: 13
+                        }, this)
+                    ]
+                }, void 0, true)
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
+                lineNumber: 696,
+                columnNumber: 7
+            }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "bg-dark-50 rounded-lg p-3 overflow-x-auto",
                 children: [
@@ -1023,7 +1058,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                 children: "Recent receipts"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 689,
+                                lineNumber: 742,
                                 columnNumber: 11
                             }, this),
                             data?.degraded?.receipts && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(DegradedHint, {
@@ -1033,13 +1068,13 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 691,
+                                lineNumber: 744,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 688,
+                        lineNumber: 741,
                         columnNumber: 9
                     }, this),
                     receipts.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(EmptyReceiptsState, {
@@ -1049,7 +1084,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                         pollIntervalMs: POLL_INTERVAL_MS
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 695,
+                        lineNumber: 748,
                         columnNumber: 11
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
                         className: "w-full text-sm",
@@ -1063,7 +1098,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                             children: "time"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 705,
+                                            lineNumber: 758,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1071,7 +1106,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                             children: "id"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 706,
+                                            lineNumber: 759,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1079,7 +1114,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                             children: "symbol"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 707,
+                                            lineNumber: 760,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1087,7 +1122,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                             children: "side"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 708,
+                                            lineNumber: 761,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1095,7 +1130,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                             children: "notional"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 709,
+                                            lineNumber: 762,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1103,7 +1138,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                             children: "exposure Δ"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 710,
+                                            lineNumber: 763,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1111,18 +1146,18 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                             children: "status"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                            lineNumber: 711,
+                                            lineNumber: 764,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                    lineNumber: 704,
+                                    lineNumber: 757,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 703,
+                                lineNumber: 756,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1139,7 +1174,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                                 children: timeAgo(r.timestamp)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 724,
+                                                lineNumber: 777,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1149,7 +1184,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                                         children: shortId(r.id)
                                                     }, void 0, false, {
                                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                        lineNumber: 731,
+                                                        lineNumber: 784,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1162,19 +1197,19 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                                                 children: r.etoroOrderId ?? '—'
                                                             }, void 0, false, {
                                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                                lineNumber: 736,
+                                                                lineNumber: 789,
                                                                 columnNumber: 32
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                        lineNumber: 732,
+                                                        lineNumber: 785,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 730,
+                                                lineNumber: 783,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1182,7 +1217,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                                 children: r.symbol
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 739,
+                                                lineNumber: 792,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1190,7 +1225,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                                 children: r.side
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 740,
+                                                lineNumber: 793,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1198,7 +1233,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                                 children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$format$2d$notional$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNotionalUsd"])(r.notionalUsd)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 741,
+                                                lineNumber: 794,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1209,7 +1244,7 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                                         children: delta.display
                                                     }, void 0, false, {
                                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                        lineNumber: 748,
+                                                        lineNumber: 801,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1221,13 +1256,13 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                        lineNumber: 749,
+                                                        lineNumber: 802,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 744,
+                                                lineNumber: 797,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1237,56 +1272,61 @@ const HedgeStatusCard = /*#__PURE__*/ _s((0, __TURBOPACK__imported__module__$5b$
                                                     children: "ok"
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                    lineNumber: 753,
+                                                    lineNumber: 806,
                                                     columnNumber: 25
                                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                     className: "text-yellow-400",
                                                     children: r.error ?? 'failed'
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                    lineNumber: 755,
+                                                    lineNumber: 808,
                                                     columnNumber: 25
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                                lineNumber: 751,
+                                                lineNumber: 804,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, r.id, true, {
                                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                        lineNumber: 718,
+                                        lineNumber: 771,
                                         columnNumber: 19
                                     }, this);
                                 })
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                                lineNumber: 714,
+                                lineNumber: 767,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                        lineNumber: 702,
+                        lineNumber: 755,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 687,
+                lineNumber: 740,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 480,
+        lineNumber: 541,
         columnNumber: 5
     }, this);
 }, "0YsnPpcp9wHKa6mhNxfialrPDoY=")), "0YsnPpcp9wHKa6mhNxfialrPDoY=");
 _c8 = HedgeStatusCard;
 HedgeStatusCard.displayName = 'HedgeStatusCard';
 const __TURBOPACK__default__export__ = HedgeStatusCard;
-function Stat({ label, value, sub, color, testId }) {
+function Stat({ label, value, sub, color, testId, subColor, subMono, subTestId }) {
+    const subClasses = [
+        'text-xs',
+        subColor ?? 'text-gray-500',
+        subMono ? 'font-mono truncate max-w-[14ch]' : ''
+    ].filter(Boolean).join(' ');
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "bg-dark-50 rounded-xl p-3 flex flex-col gap-0.5",
         children: [
@@ -1295,7 +1335,7 @@ function Stat({ label, value, sub, color, testId }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 787,
+                lineNumber: 853,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1304,21 +1344,22 @@ function Stat({ label, value, sub, color, testId }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 788,
+                lineNumber: 854,
                 columnNumber: 7
             }, this),
             sub && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                className: "text-xs text-gray-500",
+                "data-testid": subTestId,
+                className: subClasses,
                 children: sub
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-                lineNumber: 794,
-                columnNumber: 15
+                lineNumber: 861,
+                columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeStatusCard.tsx",
-        lineNumber: 786,
+        lineNumber: 852,
         columnNumber: 5
     }, this);
 }
