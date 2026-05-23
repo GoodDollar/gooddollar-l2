@@ -81,6 +81,30 @@ function timeAgo(ms: number | undefined): string {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
+type EngineState =
+  | { label: 'ok'; color: 'text-goodgreen' }
+  | { label: 'degraded'; color: 'text-yellow-400' }
+  | { label: 'halted'; color: 'text-yellow-400' }
+  | { label: 'unreachable'; color: 'text-red-400' }
+  | { label: 'awaiting tick'; color: 'text-gray-400' }
+
+function resolveEngineState(input: {
+  snapshot: SnapshotPayload | null
+  error: string | null
+  breaker: BreakerState | null | undefined
+  killSwitch: boolean
+}): EngineState {
+  if (input.error && !input.snapshot) {
+    return { label: 'unreachable', color: 'text-red-400' }
+  }
+  if (!input.snapshot) {
+    return { label: 'awaiting tick', color: 'text-gray-400' }
+  }
+  if (input.killSwitch) return { label: 'halted', color: 'text-yellow-400' }
+  if (input.breaker?.tripped) return { label: 'degraded', color: 'text-yellow-400' }
+  return { label: 'ok', color: 'text-goodgreen' }
+}
+
 function ModeBadge({ mode }: { mode: HedgeReceipt['mode'] | undefined }) {
   const labelMap: Record<string, { label: string; cls: string }> = {
     demo: { label: 'demo', cls: 'bg-goodgreen/15 text-goodgreen border-goodgreen/30' },
@@ -206,31 +230,44 @@ export default function HedgeStatusCard() {
         </div>
       )}
 
-      {data && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <Stat
-            label="Today's notional"
-            value={cap ? `$${cap.dailyNotionalUsd.toFixed(2)}` : '—'}
-            sub={cap ? `${cap.dailyOrders} orders` : 'no caps'}
-          />
-          <Stat
-            label="Cycle orders"
-            value={cap ? `${cap.cycleOrders}` : '—'}
-            sub={cap ? `day ${cap.dayKey}` : ''}
-          />
-          <Stat
-            label="Receipts visible"
-            value={`${receipts.length}`}
-            sub="newest 5"
-          />
-          <Stat
-            label="Engine"
-            value={breaker?.tripped ? 'degraded' : killSwitch ? 'halted' : 'ok'}
-            color={
-              breaker?.tripped || killSwitch ? 'text-yellow-400' : 'text-goodgreen'
-            }
-          />
-        </div>
+      {data && !(error && !data.snapshot) && (
+        (() => {
+          const engineState = resolveEngineState({
+            snapshot: data.snapshot,
+            error,
+            breaker,
+            killSwitch,
+          })
+          const hasSnapshot = Boolean(data.snapshot)
+          return (
+            <div
+              data-testid="hedge-stat-grid"
+              className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4"
+            >
+              <Stat
+                label="Today's notional"
+                value={cap ? `$${cap.dailyNotionalUsd.toFixed(2)}` : '—'}
+                sub={cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'}
+              />
+              <Stat
+                label="Cycle orders"
+                value={cap ? `${cap.cycleOrders}` : '—'}
+                sub={cap ? `day ${cap.dayKey}` : hasSnapshot ? '' : 'awaiting tick'}
+              />
+              <Stat
+                label="Receipts visible"
+                value={hasSnapshot ? `${receipts.length}` : '—'}
+                sub={hasSnapshot ? 'newest 5' : 'awaiting tick'}
+              />
+              <Stat
+                testId="hedge-engine-stat"
+                label="Engine"
+                value={engineState.label}
+                color={engineState.color}
+              />
+            </div>
+          )
+        })()
       )}
 
       <div className="bg-dark-50 rounded-lg p-3 overflow-x-auto">
@@ -288,16 +325,23 @@ function Stat({
   value,
   sub,
   color,
+  testId,
 }: {
   label: string
   value: string
   sub?: string
   color?: string
+  testId?: string
 }) {
   return (
     <div className="bg-dark-50 rounded-xl p-3 flex flex-col gap-0.5">
       <span className="text-xs text-gray-400 uppercase tracking-wide">{label}</span>
-      <span className={`text-lg font-bold ${color ?? 'text-white'}`}>{value}</span>
+      <span
+        data-testid={testId}
+        className={`text-lg font-bold ${color ?? 'text-white'}`}
+      >
+        {value}
+      </span>
       {sub && <span className="text-xs text-gray-500">{sub}</span>}
     </div>
   )

@@ -407,6 +407,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../src/app/api/hedge/status/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/hedge/status">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/hedge/status/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../src/app/api/oracle/status/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/oracle/status">> = Specific

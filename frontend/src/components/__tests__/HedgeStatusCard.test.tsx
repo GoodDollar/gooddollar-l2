@@ -114,4 +114,65 @@ describe('HedgeStatusCard', () => {
     render(<HedgeStatusCard />);
     expect(screen.getByTestId('hedge-status-loading')).toBeInTheDocument();
   });
+
+  it('happy path: renders ENGINE: ok in green', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const grid = await screen.findByTestId('hedge-stat-grid');
+    expect(grid).toBeInTheDocument();
+    expect(grid).toHaveTextContent('ok');
+    const engineStat = await screen.findByTestId('hedge-engine-stat');
+    expect(engineStat.className).toContain('text-goodgreen');
+  });
+
+  it('breaker tripped: renders ENGINE: degraded in yellow', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      breakerState: { tripped: true, reason: 'exposure_stale' },
+    });
+    render(<HedgeStatusCard />);
+    const engineStat = await screen.findByTestId('hedge-engine-stat');
+    expect(engineStat).toHaveTextContent('degraded');
+    expect(engineStat.className).toContain('text-yellow-400');
+  });
+
+  it('kill switch engaged: renders ENGINE: halted', async () => {
+    mockFetchOnce({ ...BASE_RESPONSE, killSwitchEngaged: true });
+    render(<HedgeStatusCard />);
+    const engineStat = await screen.findByTestId('hedge-engine-stat');
+    expect(engineStat).toHaveTextContent('halted');
+    expect(engineStat.className).toContain('text-yellow-400');
+  });
+
+  it('engine unreachable: does NOT render the stat grid, only the red banner', async () => {
+    mockFetchOnce(
+      {
+        error: 'Hedge engine unreachable',
+        snapshot: null,
+        receipts: [],
+        proof: null,
+      },
+      { status: 503 },
+    );
+    render(<HedgeStatusCard />);
+    await waitFor(() => {
+      expect(screen.getByTestId('hedge-status-error')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('hedge-stat-grid')).toBeNull();
+  });
+
+  it('awaiting tick: snapshot null, no error → grid shows ENGINE: awaiting tick in neutral grey', async () => {
+    mockFetchOnce({
+      snapshot: null,
+      capSnapshot: null,
+      breakerState: null,
+      killSwitchEngaged: false,
+      receipts: [],
+      proof: null,
+    });
+    render(<HedgeStatusCard />);
+    const engineStat = await screen.findByTestId('hedge-engine-stat');
+    expect(engineStat).toHaveTextContent('awaiting tick');
+    expect(engineStat.className).toContain('text-gray-400');
+  });
 });
