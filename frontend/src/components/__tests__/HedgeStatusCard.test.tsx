@@ -833,6 +833,72 @@ describe('HedgeStatusCard', () => {
     expect(tile!.textContent ?? '').toMatch(/warming up/i);
   });
 
+  describe('receipts panel reserved height + centered empty state (#0025)', () => {
+    it('empty state engine-down: 28px icon, headline + sub line, red color', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const empty = await screen.findByTestId('hedge-receipts-empty');
+      expect(empty.textContent).toMatch(/Hedge engine unreachable/i);
+      expect(empty.textContent).toMatch(/No receipts available\./i);
+      expect(empty.textContent).toMatch(/Retrying every 10s\./i);
+      const svg = empty.querySelector('svg');
+      expect(svg).not.toBeNull();
+      expect(svg!.getAttribute('width')).toBe('28');
+      expect(empty.className).toContain('text-red-300');
+    });
+
+    it('empty state degraded: 28px yellow icon, two-line copy with reason', async () => {
+      mockFetchOnce({
+        ...BASE_RESPONSE,
+        receipts: [],
+        degraded: { receipts: 'feed_lag' },
+      });
+      render(<HedgeStatusCard />);
+      const empty = await screen.findByTestId('hedge-receipts-empty');
+      expect(empty.textContent).toMatch(/Receipts source degraded/i);
+      expect(empty.textContent).toContain('feed_lag');
+      const svg = empty.querySelector('svg');
+      expect(svg!.getAttribute('width')).toBe('28');
+      expect(empty.className).toContain('text-yellow-300');
+    });
+
+    it('empty state idle-healthy: 28px neutral icon, headline + softer sub', async () => {
+      mockFetchOnce({ ...BASE_RESPONSE, receipts: [] });
+      render(<HedgeStatusCard />);
+      const empty = await screen.findByTestId('hedge-receipts-empty');
+      expect(empty.textContent).toMatch(/No hedge activity yet/i);
+      expect(empty.textContent).toMatch(/Receipts will appear here/i);
+      const svg = empty.querySelector('svg');
+      expect(svg!.getAttribute('width')).toBe('28');
+      expect(empty.className).toContain('text-gray-500');
+    });
+
+    it('receipts panel reserves min-h-[7rem] so empty→populated does not jump', async () => {
+      mockFetchOnce({ ...BASE_RESPONSE, receipts: [] });
+      render(<HedgeStatusCard />);
+      const reserved = await screen.findByTestId('hedge-receipts-reserved');
+      expect(reserved.className).toContain('min-h-[7rem]');
+    });
+
+    it('populated receipts panel also lives inside the reserved wrapper', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const row = await screen.findByTestId('hedge-receipt-row');
+      const reserved = row.closest('[data-testid="hedge-receipts-reserved"]');
+      expect(reserved).not.toBeNull();
+      expect(reserved!.className).toContain('min-h-[7rem]');
+    });
+  });
+
   describe('error banner copy (#0022)', () => {
     it('reads as one coherent sentence with no duplicate subject', async () => {
       mockFetchOnce(

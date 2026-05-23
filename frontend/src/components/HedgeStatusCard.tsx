@@ -12,6 +12,12 @@ import {
 
 import { formatNotionalUsd } from '@/lib/format-notional'
 import { buildHedgeErrorHeadline } from '@/lib/hedge-error'
+import {
+  AlertTriangleIcon,
+  ArrowPathIcon,
+  CloudOffIcon,
+  InboxIcon,
+} from './HedgeStatusCard/icons'
 
 /**
  * Lane 5 — demo hedge proof surface.
@@ -233,87 +239,13 @@ function DegradedHint({ children }: { children: ReactNode }) {
   )
 }
 
-function ArrowPathIcon({ spinning = false }: { spinning?: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={spinning ? 'animate-spin' : undefined}
-    >
-      <path d="M3 12a9 9 0 0 1 15.5-6.3L21 8" />
-      <path d="M21 4v4h-4" />
-      <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16" />
-      <path d="M3 20v-4h4" />
-    </svg>
-  )
-}
-
-function CloudOffIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 2l20 20" />
-      <path d="M5.78 5.78A6 6 0 003 11a4 4 0 004 4h9.5" />
-      <path d="M21 17.5a4 4 0 00-1.83-3.36" />
-      <path d="M9 4.07A6 6 0 0119 8.5" />
-    </svg>
-  )
-}
-
-function AlertTriangleIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 3l10 18H2L12 3z" />
-      <path d="M12 10v5" />
-      <circle cx="12" cy="18" r="0.5" fill="currentColor" />
-    </svg>
-  )
-}
-
-function InboxIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 13l3-7h12l3 7" />
-      <path d="M3 13v6h18v-6h-6a3 3 0 01-6 0H3z" />
-    </svg>
-  )
-}
+// Centered icon-over-text empty state. Sits inside a `min-h-[7rem]`
+// reserved wrapper (see render below) so the receipts panel stays the
+// same height whether empty or populated — no layout jump when the first
+// receipt arrives. The 28-px icon and two-line copy give the empty
+// state real vertical presence next to the populated table.
+const EMPTY_RECEIPTS_BASE_CLASS =
+  'flex flex-col items-center justify-center gap-2 text-center py-6 text-xs'
 
 function EmptyReceiptsState({
   error,
@@ -326,19 +258,18 @@ function EmptyReceiptsState({
   degradedReceipts: string | undefined
   pollIntervalMs: number
 }) {
-  const baseClass =
-    'flex items-start gap-2 px-1 py-2 text-xs min-h-[3rem]'
   if (error && !hasSnapshot) {
     return (
       <div
         data-testid="hedge-receipts-empty"
-        className={`${baseClass} text-red-300`}
+        className={`${EMPTY_RECEIPTS_BASE_CLASS} text-red-300`}
       >
-        <span className="mt-0.5"><CloudOffIcon /></span>
-        <span>
-          No receipts to show: engine unreachable. Retrying every{' '}
+        <CloudOffIcon size={28} />
+        <div className="font-medium text-sm">Hedge engine unreachable</div>
+        <div className="text-red-300/80">
+          No receipts available. Retrying every{' '}
           {Math.round(pollIntervalMs / 1000)}s.
-        </span>
+        </div>
       </div>
     )
   }
@@ -346,25 +277,22 @@ function EmptyReceiptsState({
     return (
       <div
         data-testid="hedge-receipts-empty"
-        className={`${baseClass} text-yellow-300`}
+        className={`${EMPTY_RECEIPTS_BASE_CLASS} text-yellow-300`}
       >
-        <span className="mt-0.5"><AlertTriangleIcon /></span>
-        <span>
-          No receipts visible: receipts source degraded ({degradedReceipts}).
-        </span>
+        <AlertTriangleIcon size={28} />
+        <div className="font-medium text-sm">Receipts source degraded</div>
+        <div className="text-yellow-300/80 font-mono">{degradedReceipts}</div>
       </div>
     )
   }
   return (
     <div
       data-testid="hedge-receipts-empty"
-      className={`${baseClass} text-gray-500`}
+      className={`${EMPTY_RECEIPTS_BASE_CLASS} text-gray-500`}
     >
-      <span className="mt-0.5"><InboxIcon /></span>
-      <span>
-        No hedge activity yet. Receipts will appear here once the engine
-        sends an order.
-      </span>
+      <InboxIcon size={28} />
+      <div className="font-medium text-sm text-gray-300">No hedge activity yet</div>
+      <div>Receipts will appear here once the engine sends an order.</div>
     </div>
   )
 }
@@ -840,10 +768,14 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             <DegradedHint>receipts source degraded: {data.degraded.receipts}</DegradedHint>
           )}
         </div>
+        <div
+          data-testid="hedge-receipts-reserved"
+          className="min-h-[7rem] flex flex-col justify-start"
+        >
         {receipts.length === 0 ? (
           <EmptyReceiptsState
             error={error}
-            hasSnapshot={Boolean(data?.snapshot)}
+            hasSnapshot={hasSnapshot}
             degradedReceipts={data?.degraded?.receipts}
             pollIntervalMs={POLL_INTERVAL_MS}
           />
@@ -910,6 +842,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             </tbody>
           </table>
         )}
+        </div>
       </div>
     </section>
   )

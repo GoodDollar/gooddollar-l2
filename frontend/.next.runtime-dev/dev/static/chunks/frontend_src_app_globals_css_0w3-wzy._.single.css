@@ -983,6 +983,10 @@ img, video {
   min-height: 3rem;
 }
 
+.min-h-\[7rem\] {
+  min-height: 7rem;
+}
+
 .w-0\.5 {
   width: .125rem;
 }
