@@ -427,6 +427,101 @@ describe('PipelineFlowDiagram', () => {
     })
   })
 
+  // #0057 — diagram paints three tones (green/yellow/gray) but carried no
+  // legend mapping tone → meaning. A reviewer who sees a yellow pill +
+  // three gray pills had no on-page key to decode the colour signal.
+  describe('inline tone legend (#0057)', () => {
+    it('renders a three-entry tone legend after the node strip', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const legend = screen.getByTestId('pipeline-flow-legend')
+      expect(legend).toBeInTheDocument()
+      expect(legend.tagName).toBe('UL')
+      expect(legend.getAttribute('aria-label')).toBe('Pipeline tone legend')
+
+      const entries = legend.querySelectorAll('[data-testid^="pipeline-legend-"]')
+      expect(entries).toHaveLength(3)
+      const ids = Array.from(entries).map((e) => e.getAttribute('data-testid'))
+      expect(ids).toEqual([
+        'pipeline-legend-healthy',
+        'pipeline-legend-degraded',
+        'pipeline-legend-loading',
+      ])
+
+      // The legend sits AFTER the node strip — top-to-bottom reading order
+      // is node row, then legend.
+      const section = screen.getByTestId('pipeline-flow-diagram')
+      const nodes = section.querySelector('ol')
+      expect(nodes).not.toBeNull()
+      const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING
+      expect((nodes as HTMLElement).compareDocumentPosition(legend) & FOLLOWING).toBe(FOLLOWING)
+    })
+
+    it('each legend entry pairs an aria-hidden swatch with its word', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const expectations: Array<[string, RegExp]> = [
+        ['pipeline-legend-healthy', /^healthy$/],
+        ['pipeline-legend-degraded', /^degraded$/],
+        ['pipeline-legend-loading', /^loading$/],
+      ]
+      for (const [testid, wordRegex] of expectations) {
+        const entry = screen.getByTestId(testid)
+        const swatch = entry.querySelector('[aria-hidden]')
+        expect(swatch, `${testid} swatch`).not.toBeNull()
+        const label = entry.querySelector('span:not([aria-hidden])')
+        expect(label, `${testid} label`).not.toBeNull()
+        expect((label?.textContent ?? '').trim()).toMatch(wordRegex)
+      }
+    })
+
+    it('legend stays present regardless of axis state', async () => {
+      // Render once with all-unknown.
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+      expect(screen.getByTestId('pipeline-flow-legend')).toBeInTheDocument()
+      cleanup()
+
+      // All-healthy.
+      mockOnChainHealthy()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+          'healthy',
+        )
+      })
+      expect(screen.getByTestId('pipeline-flow-legend')).toBeInTheDocument()
+      cleanup()
+
+      // Mixed — quotes degraded, on-chain healthy.
+      mockOnChainHealthy()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) throw new Error('boom')
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
+          'degraded',
+        )
+      })
+      expect(screen.getByTestId('pipeline-flow-legend')).toBeInTheDocument()
+    })
+  })
+
   // #0055 — flow nodes used to communicate axis state via colour alone, so a
   // reviewer hovering a gray pulsing pill could not tell "still loading"
   // from "no signal yet" without DevTools. Each pill now carries a

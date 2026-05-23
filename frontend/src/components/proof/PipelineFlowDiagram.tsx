@@ -153,7 +153,52 @@ export function PipelineFlowDiagram() {
           )
         })}
       </ol>
+      <ToneLegend />
     </section>
+  )
+}
+
+/**
+ * Inline three-entry tone legend mapping each pipeline-flow tone family
+ * to its user-facing word — see #0057. The legend is descriptive
+ * content, not interactive, and is wrapped in an `aria-label`-ed `<ul>`
+ * so screen readers announce it as a single grouped region.
+ *
+ * Layout: on viewports ≥ sm the legend right-aligns on the same row as
+ * the node strip wraps onto when there's space; on smaller viewports it
+ * wraps below. The swatch uses a tiny ringed circle (not the node's
+ * rounded-lg rectangle) so the visual primitive is clearly "swatch",
+ * not "pill".
+ */
+function ToneLegend() {
+  return (
+    <ul
+      aria-label="Pipeline tone legend"
+      data-testid="pipeline-flow-legend"
+      className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-wider text-gray-400 sm:mt-1 sm:justify-end"
+    >
+      <li className="inline-flex items-center gap-1.5" data-testid="pipeline-legend-healthy">
+        <span
+          aria-hidden
+          className="inline-block h-2 w-2 rounded-full border border-green-500/50 bg-green-500/20"
+        />
+        <span>healthy</span>
+      </li>
+      <li className="inline-flex items-center gap-1.5" data-testid="pipeline-legend-degraded">
+        <span
+          aria-hidden
+          className="inline-block h-2 w-2 rounded-full border border-yellow-500/50 bg-yellow-500/20"
+        />
+        <span>degraded</span>
+      </li>
+      <li className="inline-flex items-center gap-1.5" data-testid="pipeline-legend-loading">
+        <span
+          aria-hidden
+          className="inline-block h-2 w-2 rounded-full border border-white/15 bg-white/5"
+        />
+        <span>loading</span>
+      </li>
+    </ul>
   )
 }
 
