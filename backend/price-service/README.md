@@ -39,6 +39,10 @@ ETORO_MODE=demo-readonly \
 | REST (`/quotes`, `/health`) | `9300` | `DEFAULT_CONFIG.port` in [`src/types.ts`](src/types.ts) |
 | WebSocket (normalized stream) | `9301` | `DEFAULT_CONFIG.wsPort` in [`src/types.ts`](src/types.ts) |
 
+Downstream `oracle-signer` connects to the WS port by default
+(`PRICE_SERVICE_URL=ws://localhost:9301`; see
+[`backend/oracle-signer`](../oracle-signer/)).
+
 ## Env (this package)
 
 | Var | Default | Notes |

@@ -276,7 +276,7 @@ module.exports = {
       script: 'oracle-signer/dist/index.js',
       env: {
         ...BASE_ENV,
-        PRICE_SERVICE_URL: pick('PRICE_SERVICE_URL', 'ws://localhost:4001'),
+        PRICE_SERVICE_URL: pick('PRICE_SERVICE_URL', 'ws://localhost:9301'),
         STOCK_ORACLE_V2_ADDRESS: pickAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], '0xF357118EBd576f3C812c7875B1A1651a7f140E9C'),
         // ORACLE_SIGNER_KEY intentionally defaults to '' when not provisioned.
         // The service starts in health-only mode (submission loop disabled) until
