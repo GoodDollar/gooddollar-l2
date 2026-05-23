@@ -19,3 +19,11 @@ Running execute phase via cursor model=claude-opus-4-7-thinking-high (chat pendi
   `04be6915`. Conflict log + resolutions in
   `.autobuilder/initiatives/0007g-testnet-setup/iter04-cherry-pick-batch1.md`.
   REAL_TRADING_ENABLED=false default added to price-service PM2 entry.
+- 0007g/0005 — internal testnet runbook + lane-local smoke shipped:
+  `docs/testnet/INTERNAL-TESTNET-RUNBOOK.md`,
+  `scripts/testnet/internal-smoke.sh`. Verified end-to-end against
+  the synthetic harness:
+  green run → `iter05-internal-smoke-green.md` (exit 0,
+  GREEN-with-warnings, oracle-signer + hedge-engine classified
+  EXCLUDED); red run → `iter05-internal-smoke-red.md` (exit 1, RED,
+  4 unreachable blockers).
