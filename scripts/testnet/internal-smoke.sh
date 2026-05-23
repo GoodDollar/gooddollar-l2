@@ -23,6 +23,9 @@
 # individual failures), node -e for JSON parsing, BLOCKERS / WARNINGS /
 # SUMMARY_LINES arrays, single Markdown report.
 #
+# Requires (preflighted at startup, FATAL exit 2 on any missing):
+#   bash 4+, node 18+, curl, awk, date (GNU coreutils on Linux hosts)
+#
 # Override env (all optional):
 #   LANE7_BASE                default http://localhost
 #   PRICE_SERVICE_PORT        default 4000
@@ -44,6 +47,19 @@
 #   1  one or more blockers — operator must fix before promotion
 
 set -u
+
+# Tool dependencies. Order matters: the loop names the *first* missing tool,
+# which is easier to act on than a list. node parses JSON, curl drives every
+# HTTP probe, awk reads HEALTH-CONTRACT.md classification tables, date
+# computes freshness age. Missing any one silently cascades into wrong
+# blockers (`unreachable`, `MISSING-FROM-CONTRACT`, always-fresh-on-chain).
+# Run before anything else so a bad PATH fails fast with a single message.
+for tool in node curl awk date; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "FATAL: missing required tool: $tool" >&2
+    exit 2
+  fi
+done
 
 LANE7_BASE="${LANE7_BASE:-http://localhost}"
 PRICE_SERVICE_PORT="${PRICE_SERVICE_PORT:-4000}"
@@ -119,11 +135,6 @@ probe_health() {
 }
 
 # ----- preflight -----
-
-if ! command -v node >/dev/null 2>&1; then
-  echo "FATAL: node is required for JSON parsing" >&2
-  exit 2
-fi
 
 # Reject any URL that points at production. Belt-and-suspenders fence.
 for url in "$PRICE_SERVICE_URL" "$ORACLE_SIGNER_URL" "$HEDGE_ENGINE_URL" \
