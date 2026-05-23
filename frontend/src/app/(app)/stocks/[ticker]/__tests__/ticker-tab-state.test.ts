@@ -14,6 +14,7 @@ describe('ticker tab state', () => {
     const rows = buildFundamentalsRows({
       ticker: 'AAPL',
       name: 'Apple',
+      displayName: 'Apple Inc.',
       sector: 'Technology',
       description: 'Apple',
       price: 210,

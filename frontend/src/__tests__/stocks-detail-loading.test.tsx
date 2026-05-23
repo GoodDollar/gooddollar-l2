@@ -124,6 +124,7 @@ describe('StockDetailPage — loading vs not-found', () => {
     const jpm = {
       ticker: 'JPM',
       name: 'sJPM',
+      displayName: 'JPMorgan Chase',
       sector: 'Finance',
       description: 'JPMorgan Chase — banking & financial services.',
       price: 200,

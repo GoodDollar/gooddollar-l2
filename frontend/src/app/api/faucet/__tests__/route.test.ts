@@ -4,7 +4,6 @@ import { NextRequest } from 'next/server'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { NextRequest } from 'next/server'
 
 const VALID_PRIVKEY = '0x' + 'a'.repeat(64)
 

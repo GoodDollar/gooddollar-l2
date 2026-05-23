@@ -109,7 +109,7 @@ vi.mock('@/lib/usePriceServiceStatus', async (importOriginal) => {
   return {
     ...actual,
     usePriceServiceStatus: () => priceStatusState,
-    refreshPriceServiceStatus: (...args: unknown[]) => refreshPriceServiceStatus(...args),
+    refreshPriceServiceStatus: (force?: boolean) => refreshPriceServiceStatus(force),
   }
 })
 

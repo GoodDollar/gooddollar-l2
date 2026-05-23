@@ -18,6 +18,8 @@ vi.mock('@/lib/useStockHoldings', () => ({
     healthRatio: 200,
     isLive: true,
     isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
   })),
 }))
 
@@ -60,6 +62,8 @@ describe('StockAccountPanel', () => {
       healthRatio: 0,
       isLive: false,
       isLoading: true,
+      isError: false,
+      refetch: vi.fn(),
     })
     const { container } = render(<StockAccountPanel />)
     expect(container).toBeEmptyDOMElement()
@@ -82,6 +86,8 @@ describe('StockAccountPanel', () => {
       healthRatio: 200,
       isLive: true,
       isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
     })
     render(<StockAccountPanel />)
     const pnlEl = screen.getByText(/-\$250\.00/)
