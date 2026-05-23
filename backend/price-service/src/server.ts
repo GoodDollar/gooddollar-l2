@@ -440,33 +440,40 @@ const PARAMETRIC_PARENT_MESSAGE =
   'slash to fetch the bulk dump at /quotes';
 
 /**
- * Suggest a canonical route for a near-miss request path. Handles the two
- * deterministic corrections the strict router can otherwise not auto-apply:
+ * Suggest a canonical route for a near-miss request path. Handles the
+ * deterministic corrections the strict router can otherwise not
+ * auto-apply, in pipeline order:
  *
- *  - **case-only mismatch** (task 0042): `/HEALTH` → `/health`
- *  - **trailing-slash-only mismatch** (task 0046): `/quotes/` → `/quotes`
- *  - **both at once**: `/HEALTH/` → `/health`
+ *  - **trailing-slash strip** (task 0046): `/quotes/` → `/quotes`
+ *  - **multi-slash collapse** (task 0065): `//health` → `/health`,
+ *    `/quotes//AAPL` → `/quotes/AAPL`, `//HEALTH//` → `/health`
+ *  - **case-only fold** (task 0042): `/HEALTH` → `/health`
  *
- * For the parametric `/quotes/:symbol` shape, the prefix is lowercased
- * (so `/QUOTES/AAPL` → `/quotes/AAPL`) but the user's symbol case is
- * preserved — `normalizeSymbol` will fold it anyway, and the suggestion
- * reads more naturally when it echoes back the ticker the caller typed.
+ * Compositions of all three families fall through the same pipeline:
+ * `//QUOTES//AAPL/` → strip trailing → `//QUOTES//AAPL` → collapse →
+ * `/QUOTES/AAPL` → lower-case → match parametric → `/quotes/AAPL`
+ * (symbol case from the collapsed value so the caller-supplied
+ * ticker round-trips).
  *
  * Returns `undefined` when the request path is already canonical or
  * cannot be steered toward a known route — the 404 envelope then omits
  * the field rather than shipping a confusing null.
  */
-function canonicalSuggestion(reqPath: string): string | undefined {
+export function canonicalSuggestion(reqPath: string): string | undefined {
   if (reqPath === '/') return undefined;
-  const stripped = reqPath.endsWith('/') && reqPath.length > 1
-    ? reqPath.slice(0, -1)
-    : reqPath;
-  const candidate = stripped.toLowerCase();
+  // Pipeline order: collapse runs FIRST so multi-trailing-slash inputs
+  // (`//QUOTES///AAPL//`) end up with a single trailing slash that the
+  // trim step removes in one pass. Reversing the order would leave a
+  // residual slash that fails the parametric `QUOTES_SYMBOL_RE` match.
+  const collapsed = reqPath.replace(/\/{2,}/g, '/');
+  const trimmed =
+    collapsed.length > 1 ? collapsed.replace(/\/+$/, '') : collapsed;
+  const candidate = trimmed.toLowerCase();
   if (candidate === reqPath) return undefined;
   if (CATALOG_EXACT.has(candidate)) return candidate;
   if (QUOTES_SYMBOL_RE.test(candidate)) {
-    const slashIdx = stripped.lastIndexOf('/');
-    return `/quotes/${stripped.slice(slashIdx + 1)}`;
+    const slashIdx = trimmed.lastIndexOf('/');
+    return `/quotes/${trimmed.slice(slashIdx + 1)}`;
   }
   return undefined;
 }

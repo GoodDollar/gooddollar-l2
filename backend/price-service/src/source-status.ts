@@ -288,8 +288,7 @@ export const ERROR_REASONS_PUBLIC: Readonly<
 > = Object.freeze({
   'not-found': {
     humanReason: 'No endpoint matches this URL.',
-    nextStep:
-      'Retry with `didYouMean` if present, else pick from `endpoints[]`.',
+    nextStep: 'Retry `didYouMean` if present, else pick from `endpoints`.',
     severity: 'info',
   },
 });
