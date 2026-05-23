@@ -36,6 +36,7 @@ import {
   useSyntheticStockHeader,
 } from '@/components/stocks/SyntheticStockHeaderBadge'
 import { useStockSources } from '@/lib/useStockSources'
+import type { PriceSource } from '@/lib/priceSource'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
 import { StockLogo } from '@/components/ui/stock-logo'
@@ -121,6 +122,111 @@ function buildKeyStatRows(stock: Stock, isLive: boolean): KeyStatRow[] {
     { label: 'Dividend Yield', value: `${stock.dividendYield.toFixed(2)}%`, missing: !isLive || stock.dividendYield <= 0 },
     { label: 'Avg Volume', value: intOrDash(stock.avgVolume),    missing: dashIfOffline(stock.avgVolume) },
   ]
+}
+
+function chartSourceLabel(source: PriceSource): string {
+  switch (source) {
+    case 'chain-oracle': return 'on-chain oracle'
+    case 'etoro-demo':   return 'eToro demo'
+    case 'coingecko':    return 'Cached (CoinGecko)'
+    case 'fallback':     return 'Fallback price'
+    case 'stale':        return 'Stale feed'
+    case 'closed':       return 'Market closed'
+    case 'unknown':      return 'Feed pending'
+  }
+}
+
+interface PriceChartFrameProps {
+  stock: Stock
+  chartMounted: boolean
+  chartData: ReturnType<typeof getChartData>
+  chartLastClose: number | null
+  chartDisagrees: boolean
+  source: PriceSource
+}
+
+/**
+ * Wraps `PriceChart` with the lane-4 honesty contract for the
+ * `/stocks/[ticker]` chart panel (task 0039):
+ *
+ *   1. A persistent "Illustrative chart — historical candles are
+ *      synthetic. Last point: live <source>" disclaimer above the
+ *      chart frame, anchored so it stays visible across every
+ *      timeframe selection.
+ *   2. An empty-state ("Chart unavailable — oracle feed pending")
+ *      whenever `stock.price` is not a positive finite number — we
+ *      do NOT render `<PriceChart>` on top of zero noise.
+ *   3. A small `data-testid="chart-watermark"` element labelled
+ *      `GoodChain demo` instead of the TradingView `TV` mark.
+ */
+function PriceChartFrame({ stock, chartMounted, chartData, chartLastClose, chartDisagrees, source }: PriceChartFrameProps) {
+  const priceFinite = Number.isFinite(stock.price) && stock.price > 0
+  const disclaimer = (
+    <div
+      data-testid="chart-synthetic-disclaimer"
+      className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300 leading-snug"
+    >
+      Illustrative chart — historical candles are synthetic. Last point: live{' '}
+      <span className="font-medium">{chartSourceLabel(source)}</span>.
+    </div>
+  )
+  if (!priceFinite) {
+    return (
+      <div>
+        {disclaimer}
+        <div
+          data-testid="chart-empty-state"
+          className="w-full rounded-xl border border-gray-700/30 bg-dark-50/30 text-xs text-gray-400 flex items-center justify-center"
+          style={{ height: 350 }}
+        >
+          Chart unavailable — oracle feed pending.
+        </div>
+      </div>
+    )
+  }
+  if (!chartMounted) {
+    return (
+      <div>
+        {disclaimer}
+        <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
+      </div>
+    )
+  }
+  return (
+    <div>
+      {disclaimer}
+      <div className="relative">
+        <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
+          <PriceChart data={chartData} height={350} />
+        </Suspense>
+        <span
+          data-testid="chart-watermark"
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-2 left-2 text-[10px] uppercase tracking-wide text-gray-600"
+        >
+          GoodChain demo
+        </span>
+        {chartLastClose != null && (
+          <span
+            data-testid="chart-last-close"
+            data-value={chartLastClose}
+            className="sr-only"
+          >
+            {formatStockPrice(chartLastClose)}
+          </span>
+        )}
+        {chartDisagrees && (
+          <div
+            data-testid="chart-demo-ribbon"
+            className="absolute top-2 left-2 right-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300 leading-snug"
+          >
+            Demo chart — not live oracle. Last close shown is procedural; spot
+            header reflects the on-chain mark.
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 interface AnalysisTileProps {
@@ -799,33 +905,14 @@ export default function StockDetailPage() {
               </div>
             </div>
             {chartView === 'price' ? (
-              chartMounted ? (
-                <div className="relative">
-                  <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
-                    <PriceChart data={chartData} height={350} />
-                  </Suspense>
-                  {chartLastClose != null && (
-                    <span
-                      data-testid="chart-last-close"
-                      data-value={chartLastClose}
-                      className="sr-only"
-                    >
-                      {formatStockPrice(chartLastClose)}
-                    </span>
-                  )}
-                  {chartDisagrees && (
-                    <div
-                      data-testid="chart-demo-ribbon"
-                      className="absolute top-2 left-2 right-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300 leading-snug"
-                    >
-                      Demo chart — not live oracle. Last close shown is procedural; spot
-                      header reflects the on-chain mark.
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
-              )
+              <PriceChartFrame
+                stock={stock}
+                chartMounted={chartMounted}
+                chartData={chartData}
+                chartLastClose={chartLastClose}
+                chartDisagrees={chartDisagrees}
+                source={stockSources[stock.ticker] ?? 'unknown'}
+              />
             ) : (
               <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
                 <DepthChart oraclePrice={stock.price} height={350} />

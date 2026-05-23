@@ -30,6 +30,13 @@ export function PriceChart({ data, height = 400, indicators = DEFAULT_INDICATORS
         background: { type: ColorType.Solid, color: 'transparent' },
         textColor: '#9CA3AF',
         fontSize: 12,
+        // Task 0039 — suppress the TradingView "TV" attribution badge.
+        // The chart data is a `Math.random()` walk from `generateOHLC()`
+        // (lib/chartData.ts); a TradingView-style watermark on top of it
+        // is misleading. Our own "GoodChain demo" mark is drawn by
+        // `PriceChartFrame` so users still see a watermark — just an
+        // honest one.
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: 'rgba(107, 114, 128, 0.1)' },
