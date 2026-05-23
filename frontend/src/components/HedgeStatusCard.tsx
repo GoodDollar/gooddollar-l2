@@ -188,11 +188,31 @@ export interface HedgeStatusCardHandle {
   refresh: () => Promise<void>
 }
 
+interface ThrottleState {
+  retryAt: number
+}
+
+function parseRetryAfterSeconds(
+  header: string | null,
+  body: { retryAfterSeconds?: number } | null,
+): number {
+  if (header) {
+    const n = Number.parseInt(header, 10)
+    if (Number.isFinite(n) && n > 0) return n
+  }
+  if (body && Number.isFinite(body.retryAfterSeconds) && (body.retryAfterSeconds as number) > 0) {
+    return body.retryAfterSeconds as number
+  }
+  return 5
+}
+
 const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCard(_, ref) {
   const [data, setData] = useState<HedgeStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [throttle, setThrottle] = useState<ThrottleState | null>(null)
+  const [throttleTick, setThrottleTick] = useState(0)
 
   // Race-condition guards: many call sites (mount, poll, header button,
   // retry button, imperative refresh) all write to the same state. Without
@@ -218,11 +238,29 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         cache: 'no-store',
         signal: ctrl.signal,
       })
+      if (res.status === 429) {
+        // Self-inflicted rate-limit from withApiRateLimit. Don't render the
+        // red "engine unavailable" banner — surface a throttled state with
+        // a live countdown so the operator knows it's their own clicks.
+        const headerVal = res.headers.get('Retry-After')
+        let body: { retryAfterSeconds?: number } | null = null
+        try {
+          body = (await res.json()) as { retryAfterSeconds?: number }
+        } catch {
+          body = null
+        }
+        if (gen !== genRef.current) return
+        const seconds = parseRetryAfterSeconds(headerVal, body)
+        setThrottle({ retryAt: Date.now() + seconds * 1000 })
+        setError(null)
+        return
+      }
       if (!res.ok && res.status !== 503) {
         throw new Error(`HTTP ${res.status}`)
       }
       const body = (await res.json()) as HedgeStatusResponse & { error?: string }
       if (gen !== genRef.current) return
+      setThrottle(null)
       if (body.error && !body.snapshot) {
         setError(body.error)
         setData(body)
@@ -255,7 +293,33 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
     }
   }, [fetchOnce])
 
+  // Countdown + auto-retry when throttled. Stores an absolute retryAt so
+  // tab-switch / background-throttling don't drift the countdown.
+  useEffect(() => {
+    if (!throttle) return
+    const tick = () => {
+      const remaining = throttle.retryAt - Date.now()
+      if (remaining <= 0) {
+        setThrottle(null)
+        void fetchOnce()
+        return
+      }
+      setThrottleTick((n) => n + 1)
+    }
+    tick()
+    const t = setInterval(tick, 250)
+    return () => clearInterval(t)
+  }, [throttle, fetchOnce])
+
   useImperativeHandle(ref, () => ({ refresh: () => fetchOnce() }), [fetchOnce])
+
+  const throttleRemainingSeconds = throttle
+    ? Math.max(0, Math.ceil((throttle.retryAt - Date.now()) / 1000))
+    : 0
+  // throttleTick is read so React re-runs the render on every interval tick.
+  void throttleTick
+  const isThrottled = throttle !== null
+  const fetchBusy = isFetching || isThrottled
 
   const receipts = data?.receipts ?? []
   const mode = resolveMode(data, error)
@@ -288,12 +352,16 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             type="button"
             data-testid="hedge-header-refresh-button"
             onClick={() => void fetchOnce()}
-            disabled={isFetching}
+            disabled={fetchBusy}
             aria-label="Refresh hedge status"
-            title="Refresh hedge status"
+            title={
+              isThrottled
+                ? `Retry available in ${throttleRemainingSeconds}s`
+                : 'Refresh hedge status'
+            }
             className="text-xs px-2 py-1 rounded-md border border-dark-50 text-gray-400 hover:text-white hover:bg-dark-50 disabled:opacity-50"
           >
-            {isFetching ? '…' : '↻'}
+            {isThrottled ? `${throttleRemainingSeconds}s` : isFetching ? '…' : '↻'}
           </button>
           {data?.degraded?.proof && (
             <DegradedHint>proof: {data.degraded.proof}</DegradedHint>
@@ -332,7 +400,31 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         </div>
       )}
 
-      {error && !data?.snapshot && (
+      {isThrottled && (
+        <div
+          data-testid="hedge-status-throttled"
+          className="mb-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-200 flex items-center justify-between gap-3 flex-wrap"
+        >
+          <div>
+            <span className="font-medium">Throttled.</span> Too many requests, retrying in{' '}
+            <span data-testid="hedge-throttle-countdown" className="font-mono">
+              {throttleRemainingSeconds}s
+            </span>
+            .
+          </div>
+          <button
+            type="button"
+            data-testid="hedge-retry-button"
+            onClick={() => void fetchOnce()}
+            disabled
+            className="text-xs px-2.5 py-1 rounded-md border border-yellow-500/40 text-yellow-200 disabled:opacity-50"
+          >
+            Retry in {throttleRemainingSeconds}s
+          </button>
+        </div>
+      )}
+
+      {!isThrottled && error && !data?.snapshot && (
         <div
           data-testid="hedge-status-error"
           className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300 flex items-center justify-between gap-3 flex-wrap"

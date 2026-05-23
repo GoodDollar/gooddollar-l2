@@ -468,6 +468,74 @@ describe('HedgeStatusCard', () => {
     expect(etoro).not.toHaveTextContent('etoro-1');
   });
 
+  it('renders a yellow throttled banner with countdown when the limiter returns 429', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 5 }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '5' },
+      }),
+    );
+    render(<HedgeStatusCard />);
+    const banner = await screen.findByTestId('hedge-status-throttled');
+    expect(banner).toHaveTextContent('Throttled');
+    expect(banner.className).toContain('bg-yellow-500/10');
+    expect(banner.className).toContain('border-yellow-500/30');
+    const countdown = screen.getByTestId('hedge-throttle-countdown');
+    expect(countdown).toHaveTextContent('5s');
+    const retry = screen.getByTestId('hedge-retry-button');
+    expect((retry as HTMLButtonElement).disabled).toBe(true);
+    expect(retry).toHaveTextContent(/Retry in \ds/);
+    // Critical: the red "engine unavailable" banner must NOT render for 429.
+    expect(screen.queryByTestId('hedge-status-error')).toBeNull();
+  });
+
+  it('auto-retries once the throttle countdown elapses and shows the healthy snapshot', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 1 }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', 'Retry-After': '1' },
+        }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(BASE_RESPONSE), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      render(<HedgeStatusCard />);
+      // Drain microtasks so the 429 response is consumed and throttle state is set.
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(fetchSpy.mock.calls.length).toBe(1);
+      // Advance past retry-after window
+      await act(async () => {
+        vi.advanceTimersByTime(1200);
+      });
+      // Drain microtasks for the second fetch
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(fetchSpy.mock.calls.length).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back to body.retryAfterSeconds when Retry-After header is absent', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 7 }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    render(<HedgeStatusCard />);
+    const countdown = await screen.findByTestId('hedge-throttle-countdown');
+    expect(countdown).toHaveTextContent('7s');
+  });
+
   it('awaiting tick: snapshot null, no error → grid shows ENGINE: awaiting tick in neutral grey', async () => {
     mockFetchOnce({
       snapshot: null,
