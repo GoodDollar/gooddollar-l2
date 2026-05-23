@@ -12,7 +12,7 @@ import {
 } from 'react'
 
 import { formatNotionalUsd } from '@/lib/format-notional'
-import { buildHedgeErrorHeadline } from '@/lib/hedge-error'
+import { buildHedgeErrorHeadline, classifyClientError } from '@/lib/hedge-error'
 import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
 import {
   AlertTriangleIcon,
@@ -541,26 +541,48 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         setError(null)
         return
       }
-      if (!res.ok && res.status !== 503) {
-        throw new Error(`HTTP ${res.status}`)
+      // Always parse the body — every non-2xx response from
+      // /api/hedge/status returns a JSON envelope with a useful `error`
+      // string (503 engine-down, 502 upstream-error, 502 malformed). The
+      // legacy `throw new Error(`HTTP ${status}`)` discarded the
+      // server-composed message and surfaced a stack-trace-shaped
+      // banner instead. Any genuine non-JSON body is caught here and
+      // routed through `classifyClientError` so the banner reads as a
+      // single branded sentence regardless of upstream shape.
+      let body: (HedgeStatusResponse & { error?: string }) | null = null
+      let parseFailed = false
+      try {
+        body = (await res.json()) as HedgeStatusResponse & { error?: string }
+      } catch {
+        parseFailed = true
       }
-      const body = (await res.json()) as HedgeStatusResponse & { error?: string }
       if (gen !== genRef.current) return
       setThrottle(null)
       const now = Date.now()
       setLastPolledAt(now)
-      if (body.error && !body.snapshot) {
-        setError(body.error)
-        setData(body)
+      if (parseFailed) {
+        setError(classifyClientError(new SyntaxError('parse failed')))
+        return
+      }
+      if (!res.ok) {
+        const reason = body?.error ?? `upstream error (HTTP ${res.status})`
+        setError(reason)
+        if (res.status === 503 && body) setData(body)
+        return
+      }
+      const envelope = body!
+      if (envelope.error && !envelope.snapshot) {
+        setError(envelope.error)
+        setData(envelope)
       } else {
         setError(null)
-        setData(body)
+        setData(envelope)
         setLastTickAt(now)
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       if (gen !== genRef.current) return
-      setError(err instanceof Error ? err.message : 'unknown')
+      setError(classifyClientError(err))
     } finally {
       if (gen === genRef.current) {
         inFlightRef.current = false
