@@ -397,3 +397,7 @@
 [{"name":"turbopack-compaction","duration":2155000,"timestamp":7125741731,"id":5401,"parentId":2,"tags":{},"startTime":1779563712492,"traceId":"14e43f28f0791d00"}]
 [{"name":"turbopack-compaction","duration":4559000,"timestamp":7127896236,"id":5403,"parentId":2,"tags":{},"startTime":1779563717049,"traceId":"14e43f28f0791d00"}]
 [{"name":"turbopack-compaction","duration":4813000,"timestamp":7132456046,"id":5405,"parentId":2,"tags":{},"startTime":1779563721859,"traceId":"14e43f28f0791d00"}]
+[{"name":"turbopack-persistence","duration":413000,"timestamp":7192922995,"id":5407,"parentId":2,"tags":{"reason":"idle timeout","snapshot_duration_ms":11.414067,"persist_duration_ms":401.09900700000003,"task_count":194},"startTime":1779563777935,"traceId":"14e43f28f0791d00"}]
+[{"name":"turbopack-persistence","duration":508000,"timestamp":7224823620,"id":5409,"parentId":2,"tags":{"reason":"idle timeout","snapshot_duration_ms":6.285534,"persist_duration_ms":500.920243,"task_count":328},"startTime":1779563809926,"traceId":"14e43f28f0791d00"}]
+[{"name":"turbopack-persistence","duration":368000,"timestamp":7234515807,"id":5411,"parentId":2,"tags":{"reason":"idle timeout","snapshot_duration_ms":0.84225,"persist_duration_ms":366.866209,"task_count":425},"startTime":1779563819480,"traceId":"14e43f28f0791d00"}]
+[{"name":"turbopack-compaction","duration":4966000,"timestamp":7234884173,"id":5413,"parentId":2,"tags":{},"startTime":1779563824445,"traceId":"14e43f28f0791d00"}]

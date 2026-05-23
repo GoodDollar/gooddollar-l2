@@ -6003,36 +6003,19 @@ function OnChainOraclePanel() {
                                 lineNumber: 200,
                                 columnNumber: 11
                             }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 className: "mt-1 text-yellow-300/80",
-                                children: [
-                                    "The oracle contract exists at the address above but no symbol has a non-zero price yet. The oracle-signer keeper writes",
-                                    ' ',
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
-                                        className: "text-yellow-100",
-                                        children: "setPrice"
-                                    }, void 0, false, {
-                                        fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                        lineNumber: 204,
-                                        columnNumber: 13
-                                    }, this),
-                                    " transactions on a fixed cadence — this panel will populate as soon as the first round lands. Expected symbols (",
-                                    tickers.length,
-                                    "):",
-                                    ' ',
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                        className: "font-mono text-yellow-100/80",
-                                        children: tickers.join(', ')
-                                    }, void 0, false, {
-                                        fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                        lineNumber: 207,
-                                        columnNumber: 13
-                                    }, this),
-                                    "."
-                                ]
-                            }, void 0, true, {
+                                children: "The oracle contract exists at the address above but no symbol has a non-zero price yet. The oracle-signer keeper writes prices on a fixed cadence — this panel will populate as soon as the first round lands."
+                            }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
                                 lineNumber: 201,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ExpectedSymbolsList, {
+                                tickers: tickers
+                            }, void 0, false, {
+                                fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
+                                lineNumber: 206,
                                 columnNumber: 11
                             }, this)
                         ]
@@ -6053,7 +6036,7 @@ function OnChainOraclePanel() {
                                                     children: col.label
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                    lineNumber: 218,
+                                                    lineNumber: 216,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -6061,23 +6044,23 @@ function OnChainOraclePanel() {
                                                     children: col.shortDescription
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                    lineNumber: 219,
+                                                    lineNumber: 217,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, col.key, true, {
                                             fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                            lineNumber: 217,
+                                            lineNumber: 215,
                                             columnNumber: 17
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                    lineNumber: 215,
+                                    lineNumber: 213,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                lineNumber: 214,
+                                lineNumber: 212,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
@@ -6090,17 +6073,17 @@ function OnChainOraclePanel() {
                                                     col: col
                                                 }, col.key, false, {
                                                     fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                    lineNumber: 228,
+                                                    lineNumber: 226,
                                                     columnNumber: 19
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                            lineNumber: 226,
+                                            lineNumber: 224,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                        lineNumber: 225,
+                                        lineNumber: 223,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -6114,7 +6097,7 @@ function OnChainOraclePanel() {
                                                         children: row.symbol
                                                     }, void 0, false, {
                                                         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                        lineNumber: 237,
+                                                        lineNumber: 235,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -6122,7 +6105,7 @@ function OnChainOraclePanel() {
                                                         children: formatUsd8(row.symbol, row.price8)
                                                     }, void 0, false, {
                                                         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                        lineNumber: 238,
+                                                        lineNumber: 236,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -6133,12 +6116,12 @@ function OnChainOraclePanel() {
                                                             children: sessionLabel
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                            lineNumber: 240,
+                                                            lineNumber: 238,
                                                             columnNumber: 23
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                        lineNumber: 239,
+                                                        lineNumber: 237,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -6149,7 +6132,7 @@ function OnChainOraclePanel() {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                        lineNumber: 247,
+                                                        lineNumber: 245,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -6157,7 +6140,7 @@ function OnChainOraclePanel() {
                                                         children: row.signerCount
                                                     }, void 0, false, {
                                                         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                        lineNumber: 248,
+                                                        lineNumber: 246,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -6165,31 +6148,31 @@ function OnChainOraclePanel() {
                                                         children: formatAgo(row.timestamp)
                                                     }, void 0, false, {
                                                         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                        lineNumber: 249,
+                                                        lineNumber: 247,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, row.symbol, true, {
                                                 fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                                lineNumber: 236,
+                                                lineNumber: 234,
                                                 columnNumber: 19
                                             }, this);
                                         })
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                        lineNumber: 232,
+                                        lineNumber: 230,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                                lineNumber: 224,
+                                lineNumber: 222,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                        lineNumber: 213,
+                        lineNumber: 211,
                         columnNumber: 9
                     }, this)
                 ]
@@ -6221,7 +6204,7 @@ function OnChainOraclePanel() {
             title: oracleAddress
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-            lineNumber: 278,
+            lineNumber: 276,
             columnNumber: 7
         }, this);
     }
@@ -6231,7 +6214,53 @@ function OnChainOraclePanel() {
         title: oracleAddress
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-        lineNumber: 288,
+        lineNumber: 286,
+        columnNumber: 5
+    }, this);
+}
+/**
+ * Awaiting-state expected-symbols list. Renders the configured ticker
+ * set as a tidy grid of small mono pills, one chip per ticker, under a
+ * labelled `EXPECTED SYMBOLS (N)` heading. Replaces the previous inline
+ * comma-joined mono string so prose stays prose and the symbol set
+ * reads as a list of equal atoms — see #0046.
+ */ function ExpectedSymbolsList({ tickers }) {
+    if (tickers.length === 0) return null;
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        className: "mt-2.5",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "text-[10px] font-semibold uppercase tracking-wider text-yellow-300/70",
+                children: [
+                    "Expected symbols (",
+                    tickers.length,
+                    ")"
+                ]
+            }, void 0, true, {
+                fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
+                lineNumber: 305,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
+                "data-testid": "onchain-oracle-expected-symbols",
+                className: "mt-1 flex flex-wrap gap-1.5",
+                children: tickers.map((t)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                        className: "rounded-md border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-[10px] text-yellow-100/90",
+                        children: t
+                    }, t, false, {
+                        fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
+                        lineNumber: 313,
+                        columnNumber: 11
+                    }, this))
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
+                lineNumber: 308,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
+        lineNumber: 304,
         columnNumber: 5
     }, this);
 }
@@ -6250,7 +6279,7 @@ function OracleHeaderCell({ col }) {
                     children: col.label
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                    lineNumber: 307,
+                    lineNumber: 336,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6259,18 +6288,18 @@ function OracleHeaderCell({ col }) {
                     children: "?"
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-                    lineNumber: 308,
+                    lineNumber: 337,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-            lineNumber: 306,
+            lineNumber: 335,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/OnChainOraclePanel.tsx",
-        lineNumber: 299,
+        lineNumber: 328,
         columnNumber: 5
     }, this);
 }

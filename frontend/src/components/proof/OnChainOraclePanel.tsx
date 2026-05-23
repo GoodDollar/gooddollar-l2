@@ -198,14 +198,12 @@ export function OnChainOraclePanel() {
           className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200"
         >
           <div className="font-semibold">Awaiting first on-chain write</div>
-          <div className="mt-1 text-yellow-300/80">
+          <p className="mt-1 text-yellow-300/80">
             The oracle contract exists at the address above but no symbol has a
-            non-zero price yet. The oracle-signer keeper writes{' '}
-            <code className="text-yellow-100">setPrice</code> transactions on a
-            fixed cadence — this panel will populate as soon as the first round
-            lands. Expected symbols ({tickers.length}):{' '}
-            <span className="font-mono text-yellow-100/80">{tickers.join(', ')}</span>.
-          </div>
+            non-zero price yet. The oracle-signer keeper writes prices on a fixed
+            cadence — this panel will populate as soon as the first round lands.
+          </p>
+          <ExpectedSymbolsList tickers={tickers} />
         </div>
       )}
 
@@ -290,6 +288,37 @@ function OracleAddressAtom({
       data-testid="oracle-address-text"
       title={oracleAddress}
     />
+  )
+}
+
+/**
+ * Awaiting-state expected-symbols list. Renders the configured ticker
+ * set as a tidy grid of small mono pills, one chip per ticker, under a
+ * labelled `EXPECTED SYMBOLS (N)` heading. Replaces the previous inline
+ * comma-joined mono string so prose stays prose and the symbol set
+ * reads as a list of equal atoms — see #0046.
+ */
+function ExpectedSymbolsList({ tickers }: { tickers: readonly string[] }) {
+  if (tickers.length === 0) return null
+  return (
+    <div className="mt-2.5">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-yellow-300/70">
+        Expected symbols ({tickers.length})
+      </div>
+      <ul
+        data-testid="onchain-oracle-expected-symbols"
+        className="mt-1 flex flex-wrap gap-1.5"
+      >
+        {tickers.map((t) => (
+          <li
+            key={t}
+            className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-1.5 py-0.5 font-mono text-[10px] text-yellow-100/90"
+          >
+            {t}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

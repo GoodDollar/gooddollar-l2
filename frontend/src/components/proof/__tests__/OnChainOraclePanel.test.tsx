@@ -455,6 +455,68 @@ describe('OnChainOraclePanel', () => {
       expect(box.className).toMatch(/border-yellow/)
     })
 
+    // #0046 — the awaiting box previously crammed three font treatments
+    // (sans body, inline `<code>setPrice</code>`, inline mono comma-joined
+    // ticker span) into one paragraph. Restructure into three stacked
+    // atoms with one font treatment each: bold title, prose paragraph,
+    // labelled chip grid.
+    it('awaiting state renders expected symbols as chips, not a comma-separated string (#0046)', () => {
+      useReadContractsMock.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+      } as unknown as ReturnType<typeof useReadContracts>)
+
+      render(<OnChainOraclePanel />)
+
+      const list = screen.getByTestId('onchain-oracle-expected-symbols')
+      expect(list.tagName).toBe('UL')
+      expect(list.children.length).toBe(3)
+      const tickers = Array.from(list.children).map((li) => li.textContent?.trim())
+      expect(tickers).toEqual(['AAPL', 'TSLA', 'NVDA'])
+      // Each chip is its own DOM node — no commas anywhere inside chips.
+      for (const li of Array.from(list.children)) {
+        expect(li.textContent).not.toMatch(/,/)
+        expect(li.className).toMatch(/\bfont-mono\b/)
+        expect(li.className).toMatch(/\brounded-md\b/)
+      }
+    })
+
+    it('awaiting state explanation paragraph has no inline code or mono spans (#0046)', () => {
+      useReadContractsMock.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+      } as unknown as ReturnType<typeof useReadContracts>)
+
+      render(<OnChainOraclePanel />)
+
+      const box = screen.getByTestId('onchain-oracle-awaiting')
+      // The explanation paragraph is a sibling of the chip-list, never
+      // wraps a `<code>` or `font-mono` span: prose only.
+      const paragraphs = box.querySelectorAll('p')
+      expect(paragraphs.length).toBeGreaterThanOrEqual(1)
+      for (const p of Array.from(paragraphs)) {
+        expect(p.querySelectorAll('code, [class*="font-mono"]').length).toBe(0)
+        expect(p.textContent).not.toMatch(/setPrice/)
+      }
+    })
+
+    it('awaiting state surfaces a labelled "EXPECTED SYMBOLS (N)" header above the chip grid (#0046)', () => {
+      useReadContractsMock.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+      } as unknown as ReturnType<typeof useReadContracts>)
+
+      render(<OnChainOraclePanel />)
+
+      const box = screen.getByTestId('onchain-oracle-awaiting')
+      // Label appears as its own atom (uppercase tracking-wider) above
+      // the chip list — not interleaved into the explanation prose.
+      expect(box.textContent).toMatch(/Expected symbols\s*\(3\)/i)
+    })
+
     it('rows.length > 0 path renders the table without the awaiting notice', () => {
       useReadContractsMock.mockReturnValue({
         data: [
