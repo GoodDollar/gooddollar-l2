@@ -46,13 +46,15 @@ and does not fail on them. The line "owner iter" must always point at a
 specific row in the 50-iter plan; if a service has no owner, it is not
 excluded — it is a blocker.
 
-| service             | reason                                                 | owner iter |
-|---------------------|--------------------------------------------------------|------------|
-| `activity-reporter` | flapping `waiting restart` loop, very high restart count | 4        |
-| `harvest-keeper`    | flapping `waiting restart` loop, very high restart count | 4        |
-| `revenue-tracker`   | flapping `waiting restart` loop                          | 4        |
-| `indexer`           | reports `error` (chain reorg / config) — needs reset      | 6        |
-| `monitor`           | reports `degraded` (RPC sampling)                         | 6        |
+| service             | reason                                                 | owner iter   |
+|---------------------|--------------------------------------------------------|--------------|
+| `activity-reporter` | flapping `waiting restart` loop, very high restart count | 4          |
+| `harvest-keeper`    | flapping `waiting restart` loop, very high restart count | 4          |
+| `revenue-tracker`   | flapping `waiting restart` loop                          | 4          |
+| `indexer`           | reports `error` (chain reorg / config) — needs reset      | 6          |
+| `monitor`           | reports `degraded` (RPC sampling)                         | 6          |
+| `oracle-signer`     | runs in health-only mode until `ORACLE_SIGNER_KEY` is provisioned for testnet | lane7/0007g |
+| `hedge-engine`      | runs in dry-run / health-only mode until `RISK_ENGINE_ADDRESS` is set and `HEDGE_DRY_RUN=false` is approved | lane7/0007g |
 
 When iter 4 / iter 6 actually fix a service, **remove it from the exclusion
 table above**. The gate script reads the table from this file at runtime, so
@@ -63,7 +65,12 @@ no code change is required.
 The release candidate gate (iter 50) clears all exclusions: every service in
 `/api/status` must be `ok`, the chain must be advancing, and every public
 page must return 200. Until then, the per-iteration gate is allowed to ship
-with the documented exclusions above.
+with the documented exclusions above. Promotion gate explicitly requires
+that **`oracle-signer` and `hedge-engine` move out of the exclusion table
+into REQUIRED** before any public/shareable testnet promotion — same
+treatment as the iter-4 services (`activity-reporter`, `harvest-keeper`,
+`revenue-tracker`) and the iter-6 services (`indexer`, `monitor`). Lane 7
+classifies them as `lane7/0007g`-owned exclusions; promotion clears them.
 
 ## Usage
 
