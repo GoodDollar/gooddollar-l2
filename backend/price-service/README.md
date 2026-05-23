@@ -32,6 +32,28 @@ ETORO_MODE=demo-readonly \
   npm start
 ```
 
+### Smoke check
+
+After `npm start`, confirm quotes are flowing:
+
+```bash
+curl -s http://localhost:9300/health | jq .
+# {"status": "ok", "freshQuotes": <≥1>, "totalCached": <≥1>,
+#  "configuredSymbols": <N>, "timestamp": <epoch ms>}
+
+curl -s http://localhost:9300/quotes | jq '.quotes | keys'
+# ["AAPL", "BTC", ...]   (subset of ORACLE_SYMBOLS or DEFAULT_LANE_SYMBOLS)
+
+curl -s http://localhost:9300/quotes/BTC | jq '{mid,bid,ask,timestamp,stale}'
+# {"mid": <positive number>, "bid": <number>, "ask": <number>,
+#  "timestamp": <epoch ms>, "stale": false}
+```
+
+If `/health` returns `503 {"status": "degraded"}` after 10 s the
+upstream eToro source isn't producing fresh quotes (mock mode produces
+them within one tick; demo-readonly may take longer on first auth —
+see [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../../docs/ETORO_GOODCHAIN_ADAPTER.md)).
+
 ## Endpoints
 
 | Surface | Default port | Source |

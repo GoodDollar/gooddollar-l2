@@ -39,6 +39,31 @@ ETORO_MODE=demo-readonly \
 Without `RISK_ENGINE_ADDRESS` the service stays bound on its health port but
 the engine loop is disabled and reports `degraded` via `/health`.
 
+### Smoke check
+
+After `npm start`, confirm the health server is bound:
+
+```bash
+curl -s http://localhost:9106/health | jq .
+# Live (with RISK_ENGINE_ADDRESS set):
+#   {"status": "ok", "service": "hedge-engine", "uptime": <seconds>,
+#    "timestamp": <ISO>, "chainBlock": <number>}
+# Health-only (RISK_ENGINE_ADDRESS unset):
+#   {"status": "degraded", "service": "hedge-engine", "uptime": <seconds>,
+#    "timestamp": <ISO>, "mode": "disabled",
+#    "reason": "RISK_ENGINE_ADDRESS is not set; hedge loop disabled"}
+```
+
+Once the engine's reconcile loop is running you'll see one stdout
+line per `HEDGE_POLL_INTERVAL_MS` (default 30 s):
+
+```
+[HedgeEngine] Tick @ <ISO> — symbols=<N>, hedges=<M>, failures=<F>, residuals={"AAPL":…,"TSLA":…}
+```
+
+Confirm this line appears before flipping `HEDGE_TRADING_ENABLED=true`
+in any downstream runbook.
+
 ## Endpoints
 
 | Surface | Default port | Source |

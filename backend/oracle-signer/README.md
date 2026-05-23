@@ -34,7 +34,8 @@ From the repo root: `npm run install:lane1` / `npm run test:lane1`.
 npm start
 
 # Live with mock upstream + Anvil chain — boot the price-service in
-# mock mode in another terminal, then:
+# mock mode in another terminal and confirm its `/quotes` is serving
+# (see "Smoke check" in backend/price-service/README.md), then:
 ORACLE_SIGNER_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
 STOCK_ORACLE_V2_ADDRESS=0x0000000000000000000000000000000000000001 \
 RPC_URL=http://localhost:8545 \
@@ -43,6 +44,29 @@ RPC_URL=http://localhost:8545 \
 
 Leaving `PRICE_SERVICE_URL` unset is correct — the default tracks the
 producer's canonical WS port.
+
+### Smoke check
+
+After `npm start`, confirm the health server is bound and the
+submitter is in the expected state:
+
+```bash
+curl -s http://localhost:9107/health | jq .
+# Live (with ORACLE_SIGNER_KEY + STOCK_ORACLE_V2_ADDRESS + RPC set):
+#   {"status": "ok", "service": "oracle-signer", "uptime": <seconds>,
+#    "timestamp": <ISO>}
+# Health-only (any of the three above unset):
+#   {"status": "degraded", "service": "oracle-signer", "uptime": <seconds>,
+#    "timestamp": <ISO>, "mode": "disabled",
+#    "reason": "ORACLE_SIGNER_KEY is not set; signer loop disabled"}
+```
+
+Health-only is the documented fall-back, not an error: without
+`ORACLE_SIGNER_KEY` the submission loop is intentionally disabled and
+the process stays bound on `:9107` so PM2 / status-aggregator see
+`degraded` instead of `unreachable`. Once the live tick fires you'll
+see `[oracle-signer] Update #N: <N> symbols, tx=0x…, gas=<n>,
+rtt=<ms>ms` on stdout.
 
 ## Endpoints
 
