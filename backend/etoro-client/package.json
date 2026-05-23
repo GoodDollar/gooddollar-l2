@@ -10,7 +10,8 @@
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "clean": "rm -rf dist",
-    "resolve-instrument-id": "node -r ts-node/register scripts/resolve-instrument-id.ts"
+    "resolve-instrument-id": "node -r ts-node/register scripts/resolve-instrument-id.ts",
+    "verify-credentials": "node -r ts-node/register scripts/verify-credentials.ts"
   },
   "dependencies": {
     "axios": "^1.7.0",

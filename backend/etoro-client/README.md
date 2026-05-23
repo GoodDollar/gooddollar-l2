@@ -66,3 +66,4 @@ this table is orientation only.
 - Full lane contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../../docs/ETORO_GOODCHAIN_ADAPTER.md)
 - Lane scripts: `npm run install:lane1`, `npm run test:lane1`
 - Demo-hedge proof runbook: [`docs/runbooks/lane1-demo-hedge-proof.md`](../../docs/runbooks/lane1-demo-hedge-proof.md)
+- Rotate demo credentials: `./scripts/rotate-etoro-keys.sh demo` (repo root) — refuses any non-demo mode per `REAL_TRADING_ENABLED=false`.
