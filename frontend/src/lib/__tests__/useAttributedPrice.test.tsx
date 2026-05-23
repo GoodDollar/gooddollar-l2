@@ -205,4 +205,58 @@ describe('useAttributedPrice — cross-page shared source-of-truth (lane 4 / 002
     const { result } = renderHook(() => useAttributedPrice('ETH'))
     expect(result.current.change24h).toBeCloseTo(-2.83, 2)
   })
+
+  describe('task 0026 — fallback-substituted chain pairs must not claim chain-oracle', () => {
+    it('falls through to coingecko when chain pair is fallback-substituted (RPC down, CG live)', () => {
+      vi.mocked(useOnChainPairs).mockReturnValue({
+        pairs: [pair({ symbol: 'BTC-USD', baseAsset: 'BTC', markPrice: 84_250, isFallback: true })],
+        isLoading: false, isLive: false,
+      })
+      mockFeeds({ prices: { WBTC: 75_270 }, sources: { WBTC: 'coingecko' } })
+
+      const { result } = renderHook(() => useAttributedPrice('BTC'))
+      expect(result.current.source).toBe('coingecko')
+      expect(result.current.priceUsd).toBe(75_270)
+      expect(result.current.divergent).toBe(false)
+      expect(result.current.divergenceOtherUsd).toBeNull()
+    })
+
+    it('falls through to fallback when chain pair is fallback-substituted AND CG is dead', () => {
+      vi.mocked(useOnChainPairs).mockReturnValue({
+        pairs: [pair({ symbol: 'BTC-USD', baseAsset: 'BTC', markPrice: 84_250, isFallback: true })],
+        isLoading: false, isLive: false,
+      })
+      mockFeeds({})
+
+      const { result } = renderHook(() => useAttributedPrice('WBTC'))
+      expect(result.current.source).toBe('fallback')
+      expect(result.current.priceUsd).toBe(60125.80)
+      expect(result.current.divergent).toBe(false)
+    })
+
+    it('preserves chain-oracle attribution when chain pair is a real read (isFallback unset)', () => {
+      vi.mocked(useOnChainPairs).mockReturnValue({
+        pairs: [pair({ symbol: 'BTC-USD', baseAsset: 'BTC', markPrice: 84_250 })],
+        isLoading: false, isLive: true,
+      })
+      mockFeeds({ prices: { WBTC: 75_270 }, sources: { WBTC: 'coingecko' } })
+
+      const { result } = renderHook(() => useAttributedPrice('BTC'))
+      expect(result.current.source).toBe('chain-oracle')
+      expect(result.current.priceUsd).toBe(84_250)
+      expect(result.current.divergent).toBe(true)
+    })
+
+    it('preserves chain-oracle attribution when isFallback is explicitly false', () => {
+      vi.mocked(useOnChainPairs).mockReturnValue({
+        pairs: [pair({ symbol: 'ETH-USD', baseAsset: 'ETH', markPrice: 3_500, isFallback: false })],
+        isLoading: false, isLive: true,
+      })
+      mockFeeds({ prices: { ETH: 3_500 }, sources: { ETH: 'coingecko' } })
+
+      const { result } = renderHook(() => useAttributedPrice('ETH'))
+      expect(result.current.source).toBe('chain-oracle')
+      expect(result.current.priceUsd).toBe(3_500)
+    })
+  })
 })

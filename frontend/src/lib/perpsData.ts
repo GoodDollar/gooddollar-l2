@@ -28,6 +28,14 @@ export interface PerpPair {
   maxLeverage: number
   high24h?: number
   low24h?: number
+  /**
+   * `true` when this pair was substituted from the static fallback table
+   * because the on-chain RPC was unreachable or returned no markets.
+   * `false` (or omitted) when the values came from a real contract read.
+   * Source-attribution consumers MUST refuse to label fallback rows as
+   * `chain-oracle` — see `useAttributedPrice.ts` (task 0026).
+   */
+  isFallback?: boolean
 }
 
 export interface AccountSummaryData {

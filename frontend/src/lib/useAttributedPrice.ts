@@ -188,7 +188,12 @@ export function useAttributedPrices(symbols: string[]): Record<string, Attribute
     for (const sym of symbols) {
       const baseSym = normaliseSymbol(sym)
       const chainPair = pairs.find(p => p.baseAsset === baseSym)
-      const chainPrice = chainPair && chainPair.markPrice > 0 ? chainPair.markPrice : 0
+      // Task 0026: a chain pair tagged `isFallback: true` is the
+      // `FALLBACK_PAIRS` substitution that `useOnChainPairs` emits when the
+      // RPC is unreachable — it is NOT an on-chain read. Treat it as absent
+      // so we fall through to coingecko → fallback → unknown.
+      const chainAlive = !!chainPair && !chainPair.isFallback && chainPair.markPrice > 0
+      const chainPrice = chainAlive ? chainPair!.markPrice : 0
 
       const equivs = equivalents(sym)
       const cgPrice = equivs.reduce<number>((acc, s) => acc || (feeds.prices[s] ?? 0), 0)
