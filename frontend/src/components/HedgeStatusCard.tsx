@@ -158,6 +158,120 @@ function DegradedHint({ children }: { children: ReactNode }) {
   )
 }
 
+function CloudOffIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 2l20 20" />
+      <path d="M5.78 5.78A6 6 0 003 11a4 4 0 004 4h9.5" />
+      <path d="M21 17.5a4 4 0 00-1.83-3.36" />
+      <path d="M9 4.07A6 6 0 0119 8.5" />
+    </svg>
+  )
+}
+
+function AlertTriangleIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 3l10 18H2L12 3z" />
+      <path d="M12 10v5" />
+      <circle cx="12" cy="18" r="0.5" fill="currentColor" />
+    </svg>
+  )
+}
+
+function InboxIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 13l3-7h12l3 7" />
+      <path d="M3 13v6h18v-6h-6a3 3 0 01-6 0H3z" />
+    </svg>
+  )
+}
+
+function EmptyReceiptsState({
+  error,
+  hasSnapshot,
+  degradedReceipts,
+  pollIntervalMs,
+}: {
+  error: string | null
+  hasSnapshot: boolean
+  degradedReceipts: string | undefined
+  pollIntervalMs: number
+}) {
+  const baseClass =
+    'flex items-start gap-2 px-1 py-2 text-xs min-h-[3rem]'
+  if (error && !hasSnapshot) {
+    return (
+      <div
+        data-testid="hedge-receipts-empty"
+        className={`${baseClass} text-red-300`}
+      >
+        <span className="mt-0.5"><CloudOffIcon /></span>
+        <span>
+          No receipts to show: engine unreachable. Retrying every{' '}
+          {Math.round(pollIntervalMs / 1000)}s.
+        </span>
+      </div>
+    )
+  }
+  if (degradedReceipts) {
+    return (
+      <div
+        data-testid="hedge-receipts-empty"
+        className={`${baseClass} text-yellow-300`}
+      >
+        <span className="mt-0.5"><AlertTriangleIcon /></span>
+        <span>
+          No receipts visible: receipts source degraded ({degradedReceipts}).
+        </span>
+      </div>
+    )
+  }
+  return (
+    <div
+      data-testid="hedge-receipts-empty"
+      className={`${baseClass} text-gray-500`}
+    >
+      <span className="mt-0.5"><InboxIcon /></span>
+      <span>
+        No hedge activity yet. Receipts will appear here once the engine
+        sends an order.
+      </span>
+    </div>
+  )
+}
+
 function ModeBadge({ mode }: { mode: HedgeMode }) {
   const labelMap: Record<HedgeMode, { label: string; cls: string }> = {
     demo: { label: 'demo', cls: 'bg-goodgreen/15 text-goodgreen border-goodgreen/30' },
@@ -529,12 +643,12 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
           )}
         </div>
         {receipts.length === 0 ? (
-          <p
-            data-testid="hedge-receipts-empty"
-            className="text-xs text-gray-500 py-2"
-          >
-            No hedge activity yet.
-          </p>
+          <EmptyReceiptsState
+            error={error}
+            hasSnapshot={Boolean(data?.snapshot)}
+            degradedReceipts={data?.degraded?.receipts}
+            pollIntervalMs={POLL_INTERVAL_MS}
+          />
         ) : (
           <table className="w-full text-sm">
             <thead>

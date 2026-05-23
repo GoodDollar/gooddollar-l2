@@ -979,6 +979,10 @@ img, video {
   min-height: 100vh;
 }
 
+.min-h-\[3rem\] {
+  min-height: 3rem;
+}
+
 .w-0\.5 {
   width: .125rem;
 }

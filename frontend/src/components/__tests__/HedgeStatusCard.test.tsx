@@ -128,12 +128,40 @@ describe('HedgeStatusCard', () => {
     expect(callout).toHaveTextContent('oldest read age=30000ms');
   });
 
-  it('shows the empty state when no receipts exist', async () => {
+  it('shows the healthy empty state when snapshot present + no receipts (#0019)', async () => {
     mockFetchOnce({ ...BASE_RESPONSE, receipts: [] });
     render(<HedgeStatusCard />);
-    expect(await screen.findByTestId('hedge-receipts-empty')).toHaveTextContent(
-      'No hedge activity yet.',
+    const empty = await screen.findByTestId('hedge-receipts-empty');
+    expect(empty).toHaveTextContent(/No hedge activity yet/i);
+    expect(empty).toHaveTextContent(/appear here/i);
+  });
+
+  it('receipts empty state honestly says "engine unreachable" when there is an error and no snapshot (#0019)', async () => {
+    mockFetchOnce(
+      {
+        error: 'Hedge engine unreachable',
+        snapshot: null,
+        receipts: [],
+        proof: null,
+      },
+      { status: 503 },
     );
+    render(<HedgeStatusCard />);
+    const empty = await screen.findByTestId('hedge-receipts-empty');
+    expect(empty).toHaveTextContent(/engine unreachable/i);
+    expect(empty).not.toHaveTextContent(/No hedge activity yet/i);
+  });
+
+  it('receipts empty state surfaces the degraded reason when receipts source is degraded (#0019)', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: [],
+      degraded: { receipts: 'cache miss' },
+    });
+    render(<HedgeStatusCard />);
+    const empty = await screen.findByTestId('hedge-receipts-empty');
+    expect(empty).toHaveTextContent(/degraded/i);
+    expect(empty).toHaveTextContent(/cache miss/i);
   });
 
   it('shows an error fallback when the API rejects', async () => {
