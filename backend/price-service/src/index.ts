@@ -13,6 +13,7 @@ import { WsBroadcaster } from './ws-broadcaster';
 import { createServer } from './server';
 import { connectEtoroSource } from './etoro-source';
 import { AuditLogger } from './audit-logger';
+import { redactSourceReason } from './source-status';
 import {
   PriceServiceConfig,
   DEFAULT_CONFIG,
@@ -141,7 +142,7 @@ if (require.main === module) {
     console.warn('[price-service] Running without live quotes — use REST API to ingest manually');
     service.setSourceStatus({
       connected: false,
-      reason: msg,
+      reason: redactSourceReason(err),
       lastAttachAt: null,
     });
   }

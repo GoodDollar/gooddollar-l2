@@ -595,11 +595,11 @@ describe('REST Server — /health and /status/quotes with source status wired', 
     expect(src.lastAttachAt).toBe(1700000000000);
   });
 
-  it('disconnected source → 503 with source.connected=false and reason', async () => {
+  it('disconnected source → 503 with source.connected=false and a single-line reason', async () => {
     cache.clear();
     srcState = {
       connected: false,
-      reason: 'Cannot find module ../../etoro-client/src/index',
+      reason: 'lost connection',
       lastAttachAt: null,
     };
     const res = await fetch(`${baseUrl}/health`);
@@ -608,7 +608,7 @@ describe('REST Server — /health and /status/quotes with source status wired', 
     expect(body.status).toBe('degraded');
     const src = body.source as Record<string, unknown>;
     expect(src.connected).toBe(false);
-    expect(src.reason).toBe('Cannot find module ../../etoro-client/src/index');
+    expect(src.reason).toBe('lost connection');
     expect(src.lastAttachAt).toBeNull();
   });
 
@@ -637,6 +637,68 @@ describe('REST Server — /health and /status/quotes with source status wired', 
     const src = body.source as Record<string, unknown>;
     expect(src.connected).toBe(false);
     expect(src.reason).toBe('Cannot find module …');
+  });
+});
+
+describe('REST Server — source.reason redaction', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+  let srcState: SourceStatus;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    srcState = {
+      connected: false,
+      reason:
+        "Cannot find module '../../etoro-client/src/index'\n" +
+        'Require stack:\n' +
+        '- /home/goodclaw/proj/backend/price-service/dist/index.js',
+      lastAttachAt: null,
+    };
+    app = createServer(
+      cache,
+      { symbols: ['AAPL'] },
+      undefined,
+      () => srcState,
+    );
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('/health redacts a leaky multi-line reason', async () => {
+    const res = await fetch(`${baseUrl}/health`);
+    const text = await res.text();
+    const body = JSON.parse(text) as Record<string, unknown>;
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(false);
+    const reason = src.reason as string;
+    expect(reason).not.toContain('\n');
+    expect(reason).not.toMatch(/\/home\//);
+    expect(reason).not.toContain('node_modules');
+    expect(reason).not.toContain('Require stack');
+    expect(reason).not.toMatch(/^at /m);
+    expect(reason.length).toBeLessThan(120);
+  });
+
+  it('/status/quotes redacts a leaky multi-line reason', async () => {
+    const res = await fetch(`${baseUrl}/status/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    const src = body.source as Record<string, unknown>;
+    const reason = src.reason as string;
+    expect(reason).not.toContain('\n');
+    expect(reason).not.toMatch(/\/home\//);
+    expect(reason).not.toContain('Require stack');
   });
 });
 

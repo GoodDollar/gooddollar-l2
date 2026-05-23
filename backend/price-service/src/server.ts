@@ -1,6 +1,7 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { QuoteCache } from './quote-cache';
 import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats, SourceStatus } from './types';
+import { sanitizeSourceStatus } from './source-status';
 
 export type IngestStatsGetter = () => IngestStats;
 export type SourceStatusGetter = () => SourceStatus;
@@ -86,7 +87,7 @@ export function createServer(
     }
     let degraded = !healthy;
     if (sourceStatusGetter) {
-      const src = sourceStatusGetter();
+      const src = sanitizeSourceStatus(sourceStatusGetter());
       body.source = src;
       // A populated cache + healthy filter is not enough to claim
       // health if the upstream source is dead — those cached ticks
@@ -204,7 +205,7 @@ export function createServer(
       timestamp: now,
     };
     if (sourceStatusGetter) {
-      responseBody.source = sourceStatusGetter();
+      responseBody.source = sanitizeSourceStatus(sourceStatusGetter());
     }
     res.json(responseBody);
   });

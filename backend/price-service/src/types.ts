@@ -77,6 +77,11 @@ export interface PriceServiceConfig {
  * Surfaced on `/health` and `/status/quotes` so a downstream consumer
  * (lane-3 oracle-signer) can distinguish "warmup, no ticks yet" from
  * "source dead at boot, will never tick".
+ *
+ * `reason` is contractually a single-line, redacted diagnostic — never
+ * a stack trace, Node `Require stack:` trailer, or absolute filesystem
+ * path. Producers must run their error through `redactSourceReason`
+ * (see `source-status.ts`) before storing it here.
  */
 export type SourceStatus =
   | { connected: false; reason: string; lastAttachAt: number | null }
