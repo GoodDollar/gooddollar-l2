@@ -1,5 +1,9 @@
 import express from 'express';
-import { createServer, ASCII_TICKER_RAW_SOURCE } from '../server';
+import {
+  createServer,
+  ASCII_TICKER_RAW_SOURCE,
+  ASCII_TICKER_FULL_SOURCE,
+} from '../server';
 import { QuoteCache } from '../quote-cache';
 
 function listen(app: express.Express): Promise<{
@@ -36,7 +40,7 @@ describe('/quotes/:symbol 400 invalid-symbol expected block (task 0045)', () => 
     server.close(done);
   });
 
-  const CANONICAL_PATTERN = '^[A-Za-z0-9._-]{1,16}$';
+  const SHAPE_PATTERN = `^${ASCII_TICKER_RAW_SOURCE}$`;
 
   it('shape branch (GET /quotes/!) → 400 with expected block whose pattern accepts lowercase', async () => {
     const res = await fetch(`${baseUrl}/quotes/!`);
@@ -44,7 +48,8 @@ describe('/quotes/:symbol 400 invalid-symbol expected block (task 0045)', () => 
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.error).toBe('invalid-symbol');
     expect(body.expected).toEqual({
-      pattern: CANONICAL_PATTERN,
+      pattern: ASCII_TICKER_FULL_SOURCE,
+      patternShape: SHAPE_PATTERN,
       minLength: 1,
       maxLength: 16,
       mustContainAlnum: true,
@@ -67,7 +72,8 @@ describe('/quotes/:symbol 400 invalid-symbol expected block (task 0045)', () => 
     expect(body.error).toBe('invalid-symbol');
     expect((body.message as string).toLowerCase()).toMatch(/letter or digit/);
     expect(body.expected).toEqual({
-      pattern: CANONICAL_PATTERN,
+      pattern: ASCII_TICKER_FULL_SOURCE,
+      patternShape: SHAPE_PATTERN,
       minLength: 1,
       maxLength: 16,
       mustContainAlnum: true,
@@ -85,12 +91,13 @@ describe('/quotes/:symbol 400 invalid-symbol expected block (task 0045)', () => 
     expect(new RegExp(body.expected.pattern).test('')).toBe(false);
   });
 
-  it('drift guard: expected.pattern stays in sync with the exported source constant', async () => {
+  it('drift guard: expected.pattern matches the combined-gate exported constant; patternShape matches the shape-only one', async () => {
     const res = await fetch(`${baseUrl}/quotes/!`);
-    const body = (await res.json()) as { expected: { pattern: string } };
-    // Constructing the same anchored regex from the exported source must
-    // equal the wire pattern bit-for-bit.
-    expect(body.expected.pattern).toBe(`^${ASCII_TICKER_RAW_SOURCE}$`);
+    const body = (await res.json()) as {
+      expected: { pattern: string; patternShape: string };
+    };
+    expect(body.expected.pattern).toBe(ASCII_TICKER_FULL_SOURCE);
+    expect(body.expected.patternShape).toBe(SHAPE_PATTERN);
   });
 
   it('regression: lowercase /quotes/aapl still canonicalises to AAPL and returns 404 no-quote', async () => {

@@ -570,6 +570,25 @@ export const ASCII_TICKER_RAW_SOURCE = '[A-Za-z0-9._-]{1,16}';
 const ASCII_TICKER_RAW = new RegExp(`^${ASCII_TICKER_RAW_SOURCE}$`);
 
 /**
+ * Combined-gate regex source published as the wire `expected.pattern` so a
+ * single `new RegExp(body.expected.pattern).test(input)` reproduces the
+ * server's `normalizeSymbol` verdict bit-for-bit. The lookahead encodes
+ * the `HAS_ALNUM` requirement inline; the trailing fragment is the same
+ * shape grammar as `ASCII_TICKER_RAW_SOURCE`.
+ *
+ * Task 0045 shipped only the shape source on the wire, so a frontend
+ * piping the pattern through `new RegExp(...)` accepted punctuation-only
+ * inputs (`...`, `----------------`) the server then rejected on the
+ * alnum branch. Task 0047 unifies the two gates into one regex.
+ *
+ * Lookaheads are supported by ECMAScript, PCRE, Java, Python, and Go's
+ * RE2 (since 2023). Rust's `regex` crate rejects them — Rust consumers
+ * fall back to `mustContainAlnum: true`, which stays on the wire as a
+ * non-lookahead flag for that case.
+ */
+export const ASCII_TICKER_FULL_SOURCE = `^(?=.*[A-Za-z0-9])${ASCII_TICKER_RAW_SOURCE}$`;
+
+/**
  * Machine-readable companion to the 400 `invalid-symbol` natural-language
  * message. A frontend / SDK / OpenAPI generator can feed
  * `body.expected.pattern` straight into `new RegExp(...)` and reproduce
@@ -579,13 +598,32 @@ const ASCII_TICKER_RAW = new RegExp(`^${ASCII_TICKER_RAW_SOURCE}$`);
  * The same block ships on both 400 branches (`shape` and `no-alnum`):
  * the pattern, length bounds, and case-folding behaviour are identical;
  * only the natural-language `message` differs.
+ *
+ * `patternShape` carries the previous shape-only regex for one release
+ * as a back-compat hook — same release-deprecation cadence as
+ * `count → totalCached` (task 0035) and `lastUpdateMs → cacheAge`
+ * (task 0033). Removed in the next release.
  */
 const INVALID_SYMBOL_EXPECTED = Object.freeze({
-  pattern: ASCII_TICKER_RAW.source,
+  pattern: ASCII_TICKER_FULL_SOURCE,
+  patternShape: ASCII_TICKER_RAW.source,
   minLength: 1,
   maxLength: 16,
   mustContainAlnum: true,
   canonicalisation: 'uppercase' as const,
+});
+
+/**
+ * In-band deprecation note shipped on the 400 `invalid-symbol` envelope
+ * so a consumer reading `expected.patternShape` discovers the move to
+ * `expected.pattern` (the combined-gate regex) without grepping the
+ * codebase. Same deprecation-cadence shape as the `source.deprecations`
+ * note for `lastAttachAt` → `lastAttachAtMs`.
+ */
+const INVALID_SYMBOL_DEPRECATIONS: Readonly<Record<string, string>> = Object.freeze({
+  'expected.patternShape':
+    'rename → expected.pattern (now encodes the full shape + alnum gate); ' +
+    'will be removed in the next release',
 });
 
 const INVALID_SYMBOL_SHAPE_MESSAGE =
@@ -1005,6 +1043,7 @@ export function createServer(
         error: 'invalid-symbol',
         message,
         expected: INVALID_SYMBOL_EXPECTED,
+        deprecations: INVALID_SYMBOL_DEPRECATIONS,
         path,
         method: req.method,
       };
