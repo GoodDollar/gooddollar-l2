@@ -9,6 +9,7 @@ import { formatPerpsPrice, formatLargeValue, formatFundingRate, getFundingCountd
 import { useOnChainPairs, useOnChainAccountSummary } from '@/lib/useOnChainPerps'
 import { sanitizeNumericInput } from '@/lib/format'
 import { boundPerpsSize } from '@/lib/perpsInput'
+import { isPerpSizeWithinCap, getPerpSizeCap } from '@/lib/perpLimits'
 import { validateStopLimitOrder } from '@/lib/perpsStopLimitValidation'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { DEFAULT_INDICATORS, type ActiveIndicators, type IndicatorId } from '@/lib/indicators'
@@ -162,6 +163,10 @@ const OpenPositions = dynamic(
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 
+// Static em-dash cell used by the over-cap summary rows. Hoisted to module
+// scope so it isn't recreated on every render of the OrderForm.
+const OVER_CAP_DASH = <span className="text-gray-500 truncate ml-2">—</span>
+
 function PairSelector({ pairs, selected, onSelect }: { pairs: PerpPair[]; selected: string; onSelect: (s: string) => void }) {
   return (
     <ScrollStrip className="flex gap-1.5 pb-1" ariaLabel="Select perpetual market pair">
@@ -263,7 +268,7 @@ function LeverageSlider({ value, onChange, max }: { value: number; onChange: (v:
 type OrderType = 'market' | 'limit' | 'stop-limit'
 
 
-function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: AccountSummaryData; marketId: number }) {
+export function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: AccountSummaryData; marketId: number }) {
   const [side, setSide] = useState<'long' | 'short'>('long')
   const [orderType, setOrderType] = useState<OrderType>('market')
   const [size, setSize] = useState('')
@@ -377,6 +382,13 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const maxSize = effectivePrice > 0 ? (availableFundingUsd * leverage) / effectivePrice : 0
   const notionalValue = sizeNum * effectivePrice
 
+  // Per-symbol absurdity cap on the Size input. The chain rejects on
+  // insufficient collateral, but without this gate the UI still renders a
+  // green "$8425Q notional / $2.78Q UBI" quote for `99,999,999,999,999` BTC.
+  // Mirror of the swap cap (task 0010) — see `frontend/src/lib/perpLimits.ts`.
+  const isPerpSizeOverCap = !isPerpSizeWithinCap(pair.baseAsset, size)
+  const perpSizeCapStr = getPerpSizeCap(pair.baseAsset).toLocaleString()
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (
@@ -387,7 +399,8 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
       triggerPriceInvalid ||
       stopLimitCheck.triggerWrongSide ||
       stopLimitCheck.limitVsTriggerWrong ||
-      syncBlocked
+      syncBlocked ||
+      isPerpSizeOverCap
     ) return
 
     if (isDeployed && orderType === 'market') {
@@ -517,10 +530,23 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           maxValue={maxSize}
           maxValueLabel="max size"
           symbol={pair.baseAsset}
-          usdValue={notionalValue}
-          error={exceedsMargin ? `Needs ${formatG$Amount(totalRequiredGD)} total; available ${formatG$Amount(availableFundingGD)}` : false}
+          usdValue={isPerpSizeOverCap ? undefined : notionalValue}
+          error={isPerpSizeOverCap
+            ? false
+            : (exceedsMargin
+              ? `Needs ${formatG$Amount(totalRequiredGD)} total; available ${formatG$Amount(availableFundingGD)}`
+              : false)}
           placeholder="0.00"
         />
+        {isPerpSizeOverCap && (
+          <p
+            className="text-[11px] text-amber-400 mt-1.5"
+            data-testid="perp-size-over-cap"
+            role="alert"
+          >
+            Size exceeds per-symbol perp cap ({perpSizeCapStr} {pair.baseAsset}). Reduce to continue.
+          </p>
+        )}
       </div>
 
       <div>
@@ -562,6 +588,22 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
       </div>
 
       {sizeNum > 0 && hasValidPrice && effectivePrice > 0 && (() => {
+        // When the user enters a size that trips the per-symbol absurdity
+        // cap, render every quote row as `—` rather than a confident
+        // quadrillion-USD number. The chip under the Size input already
+        // explains why; the dashes here keep the row layout stable so
+        // the panel doesn't jump.
+        if (isPerpSizeOverCap) {
+          return (
+            <div className="space-y-1 text-xs" data-testid="perp-summary-overcap">
+              <div className="flex justify-between text-gray-400"><span>Notional</span>{OVER_CAP_DASH}</div>
+              <div className="flex justify-between text-gray-400"><span>Margin</span>{OVER_CAP_DASH}</div>
+              <div className="flex justify-between text-gray-400"><span>Liq. Price</span>{OVER_CAP_DASH}</div>
+              <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.10%' : '0.02%'})</span>{OVER_CAP_DASH}</div>
+              <div className="flex justify-between text-gray-400"><span>→ UBI (33%)</span>{OVER_CAP_DASH}</div>
+            </div>
+          )
+        }
         // When the user enters a wildly oversized trade (e.g. pasting a
         // 21-digit value into Size), the summary rows would otherwise
         // render `$104.97Q` (quintillion notation) which reads as a
@@ -605,7 +647,16 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           {syncGuard.reason ?? 'Risk-increasing action blocked until symbol sync reaches current oracle block.'}
         </p>
       )}
-      {walletReady ? (
+      {isPerpSizeOverCap ? (
+        <button
+          type="button"
+          disabled
+          data-testid="perp-cta-over-cap"
+          className="w-full py-2.5 rounded-xl font-semibold text-sm bg-dark-50 text-gray-400 cursor-not-allowed"
+        >
+          Size too large
+        </button>
+      ) : walletReady ? (
         <WalletGatedTradeButton hasSize={sizeNum > 0} exceedsMargin={exceedsMargin}>
           <button type="submit"
             disabled={exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || perpPhase === 'approving' || perpPhase === 'pending' || syncBlocked}
