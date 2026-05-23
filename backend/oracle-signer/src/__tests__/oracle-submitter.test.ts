@@ -5,6 +5,7 @@ jest.mock('ethers', () => {
   const mockReceipt = {
     hash: '0xabc123',
     gasUsed: BigInt(150000),
+    blockNumber: 42,
   };
 
   const mockTx = {
