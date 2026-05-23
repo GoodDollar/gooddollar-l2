@@ -13,7 +13,7 @@ import { WsBroadcaster } from './ws-broadcaster';
 import { createServer } from './server';
 import { connectEtoroSource } from './etoro-source';
 import { AuditLogger } from './audit-logger';
-import { redactSourceReason } from './source-status';
+import { classifySourceError } from './source-status';
 import {
   PriceServiceConfig,
   DEFAULT_CONFIG,
@@ -154,9 +154,11 @@ if (require.main === module) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`[price-service] eToro source unavailable: ${msg}`);
     console.warn('[price-service] Running without live quotes — use REST API to ingest manually');
+    const { reason, detail } = classifySourceError(err);
     service.setSourceStatus({
       connected: false,
-      reason: redactSourceReason(err),
+      reason,
+      detail,
       lastAttachAt: null,
     });
   }

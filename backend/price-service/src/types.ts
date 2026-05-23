@@ -78,13 +78,21 @@ export interface PriceServiceConfig {
  * (lane-3 oracle-signer) can distinguish "warmup, no ticks yet" from
  * "source dead at boot, will never tick".
  *
- * `reason` is contractually a single-line, redacted diagnostic — never
- * a stack trace, Node `Require stack:` trailer, or absolute filesystem
- * path. Producers must run their error through `redactSourceReason`
- * (see `source-status.ts`) before storing it here.
+ * `reason` is contractually a stable catalog slug (one of
+ * `REASON_CATALOG`'s keys) — producers run their thrown errors
+ * through `classifySourceError` (see `source-status.ts`) which maps
+ * every input to a slug. The optional `detail` carries the redacted
+ * raw machine-error first line for debuggability when classification
+ * fell to `source-unavailable`; null/undefined for clean catalog
+ * slugs (e.g. `etoro-client-not-installed`, `not-attached`).
  */
 export type SourceStatus =
-  | { connected: false; reason: string; lastAttachAt: number | null }
+  | {
+      connected: false;
+      reason: string;
+      detail?: string | null;
+      lastAttachAt: number | null;
+    }
   | { connected: true; symbols: string[]; lastAttachAt: number };
 
 /**

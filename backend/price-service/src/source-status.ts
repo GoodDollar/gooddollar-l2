@@ -48,6 +48,7 @@ export type SanitizedSourceStatus =
       humanReason: string;
       nextStep: string;
       severity: SourceSeverity;
+      detail: string | null;
       lastAttachAtMs: number | null;
       lastAttachAtIso: string | null;
       lastAttachAt: number | null;
@@ -145,6 +146,38 @@ export function redactSourceReason(err: unknown): string {
 }
 
 /**
+ * Classify a thrown attach-time error into a stable `REASON_CATALOG`
+ * slug. The producer at `index.ts` runs every caught error through
+ * here and stores both the slug (as `SourceStatus.reason`) and the
+ * optional redacted machine string (as `SourceStatus.detail`) so the
+ * wire `source.reason` field is ALWAYS one of the catalog keys —
+ * matching the contract advertised at `/docs/source-reasons`.
+ *
+ * Three branches:
+ *  - non-Error throws → `source-unavailable` + `null` detail
+ *  - `MODULE_NOT_FOUND` → `etoro-client-not-installed` + `null` detail
+ *  - any other Error → `source-unavailable` + `redactSourceReason(err)`
+ *    detail (single line, path-stripped, length-bounded)
+ *
+ * The return type pins `reason` to `keyof typeof REASON_CATALOG` so
+ * any future divergence between the classifier and the catalog is a
+ * TypeScript error at the callsite.
+ */
+export function classifySourceError(err: unknown): {
+  reason: keyof typeof REASON_CATALOG;
+  detail: string | null;
+} {
+  if (!(err instanceof Error)) {
+    return { reason: 'source-unavailable', detail: null };
+  }
+  const code = (err as NodeJS.ErrnoException).code;
+  if (code === 'MODULE_NOT_FOUND') {
+    return { reason: 'etoro-client-not-installed', detail: null };
+  }
+  return { reason: 'source-unavailable', detail: redactSourceReason(err) };
+}
+
+/**
  * Defense-in-depth wrapper applied at the read sites (`/health`,
  * `/status/quotes`, WS snapshot). Keeps the HTTP/WS surface clean
  * even if a future caller bypasses `redactSourceReason` at the
@@ -174,6 +207,7 @@ export function sanitizeSourceStatus(status: SourceStatus): SanitizedSourceStatu
     humanReason: doc.humanReason,
     nextStep: doc.nextStep,
     severity: doc.severity,
+    detail: status.detail ?? null,
     lastAttachAtMs: status.lastAttachAt,
     lastAttachAtIso: isoFromMs(status.lastAttachAt),
     lastAttachAt: status.lastAttachAt,
