@@ -21,8 +21,25 @@ vi.mock('@/lib/abi', () => ({
 
 import { useReadContract } from 'wagmi'
 import { PipelineStatusBanner } from '../PipelineStatusBanner'
+import {
+  ProofPipelineAxesProvider,
+  type ProofPipelineAxesProviderProps,
+} from '../ProofPipelineAxesProvider'
 
 const useReadContractMock = vi.mocked(useReadContract)
+
+/**
+ * Render the banner inside the shared provider so the hook drives the
+ * fetch/mocked-wagmi paths. The provider props mirror the legacy
+ * `PipelineStatusBanner` prop set (intervalMs, priceServiceUrl, ...).
+ */
+function renderBanner(opts: Omit<ProofPipelineAxesProviderProps, 'children'> = {}) {
+  return render(
+    <ProofPipelineAxesProvider {...opts}>
+      <PipelineStatusBanner />
+    </ProofPipelineAxesProvider>,
+  )
+}
 
 const QUOTES_OK = {
   quotes: {
@@ -102,7 +119,7 @@ describe('PipelineStatusBanner', () => {
     mockOnChainHealthy()
     installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const skel = screen.getByRole('status', { name: /Loading pipeline status/i })
     expect(skel).toBeInTheDocument()
@@ -120,7 +137,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const region = await screen.findByTestId('pipeline-status-banner')
     await vi.waitFor(() => {
@@ -141,7 +158,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const region = await screen.findByTestId('pipeline-status-banner')
     await vi.waitFor(() => {
@@ -159,7 +176,7 @@ describe('PipelineStatusBanner', () => {
       throw new Error('connection refused')
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const region = await screen.findByTestId('pipeline-status-banner')
     await vi.waitFor(() => {
@@ -185,7 +202,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={1_000} />)
+    renderBanner({ intervalMs: 1_000 })
 
     const region = await vi.waitFor(() => {
       const el = screen.getByTestId('pipeline-status-banner')
@@ -211,7 +228,7 @@ describe('PipelineStatusBanner', () => {
       throw new Error('ECONNREFUSED 127.0.0.1:9300 (super-secret-host)')
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const region = await screen.findByTestId('pipeline-status-banner')
     await vi.waitFor(() => {
@@ -231,7 +248,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const liveQuotesChip = await screen.findByTestId('reason-chip-panel-live-quotes')
     expect(liveQuotesChip.getAttribute('href')).toBe('#panel-live-quotes')
@@ -249,7 +266,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
     const region = await screen.findByTestId('pipeline-status-banner')
     await vi.waitFor(() => {
       expect(region.getAttribute('data-status')).toBe('green')
@@ -263,7 +280,7 @@ describe('PipelineStatusBanner', () => {
       throw new Error('connection refused')
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const chips = await vi.waitFor(() => {
       const els = screen.queryAllByTestId(/^reason-chip-/)
@@ -284,7 +301,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const chip = await screen.findByTestId('reason-chip-panel-live-quotes')
     expect(chip.tagName).toBe('A')
@@ -300,7 +317,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const line = await screen.findByTestId('last-fully-alive')
     expect(line.textContent).toMatch(/just now/i)
@@ -320,7 +337,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const line = await screen.findByTestId('last-fully-alive')
     await vi.waitFor(() => {
@@ -342,7 +359,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     const line = await screen.findByTestId('last-fully-alive')
     await vi.waitFor(() => {
@@ -370,7 +387,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={1_000} />)
+    renderBanner({ intervalMs: 1_000 })
 
     await vi.waitFor(() => {
       const region = screen.getByTestId('pipeline-status-banner')
@@ -409,7 +426,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
 
     await vi.waitFor(() => {
       const region = screen.getByTestId('pipeline-status-banner')
@@ -445,7 +462,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    const { unmount } = render(<PipelineStatusBanner intervalMs={60_000} />)
+    const { unmount } = renderBanner({ intervalMs: 60_000 })
     await vi.waitFor(() => {
       const line = screen.getByTestId('last-fully-alive')
       expect(line.textContent).toMatch(/just now/i)
@@ -459,7 +476,7 @@ describe('PipelineStatusBanner', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    render(<PipelineStatusBanner intervalMs={60_000} />)
+    renderBanner({ intervalMs: 60_000 })
     await vi.waitFor(() => {
       const line = screen.getByTestId('last-fully-alive')
       // Updated copy (see lane6-pipeline-status-last-alive-line-asks-user-a-question).
@@ -473,7 +490,7 @@ describe('PipelineStatusBanner', () => {
     const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval')
     installFetchMock(() => ({ ok: true, status: 200, body: QUOTES_OK }))
 
-    const { unmount } = render(<PipelineStatusBanner intervalMs={1_000} />)
+    const { unmount } = renderBanner({ intervalMs: 1_000 })
 
     await vi.waitFor(() => {
       expect(screen.getByTestId('pipeline-status-banner')).toBeInTheDocument()

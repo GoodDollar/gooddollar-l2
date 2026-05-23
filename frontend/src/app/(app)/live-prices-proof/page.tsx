@@ -7,6 +7,7 @@ import { OracleUpdatesPanel } from '@/components/proof/OracleUpdatesPanel'
 import { PipelineFlowDiagram } from '@/components/proof/PipelineFlowDiagram'
 import { PipelineStatusBanner } from '@/components/proof/PipelineStatusBanner'
 import { ProofPanelBoundary } from '@/components/proof/ProofPanelBoundary'
+import { ProofPipelineAxesProvider } from '@/components/proof/ProofPipelineAxesProvider'
 import { SafetyBanner } from '@/components/proof/SafetyBanner'
 
 /**
@@ -65,17 +66,19 @@ export default function LivePricesProofPage() {
         <SafetyBanner />
       </ProofPanelBoundary>
 
-      <div className={SECTION_GAP_CLASS}>
-        <ProofPanelBoundary label="Pipeline Status">
-          <PipelineStatusBanner />
-        </ProofPanelBoundary>
-      </div>
+      <ProofPipelineAxesProvider>
+        <div className={SECTION_GAP_CLASS}>
+          <ProofPanelBoundary label="Pipeline Status">
+            <PipelineStatusBanner />
+          </ProofPanelBoundary>
+        </div>
 
-      <div className={SECTION_GAP_CLASS}>
-        <ProofPanelBoundary label="Pipeline Flow">
-          <PipelineFlowDiagram />
-        </ProofPanelBoundary>
-      </div>
+        <div className={SECTION_GAP_CLASS}>
+          <ProofPanelBoundary label="Pipeline Flow">
+            <PipelineFlowDiagram />
+          </ProofPanelBoundary>
+        </div>
+      </ProofPipelineAxesProvider>
 
       <div className={`${SECTION_GAP_CLASS} grid grid-cols-1 gap-5 lg:grid-cols-2`}>
         <ProofPanelBoundary label="Live Quotes">

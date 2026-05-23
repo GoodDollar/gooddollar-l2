@@ -1,25 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useReadContract } from 'wagmi'
-import { CONTRACTS } from '@/lib/chain'
-import { PriceOracleABI } from '@/lib/abi'
-import { sanitiseClientError } from '@/lib/sanitiseClientError'
-import { getAllTickers } from '@/lib/stockData'
-
-type AxisHealth = 'unknown' | 'healthy' | 'degraded'
-
-interface AxisState {
-  quotes: AxisHealth
-  onChain: AxisHealth
-  hedgeProof: AxisHealth
-}
-
-type Verdict = 'loading' | 'green' | 'amber' | 'red'
-
-const DEFAULT_PRICE_SERVICE_URL = 'http://localhost:9300'
-const DEFAULT_STALENESS_THRESHOLD_MS = 30_000
-const DEFAULT_POLL_INTERVAL_MS = 15_000
+import { useEffect, useState } from 'react'
+import { AxisState, Verdict } from './proofAxes'
+import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 interface PanelLink {
   reason: string
@@ -32,165 +15,26 @@ const PANEL_BY_AXIS: Record<keyof AxisState, PanelLink> = {
   hedgeProof: { reason: 'hedge-proof missing', anchor: 'panel-last-hedge' },
 }
 
-function isFreshQuotes(payload: unknown, stalenessMs: number): boolean {
-  if (typeof payload !== 'object' || payload === null) return false
-  const r = payload as Record<string, unknown>
-  const quotes = r.quotes
-  if (typeof quotes !== 'object' || quotes === null || Array.isArray(quotes)) return false
-  const values = Object.values(quotes as Record<string, unknown>)
-  if (values.length === 0) return false
-  let freshestAge = Number.POSITIVE_INFINITY
-  for (const v of values) {
-    if (typeof v !== 'object' || v === null) continue
-    const q = v as Record<string, unknown>
-    if (typeof q.cacheAge !== 'number') continue
-    if (q.cacheAge < freshestAge) freshestAge = q.cacheAge
-  }
-  if (!Number.isFinite(freshestAge)) return false
-  return freshestAge <= stalenessMs
-}
+/**
+ * Renders the AlivenessRollup chip + reason chips at the top of the
+ * proof page. Pulls `{ axes, verdict, lastFullyAliveAt }` from
+ * `ProofPipelineAxesProvider` so the rollup, the PipelineFlowDiagram,
+ * and any future axis-aware consumer always agree on the same axis
+ * states in the same render frame — see task lane6-pipeline-flow-onchain-
+ * nodes-render-unknown-while-rollup-says-degraded (0050).
+ */
+export function PipelineStatusBanner() {
+  const { axes, verdict, lastFullyAliveAt } = useProofPipelineAxesContext()
 
-function isHealthyOnChain(data: unknown): boolean {
-  if (typeof data !== 'object' || data === null) return false
-  const r = data as Record<string, unknown>
-  const price8 = r.price8
-  const timestamp = r.timestamp
-  if (typeof price8 !== 'bigint' || typeof timestamp !== 'bigint') return false
-  return price8 > 0n && timestamp > 0n
-}
-
-function deriveVerdict(axes: AxisState): Verdict {
-  const values: AxisHealth[] = [axes.quotes, axes.onChain, axes.hedgeProof]
-  if (values.some((v) => v === 'unknown')) return 'loading'
-  const healthy = values.filter((v) => v === 'healthy').length
-  const degraded = values.filter((v) => v === 'degraded').length
-  if (healthy === 3) return 'green'
-  if (degraded === 3) return 'red'
-  return 'amber'
-}
-
-interface PipelineStatusBannerProps {
-  /** Price-service base URL — defaults to `NEXT_PUBLIC_PRICE_SERVICE_URL`. */
-  priceServiceUrl?: string
-  /** Hedge proof endpoint — defaults to `/api/hedge-proof/latest`. */
-  hedgeProofEndpoint?: string
-  /** Polling cadence in ms — defaults to 15s. Test override. */
-  intervalMs?: number
-  /** Optional staleness threshold for the quotes axis — defaults to 30s. */
-  stalenessThresholdMs?: number
-}
-
-export function PipelineStatusBanner({
-  priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? DEFAULT_PRICE_SERVICE_URL,
-  hedgeProofEndpoint = '/api/hedge-proof/latest',
-  intervalMs = DEFAULT_POLL_INTERVAL_MS,
-  stalenessThresholdMs = DEFAULT_STALENESS_THRESHOLD_MS,
-}: PipelineStatusBannerProps) {
-  const oracleAddress = CONTRACTS.StocksPriceOracle
-  const probeTicker = useMemo(() => {
-    const tickers = getAllTickers()
-    return tickers.length > 0 ? tickers[0] : null
-  }, [])
-
-  const onChainReadEnabled = Boolean(oracleAddress) && probeTicker !== null
-  const { data: onChainData, error: onChainError } = useReadContract({
-    address: oracleAddress || undefined,
-    abi: PriceOracleABI,
-    functionName: 'getPriceData',
-    args: probeTicker ? [probeTicker] : undefined,
-    query: {
-      enabled: onChainReadEnabled,
-      refetchInterval: intervalMs,
-      staleTime: intervalMs,
-    },
-  })
-
-  const [offChain, setOffChain] = useState<{ quotes: AxisHealth; hedgeProof: AxisHealth }>({
-    quotes: 'unknown',
-    hedgeProof: 'unknown',
-  })
-  const [pollSeq, setPollSeq] = useState(0)
-  const [lastFullyAliveAt, setLastFullyAliveAt] = useState<number | null>(null)
+  /**
+   * Drives the 1s "Xs ago" tick under the degraded/red verdict line.
+   * Pure presentation — does not own the underlying timestamp.
+   */
   const [now, setNow] = useState<number>(() => Date.now())
-
-  useEffect(() => {
-    let cancelled = false
-
-    const checkQuotes = async (): Promise<AxisHealth> => {
-      try {
-        const res = await fetch(`${priceServiceUrl}/quotes`, { cache: 'no-store' })
-        if (!res.ok) return 'degraded'
-        const body = (await res.json()) as unknown
-        return isFreshQuotes(body, stalenessThresholdMs) ? 'healthy' : 'degraded'
-      } catch (err) {
-        sanitiseClientError('price-service', err)
-        return 'degraded'
-      }
-    }
-
-    const checkHedgeProof = async (): Promise<AxisHealth> => {
-      try {
-        const res = await fetch(hedgeProofEndpoint, { cache: 'no-store' })
-        return res.ok ? 'healthy' : 'degraded'
-      } catch (err) {
-        sanitiseClientError('hedge-proof', err)
-        return 'degraded'
-      }
-    }
-
-    const tick = async () => {
-      const [quotesResult, hedgeProofResult] = await Promise.allSettled([
-        checkQuotes(),
-        checkHedgeProof(),
-      ])
-      if (cancelled) return
-      setOffChain({
-        quotes: quotesResult.status === 'fulfilled' ? quotesResult.value : 'degraded',
-        hedgeProof: hedgeProofResult.status === 'fulfilled' ? hedgeProofResult.value : 'degraded',
-      })
-      setPollSeq((s) => s + 1)
-    }
-
-    void tick()
-    const timer = setInterval(() => void tick(), intervalMs)
-    return () => {
-      cancelled = true
-      clearInterval(timer)
-    }
-  }, [priceServiceUrl, hedgeProofEndpoint, intervalMs, stalenessThresholdMs])
-
-  const onChain: AxisHealth = useMemo(() => {
-    if (!onChainReadEnabled) return 'degraded'
-    if (onChainError) {
-      sanitiseClientError('oracle-multicall', onChainError)
-      return 'degraded'
-    }
-    if (onChainData === undefined) return 'unknown'
-    return isHealthyOnChain(onChainData) ? 'healthy' : 'degraded'
-  }, [onChainReadEnabled, onChainError, onChainData])
-
-  const axes: AxisState = {
-    quotes: offChain.quotes,
-    onChain,
-    hedgeProof: offChain.hedgeProof,
-  }
-  const verdict = deriveVerdict(axes)
-
-  useEffect(() => {
-    if (
-      axes.quotes === 'healthy' &&
-      axes.onChain === 'healthy' &&
-      axes.hedgeProof === 'healthy'
-    ) {
-      const t = Date.now()
-      setLastFullyAliveAt(t)
-      setNow(t)
-    }
-  }, [pollSeq, axes.quotes, axes.onChain, axes.hedgeProof])
-
   useEffect(() => {
     if (lastFullyAliveAt === null) return
     if (verdict === 'green' || verdict === 'loading') return
+    setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), 1_000)
     return () => clearInterval(id)
   }, [lastFullyAliveAt, verdict])

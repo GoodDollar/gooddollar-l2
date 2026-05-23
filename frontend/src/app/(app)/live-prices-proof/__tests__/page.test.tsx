@@ -10,6 +10,12 @@ vi.mock('@/components/proof/PipelineStatusBanner', () => ({
 vi.mock('@/components/proof/PipelineFlowDiagram', () => ({
   PipelineFlowDiagram: () => <div data-testid="mock-pipeline-flow-diagram" />,
 }))
+// The real provider mounts useProofPipelineAxes, which pulls in wagmi's
+// useReadContract — out of scope for page-composition tests, mock it to
+// a transparent pass-through.
+vi.mock('@/components/proof/ProofPipelineAxesProvider', () => ({
+  ProofPipelineAxesProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
 // Each panel mock mirrors the outer <section> shell the real component
 // renders (id + the layout classes the page-level grid relies on for
 // row alignment), so page-level tests can assert composition without
