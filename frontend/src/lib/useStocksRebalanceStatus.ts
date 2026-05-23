@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import type { RebalanceInvariantResult } from '@/lib/stocksRebalanceInvariant'
 import { isPageHidden, subscribePageVisibility } from '@/lib/usePageVisibility'
+import { buildRebalanceStatusUrl } from '@/lib/stocksDefaultSymbols'
 
 interface RebalanceApiResponse {
   generatedAt: string
@@ -47,13 +48,10 @@ async function fetchRebalanceStatus(url: string): Promise<RebalanceApiResponse> 
 }
 
 export function useStocksRebalanceStatus(symbols: string[]): UseStocksRebalanceStatusResult {
-  const symbolKey = useMemo(
-    () =>
-      Array.from(new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean)))
-        .sort()
-        .join(','),
-    [symbols],
-  )
+  // Delegate URL building to the shared helper so the layout's preload href
+  // and this hook's runtime fetch cannot drift (task 0049). The helper
+  // applies trim → uppercase → dedupe → sort → encodeURIComponent.
+  const url = useMemo(() => buildRebalanceStatusUrl(symbols), [symbols])
   const [data, setData] = useState<RebalanceApiResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -61,10 +59,6 @@ export function useStocksRebalanceStatus(symbols: string[]): UseStocksRebalanceS
   useEffect(() => {
     let cancelled = false
     let timer: ReturnType<typeof setInterval> | null = null
-
-    const url = symbolKey.length > 0
-      ? `/api/stocks/rebalance-status?symbols=${encodeURIComponent(symbolKey)}`
-      : '/api/stocks/rebalance-status'
 
     const tick = async () => {
       try {
@@ -110,7 +104,7 @@ export function useStocksRebalanceStatus(symbols: string[]): UseStocksRebalanceS
       disarm()
       unsubscribe()
     }
-  }, [symbolKey])
+  }, [url])
 
   const bySymbol = useMemo(() => {
     const next: Record<string, RebalanceInvariantResult> = {}
