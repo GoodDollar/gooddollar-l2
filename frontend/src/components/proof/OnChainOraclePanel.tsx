@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useReadContracts } from 'wagmi'
 import { CONTRACTS } from '@/lib/chain'
 import { PriceOracleABI } from '@/lib/abi'
@@ -9,6 +9,10 @@ import { getAllTickers } from '@/lib/stockData'
 import { formatProofUsd } from '@/lib/proofFormat'
 import { sessionPillClass } from './sessionPill'
 import { MonoLinkAtom, MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
+import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
+import { useProofPanelActionsContext } from './ProofPanelActionsProvider'
+
+const ON_CHAIN_INTERVAL_MS = 30_000
 
 const SESSION_LABELS: Record<number, string> = {
   0: 'Open',
@@ -124,12 +128,12 @@ export function OnChainOraclePanel() {
     }))
   }, [oracleAddress, tickers])
 
-  const { data, isLoading, error } = useReadContracts({
+  const { data, isLoading, error, refetch } = useReadContracts({
     contracts,
     query: {
       enabled: contracts.length > 0,
-      refetchInterval: 30_000,
-      staleTime: 30_000,
+      refetchInterval: ON_CHAIN_INTERVAL_MS,
+      staleTime: ON_CHAIN_INTERVAL_MS,
     },
   })
 
@@ -137,6 +141,20 @@ export function OnChainOraclePanel() {
     () => (error ? sanitiseClientError('oracle-multicall', error) : null),
     [error],
   )
+
+  const [lastReadAt, setLastReadAt] = useState<number | null>(null)
+  useEffect(() => {
+    if (data !== undefined || error) setLastReadAt(Date.now())
+  }, [data, error])
+
+  const retry = useCallback(async () => {
+    await refetch()
+  }, [refetch])
+
+  const { registerPanelRetry, retryPanel, isRetrying } = useProofPanelActionsContext()
+  useEffect(() => registerPanelRetry('onChain', retry), [registerPanelRetry, retry])
+  const busy = isRetrying('onChain')
+  const handleRetry = () => retryPanel('onChain')
 
   const rows = useMemo<DecodedPriceData[]>(() => {
     if (!data) return []
@@ -169,11 +187,29 @@ export function OnChainOraclePanel() {
       aria-labelledby="onchain-oracle-heading"
       className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
-      <header className="mb-3 flex items-center justify-between gap-y-1">
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-y-1">
         <h2 id="onchain-oracle-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           On-chain Oracle (getPriceData)
         </h2>
-        <PanelHeaderMeta source={<OracleAddressAtom oracleAddress={oracleAddress} explorer={explorer} />} />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <PanelHeaderMeta
+            source={<OracleAddressAtom oracleAddress={oracleAddress} explorer={explorer} />}
+            cadence={
+              <NextPollCountdown
+                lastPollAt={lastReadAt}
+                intervalMs={ON_CHAIN_INTERVAL_MS}
+                busy={busy}
+                testId="onchain-oracle-countdown"
+              />
+            }
+          />
+          <RetryButton
+            onRetry={handleRetry}
+            busy={busy}
+            testId="onchain-oracle-retry"
+            ariaLabel="Re-run on-chain oracle multicall"
+          />
+        </div>
       </header>
 
       <div className="flex-1">
@@ -203,6 +239,18 @@ export function OnChainOraclePanel() {
             non-zero price yet. The oracle-signer keeper writes prices on a fixed
             cadence — this panel will populate as soon as the first round lands.
           </p>
+          {oracleAddress && explorer && (
+            <a
+              href={`${explorer.replace(/\/$/, '')}/address/${oracleAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="onchain-oracle-explorer-link"
+              className="mt-2 inline-flex items-center gap-1 text-yellow-100 underline-offset-2 hover:underline"
+              aria-label={`Open ${oracleAddress} on the block explorer`}
+            >
+              Open on block explorer <span aria-hidden>↗</span>
+            </a>
+          )}
           <ExpectedSymbolsList tickers={tickers} />
         </div>
       )}

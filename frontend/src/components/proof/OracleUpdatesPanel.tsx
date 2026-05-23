@@ -1,11 +1,13 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useWatchContractEvent } from 'wagmi'
 import { CONTRACTS } from '@/lib/chain'
 import { PriceOracleABI } from '@/lib/abi'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
+import { RetryButton } from './PanelHeaderControls'
+import { useProofPanelActionsContext } from './ProofPanelActionsProvider'
 import { shortAddress } from './panelHeaderMetaUtils'
 
 interface UpdateEntry {
@@ -56,6 +58,7 @@ export function OracleUpdatesPanel() {
     ''
   const [events, setEvents] = useState<UpdateEntry[]>([])
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null)
+  const [subscriptionEpoch, setSubscriptionEpoch] = useState(0)
 
   const onLogs = useCallback((logs: readonly unknown[]) => {
     setSubscriptionError(null)
@@ -84,14 +87,15 @@ export function OracleUpdatesPanel() {
     setSubscriptionError(sanitiseClientError('oracle-subscription', err))
   }, [])
 
-  useWatchContractEvent({
-    address: oracleAddress,
-    abi: PriceOracleABI,
-    eventName: 'PriceUpdated',
-    onLogs,
-    onError,
-    enabled: Boolean(oracleAddress),
-  })
+  const retry = useCallback(async () => {
+    setSubscriptionError(null)
+    setSubscriptionEpoch((e) => e + 1)
+  }, [])
+
+  const { registerPanelRetry, retryPanel, isRetrying } = useProofPanelActionsContext()
+  useEffect(() => registerPanelRetry('oracleEvents', retry), [registerPanelRetry, retry])
+  const busy = isRetrying('oracleEvents')
+  const handleRetry = () => retryPanel('oracleEvents')
 
   return (
     <section
@@ -99,18 +103,38 @@ export function OracleUpdatesPanel() {
       aria-labelledby="oracle-updates-heading"
       className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
-      <header className="mb-3 flex items-center justify-between gap-y-1">
+      <OracleEventSubscription
+        key={subscriptionEpoch}
+        oracleAddress={oracleAddress}
+        onLogs={onLogs}
+        onError={onError}
+      />
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-y-1">
         <h2 id="oracle-updates-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           Recent Oracle Updates
         </h2>
-        <PanelHeaderMeta
-          source={
-            oracleAddress ? (
-              <MonoSourceAtom value={shortAddress(oracleAddress)} title={oracleAddress} />
-            ) : undefined
-          }
-          cadence={<span>last {MAX_EVENTS} PriceUpdated events</span>}
-        />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <PanelHeaderMeta
+            source={
+              oracleAddress ? (
+                <MonoSourceAtom value={shortAddress(oracleAddress)} title={oracleAddress} />
+              ) : undefined
+            }
+            cadence={
+              <span data-testid="oracle-updates-status">
+                {subscriptionError
+                  ? 'subscription degraded'
+                  : `live · last ${MAX_EVENTS} PriceUpdated events`}
+              </span>
+            }
+          />
+          <RetryButton
+            onRetry={handleRetry}
+            busy={busy}
+            testId="oracle-updates-retry"
+            ariaLabel="Re-subscribe to PriceUpdated events"
+          />
+        </div>
       </header>
 
       <div className="flex-1">
@@ -118,6 +142,17 @@ export function OracleUpdatesPanel() {
         <div className="mb-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
           <div className="font-semibold">Oracle event subscription degraded</div>
           <div className="mt-1 text-yellow-300/80">{subscriptionError}</div>
+          {oracleAddress && explorer && (
+            <a
+              href={`${explorer.replace(/\/$/, '')}/address/${oracleAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="oracle-updates-explorer-link"
+              className="mt-2 inline-flex items-center gap-1 text-yellow-100 underline-offset-2 hover:underline"
+            >
+              View events on block explorer <span aria-hidden>↗</span>
+            </a>
+          )}
         </div>
       )}
 
@@ -165,4 +200,32 @@ export function OracleUpdatesPanel() {
       </div>
     </section>
   )
+}
+
+/**
+ * Renders nothing — exists purely to host a `useWatchContractEvent`
+ * subscription whose lifetime can be reset via React's `key` prop.
+ * The parent re-mounts this component (by bumping
+ * `subscriptionEpoch`) when the user clicks `Retry now`, so a stale
+ * filter/RPC connection is fully torn down and a fresh subscription
+ * is opened — no manual `enabled: false → true` toggle required.
+ */
+function OracleEventSubscription({
+  oracleAddress,
+  onLogs,
+  onError,
+}: {
+  oracleAddress: string | undefined
+  onLogs: (logs: readonly unknown[]) => void
+  onError: (err: Error) => void
+}) {
+  useWatchContractEvent({
+    address: oracleAddress,
+    abi: PriceOracleABI,
+    eventName: 'PriceUpdated',
+    onLogs,
+    onError,
+    enabled: Boolean(oracleAddress),
+  })
+  return null
 }

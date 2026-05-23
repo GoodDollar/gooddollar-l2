@@ -6,6 +6,8 @@ import { OnChainOraclePanel } from '@/components/proof/OnChainOraclePanel'
 import { OracleUpdatesPanel } from '@/components/proof/OracleUpdatesPanel'
 import { PipelineFlowDiagram } from '@/components/proof/PipelineFlowDiagram'
 import { PipelineStatusBanner } from '@/components/proof/PipelineStatusBanner'
+import { ProofPageActions } from '@/components/proof/ProofPageActions'
+import { ProofPanelActionsProvider } from '@/components/proof/ProofPanelActionsProvider'
 import { ProofPanelBoundary } from '@/components/proof/ProofPanelBoundary'
 import { ProofPipelineAxesProvider } from '@/components/proof/ProofPipelineAxesProvider'
 import { SafetyBanner } from '@/components/proof/SafetyBanner'
@@ -96,32 +98,38 @@ export default function LivePricesProofPage() {
       </ProofPanelBoundary>
 
       <ProofPipelineAxesProvider>
-        <div className={SECTION_GAP_CLASS}>
-          <ProofPanelBoundary label="Pipeline Status">
-            <PipelineStatusBanner />
-          </ProofPanelBoundary>
-        </div>
+        <ProofPanelActionsProvider>
+          <div className={SECTION_GAP_CLASS}>
+            <ProofPageActions />
+          </div>
 
-        <div className={SECTION_GAP_CLASS}>
-          <ProofPanelBoundary label="Pipeline Flow">
-            <PipelineFlowDiagram />
-          </ProofPanelBoundary>
-        </div>
+          <div className={SECTION_GAP_CLASS}>
+            <ProofPanelBoundary label="Pipeline Status">
+              <PipelineStatusBanner />
+            </ProofPanelBoundary>
+          </div>
 
-        <div className={`${SECTION_GAP_CLASS} grid grid-cols-1 gap-5 lg:grid-cols-2`}>
-          <ProofPanelBoundary label="Live Quotes">
-            <LiveQuotesPanel />
-          </ProofPanelBoundary>
-          <ProofPanelBoundary label="On-chain Oracle">
-            <OnChainOraclePanel />
-          </ProofPanelBoundary>
-          <ProofPanelBoundary label="Oracle Updates">
-            <OracleUpdatesPanel />
-          </ProofPanelBoundary>
-          <ProofPanelBoundary label="Last Demo Hedge">
-            <LastDemoHedgePanel />
-          </ProofPanelBoundary>
-        </div>
+          <div className={SECTION_GAP_CLASS}>
+            <ProofPanelBoundary label="Pipeline Flow">
+              <PipelineFlowDiagram />
+            </ProofPanelBoundary>
+          </div>
+
+          <div className={`${SECTION_GAP_CLASS} grid grid-cols-1 gap-5 lg:grid-cols-2`}>
+            <ProofPanelBoundary label="Live Quotes">
+              <LiveQuotesPanel />
+            </ProofPanelBoundary>
+            <ProofPanelBoundary label="On-chain Oracle">
+              <OnChainOraclePanel />
+            </ProofPanelBoundary>
+            <ProofPanelBoundary label="Oracle Updates">
+              <OracleUpdatesPanel />
+            </ProofPanelBoundary>
+            <ProofPanelBoundary label="Last Demo Hedge">
+              <LastDemoHedgePanel />
+            </ProofPanelBoundary>
+          </div>
+        </ProofPanelActionsProvider>
       </ProofPipelineAxesProvider>
 
       <footer

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { ProofPanelActionsProvider } from '../ProofPanelActionsProvider'
 
 vi.mock('wagmi', () => ({
   useReadContract: vi.fn(),
@@ -401,12 +402,57 @@ describe('LiveQuotesPanel', () => {
     expect(pill.getAttribute('title')).not.toMatch(/user|pass/)
   })
 
-  it('LiveQuotes header pill cadence reflects the provider cadenceMs constant', () => {
-    // Single source of truth for the off-chain cadence — the same
-    // number the rollup/flow polls at. See task
-    // lane6-three-independent-quotes-pollers-at-conflicting-cadences (0051).
-    globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
+  it('renders the price-service host as a clickable link in the degraded box (#0060)', async () => {
+    globalThis.fetch = vi.fn(() => Promise.reject(new Error('boom')))
+    renderPanel({ priceServiceUrl: 'http://localhost:9300' })
+
+    const link = await screen.findByTestId('price-service-url-link')
+    expect(link.tagName).toBe('A')
+    expect(link.getAttribute('href')).toBe('http://localhost:9300/quotes')
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toMatch(/noopener|noreferrer/)
+  })
+
+  it('renders a Retry now button that re-runs the quotes fetch (#0060)', async () => {
+    let calls = 0
+    globalThis.fetch = vi.fn(async () => {
+      calls += 1
+      throw new Error('boom')
+    }) as typeof globalThis.fetch
+
+    render(
+      <ProofPipelineAxesProvider priceServiceUrl="http://mock" offChainIntervalMs={60_000}>
+        <ProofPanelActionsProvider>
+          <LiveQuotesPanel />
+        </ProofPanelActionsProvider>
+      </ProofPipelineAxesProvider>,
+    )
+
+    await waitFor(() => {
+      expect(calls).toBeGreaterThanOrEqual(1)
+    })
+    const initial = calls
+
+    const retry = await screen.findByTestId('live-quotes-retry')
+    fireEvent.click(retry)
+
+    await waitFor(() => {
+      expect(calls).toBeGreaterThan(initial)
+    })
+  })
+
+  it('LiveQuotes header countdown reflects the provider cadenceMs constant', async () => {
+    // The header caption now ticks down to the next scheduled poll
+    // (#0060 replaced the static "refreshes every Ns" string with a
+    // live `next poll in Ns` countdown). On first paint, before the
+    // first fetch settles, the countdown reads `next poll soon`;
+    // once the (rejected) fetch resolves and the timer arms, the
+    // countdown reads `next poll in 5s` (give or take 1s of jitter).
+    globalThis.fetch = vi.fn(() => Promise.reject(new Error('boom'))) as typeof globalThis.fetch
     renderPanel({ priceServiceUrl: 'http://mock', offChainIntervalMs: 5_000 })
-    expect(screen.getByText(/refreshes every 5s/i)).toBeInTheDocument()
+    const countdown = await screen.findByTestId('live-quotes-countdown')
+    await waitFor(() => {
+      expect(countdown.textContent).toMatch(/next poll in [1-5]s/i)
+    })
   })
 })

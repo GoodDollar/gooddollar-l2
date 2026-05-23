@@ -1,9 +1,11 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { formatProofUsd } from '@/lib/proofFormat'
 import { sessionPillClass } from './sessionPill'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
+import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
+import { useProofPanelActionsContext } from './ProofPanelActionsProvider'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 interface Quote {
@@ -125,10 +127,15 @@ export function LiveQuotesPanel() {
   const {
     lastQuotesPayload,
     lastQuotesStatus,
+    lastQuotesAt,
     cadenceMs,
     priceServiceUrl,
     stalenessThresholdMs,
+    retryQuotes,
   } = useProofPipelineAxesContext()
+  const { registerPanelRetry, retryPanel, isRetrying } = useProofPanelActionsContext()
+
+  useEffect(() => registerPanelRetry('quotes', retryQuotes), [registerPanelRetry, retryQuotes])
 
   const state: FetchState = useMemo(() => {
     if (lastQuotesStatus === 'loading') return { status: 'loading' }
@@ -138,6 +145,10 @@ export function LiveQuotesPanel() {
     }
     return { status: 'ok', data: lastQuotesPayload }
   }, [lastQuotesPayload, lastQuotesStatus])
+
+  const busy = isRetrying('quotes')
+  const handleRetry = () => retryPanel('quotes')
+  const quotesUrl = `${priceServiceUrl.replace(/\/$/, '')}/quotes`
 
   return (
     <section
@@ -157,11 +168,24 @@ export function LiveQuotesPanel() {
                 data-testid="price-service-url"
               />
             }
-            cadence={<span>refreshes every {cadenceMs / 1000}s</span>}
+            cadence={
+              <NextPollCountdown
+                lastPollAt={lastQuotesAt}
+                intervalMs={cadenceMs}
+                busy={busy}
+                testId="live-quotes-countdown"
+              />
+            }
           />
           {state.status === 'ok' && <FreshnessChip
             summary={computeFreshnessSummary(Object.values(state.data.quotes), stalenessThresholdMs)}
           />}
+          <RetryButton
+            onRetry={handleRetry}
+            busy={busy}
+            testId="live-quotes-retry"
+            ariaLabel="Re-run live-quotes fetch"
+          />
         </div>
       </header>
 
@@ -175,7 +199,11 @@ export function LiveQuotesPanel() {
       )}
 
       {state.status === 'error' && (
-        <DegradedBox ctx={state.ctx} host={displayHost(priceServiceUrl)} />
+        <DegradedBox
+          ctx={state.ctx}
+          host={displayHost(priceServiceUrl)}
+          quotesUrl={quotesUrl}
+        />
       )}
 
       {state.status === 'ok' && (
@@ -251,11 +279,27 @@ export function LiveQuotesPanel() {
  * `sanitiseClientError` upstream — we just don't paint it twice into
  * the DOM (see lane6-live-quotes-error-panel-says-unreachable-twice).
  */
-function DegradedBox({ ctx, host }: { ctx: ErrorCtx; host: string }) {
+function DegradedBox({
+  ctx,
+  host,
+  quotesUrl,
+}: {
+  ctx: ErrorCtx
+  host: string
+  quotesUrl: string
+}) {
   const HostPill = (
-    <span className="font-mono" data-testid="price-service-url-inline">
-      {host}
-    </span>
+    <a
+      href={quotesUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-mono underline-offset-2 hover:text-yellow-100 hover:underline transition-colors"
+      data-testid="price-service-url-link"
+      aria-label={`Open ${host} in a new tab`}
+    >
+      <span data-testid="price-service-url-inline">{host}</span>
+      <span aria-hidden> ↗</span>
+    </a>
   )
   switch (ctx) {
     case 'price-service-shape':

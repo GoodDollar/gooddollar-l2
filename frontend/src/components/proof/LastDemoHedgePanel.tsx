@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { type ExposureSnapshot, type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
 import { parseRunId } from '@/lib/parseRunId'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
+import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
+import { useProofPanelActionsContext } from './ProofPanelActionsProvider'
 import { shortenSourcePath } from './panelHeaderMetaUtils'
 
 // Shared chip family for the LastDemoHedge header row. All status pills
@@ -162,44 +164,53 @@ export function LastDemoHedgePanel({
   intervalMs = 15_000,
 }: LastDemoHedgePanelProps) {
   const [state, setState] = useState<FetchState>({ status: 'loading' })
+  const [lastPollAt, setLastPollAt] = useState<number | null>(null)
+  const cancelledRef = useRef(false)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(endpoint, { cache: 'no-store' })
+      if (res.status === 404) {
+        if (!cancelledRef.current) {
+          setState({ status: 'missing', message: 'No hedge proof recorded yet.' })
+        }
+        return
+      }
+      if (!res.ok) {
+        const sanitisedMessage = await readSanitisedMessage(res)
+        if (!cancelledRef.current) setState({ status: 'error', message: sanitisedMessage })
+        return
+      }
+      const raw = (await res.json()) as unknown
+      if (!isProofEnvelope(raw)) throw new Error(SHAPE_MISMATCH)
+      if (!cancelledRef.current) setState({ status: 'ok', data: raw })
+    } catch (err) {
+      if (!cancelledRef.current) {
+        const ctx =
+          err instanceof Error && err.message === SHAPE_MISMATCH
+            ? 'hedge-proof-shape'
+            : 'hedge-proof'
+        setState({ status: 'error', message: sanitiseClientError(ctx, err) })
+      }
+    } finally {
+      if (!cancelledRef.current) setLastPollAt(Date.now())
+    }
+  }, [endpoint])
 
   useEffect(() => {
-    let cancelled = false
-    let timer: ReturnType<typeof setInterval> | undefined
-
-    const load = async () => {
-      try {
-        const res = await fetch(endpoint, { cache: 'no-store' })
-        if (res.status === 404) {
-          if (!cancelled) setState({ status: 'missing', message: 'No hedge proof recorded yet.' })
-          return
-        }
-        if (!res.ok) {
-          const sanitisedMessage = await readSanitisedMessage(res)
-          if (!cancelled) setState({ status: 'error', message: sanitisedMessage })
-          return
-        }
-        const raw = (await res.json()) as unknown
-        if (!isProofEnvelope(raw)) throw new Error(SHAPE_MISMATCH)
-        if (!cancelled) setState({ status: 'ok', data: raw })
-      } catch (err) {
-        if (!cancelled) {
-          const ctx =
-            err instanceof Error && err.message === SHAPE_MISMATCH
-              ? 'hedge-proof-shape'
-              : 'hedge-proof'
-          setState({ status: 'error', message: sanitiseClientError(ctx, err) })
-        }
-      }
-    }
-
+    cancelledRef.current = false
     void load()
-    timer = setInterval(() => void load(), intervalMs)
+    const timer = setInterval(() => void load(), intervalMs)
     return () => {
-      cancelled = true
-      if (timer) clearInterval(timer)
+      cancelledRef.current = true
+      clearInterval(timer)
     }
-  }, [endpoint, intervalMs])
+  }, [load, intervalMs])
+
+  const { registerPanelRetry, retryPanel, isRetrying } = useProofPanelActionsContext()
+  useEffect(() => registerPanelRetry('hedgeProof', load), [registerPanelRetry, load])
+  const busy = isRetrying('hedgeProof')
+  const handleRetry = () => retryPanel('hedgeProof')
 
   return (
     <section
@@ -207,25 +218,36 @@ export function LastDemoHedgePanel({
       aria-labelledby="last-hedge-heading"
       className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
-      <header className="mb-3 flex items-center justify-between gap-y-1">
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-y-1">
         <h2 id="last-hedge-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           Last Demo Hedge
         </h2>
-        <PanelHeaderMeta
-          source={
-            state.status === 'ok' ? (
-              <MonoSourceAtom
-                value={shortenSourcePath(state.data.source)}
-                title={state.data.source}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <PanelHeaderMeta
+            source={
+              state.status === 'ok' ? (
+                <MonoSourceAtom
+                  value={shortenSourcePath(state.data.source)}
+                  title={state.data.source}
+                />
+              ) : undefined
+            }
+            cadence={
+              <NextPollCountdown
+                lastPollAt={lastPollAt}
+                intervalMs={intervalMs}
+                busy={busy}
+                testId="last-hedge-countdown"
               />
-            ) : undefined
-          }
-          cadence={
-            state.status === 'ok' ? (
-              <span>{state.data.proof.dryRun ? 'dry-run' : 'demo trade'}</span>
-            ) : undefined
-          }
-        />
+            }
+          />
+          <RetryButton
+            onRetry={handleRetry}
+            busy={busy}
+            testId="last-hedge-retry"
+            ariaLabel="Re-fetch the latest hedge proof"
+          />
+        </div>
       </header>
 
       <div className="flex-1">
@@ -240,6 +262,15 @@ export function LastDemoHedgePanel({
             Run <code className="text-accent">npm run hedge:demo -- --dry-run</code> in
             <code className="text-accent"> backend/hedge-engine</code> to generate one.
           </div>
+          <a
+            href={endpoint}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="hedge-proof-url-link"
+            className="mt-2 inline-flex items-center gap-1 font-mono text-xs text-gray-400 underline-offset-2 hover:text-accent hover:underline"
+          >
+            {endpoint} <span aria-hidden>↗</span>
+          </a>
         </div>
       )}
 
@@ -247,6 +278,15 @@ export function LastDemoHedgePanel({
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
           <div className="font-semibold">Hedge proof unavailable</div>
           <div className="mt-1 text-yellow-300/80">{state.message}</div>
+          <a
+            href={endpoint}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="hedge-proof-url-link"
+            className="mt-2 inline-flex items-center gap-1 font-mono text-xs text-yellow-100 underline-offset-2 hover:underline"
+          >
+            {endpoint} <span aria-hidden>↗</span>
+          </a>
         </div>
       )}
 

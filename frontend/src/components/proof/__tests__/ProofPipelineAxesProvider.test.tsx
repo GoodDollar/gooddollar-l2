@@ -89,9 +89,15 @@ describe('ProofPipelineAxesProvider', () => {
             lastQuotesPayload: null,
             lastQuotesAt: null,
             lastQuotesStatus: 'error',
+            lastHedgeProofPayload: null,
+            lastHedgeProofAt: null,
+            lastHedgeProofStatus: 'error',
             cadenceMs: 5_000,
             priceServiceUrl: 'http://localhost:9300',
+            hedgeProofEndpoint: '/api/hedge-proof/latest',
             stalenessThresholdMs: 30_000,
+            retryQuotes: () => Promise.resolve(),
+            retryHedgeProof: () => Promise.resolve(),
           }}
         >
           {children}
