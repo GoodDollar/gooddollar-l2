@@ -13,30 +13,43 @@ type FetchState =
   | { status: 'ok'; data: SafetyStateResponse }
   | { status: 'error' }
 
+const POLL_INTERVAL_MS = 15_000
+
 interface SafetyBannerProps {
   /** Optional override for the fetch URL, used by tests. */
   endpoint?: string
+  /** Optional override for poll cadence, used by tests. */
+  intervalMs?: number
 }
 
-export function SafetyBanner({ endpoint = '/api/safety-state' }: SafetyBannerProps) {
+export function SafetyBanner({
+  endpoint = '/api/safety-state',
+  intervalMs = POLL_INTERVAL_MS,
+}: SafetyBannerProps) {
   const [state, setState] = useState<FetchState>({ status: 'loading' })
 
   useEffect(() => {
     let cancelled = false
-    fetch(endpoint, { cache: 'no-store' })
-      .then(async (res) => {
+
+    const load = async () => {
+      try {
+        const res = await fetch(endpoint, { cache: 'no-store' })
         if (!res.ok) throw new Error(`safety-state returned ${res.status}`)
         const data = (await res.json()) as SafetyStateResponse
         if (!cancelled) setState({ status: 'ok', data })
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         console.error('[safety-banner] fetch failed', err)
         if (!cancelled) setState({ status: 'error' })
-      })
+      }
+    }
+
+    void load()
+    const timer = setInterval(() => void load(), intervalMs)
     return () => {
       cancelled = true
+      clearInterval(timer)
     }
-  }, [endpoint])
+  }, [endpoint, intervalMs])
 
   if (state.status === 'loading') {
     return (

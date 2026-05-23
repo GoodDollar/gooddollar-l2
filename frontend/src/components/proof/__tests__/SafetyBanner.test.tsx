@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import { SafetyBanner } from '../SafetyBanner'
 
 function mockFetchResponse(body: unknown, status = 200) {
@@ -21,6 +21,7 @@ describe('SafetyBanner', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.useRealTimers()
   })
 
   it('renders the safe pill when both sides report real-trading disabled', async () => {
@@ -122,5 +123,81 @@ describe('SafetyBanner', () => {
       '[safety-banner] fetch failed',
       expect.anything(),
     )
+  })
+
+  it('polls on an interval and recovers from a transient 500', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({}),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ realTradingEnabled: false, etoroMode: 'sandbox', version: 1 }),
+      } as Response)
+    globalThis.fetch = fetchMock as typeof globalThis.fetch
+
+    render(<SafetyBanner intervalMs={1_000} />)
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Safety state unverified/i)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+
+    await vi.waitFor(() => {
+      expect(screen.getByText(/Safe/i)).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('clears the interval on unmount', async () => {
+    vi.useFakeTimers()
+    const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval')
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ realTradingEnabled: false, etoroMode: 'sandbox', version: 1 }),
+      } as Response),
+    )
+
+    const { unmount } = render(<SafetyBanner intervalMs={5_000} />)
+    await vi.waitFor(() => expect(screen.getByText(/Safe/i)).toBeInTheDocument())
+
+    const callsBefore = clearIntervalSpy.mock.calls.length
+    unmount()
+    expect(clearIntervalSpy.mock.calls.length).toBeGreaterThan(callsBefore)
+  })
+
+  it('does not re-show the loading skeleton between polls', async () => {
+    vi.useFakeTimers()
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ realTradingEnabled: false, etoroMode: 'sandbox', version: 1 }),
+      } as Response),
+    )
+
+    render(<SafetyBanner intervalMs={1_000} />)
+
+    await vi.waitFor(() => expect(screen.getByText(/Safe/i)).toBeInTheDocument())
+    expect(screen.queryByLabelText(/Loading safety state/i)).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+
+    expect(screen.queryByLabelText(/Loading safety state/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/Safe/i)).toBeInTheDocument()
   })
 })
