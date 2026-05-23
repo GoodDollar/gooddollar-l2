@@ -22,6 +22,7 @@
 import { useMemo } from 'react'
 import { useOnChainPairs } from './useOnChainPerps'
 import { usePriceServiceStatus } from './usePriceServiceStatus'
+import { usePriceFeeds } from './usePriceFeeds'
 import { resolvePriceSource, type PriceSource } from './priceSource'
 import type { LivePriceEntry } from '@/components/LivePriceStrip'
 
@@ -55,10 +56,24 @@ export function usePerpsPriceSources(): PerpsPriceSources {
   const { pairs } = useOnChainPairs()
   const { status } = usePriceServiceStatus()
 
+  // Subscribe to CoinGecko for every base asset we have a pair for so the
+  // resolver can fall through to `coingecko` (instead of `fallback`) for
+  // BTC/ETH whenever the chain RPC is down and `useOnChainPairs` has
+  // substituted `FALLBACK_PAIRS` rows (`isFallback: true`). Task 0033.
+  const baseAssets = useMemo(
+    () => Array.from(new Set(pairs.map(p => p.baseAsset))),
+    [pairs],
+  )
+  const feeds = usePriceFeeds(baseAssets)
+
   return useMemo(() => {
     const sources: Record<string, PriceSource> = {}
     for (const pair of pairs) {
-      const chainOk = pair.markPrice > 0
+      // A `FALLBACK_PAIRS` substitution (RPC unreachable) is NOT an on-chain
+      // read — labelling it `chain-oracle` would silently re-create the
+      // cross-page price lies task 0021/0026 fixed elsewhere. Treat it as
+      // absent and let the resolver fall through to coingecko/fallback.
+      const chainOk = !pair.isFallback && pair.markPrice > 0
       const sq = findStatusQuote(status?.quotes, pair.baseAsset)
 
       // /perps-specific policy: explicit session-closure on the underlying
@@ -75,6 +90,7 @@ export function usePerpsPriceSources(): PerpsPriceSources {
 
       sources[pair.symbol] = resolvePriceSource({
         chainOk,
+        coinGeckoLive: feeds.sources[pair.baseAsset] === 'coingecko',
         statusQuote: sq && {
           lastUpdateMs: sq.lastUpdateMs,
           sessionState: sq.sessionState,
@@ -107,5 +123,5 @@ export function usePerpsPriceSources(): PerpsPriceSources {
     }
 
     return { sources, buildEntries }
-  }, [pairs, status])
+  }, [pairs, status, feeds.sources])
 }

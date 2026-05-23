@@ -224,6 +224,60 @@ describe('Lane 4 — global price-source-badge invariant', () => {
     ).toBe(1)
   })
 
+  it('Perps + Activity agree on BTC/ETH when RPC is down and CoinGecko is live (task 0033)', async () => {
+    vi.resetModules()
+    vi.doMock('@/lib/useOnChainPerps', () => ({
+      useOnChainPairs: () => ({
+        pairs: [
+          { marketId: 0, symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', markPrice: 84_250, indexPrice: 84_250, change24h: 2.4, volume24h: 0, fundingRate: 0, nextFundingTime: 0, openInterest: 0, maxLeverage: 100, high24h: 0, low24h: 0, isFallback: true },
+          { marketId: 1, symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', markPrice: 1_820, indexPrice: 1_820, change24h: -1.2, volume24h: 0, fundingRate: 0, nextFundingTime: 0, openInterest: 0, maxLeverage: 50, high24h: 0, low24h: 0, isFallback: true },
+        ],
+        isLoading: false, isLive: false,
+      }),
+      useOnChainPositions: () => ({ positions: [], isLoading: false }),
+      useOnChainAccountSummary: () => ({ summary: { balance: 0, equity: 0, unrealizedPnl: 0, marginUsed: 0, availableMargin: 0, marginRatio: 0 }, isLoading: false }),
+    }))
+
+    const { PerpsPriceStrip: FreshPerpsPriceStrip } = await import('@/components/PerpsPriceStrip')
+    const { ActivityPriceStrip: FreshActivityPriceStrip } = await import('@/components/ActivityPriceStrip')
+
+    const { container } = render(
+      <TestWrapper>
+        <>
+          <FreshPerpsPriceStrip activeSymbol="BTC-USD" />
+          <FreshActivityPriceStrip />
+        </>
+      </TestWrapper>,
+    )
+
+    const cards = Array.from(container.querySelectorAll('[data-testid="live-price-card"]'))
+    const ethTexts: string[] = []
+    for (const card of cards) {
+      const symbol = card.querySelector('span')?.textContent ?? ''
+      if (symbol !== 'ETH-USD' && symbol !== 'ETH' && symbol !== 'WETH') continue
+      const priceEl = card.querySelector('[data-testid="live-price"]')
+      const priceText = (priceEl?.textContent ?? '').trim()
+      if (priceText) ethTexts.push(priceText)
+    }
+
+    expect(ethTexts.length, 'expected ETH tile on Perps + Activity').toBeGreaterThanOrEqual(2)
+    expect(
+      new Set(ethTexts).size,
+      `ETH tiles disagree across pages — saw: ${ethTexts.join(' | ')}`,
+    ).toBe(1)
+
+    // Both must read CoinGecko ($3000 fixture) and carry "Cached (CoinGecko)",
+    // not the FALLBACK_PAIRS $1,820 dressed up as "Chain oracle".
+    for (const text of ethTexts) {
+      expect(text).toContain('$3,000')
+      expect(text).not.toContain('$1,820')
+    }
+    const cgBadges = container.querySelectorAll('[data-testid="price-source-badge"]')
+    const cgLabels = Array.from(cgBadges).map(b => b.textContent ?? '')
+    const cgCount = cgLabels.filter(l => l.includes('Cached')).length
+    expect(cgCount).toBeGreaterThanOrEqual(2)
+  })
+
   it('Stocks page: every per-row price has a sibling source badge', async () => {
     vi.doMock('@/lib/useOnChainStocks', () => ({
       useOnChainStocks: () => ({

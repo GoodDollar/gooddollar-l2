@@ -9,9 +9,15 @@ vi.mock('@/lib/usePriceServiceStatus', () => ({
   usePriceServiceStatus: vi.fn(),
 }))
 
+vi.mock('@/lib/usePriceFeeds', () => ({
+  usePriceFeeds: vi.fn(),
+  FALLBACK_PRICES: { ETH: 3012.45, WBTC: 60125.80, USDC: 1 },
+}))
+
 import { usePerpsPriceSources } from '@/lib/usePerpsPriceSources'
 import { useOnChainPairs } from '@/lib/useOnChainPerps'
 import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
+import { usePriceFeeds } from '@/lib/usePriceFeeds'
 import type { PerpPair } from '@/lib/perpsData'
 
 function pair(overrides: Partial<PerpPair>): PerpPair {
@@ -23,11 +29,19 @@ function pair(overrides: Partial<PerpPair>): PerpPair {
   } as PerpPair
 }
 
+function mockFeeds(sources: Record<string, 'coingecko' | 'fallback'> = {}): void {
+  vi.mocked(usePriceFeeds).mockReturnValue({
+    prices: {}, sources, quotes: {}, isLive: true,
+    lastUpdated: new Date(), error: null, unknownSymbols: [],
+  })
+}
+
 describe('usePerpsPriceSources', () => {
   beforeEach(() => {
     vi.mocked(usePriceServiceStatus).mockReturnValue({
       status: null, isLoading: false, error: null, nextRetryAt: null,
     })
+    mockFeeds()
   })
 
   it('returns chain-oracle when pair has a positive markPrice', () => {
@@ -95,5 +109,41 @@ describe('usePerpsPriceSources', () => {
     const { result } = renderHook(() => usePerpsPriceSources())
     const entries = result.current.buildEntries(['BTC-USD', 'XRP-USD'])
     expect(entries.find(e => e.symbol === 'XRP-USD')?.source).toBe('unknown')
+  })
+
+  // Task 0033 — pair.isFallback (set by useOnChainPerps when the RPC is
+  // unreachable and FALLBACK_PAIRS substitutes in) MUST NOT be labelled
+  // chain-oracle. Behaviour mirrors useAttributedPrice's existing guard.
+  it('isFallback row resolves to coingecko when CoinGecko has a live price for the base asset', () => {
+    vi.mocked(useOnChainPairs).mockReturnValue({
+      pairs: [pair({ symbol: 'BTC-USD', baseAsset: 'BTC', markPrice: 84_250, isFallback: true })],
+      isLoading: false, isLive: false,
+    })
+    mockFeeds({ BTC: 'coingecko' })
+
+    const { result } = renderHook(() => usePerpsPriceSources())
+    expect(result.current.sources['BTC-USD']).toBe('coingecko')
+  })
+
+  it('isFallback row resolves to fallback when CoinGecko is not live for the base asset', () => {
+    vi.mocked(useOnChainPairs).mockReturnValue({
+      pairs: [pair({ symbol: 'SOL-USD', baseAsset: 'SOL', markPrice: 134.5, isFallback: true })],
+      isLoading: false, isLive: false,
+    })
+    mockFeeds({ SOL: 'fallback' })
+
+    const { result } = renderHook(() => usePerpsPriceSources())
+    expect(result.current.sources['SOL-USD']).toBe('fallback')
+  })
+
+  it('isFallback: false keeps the chain-oracle reading (regression guard)', () => {
+    vi.mocked(useOnChainPairs).mockReturnValue({
+      pairs: [pair({ symbol: 'BTC-USD', baseAsset: 'BTC', markPrice: 84_250, isFallback: false })],
+      isLoading: false, isLive: true,
+    })
+    mockFeeds({ BTC: 'coingecko' })
+
+    const { result } = renderHook(() => usePerpsPriceSources())
+    expect(result.current.sources['BTC-USD']).toBe('chain-oracle')
   })
 })
