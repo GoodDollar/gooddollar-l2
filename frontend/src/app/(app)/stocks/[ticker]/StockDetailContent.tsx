@@ -26,6 +26,8 @@ import { useStocksOracleGuard } from '@/lib/useStocksOracleGuard'
 import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
 import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/walletCapabilities'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import { useStockSources } from '@/lib/useStockSources'
 import { BidAskSpread, PriceWithTick } from '@/components/BidAskSpread'
 import { SentimentCard } from '@/components/SentimentCard'
 
@@ -447,6 +449,7 @@ export function StockDetailContent() {
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const ticker = normalizeTickerForLookup(rawTicker)
   const { stocks, isLoading: stocksLoading, isLive } = useOnChainStocks()
+  const stockSources = useStockSources()
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
@@ -549,6 +552,7 @@ export function StockDetailContent() {
             <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
             </span>
+            <PriceSourceBadge source={stockSources[stock.ticker] ?? 'fallback'} size="md" />
           </div>
           <div className="mb-2">
             <BidAskSpread price={stock.price} />

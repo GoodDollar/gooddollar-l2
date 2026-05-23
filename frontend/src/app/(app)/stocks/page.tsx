@@ -11,6 +11,9 @@ import { Sparkline } from '@/components/Sparkline'
 import { InfoBanner } from '@/components/InfoBanner'
 import { StalePriceBanner } from '@/components/StalePriceBanner'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import { useStockSources } from '@/lib/useStockSources'
+import type { PriceSource } from '@/lib/priceSource'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { MarketSessionBadge } from '@/components/stocks/MarketSessionBadge'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
@@ -103,11 +106,12 @@ interface StockRowProps {
   isLive: boolean
   canIncreaseRisk: boolean
   isFavorite: boolean
+  source: PriceSource
   onToggleFavorite: (ticker: string) => void
   onRowClick: (ticker: string) => void
 }
 
-const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, isFavorite, onToggleFavorite, onRowClick }: StockRowProps) {
+const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, isFavorite, source, onToggleFavorite, onRowClick }: StockRowProps) {
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -128,7 +132,10 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, i
         </div>
       </td>
       <td className="py-3 px-3 text-right text-white font-medium">
-        {formatStockPrice(stock.price)}
+        <div className="flex flex-col items-end gap-0.5">
+          <span data-testid="price-cell">{formatStockPrice(stock.price)}</span>
+          <PriceSourceBadge source={source} size="sm" />
+        </div>
       </td>
       <td className="py-3 px-3 text-right font-medium">
         <PercentageChange value={stock.change24h} decimals={2} size="sm" />
@@ -190,6 +197,7 @@ export default function StocksPage() {
   const [momentumFilter, setMomentumFilter] = useState<MomentumFilter>(initialScreenerState.momentumFilter)
   const [liquidityFilter, setLiquidityFilter] = useState<LiquidityFilter>(initialScreenerState.liquidityFilter)
   const { stocks: data, isLoading, isLive } = useOnChainStocks()
+  const stockSources = useStockSources()
   const { favorites, toggleFavorite, isFavorite } = useStockWatchlist()
   const [watchlistActive, setWatchlistActive] = useState(false)
   const [isMobileViewport, setIsMobileViewport] = useState(false)
@@ -546,9 +554,12 @@ export default function StocksPage() {
                 </div>
               </div>
               <div className="text-right shrink-0 w-[96px]">
-                <p className="text-white font-medium text-sm whitespace-nowrap">{formatStockPrice(stock.price)}</p>
+                <p className="text-white font-medium text-sm whitespace-nowrap" data-testid="price-cell">{formatStockPrice(stock.price)}</p>
                 <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                   <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
+                </div>
+                <div className="inline-flex justify-end w-full mt-0.5">
+                  <PriceSourceBadge source={stockSources[stock.ticker] ?? 'fallback'} size="sm" />
                 </div>
                 {isLive && (rebalanceBySymbol[stock.ticker]?.riskIncreaseAllowed ?? true) ? (
                   <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
@@ -620,6 +631,7 @@ export default function StocksPage() {
                     isLive={isLive}
                     canIncreaseRisk={rebalanceBySymbol[stock.ticker]?.riskIncreaseAllowed ?? true}
                     isFavorite={isFavorite(stock.ticker)}
+                    source={stockSources[stock.ticker] ?? 'fallback'}
                     onToggleFavorite={toggleFavorite}
                     onRowClick={handleRowClick}
                   />
