@@ -200,6 +200,16 @@ integer (seconds)` and exits 2 before running any probe. Use a literal
 seconds value (e.g. `STALENESS_THRESHOLD_S=600`) and convert by hand
 if your operator habit is duration syntax.
 
+`LANE7_BASE` is **host-only** (e.g. `http://localhost`,
+`http://127.0.0.1`). The default URL templates concatenate
+`$LANE7_BASE:$PORT/path`, so a `LANE7_BASE` value that already
+includes a port (`http://reverse-proxy:8080`) produces an invalid
+double-colon URL and the smoke exits 2 with `FATAL: malformed probe
+URL`. To probe a single service that lives at a non-default
+host:port pair, use the per-service `*_URL` escape hatches
+(`PRICE_SERVICE_URL`, `ORACLE_SIGNER_URL`, `HEDGE_ENGINE_URL`,
+`STATUS_AGGREGATOR_URL`) — those are passed through verbatim.
+
 The smoke writes `docs/testnet/iter05-internal-smoke.md` and exits 0
 (green or green-with-warnings) or 1 (one or more blockers). Wire it
 into your post-deploy step:

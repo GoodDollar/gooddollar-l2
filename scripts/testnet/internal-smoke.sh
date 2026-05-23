@@ -74,6 +74,35 @@ ORACLE_SIGNER_URL="${ORACLE_SIGNER_URL:-$LANE7_BASE:$ORACLE_SIGNER_PORT/health}"
 HEDGE_ENGINE_URL="${HEDGE_ENGINE_URL:-$LANE7_BASE:$HEDGE_ENGINE_PORT/health}"
 STATUS_AGGREGATOR_URL="${STATUS_AGGREGATOR_URL:-$LANE7_BASE:$STATUS_AGGREGATOR_PORT/status.json}"
 
+# Probe-URL validation. The default-URL templates concatenate
+# `$LANE7_BASE:$PORT/path` directly, which produces a syntactically
+# invalid double-colon URL (`http://host:8080:4000/health`) whenever
+# `LANE7_BASE` already includes a port. Today the smoke would report a
+# generic "unreachable" blocker and the operator would chase a phantom
+# outage. Validate up front and emit a single FATAL line per offending
+# URL so the operator knows it's a config issue, not a service one. The
+# regex is intentionally narrow (IPv4 / hostname only) — operators with
+# host:port reverse-proxy setups should use the per-service `*_URL`
+# escape hatches documented in the script header.
+PROBE_URL_RE='^https?://[^:/]+(:[0-9]+)?(/.*)?$'
+malformed=0
+for pair in \
+    "PRICE_SERVICE_URL=$PRICE_SERVICE_URL" \
+    "ORACLE_SIGNER_URL=$ORACLE_SIGNER_URL" \
+    "HEDGE_ENGINE_URL=$HEDGE_ENGINE_URL" \
+    "STATUS_AGGREGATOR_URL=$STATUS_AGGREGATOR_URL"; do
+  url="${pair#*=}"
+  if [[ ! "$url" =~ $PROBE_URL_RE ]]; then
+    if (( malformed == 0 )); then
+      echo "FATAL: malformed probe URL — check LANE7_BASE / *_PORT / *_URL overrides" >&2
+    fi
+    echo "FATAL: $pair" >&2
+    malformed=1
+  fi
+done
+(( malformed == 0 )) || exit 2
+unset PROBE_URL_RE malformed pair url
+
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 LANE7_ENV_FILE="${LANE7_ENV_FILE:-$REPO_ROOT/.env}"
 REPORT="${REPORT:-$REPO_ROOT/docs/testnet/iter05-internal-smoke.md}"
