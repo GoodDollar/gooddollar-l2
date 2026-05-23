@@ -377,11 +377,25 @@ function findCatalogEntry(reqPath: string): EndpointDoc | undefined {
 }
 
 /**
+ * The /quotes/:symbol parametric parent (`/quotes/`) is uniquely worth
+ * disambiguating: a developer who typed a stray trailing slash on the
+ * bulk endpoint and a developer who forgot the symbol on the parametric
+ * route produce the same URL. The disambiguation copy spells out both
+ * intentions so the operator's runbook fix is obvious from the 404
+ * body alone — no extra round trip to the catalog. See task 0046.
+ */
+const PARAMETRIC_PARENT_MESSAGE =
+  'the parametric route /quotes/:symbol requires a symbol — ' +
+  'append a ticker (e.g. /quotes/AAPL) or drop the trailing ' +
+  'slash to fetch the bulk dump at /quotes';
+
+/**
  * Suggest a canonical route for a near-miss request path. Handles the two
  * deterministic corrections the strict router can otherwise not auto-apply:
  *
  *  - **case-only mismatch** (task 0042): `/HEALTH` → `/health`
  *  - **trailing-slash-only mismatch** (task 0046): `/quotes/` → `/quotes`
+ *  - **both at once**: `/HEALTH/` → `/health`
  *
  * For the parametric `/quotes/:symbol` shape, the prefix is lowercased
  * (so `/QUOTES/AAPL` → `/quotes/AAPL`) but the user's symbol case is
@@ -764,6 +778,13 @@ export function createServer(
   // explicit `didYouMean` steer instead of silently serving the canonical
   // body. See task 0042.
   app.set('case sensitive routing', true);
+  // Express default folds /quotes/ onto /quotes — but /quotes/ is the
+  // EXACT shape of "forgot the symbol on /quotes/:symbol", so silently
+  // serving the bulk dump lets the caller infer the wrong contract. With
+  // strict routing on, /quotes/, /health/, /audit/stats/ etc. all fall
+  // through to the 404 catch-all, which `canonicalSuggestion` steers
+  // back to the canonical form. See task 0046.
+  app.set('strict routing', true);
   const cfg = { ...DEFAULT_CONFIG, ...config };
   // Built once: per-request membership check is O(1). Uppercase every
   // entry so deploys with mixed-case `ORACLE_SYMBOLS` still match the
@@ -1189,10 +1210,11 @@ export function createServer(
     const didYouMean = canonicalSuggestion(req.path);
     const body: Record<string, unknown> = {
       error: 'not-found',
-      path: req.path,
-      method: req.method,
-      discovery: '/',
     };
+    if (req.path === '/quotes/') body.message = PARAMETRIC_PARENT_MESSAGE;
+    body.path = req.path;
+    body.method = req.method;
+    body.discovery = '/';
     if (didYouMean !== undefined) body.didYouMean = didYouMean;
     body.endpoints = endpoints;
     res.status(404).json(finalizeTimestamps(body, now));
