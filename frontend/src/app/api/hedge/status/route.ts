@@ -47,6 +47,7 @@ async function handleGet(_req: NextRequest) {
       capSnapshot: snapshotEnvelope?.capSnapshot ?? null,
       breakerState: snapshotEnvelope?.breakerState ?? null,
       killSwitchEngaged: Boolean(snapshotEnvelope?.killSwitchEngaged),
+      mode: snapshotEnvelope?.mode ?? null,
       receipts,
       proof,
     });
@@ -55,6 +56,7 @@ async function handleGet(_req: NextRequest) {
       {
         error: 'Hedge engine unreachable',
         snapshot: null,
+        mode: null,
         receipts: [],
         proof: null,
       },

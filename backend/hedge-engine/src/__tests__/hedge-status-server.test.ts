@@ -49,16 +49,22 @@ function startWith(provider: HedgeStatusProvider, p: number = 0): Promise<number
   });
 }
 
+function baseProvider(over?: Partial<HedgeStatusProvider>): HedgeStatusProvider {
+  return {
+    getLastSnapshot: () => makeSnapshot(),
+    getCapSnapshot: () => null,
+    getBreakerState: () => ({ tripped: false }),
+    isKillSwitchEngaged: () => false,
+    getMode: () => 'demo',
+    readReceipts: async () => [],
+    readLatestProof: async () => null,
+    ...over,
+  };
+}
+
 describe('hedgeStatusServer', () => {
   it('GET /hedge/snapshot returns 503 before the first tick', async () => {
-    const provider: HedgeStatusProvider = {
-      getLastSnapshot: () => null,
-      getCapSnapshot: () => null,
-      getBreakerState: () => ({ tripped: false }),
-      isKillSwitchEngaged: () => false,
-      readReceipts: async () => [],
-      readLatestProof: async () => null,
-    };
+    const provider = baseProvider({ getLastSnapshot: () => null });
     port = await startWith(provider);
     const r = await get(port, '/hedge/snapshot');
     expect(r.status).toBe(503);
@@ -66,14 +72,9 @@ describe('hedgeStatusServer', () => {
   });
 
   it('GET /hedge/snapshot returns 200 with the full envelope after the first tick', async () => {
-    const provider: HedgeStatusProvider = {
-      getLastSnapshot: () => makeSnapshot(),
+    const provider = baseProvider({
       getCapSnapshot: () => ({ dailyNotionalUsd: 50, dailyOrders: 1, cycleOrders: 0, dayKey: '2026-05-23' }),
-      getBreakerState: () => ({ tripped: false }),
-      isKillSwitchEngaged: () => false,
-      readReceipts: async () => [],
-      readLatestProof: async () => null,
-    };
+    });
     port = await startWith(provider);
     const r = await get(port, '/hedge/snapshot');
     expect(r.status).toBe(200);
@@ -82,15 +83,30 @@ describe('hedgeStatusServer', () => {
       capSnapshot: { dailyOrders: 1 },
       breakerState: { tripped: false },
       killSwitchEngaged: false,
+      mode: 'demo',
     });
   });
 
+  it('GET /hedge/snapshot forwards the provider-reported mode', async () => {
+    const modes: Array<'sandbox' | 'real' | 'demo' | 'unknown'> = [
+      'sandbox',
+      'real',
+      'demo',
+      'unknown',
+    ];
+    for (const m of modes) {
+      const provider = baseProvider({ getMode: () => m });
+      port = await startWith(provider);
+      const r = await get(port, '/hedge/snapshot');
+      expect(r.status).toBe(200);
+      expect(r.body.mode).toBe(m);
+      await new Promise<void>((resolve) => server!.close(() => resolve()));
+      server = undefined;
+    }
+  });
+
   it('GET /hedge/receipts?limit=5 returns up to 5 receipts', async () => {
-    const provider: HedgeStatusProvider = {
-      getLastSnapshot: () => makeSnapshot(),
-      getCapSnapshot: () => null,
-      getBreakerState: () => ({ tripped: false }),
-      isKillSwitchEngaged: () => false,
+    const provider = baseProvider({
       readReceipts: async (limit: number) =>
         Array.from({ length: limit }, (_, i) => ({
           v: 1 as const,
@@ -105,8 +121,7 @@ describe('hedgeStatusServer', () => {
           dryRun: false,
           mode: 'demo' as const,
         })),
-      readLatestProof: async () => null,
-    };
+    });
     port = await startWith(provider);
     const r = await get(port, '/hedge/receipts?limit=5');
     expect(r.status).toBe(200);
@@ -114,28 +129,14 @@ describe('hedgeStatusServer', () => {
   });
 
   it('GET /hedge/receipts?limit=NaN returns 400', async () => {
-    const provider: HedgeStatusProvider = {
-      getLastSnapshot: () => makeSnapshot(),
-      getCapSnapshot: () => null,
-      getBreakerState: () => ({ tripped: false }),
-      isKillSwitchEngaged: () => false,
-      readReceipts: async () => [],
-      readLatestProof: async () => null,
-    };
+    const provider = baseProvider();
     port = await startWith(provider);
     const r = await get(port, '/hedge/receipts?limit=oops');
     expect(r.status).toBe(400);
   });
 
   it('GET /hedge/proof/latest returns 404 when no proof exists', async () => {
-    const provider: HedgeStatusProvider = {
-      getLastSnapshot: () => makeSnapshot(),
-      getCapSnapshot: () => null,
-      getBreakerState: () => ({ tripped: false }),
-      isKillSwitchEngaged: () => false,
-      readReceipts: async () => [],
-      readLatestProof: async () => null,
-    };
+    const provider = baseProvider();
     port = await startWith(provider);
     const r = await get(port, '/hedge/proof/latest');
     expect(r.status).toBe(404);
@@ -143,18 +144,13 @@ describe('hedgeStatusServer', () => {
   });
 
   it('GET /hedge/proof/latest returns 200 with the proof envelope when available', async () => {
-    const provider: HedgeStatusProvider = {
-      getLastSnapshot: () => makeSnapshot(),
-      getCapSnapshot: () => null,
-      getBreakerState: () => ({ tripped: false }),
-      isKillSwitchEngaged: () => false,
-      readReceipts: async () => [],
+    const provider = baseProvider({
       readLatestProof: async () => ({
         path: '/proofs/run-2026-05-23.md',
         timestamp: 1700000000000,
         summary: 'demo run 2 orders',
       }),
-    };
+    });
     port = await startWith(provider);
     const r = await get(port, '/hedge/proof/latest');
     expect(r.status).toBe(200);
@@ -162,28 +158,14 @@ describe('hedgeStatusServer', () => {
   });
 
   it('any other route → 404', async () => {
-    const provider: HedgeStatusProvider = {
-      getLastSnapshot: () => makeSnapshot(),
-      getCapSnapshot: () => null,
-      getBreakerState: () => ({ tripped: false }),
-      isKillSwitchEngaged: () => false,
-      readReceipts: async () => [],
-      readLatestProof: async () => null,
-    };
+    const provider = baseProvider();
     port = await startWith(provider);
     const r = await get(port, '/hedge/banana');
     expect(r.status).toBe(404);
   });
 
   it('non-GET method → 405', async () => {
-    const provider: HedgeStatusProvider = {
-      getLastSnapshot: () => makeSnapshot(),
-      getCapSnapshot: () => null,
-      getBreakerState: () => ({ tripped: false }),
-      isKillSwitchEngaged: () => false,
-      readReceipts: async () => [],
-      readLatestProof: async () => null,
-    };
+    const provider = baseProvider();
     port = await startWith(provider);
     const r = await new Promise<{ status: number; body: any }>((resolve, reject) => {
       const req = http.request({

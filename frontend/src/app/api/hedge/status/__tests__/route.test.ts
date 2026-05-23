@@ -15,6 +15,7 @@ const SNAPSHOT_ENVELOPE = {
   capSnapshot: { dailyNotionalUsd: 50, dailyOrders: 1, cycleOrders: 0, dayKey: '2026-05-23' },
   breakerState: { tripped: false },
   killSwitchEngaged: false,
+  mode: 'demo' as const,
 };
 
 const RECEIPTS_RESPONSE = {
@@ -70,8 +71,35 @@ describe('GET /api/hedge/status', () => {
     expect(body.capSnapshot).toEqual(SNAPSHOT_ENVELOPE.capSnapshot);
     expect(body.breakerState).toEqual({ tripped: false });
     expect(body.killSwitchEngaged).toBe(false);
+    expect(body.mode).toBe('demo');
     expect(body.receipts).toHaveLength(1);
     expect(body.proof.path).toContain('run-');
+  });
+
+  it('forwards mode=null when the engine envelope omits mode', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const u = url.toString();
+      if (u.includes('/hedge/snapshot')) {
+        const env = { ...SNAPSHOT_ENVELOPE } as { mode?: string };
+        delete env.mode;
+        return new Response(JSON.stringify(env), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (u.includes('/hedge/receipts')) {
+        return new Response(JSON.stringify({ receipts: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ error: 'no_proof_yet' }), { status: 404 });
+    });
+    const res = await GET(dummyReq);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.mode).toBeNull();
+  });
+
+  it('503 envelope includes mode:null for stable shape', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
+    const res = await GET(dummyReq);
+    const body = await res.json();
+    expect(body.mode).toBeNull();
   });
 
   it('returns a 503 envelope when the hedge engine is unreachable', async () => {

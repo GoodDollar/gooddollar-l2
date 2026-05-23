@@ -246,6 +246,7 @@ async function main(): Promise<void> {
       getCapSnapshot: () => engine.getCapSnapshot(),
       getBreakerState: () => engine.getBreakerState(),
       isKillSwitchEngaged: () => engine.isKillSwitchEngaged(),
+      getMode: () => config.etoroMode,
       readReceipts: (limit: number) => receiptStore.readNewestFirst(limit),
       readLatestProof: async (): Promise<ProofPointer | null> => proofWriter.readLatestPointer(),
     },

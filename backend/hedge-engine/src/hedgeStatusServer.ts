@@ -25,11 +25,14 @@ export interface ProofPointer {
   summary: string;
 }
 
+export type HedgeMode = 'sandbox' | 'real' | 'demo' | 'unknown';
+
 export interface HedgeStatusProvider {
   getLastSnapshot(): ReconciliationSnapshot | null;
   getCapSnapshot(): CapSnapshot | null;
   getBreakerState(): BreakerState;
   isKillSwitchEngaged(): boolean;
+  getMode(): HedgeMode;
   readReceipts(limit: number): Promise<HedgeReceipt[]>;
   readLatestProof(): Promise<ProofPointer | null>;
 }
@@ -67,7 +70,7 @@ export function startHedgeStatusServer(opts: HedgeStatusServerOptions): http.Ser
       if (pathname === '/hedge/snapshot') {
         const snap = provider.getLastSnapshot();
         if (!snap) {
-          writeJson(res, 503, { error: 'no_snapshot_yet' });
+          writeJson(res, 503, { error: 'no_snapshot_yet', mode: provider.getMode() });
           return;
         }
         writeJson(res, 200, {
@@ -75,6 +78,7 @@ export function startHedgeStatusServer(opts: HedgeStatusServerOptions): http.Ser
           capSnapshot: provider.getCapSnapshot(),
           breakerState: provider.getBreakerState(),
           killSwitchEngaged: provider.isKillSwitchEngaged(),
+          mode: provider.getMode(),
         });
         return;
       }

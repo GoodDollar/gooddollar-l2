@@ -56,11 +56,14 @@ interface ProofPointer {
   summary: string
 }
 
+type HedgeMode = 'sandbox' | 'real' | 'demo' | 'unknown'
+
 interface HedgeStatusResponse {
   snapshot: SnapshotPayload | null
   capSnapshot: CapSnapshot | null
   breakerState: BreakerState | null
   killSwitchEngaged: boolean
+  mode: HedgeMode | null
   receipts: HedgeReceipt[]
   proof: ProofPointer | null
 }
@@ -105,14 +108,14 @@ function resolveEngineState(input: {
   return { label: 'ok', color: 'text-goodgreen' }
 }
 
-function ModeBadge({ mode }: { mode: HedgeReceipt['mode'] | undefined }) {
-  const labelMap: Record<string, { label: string; cls: string }> = {
+function ModeBadge({ mode }: { mode: HedgeMode }) {
+  const labelMap: Record<HedgeMode, { label: string; cls: string }> = {
     demo: { label: 'demo', cls: 'bg-goodgreen/15 text-goodgreen border-goodgreen/30' },
     sandbox: { label: 'sandbox', cls: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30' },
     real: { label: 'real', cls: 'bg-red-500/15 text-red-300 border-red-500/30' },
     unknown: { label: 'unknown', cls: 'bg-gray-500/15 text-gray-300 border-gray-500/30' },
   }
-  const c = labelMap[mode ?? 'unknown']
+  const c = labelMap[mode]
   return (
     <span
       data-testid="hedge-mode-badge"
@@ -121,6 +124,14 @@ function ModeBadge({ mode }: { mode: HedgeReceipt['mode'] | undefined }) {
       {c.label}
     </span>
   )
+}
+
+function resolveMode(data: HedgeStatusResponse | null, error: string | null): HedgeMode {
+  if (!data || error) return 'unknown'
+  if (data.mode === 'demo' || data.mode === 'sandbox' || data.mode === 'real') {
+    return data.mode
+  }
+  return 'unknown'
 }
 
 export default function HedgeStatusCard() {
@@ -161,7 +172,8 @@ export default function HedgeStatusCard() {
   }, [fetchOnce])
 
   const receipts = data?.receipts ?? []
-  const mode = receipts[0]?.mode ?? 'demo'
+  const mode = resolveMode(data, error)
+  const lastReceiptMode = receipts[0]?.mode
   const breaker = data?.breakerState
   const cap = data?.capSnapshot
   const killSwitch = Boolean(data?.killSwitchEngaged)
@@ -174,7 +186,11 @@ export default function HedgeStatusCard() {
       <header className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-white">Demo hedge proof</h2>
-          <ModeBadge mode={mode} />
+          <span
+            title={lastReceiptMode ? `last receipt mode: ${lastReceiptMode}` : undefined}
+          >
+            <ModeBadge mode={mode} />
+          </span>
           {data?.snapshot?.timestamp && (
             <span className="text-xs text-gray-500">
               Last tick {timeAgo(data.snapshot.timestamp)}

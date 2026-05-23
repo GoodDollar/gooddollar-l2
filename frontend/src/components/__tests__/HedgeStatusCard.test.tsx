@@ -15,6 +15,7 @@ const BASE_RESPONSE = {
   },
   breakerState: { tripped: false },
   killSwitchEngaged: false,
+  mode: 'demo' as const,
   receipts: [
     {
       v: 1,
@@ -57,10 +58,44 @@ afterEach(() => {
 
 describe('HedgeStatusCard', () => {
   it('renders the mode badge (demo) once the first fetch resolves', async () => {
-    mockFetchOnce(BASE_RESPONSE);
+    mockFetchOnce({ ...BASE_RESPONSE, mode: 'demo' });
     render(<HedgeStatusCard />);
     const badge = await screen.findByTestId('hedge-mode-badge');
     expect(badge).toHaveTextContent('demo');
+    expect(badge.className).toContain('bg-goodgreen/15');
+  });
+
+  it('renders the sandbox mode badge in yellow when snapshot.mode === sandbox', async () => {
+    mockFetchOnce({ ...BASE_RESPONSE, mode: 'sandbox' });
+    render(<HedgeStatusCard />);
+    const badge = await screen.findByTestId('hedge-mode-badge');
+    expect(badge).toHaveTextContent('sandbox');
+    expect(badge.className).toContain('bg-yellow-500/15');
+  });
+
+  it('renders the real mode badge in red when snapshot.mode === real', async () => {
+    mockFetchOnce({ ...BASE_RESPONSE, mode: 'real' });
+    render(<HedgeStatusCard />);
+    const badge = await screen.findByTestId('hedge-mode-badge');
+    expect(badge).toHaveTextContent('real');
+    expect(badge.className).toContain('bg-red-500/15');
+  });
+
+  it('renders the unknown mode badge in grey when the engine is unreachable', async () => {
+    mockFetchOnce(
+      {
+        error: 'Hedge engine unreachable',
+        snapshot: null,
+        mode: null,
+        receipts: [],
+        proof: null,
+      },
+      { status: 503 },
+    );
+    render(<HedgeStatusCard />);
+    const badge = await screen.findByTestId('hedge-mode-badge');
+    expect(badge).toHaveTextContent('unknown');
+    expect(badge.className).toContain('bg-gray-500/15');
   });
 
   it('renders a receipt row with short id and monospace styling', async () => {
