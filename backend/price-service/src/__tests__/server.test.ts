@@ -1413,6 +1413,156 @@ describe('Boot-time guard: 404 body size cap (task 0027)', () => {
   });
 });
 
+describe('buildRouteHints — derived from ENDPOINT_CATALOG (task 0030)', () => {
+  it('the live catalog produces hints for fresh, health, status, audit, docs', async () => {
+    const mod = await import('../server');
+    const hints = mod.buildRouteHints();
+    expect(hints.get('fresh')).toBe('/quotes/fresh/all');
+    expect(hints.get('health')).toBe('/health');
+    expect(hints.get('status')).toBe('/status/quotes');
+    expect(hints.get('audit')).toBe('/audit/stats');
+    expect(hints.get('docs')).toBe('/docs/source-reasons');
+  });
+
+  it('the parametric /quotes/:symbol entry is skipped (no hint for "symbol")', async () => {
+    const mod = await import('../server');
+    const hints = mod.buildRouteHints();
+    expect(hints.has('symbol')).toBe(false);
+    expect(hints.has(':symbol')).toBe(false);
+  });
+
+  it('the root entry / is skipped', async () => {
+    const mod = await import('../server');
+    const hints = mod.buildRouteHints();
+    expect(hints.has('')).toBe(false);
+  });
+
+  it('the bare /quotes entry is skipped (collides with parametric parent)', async () => {
+    const mod = await import('../server');
+    const hints = mod.buildRouteHints();
+    expect(hints.has('quotes')).toBe(false);
+  });
+
+  it('adding a synthetic catalog entry extends the hint map (drift-proof)', async () => {
+    const mod = await import('../server');
+    const synthetic = {
+      path: '/snapshot',
+      methods: ['GET'] as const,
+      summary: 'test fixture',
+      responseShape: '{ ok }',
+    };
+    const hints = mod.buildRouteHints([
+      ...(mod.ENDPOINT_CATALOG as ReadonlyArray<typeof synthetic>),
+      synthetic,
+    ]);
+    expect(hints.get('snapshot')).toBe('/snapshot');
+  });
+});
+
+describe('GET /quotes/<route-name> returns 400 invalid-symbol-or-path (task 0030)', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  const TYPOS: ReadonlyArray<{ typo: string; hint: string }> = [
+    { typo: 'fresh', hint: '/quotes/fresh/all' },
+    { typo: 'health', hint: '/health' },
+    { typo: 'status', hint: '/status/quotes' },
+    { typo: 'audit', hint: '/audit/stats' },
+    { typo: 'docs', hint: '/docs/source-reasons' },
+  ];
+
+  for (const { typo, hint } of TYPOS) {
+    it(`GET /quotes/${typo} → 400 invalid-symbol-or-path, didYouMean=${hint}`, async () => {
+      const r = await fetch(`${baseUrl}/quotes/${typo}`);
+      expect(r.status).toBe(400);
+      const body = (await r.json()) as Record<string, unknown>;
+      expect(body.error).toBe('invalid-symbol-or-path');
+      expect(body.didYouMean).toBe(hint);
+      expect(body.message).toContain(hint);
+      expect(body.path).toBe(`/quotes/${typo}`);
+      expect(body.method).toBe('GET');
+      expect(typeof body.timestamp).toBe('number');
+      expect(typeof body.timestampIso).toBe('string');
+    });
+  }
+
+  it('GET /quotes/FRESH (upper-case) also routes to didYouMean (case-insensitive lookup)', async () => {
+    const r = await fetch(`${baseUrl}/quotes/FRESH`);
+    expect(r.status).toBe(400);
+    const body = (await r.json()) as Record<string, unknown>;
+    expect(body.didYouMean).toBe('/quotes/fresh/all');
+  });
+
+  it('GET /quotes/AAPL (configured symbol) is never 400 invalid-symbol-or-path', async () => {
+    const r = await fetch(`${baseUrl}/quotes/AAPL`);
+    expect([200, 404]).toContain(r.status);
+    if (r.status === 404) {
+      const body = (await r.json()) as Record<string, unknown>;
+      expect(body.error).not.toBe('invalid-symbol-or-path');
+    }
+  });
+
+  it('GET /quotes/NOTREAL (regex-valid, no hint, not configured) → 404 symbol-not-configured (unchanged)', async () => {
+    const r = await fetch(`${baseUrl}/quotes/NOTREAL`);
+    expect(r.status).toBe(404);
+    const body = (await r.json()) as Record<string, unknown>;
+    expect(body.error).toBe('symbol-not-configured');
+    expect('didYouMean' in body).toBe(false);
+  });
+});
+
+describe('/quotes/:symbol responseShape mentions invalid-symbol-or-path (task 0030)', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('responseShape includes "invalid-symbol-or-path" and "didYouMean" and stays ≤ 240 chars', async () => {
+    const body = (await (await fetch(`${baseUrl}/`)).json()) as {
+      endpoints: Array<{ path: string; responseShape: string }>;
+    };
+    const sym = body.endpoints.find((e) => e.path === '/quotes/:symbol');
+    expect(sym).toBeDefined();
+    expect(sym!.responseShape).toMatch(/invalid-symbol-or-path/);
+    expect(sym!.responseShape).toMatch(/didYouMean/);
+    expect(sym!.responseShape.length).toBeLessThanOrEqual(240);
+  });
+});
+
 describe('REST Server — /quotes/:symbol distinguishes unconfigured vs uncached', () => {
   let cache: QuoteCache;
   let app: express.Express;

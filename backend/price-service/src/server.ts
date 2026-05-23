@@ -173,7 +173,7 @@ export function isoFromMs(ms: number | null): string | null {
  * (`/quotes/:symbol`). They are matched by a single regex below rather
  * than by exact-string lookup.
  */
-interface EndpointDoc {
+export interface EndpointDoc {
   path: string;
   methods: readonly string[];
   summary: string;
@@ -181,7 +181,7 @@ interface EndpointDoc {
   parametric?: boolean;
 }
 
-const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
+export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
   {
     path: '/',
     methods: ['GET'],
@@ -221,14 +221,14 @@ const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     path: '/quotes/:symbol',
     methods: ['GET'],
     summary:
-      'Single symbol; 400 invalid-symbol, 404 symbol-not-configured or ' +
-      'no-quote, 200 quote envelope.',
+      'Single symbol; 400 invalid-symbol|invalid-symbol-or-path, ' +
+      '404 symbol-not-configured|no-quote, 200 quote envelope.',
     parametric: true,
     responseShape:
       '200: NormalizedQuote & {cacheAge, filterAccepted, filterReason, ' +
-      'source?} | 400: {error, message, path, method, timestamp, ' +
-      'timestampIso} | 404: {error, message, symbol, configured, ' +
-      'source?, timestamp, timestampIso}',
+      "source?} | 400: {error: 'invalid-symbol'|'invalid-symbol-or-path', " +
+      'message, didYouMean?, path, method, ts} | 404: {error, message, ' +
+      'symbol, configured, source?, ts}',
   },
   {
     path: '/status/quotes',
@@ -319,6 +319,49 @@ function findCatalogEntry(reqPath: string): EndpointDoc | undefined {
   }
   return undefined;
 }
+
+/**
+ * Derive a "what real route does this single path segment name?" map
+ * from `ENDPOINT_CATALOG`. Drift-proof: adding a new endpoint
+ * automatically extends the hint map; nothing to hand-edit.
+ *
+ * Used by the `/quotes/:symbol` handler to detect path typos like
+ * `/quotes/fresh` (→ /quotes/fresh/all) and steer the caller with
+ * `didYouMean` instead of the strong "edit ORACLE_SYMBOLS and restart"
+ * framing of `symbol-not-configured`.
+ *
+ * Skipped entries:
+ * - parametric routes (no name to confuse — they ARE the wildcard).
+ * - the root `/` (no segment).
+ * - the bare `/quotes` (its name is the parametric parent, not a
+ *   sibling route to confuse with a typo'd symbol).
+ *
+ * Indexing rule: for `/quotes/<x>/...` the trap is the second segment
+ * (`x`), because that's the slot the `:symbol` route catches. For
+ * any other path the first segment is the trap.
+ */
+export function buildRouteHints(
+  catalog: readonly EndpointDoc[] = ENDPOINT_CATALOG,
+): ReadonlyMap<string, string> {
+  const hints = new Map<string, string>();
+  for (const e of catalog) {
+    if (e.parametric) continue;
+    if (e.path === '/') continue;
+    if (e.path === '/quotes') continue;
+    const segments = e.path.split('/').filter(Boolean);
+    if (segments.length === 0) continue;
+    const key =
+      segments[0] === 'quotes' && segments.length > 1
+        ? segments[1].toLowerCase()
+        : segments[0].toLowerCase();
+    // First write wins (deterministic for the live catalog; future
+    // catalog collisions are a build-time signal to disambiguate).
+    if (!hints.has(key)) hints.set(key, e.path);
+  }
+  return hints;
+}
+
+const ROUTE_HINTS = buildRouteHints();
 
 interface EndpointIndexEntry {
   path: string;
@@ -641,6 +684,29 @@ export function createServer(
         error: 'invalid-symbol',
         message: 'symbol must match /^[A-Z0-9._-]{1,16}$/',
         path,
+        method: req.method,
+        timestamp: now,
+        timestampIso: isoFromMs(now)!,
+      });
+      return;
+    }
+    // Near-miss detection (task 0030): if the canonicalised symbol
+    // names a sibling route (`/quotes/fresh` → /quotes/fresh/all,
+    // `/quotes/health` → /health, ...), steer the caller with
+    // `didYouMean` instead of the strong "edit ORACLE_SYMBOLS and
+    // restart" framing of `symbol-not-configured`. Runs BEFORE the
+    // configured-set check so the steer wins over the config-error
+    // narrative for these specific typos.
+    const lowered = result.symbol.toLowerCase();
+    const hint = ROUTE_HINTS.get(lowered);
+    if (hint) {
+      res.status(400).json({
+        error: 'invalid-symbol-or-path',
+        message:
+          `the path segment '${lowered}' is a known sibling-route ` +
+          `prefix; did you mean ${hint}?`,
+        didYouMean: hint,
+        path: req.path,
         method: req.method,
         timestamp: now,
         timestampIso: isoFromMs(now)!,
