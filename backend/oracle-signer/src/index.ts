@@ -34,6 +34,7 @@ import { assertDevnetChain, parseAllowedChainIds } from './chain-guard';
 import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY } from './proof-store';
 import { AuditLog } from './audit-log';
 import * as path from 'path';
+import { ethers } from 'ethers';
 
 export interface OracleSignerDeps {
   /** Optional chain-id getter. Defaults to reading from a rail's provider. Tests inject a stub to avoid a real RPC. */
@@ -91,31 +92,43 @@ export class OracleSignerService {
       dir: process.env.ORACLE_AUDIT_LOG_DIR || path.join(process.cwd(), '.autobuilder', 'logs', 'oracle-signer'),
     });
 
-    // ---- Stocks rail wiring (enabled when STOCK_ORACLE_V2_ADDRESS is set) ----
+    // Both rails share ONE provider and ONE NonceManager-wrapped wallet so
+    // concurrent ticks across rails never collide on nonce. The chain-guard
+    // probe and the two submitters all read from the same provider, and any
+    // contract.method() call goes through the same nonce-tracking signer.
     const stocksEnabled = Boolean(config.oracleAddress && config.oracleAddress.length > 0);
-    if (stocksEnabled) {
-      this.buffer = new QuoteBuffer(config.minDeviationBps);
-      this.submitter = new OracleSubmitter(
-        config.rpcUrl, config.oracleAddress, config.signerKey, config.txTimeoutMs,
-      );
-    }
-
-    // ---- Crypto rail wiring (enabled when both address and map are present) ----
     const cryptoMap = parseCryptoSymbolMap(config.cryptoSymbolMap);
     const cryptoAddrSet = Boolean(config.swapPriceOracleAddress && config.swapPriceOracleAddress.length > 0);
     const cryptoEnabled = cryptoAddrSet && cryptoMap.size > 0;
-    if (cryptoEnabled) {
+
+    let sharedSigner: ethers.Signer | null = null;
+    let signerAddress = '';
+    if (stocksEnabled || cryptoEnabled) {
+      const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+      const wallet = new ethers.Wallet(config.signerKey, provider);
+      sharedSigner = new ethers.NonceManager(wallet);
+      signerAddress = wallet.address;
+    }
+
+    // ---- Stocks rail wiring ----
+    if (stocksEnabled && sharedSigner) {
+      this.buffer = new QuoteBuffer(config.minDeviationBps);
+      this.submitter = new OracleSubmitter(
+        sharedSigner, config.oracleAddress, signerAddress, config.txTimeoutMs,
+      );
+    }
+
+    // ---- Crypto rail wiring ----
+    if (cryptoEnabled && sharedSigner) {
       this.cryptoSymbolMap = cryptoMap;
       this.cryptoBuffer = new CryptoQuoteBuffer(
         config.cryptoMinDeviationBps ?? config.minDeviationBps,
         cryptoMap,
       );
       this.cryptoSubmitter = new CryptoOracleSubmitter(
-        config.rpcUrl, config.swapPriceOracleAddress!, config.signerKey, config.txTimeoutMs,
+        sharedSigner, config.swapPriceOracleAddress!, signerAddress, config.txTimeoutMs,
       );
     } else if (cryptoAddrSet && cryptoMap.size === 0) {
-      // Soft warn: address set but no symbols mapped. Operator likely forgot
-      // the map. Don't crash; just leave the rail disabled.
       console.warn('[oracle-signer:crypto] SWAP_PRICE_ORACLE_ADDRESS is set but CRYPTO_SYMBOL_MAP is empty — crypto rail disabled.');
     }
 

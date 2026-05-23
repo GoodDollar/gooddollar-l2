@@ -15,14 +15,29 @@ const SWAP_PRICE_ORACLE_ABI = [
 
 export class CryptoOracleSubmitter {
   private readonly contract: ethers.Contract;
-  private readonly wallet: ethers.Wallet;
+  private readonly signer: ethers.Signer;
   private readonly _provider: ethers.JsonRpcProvider;
   private readonly txTimeoutMs: number;
+  private readonly cachedAddress: string;
 
-  constructor(rpcUrl: string, oracleAddress: string, signerKey: string, txTimeoutMs = 60000) {
-    this._provider = new ethers.JsonRpcProvider(rpcUrl);
-    this.wallet = new ethers.Wallet(signerKey, this._provider);
-    this.contract = new ethers.Contract(oracleAddress, SWAP_PRICE_ORACLE_ABI, this.wallet);
+  constructor(
+    rpcUrlOrSigner: string | ethers.Signer,
+    oracleAddress: string,
+    signerKeyOrAddress: string,
+    txTimeoutMs = 60000,
+  ) {
+    if (typeof rpcUrlOrSigner === 'string') {
+      this._provider = new ethers.JsonRpcProvider(rpcUrlOrSigner);
+      this.signer = new ethers.Wallet(signerKeyOrAddress, this._provider);
+      this.cachedAddress = (this.signer as ethers.Wallet).address;
+    } else {
+      this.signer = rpcUrlOrSigner;
+      const p = rpcUrlOrSigner.provider;
+      if (!p) throw new Error('shared signer must have a provider attached');
+      this._provider = p as ethers.JsonRpcProvider;
+      this.cachedAddress = signerKeyOrAddress;
+    }
+    this.contract = new ethers.Contract(oracleAddress, SWAP_PRICE_ORACLE_ABI, this.signer);
     this.txTimeoutMs = txTimeoutMs;
   }
 
@@ -64,6 +79,6 @@ export class CryptoOracleSubmitter {
   }
 
   get signerAddress(): string {
-    return this.wallet.address;
+    return this.cachedAddress;
   }
 }
