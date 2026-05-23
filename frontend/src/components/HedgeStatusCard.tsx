@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -840,52 +841,9 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               </tr>
             </thead>
             <tbody>
-              {receipts.map((r) => {
-                const delta = formatExposureDelta(r.beforeExposure, r.afterExposure)
-                return (
-                  <tr
-                    key={r.id}
-                    data-testid="hedge-receipt-row"
-                    title={r.id}
-                    className="border-t border-dark-100 font-mono"
-                  >
-                    <td
-                      className="py-1.5 pr-2 text-xs text-gray-300"
-                      title={isoTitle(r.timestamp)}
-                    >
-                      {timeAgo(r.timestamp)}
-                    </td>
-                    <td className="py-1.5 pr-2 text-xs text-gray-300">
-                      <div>{shortId(r.id)}</div>
-                      <div
-                        data-testid="hedge-receipt-etoro-id"
-                        className="text-gray-500"
-                      >
-                        eToro: <span className="text-gray-400">{r.etoroOrderId ?? '—'}</span>
-                      </div>
-                    </td>
-                    <td className="py-1.5 pr-2 text-white">{r.symbol}</td>
-                    <td className="py-1.5 pr-2 text-gray-300">{r.side}</td>
-                    <td className="py-1.5 pr-2 text-right text-gray-200">
-                      {formatNotionalUsd(r.notionalUsd)}
-                    </td>
-                    <td
-                      data-testid="hedge-receipt-exposure-delta"
-                      className="py-1.5 pr-2 text-xs text-gray-300"
-                    >
-                      <div>{delta.display}</div>
-                      <div className={delta.deltaClass}>({delta.deltaSigned})</div>
-                    </td>
-                    <td className="py-1.5 text-xs">
-                      {r.success ? (
-                        <span className="text-goodgreen">ok</span>
-                      ) : (
-                        <span className="text-yellow-400">{r.error ?? 'failed'}</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
+              {receipts.map((r) => (
+                <ReceiptRow key={r.id} receipt={r} />
+              ))}
             </tbody>
           </table>
         )}
@@ -898,7 +856,10 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
 HedgeStatusCard.displayName = 'HedgeStatusCard'
 export default HedgeStatusCard
 
-function Stat({
+// Memoised so the four stat tiles skip the className build + re-render
+// when their (entirely-primitive) props are unchanged. Default shallow
+// compare is sufficient — every prop is a string/boolean.
+const Stat = memo(function Stat({
   label,
   value,
   sub,
@@ -940,4 +901,71 @@ function Stat({
       )}
     </div>
   )
+})
+
+// Receipt rows come from a fresh JSON parse on every poll, so object
+// identity is never stable. Compare on the exact subset of fields the
+// row JSX reads so a byte-identical receipt skips re-render entirely.
+// NB: extending the row's JSX requires adding any new field here too.
+function areReceiptPropsEqual(
+  a: Readonly<{ receipt: HedgeReceipt }>,
+  b: Readonly<{ receipt: HedgeReceipt }>,
+): boolean {
+  const x = a.receipt
+  const y = b.receipt
+  return (
+    x.id === y.id &&
+    x.timestamp === y.timestamp &&
+    x.success === y.success &&
+    x.notionalUsd === y.notionalUsd &&
+    x.beforeExposure === y.beforeExposure &&
+    x.afterExposure === y.afterExposure &&
+    x.etoroOrderId === y.etoroOrderId &&
+    x.symbol === y.symbol &&
+    x.side === y.side &&
+    x.error === y.error
+  )
 }
+
+const ReceiptRow = memo(function ReceiptRow({ receipt: r }: { receipt: HedgeReceipt }) {
+  const delta = formatExposureDelta(r.beforeExposure, r.afterExposure)
+  return (
+    <tr
+      data-testid="hedge-receipt-row"
+      title={r.id}
+      className="border-t border-dark-100 font-mono"
+    >
+      <td
+        className="py-1.5 pr-2 text-xs text-gray-300"
+        title={isoTitle(r.timestamp)}
+      >
+        {timeAgo(r.timestamp)}
+      </td>
+      <td className="py-1.5 pr-2 text-xs text-gray-300">
+        <div>{shortId(r.id)}</div>
+        <div data-testid="hedge-receipt-etoro-id" className="text-gray-500">
+          eToro: <span className="text-gray-400">{r.etoroOrderId ?? '—'}</span>
+        </div>
+      </td>
+      <td className="py-1.5 pr-2 text-white">{r.symbol}</td>
+      <td className="py-1.5 pr-2 text-gray-300">{r.side}</td>
+      <td className="py-1.5 pr-2 text-right text-gray-200">
+        {formatNotionalUsd(r.notionalUsd)}
+      </td>
+      <td
+        data-testid="hedge-receipt-exposure-delta"
+        className="py-1.5 pr-2 text-xs text-gray-300"
+      >
+        <div>{delta.display}</div>
+        <div className={delta.deltaClass}>({delta.deltaSigned})</div>
+      </td>
+      <td className="py-1.5 text-xs">
+        {r.success ? (
+          <span className="text-goodgreen">ok</span>
+        ) : (
+          <span className="text-yellow-400">{r.error ?? 'failed'}</span>
+        )}
+      </td>
+    </tr>
+  )
+}, areReceiptPropsEqual)

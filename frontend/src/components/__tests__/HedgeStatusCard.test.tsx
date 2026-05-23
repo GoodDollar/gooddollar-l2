@@ -1364,4 +1364,123 @@ describe('HedgeStatusCard', () => {
       });
     });
   });
+
+  describe('memoised receipt rows + stat tiles (#0032)', () => {
+    function htmlSnapshot(el: HTMLElement | null): string {
+      return el ? el.outerHTML : '';
+    }
+
+    it('byte-identical receipts payload from a refresh leaves the receipts table DOM unchanged', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(BASE_RESPONSE), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      const ref = createRef<HedgeStatusCardHandle>();
+      render(<HedgeStatusCard ref={ref} />);
+      const row = await screen.findByTestId('hedge-receipt-row');
+      const before = htmlSnapshot(row);
+      const tableBefore = htmlSnapshot(row.closest('table'));
+      const initialCalls = fetchSpy.mock.calls.length;
+      // Trigger a refresh that returns identical receipts; comparator must
+      // skip re-render of every row.
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      expect(fetchSpy.mock.calls.length).toBeGreaterThan(initialCalls);
+      const rowAfter = screen.getByTestId('hedge-receipt-row');
+      expect(htmlSnapshot(rowAfter)).toBe(before);
+      expect(htmlSnapshot(rowAfter.closest('table'))).toBe(tableBefore);
+      // The same tr instance is reused (memoised path) — DOM identity proves
+      // no reconciliation hit the row.
+      expect(rowAfter).toBe(row);
+    });
+
+    it('receipts table re-renders only the changed row when notional changes', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(BASE_RESPONSE), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({
+            ...BASE_RESPONSE,
+            receipts: [{ ...BASE_RESPONSE.receipts[0], notionalUsd: 75 }],
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      render(<HedgeStatusCard ref={ref} />);
+      const row = await screen.findByTestId('hedge-receipt-row');
+      expect(row).toHaveTextContent('$50.00');
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      const rowAfter = screen.getByTestId('hedge-receipt-row');
+      expect(rowAfter).toHaveTextContent('$75.00');
+    });
+
+    it('prepending a new row leaves the original row DOM identity intact', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      const newer = {
+        ...BASE_RESPONSE.receipts[0],
+        id: 'newer-row-id',
+        timestamp: 1700000050000,
+        notionalUsd: 100,
+        etoroOrderId: 'etoro-2',
+      };
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(BASE_RESPONSE), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({
+            ...BASE_RESPONSE,
+            receipts: [newer, BASE_RESPONSE.receipts[0]],
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      render(<HedgeStatusCard ref={ref} />);
+      const firstRow = await screen.findByTestId('hedge-receipt-row');
+      const firstRowSnapshot = htmlSnapshot(firstRow);
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      const rows = screen.getAllByTestId('hedge-receipt-row');
+      expect(rows).toHaveLength(2);
+      // The original row keeps its DOM identity — memo skipped its re-render.
+      const preservedRow = rows.find((r) => r.getAttribute('title') === 'abc12345defg');
+      expect(preservedRow).toBe(firstRow);
+      expect(htmlSnapshot(preservedRow ?? null)).toBe(firstRowSnapshot);
+    });
+
+    it('Stat tiles reuse the same DOM nodes when their props are unchanged across a refresh', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(BASE_RESPONSE), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      render(<HedgeStatusCard ref={ref} />);
+      const before = await screen.findByTestId('hedge-engine-stat');
+      const beforeHtml = htmlSnapshot(before.closest('.bg-dark-50'));
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      const after = screen.getByTestId('hedge-engine-stat');
+      expect(after).toBe(before);
+      expect(htmlSnapshot(after.closest('.bg-dark-50'))).toBe(beforeHtml);
+    });
+  });
 });
