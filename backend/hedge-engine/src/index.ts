@@ -1,4 +1,9 @@
 import { ethers } from 'ethers';
+import {
+  DEFAULT_LANE_SYMBOLS,
+  INSTRUMENT_SYMBOLS,
+  partitionLaneSymbols,
+} from '@goodchain/etoro-client';
 import { ExposureReader } from './exposure-reader';
 import { DeltaCalculator } from './delta-calculator';
 import { HedgeExecutor, EtoroAdapter } from './hedge-executor';
@@ -17,16 +22,30 @@ function getEnvOrDefault(key: string, fallback: string): string {
   return process.env[key] ?? fallback;
 }
 
-function loadConfig(): HedgeEngineConfig {
-  const symbolsRaw = getEnvOrDefault('HEDGE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ');
+export function loadConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): HedgeEngineConfig {
+  const rawSymbols = (env.HEDGE_SYMBOLS ?? DEFAULT_LANE_SYMBOLS.join(','))
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const { valid: symbols, unknown } = partitionLaneSymbols(rawSymbols);
+  if (unknown.length > 0) {
+    console.error(
+      `[hedge-engine] Unknown symbols: ${unknown.join(', ')}. ` +
+      `Valid: ${INSTRUMENT_SYMBOLS.join(', ')}`,
+    );
+    env.SERVICE_HEALTH_STATUS = 'degraded';
+    env.SERVICE_DISABLED_REASON = `Unknown symbols: ${unknown.join(',')}`;
+  }
   return {
-    rpcUrl: getEnvOrDefault('RPC_URL', 'http://localhost:8545'),
-    riskEngineAddress: getEnvOrDefault('RISK_ENGINE_ADDRESS', ''),
-    symbols: symbolsRaw.split(',').map((s) => s.trim()).filter(Boolean),
-    deltaThresholdUsd: Number(getEnvOrDefault('HEDGE_DELTA_THRESHOLD_USD', '5000')),
-    deltaThresholdPct: Number(getEnvOrDefault('HEDGE_DELTA_THRESHOLD_PCT', '2')),
-    pollIntervalMs: Number(getEnvOrDefault('HEDGE_POLL_INTERVAL_MS', '30000')),
-    dryRun: getEnvOrDefault('HEDGE_DRY_RUN', 'true') === 'true',
+    rpcUrl: env.RPC_URL ?? 'http://localhost:8545',
+    riskEngineAddress: env.RISK_ENGINE_ADDRESS ?? '',
+    symbols,
+    deltaThresholdUsd: Number(env.HEDGE_DELTA_THRESHOLD_USD ?? '5000'),
+    deltaThresholdPct: Number(env.HEDGE_DELTA_THRESHOLD_PCT ?? '2'),
+    pollIntervalMs: Number(env.HEDGE_POLL_INTERVAL_MS ?? '30000'),
+    dryRun: (env.HEDGE_DRY_RUN ?? 'true') === 'true',
   };
 }
 

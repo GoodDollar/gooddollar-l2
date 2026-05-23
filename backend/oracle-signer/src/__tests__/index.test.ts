@@ -1,5 +1,6 @@
-import { OracleSignerService } from '../index';
+import { loadConfig, OracleSignerService } from '../index';
 import { OracleSignerConfig } from '../types';
+import { DEFAULT_LANE_SYMBOLS } from '@goodchain/etoro-client';
 
 jest.mock('../oracle-submitter', () => {
   return {
@@ -127,6 +128,26 @@ describe('OracleSignerService', () => {
     expect(service.getBuffer().getLatestQuote('AAPL')).toBeDefined();
 
     service.stop();
+  });
+
+  it('loadConfig defaults symbols to DEFAULT_LANE_SYMBOLS when ORACLE_SYMBOLS unset', () => {
+    const env: NodeJS.ProcessEnv = {
+      ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+    };
+    const config = loadConfig(env);
+    expect(config.symbols).toEqual([...DEFAULT_LANE_SYMBOLS]);
+    expect(env.SERVICE_HEALTH_STATUS).toBeUndefined();
+  });
+
+  it('loadConfig degrades + filters out unknown symbols passed via ORACLE_SYMBOLS', () => {
+    const env: NodeJS.ProcessEnv = {
+      ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      ORACLE_SYMBOLS: 'MSFT,BTC,AAPL',
+    };
+    const config = loadConfig(env);
+    expect(config.symbols).toEqual(['BTC', 'AAPL']);
+    expect(env.SERVICE_HEALTH_STATUS).toBe('degraded');
+    expect(env.SERVICE_DISABLED_REASON).toBe('Unknown symbols: MSFT');
   });
 
   it('accepts all symbols when config list is empty', async () => {

@@ -27,6 +27,37 @@ export const INSTRUMENT_SYMBOLS = [
 
 export type LaneSymbol = typeof INSTRUMENT_SYMBOLS[number];
 
+/**
+ * Mutable copy of `INSTRUMENT_SYMBOLS` typed as `LaneSymbol[]` so downstream
+ * services (`price-service`, `oracle-signer`, `hedge-engine`) can spread it
+ * into their default symbol lists without losing the readonly guarantees of
+ * the source array. The returned array is a fresh copy on import; callers
+ * can mutate it without affecting the SDK's source-of-truth.
+ *
+ * This is the single, canonical default symbol list for the lane. Every
+ * downstream `symbols:` default must be `[...DEFAULT_LANE_SYMBOLS]` (or
+ * `DEFAULT_LANE_SYMBOLS.join(',')` for env-var fallbacks).
+ */
+export const DEFAULT_LANE_SYMBOLS: LaneSymbol[] = [...INSTRUMENT_SYMBOLS];
+
+/**
+ * Documentation-only list of supplementary stock symbols named in
+ * `OFFICIAL_ETORO_API_PRICE_SOURCE.md`'s "when available" list. These are
+ * NOT in `INSTRUMENT_MAP` today and therefore CANNOT be priced or resolved
+ * by the SDK. Downstream consumers MUST NOT include them in defaults until
+ * an entry is added to `INSTRUMENT_MAP`. The constant exists to document
+ * intent and to provide a single grep point for the eventual extension.
+ */
+export const SUPPLEMENTARY_STOCK_SYMBOLS = [
+  'MSFT',
+  'AMZN',
+  'GOOGL',
+  'QQQ',
+  'AMD',
+] as const;
+
+export type SupplementaryStockSymbol = typeof SUPPLEMENTARY_STOCK_SYMBOLS[number];
+
 export interface LaneInstrument {
   symbol: LaneSymbol;
   etoroInstrumentId: string;
@@ -106,6 +137,29 @@ export function isLaneSymbol(value: string): value is LaneSymbol {
 export function getInstrument(symbol: string): LaneInstrument | null {
   if (!isLaneSymbol(symbol)) return null;
   return INSTRUMENT_MAP[symbol];
+}
+
+/**
+ * Partition a caller-supplied symbol list into `{ valid, unknown }` against
+ * `INSTRUMENT_SYMBOLS`. Used by every downstream service
+ * (`price-service`, `oracle-signer`, `hedge-engine`) at startup to filter
+ * env-var-supplied symbol lists down to the SDK-resolvable subset and to
+ * surface unknown symbols as operator-visible degraded-health signals.
+ *
+ * Pure helper with no env-var side effects. Callers decide whether to
+ * fail-hard, degrade, or just log on `unknown.length > 0`.
+ */
+export function partitionLaneSymbols(input: readonly string[]): {
+  valid: LaneSymbol[];
+  unknown: string[];
+} {
+  const valid: LaneSymbol[] = [];
+  const unknown: string[] = [];
+  for (const sym of input) {
+    if (isLaneSymbol(sym)) valid.push(sym);
+    else unknown.push(sym);
+  }
+  return { valid, unknown };
 }
 
 /**

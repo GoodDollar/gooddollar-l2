@@ -349,12 +349,20 @@ export { MockEtoroSource } from './mock-source';
 export {
   INSTRUMENT_SYMBOLS,
   INSTRUMENT_MAP,
+  DEFAULT_LANE_SYMBOLS,
+  SUPPLEMENTARY_STOCK_SYMBOLS,
   getInstrument,
   isLaneSymbol,
   loadInstrumentOverrides,
   applyInstrumentOverrides,
+  partitionLaneSymbols,
 } from './instruments';
-export type { LaneSymbol, LaneInstrument, InstrumentOverrides } from './instruments';
+export type {
+  LaneSymbol,
+  LaneInstrument,
+  InstrumentOverrides,
+  SupplementaryStockSymbol,
+} from './instruments';
 export {
   RealTradingDisabledError,
   DemoCapExceededError,

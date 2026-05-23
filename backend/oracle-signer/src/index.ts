@@ -1,3 +1,8 @@
+import {
+  DEFAULT_LANE_SYMBOLS,
+  INSTRUMENT_SYMBOLS,
+  partitionLaneSymbols,
+} from '@goodchain/etoro-client';
 import { PriceWsClient } from './price-ws-client';
 import { QuoteBuffer } from './quote-buffer';
 import { OracleSubmitter } from './oracle-submitter';
@@ -97,24 +102,37 @@ export class OracleSignerService {
   }
 }
 
-function loadConfig(): OracleSignerConfig {
-  const signerKey = process.env.ORACLE_SIGNER_KEY;
+export function loadConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): OracleSignerConfig {
+  const signerKey = env.ORACLE_SIGNER_KEY;
   if (!signerKey) {
     throw new Error('ORACLE_SIGNER_KEY env var required');
   }
 
+  const rawSymbols = (env.ORACLE_SYMBOLS ?? DEFAULT_LANE_SYMBOLS.join(','))
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const { valid: symbols, unknown } = partitionLaneSymbols(rawSymbols);
+  if (unknown.length > 0) {
+    console.error(
+      `[oracle-signer] Unknown symbols: ${unknown.join(', ')}. ` +
+      `Valid: ${INSTRUMENT_SYMBOLS.join(', ')}`,
+    );
+    env.SERVICE_HEALTH_STATUS = 'degraded';
+    env.SERVICE_DISABLED_REASON = `Unknown symbols: ${unknown.join(',')}`;
+  }
+
   return {
-    priceServiceUrl: process.env.PRICE_SERVICE_URL || 'ws://localhost:4001',
-    rpcUrl: process.env.L2_RPC_URL || process.env.RPC || 'http://localhost:8545',
-    oracleAddress: process.env.STOCK_ORACLE_V2_ADDRESS || '',
+    priceServiceUrl: env.PRICE_SERVICE_URL || 'ws://localhost:4001',
+    rpcUrl: env.L2_RPC_URL || env.RPC || 'http://localhost:8545',
+    oracleAddress: env.STOCK_ORACLE_V2_ADDRESS || '',
     signerKey,
-    updateIntervalMs: parseInt(process.env.ORACLE_UPDATE_INTERVAL || '5000', 10),
-    minDeviationBps: parseInt(process.env.ORACLE_MIN_DEVIATION || '10', 10),
-    txTimeoutMs: parseInt(process.env.ORACLE_TX_TIMEOUT || '60000', 10),
-    symbols: (process.env.ORACLE_SYMBOLS || 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ,NFLX')
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean),
+    updateIntervalMs: parseInt(env.ORACLE_UPDATE_INTERVAL || '5000', 10),
+    minDeviationBps: parseInt(env.ORACLE_MIN_DEVIATION || '10', 10),
+    txTimeoutMs: parseInt(env.ORACLE_TX_TIMEOUT || '60000', 10),
+    symbols,
   };
 }
 

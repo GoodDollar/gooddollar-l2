@@ -1,11 +1,14 @@
 import { InvalidInstrumentOverridesError } from '../errors';
 import {
   applyInstrumentOverrides,
+  DEFAULT_LANE_SYMBOLS,
+  SUPPLEMENTARY_STOCK_SYMBOLS,
   getInstrument,
   INSTRUMENT_MAP,
   INSTRUMENT_SYMBOLS,
   isLaneSymbol,
   loadInstrumentOverrides,
+  partitionLaneSymbols,
 } from '../instruments';
 
 describe('INSTRUMENT_MAP', () => {
@@ -28,6 +31,63 @@ describe('INSTRUMENT_MAP', () => {
   it('returns null for unknown symbols', () => {
     expect(getInstrument('UNKNOWN')).toBeNull();
     expect(isLaneSymbol('UNKNOWN')).toBe(false);
+  });
+});
+
+describe('DEFAULT_LANE_SYMBOLS', () => {
+  it('is a deep copy of INSTRUMENT_SYMBOLS', () => {
+    expect(DEFAULT_LANE_SYMBOLS).toEqual([...INSTRUMENT_SYMBOLS]);
+  });
+
+  it('is mutable without affecting the readonly source', () => {
+    const local = [...DEFAULT_LANE_SYMBOLS];
+    local.push('AAPL');
+    expect(local).toHaveLength(DEFAULT_LANE_SYMBOLS.length + 1);
+    expect(DEFAULT_LANE_SYMBOLS).toEqual([...INSTRUMENT_SYMBOLS]);
+  });
+
+  it('every entry passes isLaneSymbol', () => {
+    for (const sym of DEFAULT_LANE_SYMBOLS) {
+      expect(isLaneSymbol(sym)).toBe(true);
+      expect(INSTRUMENT_MAP[sym]).toBeDefined();
+    }
+  });
+});
+
+describe('partitionLaneSymbols', () => {
+  it('returns all-valid for an in-map list', () => {
+    const result = partitionLaneSymbols(['BTC', 'ETH', 'AAPL']);
+    expect(result.valid).toEqual(['BTC', 'ETH', 'AAPL']);
+    expect(result.unknown).toEqual([]);
+  });
+
+  it('partitions mixed input into valid + unknown buckets in input order', () => {
+    const result = partitionLaneSymbols(['MSFT', 'BTC', 'NFLX', 'AAPL']);
+    expect(result.valid).toEqual(['BTC', 'AAPL']);
+    expect(result.unknown).toEqual(['MSFT', 'NFLX']);
+  });
+
+  it('returns empty buckets for empty input', () => {
+    expect(partitionLaneSymbols([])).toEqual({ valid: [], unknown: [] });
+  });
+
+  it('treats every supplementary stock as unknown', () => {
+    const result = partitionLaneSymbols([...SUPPLEMENTARY_STOCK_SYMBOLS]);
+    expect(result.valid).toEqual([]);
+    expect(result.unknown).toEqual([...SUPPLEMENTARY_STOCK_SYMBOLS]);
+  });
+});
+
+describe('SUPPLEMENTARY_STOCK_SYMBOLS', () => {
+  it('lists the documented supplementary stocks (MSFT, AMZN, GOOGL, QQQ, AMD)', () => {
+    expect([...SUPPLEMENTARY_STOCK_SYMBOLS]).toEqual(['MSFT', 'AMZN', 'GOOGL', 'QQQ', 'AMD']);
+  });
+
+  it('every entry is NOT in INSTRUMENT_MAP (documentation-only constant)', () => {
+    for (const sym of SUPPLEMENTARY_STOCK_SYMBOLS) {
+      expect(isLaneSymbol(sym)).toBe(false);
+      expect(getInstrument(sym)).toBeNull();
+    }
   });
 });
 

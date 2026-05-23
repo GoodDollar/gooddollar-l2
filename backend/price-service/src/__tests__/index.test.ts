@@ -1,5 +1,6 @@
 import { PriceService, QuoteCache, RiskFilter, WsBroadcaster, createServer } from '../index';
-import { NormalizedQuote } from '../types';
+import { DEFAULT_CONFIG, NormalizedQuote } from '../types';
+import { INSTRUMENT_SYMBOLS } from '@goodchain/etoro-client';
 
 function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
   return {
@@ -48,5 +49,14 @@ describe('PriceService', () => {
     service.ingestQuote(makeQuote({ symbol: 'AAPL', sessionState: 'halted' }));
     expect(service.cache.size).toBe(0);
     expect(service.cache.getFresh().length).toBe(0);
+  });
+
+  it('DEFAULT_CONFIG.symbols matches INSTRUMENT_SYMBOLS exactly', () => {
+    expect(DEFAULT_CONFIG.symbols).toEqual([...INSTRUMENT_SYMBOLS]);
+  });
+
+  it('config is publicly readable on a constructed PriceService', () => {
+    const service = new PriceService({ port: 0, wsPort: 0, symbols: ['BTC'] });
+    expect(service.config.symbols).toEqual(['BTC']);
   });
 });

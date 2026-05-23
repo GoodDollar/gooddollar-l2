@@ -297,6 +297,30 @@ hedge silently uses placeholder IDs (see lane task #0006).
 `applyInstrumentOverrides()` then merges the validated overrides with
 `INSTRUMENT_MAP` to produce the runtime table.
 
+### `DEFAULT_LANE_SYMBOLS` and the supplementary list
+
+`backend/etoro-client/src/instruments.ts` exports two extra constants
+that downstream services consume as the canonical default symbol set:
+
+- `DEFAULT_LANE_SYMBOLS: LaneSymbol[]` — a mutable copy of
+  `INSTRUMENT_SYMBOLS`. price-service's `DEFAULT_CONFIG.symbols`,
+  oracle-signer's `ORACLE_SYMBOLS` fallback, and hedge-engine's
+  `HEDGE_SYMBOLS` fallback all spread or join this constant. Adding a
+  symbol means adding it to `INSTRUMENT_MAP` — every consumer picks it
+  up automatically.
+- `SUPPLEMENTARY_STOCK_SYMBOLS = ['MSFT', 'AMZN', 'GOOGL', 'QQQ', 'AMD']`
+  — documentation-only. These are named in
+  `OFFICIAL_ETORO_API_PRICE_SOURCE.md`'s "when available" list but are
+  NOT in `INSTRUMENT_MAP` today, so the SDK cannot price or resolve
+  them. Downstream defaults MUST NOT include them.
+
+`partitionLaneSymbols(input)` returns `{ valid, unknown }`. Every
+consumer runs the env-var-supplied symbol list through this helper at
+startup; unknown symbols cause the service to write
+`SERVICE_HEALTH_STATUS=degraded` and continue with the valid subset
+(price-service degrades broadcaster; oracle-signer degrades publish set;
+hedge-engine degrades hedge set).
+
 ## Runbook — swap fake → real demo creds
 
 1. Provision a demo API key/secret pair in eToro's partner portal.

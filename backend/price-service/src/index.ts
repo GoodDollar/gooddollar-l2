@@ -1,5 +1,9 @@
 import type { Server } from 'http';
-import { EtoroClient } from '@goodchain/etoro-client';
+import {
+  EtoroClient,
+  INSTRUMENT_SYMBOLS,
+  partitionLaneSymbols,
+} from '@goodchain/etoro-client';
 import { QuoteCache } from './quote-cache';
 import { WsBroadcaster } from './ws-broadcaster';
 import { createServer } from './server';
@@ -60,10 +64,20 @@ if (require.main === module) {
     console.log(`[price-service] Connecting to eToro in ${mode} mode...`);
 
     const client = new EtoroClient();
-    const symbols = (process.env.ORACLE_SYMBOLS ?? service.config.symbols.join(','))
+    const rawSymbols = (process.env.ORACLE_SYMBOLS ?? service.config.symbols.join(','))
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
+
+    const { valid: symbols, unknown } = partitionLaneSymbols(rawSymbols);
+    if (unknown.length > 0) {
+      console.error(
+        `[price-service] Unknown symbols: ${unknown.join(', ')}. ` +
+        `Valid: ${INSTRUMENT_SYMBOLS.join(', ')}`,
+      );
+      process.env.SERVICE_HEALTH_STATUS = 'degraded';
+      process.env.SERVICE_DISABLED_REASON = `Unknown symbols: ${unknown.join(',')}`;
+    }
 
     sourceHandle = connectEtoroSource(service, {
       symbols,
