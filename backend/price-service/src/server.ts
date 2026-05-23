@@ -8,6 +8,7 @@ import {
   SOURCE_REASONS_PUBLIC,
   SourceSeverity,
 } from './source-status';
+import { RuntimeBlock } from './runtime';
 import {
   EnvelopeCtx,
   finalizeEnvelope,
@@ -28,6 +29,7 @@ export type WsStatusGetter = () => {
   bindError: string | null;
   port: number | null;
 };
+export type RuntimeGetter = () => RuntimeBlock;
 
 /**
  * Operator-facing block shipped on `/` and `/health` when the broadcaster
@@ -225,9 +227,9 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     methods: ['GET'],
     summary: 'Service discovery: lists endpoints, version, docs.',
     responseShape:
-      '{ service, description, version, docs, endpoints[], quickstart[], ' +
-      "sourceReasonCatalog, websocket?, websocketError?, status: " +
-      "'ok'|'degraded', timestamp, timestampIso }",
+      '{service,description,version,docs,runtime?,endpoints[],' +
+      'quickstart[],sourceReasonCatalog,source?,websocket?,' +
+      "websocketError?,status:'ok'|'degraded',timestamp,timestampIso}",
   },
   {
     path: '/health',
@@ -238,10 +240,10 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     // can ride alongside the long meta tail within the 240-char cap.
     // Outer separators keep spaces for readability.
     responseShape:
-      "{freshQuotes,totalCached,configuredSymbols,symbols[],status," +
-      "source?,websocket?,websocketError?,ingested?,rejected?," +
-      "acceptanceRatio?:number|null," +
-      "acceptanceRatioStatus?:'ok'|'no-data'," +
+      '{freshQuotes,totalCached,configuredSymbols,symbols[],runtime?,' +
+      'status,source?,websocket?,websocketError?,ingested?,rejected?,' +
+      'acceptanceRatio?:number|null,' +
+      'acceptanceRatioStatus?:no-data|ok,' +
       'bootAt*?,uptimeMs?,timestamp,timestampIso} -- 200/503',
   },
   {
@@ -915,6 +917,7 @@ export function createServer(
   bootAtGetter?: BootAtGetter,
   wsAddressGetter?: WsAddressGetter,
   wsStatusGetter?: WsStatusGetter,
+  runtimeGetter?: RuntimeGetter,
 ): express.Express {
   const app = express();
   app.disable('x-powered-by');
@@ -1028,15 +1031,20 @@ export function createServer(
     const quickstart: QuickstartStep[] = [...STATIC_QUICKSTART];
     if (ws) quickstart.push(buildWsQuickstartStep(ws));
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
+    // Runtime block (task 0055) sits high in the body — directly after
+    // the identity triplet (`service`/`description`/`version`/`docs`)
+    // and before the catalog — so an integrator scanning the discovery
+    // payload sees the safety/mode flags before the long endpoint list.
     const body: Record<string, unknown> = {
       service: 'price-service',
       description: SERVICE_DESCRIPTION,
       version: PACKAGE_VERSION,
       docs: DOCS_URL,
-      endpoints: buildEndpointIndex(),
-      quickstart,
-      sourceReasonCatalog: SOURCE_REASON_CATALOG_POINTER,
     };
+    if (runtimeGetter) body.runtime = runtimeGetter();
+    body.endpoints = buildEndpointIndex();
+    body.quickstart = quickstart;
+    body.sourceReasonCatalog = SOURCE_REASON_CATALOG_POINTER;
     res.json(
       finalizeEnvelope(body, now, {
         src,
@@ -1065,6 +1073,10 @@ export function createServer(
       configuredSymbols: cfg.symbols.length,
       symbols: cfg.symbols,
     };
+    // Runtime block (task 0055) rides on /health too — load-balancer
+    // probes typically only call /health, so without this the safety
+    // flags would be invisible to the rest of the system.
+    if (runtimeGetter) body.runtime = runtimeGetter();
     if (statsGetter) {
       const stats = statsGetter();
       body.ingested = stats.ingested;

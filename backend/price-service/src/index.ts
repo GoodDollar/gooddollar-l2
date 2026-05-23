@@ -14,6 +14,7 @@ import { createServer } from './server';
 import { connectEtoroSource } from './etoro-source';
 import { AuditLogger } from './audit-logger';
 import { classifySourceError } from './source-status';
+import { resolveRuntime, RuntimeBlock, checkRealTradingFence } from './runtime';
 import {
   PriceServiceConfig,
   DEFAULT_CONFIG,
@@ -22,6 +23,8 @@ import {
   IngestStats,
   SourceStatus,
 } from './types';
+
+export { RuntimeBlock, resolveRuntime, checkRealTradingFence } from './runtime';
 
 export interface PriceServiceOptions {
   /** Optional pre-built audit logger; defaults to one using env defaults. */
@@ -71,6 +74,17 @@ export class PriceService {
     return this.sourceStatus;
   }
 
+  /**
+   * Per-request snapshot of the runtime block (task 0055). Pinned env
+   * values are resolved at construction time (see `bootAtMs`); the only
+   * runtime-dependent field is `fixtureOnly`, which re-reads the
+   * current source status on each call so a successful attach flips
+   * it from `true` to `false` without a restart.
+   */
+  getRuntime(): RuntimeBlock {
+    return resolveRuntime(this.bootAtMs, this.sourceStatus);
+  }
+
   start(): void {
     const app = createServer(
       this.cache,
@@ -80,6 +94,7 @@ export class PriceService {
       () => this.bootAtMs,
       () => ({ port: this.config.wsPort }),
       () => this.broadcaster.getStatus(),
+      () => this.getRuntime(),
     );
     this.httpServer = app.listen(this.config.port, () => {
       console.log(`[price-service] REST server listening on port ${this.config.port}`);
@@ -120,6 +135,17 @@ export function envPort(name: string): number | undefined {
 }
 
 if (require.main === module) {
+  // Boot-time safety fence (task 0055): refuse to start when
+  // `REAL_TRADING_ENABLED=true` lands in env. This service is read-only
+  // by design, so the flag should never be `'true'` here; if it is, a
+  // misconfigured deploy hit the wrong lane and we want a loud,
+  // recognisable failure rather than a silent "running" service.
+  const fence = checkRealTradingFence();
+  if (fence) {
+    console.error(fence.message);
+    process.exit(fence.exitCode);
+  }
+
   const port = envPort('PRICE_SERVICE_PORT') ?? DEFAULT_CONFIG.port;
   const wsPort = envPort('PRICE_SERVICE_WS_PORT') ?? DEFAULT_CONFIG.wsPort;
   const service = new PriceService({ port, wsPort });
