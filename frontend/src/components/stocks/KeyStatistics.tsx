@@ -42,8 +42,12 @@ export function KeyStatistics({ stock }: { stock: Stock }) {
           {liveFundamentals ? formatLargeNumber(stock.volume24h) : MUTED_DASH}
         </Tile>
         <Tile label="Sector">{stock.sector}</Tile>
-        <Tile label="52W High">{formatStockPrice(stock.high52w)}</Tile>
-        <Tile label="52W Low">{formatStockPrice(stock.low52w)}</Tile>
+        <Tile label="52W High">
+          {liveFundamentals && stock.high52w > 0 ? formatStockPrice(stock.high52w) : MUTED_DASH}
+        </Tile>
+        <Tile label="52W Low">
+          {liveFundamentals && stock.low52w > 0 ? formatStockPrice(stock.low52w) : MUTED_DASH}
+        </Tile>
         <div className="min-w-0">
           <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
           {liveChange ? (

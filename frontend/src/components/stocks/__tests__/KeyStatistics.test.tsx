@@ -56,4 +56,22 @@ describe('KeyStatistics', () => {
     expect(screen.queryByText(/0\.0x/)).toBeNull()
     expect(screen.queryByText('$0.00')).toBeNull()
   })
+
+  it('renders 52W High / Low as em-dash when fundamentals are degraded', () => {
+    render(<KeyStatistics stock={{ ...zeroStock, high52w: 220, low52w: 150 }} />)
+    expect(screen.queryByText('$220.00')).toBeNull()
+    expect(screen.queryByText('$150.00')).toBeNull()
+    expect(screen.queryByText('$0.00')).toBeNull()
+  })
+
+  it('renders 52W High / Low as em-dash when fundamentals are live but values are zero sentinels', () => {
+    render(<KeyStatistics stock={{ ...liveStock, high52w: 0, low52w: 0 }} />)
+    expect(screen.queryByText('$0.00')).toBeNull()
+  })
+
+  it('renders 52W High / Low values when fundamentals are live and values are non-zero', () => {
+    render(<KeyStatistics stock={{ ...liveStock, high52w: 210.5, low52w: 164.0 }} />)
+    expect(screen.getByText('$210.50')).toBeInTheDocument()
+    expect(screen.getByText('$164.00')).toBeInTheDocument()
+  })
 })
