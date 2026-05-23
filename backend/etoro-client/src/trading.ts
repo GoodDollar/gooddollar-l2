@@ -135,6 +135,10 @@ export class TradingModule {
   private readonly capEnforcer?: DemoCapEnforcer;
   private readonly notionalSizer?: (order: OrderRequest) => number;
   private readonly symbolReferencePriceUsd?: (symbol: string) => number | undefined;
+  private readonly liveQuoteSource?: (symbol: string) => LiveQuoteSnapshot | undefined;
+  private readonly maxQuoteAgeMs: number;
+  private readonly maxReferenceDriftRatio?: number;
+  private readonly clock: () => number;
   private readonly disableCapsForTestsOnly: boolean;
 
   constructor(http: AxiosInstance, audit: AuditLogger, options: TradingModuleOptions = {}) {
@@ -152,6 +156,10 @@ export class TradingModule {
     this.capEnforcer = options.capEnforcer;
     this.notionalSizer = options.notionalSizer;
     this.symbolReferencePriceUsd = options.symbolReferencePriceUsd;
+    this.liveQuoteSource = options.liveQuoteSource;
+    this.maxQuoteAgeMs = options.maxQuoteAgeMs ?? DEFAULT_MAX_QUOTE_AGE_MS;
+    this.maxReferenceDriftRatio = options.maxReferenceDriftRatio;
+    this.clock = Date.now;
     this.disableCapsForTestsOnly = disableCapsForTestsOnly;
   }
 
