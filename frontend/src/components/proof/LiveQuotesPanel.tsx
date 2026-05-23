@@ -54,6 +54,39 @@ function formatAge(ms: number): string {
   return `${Math.floor(ms / 60_000)}m`
 }
 
+/**
+ * Structural guard for a single quote row. Only validates the fields the
+ * renderer actually reads; extending the price-service response with new
+ * optional fields stays a non-breaking change for this panel.
+ */
+function isQuote(v: unknown): v is Quote {
+  if (typeof v !== 'object' || v === null) return false
+  const q = v as Record<string, unknown>
+  return (
+    typeof q.symbol === 'string' &&
+    typeof q.bid === 'number' &&
+    typeof q.ask === 'number' &&
+    typeof q.mid === 'number' &&
+    typeof q.cacheAge === 'number' &&
+    typeof q.sessionState === 'string'
+  )
+}
+
+function isQuotesResponse(x: unknown): x is QuotesResponse {
+  if (typeof x !== 'object' || x === null) return false
+  const r = x as Record<string, unknown>
+  if (typeof r.timestamp !== 'number') return false
+  const quotes = r.quotes
+  if (typeof quotes !== 'object' || quotes === null) return false
+  if (Array.isArray(quotes)) return false
+  for (const v of Object.values(quotes as Record<string, unknown>)) {
+    if (!isQuote(v)) return false
+  }
+  return true
+}
+
+const SHAPE_MISMATCH = 'SHAPE_MISMATCH'
+
 interface LiveQuotesPanelProps {
   priceServiceUrl?: string
   stalenessThresholdMs?: number
@@ -75,11 +108,16 @@ export function LiveQuotesPanel({
       try {
         const res = await fetch(`${priceServiceUrl}/quotes`, { cache: 'no-store' })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = (await res.json()) as QuotesResponse
-        if (!cancelled) setState({ status: 'ok', data })
+        const raw = (await res.json()) as unknown
+        if (!isQuotesResponse(raw)) throw new Error(SHAPE_MISMATCH)
+        if (!cancelled) setState({ status: 'ok', data: raw })
       } catch (err) {
         if (!cancelled) {
-          setState({ status: 'error', message: sanitiseClientError('price-service', err) })
+          const ctx =
+            err instanceof Error && err.message === SHAPE_MISMATCH
+              ? 'price-service-shape'
+              : 'price-service'
+          setState({ status: 'error', message: sanitiseClientError(ctx, err) })
         }
       }
     }

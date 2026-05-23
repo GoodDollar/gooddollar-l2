@@ -87,4 +87,26 @@ describe('LiveQuotesPanel', () => {
     expect(screen.queryByText(/9300/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Endpoint:/i)).not.toBeInTheDocument()
   })
+
+  it.each([
+    ['null body', null],
+    ['empty object', {}],
+    ['quotes as array', { timestamp: 1, quotes: [] }],
+    ['quote entry is null', { timestamp: 1, quotes: { AAPL: null } }],
+    ['quote entry missing fields', { timestamp: 1, quotes: { AAPL: { symbol: 'AAPL' } } }],
+    ['top-level array', [1, 2, 3]],
+    ['quote with wrong numeric type', { timestamp: 1, quotes: { AAPL: { symbol: 'AAPL', bid: '178', ask: 179, mid: 178.5, cacheAge: 1000, sessionState: 'Open' } } }],
+  ])('renders shape-mismatch degraded copy without crashing when body is %s', async (_label, body) => {
+    mockFetchOnce(body)
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/unexpected payload shape/i)).toBeInTheDocument()
+    })
+    expect(screen.getByText(/price-service unreachable/i)).toBeInTheDocument()
+    expect(screen.queryByText(/SHAPE_MISMATCH/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Cannot read properties/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
 })

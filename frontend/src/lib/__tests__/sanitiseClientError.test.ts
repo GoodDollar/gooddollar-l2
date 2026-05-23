@@ -19,6 +19,12 @@ describe('sanitiseClientError', () => {
     expect(out).not.toMatch(/Error/)
   })
 
+  it('returns the canned shape-mismatch copy for price-service-shape', () => {
+    const out = sanitiseClientError('price-service-shape', new Error('SHAPE_MISMATCH'))
+    expect(out).toMatch(/unexpected payload shape/i)
+    expect(out).not.toMatch(/SHAPE_MISMATCH/)
+  })
+
   it('returns the canned oracle copy and never leaks wagmi internals', () => {
     const wagmiError = new Error(
       'HTTP request failed.\n\nURL: https://rpc.gooddollar.org\nRequest body: {"method":"eth_call","params":[{"to":"0xa4899d35897033b927acfcf422bc7459161397ab"}]}\n\nDetails: connect ECONNREFUSED\nVersion: viem@2.x.x',

@@ -1,4 +1,7 @@
-export type ClientErrorContext = 'price-service' | 'oracle-multicall'
+export type ClientErrorContext =
+  | 'price-service'
+  | 'price-service-shape'
+  | 'oracle-multicall'
 
 /**
  * Convert a raw client-side error (fetch, wagmi, JSON parser, etc.) into a
@@ -19,6 +22,8 @@ export function sanitiseClientError(
   switch (ctx) {
     case 'price-service':
       return 'Live quotes feed is unreachable. The price-service may be offline or restarting.'
+    case 'price-service-shape':
+      return 'Live quotes feed returned an unexpected payload shape.'
     case 'oracle-multicall':
       return 'On-chain oracle reads are unavailable. The RPC endpoint may be unreachable.'
   }
