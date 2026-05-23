@@ -180,7 +180,8 @@ describe('OracleSignerService', () => {
       await service.start();
       const wsClient = (service as any).wsClient;
       expect(wsClient.connect).not.toHaveBeenCalled();
-      expect((service as any).intervalHandle).toBeNull();
+      expect((service as any).stocksIntervalHandle).toBeNull();
+      expect((service as any).cryptoIntervalHandle).toBeNull();
     });
 
     it('starts normally when chain id matches allowlist override', async () => {
