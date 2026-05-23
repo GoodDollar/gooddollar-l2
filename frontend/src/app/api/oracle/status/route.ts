@@ -43,11 +43,21 @@ export type IngestStatsPayload = {
   lastDroppedReason?: string
   lastDroppedSnippet?: string
 }
+export type ProofFailurePayload = {
+  rail: 'stocks' | 'crypto'
+  reason: string
+  errorClass?: string
+  symbols: string[]
+  attemptedAtMs: number
+}
+export type RailCountsPayload = { ok: number; failed: number }
 type ProofPayload = {
   generatedAt: number
   stocks: ProofTail[]
   crypto: ProofTail[]
   ingest?: IngestStatsPayload
+  failures?: { stocks?: ProofFailurePayload[]; crypto?: ProofFailurePayload[] }
+  counts?: { stocks?: RailCountsPayload; crypto?: RailCountsPayload }
 }
 
 export const DEFAULT_INGEST: IngestStatsPayload = {
@@ -56,6 +66,25 @@ export const DEFAULT_INGEST: IngestStatsPayload = {
   droppedShape: 0,
   droppedInvalidMid: 0,
   droppedMissingSymbol: 0,
+}
+
+function pickFailures(p: ProofPayload | undefined): { stocks: ProofFailurePayload[]; crypto: ProofFailurePayload[] } {
+  const f = p?.failures
+  return {
+    stocks: Array.isArray(f?.stocks) ? f!.stocks as ProofFailurePayload[] : [],
+    crypto: Array.isArray(f?.crypto) ? f!.crypto as ProofFailurePayload[] : [],
+  }
+}
+
+function pickCounts(p: ProofPayload | undefined): { stocks: RailCountsPayload; crypto: RailCountsPayload } {
+  const c = p?.counts
+  const safe = (raw: unknown): RailCountsPayload => {
+    if (!raw || typeof raw !== 'object') return { ok: 0, failed: 0 }
+    const r = raw as Record<string, unknown>
+    const num = (k: string): number => (typeof r[k] === 'number' && Number.isFinite(r[k] as number) ? (r[k] as number) : 0)
+    return { ok: num('ok'), failed: num('failed') }
+  }
+  return { stocks: safe(c?.stocks), crypto: safe(c?.crypto) }
 }
 
 function pickIngest(p: { ingest?: unknown } | undefined): IngestStatsPayload {
@@ -155,6 +184,8 @@ async function handleGet(_req?: NextRequest) {
         quotes: [],
         proof: EMPTY_PROOF,
         ingest: { ...DEFAULT_INGEST },
+        failures: { stocks: [], crypto: [] },
+        counts: { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } },
         freshCount: 0,
         totalCount: 0,
         upstreams,
@@ -173,6 +204,8 @@ async function handleGet(_req?: NextRequest) {
       }
     : EMPTY_PROOF
   const ingest = proofOk ? pickIngest(proofRes.value) : { ...DEFAULT_INGEST }
+  const failures = proofOk ? pickFailures(proofRes.value) : { stocks: [], crypto: [] }
+  const counts = proofOk ? pickCounts(proofRes.value) : { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } }
 
   const healthy = quotesOk && proofOk && (quotesRes.value.healthy ?? true)
   const freshCount = quotesOk ? (quotesRes.value.freshCount ?? quotes.length) : 0
@@ -185,6 +218,8 @@ async function handleGet(_req?: NextRequest) {
     quotes,
     proof,
     ingest,
+    failures,
+    counts,
     freshCount,
     totalCount,
     timestamp: quotesOk ? (quotesRes.value.timestamp ?? Date.now()) : Date.now(),

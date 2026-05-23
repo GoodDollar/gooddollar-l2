@@ -198,6 +198,89 @@ describe('GET /api/oracle/status — ingest counters', () => {
   })
 })
 
+describe('GET /api/oracle/status — failures + counts', () => {
+  it('forwards failures and counts from upstream proof when present', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        failures: {
+          stocks: [{
+            rail: 'stocks',
+            reason: 'execution reverted: deviation too high',
+            errorClass: 'CALL_EXCEPTION',
+            symbols: ['AAPL'],
+            attemptedAtMs: 1700000003000,
+          }],
+          crypto: [],
+        },
+        counts: {
+          stocks: { ok: 412, failed: 3 },
+          crypto: { ok: 117, failed: 0 },
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.failures.stocks).toHaveLength(1)
+    expect(data.failures.stocks[0].errorClass).toBe('CALL_EXCEPTION')
+    expect(data.failures.stocks[0].reason).toContain('deviation too high')
+    expect(data.counts.stocks).toEqual({ ok: 412, failed: 3 })
+    expect(data.counts.crypto).toEqual({ ok: 117, failed: 0 })
+  })
+
+  it('defaults failures and counts to empty/zero when upstream omits them (older signer)', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.failures).toEqual({ stocks: [], crypto: [] })
+    expect(data.counts).toEqual({
+      stocks: { ok: 0, failed: 0 },
+      crypto: { ok: 0, failed: 0 },
+    })
+  })
+
+  it('503 body includes empty failures + zero counts so consumers can read them unconditionally', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.failures).toEqual({ stocks: [], crypto: [] })
+    expect(data.counts).toEqual({
+      stocks: { ok: 0, failed: 0 },
+      crypto: { ok: 0, failed: 0 },
+    })
+  })
+
+  it('treats malformed upstream failures/counts as zero defaults', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        failures: 'oops not an object',
+        counts: { stocks: 'oops', crypto: null },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.failures).toEqual({ stocks: [], crypto: [] })
+    expect(data.counts).toEqual({
+      stocks: { ok: 0, failed: 0 },
+      crypto: { ok: 0, failed: 0 },
+    })
+  })
+})
+
 describe('redactUpstreamReason', () => {
   it('strips long hex sequences (signer keys, addresses)', () => {
     const r = redactUpstreamReason(

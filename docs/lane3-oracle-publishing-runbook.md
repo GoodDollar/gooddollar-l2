@@ -109,6 +109,7 @@ proof tail and degrades gracefully (single-upstream outage still returns
 | Stocks rail OK, crypto rail never publishes | `SWAP_PRICE_ORACLE_ADDRESS` empty or `CRYPTO_SYMBOL_MAP` empty | Both must be set for the crypto rail to enable. |
 | `Submission failed: nonce has already been used` | Two signer instances racing on the same key | Only run one signer per key. The two rails inside a single signer process share a `NonceManager`-wrapped wallet and do not collide. |
 | `Submission failed: …deviation` | Mock prices moved >10% (StockOracleV2's deviation guard) or >25% (SwapPriceOracle's) | The mock walks 0.1% per tick by design; if you raised it, scale back. |
+| `proof.counts.stocks.failed > 0` with empty `proof.stocks` | All recent submissions reverted/timed out — chain may be down or contract guard is rejecting | Inspect `.failures.stocks[0].errorClass` (`CALL_EXCEPTION`, `TIMEOUT`, `NONCE_EXPIRED`, …) and `.failures.stocks[0].reason` for the redacted revert string |
 
 ### Interpreting `/api/oracle/status`
 
@@ -173,6 +174,50 @@ Sample (live values vary):
 The audit log lives in `.autobuilder/logs/oracle-signer/YYYY-MM-DD.jsonl`
 (also gitignored) with one line per `submit_ok` / `submit_fail` / `refused`
 / `startup` / `shutdown` event.
+
+### Failure proof — when submissions break
+
+The `/proof` snapshot also exposes the last N **failed** submissions per
+rail and cumulative `{ ok, failed }` counts since process start. Operators
+can read both without grepping the audit log:
+
+```bash
+curl -s http://localhost:9107/proof | jq '.failures, .counts'
+curl -s http://localhost:3123/api/oracle/status | jq '.proof.counts, .failures'
+```
+
+Sample failure body (live values vary):
+
+```json
+{
+  "failures": {
+    "stocks": [
+      {
+        "rail": "stocks",
+        "reason": "execution reverted: StockOracleV2: deviation too high",
+        "errorClass": "CALL_EXCEPTION",
+        "symbols": ["AAPL", "TSLA"],
+        "attemptedAtMs": 1779544123000
+      }
+    ],
+    "crypto": []
+  },
+  "counts": {
+    "stocks": { "ok": 412, "failed": 3 },
+    "crypto": { "ok": 117, "failed": 0 }
+  }
+}
+```
+
+**Reason-field guarantees**: same redaction policy as `/api/oracle/status`'s
+`upstreams.<rail>.reason` — newlines collapsed to spaces, `0x[0-9a-fA-F]{40,}`
+sequences (signer keys, addresses) replaced with `<redacted-hex>`, length
+clamped to ≤200 chars. Safe to forward to logs / dashboards.
+
+**Counts are cumulative since process start** and do NOT reset when failures
+roll off the bounded ring (`ORACLE_PROOF_CAPACITY`, default 50 per rail).
+A dashboard can render "412 ok / 3 failed" stably without re-reading the
+audit log.
 
 ## CI / regression gate
 

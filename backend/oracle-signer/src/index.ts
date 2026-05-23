@@ -31,10 +31,21 @@ import { CryptoSymbolMap, parseCryptoSymbolMap } from './crypto-symbol-map';
 import { NormalizedQuote, OracleSignerConfig, UpdateResult } from './types';
 import { startHealthServer } from './healthServer';
 import { assertDevnetChain, parseAllowedChainIds } from './chain-guard';
-import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY } from './proof-store';
+import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY, redactProofReason } from './proof-store';
 import { AuditLog } from './audit-log';
 import * as path from 'path';
 import { ethers } from 'ethers';
+
+/**
+ * Best-effort lift of ethers v6's structured error code (CALL_EXCEPTION,
+ * TIMEOUT, NONCE_EXPIRED, …). Returns undefined when the error doesn't
+ * carry one, so the proof-store entry stays untyped rather than lying.
+ */
+function readErrorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== 'object') return undefined;
+  const code = (err as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
+}
 
 export interface OracleSignerDeps {
   /** Optional chain-id getter. Defaults to reading from a rail's provider. Tests inject a stub to avoid a real RPC. */
@@ -288,8 +299,8 @@ export class OracleSignerService {
       if (q) mids[u.symbol] = q.mid;
     }
 
+    const submittedAtMs = Date.now();
     try {
-      const submittedAtMs = Date.now();
       const result = await this.submitter.submitBatch(updates);
       this.buffer.markSubmitted(symbols);
       this.stocksUpdateCount++;
@@ -318,6 +329,13 @@ export class OracleSignerService {
       return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      const errorClass = readErrorCode(err);
+      this.proofStore.recordFailure('stocks', {
+        reason: redactProofReason(err),
+        errorClass,
+        symbols,
+        attemptedAtMs: submittedAtMs,
+      });
       console.error(`[oracle-signer:stocks] Submission failed: ${msg}`);
       void this.auditLog.append({ rail: 'stocks', event: 'submit_fail', error: msg, symbols });
       throw err;
@@ -337,8 +355,8 @@ export class OracleSignerService {
       if (q) mids[u.symbol] = q.mid;
     }
 
+    const submittedAtMs = Date.now();
     try {
-      const submittedAtMs = Date.now();
       const result = await this.cryptoSubmitter.submitBatch(updates);
       this.cryptoBuffer.markSubmitted(symbols);
       this.cryptoUpdateCount++;
@@ -367,6 +385,13 @@ export class OracleSignerService {
       return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      const errorClass = readErrorCode(err);
+      this.proofStore.recordFailure('crypto', {
+        reason: redactProofReason(err),
+        errorClass,
+        symbols,
+        attemptedAtMs: submittedAtMs,
+      });
       console.error(`[oracle-signer:crypto] Submission failed: ${msg}`);
       void this.auditLog.append({ rail: 'crypto', event: 'submit_fail', error: msg, symbols });
       throw err;
