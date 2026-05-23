@@ -61,6 +61,32 @@ describe('LiveQuotesPanel', () => {
     expect(screen.getByText(/0\.112%/)).toBeInTheDocument()
   })
 
+  it('colours the session pill green when sessionState is "open"', async () => {
+    mockFetchOnce({
+      quotes: { AAPL: { ...QUOTES_FRESH.quotes.AAPL, sessionState: 'open' } },
+      timestamp: 1700000005_000,
+    })
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+
+    const pill = await screen.findByTestId('session-pill-AAPL')
+    expect(pill.className).toMatch(/bg-green/)
+    expect(pill.textContent).toBe('open')
+  })
+
+  it('colours the session pill neutral gray when sessionState is "closed"', async () => {
+    mockFetchOnce({
+      quotes: { AAPL: { ...QUOTES_FRESH.quotes.AAPL, sessionState: 'closed' } },
+      timestamp: 1700000005_000,
+    })
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+
+    const pill = await screen.findByTestId('session-pill-AAPL')
+    expect(pill.className).toMatch(/text-gray-400/)
+    expect(pill.className).not.toMatch(/bg-green/)
+  })
+
   it('renders the outer section with the stable jump-target id', () => {
     globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
     const { container } = render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)

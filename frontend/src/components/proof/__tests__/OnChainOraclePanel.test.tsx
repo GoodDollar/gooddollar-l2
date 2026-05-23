@@ -154,6 +154,60 @@ describe('OnChainOraclePanel', () => {
     expect(banner.textContent).toMatch(/oracle-signer keeper/)
   })
 
+  it('colours the session pill green when getPriceData decodes session=0 (Open)', () => {
+    useReadContractsMock.mockReturnValue({
+      data: [
+        {
+          status: 'success',
+          result: {
+            price8: 17_860_000_000n,
+            timestamp: BigInt(Math.floor(Date.now() / 1000)),
+            session: 0,
+            confidence: 95,
+            signerCount: 1,
+          },
+        },
+        { status: 'failure', error: new Error('skip') },
+        { status: 'failure', error: new Error('skip') },
+      ],
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    const pill = screen.getByTestId('session-pill-AAPL')
+    expect(pill.className).toMatch(/bg-green/)
+    expect(pill.textContent).toBe('Open')
+  })
+
+  it('colours the session pill red when session=4 (Halted)', () => {
+    useReadContractsMock.mockReturnValue({
+      data: [
+        {
+          status: 'success',
+          result: {
+            price8: 17_860_000_000n,
+            timestamp: BigInt(Math.floor(Date.now() / 1000)),
+            session: 4,
+            confidence: 95,
+            signerCount: 1,
+          },
+        },
+        { status: 'failure', error: new Error('skip') },
+        { status: 'failure', error: new Error('skip') },
+      ],
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    const pill = screen.getByTestId('session-pill-AAPL')
+    expect(pill.className).toMatch(/bg-red/)
+    expect(pill.textContent).toBe('Halted')
+  })
+
   it('does not render placeholder rows or the empty banner when populated rows exist', () => {
     useReadContractsMock.mockReturnValue({
       data: [

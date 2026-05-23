@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { formatProofUsd } from '@/lib/proofFormat'
+import { sessionPillClass } from './sessionPill'
 
 interface Quote {
   source?: string
@@ -221,7 +222,10 @@ export function LiveQuotesPanel({
                         {spreadPct(q.bid, q.ask).toFixed(3)}%
                       </td>
                       <td className="py-2 pr-3">
-                        <span className="rounded-md bg-white/5 px-2 py-0.5 text-xs text-gray-300">
+                        <span
+                          data-testid={`session-pill-${q.symbol}`}
+                          className={`rounded-md px-2 py-0.5 text-xs ${sessionPillClass(q.sessionState)}`}
+                        >
                           {q.sessionState}
                         </span>
                       </td>

@@ -7,6 +7,7 @@ import { PriceOracleABI } from '@/lib/abi'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { getAllTickers } from '@/lib/stockData'
 import { formatProofUsd } from '@/lib/proofFormat'
+import { sessionPillClass } from './sessionPill'
 
 const SESSION_LABELS: Record<number, string> = {
   0: 'Open',
@@ -186,20 +187,26 @@ export function OnChainOraclePanel() {
                   ))}
                 </>
               ) : (
-                rows.map((row) => (
-                  <tr key={row.symbol} className="border-b border-white/5 last:border-0">
-                    <td className="py-2 pr-3 font-medium text-white">{row.symbol}</td>
-                    <td className="py-2 pr-3 text-right font-mono text-gray-100">{formatUsd8(row.symbol, row.price8)}</td>
-                    <td className="py-2 pr-3">
-                      <span className="rounded-md bg-white/5 px-2 py-0.5 text-xs text-gray-300">
-                        {SESSION_LABELS[row.session] ?? `enum(${row.session})`}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-3 text-right font-mono text-gray-300">{row.confidence}%</td>
-                    <td className="py-2 pr-3 text-right font-mono text-gray-300">{row.signerCount}</td>
-                    <td className="py-2 pr-3 text-right text-xs text-gray-400">{formatAgo(row.timestamp)}</td>
-                  </tr>
-                ))
+                rows.map((row) => {
+                  const sessionLabel = SESSION_LABELS[row.session] ?? `enum(${row.session})`
+                  return (
+                    <tr key={row.symbol} className="border-b border-white/5 last:border-0">
+                      <td className="py-2 pr-3 font-medium text-white">{row.symbol}</td>
+                      <td className="py-2 pr-3 text-right font-mono text-gray-100">{formatUsd8(row.symbol, row.price8)}</td>
+                      <td className="py-2 pr-3">
+                        <span
+                          data-testid={`session-pill-${row.symbol}`}
+                          className={`rounded-md px-2 py-0.5 text-xs ${sessionPillClass(sessionLabel)}`}
+                        >
+                          {sessionLabel}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-right font-mono text-gray-300">{row.confidence}%</td>
+                      <td className="py-2 pr-3 text-right font-mono text-gray-300">{row.signerCount}</td>
+                      <td className="py-2 pr-3 text-right text-xs text-gray-400">{formatAgo(row.timestamp)}</td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
