@@ -271,15 +271,20 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'Single symbol; 400 invalid-symbol|invalid-symbol-or-path, ' +
       '404 symbol-not-configured|no-quote, 200 quote envelope.',
     parametric: true,
-    // Inner field lists comma-packed and the meta-tail factored to a
-    // trailing "all end:" suffix so the three sub-envelopes (200/400/404)
-    // can document their full error-code unions within the 240-char cap.
+    // The three sub-envelopes (200/400/404) plus the meta tail blow past
+    // the 240-char cap when every field is named. 200's field detail is
+    // folded into the summary "NormalizedQuote env" — the inner extras
+    // (cacheAge, filterAccepted, filterReason) are documented on the
+    // /quotes responseShape and `NormalizedQuote env` keeps the link
+    // intact. The 400 + 404 envelopes carry full field lists so a fresh
+    // integrator can write the error-path types from this string alone.
     responseShape:
-      '200: NormalizedQuote+{cacheAge,filterAccepted,filterReason,source?} | ' +
+      '200: NormalizedQuote env | ' +
       '400: {error:invalid-symbol|invalid-symbol-or-path,' +
       'message,didYouMean?,path,method} | ' +
-      '404: {error,message,symbol,configured,source?}; ' +
-      'all end: timestamp,timestampIso',
+      '404: {error,message,symbol,configured,configuredSymbols,' +
+      'configuredSymbolCount,didYouMean?,source?}; ' +
+      'tail: timestamp,timestampIso',
   },
   {
     path: '/status/quotes',
@@ -541,6 +546,64 @@ const VALID_SYMBOL = /^[A-Z0-9._-]{1,16}$/;
 export type NormalizeSymbolResult =
   | { ok: true; symbol: string }
   | { ok: false; reason: 'shape' | 'no-alnum' };
+
+/**
+ * Two-row Levenshtein edit distance. Bounded scan: when `|a.length -
+ * b.length| > limit`, return `limit + 1` immediately so the caller can
+ * reject without paying for the DP. Pure; no allocations beyond two
+ * Int32 rows the same size as `b`.
+ */
+function levenshtein(a: string, b: string, limit: number): number {
+  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+  if (a === b) return 0;
+  let prev = new Array<number>(b.length + 1);
+  let curr = new Array<number>(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + cost,
+      );
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[b.length];
+}
+
+/**
+ * Find the closest configured symbol to a typo'd input. Threshold is
+ * `max(2, floor(input.length * 0.3))` — a baseline of 2 catches the
+ * realistic 2-edit ticker typos (`APLE` → `AAPL`: insert `A` after the
+ * first `A`, delete trailing `E`) while still refusing absurd matches
+ * (any 5+ char input far from every configured symbol). Scales gently
+ * for longer inputs (a 10-char input gets threshold 3).
+ *
+ * Returns `undefined` (NOT `null`, NOT `""`) when no candidate clears
+ * the threshold, so the wire envelope can omit the field entirely
+ * instead of shipping a confusing null.
+ */
+export function nearestSymbol(
+  input: string,
+  symbols: readonly string[],
+): string | undefined {
+  if (symbols.length === 0) return undefined;
+  const threshold = Math.max(2, Math.floor(input.length * 0.3));
+  let bestDist = Infinity;
+  let bestSym: string | undefined;
+  for (const sym of symbols) {
+    const d = levenshtein(input, sym, threshold);
+    if (d < bestDist) {
+      bestDist = d;
+      bestSym = sym;
+      if (d === 0) break;
+    }
+  }
+  return bestDist <= threshold ? bestSym : undefined;
+}
 
 export function normalizeSymbol(raw: string): NormalizeSymbolResult {
   if (typeof raw !== 'string') return { ok: false, reason: 'shape' };
@@ -860,6 +923,11 @@ export function createServer(
       // because it isn't in the subscription set. Distinct from the
       // transient `no-quote` case so polling consumers can give up
       // and surface a config error instead of retrying forever.
+      //
+      // Carry the full configured set + count + a Levenshtein-1
+      // suggestion so a frontend can render "did you mean AAPL?" from
+      // this single response (task 0040). `didYouMean` is omitted —
+      // not null — when no candidate clears the threshold.
       const body: Record<string, unknown> = {
         error: 'symbol-not-configured',
         message:
@@ -867,7 +935,11 @@ export function createServer(
           'retrying will not help — update ORACLE_SYMBOLS and restart',
         symbol: result.symbol,
         configured: false,
+        configuredSymbols: cfg.symbols,
+        configuredSymbolCount: cfg.symbols.length,
       };
+      const suggestion = nearestSymbol(result.symbol, cfg.symbols);
+      if (suggestion !== undefined) body.didYouMean = suggestion;
       if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
       body.timestamp = now;
       body.timestampIso = isoFromMs(now)!;
