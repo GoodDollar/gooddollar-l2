@@ -13,6 +13,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@goodchain/etoro-client": "file:../etoro-client",
     "ethers": "^6.13.0"
   },
   "devDependencies": {

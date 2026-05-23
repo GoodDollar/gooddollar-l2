@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@goodchain/etoro-client": "file:../etoro-client",
     "express": "^4.18.2",
     "ws": "^8.16.0"
   },

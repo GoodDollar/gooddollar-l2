@@ -1,3 +1,12 @@
+import type { Server } from 'http';
+import { EtoroClient } from '@goodchain/etoro-client';
+import { QuoteCache } from './quote-cache';
+import { WsBroadcaster } from './ws-broadcaster';
+import { createServer } from './server';
+import { connectEtoroSource } from './etoro-source';
+import type { EtoroSourceHandle } from './etoro-source';
+import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult } from './types';
+
 export { QuoteCache } from './quote-cache';
 export { RiskFilter } from './risk-filter';
 export { WsBroadcaster } from './ws-broadcaster';
@@ -6,17 +15,11 @@ export { connectEtoroSource } from './etoro-source';
 export type { EtoroSourceConfig, EtoroSourceHandle, MarketDataSource } from './etoro-source';
 export type * from './types';
 
-import { QuoteCache } from './quote-cache';
-import { WsBroadcaster } from './ws-broadcaster';
-import { createServer } from './server';
-import { connectEtoroSource } from './etoro-source';
-import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult } from './types';
-
 export class PriceService {
   readonly cache: QuoteCache;
   readonly broadcaster: WsBroadcaster;
-  private readonly config: PriceServiceConfig;
-  private httpServer?: ReturnType<typeof import('http').createServer>;
+  readonly config: PriceServiceConfig;
+  private httpServer?: Server;
 
   constructor(config?: Partial<PriceServiceConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -50,18 +53,17 @@ if (require.main === module) {
   const service = new PriceService();
   service.start();
 
-  let sourceHandle: import('./etoro-source').EtoroSourceHandle | undefined;
+  let sourceHandle: EtoroSourceHandle | undefined;
 
   try {
-    const { EtoroClient } = require('../../etoro-client/src/index') as {
-      EtoroClient: new (config?: unknown) => { marketData: import('./etoro-source').MarketDataSource };
-    };
-
     const mode = process.env.ETORO_MODE ?? 'sandbox';
     console.log(`[price-service] Connecting to eToro in ${mode} mode...`);
 
     const client = new EtoroClient();
-    const symbols = (process.env.ORACLE_SYMBOLS ?? service['config'].symbols.join(',')).split(',').map(s => s.trim()).filter(Boolean);
+    const symbols = (process.env.ORACLE_SYMBOLS ?? service.config.symbols.join(','))
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     sourceHandle = connectEtoroSource(service, {
       symbols,
