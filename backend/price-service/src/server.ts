@@ -129,7 +129,10 @@ export function createServer(
         filterReason: entry.filterResult.reason,
       };
     }
-    res.json({ quotes, timestamp: Date.now() });
+    const body: Record<string, unknown> = { quotes };
+    if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
+    body.timestamp = Date.now();
+    res.json(body);
   });
 
   app.get('/quotes/:symbol', (req: Request, res: Response) => {
@@ -139,6 +142,7 @@ export function createServer(
       // Truncate at 32 chars (the same limit `normalizeSymbol` enforces
       // on the raw input) plus the `/quotes/` prefix.
       const path = req.path.length > 48 ? `${req.path.slice(0, 48)}…` : req.path;
+      // 400 is input validation — intentionally does NOT carry source state.
       res.status(400).json({
         error: 'invalid-symbol',
         message: 'symbol must match /^[A-Z0-9._-]{1,16}$/',
@@ -150,24 +154,31 @@ export function createServer(
     }
     const entry = cache.get(result.symbol);
     if (!entry) {
-      res.status(404).json({
+      const body: Record<string, unknown> = {
         error: 'no-quote',
         symbol: result.symbol,
-        timestamp: Date.now(),
-      });
+      };
+      if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
+      body.timestamp = Date.now();
+      res.status(404).json(body);
       return;
     }
-    res.json({
+    const body: Record<string, unknown> = {
       ...entry.quote,
       cacheAge: Date.now() - entry.cachedAt,
       filterAccepted: entry.filterResult.accepted,
       filterReason: entry.filterResult.reason,
-    });
+    };
+    if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
+    res.json(body);
   });
 
   app.get('/quotes/fresh/all', (_req: Request, res: Response) => {
     const fresh = cache.getFresh();
-    res.json({ quotes: fresh, count: fresh.length, timestamp: Date.now() });
+    const body: Record<string, unknown> = { quotes: fresh, count: fresh.length };
+    if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
+    body.timestamp = Date.now();
+    res.json(body);
   });
 
   app.get('/audit/stats', (_req: Request, res: Response) => {

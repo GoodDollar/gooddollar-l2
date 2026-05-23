@@ -874,4 +874,197 @@ describe('REST Server — response shape unchanged when no source getter is wire
     expect(res.status).toBe(200);
     expect(body.source).toBeUndefined();
   });
+
+  it('/quotes has no source field when no getter provided', async () => {
+    const res = await fetch(`${baseUrl}/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(Object.prototype.hasOwnProperty.call(body, 'source')).toBe(false);
+  });
+
+  it('/quotes/fresh/all has no source field when no getter provided', async () => {
+    const res = await fetch(`${baseUrl}/quotes/fresh/all`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(Object.prototype.hasOwnProperty.call(body, 'source')).toBe(false);
+  });
+
+  it('/quotes/:symbol 200 keeps the legacy quote.source string when no getter provided', async () => {
+    cache.clear();
+    cache.update(makeQuote({ symbol: 'AAPL' }));
+    const res = await fetch(`${baseUrl}/quotes/AAPL`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    // Without a getter, the only `source` is the quote's hardcoded
+    // `'etoro'` string — no upstream-status object is added.
+    expect(body.source).toBe('etoro');
+  });
+
+  it('/quotes/:symbol 404 has no source field when no getter provided', async () => {
+    cache.clear();
+    const res = await fetch(`${baseUrl}/quotes/AAPL`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(Object.prototype.hasOwnProperty.call(body, 'source')).toBe(false);
+  });
+});
+
+describe('REST Server — data endpoints carry source state when getter wired', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+  let srcState: SourceStatus;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    srcState = { connected: true, symbols: ['AAPL'], lastAttachAt: 1700000000000 };
+    app = createServer(
+      cache,
+      { symbols: ['AAPL', 'TSLA'] },
+      undefined,
+      () => srcState,
+    );
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('GET /quotes includes source.connected=false when getter reports disconnect', async () => {
+    cache.clear();
+    srcState = { connected: false, reason: 'etoro-client-not-installed', lastAttachAt: null };
+    const res = await fetch(`${baseUrl}/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(false);
+    expect(src.reason).toBe('etoro-client-not-installed');
+    expect(src.lastAttachAt).toBeNull();
+  });
+
+  it('GET /quotes includes source.connected=true and symbols when source attached', async () => {
+    cache.clear();
+    cache.update(makeQuote({ symbol: 'AAPL' }));
+    srcState = { connected: true, symbols: ['AAPL'], lastAttachAt: 1700000000000 };
+    const res = await fetch(`${baseUrl}/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(true);
+    expect(src.symbols).toEqual(['AAPL']);
+    expect(src.lastAttachAt).toBe(1700000000000);
+  });
+
+  it('GET /quotes/fresh/all includes source.connected=true and symbols when source attached', async () => {
+    cache.clear();
+    cache.update(makeQuote({ symbol: 'AAPL' }));
+    srcState = { connected: true, symbols: ['AAPL'], lastAttachAt: 1700000000000 };
+    const res = await fetch(`${baseUrl}/quotes/fresh/all`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(true);
+    expect(src.symbols).toEqual(['AAPL']);
+  });
+
+  it('GET /quotes/fresh/all includes source.connected=false when disconnected', async () => {
+    cache.clear();
+    srcState = { connected: false, reason: 'etoro-client-not-installed', lastAttachAt: null };
+    const res = await fetch(`${baseUrl}/quotes/fresh/all`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(false);
+  });
+
+  it('GET /quotes/:symbol cached symbol returns 200 with source block', async () => {
+    cache.clear();
+    cache.update(makeQuote({ symbol: 'AAPL', last: 190 }));
+    srcState = { connected: true, symbols: ['AAPL'], lastAttachAt: 1700000000000 };
+    const res = await fetch(`${baseUrl}/quotes/AAPL`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body.symbol).toBe('AAPL');
+    expect(body.last).toBe(190);
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(true);
+    expect(src.symbols).toEqual(['AAPL']);
+  });
+
+  it('GET /quotes/:symbol uncached symbol returns 404 with source block', async () => {
+    cache.clear();
+    srcState = { connected: false, reason: 'etoro-client-not-installed', lastAttachAt: null };
+    const res = await fetch(`${baseUrl}/quotes/AAPL`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('no-quote');
+    expect(body.symbol).toBe('AAPL');
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(false);
+    expect(src.reason).toBe('etoro-client-not-installed');
+  });
+
+  it('GET /quotes/:symbol redacts source.reason via sanitizeSourceStatus', async () => {
+    cache.clear();
+    srcState = {
+      connected: false,
+      reason:
+        "Cannot find module '/home/x/y'\nRequire stack:\n- /home/x/z",
+      lastAttachAt: null,
+    };
+    const res = await fetch(`${baseUrl}/quotes/AAPL`);
+    const text = await res.text();
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    const src = body.source as Record<string, unknown>;
+    const reason = src.reason as string;
+    expect(reason).not.toContain('\n');
+    expect(reason).not.toMatch(/\/home\//);
+    expect(reason).not.toContain('Require stack');
+  });
+
+  it('GET /quotes redacts source.reason via sanitizeSourceStatus', async () => {
+    cache.clear();
+    srcState = {
+      connected: false,
+      reason: "Cannot find module '/home/x/y'\nRequire stack:\n- /home/x/z",
+      lastAttachAt: null,
+    };
+    const res = await fetch(`${baseUrl}/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    const src = body.source as Record<string, unknown>;
+    const reason = src.reason as string;
+    expect(reason).not.toContain('\n');
+    expect(reason).not.toMatch(/\/home\//);
+  });
+
+  it('GET /quotes/:symbol invalid-symbol 400 does NOT include source field', async () => {
+    srcState = { connected: false, reason: 'etoro-client-not-installed', lastAttachAt: null };
+    const res = await fetch(`${baseUrl}/quotes/${'A'.repeat(17)}`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('invalid-symbol');
+    expect(Object.prototype.hasOwnProperty.call(body, 'source')).toBe(false);
+  });
+
+  it('/quotes source matches /status/quotes source at the same instant', async () => {
+    cache.clear();
+    cache.update(makeQuote({ symbol: 'AAPL' }));
+    srcState = { connected: true, symbols: ['AAPL'], lastAttachAt: 1700000000000 };
+    const [qRes, sRes] = await Promise.all([
+      fetch(`${baseUrl}/quotes`),
+      fetch(`${baseUrl}/status/quotes`),
+    ]);
+    const qBody = (await qRes.json()) as Record<string, unknown>;
+    const sBody = (await sRes.json()) as Record<string, unknown>;
+    expect(qBody.source).toEqual(sBody.source);
+  });
 });
