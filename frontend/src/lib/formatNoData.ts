@@ -73,3 +73,26 @@ export function formatCompactUsd(value: number): string {
 }
 
 export const NO_DATA_DASH = DASH
+
+/**
+ * Detect the chain-path 52W placeholder (task 0024).
+ *
+ * `useOnChainStocks` populates `high52w = price * 1.15` and `low52w =
+ * price * 0.75` when the oracle has no historical extras, so the
+ * generic numbers render as if they were real ranges. This helper
+ * spots that exact fingerprint with a tiny floating-point tolerance —
+ * real fallback fixtures (AAPL 237.49 / 164.08, etc.) do NOT match.
+ */
+export function looksLikePlaceholder52w(stock: {
+  price: number
+  high52w: number
+  low52w: number
+}): boolean {
+  if (!Number.isFinite(stock.price) || stock.price <= 0) return false
+  if (!Number.isFinite(stock.high52w) || !Number.isFinite(stock.low52w)) return false
+  const tol = 1e-4
+  return (
+    Math.abs(stock.high52w - stock.price * 1.15) / stock.price < tol &&
+    Math.abs(stock.low52w - stock.price * 0.75) / stock.price < tol
+  )
+}

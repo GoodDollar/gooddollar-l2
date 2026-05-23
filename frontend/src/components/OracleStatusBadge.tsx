@@ -218,9 +218,13 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         {quoteStatus.confidence > 0 && (
           <>
             <span className="text-gray-600">·</span>
-            <span className={quoteStatus.confidence >= 70 ? 'text-gray-400' : 'text-yellow-400'}>
+            <abbr
+              title="price-service signer-quorum agreement (0–100). 70+ is healthy; below 70 renders yellow."
+              data-testid="oracle-confidence-chip"
+              className={`no-underline cursor-help ${quoteStatus.confidence >= 70 ? 'text-gray-400' : 'text-yellow-400'}`}
+            >
               {quoteStatus.confidence}% conf
-            </span>
+            </abbr>
           </>
         )}
       </div>
