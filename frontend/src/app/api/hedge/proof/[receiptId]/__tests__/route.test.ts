@@ -156,6 +156,63 @@ describe('GET /api/hedge/proof/[receiptId]', () => {
     expect(body.status).toBe('invalid_id');
   });
 
+  // #0062 — structurally-invalid ids (whitespace-only, control bytes,
+  // newlines, ZWSP, embedded tabs, too-long) must short-circuit at
+  // the validator and never trigger an engine probe.
+  describe('structurally invalid receipt ids (#0062)', () => {
+    const cases: Array<{
+      label: string;
+      input: string;
+      reasonPattern: RegExp;
+    }> = [
+      {
+        label: 'pure whitespace',
+        input: '   ',
+        reasonPattern: /empty.*whitespace|whitespace/i,
+      },
+      {
+        label: 'null byte',
+        input: '\x00',
+        reasonPattern: /invalid characters/i,
+      },
+      {
+        label: 'newlines',
+        input: '\n\n',
+        reasonPattern: /invalid characters/i,
+      },
+      {
+        label: 'embedded tab',
+        input: 'abc\tdef',
+        reasonPattern: /invalid characters/i,
+      },
+      {
+        label: 'zero-width space',
+        input: 'abc\u200Bdef',
+        reasonPattern: /invalid characters/i,
+      },
+      {
+        label: '257-char id (too long)',
+        input: 'a'.repeat(257),
+        reasonPattern: /too long/i,
+      },
+    ];
+
+    for (const { label, input, reasonPattern } of cases) {
+      it(`returns 400 invalid_id and avoids the engine for "${label}"`, async () => {
+        const fetchSpy = vi.spyOn(globalThis, 'fetch');
+        const res = await GET(makeReq(input), makeCtx(input));
+        expect(res.status).toBe(400);
+        const body = (await res.json()) as {
+          status: string;
+          reason: string;
+        };
+        expect(body.status).toBe('invalid_id');
+        expect(body.reason).toMatch(reasonPattern);
+        expect(fetchSpy).not.toHaveBeenCalled();
+      });
+    }
+  });
+
   it('accepts the params object in both sync and async (Promise) shapes', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({

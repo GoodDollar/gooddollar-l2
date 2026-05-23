@@ -9,6 +9,7 @@ import {
   timedFetch,
   type ProofPointer,
 } from '@/lib/hedge-proof';
+import { validateReceiptId } from '@/lib/hedge-proof-validate-receipt-id';
 import { withApiRateLimit } from '@/lib/withApiRateLimit';
 
 /**
@@ -98,14 +99,16 @@ async function handleGet(
       return '';
     }
   })();
-  if (!decoded || decoded.length === 0) {
+  const validation = validateReceiptId(decoded);
+  if (!validation.ok) {
     return json(
-      { status: 'invalid_id', reason: 'Missing or empty receipt id' },
+      { status: 'invalid_id', reason: validation.reason },
       400,
     );
   }
+  const id = validation.id;
 
-  const outcome = await probeEngine(proofUrlsForReceipt(decoded));
+  const outcome = await probeEngine(proofUrlsForReceipt(id));
 
   if (!outcome.ok) {
     if (outcome.sawNotFound && outcome.errors.length === 0 && !outcome.lastError) {
