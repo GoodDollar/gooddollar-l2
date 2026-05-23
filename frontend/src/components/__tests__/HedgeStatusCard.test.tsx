@@ -425,6 +425,38 @@ describe('HedgeStatusCard', () => {
     expect(timeCell?.getAttribute('title')).toBe(new Date(1700000000000).toISOString());
   });
 
+  it('notional cell formats four-digit values with thousands separators', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: [{ ...BASE_RESPONSE.receipts[0], notionalUsd: 12500 }],
+    });
+    render(<HedgeStatusCard />);
+    const row = await screen.findByTestId('hedge-receipt-row');
+    expect(row).toHaveTextContent('$12,500.00');
+    expect(row).not.toHaveTextContent('$12500.00');
+  });
+
+  it('notional cell places the sign before the currency symbol for negatives', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: [{ ...BASE_RESPONSE.receipts[0], notionalUsd: -50 }],
+    });
+    render(<HedgeStatusCard />);
+    const row = await screen.findByTestId('hedge-receipt-row');
+    expect(row).toHaveTextContent('-$50.00');
+    expect(row).not.toHaveTextContent('$-50.00');
+  });
+
+  it('daily notional stat tile uses thousands separators', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      capSnapshot: { ...BASE_RESPONSE.capSnapshot, dailyNotionalUsd: 12500 },
+    });
+    render(<HedgeStatusCard />);
+    const grid = await screen.findByTestId('hedge-stat-grid');
+    expect(grid).toHaveTextContent('$12,500.00');
+  });
+
   it('receipts table renders an em-dash placeholder when etoroOrderId is missing', async () => {
     mockFetchOnce({
       ...BASE_RESPONSE,

@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from 'react'
 
+import { formatNotionalUsd } from '@/lib/format-notional'
+
 /**
  * Lane 5 — demo hedge proof surface.
  *
@@ -387,7 +389,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             >
               <Stat
                 label="Today's notional"
-                value={cap ? `$${cap.dailyNotionalUsd.toFixed(2)}` : '—'}
+                value={cap ? formatNotionalUsd(cap.dailyNotionalUsd) : '—'}
                 sub={cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'}
               />
               <Stat
@@ -466,7 +468,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
                     <td className="py-1.5 pr-2 text-white">{r.symbol}</td>
                     <td className="py-1.5 pr-2 text-gray-300">{r.side}</td>
                     <td className="py-1.5 pr-2 text-right text-gray-200">
-                      ${r.notionalUsd.toFixed(2)}
+                      {formatNotionalUsd(r.notionalUsd)}
                     </td>
                     <td
                       data-testid="hedge-receipt-exposure-delta"
