@@ -2,15 +2,35 @@ import express, { NextFunction, Request, Response } from 'express';
 import { QuoteCache } from './quote-cache';
 import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats, SourceStatus } from './types';
 import {
+  enrichWsReason,
   sanitizeSourceStatus,
   SanitizedSourceStatus,
   SOURCE_REASONS_PUBLIC,
+  SourceSeverity,
 } from './source-status';
 
 export type IngestStatsGetter = () => IngestStats;
 export type SourceStatusGetter = () => SourceStatus;
 export type BootAtGetter = () => number;
 export type WsAddressGetter = () => { port: number; host?: string };
+export type WsStatusGetter = () => {
+  listening: boolean;
+  bindError: string | null;
+  port: number | null;
+};
+
+/**
+ * Operator-facing block shipped on `/` and `/health` when the broadcaster
+ * has failed to bind. Mutually exclusive with the `websocket` block: when
+ * one is present, the other is absent.
+ */
+export interface WsErrorBlock {
+  reason: string;
+  port: number;
+  humanReason: string;
+  nextStep: string;
+  severity: SourceSeverity;
+}
 
 /**
  * Frame schema docs for the WS broadcaster, surfaced on both `GET /` and
@@ -188,8 +208,8 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary: 'Service discovery: lists endpoints, version, docs.',
     responseShape:
       '{ service, description, version, docs, endpoints[], quickstart[], ' +
-      "sourceReasonCatalog, websocket?, status: 'ok'|'degraded', " +
-      'timestamp, timestampIso }',
+      "sourceReasonCatalog, websocket?, websocketError?, status: " +
+      "'ok'|'degraded', timestamp, timestampIso }",
   },
   {
     path: '/health',
@@ -197,8 +217,8 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary: 'Liveness + readiness for load balancers; 503 when degraded.',
     responseShape:
       '{ freshQuotes, totalCached, configuredSymbols, symbols[], ' +
-      "status:'ok'|'degraded', source?, websocket?, ingested?, " +
-      'rejected?, acceptanceRatio?: number|null, ' +
+      'status, source?, websocket?, websocketError?, ingested?, ' +
+      'rejected?, acceptanceRatio?:number|null, ' +
       "acceptanceRatioStatus?:'ok'|'no-data', bootAt*?, uptimeMs?, " +
       'ts } -- 200/503',
   },
@@ -527,11 +547,15 @@ export function computeAcceptanceRatio(
  *
  * The cache alone is not enough: an empty cache during warmup is
  * fine when the source is connected, but the same empty cache with
- * a dead source is "we will never tick" — degraded.
+ * a dead source is "we will never tick" — degraded. A failed WS
+ * bind is also degraded: live-tick subscribers can't connect, so
+ * the service is read-only at best (and to a stranger's instance
+ * at worst, when the same port is held by another process).
  */
 function computeDegraded(
   cache: QuoteCache,
   sourceStatusGetter?: SourceStatusGetter,
+  wsStatusGetter?: WsStatusGetter,
 ): { degraded: boolean; src?: SanitizedSourceStatus } {
   const fresh = cache.getFresh();
   const cacheHealthy = fresh.length > 0 || cache.size === 0;
@@ -541,6 +565,7 @@ function computeDegraded(
     src = sanitizeSourceStatus(sourceStatusGetter());
     if (!src.connected) degraded = true;
   }
+  if (wsStatusGetter && !wsStatusGetter().listening) degraded = true;
   return { degraded, src };
 }
 
@@ -551,6 +576,7 @@ export function createServer(
   sourceStatusGetter?: SourceStatusGetter,
   bootAtGetter?: BootAtGetter,
   wsAddressGetter?: WsAddressGetter,
+  wsStatusGetter?: WsStatusGetter,
 ): express.Express {
   const app = express();
   app.disable('x-powered-by');
@@ -562,11 +588,13 @@ export function createServer(
 
   // Single helper so the `/`, `/health`, and 404 surfaces emit identical
   // advertisements off the same input. Returns `undefined` when wiring
-  // is absent so call sites can omit the field cleanly (preserves the
-  // backward-compat contract for fixtures constructed with the old
-  // 5-arg `createServer`).
+  // is absent OR when the broadcaster has not actually bound (avoids
+  // handing out a poisoned `ws://` URL — see task 0032). The 5-arg
+  // backward-compat fixture path keeps working: with no wsStatusGetter,
+  // the bind state is treated as "trust the address getter".
   function buildWsAdvertisement(req: Request): WsAdvertisement | undefined {
     if (!wsAddressGetter) return undefined;
+    if (wsStatusGetter && !wsStatusGetter().listening) return undefined;
     const { port, host } = wsAddressGetter();
     const hostname = host ?? hostnameFromHostHeader(req.get('host'));
     return {
@@ -575,6 +603,25 @@ export function createServer(
       frames: ['snapshot', 'quote'] as const,
       snapshot: WS_FRAME_DOCS.snapshot,
       quote: WS_FRAME_DOCS.quote,
+    };
+  }
+
+  // Mutually exclusive sibling of `buildWsAdvertisement`: emitted only
+  // when the broadcaster has failed to bind. The reason slug is the
+  // stable wire code; `humanReason` / `nextStep` / `severity` are the
+  // operator-readable enrichment from the WS reason catalog.
+  function buildWsErrorBlock(): WsErrorBlock | undefined {
+    if (!wsStatusGetter) return undefined;
+    const s = wsStatusGetter();
+    if (s.listening) return undefined;
+    if (s.bindError === null) return undefined;
+    const doc = enrichWsReason(s.bindError);
+    return {
+      reason: s.bindError,
+      port: s.port ?? -1,
+      humanReason: doc.humanReason,
+      nextStep: doc.nextStep,
+      severity: doc.severity,
     };
   }
 
@@ -603,7 +650,9 @@ export function createServer(
     };
     const ws = buildWsAdvertisement(req);
     if (ws) body.websocket = ws;
-    const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
+    const wsErr = buildWsErrorBlock();
+    if (wsErr) body.websocketError = wsErr;
+    const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
     // Surface the sanitised source block (when wired) so a fresh user
     // hitting `/` sees the verdict AND the reason in one hop, not a
     // bare `status: 'degraded'` flag they'd have to chase across endpoints.
@@ -645,10 +694,12 @@ export function createServer(
       body.acceptanceRatio = ratio.ratio;
       body.acceptanceRatioStatus = ratio.status;
     }
-    const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
+    const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
     if (src) body.source = src;
     const ws = buildWsAdvertisement(req);
     if (ws) body.websocket = ws;
+    const wsErr = buildWsErrorBlock();
+    if (wsErr) body.websocketError = wsErr;
     body.status = degraded ? 'degraded' : 'ok';
     if (bootAtGetter) {
       const bootAt = bootAtGetter();
@@ -677,7 +728,7 @@ export function createServer(
       totalCached: cache.size,
     };
     if (sourceStatusGetter) {
-      const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
+      const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
       body.degraded = degraded;
       if (count === 0) {
         body.message = degraded
@@ -851,7 +902,7 @@ export function createServer(
       }
     }
 
-    const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
+    const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
     const responseBody: Record<string, unknown> = {
       healthy: !degraded,
       freshCount,

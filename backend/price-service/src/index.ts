@@ -79,12 +79,22 @@ export class PriceService {
       () => this.getSourceStatus(),
       () => this.bootAtMs,
       () => ({ port: this.config.wsPort }),
+      () => this.broadcaster.getStatus(),
     );
     this.httpServer = app.listen(this.config.port, () => {
       console.log(`[price-service] REST server listening on port ${this.config.port}`);
     });
     this.broadcaster.start(this.config.wsPort, this.cache, () => this.getSourceStatus());
-    console.log(`[price-service] WS broadcaster listening on port ${this.config.wsPort}`);
+    // Log on the actual bind events rather than synchronously claiming success.
+    // Internal listeners flip `getStatus()` first, so these reads are correct.
+    this.broadcaster.on('listening', () => {
+      const port = this.broadcaster.getStatus().port ?? this.config.wsPort;
+      console.log(`[price-service] WS broadcaster bound on port ${port}`);
+    });
+    this.broadcaster.on('error', () => {
+      const reason = this.broadcaster.getStatus().bindError ?? 'unknown';
+      console.error(`[price-service] WS broadcaster bind failed: ${reason}`);
+    });
   }
 
   stop(): void {

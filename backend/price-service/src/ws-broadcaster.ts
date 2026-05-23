@@ -1,7 +1,11 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { QuoteCache } from './quote-cache';
 import { NormalizedQuote, RiskFilterResult, SourceStatus } from './types';
-import { sanitizeSourceStatus, SanitizedSourceStatus } from './source-status';
+import {
+  redactSourceReason,
+  sanitizeSourceStatus,
+  SanitizedSourceStatus,
+} from './source-status';
 
 export type SourceStatusGetter = () => SourceStatus;
 
@@ -13,9 +17,39 @@ interface SnapshotFrame {
   source?: SanitizedSourceStatus;
 }
 
+/**
+ * Live bind state of the broadcaster. `listening` is `true` only after the
+ * `WebSocketServer` has actually bound — the previous "log immediately
+ * after `start()`" pattern lied when the bind failed asynchronously, which
+ * is why `/health` could keep advertising a dead `ws://` URL behind a green
+ * status. The HTTP surface reads this via `getStatus()`.
+ */
+export interface WsStatus {
+  listening: boolean;
+  bindError: string | null;
+  port: number | null;
+}
+
 export class WsBroadcaster {
   private wss: WebSocketServer | null = null;
   private unsubscribe?: () => void;
+  private status: WsStatus = { listening: false, bindError: null, port: null };
+
+  /** Snapshot of bind state. Returns a fresh object so callers can't mutate. */
+  getStatus(): WsStatus {
+    return { ...this.status };
+  }
+
+  /**
+   * Subscribe to WS server events without reaching into the private
+   * `WebSocketServer` instance. Internal listeners (registered first by
+   * `start()`) update `this.status` before any external listener runs, so
+   * a caller logging on `'listening'` can read `getStatus()` and see the
+   * already-flipped value.
+   */
+  on(event: 'listening' | 'error', listener: () => void): void {
+    this.wss?.on(event, listener);
+  }
 
   start(
     port: number,
@@ -24,9 +58,31 @@ export class WsBroadcaster {
   ): WebSocketServer {
     this.wss = new WebSocketServer({ port });
 
+    // Track real bind state so `/health` and `/` only advertise a `ws://`
+    // URL when the broadcaster has actually bound. Internal listeners
+    // register before `start()` returns, so an external listener attached
+    // via `on()` sees the already-updated status.
+    this.wss.on('listening', () => {
+      const addr = this.wss?.address();
+      const boundPort =
+        typeof addr === 'object' && addr !== null && 'port' in addr
+          ? (addr as { port: number }).port
+          : port;
+      this.status = { listening: true, bindError: null, port: boundPort };
+    });
+
     // Attach an `'error'` listener so a server-level fault doesn't bubble
     // up as an unhandled emitter error (which would crash the process).
+    // Bind faults (EADDRINUSE / EACCES) are collapsed to the stable
+    // `ws-bind-failed` slug so the wire reason is searchable; everything
+    // else flows through `redactSourceReason` to strip stacks/paths.
     this.wss.on('error', (err: unknown) => {
+      const code = (err as NodeJS.ErrnoException | undefined)?.code;
+      const reason =
+        code === 'EADDRINUSE' || code === 'EACCES'
+          ? 'ws-bind-failed'
+          : redactSourceReason(err);
+      this.status = { listening: false, bindError: reason, port };
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[price-service] WS server error: ${msg}`);
     });
@@ -102,6 +158,7 @@ export class WsBroadcaster {
       this.wss.close();
       this.wss = null;
     }
+    this.status = { listening: false, bindError: null, port: null };
   }
 
   get clientCount(): number {

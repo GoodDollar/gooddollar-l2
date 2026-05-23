@@ -151,3 +151,34 @@ export const SOURCE_REASONS_PUBLIC: Readonly<
     ]),
   ),
 );
+
+/**
+ * Catalog of stable WebSocket-broadcaster failure modes. Distinct namespace
+ * from `REASON_CATALOG` because the upstream-source verdict (`source.reason`
+ * on data endpoints) is unrelated to a service-level WS bind failure: the
+ * upstream feed can be perfectly healthy while the broadcaster's own port
+ * is held by a stale/parallel instance.
+ */
+export const WS_REASON_CATALOG: Readonly<Record<string, SourceReasonDoc>> = Object.freeze({
+  'ws-bind-failed': {
+    code: 'ws-bind-failed',
+    humanReason:
+      'WebSocket broadcaster failed to bind the configured port; ' +
+      'downstream tick-subscribers cannot connect.',
+    nextStep:
+      'Free PRICE_SERVICE_WS_PORT (ss -tlnp | grep <port>) or change ' +
+      'it. Restart the service.',
+    severity: 'critical',
+  },
+});
+
+export function enrichWsReason(reason: string): SourceReasonDoc {
+  const known = WS_REASON_CATALOG[reason];
+  if (known) return known;
+  return {
+    code: 'unknown',
+    humanReason: `WS broadcaster bind failed: ${reason}`,
+    nextStep: 'Check process logs for the underlying error.',
+    severity: 'degraded',
+  };
+}
