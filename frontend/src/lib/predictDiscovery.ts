@@ -97,27 +97,21 @@ export function selectBreakingNews(markets: PredictionMarket[], n = 3): Breaking
 }
 
 /**
- * Pick up to `n` categories to display in the "Hot topics" widget.
+ * Internal: aggregate markets matching `predicate` into category buckets,
+ * sort by total volume descending, and cap at `n`.
  *
- * Algorithm:
- *
- *   1. Reduce markets into a `Map<MarketCategory, { total, count }>`.
- *   2. Drop categories whose `count === 0` (impossible with reduce, but
- *      defensive — and important for the future contract: callers must not
- *      see `Crypto: $0` if no Crypto markets exist).
- *   3. Sort by `total` descending.
- *   4. Cap at `n`.
- *
- * Note: this aggregates _all_ markets including expired ones. Hot topics is
- * a sustained-traction signal, not a "live right now" filter — that's the
- * "Breaking news" widget's job above.
- *
- * @param markets Source list.
- * @param n Maximum number of category rows. Default 4.
+ * Used by both `selectHotTopics` (active-only, for the "HOT TOPICS" widget)
+ * and `selectRecentlyResolvedTopics` (resolved-only, for the fallback
+ * "RECENTLY RESOLVED" widget that surfaces in end-of-cycle states).
  */
-export function selectHotTopics(markets: PredictionMarket[], n = 4): HotTopicEntry[] {
+function aggregateByCategory(
+  markets: PredictionMarket[],
+  predicate: (m: PredictionMarket) => boolean,
+  n: number,
+): HotTopicEntry[] {
   const buckets = new Map<MarketCategory, { total: number; count: number }>()
   for (const m of markets) {
+    if (!predicate(m)) continue
     const prev = buckets.get(m.category) ?? { total: 0, count: 0 }
     buckets.set(m.category, {
       total: prev.total + (Number.isFinite(m.volume) ? m.volume : 0),
@@ -131,4 +125,54 @@ export function selectHotTopics(markets: PredictionMarket[], n = 4): HotTopicEnt
   }
   entries.sort((a, b) => b.total - a.total)
   return entries.slice(0, Math.max(0, n))
+}
+
+/**
+ * Pick up to `n` categories to display in the "Hot Topics" widget.
+ *
+ * Algorithm:
+ *
+ *   1. Filter markets by `getMarketStatus(endDate) !== 'expired'` so the
+ *      per-category count matches what the user gets when they click into
+ *      that category on the main grid.
+ *   2. Reduce remaining markets into a `Map<MarketCategory, { total, count }>`.
+ *   3. Drop categories whose `count === 0`.
+ *   4. Sort by `total` descending.
+ *   5. Cap at `n`.
+ *
+ * The active-only filter is the fix for task 0015: previously this aggregated
+ * across the full dataset (active + resolved), so resolved-only categories
+ * tinted the widget as if they were hot active markets. Clicking such a row
+ * landed the user on `No active markets match your filter`. The page-level
+ * `PredictDiscoverySidebar` now falls back to a `selectRecentlyResolvedTopics`
+ * widget when this returns an empty array.
+ *
+ * @param markets Source list (typically the full `allMarkets` from the page).
+ * @param n Maximum number of category rows. Default 4.
+ */
+export function selectHotTopics(markets: PredictionMarket[], n = 4): HotTopicEntry[] {
+  return aggregateByCategory(
+    markets,
+    m => getMarketStatus(m.endDate) !== 'expired',
+    n,
+  )
+}
+
+/**
+ * Pick up to `n` categories to display in the fallback "Recently Resolved"
+ * widget — used when `selectHotTopics` returns an empty array (every market
+ * has resolved, no active markets to bet on).
+ *
+ * Same aggregation rules as `selectHotTopics` but filtered on
+ * `getMarketStatus(endDate) === 'expired'`.
+ */
+export function selectRecentlyResolvedTopics(
+  markets: PredictionMarket[],
+  n = 4,
+): HotTopicEntry[] {
+  return aggregateByCategory(
+    markets,
+    m => getMarketStatus(m.endDate) === 'expired',
+    n,
+  )
 }

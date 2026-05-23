@@ -165,7 +165,7 @@ describe('PredictDiscoverySidebar', () => {
     expect(calledWith).toBe('AI & Tech')
   })
 
-  it('renders graceful "Nothing trending yet" empty states when markets is empty', () => {
+  it('renders graceful empty states when markets is empty', () => {
     render(
       <TestWrapper>
         <PredictDiscoverySidebar markets={[]} onCategorySelect={() => {}} />
@@ -174,12 +174,11 @@ describe('PredictDiscoverySidebar', () => {
     // Both widget headings still render so the layout stays intentional.
     expect(screen.getByRole('region', { name: /breaking news/i })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: /hot topics/i })).toBeInTheDocument()
-    // And both show a fallback message rather than disappearing.
-    const empty = screen.getAllByText(/nothing trending yet/i)
-    expect(empty.length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText(/nothing trending yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/no hot topics yet/i)).toBeInTheDocument()
   })
 
-  it('still renders both widgets and the breaking-news rows when only expired markets exist', () => {
+  it('falls back to a "Recently resolved" widget when only expired markets exist (task 0015)', () => {
     const onlyExpired = [
       mkMarket({ id: '10', endDate: pastDate, category: 'Crypto', volume: 500 }),
       mkMarket({ id: '11', endDate: pastDate, category: 'Politics', volume: 700 }),
@@ -190,11 +189,14 @@ describe('PredictDiscoverySidebar', () => {
       </TestWrapper>,
     )
     const breakingNews = screen.getByRole('region', { name: /breaking news/i })
-    // Breaking news only picks active markets — should show empty state.
     expect(within(breakingNews).getByText(/nothing trending yet/i)).toBeInTheDocument()
-    // Hot topics aggregates all markets (including expired) — should show
-    // both categories.
-    const hotTopics = screen.getByRole('region', { name: /hot topics/i })
-    expect(within(hotTopics).getAllByRole('listitem').length).toBe(2)
+
+    expect(screen.queryByRole('region', { name: /hot topics/i })).not.toBeInTheDocument()
+    const resolved = screen.getByRole('region', { name: /recently resolved/i })
+    expect(within(resolved).getAllByRole('listitem').length).toBe(2)
+    const links = within(resolved).getAllByRole('link')
+    for (const link of links) {
+      expect(link.getAttribute('href')).toMatch(/^\/predict\?view=archive&category=/)
+    }
   })
 })

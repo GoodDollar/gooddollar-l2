@@ -607,7 +607,13 @@ function PredictPageContent() {
 
   const initialShowExpired = () => {
     const raw = (searchParams?.get('expired') ?? '').toLowerCase()
-    return raw === '1' || raw === 'true'
+    if (raw === '1' || raw === 'true') return true
+    // task 0015: the "RECENTLY RESOLVED" sidebar widget links to
+    // `/predict?view=archive&category=…` to land users on the archive
+    // instead of the empty active-filter view. Honour `view=archive`
+    // by expanding the archive accordion on mount.
+    if ((searchParams?.get('view') ?? '').toLowerCase() === 'archive') return true
+    return false
   }
 
   const [category, setCategory] = useState<MarketCategory | 'All'>(initialCategory)
