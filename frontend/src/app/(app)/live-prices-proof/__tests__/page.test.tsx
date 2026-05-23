@@ -4,6 +4,9 @@ import { render, screen } from '@testing-library/react'
 vi.mock('@/components/proof/SafetyBanner', () => ({
   SafetyBanner: () => <div data-testid="mock-safety-banner" />,
 }))
+vi.mock('@/components/proof/PipelineStatusBanner', () => ({
+  PipelineStatusBanner: () => <div data-testid="mock-pipeline-status-banner" />,
+}))
 vi.mock('@/components/proof/LiveQuotesPanel', () => ({
   LiveQuotesPanel: () => <div data-testid="mock-live-quotes-panel" />,
 }))
@@ -36,5 +39,16 @@ describe('LivePricesProofPage', () => {
     render(<LivePricesProofPage />)
     const heading = screen.getByRole('heading', { level: 1, name: /Live Prices Proof/i })
     expect(heading.id).toBe('proof-page-heading')
+  })
+
+  it('renders the pipeline status banner between the safety banner and the panel grid', () => {
+    render(<LivePricesProofPage />)
+    const safety = screen.getByTestId('mock-safety-banner')
+    const pipeline = screen.getByTestId('mock-pipeline-status-banner')
+    const firstPanel = screen.getByTestId('mock-live-quotes-panel')
+
+    const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING
+    expect(safety.compareDocumentPosition(pipeline) & FOLLOWING).toBe(FOLLOWING)
+    expect(pipeline.compareDocumentPosition(firstPanel) & FOLLOWING).toBe(FOLLOWING)
   })
 })

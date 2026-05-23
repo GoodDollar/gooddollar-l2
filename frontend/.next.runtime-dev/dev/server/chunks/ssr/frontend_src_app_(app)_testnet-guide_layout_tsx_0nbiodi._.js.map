@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/goodclaw/goodchain-live-prices-lanes/lane6-qa-proof-release/frontend/src/app/%28app%29/testnet-guide/layout.tsx"],"sourcesContent":["import type { Metadata } from 'next'\n\nexport const metadata: Metadata = {\n  title: 'Testnet Guide',\n  description:\n    'Step-by-step guide for the GoodDollar L2 public testnet. Add the network to your wallet, claim test G$, and walk through Swap, Perps, Predict, Lend, and Stable scenarios end-to-end.',\n}\n\nexport default function TestnetGuideLayout({ children }: { children: React.ReactNode }) {\n  return <>{children}</>\n}\n"],"names":["metadata","title","description","TestnetGuideLayout","children"],"mappings":";;;;;;;;AAEO,MAAMA,WAAqB;IAChCC,OAAO;IACPC,aACE;AACJ;AAEe,SAASC,mBAAmB,EAAEC,QAAQ,EAAiC;IACpF,qBAAO;kBAAGA;;AACZ"}}]
+}

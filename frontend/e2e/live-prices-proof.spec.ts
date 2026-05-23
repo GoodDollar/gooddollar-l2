@@ -36,6 +36,13 @@ test.describe('Lane 6 — /live-prices-proof', () => {
     await expect(page.getByRole('heading', { name: /Recent Oracle Updates/i })).toBeVisible()
     await expect(page.getByRole('heading', { name: /Last Demo Hedge/i })).toBeVisible()
 
+    // Pipeline status rollup must be visible above the panel grid.
+    const pipelineBanner = page.getByTestId('pipeline-status-banner')
+    await expect(pipelineBanner).toBeVisible()
+    await expect.poll(async () => await pipelineBanner.getAttribute('data-status')).toMatch(
+      /^(green|amber|red)$/,
+    )
+
     expect(errors, `page errors: ${JSON.stringify(errors)}`).toEqual([])
   })
 

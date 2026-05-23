@@ -1,1 +1,14 @@
-{}
+{
+  "/(app)/live-prices-proof/page": "app/(app)/live-prices-proof/page.js",
+  "/(app)/proof/page": "app/(app)/proof/page.js",
+  "/(app)/stocks/[ticker]/page": "app/(app)/stocks/[ticker]/page.js",
+  "/(app)/testnet-guide/page": "app/(app)/testnet-guide/page.js",
+  "/api/[...slug]/route": "app/api/[...slug]/route.js",
+  "/api/hedge-proof/latest/route": "app/api/hedge-proof/latest/route.js",
+  "/api/prices/route": "app/api/prices/route.js",
+  "/api/rpc/route": "app/api/rpc/route.js",
+  "/api/safety-state/route": "app/api/safety-state/route.js",
+  "/api/status/route": "app/api/status/route.js",
+  "/api/stocks/rebalance-status/route": "app/api/stocks/rebalance-status/route.js",
+  "/page": "app/page.js"
+}
