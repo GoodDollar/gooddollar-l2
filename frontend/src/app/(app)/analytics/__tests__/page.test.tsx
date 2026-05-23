@@ -7,12 +7,12 @@
 
 import { forwardRef, useImperativeHandle } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-const hedgeRefreshSpy = vi.fn();
+const hedgeRefreshSpy = vi.fn<[], Promise<void>>(() => Promise.resolve());
 
 vi.mock('@/components/HedgeStatusCard', () => {
-  const Stub = forwardRef<{ refresh: () => void }>(function StubHedgeCard(_, ref) {
+  const Stub = forwardRef<{ refresh: () => Promise<void> }>(function StubHedgeCard(_, ref) {
     useImperativeHandle(ref, () => ({ refresh: hedgeRefreshSpy }));
     return <div data-testid="hedge-card-stub" />;
   });
@@ -52,7 +52,8 @@ const OVERVIEW_BODY = {
 };
 
 beforeEach(() => {
-  hedgeRefreshSpy.mockClear();
+  hedgeRefreshSpy.mockReset();
+  hedgeRefreshSpy.mockResolvedValue(undefined);
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(
     new Response(JSON.stringify(OVERVIEW_BODY), {
       status: 200,
@@ -76,5 +77,41 @@ describe('AnalyticsPage refresh', () => {
     await waitFor(() => {
       expect(hedgeRefreshSpy).toHaveBeenCalled();
     });
+  });
+
+  it('Refresh button stays disabled until the hedge card refresh settles', async () => {
+    let resolveHedge: () => void = () => {};
+    hedgeRefreshSpy.mockImplementationOnce(
+      () => new Promise<void>((r) => { resolveHedge = r; }),
+    );
+
+    render(<AnalyticsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('hedge-card-stub')).toBeInTheDocument();
+    });
+    const btn = await screen.findByTestId('analytics-refresh-button');
+    expect((btn as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect((btn as HTMLButtonElement).disabled).toBe(true);
+    });
+    expect(btn).toHaveTextContent('Refreshing');
+
+    // Spam click while the hedge refresh is still pending: must NOT stack
+    // a second hedge fetch.
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    expect(hedgeRefreshSpy).toHaveBeenCalledTimes(1);
+
+    // Resolve the hedge promise → button must re-enable.
+    await act(async () => {
+      resolveHedge();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect((btn as HTMLButtonElement).disabled).toBe(false);
+    });
+    expect(btn).toHaveTextContent('Refresh');
   });
 });

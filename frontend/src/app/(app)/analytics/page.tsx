@@ -198,8 +198,11 @@ export default function AnalyticsPage() {
   const [isRefetching, setIsRefetching] = useState(false)
   const hedgeCardRef = useRef<HedgeStatusCardHandle>(null)
 
+  // NB: `isRefetching` is owned by the page-level Refresh button click
+  // handler so it can reflect combined in-flight state across the overview
+  // and the hedge card. Toggling it from inside `fetchOverview` would race
+  // the outer button promise and clear the flag mid-flight.
   const fetchOverview = useCallback(async (signal?: AbortSignal) => {
-    setIsRefetching(true)
     try {
       const res = await fetch('/api/analytics/overview', {
         cache: 'no-store',
@@ -218,8 +221,6 @@ export default function AnalyticsPage() {
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       setLoadError(err instanceof Error ? err.message : 'unknown')
-    } finally {
-      setIsRefetching(false)
     }
   }, [])
 
@@ -275,9 +276,17 @@ export default function AnalyticsPage() {
           </span>
           <button
             type="button"
-            onClick={() => {
-              void fetchOverview()
-              hedgeCardRef.current?.refresh()
+            data-testid="analytics-refresh-button"
+            onClick={async () => {
+              setIsRefetching(true)
+              try {
+                await Promise.allSettled([
+                  fetchOverview(),
+                  hedgeCardRef.current?.refresh() ?? Promise.resolve(),
+                ])
+              } finally {
+                setIsRefetching(false)
+              }
             }}
             disabled={isRefetching}
             className="text-xs px-3 py-1 rounded-md border border-dark-50 text-gray-300 hover:bg-dark-50 disabled:opacity-50"
