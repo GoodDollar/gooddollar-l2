@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   PANEL_BY_AXIS,
+  ResolvedAxis,
   deriveVerdict,
+  describeAxisForFlowNode,
   isFreshQuotes,
   isHealthyOnChain,
   reasonForAxis,
@@ -85,6 +87,68 @@ describe('proofAxes — isFreshQuotes', () => {
         30_000,
       ),
     ).toBe(false)
+  })
+})
+
+describe('proofAxes — describeAxisForFlowNode (#0055)', () => {
+  const ok = (axis: 'healthy' | 'degraded' | 'unknown'): ResolvedAxis => ({
+    axis,
+    subordinated: false,
+    ok: axis === 'healthy',
+  })
+
+  it('returns "<label>: healthy" for a healthy axis on every axis key', () => {
+    expect(describeAxisForFlowNode('price-service', ok('healthy'), 'quotes')).toBe(
+      'price-service: healthy',
+    )
+    expect(describeAxisForFlowNode('oracle-signer', ok('healthy'), 'onChain')).toBe(
+      'oracle-signer: healthy',
+    )
+    expect(describeAxisForFlowNode('demo hedge', ok('healthy'), 'hedgeProof')).toBe(
+      'demo hedge: healthy',
+    )
+  })
+
+  it('returns "<label>: degraded — <reason>" for a degraded axis, sourcing reason from PANEL_BY_AXIS', () => {
+    expect(describeAxisForFlowNode('price-service', ok('degraded'), 'quotes')).toBe(
+      `price-service: degraded — ${PANEL_BY_AXIS.quotes.reason}`,
+    )
+    expect(describeAxisForFlowNode('oracle-signer', ok('degraded'), 'onChain')).toBe(
+      `oracle-signer: degraded — ${PANEL_BY_AXIS.onChain.reason}`,
+    )
+    expect(describeAxisForFlowNode('demo hedge', ok('degraded'), 'hedgeProof')).toBe(
+      `demo hedge: degraded — ${PANEL_BY_AXIS.hedgeProof.reason}`,
+    )
+  })
+
+  it('returns "<label>: loading first read" for an unknown axis', () => {
+    expect(describeAxisForFlowNode('chain', ok('unknown'), 'onChain')).toBe(
+      'chain: loading first read',
+    )
+  })
+
+  it('subordinated hedgeProof with healthy underlying reads "<label>: healthy (mirroring upstream tone)"', () => {
+    const subordinatedHealthy: ResolvedAxis = { axis: 'degraded', subordinated: true, ok: true }
+    expect(describeAxisForFlowNode('demo hedge', subordinatedHealthy, 'hedgeProof')).toBe(
+      'demo hedge: healthy (mirroring upstream tone)',
+    )
+  })
+
+  it('subordinated hedgeProof with degraded underlying reads "<label>: degraded — hedge-proof missing (mirroring upstream tone)"', () => {
+    const subordinatedDegraded: ResolvedAxis = { axis: 'degraded', subordinated: true, ok: false }
+    expect(describeAxisForFlowNode('demo hedge', subordinatedDegraded, 'hedgeProof')).toBe(
+      `demo hedge: degraded — ${PANEL_BY_AXIS.hedgeProof.reason} (mirroring upstream tone)`,
+    )
+  })
+
+  it('subordinated hedgeProof under an upstream-unknown tone still names the underlying state', () => {
+    // Upstream tone is `unknown` (loading) but the underlying axis truth
+    // is still healthy; the helper reports the underlying state, not the
+    // borrowed tone, because that's what the indicator dot communicates.
+    const subordinatedUnknown: ResolvedAxis = { axis: 'unknown', subordinated: true, ok: true }
+    expect(describeAxisForFlowNode('demo hedge', subordinatedUnknown, 'hedgeProof')).toBe(
+      'demo hedge: healthy (mirroring upstream tone)',
+    )
   })
 })
 

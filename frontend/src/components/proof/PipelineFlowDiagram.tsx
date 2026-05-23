@@ -1,6 +1,13 @@
 'use client'
 
-import { AxisHealth, AxisKey, AxisState, PANEL_BY_AXIS } from './proofAxes'
+import {
+  AxisHealth,
+  AxisKey,
+  AxisState,
+  PANEL_BY_AXIS,
+  ResolvedAxis,
+  describeAxisForFlowNode,
+} from './proofAxes'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 type Tone = 'unknown' | 'healthy' | 'degraded'
@@ -88,14 +95,6 @@ function dominantUpstreamTone(quotes: AxisHealth, onChain: AxisHealth): AxisHeal
   return TONE_PROMINENCE[quotes] <= TONE_PROMINENCE[onChain] ? quotes : onChain
 }
 
-interface ResolvedAxis {
-  axis: AxisHealth
-  /** True iff the trailing hedge-proof segment inherited an upstream tone instead of its own. */
-  subordinated: boolean
-  /** True iff the underlying hedgeProof axis is healthy (only meaningful for the hedgeProof segment). */
-  ok: boolean
-}
-
 /**
  * Pick the rendered axis state for a single node/edge segment. The
  * upstream axes (`quotes`, `onChain`) always paint their own state;
@@ -137,11 +136,13 @@ export function PipelineFlowDiagram() {
           const resolved = resolveAxisForSegment(node.axis, axes)
           const edge = EDGES[idx]
           const edgeResolved = edge ? resolveAxisForSegment(edge.axis, axes) : null
+          const statusSentence = describeAxisForFlowNode(node.label, resolved, node.axis)
           return (
             <FlowNode
               key={`node-${node.id}`}
               spec={node}
               tone={axisToTone(resolved.axis)}
+              statusSentence={statusSentence}
               showHedgeProofIndicator={node.id === 'demo-hedge' && resolved.subordinated && resolved.ok}
               trailingEdge={
                 edge && edgeResolved
@@ -164,11 +165,14 @@ const PILL_INTERACTIVE_CLASS =
 function FlowNode({
   spec,
   tone,
+  statusSentence,
   trailingEdge,
   showHedgeProofIndicator,
 }: {
   spec: NodeSpec
   tone: Tone
+  /** Per-node axis-state sentence ("price-service: healthy", etc.) — see #0055. */
+  statusSentence: string
   trailingEdge: { spec: EdgeSpec; tone: Tone } | null
   showHedgeProofIndicator: boolean
 }) {
@@ -195,6 +199,11 @@ function FlowNode({
     </>
   )
 
+  // When the node is an anchor, the aria-label overrides the rendered
+  // text for screen readers — append the jump intent so both halves are
+  // announced (the axis state from #0055 plus the panel-jump from #0054).
+  const linkAriaLabel = `${statusSentence} — jump to ${PANEL_HUMAN_NAME[spec.axis]} panel`
+
   return (
     <li
       data-testid={`pipeline-node-${spec.id}`}
@@ -206,12 +215,15 @@ function FlowNode({
           href={`#${anchor}`}
           data-testid={`pipeline-node-${spec.id}-link`}
           className={`${pillClass} ${PILL_INTERACTIVE_CLASS}`}
-          aria-label={`Jump to ${PANEL_HUMAN_NAME[spec.axis]} panel`}
+          title={statusSentence}
+          aria-label={linkAriaLabel}
         >
           {pillContent}
         </a>
       ) : (
-        <span className={pillClass}>{pillContent}</span>
+        <span className={pillClass} title={statusSentence} aria-label={statusSentence}>
+          {pillContent}
+        </span>
       )}
       {trailingEdge && (
         <span

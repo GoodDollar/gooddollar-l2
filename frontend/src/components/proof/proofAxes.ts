@@ -87,6 +87,71 @@ export function reasonForAxis(axis: AxisKey): string {
   return PANEL_BY_AXIS[axis].reason
 }
 
+/**
+ * Rendered axis state for a single pipeline-flow segment.
+ *
+ * - `axis` is the AxisHealth value that drives the per-tone class on the
+ *   pill (green/yellow/gray).
+ * - `subordinated` is true iff the trailing hedgeProof segment inherited
+ *   an upstream tone instead of its own — see #0047.
+ * - `ok` is the underlying axis truth for the subordinated case (always
+ *   `axis === 'healthy'` when not subordinated).
+ *
+ * Lifted out of `PipelineFlowDiagram.tsx` so `describeAxisForFlowNode`
+ * (the helper that powers the per-node tooltip / aria-label) can read
+ * it without a circular import — see #0055.
+ */
+export interface ResolvedAxis {
+  axis: AxisHealth
+  subordinated: boolean
+  ok: boolean
+}
+
+/**
+ * User-facing word for each AxisHealth state. `unknown` renders as
+ * `loading first read` because that's the same vocabulary the rollup
+ * banner already uses on first paint ("Loading pipeline status"). The
+ * `Record<AxisHealth, string>` type makes the mapping exhaustive — adding
+ * a new AxisHealth value would be a compile-time error here.
+ */
+const STATE_WORD: Record<AxisHealth, string> = {
+  healthy: 'healthy',
+  degraded: 'degraded',
+  unknown: 'loading first read',
+}
+
+/**
+ * Compose the per-node status sentence shown as both the native browser
+ * tooltip (`title=`) and the screen-reader accessible name (`aria-label=`)
+ * on every pipeline-flow pill — see #0055.
+ *
+ * Shape:
+ *   - healthy: `"<label>: healthy"`
+ *   - degraded: `"<label>: degraded — <reason>"` (reason from `PANEL_BY_AXIS`)
+ *   - loading: `"<label>: loading first read"`
+ *   - subordinated hedgeProof: `"<label>: <underlying-state> (mirroring upstream tone)"`
+ *     where `<underlying-state>` is `healthy` when `resolved.ok` is true,
+ *     else `degraded — <hedge-proof reason>`. The borrowed upstream tone
+ *     is NOT what the user wants surfaced here — the helper names the
+ *     underlying truth so the green indicator dot's meaning is explicit.
+ */
+export function describeAxisForFlowNode(
+  nodeLabel: string,
+  resolved: ResolvedAxis,
+  axisKey: AxisKey,
+): string {
+  if (resolved.subordinated) {
+    const underlying = resolved.ok
+      ? STATE_WORD.healthy
+      : `${STATE_WORD.degraded} — ${PANEL_BY_AXIS[axisKey].reason}`
+    return `${nodeLabel}: ${underlying} (mirroring upstream tone)`
+  }
+  if (resolved.axis === 'degraded') {
+    return `${nodeLabel}: ${STATE_WORD.degraded} — ${PANEL_BY_AXIS[axisKey].reason}`
+  }
+  return `${nodeLabel}: ${STATE_WORD[resolved.axis]}`
+}
+
 export function deriveVerdict(axes: AxisState): Verdict {
   const values: AxisHealth[] = [axes.quotes, axes.onChain, axes.hedgeProof]
   let unknownCount = 0

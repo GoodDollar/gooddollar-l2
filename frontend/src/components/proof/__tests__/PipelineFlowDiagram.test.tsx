@@ -427,6 +427,119 @@ describe('PipelineFlowDiagram', () => {
     })
   })
 
+  // #0055 — flow nodes used to communicate axis state via colour alone, so a
+  // reviewer hovering a gray pulsing pill could not tell "still loading"
+  // from "no signal yet" without DevTools. Each pill now carries a
+  // native browser tooltip (`title=`) AND an accessible name
+  // (`aria-label=`) naming the literal axis state.
+  describe('per-node tooltip + aria-label with axis status (#0055)', () => {
+    it('healthy axes: each pill\'s title ends with ": healthy"', async () => {
+      mockOnChainHealthy()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        for (const id of ALL_NODE_IDS) {
+          const pill = (screen.getByTestId(`pipeline-node-${id}`).firstElementChild) as HTMLElement
+          expect(pill, `node ${id} pill`).not.toBeNull()
+          expect(pill.getAttribute('title'), `node ${id} title`).toMatch(/: healthy$/)
+        }
+      })
+    })
+
+    it('degraded quotes: price-service title ends with the canonical reason', async () => {
+      mockOnChainHealthy()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) throw new Error('boom')
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        const pill = screen.getByTestId('pipeline-node-price-service').firstElementChild as HTMLElement
+        expect(pill.getAttribute('title')).toBe('price-service: degraded — price-service unreachable')
+      })
+    })
+
+    it('degraded onChain: oracle-signer / chain / frontend titles all end with "no on-chain prices"', async () => {
+      mockOnChainDegraded()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        for (const id of ['oracle-signer', 'chain', 'frontend']) {
+          const pill = screen.getByTestId(`pipeline-node-${id}`).firstElementChild as HTMLElement
+          expect(pill.getAttribute('title'), `node ${id} title`).toMatch(
+            /degraded — no on-chain prices$/,
+          )
+        }
+      })
+    })
+
+    it('unknown onChain: oracle-signer / chain / frontend titles all end with "loading first read"', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      for (const id of ['oracle-signer', 'chain', 'frontend']) {
+        const pill = screen.getByTestId(`pipeline-node-${id}`).firstElementChild as HTMLElement
+        expect(pill.getAttribute('title'), `node ${id} title`).toMatch(/loading first read$/)
+      }
+    })
+
+    it('subordinated demo-hedge (upstream degraded, hedgeProof healthy): title says "mirroring upstream tone"', async () => {
+      mockOnChainDegraded()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) throw new Error('boom')
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        const pill = screen.getByTestId('pipeline-node-demo-hedge').firstElementChild as HTMLElement
+        const title = pill.getAttribute('title') ?? ''
+        expect(title).toMatch(/mirroring upstream tone/i)
+        expect(title).toMatch(/healthy/)
+      })
+    })
+
+    it('linked pill aria-label composes axis state + jump intent', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const link = screen.getByTestId('pipeline-node-price-service-link')
+      const aria = link.getAttribute('aria-label') ?? ''
+      expect(aria).toMatch(/^price-service:/)
+      expect(aria).toMatch(/jump to live quotes panel/i)
+    })
+
+    it('eToro inert pill carries title and aria-label (announces the axis state without the jump suffix)', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const etoroPill = screen.getByTestId('pipeline-node-etoro').firstElementChild as HTMLElement
+      expect(etoroPill.getAttribute('title')).toMatch(/^eToro:/)
+      expect(etoroPill.getAttribute('aria-label')).toMatch(/^eToro:/)
+      expect(etoroPill.getAttribute('aria-label')).not.toMatch(/jump/i)
+    })
+  })
+
   // #0054 — flow nodes used to be inert <li>s (no role/href/onClick), so the
   // larger and more eye-catching status surface on the proof page was a
   // dead-end for the reviewer. The five axis-bound nodes now render as
