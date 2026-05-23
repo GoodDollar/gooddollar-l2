@@ -7,7 +7,7 @@ import {
   loadInstrumentOverrides,
 } from './instruments';
 import { computeConfidence } from './market-data';
-import { NormalizedQuote, QuoteCallback } from './types';
+import { NormalizedQuote, QuoteCallback, SessionState } from './types';
 
 export interface MockSourceConfig {
   /** Tick interval in ms (default 1000). */
@@ -156,7 +156,9 @@ export class MockEtoroSource {
       mid,
       last,
       timestamp,
-      sessionState: inst.assetClass === 'crypto' ? 'open' : 'unknown',
+      sessionState: inst.assetClass === 'crypto'
+        ? 'open'
+        : classifyUsEquitySession(timestamp),
       confidence: computeConfidence({ bid, ask, mid, price: mid, stale: false }),
       assetClass: inst.assetClass,
       currency: 'USD',
@@ -185,4 +187,58 @@ function normalizeSeed(seed: number): number {
 
 function isLaneSymbol(value: string): value is LaneSymbol {
   return (INSTRUMENT_SYMBOLS as readonly string[]).includes(value);
+}
+
+const ET_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+const ET_WEEKDAYS = new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+
+const PRE_MARKET_START_MIN = 4 * 60;            // 04:00 ET
+const REGULAR_OPEN_MIN = 9 * 60 + 30;           // 09:30 ET
+const REGULAR_CLOSE_MIN = 16 * 60;              // 16:00 ET
+const AFTER_HOURS_END_MIN = 20 * 60;            // 20:00 ET
+
+/**
+ * Classify the US-equity market session for a given wall-clock instant
+ * in `America/New_York`. Pure: depends only on the input. DST-aware via
+ * `Intl.DateTimeFormat` (Node 20+ ICU).
+ *
+ * Windows (half-open `[start, end)`):
+ *   - `pre-market`   Mon-Fri 04:00 .. 09:30 ET
+ *   - `open`         Mon-Fri 09:30 .. 16:00 ET
+ *   - `after-hours`  Mon-Fri 16:00 .. 20:00 ET
+ *   - `closed`       everything else (overnight, weekends)
+ *
+ * Holidays are not consulted — operators who need holiday-accurate
+ * session state must run the lane in `demo-readonly` / `demo-trading`
+ * mode where the live eToro feed populates `sessionState` directly.
+ *
+ * Used by `MockEtoroSource` so the proof-page UI in default
+ * `ETORO_MODE=mock` shows a plausible session label per equity row
+ * instead of a permanent `Unknown`. Crypto symbols are always `open`
+ * regardless and bypass this helper.
+ */
+export function classifyUsEquitySession(
+  input: number | Date,
+): SessionState {
+  const date = typeof input === 'number' ? new Date(input) : input;
+  const parts = ET_FORMATTER.formatToParts(date);
+  const weekday = parts.find((p) => p.type === 'weekday')?.value ?? '';
+  const hour = Number.parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10);
+  const minute = Number.parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10);
+  // Intl with `hour: '2-digit', hour12: false` may emit '24' at midnight
+  // depending on ICU version; normalize to 0 so the [start, end) windows
+  // line up with the wall-clock day.
+  const minutesIntoDay = (hour === 24 ? 0 : hour) * 60 + minute;
+  if (!ET_WEEKDAYS.has(weekday)) return 'closed';
+  if (minutesIntoDay >= PRE_MARKET_START_MIN && minutesIntoDay < REGULAR_OPEN_MIN) return 'pre-market';
+  if (minutesIntoDay >= REGULAR_OPEN_MIN && minutesIntoDay < REGULAR_CLOSE_MIN) return 'open';
+  if (minutesIntoDay >= REGULAR_CLOSE_MIN && minutesIntoDay < AFTER_HOURS_END_MIN) return 'after-hours';
+  return 'closed';
 }
