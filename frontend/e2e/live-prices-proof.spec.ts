@@ -43,6 +43,20 @@ test.describe('Lane 6 — /live-prices-proof', () => {
       /^(green|amber|red)$/,
     )
 
+    // On-chain oracle address must be surfaced as either a link to the
+    // configured explorer or a span carrying the full address. Whichever
+    // variant the harness env produces, the full 0x-prefixed address must
+    // be reachable.
+    const oracleLink = page.getByTestId('oracle-address-link')
+    const oracleText = page.getByTestId('oracle-address-text')
+    if (await oracleLink.count()) {
+      const href = await oracleLink.getAttribute('href')
+      expect(href).toMatch(/\/address\/0x[a-fA-F0-9]{40}$/)
+    } else {
+      const txt = (await oracleText.textContent()) ?? ''
+      expect(txt).toMatch(/0x[a-fA-F0-9]{40}/)
+    }
+
     expect(errors, `page errors: ${JSON.stringify(errors)}`).toEqual([])
   })
 

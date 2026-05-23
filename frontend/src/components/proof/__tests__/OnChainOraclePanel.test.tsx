@@ -36,6 +36,8 @@ const VERBOSE_WAGMI_ERROR = new Error(
   ].join('\n'),
 )
 
+const ORACLE_ADDRESS = '0x1111111111111111111111111111111111111111'
+
 describe('OnChainOraclePanel', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -43,6 +45,7 @@ describe('OnChainOraclePanel', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
     useReadContractsMock.mockReset()
   })
 
@@ -106,5 +109,82 @@ describe('OnChainOraclePanel', () => {
     expect(
       screen.getByText(/No on-chain price data available/i),
     ).toBeInTheDocument()
+  })
+
+  it('renders the contract address as a link to the block explorer when NEXT_PUBLIC_BLOCK_EXPLORER is set', () => {
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER', 'https://explorer.example.com')
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    const link = screen.getByTestId('oracle-address-link') as HTMLAnchorElement
+    expect(link.getAttribute('href')).toBe(
+      `https://explorer.example.com/address/${ORACLE_ADDRESS}`,
+    )
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(link.textContent).toContain(ORACLE_ADDRESS)
+    expect(screen.queryByTestId('oracle-address-text')).not.toBeInTheDocument()
+  })
+
+  it('falls back to plain text when no explorer env is set', () => {
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER', '')
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER_URL', '')
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    expect(screen.queryByTestId('oracle-address-link')).not.toBeInTheDocument()
+    const span = screen.getByTestId('oracle-address-text')
+    expect(span.textContent).toContain(ORACLE_ADDRESS)
+  })
+
+  it('survives a trailing slash on the explorer URL', () => {
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER', 'https://explorer.example.com/')
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    const link = screen.getByTestId('oracle-address-link')
+    expect(link.getAttribute('href')).toBe(
+      `https://explorer.example.com/address/${ORACLE_ADDRESS}`,
+    )
+  })
+
+  it('surfaces the full address via title attribute on either variant', () => {
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER', 'https://explorer.example.com')
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+    expect(screen.getByTestId('oracle-address-link').getAttribute('title')).toBe(ORACLE_ADDRESS)
+  })
+
+  it('surfaces the full address via title attribute on the fallback span', () => {
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER', '')
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER_URL', '')
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+    expect(screen.getByTestId('oracle-address-text').getAttribute('title')).toBe(ORACLE_ADDRESS)
   })
 })

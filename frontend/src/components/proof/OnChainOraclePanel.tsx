@@ -46,6 +46,10 @@ function formatAgo(unixSec: bigint): string {
 
 export function OnChainOraclePanel() {
   const oracleAddress = CONTRACTS.StocksPriceOracle
+  const explorer =
+    process.env.NEXT_PUBLIC_BLOCK_EXPLORER ??
+    process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL ??
+    ''
   const tickers = useMemo(() => getAllTickers(), [])
 
   const contracts = useMemo(() => {
@@ -106,7 +110,27 @@ export function OnChainOraclePanel() {
         <h2 id="onchain-oracle-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           On-chain Oracle (getPriceData)
         </h2>
-        <span className="text-xs text-gray-500 truncate ml-2 max-w-[40%] font-mono">{oracleAddress}</span>
+        {oracleAddress && explorer ? (
+          <a
+            href={`${explorer.replace(/\/$/, '')}/address/${oracleAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2 truncate max-w-[40%] font-mono text-xs text-accent hover:text-white transition-colors"
+            data-testid="oracle-address-link"
+            aria-label={`Open ${oracleAddress} on block explorer`}
+            title={oracleAddress}
+          >
+            {oracleAddress} ↗
+          </a>
+        ) : (
+          <span
+            className="ml-2 truncate max-w-[40%] font-mono text-xs text-gray-500"
+            title={oracleAddress || undefined}
+            data-testid="oracle-address-text"
+          >
+            {oracleAddress || '—'}
+          </span>
+        )}
       </header>
 
       {isLoading && (
