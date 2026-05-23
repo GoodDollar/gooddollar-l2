@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
+import { isPageHidden, subscribePageVisibility } from './usePageVisibility'
+
 /**
  * useCryptoRailHealth — derives crypto-rail health from
  * `/api/oracle/status.rails.crypto`. Mirrors the lane's existing
@@ -16,8 +18,10 @@ import { useEffect, useState } from 'react'
  *                  lastFailureAtMs is more recent than lastSuccessAtMs
  *   - 'offline'  — rail.enabled === false (or status fetch failed)
  *
- * The hook polls every 30s so the perps page can react to backend
- * recovery without a full reload.
+ * Implementation is a module-scoped singleton store — every consumer of
+ * `useCryptoRailHealth()` subscribes to the same poll cycle. Mirrors
+ * `useOracleProvenance` so /perps (3 call sites) issues one
+ * /api/oracle/status request per 30 s instead of three. See task 0051.
  */
 
 export type CryptoRailHealth = 'live' | 'degraded' | 'offline'
@@ -34,8 +38,11 @@ interface CryptoRailState {
   isLoading: boolean
 }
 
-const POLL_MS = 30_000
+const POLL_INTERVAL_MS = 30_000
 const FRESH_WINDOW_MS = 60_000
+
+const EMPTY_CRYPTO_RAIL: CryptoRailState = { health: 'offline', ageMs: null, isLoading: true }
+const OFFLINE_AFTER_FAILURE: CryptoRailState = { health: 'offline', ageMs: null, isLoading: false }
 
 function deriveHealth(rail: RailStatus, now: number): { health: CryptoRailHealth; ageMs: number | null } {
   if (!rail.enabled) return { health: 'offline', ageMs: null }
@@ -47,53 +54,141 @@ function deriveHealth(rail: RailStatus, now: number): { health: CryptoRailHealth
   return { health: 'live', ageMs: successAge }
 }
 
-async function fetchRail(signal: AbortSignal): Promise<RailStatus | null> {
+function parseRail(data: unknown): RailStatus | null {
+  if (!data || typeof data !== 'object') return null
+  const rails = (data as Record<string, unknown>).rails
+  if (!rails || typeof rails !== 'object') return null
+  const crypto = (rails as Record<string, unknown>).crypto
+  if (!crypto || typeof crypto !== 'object') return null
+  const c = crypto as Record<string, unknown>
+  if (typeof c.enabled !== 'boolean') return null
+  return {
+    enabled: c.enabled,
+    lastSuccessAtMs: typeof c.lastSuccessAtMs === 'number' ? c.lastSuccessAtMs : null,
+    lastFailureAtMs: typeof c.lastFailureAtMs === 'number' ? c.lastFailureAtMs : null,
+  }
+}
+
+type Subscriber = (state: CryptoRailState) => void
+
+interface Store {
+  state: CryptoRailState
+  subscribers: Set<Subscriber>
+  intervalId: ReturnType<typeof setInterval> | null
+  inFlight: boolean
+  cooldownUntil: number
+  unsubscribeVisibility: (() => void) | null
+}
+
+const store: Store = {
+  state: EMPTY_CRYPTO_RAIL,
+  subscribers: new Set(),
+  intervalId: null,
+  inFlight: false,
+  cooldownUntil: 0,
+  unsubscribeVisibility: null,
+}
+
+function notify(): void {
+  for (const sub of store.subscribers) sub(store.state)
+}
+
+async function fetchCryptoRail(force = false): Promise<void> {
+  if (store.inFlight) return
+  if (!force && isPageHidden()) return
+  if (!force && Date.now() < store.cooldownUntil) return
+
+  store.inFlight = true
   try {
-    const res = await fetch('/api/oracle/status', { signal, headers: { accept: 'application/json' } })
-    if (!res.ok) return null
-    const json = (await res.json()) as { rails?: { crypto?: RailStatus } }
-    const crypto = json?.rails?.crypto
-    if (!crypto || typeof crypto.enabled !== 'boolean') return null
-    return {
-      enabled: crypto.enabled,
-      lastSuccessAtMs: typeof crypto.lastSuccessAtMs === 'number' ? crypto.lastSuccessAtMs : null,
-      lastFailureAtMs: typeof crypto.lastFailureAtMs === 'number' ? crypto.lastFailureAtMs : null,
+    const res = await fetch('/api/oracle/status', {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    })
+    if (!res.ok && res.status !== 503) throw new Error(`status ${res.status}`)
+    const rail = parseRail(await res.json())
+    if (!rail) {
+      store.state = OFFLINE_AFTER_FAILURE
+    } else {
+      const { health, ageMs } = deriveHealth(rail, Date.now())
+      store.state = { health, ageMs, isLoading: false }
     }
+    store.cooldownUntil = 0
   } catch {
-    return null
+    store.state = OFFLINE_AFTER_FAILURE
+    store.cooldownUntil = Date.now() + POLL_INTERVAL_MS
+  } finally {
+    store.inFlight = false
+    notify()
+  }
+}
+
+function armInterval(): void {
+  if (store.intervalId !== null) return
+  store.intervalId = setInterval(fetchCryptoRail, POLL_INTERVAL_MS)
+}
+
+function disarmInterval(): void {
+  if (store.intervalId === null) return
+  clearInterval(store.intervalId)
+  store.intervalId = null
+}
+
+function startPolling(): void {
+  if (typeof window === 'undefined') return
+  if (store.unsubscribeVisibility === null) {
+    store.unsubscribeVisibility = subscribePageVisibility((hidden) => {
+      if (hidden) {
+        disarmInterval()
+        return
+      }
+      armInterval()
+      void fetchCryptoRail(true)
+    })
+  }
+  if (!isPageHidden()) armInterval()
+}
+
+function stopPolling(): void {
+  if (store.subscribers.size > 0) return
+  disarmInterval()
+  if (store.unsubscribeVisibility) {
+    store.unsubscribeVisibility()
+    store.unsubscribeVisibility = null
   }
 }
 
 export function useCryptoRailHealth(): CryptoRailState {
-  const [state, setState] = useState<CryptoRailState>({ health: 'offline', ageMs: null, isLoading: true })
+  const [snapshot, setSnapshot] = useState<CryptoRailState>(store.state)
 
   useEffect(() => {
-    let cancelled = false
-    const controller = new AbortController()
+    const subscriber: Subscriber = (next) => setSnapshot(next)
+    store.subscribers.add(subscriber)
+    startPolling()
 
-    const poll = async () => {
-      const rail = await fetchRail(controller.signal)
-      if (cancelled) return
-      if (!rail) {
-        setState({ health: 'offline', ageMs: null, isLoading: false })
-        return
-      }
-      const { health, ageMs } = deriveHealth(rail, Date.now())
-      setState({ health, ageMs, isLoading: false })
+    if (store.state.isLoading && !store.inFlight) {
+      void fetchCryptoRail()
+    } else {
+      setSnapshot(store.state)
     }
 
-    poll()
-    const timer = setInterval(poll, POLL_MS)
     return () => {
-      cancelled = true
-      controller.abort()
-      clearInterval(timer)
+      store.subscribers.delete(subscriber)
+      stopPolling()
     }
   }, [])
 
-  return state
+  return snapshot
 }
 
-// Exported for unit tests so we can probe the verdict logic without
-// mounting the polling hook.
+export function __resetCryptoRailHealthForTests(): void {
+  if (store.intervalId !== null) clearInterval(store.intervalId)
+  if (store.unsubscribeVisibility) store.unsubscribeVisibility()
+  store.state = EMPTY_CRYPTO_RAIL
+  store.subscribers.clear()
+  store.intervalId = null
+  store.inFlight = false
+  store.cooldownUntil = 0
+  store.unsubscribeVisibility = null
+}
+
 export { deriveHealth as deriveCryptoRailHealth }
