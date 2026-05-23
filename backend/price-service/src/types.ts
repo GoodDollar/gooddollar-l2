@@ -23,12 +23,30 @@ export interface NormalizedQuote {
   ask: number;
   mid: number;
   last: number;
+  spread: number;
+  spreadPct: number;
   timestamp: number;
   sessionState: SessionState;
   confidence: number;
   assetClass?: EtoroAssetClass;
   currency?: string;
   stale: boolean;
+}
+
+/**
+ * Derive absolute and percentage spread from a quote's bid/ask/mid.
+ * `spread` is `ask - bid` (clamped to >= 0). `spreadPct` is
+ * `((ask - bid) / mid) * 100`, clamped to >= 0 when mid > 0, else 0.
+ * Returns a new quote with the derived fields filled in so callers can
+ * pass through partially-constructed fixtures without recomputing.
+ */
+export function computeSpread<T extends Pick<NormalizedQuote, 'bid' | 'ask' | 'mid'>>(
+  quote: T,
+): T & { spread: number; spreadPct: number } {
+  const rawSpread = quote.ask - quote.bid;
+  const spread = rawSpread > 0 ? rawSpread : 0;
+  const spreadPct = quote.mid > 0 ? Math.max(0, (rawSpread / quote.mid) * 100) : 0;
+  return { ...quote, spread, spreadPct };
 }
 
 export interface RiskFilterResult {

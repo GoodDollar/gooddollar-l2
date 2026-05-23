@@ -1,11 +1,11 @@
 import { createServer } from '../server';
 import { QuoteCache } from '../quote-cache';
-import { NormalizedQuote } from '../types';
+import { NormalizedQuote, computeSpread } from '../types';
 import express from 'express';
 
 function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
-  return {
-    source: 'etoro',
+  const base = {
+    source: 'etoro' as const,
     symbol: 'AAPL',
     instrumentId: 'AAPL-1',
     bid: 189.50,
@@ -13,11 +13,12 @@ function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
     mid: 189.55,
     last: 189.55,
     timestamp: Date.now(),
-    sessionState: 'open',
+    sessionState: 'open' as const,
     confidence: 1,
     stale: false,
     ...overrides,
   };
+  return computeSpread(base);
 }
 
 describe('REST Server', () => {
@@ -70,6 +71,16 @@ describe('REST Server', () => {
       expect(body.quotes.AAPL).toBeDefined();
       expect(body.quotes.TSLA).toBeDefined();
     });
+
+    it('includes spread and spreadPct on each quote', async () => {
+      cache.clear();
+      cache.update(makeQuote({ symbol: 'AAPL', bid: 100, ask: 100.5, mid: 100.25 }));
+      const res = await fetch(`${baseUrl}/quotes`);
+      const body = (await res.json()) as { quotes: Record<string, Record<string, number>> };
+      expect(res.status).toBe(200);
+      expect(body.quotes.AAPL.spread).toBeCloseTo(0.5, 6);
+      expect(body.quotes.AAPL.spreadPct).toBeCloseTo((0.5 / 100.25) * 100, 6);
+    });
   });
 
   describe('GET /quotes/:symbol', () => {
@@ -81,6 +92,16 @@ describe('REST Server', () => {
       expect(res.status).toBe(200);
       expect(body.symbol).toBe('AAPL');
       expect(body.last).toBe(190);
+    });
+
+    it('exposes spread and spreadPct fields', async () => {
+      cache.clear();
+      cache.update(makeQuote({ symbol: 'AAPL', bid: 100, ask: 100.5, mid: 100.25 }));
+      const res = await fetch(`${baseUrl}/quotes/AAPL`);
+      const body = (await res.json()) as Record<string, number>;
+      expect(res.status).toBe(200);
+      expect(body.spread).toBeCloseTo(0.5, 6);
+      expect(body.spreadPct).toBeCloseTo((0.5 / 100.25) * 100, 6);
     });
 
     it('returns 404 for unknown symbol', async () => {

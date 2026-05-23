@@ -1,4 +1,10 @@
-import { NormalizedQuote, RiskFilterResult, PriceServiceConfig, DEFAULT_CONFIG } from './types';
+import {
+  NormalizedQuote,
+  RiskFilterResult,
+  PriceServiceConfig,
+  DEFAULT_CONFIG,
+  computeSpread,
+} from './types';
 
 export class RiskFilter {
   private readonly config: PriceServiceConfig;
@@ -9,7 +15,9 @@ export class RiskFilter {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  apply(quote: NormalizedQuote): RiskFilterResult {
+  apply(rawQuote: NormalizedQuote): RiskFilterResult {
+    const quote = computeSpread(rawQuote);
+
     const staleness = this.checkStaleness(quote);
     if (!staleness.accepted) return staleness;
 

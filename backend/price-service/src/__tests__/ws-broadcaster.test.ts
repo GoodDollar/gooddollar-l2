@@ -1,11 +1,11 @@
 import { WsBroadcaster } from '../ws-broadcaster';
 import { QuoteCache } from '../quote-cache';
-import { NormalizedQuote } from '../types';
+import { NormalizedQuote, computeSpread } from '../types';
 import WebSocket from 'ws';
 
 function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
-  return {
-    source: 'etoro',
+  const base = {
+    source: 'etoro' as const,
     symbol: 'AAPL',
     instrumentId: 'AAPL-1',
     bid: 189.50,
@@ -13,11 +13,12 @@ function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
     mid: 189.55,
     last: 189.55,
     timestamp: Date.now(),
-    sessionState: 'open',
+    sessionState: 'open' as const,
     confidence: 1,
     stale: false,
     ...overrides,
   };
+  return computeSpread(base);
 }
 
 describe('WsBroadcaster', () => {

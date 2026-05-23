@@ -128,3 +128,8 @@ frontend/.next.review/
 
 # Local generated review artifacts
 frontend/*.png
+.cursor/skills/autobuilder
+.autobuilder/.env
+.autobuilder/active-initiative
+.autobuilder/config.yaml
+**/review-screenshots/
