@@ -5,6 +5,13 @@ import { useCallback, useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
 import HedgeProofErrorCard from './HedgeProofErrorCard'
+import {
+  copyForResponse,
+  type ErrorCopy,
+  type ProofResponse,
+} from './HedgeProofViewer/proof-response'
+
+export type { ProofResponse } from './HedgeProofViewer/proof-response'
 
 /**
  * Lane 5 — shared in-app hedge proof viewer.
@@ -23,19 +30,6 @@ import HedgeProofErrorCard from './HedgeProofErrorCard'
  *     copy leaks to the page).
  */
 
-export type ProofResponse =
-  | {
-      status: 'ok'
-      markdown: string
-      pointer: { path: string; timestamp: number; summary: string }
-    }
-  | { status: 'engine_down'; reason: string }
-  | { status: 'no_proof' }
-  | { status: 'engine_error'; reason: string; httpStatus: number }
-  | { status: 'unreadable'; reason: string }
-  | { status: 'forbidden'; reason: string }
-  | { status: 'missing'; reason: string }
-
 type OkData = Extract<ProofResponse, { status: 'ok' }>
 
 type ViewState =
@@ -44,44 +38,6 @@ type ViewState =
   | { kind: 'empty_body'; data: OkData }
   | { kind: 'no_proof' }
   | { kind: 'error'; copy: ErrorCopy }
-
-interface ErrorCopy {
-  title: string
-  detail: string
-}
-
-function copyForResponse(res: ProofResponse): ErrorCopy {
-  switch (res.status) {
-    case 'ok':
-    case 'no_proof':
-      return { title: 'Hedge proof unavailable', detail: 'No further detail available.' }
-    case 'engine_down':
-      return {
-        title: 'Hedge engine unreachable',
-        detail: 'Could not fetch the latest proof pointer from the hedge engine.',
-      }
-    case 'engine_error':
-      return {
-        title: 'Hedge engine returned an error',
-        detail: `Proof pointer endpoint returned HTTP ${res.httpStatus}.`,
-      }
-    case 'unreadable':
-      return {
-        title: 'Hedge engine returned an unreadable response',
-        detail: res.reason,
-      }
-    case 'forbidden':
-      return {
-        title: 'Proof path forbidden',
-        detail: res.reason,
-      }
-    case 'missing':
-      return {
-        title: 'Hedge proof file missing',
-        detail: res.reason,
-      }
-  }
-}
 
 function copyForNetwork(): ErrorCopy {
   return {

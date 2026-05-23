@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import HedgeProofViewerPage from '../page';
+import {
+  copyForResponse,
+  type ProofResponse,
+} from '@/components/HedgeProofViewer/proof-response';
 
 function mockJson(body: unknown, init: ResponseInit = { status: 200 }) {
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -21,6 +25,22 @@ afterEach(() => {
 });
 
 describe('HedgeProofViewerPage', () => {
+  it('copyForResponse handles invalid_id by surfacing the route reason (#0049)', () => {
+    const copy = copyForResponse({
+      status: 'invalid_id',
+      reason: 'Missing or empty receipt id',
+    });
+    expect(copy.title).toBe('Receipt id was rejected');
+    expect(copy.detail).toBe('Missing or empty receipt id');
+  });
+
+  it('copyForResponse returns a branded fallback for an unknown wire status without throwing (#0049)', () => {
+    const unknown = { status: 'some_future_status' } as unknown as ProofResponse;
+    const copy = copyForResponse(unknown);
+    expect(copy.title).toBe('Hedge proof unavailable');
+    expect(copy.detail).toMatch(/unexpected response/i);
+  });
+
   it('renders the proof markdown as HTML on the happy path', async () => {
     mockJson({
       status: 'ok',
@@ -164,6 +184,28 @@ describe('HedgeProofViewerPage', () => {
     const body = await screen.findByTestId('hedge-proof-body');
     expect(body.querySelector('h1')?.textContent).toBe('hello');
     expect(screen.queryByTestId('hedge-proof-empty-body')).toBeNull();
+  });
+
+  it('renders a branded "Receipt id was rejected" card when the route returns invalid_id (#0049)', async () => {
+    mockJson(
+      { status: 'invalid_id', reason: 'Missing or empty receipt id' },
+      { status: 400 },
+    );
+    render(<HedgeProofViewerPage />);
+    const errPanel = await screen.findByTestId('hedge-proof-error');
+    expect(errPanel.textContent).toMatch(/Receipt id was rejected/i);
+    expect(errPanel.textContent).toMatch(/Missing or empty receipt id/);
+    expect(errPanel.className).toMatch(/border-red/);
+    expect(screen.getByTestId('hedge-proof-retry')).toBeInTheDocument();
+  });
+
+  it('renders a branded fallback when the route returns an unknown status, without crashing (#0049)', async () => {
+    mockJson({ status: 'some_future_status' }, { status: 500 });
+    render(<HedgeProofViewerPage />);
+    const errPanel = await screen.findByTestId('hedge-proof-error');
+    expect(errPanel.textContent).toMatch(/Hedge proof unavailable/i);
+    expect(errPanel.textContent).toMatch(/unexpected response/i);
+    expect(screen.getByTestId('hedge-proof-retry')).toBeInTheDocument();
   });
 
   it('retry on a network rejection re-fetches and recovers to the happy view', async () => {
