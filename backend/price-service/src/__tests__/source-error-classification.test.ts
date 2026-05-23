@@ -93,14 +93,15 @@ describe('sanitizeSourceStatus disconnected with detail (task 0049)', () => {
     }
   });
 
-  it('sets detail to null when omitted on the input status', () => {
+  it('omits the detail key entirely when no detail was set on the input (task 0052 null hygiene)', () => {
     const out = sanitizeSourceStatus({
       connected: false,
       reason: 'source-unavailable',
       lastAttachAt: null,
     });
     if (!out.connected) {
-      expect(out.detail).toBeNull();
+      expect(out.detail).toBeUndefined();
+      expect(Object.keys(out)).not.toContain('detail');
     } else {
       throw new Error('expected disconnected branch');
     }

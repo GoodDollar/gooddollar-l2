@@ -895,7 +895,8 @@ describe('REST Server — /health and /status/quotes with source status wired', 
     const src = body.source as Record<string, unknown>;
     expect(src.connected).toBe(false);
     expect(src.reason).toBe('lost connection');
-    expect(src.lastAttachAt).toBeNull();
+    expect(src.lastAttachAt).toBeUndefined();
+    expect(Object.keys(src)).not.toContain('lastAttachAt');
   });
 
   it('connected source + empty cache (warmup) → 200 status ok (not 503)', async () => {
@@ -1221,7 +1222,8 @@ describe('REST Server — data endpoints carry source state when getter wired', 
     const src = body.source as Record<string, unknown>;
     expect(src.connected).toBe(false);
     expect(src.reason).toBe('etoro-client-not-installed');
-    expect(src.lastAttachAt).toBeNull();
+    expect(src.lastAttachAt).toBeUndefined();
+    expect(Object.keys(src)).not.toContain('lastAttachAt');
   });
 
   it('GET /quotes includes source.connected=true and symbols when source attached', async () => {

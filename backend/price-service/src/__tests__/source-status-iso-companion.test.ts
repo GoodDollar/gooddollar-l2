@@ -39,7 +39,7 @@ describe('sanitizeSourceStatus — lastAttachAt ISO companion (task 0039)', () =
     expect(out.lastAttachAt).toBe(NOW);
   });
 
-  it('connected:false with null lastAttachAt → all three timestamp fields are null', () => {
+  it('connected:false with null lastAttachAt → timestamp triplet + deprecations omitted entirely (task 0052)', () => {
     const status: SourceStatus = {
       connected: false,
       reason: 'etoro-client-not-installed',
@@ -47,9 +47,13 @@ describe('sanitizeSourceStatus — lastAttachAt ISO companion (task 0039)', () =
     };
     const out = sanitizeSourceStatus(status);
     if (out.connected) throw new Error('unreachable');
-    expect(out.lastAttachAtMs).toBeNull();
-    expect(out.lastAttachAtIso).toBeNull();
-    expect(out.lastAttachAt).toBeNull();
+    expect(out.lastAttachAtMs).toBeUndefined();
+    expect(out.lastAttachAtIso).toBeUndefined();
+    expect(out.lastAttachAt).toBeUndefined();
+    expect(out.deprecations).toBeUndefined();
+    expect(Object.keys(out)).not.toContain('lastAttachAtMs');
+    expect(Object.keys(out)).not.toContain('lastAttachAt');
+    expect(Object.keys(out)).not.toContain('deprecations');
   });
 
   it('drift gate: lastAttachAtIso === new Date(lastAttachAtMs).toISOString() when ms is set', () => {
@@ -63,7 +67,7 @@ describe('sanitizeSourceStatus — lastAttachAt ISO companion (task 0039)', () =
     expect(out.lastAttachAtIso).toBe(new Date(out.lastAttachAtMs).toISOString());
   });
 
-  it('every branch carries a deprecations.lastAttachAt string naming the rename target', () => {
+  it('every branch with lastAttachAt populated carries a deprecations.lastAttachAt rename note', () => {
     const out1 = sanitizeSourceStatus({
       connected: true,
       symbols: [],
@@ -72,12 +76,23 @@ describe('sanitizeSourceStatus — lastAttachAt ISO companion (task 0039)', () =
     const out2 = sanitizeSourceStatus({
       connected: false,
       reason: 'source-unavailable',
-      lastAttachAt: null,
+      lastAttachAt: NOW,
     });
     for (const out of [out1, out2]) {
-      expect(out.deprecations.lastAttachAt).toBe(LAST_ATTACH_AT_DEPRECATION);
-      expect(out.deprecations.lastAttachAt).toMatch(/lastAttachAtMs/);
+      expect(out.deprecations).toBeDefined();
+      expect(out.deprecations!.lastAttachAt).toBe(LAST_ATTACH_AT_DEPRECATION);
+      expect(out.deprecations!.lastAttachAt).toMatch(/lastAttachAtMs/);
     }
+  });
+
+  it('deprecations is omitted when the legacy lastAttachAt is itself absent (task 0052)', () => {
+    const out = sanitizeSourceStatus({
+      connected: false,
+      reason: 'source-unavailable',
+      lastAttachAt: null,
+    });
+    if (out.connected) throw new Error('unreachable');
+    expect(out.deprecations).toBeUndefined();
   });
 });
 

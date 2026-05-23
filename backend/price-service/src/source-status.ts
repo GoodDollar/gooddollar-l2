@@ -40,12 +40,20 @@ export interface SourceReasonDoc {
  * `severity`) so an operator paged on a degraded alert can act without
  * grepping the codebase.
  *
- * Both branches carry the unix-ms / ISO companion pair
- * (`lastAttachAtMs` + `lastAttachAtIso`) plus the legacy `lastAttachAt`
- * alias and an in-band `deprecations` note so a consumer reading the
- * old field name learns about the rename without round-tripping to
- * docs. Producers (e.g. `index.ts`) keep writing the minimal
- * `SourceStatus` shape; the ISO companion is computed here.
+ * The connected branch always carries a populated unix-ms / ISO
+ * companion pair (`lastAttachAtMs` + `lastAttachAtIso`) plus the
+ * legacy `lastAttachAt` alias and an in-band `deprecations` note.
+ *
+ * The disconnected branch trims everything that would otherwise ship
+ * as a `null` (task 0052): `detail` rides only when populated (the
+ * `source-unavailable` branch sets it; everywhere else it is absent),
+ * and the timestamp triplet (`lastAttachAtMs` + `lastAttachAtIso` +
+ * legacy `lastAttachAt`) plus its `deprecations` rename note ride
+ * together iff the canonical timestamp is non-null. Same show-iff-
+ * legacy-on-the-wire policy as `count → totalCached` on `/quotes`.
+ *
+ * Producers (e.g. `index.ts`) keep writing the minimal `SourceStatus`
+ * shape; the ISO companion and conditional assembly live here.
  */
 export type SanitizedSourceStatus =
   | {
@@ -54,11 +62,11 @@ export type SanitizedSourceStatus =
       humanReason: string;
       nextStep: string;
       severity: SourceSeverity;
-      detail: string | null;
-      lastAttachAtMs: number | null;
-      lastAttachAtIso: string | null;
-      lastAttachAt: number | null;
-      deprecations: SourceDeprecations;
+      detail?: string;
+      lastAttachAtMs?: number;
+      lastAttachAtIso?: string;
+      lastAttachAt?: number;
+      deprecations?: SourceDeprecations;
     }
   | {
       connected: true;
@@ -206,9 +214,6 @@ export function classifySourceError(err: unknown): {
  * brand-new operator can act on the alert without grepping the code.
  */
 export function sanitizeSourceStatus(status: SourceStatus): SanitizedSourceStatus {
-  const deprecations: SourceDeprecations = {
-    lastAttachAt: LAST_ATTACH_AT_DEPRECATION,
-  };
   if (status.connected) {
     const doc = REASON_CATALOG['connected'];
     return {
@@ -221,23 +226,32 @@ export function sanitizeSourceStatus(status: SourceStatus): SanitizedSourceStatu
       lastAttachAtMs: status.lastAttachAt,
       lastAttachAtIso: isoFromMs(status.lastAttachAt)!,
       lastAttachAt: status.lastAttachAt,
-      deprecations,
+      deprecations: { lastAttachAt: LAST_ATTACH_AT_DEPRECATION },
     };
   }
   const safeReason = redactSourceReason(new Error(status.reason));
   const doc = enrichSourceReason(safeReason);
-  return {
+  // Build the disconnected body in two passes (task 0052): the
+  // always-present fields first, then the conditional triplet
+  // (`detail`, the `lastAttachAt*` family + its deprecation note)
+  // only when populated. Insertion order encodes the field-ordering
+  // policy from task 0041 — canonical `lastAttachAtMs` before its
+  // ISO companion before the legacy alias before the deprecation map.
+  const out: SanitizedSourceStatus = {
     connected: false,
     reason: safeReason,
     humanReason: doc.humanReason,
     nextStep: doc.nextStep,
     severity: doc.severity,
-    detail: status.detail ?? null,
-    lastAttachAtMs: status.lastAttachAt,
-    lastAttachAtIso: isoFromMs(status.lastAttachAt),
-    lastAttachAt: status.lastAttachAt,
-    deprecations,
   };
+  if (status.detail) out.detail = status.detail;
+  if (status.lastAttachAt !== null) {
+    out.lastAttachAtMs = status.lastAttachAt;
+    out.lastAttachAtIso = isoFromMs(status.lastAttachAt)!;
+    out.lastAttachAt = status.lastAttachAt;
+    out.deprecations = { lastAttachAt: LAST_ATTACH_AT_DEPRECATION };
+  }
+  return out;
 }
 
 /**
