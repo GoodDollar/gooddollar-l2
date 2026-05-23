@@ -46,8 +46,11 @@ async function fetchRebalanceStatus(url: string): Promise<RebalanceApiResponse> 
 }
 
 export function useStocksRebalanceStatus(symbols: string[]): UseStocksRebalanceStatusResult {
-  const normalizedSymbols = useMemo(
-    () => Array.from(new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))).sort(),
+  const symbolKey = useMemo(
+    () =>
+      Array.from(new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean)))
+        .sort()
+        .join(','),
     [symbols],
   )
   const [data, setData] = useState<RebalanceApiResponse | null>(null)
@@ -58,9 +61,8 @@ export function useStocksRebalanceStatus(symbols: string[]): UseStocksRebalanceS
     let cancelled = false
     let timer: ReturnType<typeof setInterval> | null = null
 
-    const query = normalizedSymbols.join(',')
-    const url = query.length > 0
-      ? `/api/stocks/rebalance-status?symbols=${encodeURIComponent(query)}`
+    const url = symbolKey.length > 0
+      ? `/api/stocks/rebalance-status?symbols=${encodeURIComponent(symbolKey)}`
       : '/api/stocks/rebalance-status'
 
     const tick = async () => {
@@ -84,7 +86,7 @@ export function useStocksRebalanceStatus(symbols: string[]): UseStocksRebalanceS
       cancelled = true
       if (timer) clearInterval(timer)
     }
-  }, [normalizedSymbols])
+  }, [symbolKey])
 
   const bySymbol = useMemo(() => {
     const next: Record<string, RebalanceInvariantResult> = {}
