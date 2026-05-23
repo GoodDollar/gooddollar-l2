@@ -10,6 +10,33 @@ import { isoFromMs } from './iso';
 export type SourceSeverity = 'ok' | 'info' | 'degraded' | 'critical';
 
 /**
+ * RFC 9110 §15.6.4 retry-cadence map keyed off the source severity.
+ * Returns `undefined` for `'ok'` (200 path — caller no-ops the
+ * `Retry-After` header). Numbers are deliberately conservative: a
+ * transient warmup recovers in ~5 s, a `'degraded'` source ~15 s, a
+ * `'critical'` config error needs operator intervention (60 s polling
+ * helps no-one but slows the retry loop). See task 0066.
+ *
+ * The same numbers ride on the wire as `source.retryAfterSeconds` so
+ * JSON-only consumers can read the same value the `Retry-After`
+ * header carries.
+ */
+export const RETRY_AFTER_SECONDS_BY_SEVERITY: Readonly<
+  Record<SourceSeverity, number | undefined>
+> = Object.freeze({
+  ok: undefined,
+  info: 5,
+  degraded: 15,
+  critical: 60,
+});
+
+export function retryAfterSecondsForSeverity(
+  severity: SourceSeverity,
+): number | undefined {
+  return RETRY_AFTER_SECONDS_BY_SEVERITY[severity];
+}
+
+/**
  * In-band deprecation message attached to the `source` block on every
  * endpoint so a consumer reading `lastAttachAt` discovers the
  * `lastAttachAtMs`/`lastAttachAtIso` rename without grepping the
@@ -62,6 +89,7 @@ export type SanitizedSourceStatus =
       humanReason: string;
       nextStep: string;
       severity: SourceSeverity;
+      retryAfterSeconds: number;
       detail?: string;
       lastAttachAtMs?: number;
       lastAttachAtIso?: string;
@@ -74,6 +102,7 @@ export type SanitizedSourceStatus =
       humanReason: string;
       nextStep: string;
       severity: SourceSeverity;
+      retryAfterSeconds: 0;
       symbols: string[];
       lastAttachAtMs: number;
       lastAttachAtIso: string;
@@ -222,6 +251,12 @@ export function sanitizeSourceStatus(status: SourceStatus): SanitizedSourceStatu
       humanReason: doc.humanReason,
       nextStep: doc.nextStep,
       severity: doc.severity,
+      // 0 == "no backoff needed, retry immediately" on the wire. Keeps
+      // the field shape symmetric across branches so a consumer can
+      // read `body.source.retryAfterSeconds` without a null/undefined
+      // check, and preserves the source-block no-null invariant
+      // (task 0052). See task 0066.
+      retryAfterSeconds: 0,
       symbols: status.symbols,
       lastAttachAtMs: status.lastAttachAt,
       lastAttachAtIso: isoFromMs(status.lastAttachAt)!,
@@ -237,12 +272,17 @@ export function sanitizeSourceStatus(status: SourceStatus): SanitizedSourceStatu
   // only when populated. Insertion order encodes the field-ordering
   // policy from task 0041 — canonical `lastAttachAtMs` before its
   // ISO companion before the legacy alias before the deprecation map.
+  // Disconnected branches always carry a non-`'ok'` severity, so the
+  // `?? 0` fallback is unreachable; pinned for type-safety against a
+  // future enum loosening that would break the `SourceSeverity`
+  // narrow.
   const out: SanitizedSourceStatus = {
     connected: false,
     reason: safeReason,
     humanReason: doc.humanReason,
     nextStep: doc.nextStep,
     severity: doc.severity,
+    retryAfterSeconds: retryAfterSecondsForSeverity(doc.severity) ?? 0,
   };
   if (status.detail) out.detail = status.detail;
   if (status.lastAttachAt !== null) {

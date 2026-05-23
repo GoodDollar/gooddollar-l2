@@ -79,6 +79,7 @@ describe('sanitizeSourceStatus', () => {
       humanReason: REASON_CATALOG['connected'].humanReason,
       nextStep: REASON_CATALOG['connected'].nextStep,
       severity: 'ok',
+      retryAfterSeconds: 0,
       symbols: ['AAPL'],
       lastAttachAtMs: lastAttachAt,
       lastAttachAtIso: new Date(lastAttachAt).toISOString(),

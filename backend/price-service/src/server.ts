@@ -4,6 +4,7 @@ import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats, SourceStatus } from '.
 import {
   enrichWsReason,
   ERROR_REASONS_PUBLIC,
+  RETRY_AFTER_SECONDS_BY_SEVERITY,
   sanitizeSourceStatus,
   SanitizedSourceStatus,
   SOURCE_REASONS_PUBLIC,
@@ -1086,6 +1087,35 @@ function computeDegraded(
   return { degraded, src };
 }
 
+/**
+ * Cache-only-degraded fallback (no `sourceStatusGetter` wired but the
+ * cache went sour) — RFC 9110 §15.6.4 still wants a `Retry-After`, so
+ * we tag the 503 with the `'degraded'`-severity cadence. Pulled off
+ * the same table the source block reads so the policy stays
+ * single-sourced.
+ */
+const FALLBACK_503_RETRY_AFTER_SECONDS =
+  RETRY_AFTER_SECONDS_BY_SEVERITY.degraded ?? 15;
+
+/**
+ * RFC 9110 §15.6.4 — every 503 SHOULD carry a `Retry-After`. The value
+ * rides off `source.severity` (see `RETRY_AFTER_SECONDS_BY_SEVERITY`):
+ * `'info'` → 5 s, `'degraded'` → 15 s, `'critical'` → 60 s. The same
+ * number ships in the body as `source.retryAfterSeconds` so JSON-only
+ * consumers don't have to peek at headers.
+ *
+ * Called once per 503 site, BEFORE `res.status(...).json(...)` — order
+ * matters: setting a header after `.json()` is a noop. See task 0066.
+ */
+function applyRetryAfterHeader(
+  res: Response,
+  src: SanitizedSourceStatus | undefined,
+): void {
+  const seconds =
+    src && !src.connected ? src.retryAfterSeconds : FALLBACK_503_RETRY_AFTER_SECONDS;
+  res.setHeader('Retry-After', String(seconds));
+}
+
 export function createServer(
   cache: QuoteCache,
   config?: Partial<PriceServiceConfig>,
@@ -1271,11 +1301,24 @@ export function createServer(
     // `errorReasons` describes HTTP error-envelope slugs (`not-found`
     // today; `method-not-allowed` and `invalid-symbol` fold in via
     // separate follow-ups). Same endpoint, no new route.
+    // `retryAfterSecondsBySeverity` is the canonical mapping a 503-aware
+    // client can read off the same discovery endpoint that lists every
+    // source reason — keeps the "what does the wire say" surface in one
+    // place. Headers and `source.retryAfterSeconds` both read off this
+    // exact table. `'ok'` is the connected branch (no 503) and rides
+    // explicitly as `null` so a JSON consumer sees the full enum
+    // domain instead of guessing the missing key. See task 0066.
     const body: Record<string, unknown> = {
       reasons: SOURCE_REASONS_PUBLIC,
       count: SOURCE_REASON_CATALOG_COUNT,
       errorReasons: ERROR_REASONS_PUBLIC,
       errorReasonCount: Object.keys(ERROR_REASONS_PUBLIC).length,
+      retryAfterSecondsBySeverity: {
+        ok: null,
+        info: RETRY_AFTER_SECONDS_BY_SEVERITY.info,
+        degraded: RETRY_AFTER_SECONDS_BY_SEVERITY.degraded,
+        critical: RETRY_AFTER_SECONDS_BY_SEVERITY.critical,
+      },
     };
     res.json(finalizeTimestamps(body, now));
   });
@@ -1310,6 +1353,7 @@ export function createServer(
     const degradedMessage = degraded
       ? 'service degraded — see source.reason / source.nextStep'
       : undefined;
+    if (degraded) applyRetryAfterHeader(res, src);
     res.status(degraded ? 503 : 200).json(
       finalizeEnvelope(body, now, {
         src,
@@ -1380,6 +1424,7 @@ export function createServer(
     } else {
       body.quotes = quotes;
     }
+    if (status === 503) applyRetryAfterHeader(res, ctx.src);
     res.status(status).json(finalizeEnvelope(body, now, ctx));
   });
 
@@ -1527,6 +1572,7 @@ export function createServer(
             'accepted tick';
       }
     }
+    if (degraded) applyRetryAfterHeader(res, src);
     res.status(degraded ? 503 : 200).json(
       finalizeEnvelope(body, now, {
         src,
@@ -1604,6 +1650,7 @@ export function createServer(
     const degradedMessage = degraded
       ? 'service degraded — see source.reason / source.nextStep'
       : undefined;
+    if (degraded) applyRetryAfterHeader(res, src);
     res.status(degraded ? 503 : 200).json(
       finalizeEnvelope(body, now, {
         src,
