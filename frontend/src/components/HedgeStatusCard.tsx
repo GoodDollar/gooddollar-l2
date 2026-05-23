@@ -21,6 +21,7 @@ import {
   ArrowPathIcon,
   InboxIcon,
 } from './HedgeStatusCard/icons'
+import { ReceiptsExportToolbar } from './HedgeStatusCard/ReceiptsExportToolbar'
 
 /**
  * Lane 5 — demo hedge proof surface.
@@ -894,10 +895,11 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             {isStale && staleSinceMs !== null && (
               <StaleChip sinceMs={staleSinceMs} />
             )}
+            {data?.degraded?.receipts && (
+              <DegradedHint>receipts source degraded: {data.degraded.receipts}</DegradedHint>
+            )}
           </div>
-          {data?.degraded?.receipts && (
-            <DegradedHint>receipts source degraded: {data.degraded.receipts}</DegradedHint>
-          )}
+          <ReceiptsExportToolbar receipts={receipts} />
         </div>
         <div
           data-testid="hedge-receipts-reserved"

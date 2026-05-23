@@ -248,6 +248,29 @@ describe('HedgeStatusCard', () => {
     expect(empty).toHaveTextContent(/cache miss/i);
   });
 
+  it('export toolbar is enabled with receipts and the button does not live inside the empty state (#0042)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const toolbar = await screen.findByTestId('hedge-receipts-export-toolbar');
+    expect(toolbar).toBeInTheDocument();
+    const csvBtn = screen.getByTestId('hedge-receipts-export-csv-button');
+    expect(csvBtn).toBeEnabled();
+    expect(csvBtn.getAttribute('title')).toBe('Download CSV');
+    // Belongs to the receipts panel header, NOT the empty-state wrapper.
+    expect(screen.queryByTestId('hedge-receipts-empty')).toBeNull();
+  });
+
+  it('export toolbar is disabled when receipts are empty and is not nested inside the empty state (#0042)', async () => {
+    mockFetchOnce({ ...BASE_RESPONSE, receipts: [] });
+    render(<HedgeStatusCard />);
+    const toolbar = await screen.findByTestId('hedge-receipts-export-toolbar');
+    const empty = screen.getByTestId('hedge-receipts-empty');
+    expect(empty.contains(toolbar)).toBe(false);
+    const csvBtn = screen.getByTestId('hedge-receipts-export-csv-button');
+    expect(csvBtn).toBeDisabled();
+    expect(csvBtn.getAttribute('title')).toBe('No receipts to export');
+  });
+
   it('shows the canonical "is unreachable" banner when the API rejects with an unknown error (#0034)', async () => {
     // The legacy banner leaked the raw runtime message verbatim
     // (`ECONNREFUSED`, `Failed to fetch`, `Unexpected token '<'`). After
