@@ -17,7 +17,7 @@ const tagClass: Record<StockNewsItem['tag'], string> = {
 }
 
 export function NewsEventsPanel({
-  ticker,
+  ticker: _ticker,
   isLoading,
   error,
   items,
@@ -25,8 +25,10 @@ export function NewsEventsPanel({
   ticker: string
   isLoading: boolean
   error: string | null
-  items: StockNewsItem[]
+  items: StockNewsItem[] | null
 }) {
+  const hasItems = items != null && items.length > 0
+
   return (
     <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4">
       <h2 className="text-sm font-semibold text-white mb-3">News & Events</h2>
@@ -40,14 +42,17 @@ export function NewsEventsPanel({
         <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2.5">
           <p className="text-xs text-red-200">{error}</p>
         </div>
-      ) : items.length === 0 ? (
-        <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 px-3 py-2.5">
-          <p className="text-xs text-gray-300">No recent catalysts for {ticker} yet.</p>
-          <p className="text-[11px] text-gray-500 mt-1">Check back later for earnings, macro, and product updates.</p>
+      ) : !hasItems ? (
+        <div
+          data-testid="news-events-source-pending"
+          className="rounded-xl border border-gray-700/30 bg-dark-50/30 px-3 py-2.5"
+        >
+          <p className="text-xs text-gray-300">No news feed configured yet — coming soon.</p>
+          <p className="mt-0.5 text-[10px] text-gray-500">Source: feed pending</p>
         </div>
       ) : (
         <div className="space-y-2.5">
-          {items.slice(0, 5).map((item) => (
+          {items!.slice(0, 5).map((item) => (
             <a
               key={item.id}
               href={item.url}
@@ -65,8 +70,6 @@ export function NewsEventsPanel({
           ))}
         </div>
       )}
-
-      <p className="text-[10px] text-gray-500 mt-3 text-right">News powered by GoodChain</p>
     </div>
   )
 }
