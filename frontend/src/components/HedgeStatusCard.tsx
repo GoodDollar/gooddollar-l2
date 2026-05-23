@@ -11,6 +11,7 @@ import {
 } from 'react'
 
 import { formatNotionalUsd } from '@/lib/format-notional'
+import { buildHedgeErrorHeadline } from '@/lib/hedge-error'
 
 /**
  * Lane 5 — demo hedge proof surface.
@@ -657,8 +658,11 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
           data-testid="hedge-status-error"
           className="mb-3 bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300 flex items-center justify-between gap-3 flex-wrap"
         >
-          <div>
-            <span className="font-medium">Hedge engine unavailable:</span> {error}
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="font-medium">{buildHedgeErrorHeadline(error)}</span>
+            <span className="text-red-300/80 text-xs">
+              Auto-retrying every {Math.round(POLL_INTERVAL_MS / 1000)}s.
+            </span>
           </div>
           <button
             type="button"

@@ -2,6 +2,7 @@ import { createRef } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import HedgeStatusCard, { type HedgeStatusCardHandle } from '../HedgeStatusCard';
+import { normalizeHedgeError } from '@/lib/hedge-error';
 
 const BASE_RESPONSE = {
   snapshot: {
@@ -787,5 +788,87 @@ describe('HedgeStatusCard', () => {
     const engineStat = await screen.findByTestId('hedge-engine-stat');
     const tile = engineStat.closest('div');
     expect(tile!.textContent ?? '').toMatch(/warming up/i);
+  });
+
+  describe('error banner copy (#0022)', () => {
+    it('reads as one coherent sentence with no duplicate subject', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const banner = await screen.findByTestId('hedge-status-error');
+      const occurrences = (banner.textContent ?? '').match(/hedge engine/gi);
+      expect(occurrences?.length ?? 0).toBe(1);
+      expect(banner.textContent).toMatch(/Hedge engine is unreachable/i);
+      expect(banner.textContent).toMatch(/Auto-retrying every 10s/i);
+    });
+
+    it('preserves non-prefix backend errors verbatim', async () => {
+      mockFetchOnce(
+        {
+          error: 'HTTP 500',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const banner = await screen.findByTestId('hedge-status-error');
+      expect(banner.textContent).toContain('HTTP 500');
+      expect(banner.textContent).toMatch(/Auto-retrying every 10s/i);
+    });
+
+    it('Retry button still triggers a refetch', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: 'Hedge engine unreachable',
+            snapshot: null,
+            mode: null,
+            receipts: [],
+            proof: null,
+          }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+      render(<HedgeStatusCard />);
+      const retry = await screen.findByTestId('hedge-retry-button');
+      const before = fetchSpy.mock.calls.length;
+      fireEvent.click(retry);
+      await waitFor(() => {
+        expect(fetchSpy.mock.calls.length).toBeGreaterThan(before);
+      });
+    });
+  });
+
+  describe('normalizeHedgeError (#0022)', () => {
+    it('strips the "Hedge engine" subject prefix', () => {
+      expect(normalizeHedgeError('Hedge engine unreachable')).toBe('unreachable');
+      expect(normalizeHedgeError('hedge engine: unreachable')).toBe('unreachable');
+      expect(normalizeHedgeError('hedge engine - timeout')).toBe('timeout');
+    });
+
+    it('preserves unrelated subjects verbatim', () => {
+      expect(normalizeHedgeError('HTTP 500')).toBe('HTTP 500');
+    });
+
+    it('falls back to "unreachable" when the message is empty after stripping', () => {
+      expect(normalizeHedgeError('Hedge engine')).toBe('unreachable');
+      expect(normalizeHedgeError(null)).toBe('unreachable');
+      expect(normalizeHedgeError(undefined)).toBe('unreachable');
+    });
+
+    it('keeps a leading "is " so the caller does not inject a second one', () => {
+      expect(normalizeHedgeError('Hedge engine is unreachable')).toBe('is unreachable');
+    });
   });
 });
