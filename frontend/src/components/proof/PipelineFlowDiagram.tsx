@@ -64,9 +64,9 @@ const TONE_NODE_CLASS: Record<Tone, string> = {
 }
 
 const TONE_EDGE_CLASS: Record<Tone, string> = {
-  healthy: 'bg-green-500/40',
-  degraded: 'bg-yellow-500/40',
-  unknown: 'bg-white/20',
+  healthy: 'text-green-400',
+  degraded: 'text-yellow-400',
+  unknown: 'text-white/40',
 }
 
 function isFreshQuotes(payload: unknown, stalenessMs: number): boolean {
@@ -215,19 +215,19 @@ export function PipelineFlowDiagram({
       data-testid="pipeline-flow-diagram"
       className="rounded-2xl border border-white/10 bg-dark-100/40 px-4 py-3"
     >
-      <ol className="flex flex-wrap items-center gap-2 text-xs">
+      <ol className="flex flex-wrap items-center gap-y-2 text-xs">
         {NODES.map((node, idx) => {
           const nodeTone = axisToTone(axes[node.axis])
-          const elements = [
-            <FlowNode key={`node-${node.id}`} spec={node} tone={nodeTone} />,
-          ]
           const edge = EDGES[idx]
-          if (edge) {
-            elements.push(
-              <FlowEdge key={`edge-${edge.id}`} spec={edge} tone={axisToTone(axes[edge.axis])} />,
-            )
-          }
-          return elements
+          const edgeTone = edge ? axisToTone(axes[edge.axis]) : null
+          return (
+            <FlowNode
+              key={`node-${node.id}`}
+              spec={node}
+              tone={nodeTone}
+              trailingEdge={edge && edgeTone ? { spec: edge, tone: edgeTone } : null}
+            />
+          )
         })}
       </ol>
       {failedReasons.length > 0 && (
@@ -242,26 +242,37 @@ export function PipelineFlowDiagram({
   )
 }
 
-function FlowNode({ spec, tone }: { spec: NodeSpec; tone: Tone }) {
+function FlowNode({
+  spec,
+  tone,
+  trailingEdge,
+}: {
+  spec: NodeSpec
+  tone: Tone
+  trailingEdge: { spec: EdgeSpec; tone: Tone } | null
+}) {
   return (
     <li
       data-testid={`pipeline-node-${spec.id}`}
       data-tone={tone}
-      className={`inline-flex flex-col items-start rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`}
+      className="inline-flex items-center"
     >
-      <span className="font-mono uppercase tracking-wider">{spec.label}</span>
-      {spec.subtitle && <span className="text-[10px] text-gray-400">{spec.subtitle}</span>}
+      <span
+        className={`inline-flex flex-col items-start rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`}
+      >
+        <span className="font-mono uppercase tracking-wider">{spec.label}</span>
+        {spec.subtitle && <span className="text-[10px] text-gray-400">{spec.subtitle}</span>}
+      </span>
+      {trailingEdge && (
+        <span
+          aria-hidden
+          data-testid={`pipeline-edge-${trailingEdge.spec.id}`}
+          data-tone={trailingEdge.tone}
+          className={`mx-1.5 text-base leading-none sm:mx-2 ${TONE_EDGE_CLASS[trailingEdge.tone]}`}
+        >
+          →
+        </span>
+      )}
     </li>
-  )
-}
-
-function FlowEdge({ spec, tone }: { spec: EdgeSpec; tone: Tone }) {
-  return (
-    <li
-      aria-hidden
-      data-testid={`pipeline-edge-${spec.id}`}
-      data-tone={tone}
-      className={`h-px w-6 self-center sm:w-8 ${TONE_EDGE_CLASS[tone]}`}
-    />
   )
 }

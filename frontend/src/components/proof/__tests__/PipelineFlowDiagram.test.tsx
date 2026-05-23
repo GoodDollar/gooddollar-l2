@@ -245,6 +245,56 @@ describe('PipelineFlowDiagram', () => {
     })
   })
 
+  it('renders no standalone edge `<li>` past the last node — every edge sits inside a node `<li>`', async () => {
+    mockOnChainHealthy()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
+
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+        'healthy',
+      )
+    })
+
+    // The last node has no trailing arrow — it terminates the chain.
+    const lastNode = screen.getByTestId('pipeline-node-demo-hedge')
+    expect(lastNode.querySelector('[data-testid^="pipeline-edge-"]')).toBeNull()
+
+    // Every rendered edge lives inside the LI of the node that precedes it,
+    // so flex-wrap can never strand an edge in empty space at the end of a
+    // wrapped row.
+    const edges = document.querySelectorAll('[data-testid^="pipeline-edge-"]')
+    expect(edges).toHaveLength(5)
+    edges.forEach((edge) => {
+      const parentLi = edge.closest('li[data-testid^="pipeline-node-"]')
+      expect(parentLi).not.toBeNull()
+    })
+  })
+
+  it('the inline edge arrow inherits the same tone as its axis health', async () => {
+    mockOnChainDegraded()
+    installFetchMock((url) => {
+      if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+      if (url.includes('/api/hedge-proof/latest'))
+        return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+      return { ok: false, status: 404, body: {} }
+    })
+
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
+
+    await vi.waitFor(() => {
+      const onChainEdge = screen.getByTestId('pipeline-edge-oracle-signer-chain')
+      expect(onChainEdge.getAttribute('data-tone')).toBe('degraded')
+      expect(onChainEdge.className).toMatch(/text-yellow/)
+    })
+  })
+
   it('does not leak raw transport errors into the rendered DOM', async () => {
     mockOnChainDegraded()
     installFetchMock(() => {
