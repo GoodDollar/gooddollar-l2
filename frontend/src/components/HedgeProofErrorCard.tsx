@@ -38,6 +38,14 @@ export default function HedgeProofErrorCard({
       ? 'border-red-500/30 bg-red-500/10'
       : 'border-dark-50 bg-dark-100/40'
   const titleColor = variant === 'error' ? 'text-red-200' : 'text-white'
+  // Match the dashboard's red-on-red Retry palette when the wrapper is red,
+  // and keep the neutral grey on the calmer "no proof yet" / empty-body
+  // surfaces. Both variants share `disabled:opacity-50` so any future
+  // caller wiring an in-flight `disabled` attribute fades consistently.
+  const retryClass =
+    variant === 'error'
+      ? 'text-xs px-3 py-1.5 rounded-md border border-red-500/40 text-red-200 hover:bg-red-500/10 disabled:opacity-50'
+      : 'text-xs px-3 py-1.5 rounded-md border border-dark-50 text-gray-200 hover:bg-dark-50 disabled:opacity-50'
   return (
     <section
       data-testid={testid}
@@ -51,7 +59,7 @@ export default function HedgeProofErrorCard({
             type="button"
             data-testid="hedge-proof-retry"
             onClick={() => void onRetry()}
-            className="text-xs px-3 py-1.5 rounded-md border border-dark-50 text-gray-200 hover:bg-dark-50"
+            className={retryClass}
           >
             Retry
           </button>
