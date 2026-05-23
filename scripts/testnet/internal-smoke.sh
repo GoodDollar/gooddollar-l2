@@ -316,9 +316,18 @@ escape_md_cell() {
 # escape_md_cell so a `;` / `|` / unusual byte in it can't reshape
 # the row.
 add_diag_row() {
-  local ct_md
+  local ct_md body_md
   ct_md="$(escape_md_cell "${HTTP_CT:-?}")"
-  add_summary "| ↳ | HTTP ${HTTP_CODE:-000}, content-type $ct_md, curl_exit=${CURL_EXIT:-?} | body[:80]=\`$(redact_snippet "$HTTP_BODY")\` |"
+  # `redact_snippet` only strips CR/LF, downgrades pipes, redacts
+  # tokens, and codepoint-truncates — it does NOT escape backticks.
+  # A body containing backticks (Express error pages, Node stack
+  # traces, JSON quoting identifiers) breaks the inline code span
+  # the snippet lives in, fragmenting the diag row into
+  # code+prose+code in any GFM renderer. `escape_md_cell` already
+  # handles backticks (` -> '); reuse it as the single Markdown-
+  # escape stop for the body cell (task 0021 / 0018 convergence).
+  body_md="$(escape_md_cell "$(redact_snippet "$HTTP_BODY")")"
+  add_summary "| ↳ | HTTP ${HTTP_CODE:-000}, content-type $ct_md, curl_exit=${CURL_EXIT:-?} | body[:80]=\`$body_md\` |"
 }
 
 # Extract a string field from a JSON body via node -e. Prints empty on
