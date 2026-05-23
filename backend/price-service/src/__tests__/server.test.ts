@@ -454,13 +454,28 @@ describe('REST Server — 404 and 405 envelopes', () => {
     expect(body.error).toBe('not-found');
   });
 
-  it('GET /quotes/.. returns JSON 404 with normalized path', async () => {
-    const res = await fetch(`${baseUrl}/quotes/..`);
-    const text = await res.text();
-    expect(res.status).toBe(404);
-    expect(text).not.toContain('Cannot GET');
-    const body = JSON.parse(text) as Record<string, unknown>;
-    expect(body.error).toBe('not-found');
+  it('GET /quotes/.. (raw, unnormalized) returns JSON 404 with no HTML default', async () => {
+    const addr = (server.address() as import('net').AddressInfo);
+    const result = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+      const req = http.request(
+        { host: '127.0.0.1', port: addr.port, method: 'GET', path: '/quotes/..' },
+        (res) => {
+          let buf = '';
+          res.on('data', (chunk) => (buf += chunk));
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, body: buf }));
+        },
+      );
+      req.on('error', reject);
+      req.end();
+    });
+    // Raw `/quotes/..` matches the parametric `/quotes/:symbol` route; the
+    // symbol `..` passes the shape regex but misses the cache, so the
+    // response is a JSON 404 `no-quote` — no HTML default leaks through.
+    expect(result.status).toBe(404);
+    expect(result.body).not.toContain('Cannot GET');
+    expect(result.body).not.toContain('<!DOCTYPE');
+    const body = JSON.parse(result.body) as Record<string, unknown>;
+    expect(body.error).toBe('no-quote');
   });
 });
 
@@ -1066,5 +1081,108 @@ describe('REST Server — data endpoints carry source state when getter wired', 
     const qBody = (await qRes.json()) as Record<string, unknown>;
     const sBody = (await sRes.json()) as Record<string, unknown>;
     expect(qBody.source).toEqual(sBody.source);
+  });
+});
+
+describe('REST Server — root index and 404 endpoint discovery', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  const EXPECTED_PATHS = [
+    '/',
+    '/health',
+    '/quotes',
+    '/quotes/fresh/all',
+    '/audit/stats',
+    '/status/quotes',
+    '/quotes/:symbol',
+  ];
+
+  it('GET / returns 200 with service name and endpoint index', async () => {
+    const res = await fetch(`${baseUrl}/`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type') || '').toMatch(/^application\/json/);
+    expect(body.service).toBe('price-service');
+    expect(Array.isArray(body.endpoints)).toBe(true);
+    expect(typeof body.timestamp).toBe('number');
+  });
+
+  it('GET / endpoints list is derived from KNOWN_ROUTES + parametric (single source of truth)', async () => {
+    const res = await fetch(`${baseUrl}/`);
+    const body = (await res.json()) as {
+      endpoints: Array<{ path: string; methods: string[] }>;
+    };
+    expect(res.status).toBe(200);
+    const paths = body.endpoints.map((e) => e.path);
+    expect(paths.sort()).toEqual([...EXPECTED_PATHS].sort());
+    for (const ep of body.endpoints) {
+      expect(typeof ep.path).toBe('string');
+      expect(Array.isArray(ep.methods)).toBe(true);
+      for (const m of ep.methods) expect(m).toBe('GET');
+    }
+    const health = body.endpoints.find((e) => e.path === '/health');
+    expect(health).toBeDefined();
+    expect(health!.methods).toEqual(['GET']);
+  });
+
+  it('POST / returns 405 with Allow: GET, OPTIONS', async () => {
+    const res = await fetch(`${baseUrl}/`, { method: 'POST' });
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(405);
+    expect(res.headers.get('allow')).toBe('GET, OPTIONS');
+    expect(body.error).toBe('method-not-allowed');
+    expect(body.allowed).toEqual(['GET', 'OPTIONS']);
+  });
+
+  it('GET /openapi.json returns 404 with endpoints array of path strings', async () => {
+    const res = await fetch(`${baseUrl}/openapi.json`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('not-found');
+    expect(Array.isArray(body.endpoints)).toBe(true);
+    const eps = body.endpoints as unknown[];
+    expect(eps).toEqual(expect.arrayContaining(['/health', '/quotes', '/quotes/:symbol']));
+    for (const e of eps) {
+      expect(typeof e).toBe('string');
+      expect((e as string).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('404 endpoints array contains no filesystem paths or version metadata', async () => {
+    const res = await fetch(`${baseUrl}/this-is-a-typo`);
+    const text = await res.text();
+    expect(res.status).toBe(404);
+    expect(text).not.toMatch(/\/home\//);
+    expect(text).not.toContain('node_modules');
+    expect(text).not.toMatch(/\.git\b/);
+    expect(text).not.toContain('Require stack');
+  });
+
+  it('OPTIONS / preflight is unchanged (204, CORS headers)', async () => {
+    const res = await fetch(`${baseUrl}/`, {
+      method: 'OPTIONS',
+      headers: { Origin: 'http://example.com', 'Access-Control-Request-Method': 'GET' },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
   });
 });

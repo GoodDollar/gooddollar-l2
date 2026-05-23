@@ -12,6 +12,7 @@ export type SourceStatusGetter = () => SourceStatus;
  * The parametric `/quotes/:symbol` route is matched by `QUOTES_SYMBOL_RE`.
  */
 const KNOWN_ROUTES: ReadonlyMap<string, readonly string[]> = new Map([
+  ['/', ['GET', 'OPTIONS']],
   ['/health', ['GET', 'OPTIONS']],
   ['/quotes', ['GET', 'OPTIONS']],
   ['/quotes/fresh/all', ['GET', 'OPTIONS']],
@@ -19,6 +20,29 @@ const KNOWN_ROUTES: ReadonlyMap<string, readonly string[]> = new Map([
   ['/status/quotes', ['GET', 'OPTIONS']],
 ]);
 const QUOTES_SYMBOL_RE = /^\/quotes\/[^/]+$/;
+
+/**
+ * Routes whose path shape is parametric and so cannot live in the
+ * exact-match `KNOWN_ROUTES` map. Listed here so the discovery surface
+ * (`GET /` and the unknown-route 404) can advertise them off the same
+ * single source of truth as the static routes.
+ */
+const PARAMETRIC_ROUTES: readonly string[] = ['/quotes/:symbol'];
+
+function buildEndpointPaths(): string[] {
+  return [...KNOWN_ROUTES.keys(), ...PARAMETRIC_ROUTES];
+}
+
+function buildEndpointIndex(): Array<{ path: string; methods: string[] }> {
+  const out: Array<{ path: string; methods: string[] }> = [];
+  for (const [path, methods] of KNOWN_ROUTES) {
+    // OPTIONS is a CORS-layer transport detail; hide it from the
+    // discovery payload so integrators see only the data verbs.
+    out.push({ path, methods: methods.filter((m) => m !== 'OPTIONS') });
+  }
+  for (const path of PARAMETRIC_ROUTES) out.push({ path, methods: ['GET'] });
+  return out;
+}
 
 /**
  * eToro / standard ticker shape: 1..16 chars of upper-case letters,
@@ -96,6 +120,14 @@ export function createServer(
       return;
     }
     next();
+  });
+
+  app.get('/', (_req: Request, res: Response) => {
+    res.json({
+      service: 'price-service',
+      endpoints: buildEndpointIndex(),
+      timestamp: Date.now(),
+    });
   });
 
   app.get('/health', (_req: Request, res: Response) => {
@@ -258,6 +290,7 @@ export function createServer(
       error: 'not-found',
       path: req.path,
       method: req.method,
+      endpoints: buildEndpointPaths(),
       timestamp: Date.now(),
     });
   });
