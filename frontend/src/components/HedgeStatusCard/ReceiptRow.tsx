@@ -55,6 +55,28 @@ function isoTitle(ms: number | undefined): string | undefined {
   return new Date(ms).toISOString()
 }
 
+// Color the SIDE cell using the same goodgreen / red-300 / gray
+// tokens the exposure column uses — every trading UI in existence
+// (eToro, every CEX, every brokerage audit trail) colors buy green
+// and sell red, and the engine's `'buy' | 'sell' | 'noop'` union is
+// the most semantically obvious column for the convention (task
+// 0052). Exhaustive switch so a future side variant fails tsc.
+function sideClassName(side: HedgeReceipt['side']): string {
+  switch (side) {
+    case 'buy':
+      return 'text-goodgreen font-semibold'
+    case 'sell':
+      return 'text-red-300 font-semibold'
+    case 'noop':
+      return 'text-gray-400 font-medium'
+    default: {
+      const _exhaustive: never = side
+      void _exhaustive
+      return 'text-gray-400'
+    }
+  }
+}
+
 // Receipt rows come from a fresh JSON parse on every poll, so object
 // identity is never stable. Compare on the exact subset of fields the
 // row JSX reads so a byte-identical receipt skips re-render entirely.
@@ -149,7 +171,12 @@ export const ReceiptRow = memo(function ReceiptRow({
           <span>{r.symbol}</span>
         </span>
       </td>
-      <td className="py-1.5 pr-2 text-gray-300">{r.side}</td>
+      <td
+        data-testid="hedge-receipt-side"
+        className={`py-1.5 pr-2 text-xs uppercase ${sideClassName(r.side)}`}
+      >
+        {r.side}
+      </td>
       <td className="py-1.5 pr-2 text-right text-gray-200">
         {formatNotionalUsd(r.notionalUsd)}
       </td>

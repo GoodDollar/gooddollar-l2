@@ -2377,4 +2377,60 @@ describe('HedgeStatusCard', () => {
       expect(fetchSpy.mock.calls.length).toBeGreaterThan(baseFetchCount);
     });
   });
+
+  describe('receipt side cell color coding (#0052)', () => {
+    function fixture(side: 'buy' | 'sell' | 'noop') {
+      return {
+        ...BASE_RESPONSE,
+        receipts: [
+          {
+            ...BASE_RESPONSE.receipts[0],
+            id: `r-${side}`,
+            side,
+          },
+        ],
+      };
+    }
+
+    it('renders buy side in goodgreen with semibold weight', async () => {
+      mockFetchOnce(fixture('buy'));
+      render(<HedgeStatusCard />);
+      const cell = await screen.findByTestId('hedge-receipt-side');
+      expect(cell.textContent).toMatch(/buy/i);
+      const classes = cell.className.split(/\s+/);
+      expect(classes).toContain('text-goodgreen');
+      expect(classes).toContain('font-semibold');
+    });
+
+    it('renders sell side in red-300 with semibold weight', async () => {
+      mockFetchOnce(fixture('sell'));
+      render(<HedgeStatusCard />);
+      const cell = await screen.findByTestId('hedge-receipt-side');
+      expect(cell.textContent).toMatch(/sell/i);
+      const classes = cell.className.split(/\s+/);
+      expect(classes).toContain('text-red-300');
+      expect(classes).toContain('font-semibold');
+    });
+
+    it('renders noop side in gray-400 (no green/red coloring)', async () => {
+      mockFetchOnce(fixture('noop'));
+      render(<HedgeStatusCard />);
+      const cell = await screen.findByTestId('hedge-receipt-side');
+      expect(cell.textContent).toMatch(/noop/i);
+      const classes = cell.className.split(/\s+/);
+      expect(classes).toContain('text-gray-400');
+      expect(classes).not.toContain('text-goodgreen');
+      expect(classes).not.toContain('text-red-300');
+    });
+
+    it('underlying side text node stays the engine literal (lowercase) — uppercase via CSS only', async () => {
+      mockFetchOnce(fixture('buy'));
+      render(<HedgeStatusCard />);
+      const cell = await screen.findByTestId('hedge-receipt-side');
+      // Underlying text node is the engine literal so DOM scrapers /
+      // screen readers see `'buy'`; CSS `uppercase` handles the visual.
+      expect(cell.textContent).toBe('buy');
+      expect(cell.className.split(/\s+/)).toContain('uppercase');
+    });
+  });
 });
