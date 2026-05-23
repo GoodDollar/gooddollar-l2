@@ -9,7 +9,6 @@ import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
-import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { hasLiveOracleChange } from '@/lib/oracleHonesty'
@@ -483,7 +482,6 @@ export default function StockDetailPage() {
   const [peerMetric, setPeerMetric] = useState<PeerMetric>('change24h')
   const orderFormRef = useRef<HTMLDivElement | null>(null)
   const [analystLoading, setAnalystLoading] = useState(true)
-  const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   const { isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
@@ -683,11 +681,7 @@ export default function StockDetailPage() {
           <StockStatsBar stock={stock} />
 
           <Suspense fallback={<div className="mb-4 h-24 rounded-2xl bg-dark-100 animate-pulse" />}>
-            <AnalystOutlookCard
-              currentPrice={stock.price}
-              outlook={analystOutlook}
-              isLoading={analystLoading}
-            />
+            <AnalystOutlookCard isLoading={analystLoading} />
           </Suspense>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">

@@ -10,7 +10,6 @@ import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { StalePriceBanner } from '@/components/StalePriceBanner'
-import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { getChartData, type Timeframe } from '@/lib/chartData'
@@ -450,7 +449,6 @@ export function StockDetailContent() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
-  const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
   const { isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
@@ -573,11 +571,7 @@ export function StockDetailContent() {
             </div>
           )}
 
-          <DeferredAnalystOutlookCard
-            currentPrice={stock.price}
-            outlook={analystOutlook}
-            isLoading={false}
-          />
+          <DeferredAnalystOutlookCard isLoading={false} />
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
             <div className="flex gap-1 mb-3">
