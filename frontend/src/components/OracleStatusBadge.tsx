@@ -115,7 +115,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       if (fallbackLoading || !fallbackReady) {
         if (timeoutPhase === 'timed-out') {
           return (
-            <div className="inline-flex items-center gap-1.5 text-xs text-yellow-400">
+            <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-yellow-400">
               <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
               <span>Price feed unavailable</span>
               <button
@@ -129,14 +129,14 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
           )
         }
         return (
-          <div className="inline-flex items-center gap-1.5" aria-label={timeoutPhase === 'slow' ? 'Price feed connecting' : 'Checking price feed'}>
+          <div className="inline-flex items-center gap-1.5 whitespace-nowrap" aria-label={timeoutPhase === 'slow' ? 'Price feed connecting' : 'Checking price feed'}>
             <div className="animate-pulse h-5 w-24 rounded-full bg-dark-50/30" />
           </div>
         )
       }
       if (fallbackState === 'live') {
         return (
-          <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+          <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             <span>Live</span>
             <span className="text-gray-600">·</span>
@@ -146,7 +146,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       }
       if (fallbackState === 'degraded') {
         return (
-          <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+          <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
             <span>Oracle degraded</span>
           </div>
@@ -154,7 +154,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       }
     }
     return (
-      <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+      <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
         <span>Oracle offline</span>
       </div>
@@ -167,7 +167,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     const quoteStatus = quotes.find(q => q.symbol === symbol)
     if (!quoteStatus) {
       return (
-        <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+        <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500">
           <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
           <span>No oracle data for {symbol}</span>
         </div>
@@ -182,7 +182,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         : 'bg-yellow-400'
 
     return (
-      <div className="inline-flex items-center gap-1.5 text-xs">
+      <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs">
         <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
         <span className="text-gray-400">
           Updated {formatAge(quoteStatus.lastUpdateMs)}
@@ -213,7 +213,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       : 'bg-red-400'
 
   return (
-    <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+    <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
       <span className={`w-1.5 h-1.5 rounded-full ${dotColor} ${healthy && !anyStale ? 'animate-pulse' : ''}`} />
       <span>{freshCount}/{totalCount} feeds</span>
       <span className="text-gray-600">·</span>

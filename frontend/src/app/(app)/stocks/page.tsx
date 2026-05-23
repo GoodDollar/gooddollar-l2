@@ -478,7 +478,9 @@ export default function StocksPage() {
             <option value="quiet">Lower volume</option>
           </select>
         </div>
-        <OracleStatusBadge useStocksFallback />
+        <div className="shrink-0 flex justify-end lg:basis-full lg:order-last xl:basis-auto xl:order-none">
+          <OracleStatusBadge useStocksFallback />
+        </div>
       </div>
       <div className="mb-4">
         <StocksRebalanceDashboard

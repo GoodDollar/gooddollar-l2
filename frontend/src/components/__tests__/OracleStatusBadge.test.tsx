@@ -97,3 +97,58 @@ describe('OracleStatusBadge stocks fallback', () => {
     expect(skeleton).toBeInTheDocument()
   })
 })
+
+describe('OracleStatusBadge layout invariants', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    __resetOracleStatusFallbackForTests()
+  })
+
+  it('compact-fallback live render uses whitespace-nowrap so the pill never breaks mid-text', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          overall: 'healthy',
+          services: [{ name: 'stocks-keeper', status: 'ok', lastChecked: new Date().toISOString() }],
+        }),
+        { status: 200 },
+      ),
+    )
+
+    const { container } = render(<OracleStatusBadge useStocksFallback />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeInTheDocument())
+    const wrapper = container.firstChild as HTMLElement
+    expect(wrapper).toHaveClass('whitespace-nowrap')
+  })
+
+  it('compact-fallback offline render uses whitespace-nowrap', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'))
+
+    const { container } = render(<OracleStatusBadge useStocksFallback />)
+    await waitFor(() => expect(screen.getByText('Oracle offline')).toBeInTheDocument())
+    const wrapper = container.firstChild as HTMLElement
+    expect(wrapper).toHaveClass('whitespace-nowrap')
+  })
+
+  it('offline render (no fallback) also uses whitespace-nowrap', () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+
+    const { container } = render(<OracleStatusBadge />)
+    const wrapper = container.firstChild as HTMLElement
+    expect(wrapper).toHaveClass('whitespace-nowrap')
+  })
+})
