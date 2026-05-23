@@ -2959,6 +2959,10 @@ img, video {
   background-color: #121a2e4d;
 }
 
+.bg-goodgreen\/80 {
+  background-color: #00b0a0cc;
+}
+
 .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
 }

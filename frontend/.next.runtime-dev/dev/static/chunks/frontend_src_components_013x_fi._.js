@@ -4,8 +4,8 @@
 __turbopack_context__.v((parentImport) => {
     return Promise.all([
   "static/chunks/frontend_src_components_TokenSelectorModal_tsx_0rxsn-3._.js",
-  "static/chunks/frontend_src_0t7m-bq._.js",
-  "static/chunks/node_modules_0vu-z_4._.js",
+  "static/chunks/frontend_src_0bqk81r._.js",
+  "static/chunks/node_modules_0.im5yg._.js",
   "static/chunks/frontend_src_components_LandingSwapCard_tsx_0caatc4._.js"
 ].map((chunk) => __turbopack_context__.l(chunk))).then(() => {
         return parentImport("[project]/frontend/src/components/LandingSwapCard.tsx [app-client] (ecmascript, next/dynamic entry)");

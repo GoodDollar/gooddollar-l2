@@ -24,6 +24,10 @@ import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 import { StockAccountPanel } from '@/components/stocks/StockAccountPanel'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import {
+  SyntheticStockHeaderBadge,
+  useSyntheticStockHeader,
+} from '@/components/stocks/SyntheticStockHeaderBadge'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
 import { StockLogo } from '@/components/ui/stock-logo'
@@ -480,6 +484,7 @@ export default function StockDetailPage() {
   const riskIncreaseAllowed = tickerRebalance?.riskIncreaseAllowed ?? true
   const riskStopReasons = tickerRebalance?.stopReasons ?? []
   const stock = stocks.find(s => s.ticker === ticker)
+  const syntheticHeader = useSyntheticStockHeader()
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
   const [chartView, setChartView] = useState<'price' | 'depth'>('price')
@@ -625,14 +630,18 @@ export default function StockDetailPage() {
       <WalletConnectConfigWarning className="mb-4" />
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-start gap-3 mb-4">
             <StockLogo ticker={stock.ticker} size="md" />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
                 <WatchlistStarButton ticker={stock.ticker} size="md" />
+                <SyntheticStockHeaderBadge />
               </div>
               <p className="text-sm text-gray-400">{stock.name} · {stock.sector}</p>
+              <p data-testid="ticker-hero-subhead" className="mt-1 text-xs text-gray-500 leading-snug">
+                {syntheticHeader.subheadText}
+              </p>
             </div>
           </div>
 

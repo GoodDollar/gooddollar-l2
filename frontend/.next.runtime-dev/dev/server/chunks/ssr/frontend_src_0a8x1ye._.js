@@ -216,7 +216,7 @@ const WARNING_SOURCES = new Set([
     'stale'
 ]);
 function LivePriceCard(props) {
-    const { symbol, price, change24h, source, updatedAgoMs, compact = false, className = '' } = props;
+    const { symbol, price, change24h, source, updatedAgoMs, divergent = false, compact = false, className = '' } = props;
     const isFallback = source === 'fallback';
     const showWarning = WARNING_SOURCES.has(source);
     const changeColor = change24h == null ? 'text-gray-500' : change24h > 0 ? 'text-green-400' : change24h < 0 ? 'text-red-400' : 'text-gray-400';
@@ -233,7 +233,7 @@ function LivePriceCard(props) {
                         children: symbol
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-                        lineNumber: 98,
+                        lineNumber: 107,
                         columnNumber: 9
                     }, this),
                     showWarning && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$triangle$2d$alert$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__AlertTriangle$3e$__["AlertTriangle"], {
@@ -242,13 +242,13 @@ function LivePriceCard(props) {
                         className: "size-3.5 text-amber-400 shrink-0"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-                        lineNumber: 100,
+                        lineNumber: 109,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-                lineNumber: 97,
+                lineNumber: 106,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -262,12 +262,12 @@ function LivePriceCard(props) {
                     children: formatPrice(price)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-                    lineNumber: 113,
+                    lineNumber: 122,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-                lineNumber: 108,
+                lineNumber: 117,
                 columnNumber: 7
             }, this),
             !compact && change24h != null && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -276,18 +276,37 @@ function LivePriceCard(props) {
                 children: changeText
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-                lineNumber: 117,
+                lineNumber: 126,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "flex items-center justify-between mt-2 gap-2",
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$PriceSourceBadge$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PriceSourceBadge"], {
-                        source: source,
-                        size: "sm"
-                    }, void 0, false, {
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex items-center gap-1 min-w-0",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$PriceSourceBadge$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PriceSourceBadge"], {
+                                source: source,
+                                size: "sm"
+                            }, void 0, false, {
+                                fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
+                                lineNumber: 136,
+                                columnNumber: 11
+                            }, this),
+                            divergent && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                "data-testid": "live-price-divergent",
+                                title: "Chain oracle and cached feed disagree by more than 0.5%",
+                                className: "text-[10px] text-amber-400 shrink-0",
+                                children: "Source disagrees"
+                            }, void 0, false, {
+                                fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
+                                lineNumber: 138,
+                                columnNumber: 13
+                            }, this)
+                        ]
+                    }, void 0, true, {
                         fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-                        lineNumber: 126,
+                        lineNumber: 135,
                         columnNumber: 9
                     }, this),
                     (()=>{
@@ -298,20 +317,20 @@ function LivePriceCard(props) {
                             children: text
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-                            lineNumber: 130,
+                            lineNumber: 150,
                             columnNumber: 13
                         }, this);
                     })()
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-                lineNumber: 125,
+                lineNumber: 134,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/LivePriceCard.tsx",
-        lineNumber: 93,
+        lineNumber: 102,
         columnNumber: 5
     }, this);
 }
