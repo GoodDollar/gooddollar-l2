@@ -40,7 +40,11 @@ export interface TradeHistoryEntry {
 export interface TradingModuleOptions {
   /** SDK mode the module is operating in. Defaults to `mock`. */
   mode?: EtoroMode;
-  /** Optional cap enforcer; when omitted, a no-cap stub is wired for non-`demo-trading` modes. */
+  /**
+   * Demo cap enforcer. REQUIRED for `demo-trading` mode unless the test-only
+   * escape hatch `disableCapsForTestsOnly` is set; for read-only or mock
+   * modes the field is optional.
+   */
   capEnforcer?: DemoCapEnforcer;
   /**
    * Highest-priority hook for computing the USD notional. If it returns a
@@ -57,7 +61,29 @@ export interface TradingModuleOptions {
    * `INSTRUMENT_MAP.referencePriceUsd`.
    */
   symbolReferencePriceUsd?: (symbol: string) => number | undefined;
+  /**
+   * Test-only escape hatch. When set, allows constructing a
+   * `TradingModule` in `demo-trading` mode without a `DemoCapEnforcer`.
+   * Every mutating call audit-logs a `caps-disabled` warning line so the
+   * choice is visible at every order, not just at startup. NEVER set by
+   * `EtoroClient`; NEVER readable from env. Reserved for unit tests that
+   * intentionally test trading-fence or HTTP behavior without caps.
+   *
+   * See `docs/ETORO_GOODCHAIN_ADAPTER.md` for the operator-facing rule.
+   */
+  disableCapsForTestsOnly?: boolean;
 }
+
+/**
+ * Canonical error message used by both the constructor-time check and the
+ * runtime `assertCapOk` belt-and-suspenders guard. Kept as an export so
+ * operators can grep audit logs / stack traces for a single string.
+ */
+export const DEMO_CAP_ENFORCER_REQUIRED_MSG =
+  'DemoCapEnforcer required for demo-trading mode. ' +
+  'Pass `capEnforcer` when constructing TradingModule, or use EtoroClient ' +
+  'which wires one automatically. The `disableCapsForTestsOnly` flag is ' +
+  'reserved for unit tests only.';
 
 /**
  * TradingModule owns the source-level real-trading fence and the demo cap
@@ -73,14 +99,24 @@ export class TradingModule {
   private readonly capEnforcer?: DemoCapEnforcer;
   private readonly notionalSizer?: (order: OrderRequest) => number;
   private readonly symbolReferencePriceUsd?: (symbol: string) => number | undefined;
+  private readonly disableCapsForTestsOnly: boolean;
 
   constructor(http: AxiosInstance, audit: AuditLogger, options: TradingModuleOptions = {}) {
+    const mode = options.mode ?? 'mock';
+    const disableCapsForTestsOnly = options.disableCapsForTestsOnly === true;
+
+    // Loud refusal: caps cannot be silently omitted in demo-trading mode.
+    if (mode === 'demo-trading' && !options.capEnforcer && !disableCapsForTestsOnly) {
+      throw new Error(DEMO_CAP_ENFORCER_REQUIRED_MSG);
+    }
+
     this.http = http;
     this.audit = audit;
-    this.mode = options.mode ?? 'mock';
+    this.mode = mode;
     this.capEnforcer = options.capEnforcer;
     this.notionalSizer = options.notionalSizer;
     this.symbolReferencePriceUsd = options.symbolReferencePriceUsd;
+    this.disableCapsForTestsOnly = disableCapsForTestsOnly;
   }
 
   getMode(): EtoroMode {
@@ -90,6 +126,7 @@ export class TradingModule {
   async openPosition(order: OrderRequest): Promise<OrderResult> {
     this.validateOrder(order, { kind: 'market', action: 'openPosition' });
     this.assertTradingEnabled('openPosition');
+    this.noteCapsDisabledIfActive('openPosition');
     const notional = this.computeNotional(order);
     this.assertCapOk('openPosition', notional.usd);
 
@@ -130,6 +167,7 @@ export class TradingModule {
   async placeLimitOrder(order: LimitOrderRequest): Promise<OrderResult> {
     this.validateOrder(order, { kind: 'limit', action: 'placeLimitOrder' });
     this.assertTradingEnabled('placeLimitOrder');
+    this.noteCapsDisabledIfActive('placeLimitOrder');
     const notional = this.computeNotional(order);
     this.assertCapOk('placeLimitOrder', notional.usd);
 
@@ -172,6 +210,7 @@ export class TradingModule {
   async closePosition(positionId: string): Promise<OrderResult> {
     this.validateIdString(positionId, 'positionId', 'closePosition');
     this.assertTradingEnabled('closePosition');
+    this.noteCapsDisabledIfActive('closePosition');
 
     const start = Date.now();
     const endpoint = `/trading/positions/${positionId}/close`;
@@ -199,6 +238,7 @@ export class TradingModule {
     this.validateIdString(positionId, 'positionId', 'partialClose');
     this.validatePositiveAmount(amount, 'amount', 'partialClose');
     this.assertTradingEnabled('partialClose');
+    this.noteCapsDisabledIfActive('partialClose');
 
     const start = Date.now();
     const endpoint = `/trading/positions/${positionId}/close`;
@@ -225,6 +265,7 @@ export class TradingModule {
   async cancelOrder(orderId: string): Promise<void> {
     this.validateIdString(orderId, 'orderId', 'cancelOrder');
     this.assertTradingEnabled('cancelOrder');
+    this.noteCapsDisabledIfActive('cancelOrder');
 
     const start = Date.now();
     const endpoint = `/trading/orders/${orderId}`;
@@ -425,7 +466,15 @@ export class TradingModule {
   }
 
   private assertCapOk(action: string, notional: number): void {
-    if (!this.capEnforcer) return;
+    if (!this.capEnforcer) {
+      // Belt-and-suspenders: constructor already guards this in
+      // demo-trading mode, but if a future refactor strips that throw the
+      // runtime path still refuses to send orders without caps.
+      if (this.mode === 'demo-trading' && !this.disableCapsForTestsOnly) {
+        throw new Error(DEMO_CAP_ENFORCER_REQUIRED_MSG);
+      }
+      return;
+    }
     const err = this.capEnforcer.wouldExceed(notional);
     if (err) {
       this.audit.log({
@@ -435,6 +484,22 @@ export class TradingModule {
         error: `${err.name}: cap=${err.cap} limit=${err.capLimitUsd} attempt=${err.attemptedNotionalUsd}`,
       });
       throw err;
+    }
+  }
+
+  /**
+   * Audit-log one `caps-disabled` line per mutating call when the test-only
+   * escape hatch is active. Makes the choice visible at every order, not
+   * just at construction.
+   */
+  private noteCapsDisabledIfActive(action: string): void {
+    if (this.disableCapsForTestsOnly) {
+      this.audit.log({
+        action,
+        method: 'PRE-CHECK',
+        path: '/cap-enforcer',
+        error: 'caps-disabled: disableCapsForTestsOnly=true — cap check skipped',
+      });
     }
   }
 
