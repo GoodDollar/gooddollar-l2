@@ -55,21 +55,27 @@ export interface WsErrorShape {
  *   2. `websocket` — live broadcaster advertisement.
  *   3. `websocketError` — bind-failed diagnostic (mutually exclusive
  *      with `websocket`).
- *   4. `status` — string verdict (`ok` | `degraded`) used by most
- *      endpoints.
- *   5. `healthy` — boolean verdict used by `/status/quotes`. Distinct
- *      slot so an endpoint that emits both (none today) would still
- *      place them adjacent.
- *   6. `bootAtMs` + `bootAtIso` + `uptimeMs` — lifecycle triplet.
- *   7. `deprecations` — drift-signal map shipped on endpoints that
+ *   4. `degraded` — boolean verdict that unifies `/health`, `/quotes`,
+ *      `/quotes/fresh/all`, `/status/quotes` (task 0064). Slots BEFORE
+ *      the human-string `status` so the boolean reads first.
+ *   5. `message` — human copy explaining the verdict; immediately
+ *      follows `degraded` so the explanation is adjacent to the boolean.
+ *   6. `status` — string verdict (`ok` | `degraded`) used by `/`,
+ *      `/health` for the discovery payload.
+ *   7. `healthy` — boolean verdict used by `/status/quotes` (legacy
+ *      alias for `degraded` during the one-release deprecation window).
+ *   8. `bootAtMs` + `bootAtIso` + `uptimeMs` — lifecycle triplet.
+ *   9. `deprecations` — drift-signal map shipped on endpoints that
  *      carry legacy aliases (e.g. `/quotes.count` → `totalCached`).
- *   8. `timestamp` + `timestampIso` — wall-clock instant; ALWAYS the
+ *  10. `timestamp` + `timestampIso` — wall-clock instant; ALWAYS the
  *      last two top-level keys.
  */
 export interface EnvelopeCtx {
   src?: SanitizedSourceStatus;
   ws?: WsAdvertisementShape;
   wsErr?: WsErrorShape;
+  degraded?: boolean;
+  message?: string;
   status?: 'ok' | 'degraded';
   healthy?: boolean;
   boot?: { ms: number; iso: string; uptimeMs: number };
@@ -129,6 +135,8 @@ export function finalizeEnvelope<T extends Record<string, unknown>>(
   if (ctx?.src) reanchor(b, 'source', ctx.src);
   if (ctx?.ws) reanchor(b, 'websocket', ctx.ws);
   if (ctx?.wsErr) reanchor(b, 'websocketError', ctx.wsErr);
+  if (ctx?.degraded !== undefined) reanchor(b, 'degraded', ctx.degraded);
+  if (ctx?.message !== undefined) reanchor(b, 'message', ctx.message);
   if (ctx?.status !== undefined) reanchor(b, 'status', ctx.status);
   if (ctx?.healthy !== undefined) reanchor(b, 'healthy', ctx.healthy);
   if (ctx?.boot) {

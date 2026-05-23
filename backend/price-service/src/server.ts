@@ -253,14 +253,16 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     methods: ['GET'],
     summary: 'Liveness + readiness for load balancers; 503 when degraded.',
     // Inner field list is comma-packed (no surrounding spaces) so the
-    // full type-literal annotations (`number|null`, `'ok'|'no-data'`)
-    // can ride alongside the long meta tail within the 240-char cap.
-    // Outer separators keep spaces for readability.
+    // full type-literal annotations (`'ok'|'no-data'`) can ride
+    // alongside the long meta tail within the 240-char cap. Outer
+    // separators keep spaces for readability. `degraded?` + `message?`
+    // added by task 0064; `acceptance{Ratio?,RatioStatus?:no-data|ok}`
+    // groups the sibling fields under a shared prefix so the new
+    // tokens fit within the cap.
     responseShape:
       '{freshQuotes,totalCached,configuredSymbols,symbols[],runtime?,' +
-      'status,source?,websocket?,websocketError?,ingested?,rejected?,' +
-      'acceptanceRatio?:number|null,' +
-      'acceptanceRatioStatus?:no-data|ok,' +
+      'status,degraded?,message?,source?,websocket?,websocketError?,' +
+      'ingested?,rejected?,acceptance{Ratio?,RatioStatus?:no-data|ok},' +
       'bootAt*?,uptimeMs?,timestamp,timestampIso} -- 200/503',
   },
   {
@@ -315,11 +317,13 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     methods: ['GET'],
     summary:
       'Per-symbol cache age, session state, confidence for dashboards.',
+    // `degraded:boolean` is the canonical health field (task 0064);
+    // legacy `healthy?:boolean` rides one release as a deprecated alias.
     responseShape:
-      '{ healthy, freshCount, totalCount, quotes: Array<{symbol, ' +
-      'cacheAge, lastUpdateMs (deprecated→cacheAge), sessionState, ' +
-      'confidence}>, deprecations, source?, timestamp, ' +
-      'timestampIso } -- 200/503',
+      '{degraded,message?,healthy?(deprecated→degraded),freshCount,' +
+      'totalCount,quotes:Array<{symbol,cacheAge,' +
+      'lastUpdateMs(deprecated→cacheAge),sessionState,confidence}>,' +
+      'deprecations,source?,timestamp,timestampIso} -- 200/503',
   },
   {
     path: '/audit/stats',
@@ -1291,11 +1295,21 @@ export function createServer(
       body.acceptanceRatioStatus = ratio.status;
     }
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
+    // Body-level `degraded` boolean unifies the field name across
+    // `/health`, `/quotes`, `/quotes/fresh/all`, `/status/quotes`. The
+    // existing `status: 'ok'|'degraded'` string stays — it's the
+    // human-readable discovery field that `/` also carries (task 0006).
+    // See task 0064.
+    const degradedMessage = degraded
+      ? 'service degraded — see source.reason / source.nextStep'
+      : undefined;
     res.status(degraded ? 503 : 200).json(
       finalizeEnvelope(body, now, {
         src,
         ws: buildWsAdvertisement(req),
         wsErr: buildWsErrorBlock(),
+        degraded,
+        message: degradedMessage,
         status: degraded ? 'degraded' : 'ok',
         boot: buildBootBlock(now),
       }),
@@ -1333,30 +1347,29 @@ export function createServer(
     let status = 200;
     if (sourceStatusGetter) {
       const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
-      body.degraded = degraded;
-      // Match /quotes/fresh/all's status-code contract: a single
-      // `resp.ok` check on the consumer side now classifies every
-      // degraded state across both bulk endpoints. 503 only fires when
-      // the source is dead AND the cache holds nothing useful — a
-      // non-empty cache is still a useful read-only answer (flagged
-      // with `stale:true` so a consumer can distinguish fresh from
-      // cache-only). See task 0060.
+      // 503 only fires when the source is dead AND the cache holds
+      // nothing useful — a non-empty cache is still a useful read-only
+      // answer (flagged with `stale:true` so a consumer can distinguish
+      // fresh from cache-only). See task 0060. The body-level
+      // `degraded` + `message` go through the envelope helper so field
+      // ordering matches `/health`, `/quotes/fresh/all`, `/status/quotes`.
+      // See task 0064.
+      let message: string | undefined;
       if (degraded && count === 0) {
         status = 503;
-        body.message =
+        message =
           'no cached quotes — upstream source is degraded ' +
           '(see source.reason / source.nextStep)';
       } else if (degraded && count > 0) {
         body.stale = true;
-        body.message =
+        message =
           'serving stale cached quotes — upstream source is dead ' +
           '(see source.reason / source.nextStep)';
       } else if (count === 0) {
-        body.message =
-          'no cached quotes — source is healthy, awaiting first tick';
+        message = 'no cached quotes — source is healthy, awaiting first tick';
       }
       body.quotes = quotes;
-      ctx = { ...ctx, src };
+      ctx = { ...ctx, src, degraded, message };
     } else {
       body.quotes = quotes;
     }
@@ -1490,10 +1503,17 @@ export function createServer(
       freshCount: fresh.length,
       count: fresh.length,
     };
+    // Body-level `degraded` + `message` flow through the envelope ctx
+    // (task 0064) so field ordering matches the other three health
+    // endpoints. The legacy direct-write path is kept for the
+    // back-compat no-source-getter branch where the wire field is
+    // intentionally absent.
+    let degradedField: boolean | undefined;
+    let degradedMessage: string | undefined;
     if (sourceStatusGetter) {
-      body.degraded = degraded;
+      degradedField = degraded;
       if (fresh.length === 0) {
-        body.message = degraded
+        degradedMessage = degraded
           ? 'no fresh quotes — upstream source is degraded ' +
             '(see source.reason / source.nextStep)'
           : 'no fresh quotes — source is healthy, awaiting first ' +
@@ -1503,6 +1523,8 @@ export function createServer(
     res.status(degraded ? 503 : 200).json(
       finalizeEnvelope(body, now, {
         src,
+        degraded: degradedField,
+        message: degradedMessage,
         deprecations: {
           count: 'rename → freshCount; will be removed in the next release',
         },
@@ -1567,12 +1589,24 @@ export function createServer(
       totalCount: all.size,
       quotes,
     };
+    // `degraded:boolean` is now the canonical field across every
+    // health-class endpoint (task 0064). The legacy `healthy:boolean`
+    // rides for one release as a polarity-flipped alias with a
+    // deprecation pointer — same release-cadence as `count → totalCached`
+    // (task 0035) and `lastUpdateMs → cacheAge` (task 0033).
+    const degradedMessage = degraded
+      ? 'service degraded — see source.reason / source.nextStep'
+      : undefined;
     res.status(degraded ? 503 : 200).json(
       finalizeEnvelope(body, now, {
         src,
+        degraded,
+        message: degradedMessage,
         healthy: !degraded,
         deprecations: {
           lastUpdateMs: 'rename → cacheAge; will be removed in the next release',
+          healthy:
+            'rename → degraded (polarity flipped); will be removed in the next release',
         },
       }),
     );

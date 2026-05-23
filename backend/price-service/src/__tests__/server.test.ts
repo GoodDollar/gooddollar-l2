@@ -411,13 +411,14 @@ describe('/health and /audit/stats responseShape self-describes no-data (task 00
     server.close(done);
   });
 
-  it('/health responseShape mentions acceptanceRatioStatus and no-data; ≤ 240 chars', async () => {
+  it('/health responseShape mentions acceptance ratio + status + no-data; ≤ 240 chars', async () => {
     const body = (await (await fetch(`${baseUrl}/`)).json()) as {
       endpoints: Array<{ path: string; responseShape: string }>;
     };
     const h = body.endpoints.find((e) => e.path === '/health');
     expect(h).toBeDefined();
-    expect(h!.responseShape).toMatch(/acceptanceRatioStatus/);
+    expect(h!.responseShape).toMatch(/RatioStatus/);
+    expect(h!.responseShape).toMatch(/Ratio\?/);
     expect(h!.responseShape).toMatch(/no-data/);
     expect(h!.responseShape.length).toBeLessThanOrEqual(240);
   });
