@@ -8,6 +8,16 @@ import {
   SOURCE_REASONS_PUBLIC,
   SourceSeverity,
 } from './source-status';
+import {
+  EnvelopeCtx,
+  finalizeEnvelope,
+  finalizeTimestamps,
+  isoFromMs,
+} from './envelope';
+
+// Re-exported so the existing public surface keeps working: tests and
+// downstream callers can keep importing `isoFromMs` from `./server`.
+export { isoFromMs };
 
 export type IngestStatsGetter = () => IngestStats;
 export type SourceStatusGetter = () => SourceStatus;
@@ -182,17 +192,6 @@ export function readPackageVersion(
 }
 
 const PACKAGE_VERSION = readPackageVersion();
-
-/**
- * Pair every absolute unix-ms timestamp with its ISO 8601 companion so
- * a fresh user reading `1779547903356` doesn't have to reach for
- * `date -d @<secs>` (and remember to divide by 1000) to know when
- * something happened. Null-safe so handlers can pass nullable
- * timestamps (`firstAt`/`lastAt`) directly without conditionals.
- */
-export function isoFromMs(ms: number | null): string | null {
-  return ms === null ? null : new Date(ms).toISOString();
-}
 
 /**
  * Single source of truth for every endpoint the service exposes. The
@@ -716,6 +715,22 @@ export function createServer(
     };
   }
 
+  // Boot block (lifecycle triplet) for endpoints that surface it
+  // (`/health`, `/audit/stats`). Returns `undefined` when the bootAt
+  // getter isn't wired so the envelope helper can omit the entire
+  // block rather than ship three nulls.
+  function buildBootBlock(now: number):
+    | { ms: number; iso: string; uptimeMs: number }
+    | undefined {
+    if (!bootAtGetter) return undefined;
+    const bootAt = bootAtGetter();
+    return {
+      ms: bootAt,
+      iso: isoFromMs(bootAt)!,
+      uptimeMs: Math.max(0, now - bootAt),
+    };
+  }
+
   // Mutually exclusive sibling of `buildWsAdvertisement`: emitted only
   // when the broadcaster has failed to bind. The reason slug is the
   // stable wire code; `humanReason` / `nextStep` / `severity` are the
@@ -752,6 +767,7 @@ export function createServer(
     const ws = buildWsAdvertisement(req);
     const quickstart: QuickstartStep[] = [...STATIC_QUICKSTART];
     if (ws) quickstart.push(buildWsQuickstartStep(ws));
+    const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
     const body: Record<string, unknown> = {
       service: 'price-service',
       description: SERVICE_DESCRIPTION,
@@ -761,30 +777,23 @@ export function createServer(
       quickstart,
       sourceReasonCatalog: SOURCE_REASON_CATALOG_POINTER,
     };
-    if (ws) body.websocket = ws;
-    const wsErr = buildWsErrorBlock();
-    if (wsErr) body.websocketError = wsErr;
-    const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
-    // Surface the sanitised source block (when wired) so a fresh user
-    // hitting `/` sees the verdict AND the reason in one hop, not a
-    // bare `status: 'degraded'` flag they'd have to chase across endpoints.
-    // Mirrors the field ordering convention from `/health`: source first
-    // (context), status second (conclusion).
-    if (src) body.source = src;
-    body.status = degraded ? 'degraded' : 'ok';
-    body.timestamp = now;
-    body.timestampIso = isoFromMs(now)!;
-    res.json(body);
+    res.json(
+      finalizeEnvelope(body, now, {
+        src,
+        ws,
+        wsErr: buildWsErrorBlock(),
+        status: degraded ? 'degraded' : 'ok',
+      }),
+    );
   });
 
   app.get('/docs/source-reasons', (_req: Request, res: Response) => {
     const now = Date.now();
-    res.json({
+    const body: Record<string, unknown> = {
       reasons: SOURCE_REASONS_PUBLIC,
       count: SOURCE_REASON_CATALOG_COUNT,
-      timestamp: now,
-      timestampIso: isoFromMs(now)!,
-    });
+    };
+    res.json(finalizeTimestamps(body, now));
   });
 
   app.get('/health', (req: Request, res: Response) => {
@@ -795,8 +804,6 @@ export function createServer(
       totalCached: cache.size,
       configuredSymbols: cfg.symbols.length,
       symbols: cfg.symbols,
-      timestamp: now,
-      timestampIso: isoFromMs(now)!,
     };
     if (statsGetter) {
       const stats = statsGetter();
@@ -807,19 +814,15 @@ export function createServer(
       body.acceptanceRatioStatus = ratio.status;
     }
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
-    if (src) body.source = src;
-    const ws = buildWsAdvertisement(req);
-    if (ws) body.websocket = ws;
-    const wsErr = buildWsErrorBlock();
-    if (wsErr) body.websocketError = wsErr;
-    body.status = degraded ? 'degraded' : 'ok';
-    if (bootAtGetter) {
-      const bootAt = bootAtGetter();
-      body.bootAtMs = bootAt;
-      body.bootAtIso = isoFromMs(bootAt)!;
-      body.uptimeMs = Math.max(0, now - bootAt);
-    }
-    res.status(degraded ? 503 : 200).json(body);
+    res.status(degraded ? 503 : 200).json(
+      finalizeEnvelope(body, now, {
+        src,
+        ws: buildWsAdvertisement(req),
+        wsErr: buildWsErrorBlock(),
+        status: degraded ? 'degraded' : 'ok',
+        boot: buildBootBlock(now),
+      }),
+    );
   });
 
   app.get('/quotes', (_req: Request, res: Response) => {
@@ -844,6 +847,8 @@ export function createServer(
     const body: Record<string, unknown> = {
       totalCached: cache.size,
       count,
+    };
+    let ctx: EnvelopeCtx = {
       deprecations: {
         count: 'rename → totalCached; will be removed in the next release',
       },
@@ -858,14 +863,20 @@ export function createServer(
           : 'no cached quotes — source is healthy, awaiting first tick';
       }
       body.quotes = quotes;
-      if (src) body.source = src;
+      ctx = { ...ctx, src };
     } else {
       body.quotes = quotes;
     }
-    body.timestamp = now;
-    body.timestampIso = isoFromMs(now)!;
-    res.json(body);
+    res.json(finalizeEnvelope(body, now, ctx));
   });
+
+  // Single helper so all three sub-envelopes (200 success, 404
+  // unconfigured, 404 no-quote) thread their optional `source?` field
+  // through the same path; input-validation 400s deliberately skip
+  // source (they don't depend on upstream state).
+  function sanitizedSource(): SanitizedSourceStatus | undefined {
+    return sourceStatusGetter ? sanitizeSourceStatus(sourceStatusGetter()) : undefined;
+  }
 
   app.get('/quotes/:symbol', (req: Request, res: Response) => {
     const now = Date.now();
@@ -885,14 +896,13 @@ export function createServer(
         result.reason === 'no-alnum'
           ? 'symbol must contain at least one letter or digit'
           : 'symbol must match /^[A-Z0-9._-]{1,16}$/';
-      res.status(400).json({
+      const body: Record<string, unknown> = {
         error: 'invalid-symbol',
         message,
         path,
         method: req.method,
-        timestamp: now,
-        timestampIso: isoFromMs(now)!,
-      });
+      };
+      res.status(400).json(finalizeTimestamps(body, now));
       return;
     }
     // Near-miss detection (task 0030): if the canonicalised symbol
@@ -905,7 +915,7 @@ export function createServer(
     const lowered = result.symbol.toLowerCase();
     const hint = ROUTE_HINTS.get(lowered);
     if (hint) {
-      res.status(400).json({
+      const body: Record<string, unknown> = {
         error: 'invalid-symbol-or-path',
         message:
           `the path segment '${lowered}' is a known sibling-route ` +
@@ -913,9 +923,8 @@ export function createServer(
         didYouMean: hint,
         path: req.path,
         method: req.method,
-        timestamp: now,
-        timestampIso: isoFromMs(now)!,
-      });
+      };
+      res.status(400).json(finalizeTimestamps(body, now));
       return;
     }
     if (!configuredSet.has(result.symbol)) {
@@ -940,10 +949,7 @@ export function createServer(
       };
       const suggestion = nearestSymbol(result.symbol, cfg.symbols);
       if (suggestion !== undefined) body.didYouMean = suggestion;
-      if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
-      body.timestamp = now;
-      body.timestampIso = isoFromMs(now)!;
-      res.status(404).json(body);
+      res.status(404).json(finalizeEnvelope(body, now, { src: sanitizedSource() }));
       return;
     }
     const entry = cache.get(result.symbol);
@@ -956,10 +962,7 @@ export function createServer(
         symbol: result.symbol,
         configured: true,
       };
-      if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
-      body.timestamp = now;
-      body.timestampIso = isoFromMs(now)!;
-      res.status(404).json(body);
+      res.status(404).json(finalizeEnvelope(body, now, { src: sanitizedSource() }));
       return;
     }
     const body: Record<string, unknown> = {
@@ -968,8 +971,7 @@ export function createServer(
       filterAccepted: entry.filterResult.accepted,
       filterReason: entry.filterResult.reason,
     };
-    if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
-    res.json(body);
+    res.json(finalizeEnvelope(body, now, { src: sanitizedSource() }));
   });
 
   app.get('/quotes/fresh/all', (_req: Request, res: Response) => {
@@ -992,10 +994,7 @@ export function createServer(
             'accepted tick';
       }
     }
-    if (src) body.source = src;
-    body.timestamp = now;
-    body.timestampIso = isoFromMs(now)!;
-    res.status(degraded ? 503 : 200).json(body);
+    res.status(degraded ? 503 : 200).json(finalizeEnvelope(body, now, { src }));
   });
 
   app.get('/audit/stats', (_req: Request, res: Response) => {
@@ -1023,15 +1022,7 @@ export function createServer(
       lastAtIso: isoFromMs(stats.lastAt),
       writeErrors: stats.writeErrors,
     };
-    if (bootAtGetter) {
-      const bootAt = bootAtGetter();
-      body.bootAtMs = bootAt;
-      body.bootAtIso = isoFromMs(bootAt)!;
-      body.uptimeMs = Math.max(0, now - bootAt);
-    }
-    body.timestamp = now;
-    body.timestampIso = isoFromMs(now)!;
-    res.json(body);
+    res.json(finalizeEnvelope(body, now, { boot: buildBootBlock(now) }));
   });
 
   app.get('/status/quotes', (_req: Request, res: Response) => {
@@ -1068,20 +1059,20 @@ export function createServer(
     }
 
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
-    const responseBody: Record<string, unknown> = {
-      healthy: !degraded,
+    const body: Record<string, unknown> = {
       freshCount,
       totalCount: all.size,
       quotes,
-      deprecations: {
-        lastUpdateMs:
-          'rename → cacheAge; will be removed in the next release',
-      },
-      timestamp: now,
-      timestampIso: isoFromMs(now)!,
     };
-    if (src) responseBody.source = src;
-    res.status(degraded ? 503 : 200).json(responseBody);
+    res.status(degraded ? 503 : 200).json(
+      finalizeEnvelope(body, now, {
+        src,
+        healthy: !degraded,
+        deprecations: {
+          lastUpdateMs: 'rename → cacheAge; will be removed in the next release',
+        },
+      }),
+    );
   });
 
   app.all('*', (req: Request, res: Response) => {
@@ -1093,14 +1084,13 @@ export function createServer(
       // transport verb while the 405 still advertises it.
       const allowed = [...entry.methods, 'OPTIONS'];
       res.setHeader('Allow', allowed.join(', '));
-      res.status(405).json({
+      const body: Record<string, unknown> = {
         error: 'method-not-allowed',
         allowed,
         path: req.path,
         method: req.method,
-        timestamp: now,
-        timestampIso: isoFromMs(now)!,
-      });
+      };
+      res.status(405).json(finalizeTimestamps(body, now));
       return;
     }
     // Compact hint list: every wrong-URL response (typos, /favicon.ico,
@@ -1111,15 +1101,14 @@ export function createServer(
     if (ws) {
       endpoints.push({ path: ws.url, methods: ['CONNECT'] });
     }
-    res.status(404).json({
+    const body: Record<string, unknown> = {
       error: 'not-found',
       path: req.path,
       method: req.method,
       discovery: '/',
       endpoints,
-      timestamp: now,
-      timestampIso: isoFromMs(now)!,
-    });
+    };
+    res.status(404).json(finalizeTimestamps(body, now));
   });
 
   app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
@@ -1138,14 +1127,13 @@ export function createServer(
         : e.expose === true && typeof e.message === 'string'
           ? e.message
           : code;
-    res.status(status).json({
+    const body: Record<string, unknown> = {
       error: code,
       message,
       path: req.path,
       method: req.method,
-      timestamp: now,
-      timestampIso: isoFromMs(now)!,
-    });
+    };
+    res.status(status).json(finalizeTimestamps(body, now));
   });
 
   return app;
