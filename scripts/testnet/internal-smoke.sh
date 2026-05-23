@@ -73,21 +73,31 @@ for tool in node curl awk date; do
   fi
 done
 
-# Strip credentials from a URL value before echoing into operator-visible
-# surfaces (stderr, report file, console summary). Two patterns are common
-# on hosted RPC providers (Alchemy / Infura / QuickNode legacy / Tenderly):
+# Returns a redacted, Markdown-safe form of a URL value before echoing
+# into operator-visible surfaces (stderr, report file, console summary).
+# Strips two secret-bearing patterns common on hosted RPC providers
+# (Alchemy / Infura / QuickNode legacy / Tenderly):
 #   1. basic-auth userinfo:  https://USER:KEY@host/...
 #   2. query-string secret:  https://host/...?key=...
-# Both must be removed before any echo. Pure bash parameter expansion — no
-# subprocess, no new tool dependency, no behavior change for credential-free
-# URLs. Hoisted above the FATAL preflight at line ~140 so that path can use
-# it; same helper is reused at every other site that emits LANE7_RPC's value.
+# AND Markdown-escapes the path component (task 0028): every documented
+# consumer wraps the result in an inline-code span (`…`), and a
+# backtick / pipe surviving in the path component (Tenderly / Ankr
+# tenant-id routing) would close the span and corrupt the report
+# header + six diag lines. The four replacements mirror `escape_md_cell`
+# (task 0018 / 0021 / 0025 convergence): drop CR + LF, backtick →
+# apostrophe, pipe → `\|`. Operator-TTY echoes inherit the escaped
+# form — `\|` and `'` read fine in a monospace terminal and the
+# safety-section rendering matters more than byte-faithful echo.
 redact_url_secrets() {
   local u="$1"
   u="${u%%\?*}"
   case "$u" in
     *://*@*) u="${u%%://*}://${u#*://*@}" ;;
   esac
+  u="${u//$'\r'/}"
+  u="${u//$'\n'/}"
+  u="${u//\`/\'}"
+  u="${u//|/\\|}"
   printf '%s' "$u"
 }
 
