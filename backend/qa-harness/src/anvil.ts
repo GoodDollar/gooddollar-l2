@@ -85,10 +85,15 @@ export async function startAnvil(opts: { port?: number; silent?: boolean } = {})
  * is strictly safer than a random range that could collide.
  */
 export async function pickFreePort(_start?: number, _end?: number): Promise<number> {
+  // Bind to the dual-stack wildcard so the port is free on BOTH IPv4 and IPv6
+  // — matches the binding behavior of ws / express which use the wildcard by
+  // default, so we don't hand out a port that's free on 127.0.0.1 but busy on
+  // [::]: that would EADDRINUSE on second bind.
   return new Promise<number>((resolve, reject) => {
     const tester = net.createServer();
+    tester.unref();
     tester.once('error', reject);
-    tester.listen(0, '127.0.0.1', () => {
+    tester.listen(0, () => {
       const addr = tester.address();
       if (addr && typeof addr === 'object' && typeof addr.port === 'number') {
         const port = addr.port;

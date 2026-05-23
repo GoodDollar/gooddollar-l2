@@ -52,20 +52,33 @@ export async function bootLocalChain(opts: { port?: number; symbols?: string[] }
     const provider = new ethers.JsonRpcProvider(anvil.rpcUrl);
     const signer = new ethers.Wallet(anvil.deployerKey, provider);
 
+    // ethers v6's auto-nonce population is racy against anvil's instant mining
+    // when multiple transactions go out in quick succession from the same wallet.
+    // We manage nonces explicitly here so each setup call lands deterministically.
+    let nonce = await provider.getTransactionCount(signer.address, 'pending');
+
     const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, signer);
-    const contract = await factory.deploy(
+    // Register BOTH the deployer and the harness signer key as on-chain
+    // signers, with quorum=1 — this lets the OracleSubmitter (which uses
+    // anvil.signerKey, NOT the deployer) call batchUpdatePrices with a
+    // fresh nonce-0 wallet. Avoids cross-wallet nonce reconciliation.
+    const deployTx = await factory.getDeployTransaction(
       signer.address,
-      [signer.address],
+      [signer.address, anvil.signerAddress],
       1,
     );
-    await contract.waitForDeployment();
-    const address = await contract.getAddress();
+    const sent = await signer.sendTransaction({ ...deployTx, nonce: nonce++ });
+    const deployReceipt = await sent.wait();
+    if (!deployReceipt || !deployReceipt.contractAddress) {
+      throw new Error('StockOracleV2 deploy receipt missing contractAddress');
+    }
+    const address = deployReceipt.contractAddress;
 
     const oracle = new ethers.Contract(address, ORACLE_ABI, signer);
 
     const syms = opts.symbols ?? REGISTERED_SYMBOLS;
     for (const sym of syms) {
-      const tx = await oracle.registerSymbol(sym, 30, 1000);
+      const tx = await oracle.registerSymbol(sym, 30, 1000, { nonce: nonce++ });
       await tx.wait();
     }
 

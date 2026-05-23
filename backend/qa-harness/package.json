@@ -6,8 +6,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "jest --runInBand",
-    "qa:gate": "jest --runInBand",
+    "test": "jest --runInBand --forceExit",
+    "qa:gate": "jest --runInBand --forceExit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

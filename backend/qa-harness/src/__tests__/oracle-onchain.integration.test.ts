@@ -32,7 +32,7 @@ maybeDescribe('Lane 6 / oracle-onchain — batchUpdatePrices lands a receipt on 
     const submitter = new OracleSubmitter(
       chain.anvil.rpcUrl,
       chain.oracle.address,
-      chain.anvil.deployerKey,
+      chain.anvil.signerKey,
     );
 
     const now = Math.floor(Date.now() / 1000);

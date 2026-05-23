@@ -33,7 +33,7 @@ maybeDescribe('Lane 6 / frontend-reads-chain — a raw provider.call decodes get
     const submitter = new OracleSubmitter(
       chain.anvil.rpcUrl,
       chain.oracle.address,
-      chain.anvil.deployerKey,
+      chain.anvil.signerKey,
     );
 
     const expectedPrice = 13_095_000_000n; // NVDA $130.95
