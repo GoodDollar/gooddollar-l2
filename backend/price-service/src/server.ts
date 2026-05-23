@@ -271,16 +271,15 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       '404 symbol-not-configured|no-quote, 200 quote envelope.',
     parametric: true,
     // The three sub-envelopes (200/400/404) plus the meta tail blow past
-    // the 240-char cap when every field is named. 200's field detail is
-    // folded into the summary "NormalizedQuote env" — the inner extras
-    // (cacheAge, filterAccepted, filterReason) are documented on the
-    // /quotes responseShape and `NormalizedQuote env` keeps the link
-    // intact. The 400 + 404 envelopes carry full field lists so a fresh
-    // integrator can write the error-path types from this string alone.
+    // the 240-char cap when every field is named. 200's inner field
+    // detail (cacheAge, filterAccepted, filterReason, …) is documented
+    // on the /quotes responseShape; here we just keep the marker. The
+    // 400 + 404 envelopes carry full field lists so a fresh integrator
+    // can write the error-path types from this string alone.
     responseShape:
-      '200: NormalizedQuote env | ' +
+      '200: env | ' +
       '400: {error:invalid-symbol|invalid-symbol-or-path,' +
-      'message,didYouMean?,path,method} | ' +
+      'message,expected?,didYouMean?,path,method} | ' +
       '404: {error,message,symbol,configured,configuredSymbols,' +
       'configuredSymbolCount,didYouMean?,source?}; ' +
       'tail: timestamp,timestampIso',
@@ -547,8 +546,38 @@ export function build404BodySize(): number {
  * (1:1 on the ASCII alphabet, locale-insensitive), so the canonical
  * symbol is exactly what the caller meant — no silent semantic
  * rewrite, no homoglyph slip-through.
+ *
+ * `ASCII_TICKER_RAW_SOURCE` is the unanchored grammar published in
+ * the 400 `invalid-symbol` envelope's `expected.pattern` field so the
+ * displayed regex and the validator regex can't drift (task 0045).
+ * Tests assert `expected.pattern === '^' + ASCII_TICKER_RAW_SOURCE + '$'`.
  */
-const ASCII_TICKER_RAW = /^[A-Za-z0-9._-]{1,16}$/;
+export const ASCII_TICKER_RAW_SOURCE = '[A-Za-z0-9._-]{1,16}';
+const ASCII_TICKER_RAW = new RegExp(`^${ASCII_TICKER_RAW_SOURCE}$`);
+
+/**
+ * Machine-readable companion to the 400 `invalid-symbol` natural-language
+ * message. A frontend / SDK / OpenAPI generator can feed
+ * `body.expected.pattern` straight into `new RegExp(...)` and reproduce
+ * the server gate bit-for-bit — no regex-string parsing, no copy-paste
+ * drift, no client-side validator that's stricter than the server.
+ *
+ * The same block ships on both 400 branches (`shape` and `no-alnum`):
+ * the pattern, length bounds, and case-folding behaviour are identical;
+ * only the natural-language `message` differs.
+ */
+const INVALID_SYMBOL_EXPECTED = Object.freeze({
+  pattern: ASCII_TICKER_RAW.source,
+  minLength: 1,
+  maxLength: 16,
+  mustContainAlnum: true,
+  canonicalisation: 'uppercase' as const,
+});
+
+const INVALID_SYMBOL_SHAPE_MESSAGE =
+  `symbol must match /^${ASCII_TICKER_RAW_SOURCE}$/ ` +
+  '(case-insensitive — lowercase is accepted and canonicalised to ' +
+  'uppercase before lookup)';
 
 /**
  * Second gate: require at least one alphanumeric character in the raw
@@ -950,10 +979,11 @@ export function createServer(
       const message =
         result.reason === 'no-alnum'
           ? 'symbol must contain at least one letter or digit'
-          : 'symbol must match /^[A-Z0-9._-]{1,16}$/';
+          : INVALID_SYMBOL_SHAPE_MESSAGE;
       const body: Record<string, unknown> = {
         error: 'invalid-symbol',
         message,
+        expected: INVALID_SYMBOL_EXPECTED,
         path,
         method: req.method,
       };
