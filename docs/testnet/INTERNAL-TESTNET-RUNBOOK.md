@@ -181,10 +181,17 @@ The smoke probes (in order):
 4. `status-aggregator /status.json` → asserts both `oracle-signer` and
    `hedge-engine` are present and **classified `EXCLUDED`** in
    `HEALTH-CONTRACT.md` (matches the `0007g/0003` contract update).
-5. `StockOracleV2.lastUpdated()` over `LANE7_RPC` → fresh within
+5. `price-service /quotes/fresh/all` → directly validates the
+   URGENT OVERRIDE's "non-empty normalized quotes" evidence. Asserts
+   `count >= MIN_FRESH_QUOTES` (default 1) and freshest quote age
+   `<= QUOTE_MAX_AGE_S` (default 600 s). Auto-skips when the
+   price-service /health response doesn't look like the lane-7
+   shape (no `freshQuotes` field); set `PRICE_SERVICE_QUOTES_URL`
+   to opt in explicitly when running against custom routes.
+6. `StockOracleV2.lastUpdated()` over `LANE7_RPC` → fresh within
    `STALENESS_THRESHOLD_S` (default 600 s). If `LANE7_RPC` is unset,
    the probe is **skipped with a warning** (not a blocker).
-6. Real-trading fence — `REAL_TRADING_ENABLED` is `unset` or `false`,
+7. Real-trading fence — `REAL_TRADING_ENABLED` is `unset` or `false`,
    `ETORO_MODE` ∈ `{mock, demo-readonly, sandbox, demo-trading,
    unset}`. Read from `pm2 env <id>` when `PM2_ID_PRICE_SERVICE` is
    exported, otherwise from `LANE7_ENV_FILE` (default `.env` at repo
@@ -192,13 +199,22 @@ The smoke probes (in order):
 
 ### Smoke env contract
 
-`STALENESS_THRESHOLD_S` and `*_PORT` overrides must be plain integers
-(seconds for the threshold, TCP ports `1..65535` for the port vars).
-Duration suffixes such as `10m` or `1h` are **not** supported — the
-smoke fails fast with `FATAL: <VAR>='<value>' must be a non-negative
-integer (seconds)` and exits 2 before running any probe. Use a literal
-seconds value (e.g. `STALENESS_THRESHOLD_S=600`) and convert by hand
-if your operator habit is duration syntax.
+`STALENESS_THRESHOLD_S`, `MIN_FRESH_QUOTES`, `QUOTE_MAX_AGE_S`, and
+`*_PORT` overrides must be plain integers (seconds for the thresholds,
+TCP ports `1..65535` for the port vars). Duration suffixes such as
+`10m` or `1h` are **not** supported — the smoke fails fast with
+`FATAL: <VAR>='<value>' must be a non-negative integer (seconds)`
+and exits 2 before running any probe. Use a literal seconds value
+(e.g. `STALENESS_THRESHOLD_S=600`, `QUOTE_MAX_AGE_S=600`) and convert
+by hand if your operator habit is duration syntax.
+
+`PRICE_SERVICE_QUOTES_URL` is the explicit opt-in override for the
+quote-flow probe. By default the smoke derives the URL by stripping
+`/health` from `PRICE_SERVICE_URL` and appending `/quotes/fresh/all`.
+Operators running behind a reverse proxy with non-default routes
+should set this variable explicitly; doing so also bypasses the
+auto-skip heuristic that fires when the price-service `/health`
+response doesn't contain the expected `freshQuotes` field.
 
 `LANE7_BASE` is **host-only** (e.g. `http://localhost`,
 `http://127.0.0.1`). The default URL templates concatenate
@@ -211,8 +227,10 @@ host:port pair, use the per-service `*_URL` escape hatches
 `STATUS_AGGREGATOR_URL`) — those are passed through verbatim.
 
 The smoke writes `docs/testnet/iter05-internal-smoke.md` and exits 0
-(green or green-with-warnings) or 1 (one or more blockers). Wire it
-into your post-deploy step:
+(green or green-with-warnings), 1 (one or more blockers), 2 (preflight
+failure — bad input, missing tool, unwritable `REPORT`), or 3 (verdict
+computed but the report file failed to write mid-run, e.g. disk full
+or unmounted volume). Wire it into your post-deploy step:
 
 ```bash
 ./scripts/testnet/internal-smoke.sh && echo "lane-7 internal smoke green"

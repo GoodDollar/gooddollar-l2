@@ -41,6 +41,12 @@
 #   STALENESS_THRESHOLD_S     default 600            (non-negative integer seconds;
 #                                                     duration suffixes like `10m`
 #                                                     are NOT supported — fails fast)
+#   MIN_FRESH_QUOTES          default 1              (price-service quote-flow probe;
+#                                                     minimum non-empty cache size)
+#   QUOTE_MAX_AGE_S           default 600            (max age of freshest quote in seconds;
+#                                                     above this is WARN, not BLOCKER)
+#   PRICE_SERVICE_QUOTES_URL  override the price-service /quotes/fresh/all URL
+#                              (default: derived from PRICE_SERVICE_URL)
 #   LANE7_ENV_FILE            default .env at repo root
 #   REPORT                    default docs/testnet/iter05-internal-smoke.md
 #
@@ -177,6 +183,15 @@ if [[ -n "$LANE7_RPC" ]] && [[ ! "$LANE7_RPC" =~ $PROBE_URL_RE ]]; then
   echo "FATAL: LANE7_RPC=$(redact_url_secrets "$LANE7_RPC")" >&2
   exit 2
 fi
+# Optional explicit override for the quote-flow probe (task 0024). When
+# unset, the probe URL is derived from PRICE_SERVICE_URL at probe time.
+# When set, validate it through the same regex so a typo here fails the
+# same way every other URL preflight does.
+if [[ -n "${PRICE_SERVICE_QUOTES_URL:-}" ]] && [[ ! "$PRICE_SERVICE_QUOTES_URL" =~ $PROBE_URL_RE ]]; then
+  echo "FATAL: malformed PRICE_SERVICE_QUOTES_URL — must match http(s)://host[:port][/path]" >&2
+  echo "FATAL: PRICE_SERVICE_QUOTES_URL=$PRICE_SERVICE_QUOTES_URL" >&2
+  exit 2
+fi
 unset PROBE_URL_RE
 
 # Numeric-input preflight. STALENESS_THRESHOLD_S participates in `(( ))`
@@ -199,7 +214,12 @@ require_uint() {
   fi
 }
 
+MIN_FRESH_QUOTES="${MIN_FRESH_QUOTES:-1}"
+QUOTE_MAX_AGE_S="${QUOTE_MAX_AGE_S:-600}"
+
 require_uint STALENESS_THRESHOLD_S  "$STALENESS_THRESHOLD_S"
+require_uint MIN_FRESH_QUOTES       "$MIN_FRESH_QUOTES"
+require_uint QUOTE_MAX_AGE_S        "$QUOTE_MAX_AGE_S"
 require_uint PRICE_SERVICE_PORT     "$PRICE_SERVICE_PORT"     1 65535
 require_uint ORACLE_SIGNER_PORT     "$ORACLE_SIGNER_PORT"     1 65535
 require_uint HEDGE_ENGINE_PORT      "$HEDGE_ENGINE_PORT"      1 65535
@@ -432,6 +452,15 @@ add_summary ""
 add_summary "| service | reported status | classification |"
 add_summary "|---------|-----------------|----------------|"
 probe_health "price-service"     "$PRICE_SERVICE_URL"   "ok"
+# Capture price-service /health body and reachability immediately,
+# before subsequent probes mutate the http_probe globals. The
+# quote-flow section (task 0024) needs the original body to surface
+# the `configured symbols / cached / fresh` breakdown when count=0,
+# and uses reachability + body shape to decide whether to probe
+# /quotes/fresh/all at all (existing proof drivers point at generic
+# /health stubs that don't have a /quotes endpoint).
+price_service_health_body="$HTTP_BODY"
+price_service_health_code="$HTTP_CODE"
 probe_health "oracle-signer"     "$ORACLE_SIGNER_URL"   "ok,health-only"
 probe_health "hedge-engine"      "$HEDGE_ENGINE_URL"    "ok,health-only"
 
@@ -502,6 +531,126 @@ else
   fi
 fi
 (( agg_diag )) && add_diag_row
+
+# ----- 4b. price-service quote flow -----
+#
+# The spec's URGENT OVERRIDE banner requires the smoke prove
+# "price-service reachable and serving non-empty normalized quotes",
+# but /health short-circuits to `status: ok` whenever `cache.size === 0`
+# (deliberate service-aliveness signal). This section probes
+# /quotes/fresh/all directly and asserts a non-empty, fresh cache —
+# the actual mission deliverable.
+#
+# Auto-skip rules: we only probe quotes when the operator either set
+# an explicit PRICE_SERVICE_QUOTES_URL override, or the prior /health
+# response was a real lane-7 price-service shape (contains the
+# `freshQuotes` field). Generic /health stubs used by the existing
+# proof drivers fall through to a skip note instead of producing a
+# spurious "endpoint missing" BLOCKER.
+
+add_summary ""
+add_summary "## Price-service quote flow"
+add_summary ""
+
+quotes_url_override="${PRICE_SERVICE_QUOTES_URL:-}"
+if [[ -n "$quotes_url_override" ]]; then
+  quote_flow_url="$quotes_url_override"
+  quote_flow_should_probe=1
+elif [[ -z "$price_service_health_body" ]]; then
+  add_summary "ℹ️  skipped — price-service /health was not reachable above (see lane-local services table)"
+  quote_flow_should_probe=0
+elif [[ ! "$price_service_health_code" =~ ^2 ]]; then
+  add_summary "ℹ️  skipped — price-service /health returned HTTP $price_service_health_code (see lane-local services table)"
+  quote_flow_should_probe=0
+elif [[ "$price_service_health_body" != *'"freshQuotes"'* ]]; then
+  add_summary "ℹ️  skipped — \`$PRICE_SERVICE_URL\` does not look like the lane-7 price-service shape (no \`freshQuotes\` field); set \`PRICE_SERVICE_QUOTES_URL\` to opt in explicitly"
+  quote_flow_should_probe=0
+else
+  quote_flow_url="${PRICE_SERVICE_URL%/health}/quotes/fresh/all"
+  quote_flow_should_probe=1
+fi
+
+if (( quote_flow_should_probe )); then
+  add_summary "| metric | value | classification |"
+  add_summary "|--------|-------|----------------|"
+  http_probe "$quote_flow_url"
+  qf_diag=0
+  if [[ -z "$HTTP_BODY" ]]; then
+    add_summary "| fresh quote count | unreachable | ❌ BLOCKER |"
+    BLOCKERS+=("price-service /quotes/fresh/all unreachable at $quote_flow_url")
+    qf_diag=1
+  elif [[ ! "$HTTP_CODE" =~ ^2 ]]; then
+    add_summary "| fresh quote count | http-$HTTP_CODE | ❌ BLOCKER |"
+    BLOCKERS+=("price-service /quotes/fresh/all returned HTTP $HTTP_CODE at $quote_flow_url")
+    qf_diag=1
+  else
+    # One node -e call parses the count, freshest quote ts (ms), and the
+    # first quote's source. Tab-delimited output keeps the bash side
+    # simple. BAD signals a parse failure or missing fields.
+    qf_parsed="$(printf '%s' "$HTTP_BODY" | node -e '
+      let raw = "";
+      process.stdin.on("data", c => raw += c);
+      process.stdin.on("end", () => {
+        try {
+          const j = JSON.parse(raw);
+          if (typeof j.count !== "number" || !Array.isArray(j.quotes)) {
+            console.log("BAD"); return;
+          }
+          let freshestTs = 0;
+          for (const q of j.quotes) {
+            if (q && typeof q.ts === "number" && q.ts > freshestTs) freshestTs = q.ts;
+          }
+          let firstSource = "";
+          if (j.quotes.length > 0 && j.quotes[0] && j.quotes[0].source) {
+            firstSource = String(j.quotes[0].source);
+          }
+          console.log("OK\t" + j.count + "\t" + freshestTs + "\t" + firstSource);
+        } catch (_) { console.log("BAD"); }
+      });
+    ' 2>/dev/null)"
+
+    if [[ "$qf_parsed" != OK$'\t'* ]]; then
+      add_summary "| fresh quote count | unparseable response | ❌ BLOCKER |"
+      BLOCKERS+=("price-service /quotes/fresh/all response did not parse as JSON with \`count\` and \`quotes[]\`")
+      qf_diag=1
+    else
+      IFS=$'\t' read -r _ qf_count qf_freshest_ms qf_source <<<"$qf_parsed"
+      qf_source_md="$(escape_md_cell "$qf_source")"
+      if (( qf_count < MIN_FRESH_QUOTES )); then
+        add_summary "| fresh quote count | $qf_count / min $MIN_FRESH_QUOTES | ❌ BLOCKER |"
+        BLOCKERS+=("price-service has no fresh quotes (count=$qf_count, min=$MIN_FRESH_QUOTES)")
+        cfg_n=$(printf '%s' "$price_service_health_body" | json_field configuredSymbols)
+        cache_n=$(printf '%s' "$price_service_health_body" | json_field totalCached)
+        fresh_n=$(printf '%s' "$price_service_health_body" | json_field freshQuotes)
+        add_summary "| ↳ | configured symbols: ${cfg_n:-?}; cached: ${cache_n:-?}; fresh: ${fresh_n:-?} | (filter rejecting all or upstream stale) |"
+      else
+        add_summary "| fresh quote count | $qf_count / min $MIN_FRESH_QUOTES | ✅ OK |"
+        # Compute freshest quote age in seconds (clamp negatives to 0).
+        now_ms=$(($(date -u +%s) * 1000))
+        if (( qf_freshest_ms > 0 )); then
+          age_ms=$(( now_ms - qf_freshest_ms ))
+          (( age_ms < 0 )) && age_ms=0
+          age_s=$(( age_ms / 1000 ))
+        else
+          age_s=-1
+        fi
+        if (( age_s < 0 )); then
+          add_summary "| freshest quote age | unknown (\`ts\` missing on quotes) | ⚠️  WARN |"
+          WARNINGS+=("price-service /quotes/fresh/all responses missing per-quote \`ts\` — cannot assess freshness")
+        elif (( age_s > QUOTE_MAX_AGE_S )); then
+          add_summary "| freshest quote age | ${age_s} s > ${QUOTE_MAX_AGE_S} s | ⚠️  WARN |"
+          WARNINGS+=("freshest quote is ${age_s}s old (max ${QUOTE_MAX_AGE_S}s)")
+        else
+          add_summary "| freshest quote age | ${age_s} s ≤ ${QUOTE_MAX_AGE_S} s | ✅ OK |"
+        fi
+        if [[ -n "$qf_source" ]]; then
+          add_summary "| source (first quote) | \`$qf_source_md\` | ✅ OK |"
+        fi
+      fi
+    fi
+  fi
+  (( qf_diag )) && add_diag_row
+fi
 
 # ----- 5. on-chain freshness -----
 
