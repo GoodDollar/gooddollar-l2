@@ -19,6 +19,27 @@ const KNOWN_ROUTES: ReadonlyMap<string, readonly string[]> = new Map([
 const QUOTES_SYMBOL_RE = /^\/quotes\/[^/]+$/;
 
 /**
+ * eToro / standard ticker shape: 1..16 chars of upper-case letters,
+ * digits, dot, dash, underscore. Matches every symbol in
+ * DEFAULT_CONFIG.symbols (`AAPL`, `TSLA`, ...) and the standard eToro
+ * instrument surface (`BRK.B`, `BTC-USD`, `BTC_USD`).
+ */
+const VALID_SYMBOL = /^[A-Z0-9._-]{1,16}$/;
+
+function normalizeSymbol(
+  raw: string,
+): { ok: true; symbol: string } | { ok: false } {
+  if (typeof raw !== 'string') return { ok: false };
+  // Pre-uppercase length cap: certain Unicode chars (`ß` → `SS`) grow
+  // when uppercased, so cap the raw input at 32 to bound worst-case
+  // post-uppercase length well below the regex limit.
+  if (raw.length === 0 || raw.length > 32) return { ok: false };
+  const upper = raw.toUpperCase();
+  if (!VALID_SYMBOL.test(upper)) return { ok: false };
+  return { ok: true, symbol: upper };
+}
+
+/**
  * `ingested / (ingested + rejected)`. Returns 1 when nothing has been
  * ingested yet (no data => no rejections => effectively healthy).
  */
@@ -80,10 +101,28 @@ export function createServer(
   });
 
   app.get('/quotes/:symbol', (req: Request, res: Response) => {
-    const symbol = req.params.symbol.toUpperCase();
-    const entry = cache.get(symbol);
+    const result = normalizeSymbol(req.params.symbol);
+    if (!result.ok) {
+      // Bound the reflected path so a 5KB symbol can't yield a 5KB body.
+      // Truncate at 32 chars (the same limit `normalizeSymbol` enforces
+      // on the raw input) plus the `/quotes/` prefix.
+      const path = req.path.length > 48 ? `${req.path.slice(0, 48)}…` : req.path;
+      res.status(400).json({
+        error: 'invalid-symbol',
+        message: 'symbol must match /^[A-Z0-9._-]{1,16}$/',
+        path,
+        method: req.method,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+    const entry = cache.get(result.symbol);
     if (!entry) {
-      res.status(404).json({ error: `No quote for ${symbol}` });
+      res.status(404).json({
+        error: 'no-quote',
+        symbol: result.symbol,
+        timestamp: Date.now(),
+      });
       return;
     }
     res.json({

@@ -451,3 +451,95 @@ describe('REST Server — 404 and 405 envelopes', () => {
     expect(body.error).toBe('not-found');
   });
 });
+
+describe('REST Server — GET /quotes/:symbol shape validation', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('valid-shape miss returns bounded structured 404 no-quote envelope', async () => {
+    cache.clear();
+    const res = await fetch(`${baseUrl}/quotes/AAPL`);
+    const text = await res.text();
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('no-quote');
+    expect(body.symbol).toBe('AAPL');
+    expect(typeof body.timestamp).toBe('number');
+    expect(text.length).toBeLessThan(100);
+  });
+
+  it.each([
+    ['BRK.B', 'BRK.B'],
+    ['BTC-USD', 'BTC-USD'],
+    ['BTC_USD', 'BTC_USD'],
+  ])('accepts %s shape and returns no-quote 404', async (raw, expected) => {
+    cache.clear();
+    const res = await fetch(`${baseUrl}/quotes/${raw}`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('no-quote');
+    expect(body.symbol).toBe(expected);
+  });
+
+  it('rejects 5000-char symbol with bounded 400', async () => {
+    const sym = 'A'.repeat(5000);
+    const res = await fetch(`${baseUrl}/quotes/${sym}`);
+    const text = await res.text();
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('invalid-symbol');
+    expect(text.length).toBeLessThan(200);
+  });
+
+  it('rejects NUL byte in symbol with no NUL in body', async () => {
+    const res = await fetch(`${baseUrl}/quotes/AA%00PL`);
+    const text = await res.text();
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('invalid-symbol');
+    expect(text).not.toContain('\u0000');
+    expect(text).not.toContain('\\u0000');
+  });
+
+  it('rejects emoji symbol', async () => {
+    const res = await fetch(`${baseUrl}/quotes/${encodeURIComponent('💸PL')}`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('invalid-symbol');
+  });
+
+  it('rejects script-tag-shaped symbol with no `<` or `>` in body', async () => {
+    const res = await fetch(`${baseUrl}/quotes/${encodeURIComponent('<script>')}`);
+    const text = await res.text();
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('invalid-symbol');
+    expect(text).not.toContain('<');
+    expect(text).not.toContain('>');
+  });
+
+  it('rejects 17-char symbol (one over the regex cap)', async () => {
+    const res = await fetch(`${baseUrl}/quotes/${'A'.repeat(17)}`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('invalid-symbol');
+  });
+});
