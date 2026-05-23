@@ -54,6 +54,11 @@ export function SwapCard() {
   const [inputToken, setInputToken] = useState<Token>(TOKENS[1])
   const [outputToken, setOutputToken] = useState<Token>(TOKENS[0])
   const [inputAmount, setInputAmount] = useState('')
+  // Task 0031: `wasTruncated` flips on when the user's sanitized input
+  // would have exceeded `MAX_INPUT_LEN` and the slice dropped digits. It
+  // resets on the next edit that fits, so the truncation notice is a
+  // one-shot signal tied to the currently-displayed value.
+  const [wasTruncated, setWasTruncated] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   // Live price feeds — falls back to static prices when CoinGecko is unreachable
@@ -146,11 +151,6 @@ export function SwapCard() {
     return rawOutputAmount > 0 && rawOutputAmount < FLOOR_THRESHOLD
   }, [rawOutputAmount])
 
-  // True the moment the user types a 16th character. The amber warning
-  // chip appears so they know the cap was hit and double-check the
-  // intent before submitting.
-  const inputAtCap = inputAmount.length >= MAX_INPUT_LEN
-
   // Sanity cap on the parsed amount itself. The 16-char cap doesn't stop
   // the trillion-scale pathology (99,999,999,999,999 ETH is only 14 chars)
   // — this does. When tripped we suppress the quote and disable the CTA.
@@ -158,6 +158,19 @@ export function SwapCard() {
     () => !isAmountWithinCap(inputToken.symbol, inputAmount),
     [inputAmount, inputToken.symbol],
   )
+
+  // Task 0031: the amber "unusually large" chip is now driven by *numeric
+  // magnitude*, not raw string length. It fires only when the parsed input
+  // is close to (but still within) the per-symbol cap — within 1/10 of the
+  // cap. A 16-char sub-dust string like `0.0000000000000001` parses to 0
+  // and no longer trips this warning. Trillion-scale typos still trip the
+  // separate `isOverCap` chip.
+  const inputAtCap = useMemo(() => {
+    const parsed = parseFloat(inputAmount)
+    if (!Number.isFinite(parsed) || parsed <= 0) return false
+    if (isOverCap) return false
+    return parsed >= getSwapInputCap(inputToken.symbol) / 10
+  }, [inputAmount, inputToken.symbol, isOverCap])
   const overCapNumeric = useMemo(
     () => getSwapInputCap(inputToken.symbol).toLocaleString(),
     [inputToken.symbol],
@@ -299,7 +312,11 @@ export function SwapCard() {
               aria-label={`Amount to swap (${inputToken?.symbol ?? 'token'})`}
               value={inputAmount}
               maxLength={MAX_INPUT_LEN}
-              onChange={e => setInputAmount(sanitizeNumericInput(e.target.value).slice(0, MAX_INPUT_LEN))}
+              onChange={e => {
+                const sanitized = sanitizeNumericInput(e.target.value)
+                setWasTruncated(sanitized.length > MAX_INPUT_LEN)
+                setInputAmount(sanitized.slice(0, MAX_INPUT_LEN))
+              }}
               style={inputFontSize ? { fontSize: inputFontSize } : undefined}
               className={`flex-1 bg-transparent font-medium text-white outline-none placeholder:text-gray-500 min-w-0 focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:ring-offset-1 focus-visible:ring-offset-dark rounded-lg transition-[font-size] duration-100 ${inputFontSize ? '' : 'text-3xl'}`}
             />
@@ -328,6 +345,15 @@ export function SwapCard() {
               role="alert"
             >
               Amount exceeds the per-swap cap ({overCapNumeric} {inputToken.symbol}). Reduce to continue.
+            </p>
+          )}
+          {wasTruncated && (
+            <p
+              className="text-[11px] text-gray-400 mt-1.5"
+              data-testid="input-truncation-notice"
+              role="status"
+            >
+              Input truncated to {MAX_INPUT_LEN} characters — extra digits were dropped. For very small amounts, switch to a token with fewer decimals.
             </p>
           )}
         </motion.div>

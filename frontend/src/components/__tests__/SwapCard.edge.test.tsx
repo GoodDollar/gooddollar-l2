@@ -172,26 +172,68 @@ describe('SwapCard input length cap', () => {
     expect(input.value.length).toBe(16)
   })
 
-  it('shows a warning chip when the input length reaches 16', () => {
+  it('renders input-cap-warning OR swap-amount-over-cap for trillion-scale typo input', () => {
+    // task 0031: the warning chip is now driven by *numeric magnitude*, not
+    // raw string length — but the trillion-scale guard from task 0010/0063
+    // must still fire (either as the over-cap chip or the close-to-cap chip).
     render(
       <TestWrapper>
         <SwapCard />
       </TestWrapper>
     )
     const input = screen.getByRole('textbox') as HTMLInputElement
-    // Below cap (and below the over-cap sanity gate) → no warning of either kind.
     fireEvent.change(input, { target: { value: '12345' } })
     expect(screen.queryByTestId('input-cap-warning')).not.toBeInTheDocument()
     expect(screen.queryByTestId('swap-amount-over-cap')).not.toBeInTheDocument()
-    // 16 characters of "9" — a 10^15-scale number, well above every per-symbol
-    // cap. The newer over-cap chip takes precedence over the legacy length-only
-    // chip; either way a warning is visible.
-    fireEvent.change(input, { target: { value: '1234567890123456' } })
+    fireEvent.change(input, { target: { value: '9999999999999999' } })
     const warning =
       screen.queryByTestId('swap-amount-over-cap') ??
       screen.getByTestId('input-cap-warning')
     expect(warning).toBeInTheDocument()
     expect(warning.textContent ?? '').toMatch(/(unusually large|exceeds the per-swap cap)/i)
+  })
+
+  it('does NOT render input-cap-warning for sub-dust input "0.0000000000000001"', () => {
+    // task 0031: a 16-char sub-dust string parses to ~0. The legacy
+    // length-only gate fired the "unusually large" chip on this input;
+    // the new numeric gate must NOT.
+    render(
+      <TestWrapper>
+        <SwapCard />
+      </TestWrapper>
+    )
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '0.0000000000000001' } })
+    expect(screen.queryByTestId('input-cap-warning')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('swap-amount-over-cap')).not.toBeInTheDocument()
+  })
+
+  it('renders input-truncation-notice when sanitized input exceeds MAX_INPUT_LEN', () => {
+    // task 0031: when the input handler drops digits (sanitized.length > 16),
+    // surface a neutral caption so the user knows the value was modified.
+    render(
+      <TestWrapper>
+        <SwapCard />
+      </TestWrapper>
+    )
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '0.0000000000000001' } })
+    const notice = screen.getByTestId('input-truncation-notice')
+    expect(notice).toBeInTheDocument()
+    expect(notice.textContent ?? '').toMatch(/truncated/i)
+  })
+
+  it('hides input-truncation-notice when the user edits to a value within MAX_INPUT_LEN', () => {
+    render(
+      <TestWrapper>
+        <SwapCard />
+      </TestWrapper>
+    )
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '0.0000000000000001' } })
+    expect(screen.getByTestId('input-truncation-notice')).toBeInTheDocument()
+    fireEvent.change(input, { target: { value: '1' } })
+    expect(screen.queryByTestId('input-truncation-notice')).not.toBeInTheDocument()
   })
 })
 
