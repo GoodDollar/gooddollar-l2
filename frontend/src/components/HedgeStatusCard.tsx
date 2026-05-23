@@ -15,6 +15,10 @@ import {
 import { formatNotionalUsd } from '@/lib/format-notional'
 import { buildHedgeErrorHeadline, classifyClientError } from '@/lib/hedge-error'
 import { buildDailySeries } from '@/lib/hedge-daily-series'
+import {
+  summarizeReceipts,
+  type ReceiptsSummary,
+} from '@/lib/hedge-receipts-summary'
 import { useIntervalWhileVisible } from '@/lib/useIntervalWhileVisible'
 import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
 import { Sparkline } from './Sparkline'
@@ -98,6 +102,21 @@ function timeAgo(ms: number | undefined): string {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
   return `${Math.floor(diff / 86400)}d ago`
+}
+
+// Sign + color rule for the receipts-table totals row's net exposure
+// delta. Mirrors `formatExposureDelta`'s sign convention (en-dash for
+// negative, literal `+` for positive, no sign for zero) but stays a
+// local helper so the totals row can colour its single `<span>`
+// without re-deriving the formatter's `display` half (task 0053).
+function netDeltaClass(net: number): string {
+  if (!Number.isFinite(net) || Math.round(net * 100) === 0) return 'text-gray-500'
+  return net > 0 ? 'text-goodgreen' : 'text-red-300'
+}
+
+function netDeltaPrefix(net: number): string {
+  if (!Number.isFinite(net) || Math.round(net * 100) === 0) return ''
+  return net > 0 ? '+' : '−'
 }
 
 // "Healthy converged" → the most recent poll *was* the most recent tick;
@@ -630,6 +649,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const receipts = renderSource?.receipts ?? []
   const cap = renderSource?.capSnapshot ?? null
   const dailySeries = useMemo(() => buildDailySeries(receipts), [receipts])
+  const receiptsSummary = useMemo(() => summarizeReceipts(receipts), [receipts])
   const hasSeries = dailySeries.coverageDays >= 2
   const notionalCap = cap?.dailyNotionalCapUsd
   const ordersCap = cap?.dailyOrderCap
@@ -948,6 +968,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
                 <ReceiptRow key={r.id} receipt={r} />
               ))}
             </tbody>
+            {receiptsSummary && <ReceiptsTotalsRow summary={receiptsSummary} />}
           </table>
         )}
         </div>
@@ -958,6 +979,47 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
 
 HedgeStatusCard.displayName = 'HedgeStatusCard'
 export default HedgeStatusCard
+
+// Visible-window totals row for the receipts table. Mirrors the
+// 7-cell header geometry (`time | id | symbol | side | notional |
+// exposure Δ | status`) so every total lines up under its column.
+// The row is rendered only when the visible window is non-empty;
+// the empty branch doesn't reach the `<table>` at all (#0053).
+const ReceiptsTotalsRow = memo(function ReceiptsTotalsRow({
+  summary,
+}: {
+  summary: ReceiptsSummary
+}) {
+  const netClass = netDeltaClass(summary.exposureNetDelta)
+  const netPrefix = netDeltaPrefix(summary.exposureNetDelta)
+  return (
+    <tfoot>
+      <tr
+        data-testid="hedge-receipts-totals"
+        className="border-t-2 border-dark-100 font-semibold text-gray-200"
+      >
+        <td className="py-1.5 pr-2 text-xs text-gray-400">
+          totals · {summary.count} shown
+        </td>
+        <td className="py-1.5 pr-2" />
+        <td className="py-1.5 pr-2" />
+        <td className="py-1.5 pr-2 text-xs text-gray-300">
+          {summary.sideCaption}
+        </td>
+        <td className="py-1.5 pr-2 text-right">
+          {formatNotionalUsd(summary.notionalTotalUsd)}
+        </td>
+        <td className="py-1.5 pr-2 text-xs">
+          <span className={netClass}>
+            net {netPrefix}
+            {formatNotionalUsd(Math.abs(summary.exposureNetDelta))}
+          </span>
+        </td>
+        <td className="py-1.5 text-xs text-gray-300">{summary.statusCaption}</td>
+      </tr>
+    </tfoot>
+  )
+})
 
 // Memoised so the four stat tiles skip the className build + re-render
 // when their (entirely-primitive) props are unchanged. Default shallow

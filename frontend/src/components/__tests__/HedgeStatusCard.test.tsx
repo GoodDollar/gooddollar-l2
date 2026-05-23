@@ -2378,6 +2378,46 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  describe('receipts table totals footer (#0053)', () => {
+    const fiveMixed = [
+      { ...BASE_RESPONSE.receipts[0], id: 'r-1', side: 'sell' as const, notionalUsd: 42.18, beforeExposure: 1480.22, afterExposure: 1438.04 },
+      { ...BASE_RESPONSE.receipts[0], id: 'r-2', side: 'buy' as const, notionalUsd: 18.92, beforeExposure: 223.1, afterExposure: 242.02 },
+      { ...BASE_RESPONSE.receipts[0], id: 'r-3', side: 'sell' as const, notionalUsd: 9.04, beforeExposure: 104.5, afterExposure: 95.46 },
+      { ...BASE_RESPONSE.receipts[0], id: 'r-4', side: 'buy' as const, notionalUsd: 7.33, beforeExposure: 55.1, afterExposure: 55.1, success: false, error: 'INSUFFICIENT_LIQUIDITY' },
+      { ...BASE_RESPONSE.receipts[0], id: 'r-5', side: 'buy' as const, notionalUsd: 25.51, beforeExposure: 1454.71, afterExposure: 1480.22 },
+    ];
+
+    it('renders a totals row with visible-window aggregates', async () => {
+      mockFetchOnce({ ...BASE_RESPONSE, receipts: fiveMixed });
+      render(<HedgeStatusCard />);
+      const totals = await screen.findByTestId('hedge-receipts-totals');
+      expect(totals).toHaveTextContent(/totals\s*·\s*5 shown/);
+      expect(totals).toHaveTextContent('3 buy · 2 sell');
+      expect(totals).toHaveTextContent('$102.98');
+      expect(totals).toHaveTextContent('4 ok · 1 failed');
+      // Net delta is the sum of (after - before) per row, formatted as
+      // ±$X.XX with the sign prefix (en-dash for negative). For this
+      // fixture sum = -6.79.
+      expect(totals.textContent ?? '').toMatch(/net\s+−\$6\.79/);
+    });
+
+    it('does NOT render the totals row when receipts are empty', async () => {
+      mockFetchOnce({ ...BASE_RESPONSE, receipts: [] });
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-receipts-empty');
+      expect(screen.queryByTestId('hedge-receipts-totals')).toBeNull();
+    });
+
+    it('totals row sits inside a <tfoot> and mirrors the 7-cell header geometry', async () => {
+      mockFetchOnce({ ...BASE_RESPONSE, receipts: fiveMixed });
+      render(<HedgeStatusCard />);
+      const totals = await screen.findByTestId('hedge-receipts-totals');
+      expect(totals.tagName).toBe('TR');
+      expect(totals.parentElement?.tagName).toBe('TFOOT');
+      expect(totals.querySelectorAll('td')).toHaveLength(7);
+    });
+  });
+
   describe('receipt side cell color coding (#0052)', () => {
     function fixture(side: 'buy' | 'sell' | 'noop') {
       return {
