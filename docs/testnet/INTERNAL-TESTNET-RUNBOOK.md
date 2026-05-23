@@ -209,15 +209,19 @@ The smoke probes (in order):
    the probe is **skipped with a warning** (not a blocker).
 7. Real-trading fence — `REAL_TRADING_ENABLED` is `unset` or `false`,
    `ETORO_MODE` ∈ `{mock, demo-readonly, sandbox, demo-trading,
-   unset}`. Read from `pm2 env <id>` when `PM2_ID_PRICE_SERVICE` is
-   exported, otherwise from `LANE7_ENV_FILE` (default `.env` at repo
-   root). **Only env-presence is logged — values are never printed.**
-   `.env` values are forwarded **literally** to the `BLOCKERS[]`
-   console echo (the operator's terminal stays byte-faithful so
+   unset}`, AND `HEDGE_DRY_RUN` ∈ `{true, unset}`. Read from `pm2
+   env <id>` when `PM2_ID_PRICE_SERVICE` is exported, otherwise from
+   `LANE7_ENV_FILE` (default `.env` at repo root). **Only
+   env-presence is logged — values are never printed.** `.env`
+   values are forwarded **literally** to the `BLOCKERS[]` console
+   echo (the operator's terminal stays byte-faithful so
    typos/quirks are visible) but routed through `escape_md_cell`
    before landing in the Markdown report (so backticks / pipes /
    CR-LF copy-paste artifacts can't scramble the fence section
-   that reviewers stare at hardest).
+   that reviewers stare at hardest). `HEDGE_DRY_RUN=false`
+   requires explicit coordinator approval per the "Promotion gate"
+   section below — the smoke flags any other value as a BLOCKER
+   so the fence stays belt-and-suspenders across all three keys.
 
 ### Smoke env contract
 

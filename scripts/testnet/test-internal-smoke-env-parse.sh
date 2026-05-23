@@ -33,6 +33,8 @@ load_and_dump() {
     . '$LOADER'
     printf 'PRESENCE_RTE=%s\n' \"\${ENV_PRESENCE[REAL_TRADING_ENABLED]:-MISSING}\"
     printf 'PRESENCE_MODE=%s\n' \"\${ENV_PRESENCE[ETORO_MODE]:-MISSING}\"
+    printf 'PRESENCE_HDR=%s\n' \"\${ENV_PRESENCE[HEDGE_DRY_RUN]:-MISSING}\"
+    printf 'SHELL_HDR=%s\n' \"\${HEDGE_DRY_RUN:-MISSING}\"
     for w in \"\${WARNINGS[@]}\"; do printf 'WARN=%s\n' \"\$w\"; done
   "
 }
@@ -168,6 +170,37 @@ assert_eq "RTE parsed past comments" "PRESENCE_RTE=false" "$(printf '%s\n' "$OUT
 assert_eq "MODE parsed past comments" "PRESENCE_MODE=mock" "$(printf '%s\n' "$OUT" | grep '^PRESENCE_MODE=')"
 refute_substr "no spurious WARN on comment lines" "$OUT" "key contains whitespace"
 refute_substr "no spurious WARN on indented comment" "$OUT" "ignored (not in lane-7 allowlist"
+
+# Case 10: HEDGE_DRY_RUN as third fence key (task 0031). Lands in
+# ENV_PRESENCE[] symmetric with REAL_TRADING_ENABLED / ETORO_MODE
+# and MUST NOT be exported into the shell (the safety contract:
+# fence keys never propagate to child processes the smoke spawns).
+echo
+echo "=== Case 10: HEDGE_DRY_RUN presence-only ==="
+F10=/tmp/env-parse-c10.env
+printf 'HEDGE_DRY_RUN=false\n' > "$F10"
+OUT="$(load_and_dump "$F10")"
+assert_eq "HEDGE_DRY_RUN landed in ENV_PRESENCE" "PRESENCE_HDR=false" "$(printf '%s\n' "$OUT" | grep '^PRESENCE_HDR=')"
+assert_eq "HEDGE_DRY_RUN NOT exported to shell" "SHELL_HDR=MISSING" "$(printf '%s\n' "$OUT" | grep '^SHELL_HDR=')"
+refute_substr "no unknown-key WARN for HEDGE_DRY_RUN" "$OUT" "HEDGE_DRY_RUN"
+
+# Case 11: HEDGE_DRY_RUN=true (the safe state) — symmetric.
+echo
+echo "=== Case 11: HEDGE_DRY_RUN=true ==="
+F11=/tmp/env-parse-c11.env
+printf 'HEDGE_DRY_RUN=true\n' > "$F11"
+OUT="$(load_and_dump "$F11")"
+assert_eq "HEDGE_DRY_RUN=true landed" "PRESENCE_HDR=true" "$(printf '%s\n' "$OUT" | grep '^PRESENCE_HDR=')"
+
+# Case 12: omitted HEDGE_DRY_RUN — presence stays MISSING (safe
+# default; smoke treats absence as ✅ since hedge-engine defaults
+# to dry-run).
+echo
+echo "=== Case 12: HEDGE_DRY_RUN omitted ==="
+F12=/tmp/env-parse-c12.env
+printf 'REAL_TRADING_ENABLED=false\n' > "$F12"
+OUT="$(load_and_dump "$F12")"
+assert_eq "HEDGE_DRY_RUN stays MISSING when omitted" "PRESENCE_HDR=MISSING" "$(printf '%s\n' "$OUT" | grep '^PRESENCE_HDR=')"
 
 echo
 if (( fail == 0 )); then

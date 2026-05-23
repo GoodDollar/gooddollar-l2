@@ -28,23 +28,23 @@
 # accidentally swallow updates.
 #
 # Three distinct categories of key are accepted:
-#   - presence-only fence keys (REAL_TRADING_ENABLED, ETORO_MODE)
-#     land in ENV_PRESENCE[] and are NEVER exported into the shell.
-#     Exporting them would propagate into every child process the
-#     smoke spawns (node, curl, awk), which is precisely what the
-#     safety fence is meant to prevent.
+#   - presence-only fence keys (REAL_TRADING_ENABLED, ETORO_MODE,
+#     HEDGE_DRY_RUN) land in ENV_PRESENCE[] and are NEVER exported
+#     into the shell. Exporting them would propagate into every
+#     child process the smoke spawns (node, curl, awk), which is
+#     precisely what the safety fence is meant to prevent.
 #   - operational keys (ports, URLs, thresholds, oracle address,
 #     REPORT path, etc.) are exported into the shell so the
 #     existing parameter-expansion defaults in the caller pick
 #     them up unchanged. Single code path through `require_uint` /
 #     `PROBE_URL_RE` — no validation duplication.
 #   - documented-but-smoke-doesn't-consume keys (PRIVATE_KEY,
-#     ORACLE_SIGNER_KEY, RISK_ENGINE_ADDRESS, HEDGE_DRY_RUN) live
-#     in the runbook's "One-time setup" block because OTHER lane-7
-#     tooling (foundry, deployer scripts, PM2 ecosystem config)
-#     consumes them — the smoke neither reads nor cares about
-#     them. Listed here as a no-op branch so the deferred unknown-
-#     key WARN doesn't false-fire on a freshly-bootstrapped .env.
+#     ORACLE_SIGNER_KEY, RISK_ENGINE_ADDRESS) live in the runbook's
+#     "One-time setup" block because OTHER lane-7 tooling (foundry,
+#     deployer scripts, PM2 ecosystem config) consumes them — the
+#     smoke neither reads nor cares about them. Listed here as a
+#     no-op branch so the deferred unknown-key WARN doesn't
+#     false-fire on a freshly-bootstrapped .env.
 #
 # Truly unknown non-comment keys collect into a single deferred
 # WARN so typos like `PRICE_SERVICE_PROT=49300` surface once
@@ -80,7 +80,7 @@ while IFS='=' read -r _key _val; do
   _val="${_val%"${_val##*[![:space:]]}"}"
   _val="${_val%\"}"; _val="${_val#\"}"; _val="${_val%\'}"; _val="${_val#\'}"
   case "$_key" in
-    REAL_TRADING_ENABLED|ETORO_MODE)
+    REAL_TRADING_ENABLED|ETORO_MODE|HEDGE_DRY_RUN)
       ENV_PRESENCE[$_key]="$_val"
       ;;
     PRICE_SERVICE_PORT|PRICE_SERVICE_WS_PORT|ORACLE_SIGNER_PORT \
@@ -92,7 +92,7 @@ while IFS='=' read -r _key _val; do
       |HEALTH_CONTRACT|REPORT|L2_RPC_URL)
       if [[ -z "${!_key:-}" ]]; then export "$_key=$_val"; fi
       ;;
-    PRIVATE_KEY|ORACLE_SIGNER_KEY|RISK_ENGINE_ADDRESS|HEDGE_DRY_RUN)
+    PRIVATE_KEY|ORACLE_SIGNER_KEY|RISK_ENGINE_ADDRESS)
       :
       ;;
     *)

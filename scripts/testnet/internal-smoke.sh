@@ -17,7 +17,8 @@
 #                            STALENESS_THRESHOLD_S, OR explicit "no signer
 #                            data yet — testnet candidate phase" note
 #   6. real-trading fence   →  REAL_TRADING_ENABLED unset / false AND
-#                            ETORO_MODE ∈ {mock, demo-readonly, sandbox, demo-trading}
+#                            ETORO_MODE ∈ {mock, demo-readonly, sandbox, demo-trading} AND
+#                            HEDGE_DRY_RUN ∈ {true, unset}
 #
 # Style mirrors health-gate.sh: `set -u` only (probes continue past
 # individual failures), node -e for JSON parsing, BLOCKERS / WARNINGS /
@@ -895,7 +896,7 @@ add_summary ""
 # early loader at the top of the script (REAL_TRADING_ENABLED /
 # ETORO_MODE → ENV_PRESENCE[]) are already in place.
 if [[ -n "${PM2_ID_PRICE_SERVICE:-}" ]] && command -v pm2 >/dev/null 2>&1; then
-  for key in REAL_TRADING_ENABLED ETORO_MODE; do
+  for key in REAL_TRADING_ENABLED ETORO_MODE HEDGE_DRY_RUN; do
     val="$(pm2 env "$PM2_ID_PRICE_SERVICE" 2>/dev/null | awk -F': *' -v k="$key" '$1==k {print $2; exit}')"
     if [[ -n "$val" ]]; then ENV_PRESENCE[$key]="$val"; fi
   done
@@ -903,6 +904,7 @@ fi
 
 rte="${ENV_PRESENCE[REAL_TRADING_ENABLED]:-unset}"
 mode="${ENV_PRESENCE[ETORO_MODE]:-unset}"
+hdr="${ENV_PRESENCE[HEDGE_DRY_RUN]:-unset}"
 
 # Sanitize for the report's inline-code spans. The raw value stays in
 # BLOCKERS[] (terminal echo is byte-faithful via `printf '%s'`) and
@@ -914,6 +916,7 @@ mode="${ENV_PRESENCE[ETORO_MODE]:-unset}"
 # (Task 0018 / 0021 convergence — closes the env-source scope-out.)
 rte_md="$(escape_md_cell "$rte")"
 mode_md="$(escape_md_cell "$mode")"
+hdr_md="$(escape_md_cell "$hdr")"
 
 if [[ "$rte" == "unset" || "$rte" == "false" ]]; then
   add_summary "✅ \`REAL_TRADING_ENABLED\` = \`$rte_md\` (fence intact)"
@@ -929,6 +932,23 @@ case "$mode" in
   *)
     add_summary "❌ \`ETORO_MODE\` = \`$mode_md\` — lane-7 only allows {mock, demo-readonly, sandbox, demo-trading, unset}"
     BLOCKERS+=("ETORO_MODE is $mode — outside lane-7 allowlist")
+    ;;
+esac
+
+# Third fence key. Safe states: explicit `true` OR `unset` — the
+# hedge-engine's own default is dry-run, so an absent key matches
+# the safe `REAL_TRADING_ENABLED=unset` treatment. Any other value
+# (false, 0, no, typo) is a BLOCKER symmetric with
+# `REAL_TRADING_ENABLED=true`; the runbook's "Promotion gate"
+# section explicitly requires coordinator approval for
+# `HEDGE_DRY_RUN=false`.
+case "$hdr" in
+  unset|true)
+    add_summary "✅ \`HEDGE_DRY_RUN\` = \`$hdr_md\` (fence intact)"
+    ;;
+  *)
+    add_summary "❌ \`HEDGE_DRY_RUN\` = \`$hdr_md\` — lane-7 requires \`true\` or unset (coordinator approval needed for \`false\`)"
+    BLOCKERS+=("HEDGE_DRY_RUN is $hdr — must be unset or true on the lane-7 host (see runbook \"Promotion gate\")")
     ;;
 esac
 
