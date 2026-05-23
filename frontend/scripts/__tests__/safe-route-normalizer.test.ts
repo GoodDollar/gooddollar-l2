@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { normalizeMalformedStocksPath } from '../safe-route-normalizer.mjs'
+import {
+  normalizeMalformedHedgeProofPath,
+  normalizeMalformedStocksPath,
+} from '../safe-route-normalizer.mjs'
 
 describe('normalizeMalformedStocksPath', () => {
   it('keeps valid stocks routes unchanged', () => {
@@ -29,5 +32,57 @@ describe('normalizeMalformedStocksPath', () => {
 
   it('does not rewrite malformed paths outside /stocks', () => {
     expect(normalizeMalformedStocksPath('/predict/%2')).toBe('/predict/%2')
+  })
+})
+
+describe('normalizeMalformedHedgeProofPath', () => {
+  it('keeps valid hedge-proof routes unchanged', () => {
+    expect(normalizeMalformedHedgeProofPath('/analytics/hedge/proof/latest')).toBe(
+      '/analytics/hedge/proof/latest',
+    )
+    expect(
+      normalizeMalformedHedgeProofPath(
+        '/analytics/hedge/proof/abc12345defg',
+      ),
+    ).toBe('/analytics/hedge/proof/abc12345defg')
+  })
+
+  it('keeps well-formed percent-encoded receipt ids unchanged', () => {
+    expect(
+      normalizeMalformedHedgeProofPath('/analytics/hedge/proof/abc%2F123'),
+    ).toBe('/analytics/hedge/proof/abc%2F123')
+    expect(
+      normalizeMalformedHedgeProofPath('/analytics/hedge/proof/%E2%9C%93'),
+    ).toBe('/analytics/hedge/proof/%E2%9C%93')
+  })
+
+  it('rewrites malformed percent encodings under the hedge-proof prefix to the invalid page', () => {
+    expect(
+      normalizeMalformedHedgeProofPath('/analytics/hedge/proof/foo%E0%80'),
+    ).toBe('/analytics/hedge/proof/invalid')
+    expect(
+      normalizeMalformedHedgeProofPath('/analytics/hedge/proof/%C0'),
+    ).toBe('/analytics/hedge/proof/invalid')
+    expect(
+      normalizeMalformedHedgeProofPath('/analytics/hedge/proof/%'),
+    ).toBe('/analytics/hedge/proof/invalid')
+    expect(
+      normalizeMalformedHedgeProofPath('/analytics/hedge/proof/%2'),
+    ).toBe('/analytics/hedge/proof/invalid')
+  })
+
+  it('preserves query string when rewriting malformed hedge-proof paths', () => {
+    expect(
+      normalizeMalformedHedgeProofPath(
+        '/analytics/hedge/proof/foo%E0%80?ref=email',
+      ),
+    ).toBe('/analytics/hedge/proof/invalid?ref=email')
+  })
+
+  it('does not rewrite malformed paths outside the hedge-proof prefix', () => {
+    expect(normalizeMalformedHedgeProofPath('/predict/%2')).toBe('/predict/%2')
+    expect(normalizeMalformedHedgeProofPath('/analytics/%E0%80')).toBe(
+      '/analytics/%E0%80',
+    )
   })
 })

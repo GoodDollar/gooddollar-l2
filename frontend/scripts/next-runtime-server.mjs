@@ -5,7 +5,10 @@ import { parse } from 'node:url'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import next from 'next'
-import { normalizeMalformedStocksPath } from './safe-route-normalizer.mjs'
+import {
+  normalizeMalformedHedgeProofPath,
+  normalizeMalformedStocksPath,
+} from './safe-route-normalizer.mjs'
 
 export function parseCliArgs(argv) {
   let dev = false
@@ -54,7 +57,9 @@ export function createNextRuntimeServer({ argv = process.argv.slice(2), env = pr
     .then(() => {
       createServer((req, res) => {
         const incomingUrl = req.url || '/'
-        const normalizedUrl = normalizeMalformedStocksPath(incomingUrl)
+        const normalizedUrl = normalizeMalformedHedgeProofPath(
+          normalizeMalformedStocksPath(incomingUrl),
+        )
         if (normalizedUrl !== incomingUrl) {
           req.url = normalizedUrl
         }

@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
+import HedgeProofErrorCard from './HedgeProofErrorCard'
+
 /**
  * Lane 5 — shared in-app hedge proof viewer.
  *
@@ -186,14 +188,14 @@ export default function HedgeProofViewer({
         />
       )}
       {view.kind === 'no_proof' && (
-        <NotFoundState
+        <HedgeProofErrorCard
           title={notFoundTitle}
           detail={notFoundDetail}
           onRetry={load}
         />
       )}
       {view.kind === 'error' && (
-        <NotFoundState
+        <HedgeProofErrorCard
           title={view.copy.title}
           detail={view.copy.detail}
           onRetry={load}
@@ -303,57 +305,12 @@ function EmptyBodyState({
   return (
     <article>
       <ProofMetadataStrip pointer={data.pointer} rawMarkdownHref={rawMarkdownHref} />
-      <NotFoundState
+      <HedgeProofErrorCard
         testid="hedge-proof-empty-body"
         title="Proof body is empty"
         detail="The engine wrote a pointer but the markdown body is empty. This usually means the current cycle is still in progress — try again in a few seconds, or view the raw file."
         onRetry={onRetry}
       />
     </article>
-  )
-}
-
-function NotFoundState({
-  title,
-  detail,
-  onRetry,
-  variant = 'neutral',
-  testid = 'hedge-proof-error',
-}: {
-  title: string
-  detail: string
-  onRetry: () => void | Promise<void>
-  variant?: 'error' | 'neutral'
-  testid?: string
-}) {
-  const wrapperClass =
-    variant === 'error'
-      ? 'border-red-500/30 bg-red-500/10'
-      : 'border-dark-50 bg-dark-100/40'
-  const titleColor = variant === 'error' ? 'text-red-200' : 'text-white'
-  return (
-    <section
-      data-testid={testid}
-      className={`rounded-xl border ${wrapperClass} p-5`}
-    >
-      <h2 className={`text-base font-semibold ${titleColor}`}>{title}</h2>
-      <p className="mt-1 text-sm text-gray-300">{detail}</p>
-      <div className="mt-4 flex items-center gap-3 flex-wrap">
-        <button
-          type="button"
-          data-testid="hedge-proof-retry"
-          onClick={() => void onRetry()}
-          className="text-xs px-3 py-1.5 rounded-md border border-dark-50 text-gray-200 hover:bg-dark-50"
-        >
-          Retry
-        </button>
-        <Link
-          href="/analytics"
-          className="text-xs text-gray-400 hover:text-white"
-        >
-          ← Back to dashboard
-        </Link>
-      </div>
-    </section>
   )
 }
