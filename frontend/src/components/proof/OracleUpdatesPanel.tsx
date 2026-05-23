@@ -215,7 +215,7 @@ function OracleEventSubscription({
   onLogs,
   onError,
 }: {
-  oracleAddress: string | undefined
+  oracleAddress: `0x${string}` | undefined
   onLogs: (logs: readonly unknown[]) => void
   onError: (err: Error) => void
 }) {
