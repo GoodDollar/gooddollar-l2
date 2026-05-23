@@ -106,7 +106,7 @@ unset PROBE_URL_RE malformed pair url
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 LANE7_ENV_FILE="${LANE7_ENV_FILE:-$REPO_ROOT/.env}"
 REPORT="${REPORT:-$REPO_ROOT/docs/testnet/iter05-internal-smoke.md}"
-HEALTH_CONTRACT="${HEALTH_CONTRACT:-$REPO_ROOT/docs/testnet/HEALTH-CONTRACT.md}"
+HEALTH_CONTRACT="${HEALTH_CONTRACT-$REPO_ROOT/docs/testnet/HEALTH-CONTRACT.md}"
 STALENESS_THRESHOLD_S="${STALENESS_THRESHOLD_S-600}"
 LANE7_RPC="${LANE7_RPC-}"
 
@@ -135,6 +135,21 @@ require_uint PRICE_SERVICE_PORT     "$PRICE_SERVICE_PORT"     1 65535
 require_uint ORACLE_SIGNER_PORT     "$ORACLE_SIGNER_PORT"     1 65535
 require_uint HEDGE_ENGINE_PORT      "$HEDGE_ENGINE_PORT"      1 65535
 require_uint STATUS_AGGREGATOR_PORT "$STATUS_AGGREGATOR_PORT" 1 65535
+
+# Path-existence preflight for the HEALTH-CONTRACT classification table.
+# The awk invocations downstream (lines ~315-323) consume `$HEALTH_CONTRACT`
+# without stderr redirection, so a missing or unreadable path leaks
+# `awk: fatal: cannot open file ...` to the operator's TTY *and* yields
+# an empty `cls`, which fires misleading `MISSING-FROM-CONTRACT` BLOCKERs
+# for both `oracle-signer` and `hedge-engine`. The operator chases a
+# phantom misclassification problem instead of restoring the contract
+# file. Fail fast here with a single FATAL block — symmetric with the
+# tool / URL / numeric preflights above.
+if [[ ! -r "$HEALTH_CONTRACT" ]]; then
+  echo "FATAL: HEALTH_CONTRACT not readable at: $HEALTH_CONTRACT" >&2
+  echo "FATAL: set HEALTH_CONTRACT=<path> or restore docs/testnet/HEALTH-CONTRACT.md" >&2
+  exit 2
+fi
 
 declare -a BLOCKERS=()
 declare -a WARNINGS=()
@@ -314,7 +329,7 @@ else
           n = split($0, parts, "|"); gsub(/[ `]/, "", parts[2])
           if (parts[2] == s) { print "EXCLUDED"; exit }
         }
-      ' "$HEALTH_CONTRACT")"
+      ' "$HEALTH_CONTRACT" 2>/dev/null)"
 
       add_summary "| \`$svc\` | $st | ${cls:-MISSING-FROM-CONTRACT} |"
       if [[ "$st" == "MISSING" ]]; then
