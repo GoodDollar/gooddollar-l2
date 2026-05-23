@@ -3,6 +3,8 @@
 import { useState, useMemo, memo } from 'react'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { usePriceFeeds, getPrice } from '@/lib/usePriceFeeds'
+import { useAttributedPrices } from '@/lib/useAttributedPrice'
+import { PriceSourceBadge } from './PriceSourceBadge'
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M']
 
@@ -23,16 +25,28 @@ export const SwapPriceChart = memo(function SwapPriceChart({
   inputSymbol,
   outputSymbol,
 }: SwapPriceChartProps) {
-  const { prices } = usePriceFeeds([inputSymbol, outputSymbol])
-  const inputPrice = getPrice(prices, inputSymbol)
-  const outputPrice = getPrice(prices, outputSymbol)
+  // Canonical "what does this cost" lookup — same source the LandingPriceStrip
+  // uses, so the visible rate matches the cards immediately below by
+  // construction (task 0027).
+  const attributed = useAttributedPrices([inputSymbol, outputSymbol])
+  const inputAttr = attributed[inputSymbol]
+  const outputAttr = attributed[outputSymbol]
+  const inputPrice = inputAttr?.priceUsd ?? 0
+  const outputPrice = outputAttr?.priceUsd ?? 0
+
+  // Chart series stays on usePriceFeeds — the time-series array is
+  // illustrative and never the source of the visible rate.
+  const { prices: feedPrices } = usePriceFeeds([inputSymbol])
+  const seriesAnchor = getPrice(feedPrices, inputSymbol) || inputPrice
   const [timeframe, setTimeframe] = useState<Timeframe>('1W')
 
   const exchangeRate = outputPrice > 0 ? inputPrice / outputPrice : 0
+  const bothUnknown = inputAttr?.source === 'unknown' && outputAttr?.source === 'unknown'
+  const bothFallback = inputAttr?.source === 'fallback' && outputAttr?.source === 'fallback'
 
   const chartData = useMemo(
-    () => getChartData(inputSymbol, timeframe, inputPrice),
-    [inputSymbol, timeframe, inputPrice],
+    () => getChartData(inputSymbol, timeframe, seriesAnchor),
+    [inputSymbol, timeframe, seriesAnchor],
   )
 
   const closePrices = useMemo(
@@ -70,7 +84,7 @@ export const SwapPriceChart = memo(function SwapPriceChart({
     return { linePoints: line, areaPoints: area }
   }, [closePrices])
 
-  if (!exchangeRate) return null
+  if (bothUnknown || !exchangeRate) return null
 
   return (
     <div className="w-full max-w-[460px] mb-4">
@@ -79,9 +93,17 @@ export const SwapPriceChart = memo(function SwapPriceChart({
           <div className="text-sm text-gray-400 mb-0.5">
             1 {inputSymbol} = <span className="text-white font-medium">{formatRate(exchangeRate)} {outputSymbol}</span>
           </div>
-          <span className={`text-xs font-medium ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-            {isPositive ? '▲' : '▼'} {Math.abs(changePercent).toFixed(2)}%
-          </span>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <span className={`text-xs font-medium ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+              {isPositive ? '▲' : '▼'} {Math.abs(changePercent).toFixed(2)}%
+            </span>
+            {inputAttr && <PriceSourceBadge source={inputAttr.source} size="sm" />}
+            {bothFallback && (
+              <span className="text-[10px] text-amber-300/80" data-testid="hero-indicative">
+                Indicative · live feed warming up
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex gap-1">
           {TIMEFRAMES.map(tf => (
