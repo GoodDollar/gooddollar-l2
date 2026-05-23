@@ -129,7 +129,7 @@ async function main(): Promise<void> {
   }
 
   const riskEngineAddress = requireEnv('RISK_ENGINE_ADDRESS');
-  const rpcUrl = process.env.RPC_URL ?? 'http://localhost:8545';
+  const rpcUrl = requireEnv('RPC_URL');
   requireEnv('ETORO_DEMO_KEY');
   requireEnv('ETORO_DEMO_USER_KEY');
 

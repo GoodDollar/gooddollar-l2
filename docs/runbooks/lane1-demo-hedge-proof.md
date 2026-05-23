@@ -96,7 +96,7 @@ formatted with `:` and `.` replaced by `-`.
 | Symptom (script log + proof JSON) | Cause | Fix |
 |-----------------------------------|-------|-----|
 | Exits 2 with `refusing to run: requires ETORO_MODE=demo-trading and HEDGE_TRADING_ENABLED=true` | Either env var unset or wrong | Set `ETORO_MODE=demo-trading` AND `HEDGE_TRADING_ENABLED=true`. |
-| Exits 2 with `missing required env var: RISK_ENGINE_ADDRESS` / `ETORO_DEMO_KEY` / `ETORO_DEMO_USER_KEY` / `PROOF_INSTRUMENT_ID` | Required env unset | Export the named variable. |
+| Exits 2 with `missing required env var: RISK_ENGINE_ADDRESS` / `RPC_URL` / `ETORO_DEMO_KEY` / `ETORO_DEMO_USER_KEY` / `PROOF_INSTRUMENT_ID` | Required env unset | Export the named variable (`RPC_URL=https://…` for the chain that hosts the risk engine). |
 | Exits 2 with `invalid amount: <n>` | `PROOF_AMOUNT_USD` is non-numeric, ≤ 0, or NaN | Set `PROOF_AMOUNT_USD` to a positive number. |
 | `error` field contains `RealTradingDisabledError` | SDK refused trading because `mode !== demo-trading` slipped through | Confirm `ETORO_MODE=demo-trading` reached the process. |
 | `error` field contains `ReadOnlyAdapterError` | Adapter selector resolved the read-only sentinel — `HEDGE_TRADING_ENABLED` not exactly `'true'` | Set `HEDGE_TRADING_ENABLED=true` (string match — not `1`, `yes`). |
