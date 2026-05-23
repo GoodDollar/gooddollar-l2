@@ -218,8 +218,10 @@ async function main() {
     const admin = await oracle.admin();
     logger.info({ admin, operator: wallet.address }, 'Connected to SwapPriceOracle');
   } catch (err) {
-    logger.fatal({ err }, 'Failed to connect to oracle contract');
-    process.exit(1);
+    process.env.SERVICE_HEALTH_STATUS = 'degraded';
+    process.env.SERVICE_DISABLED_REASON = `SwapPriceOracle unavailable at ${ORACLE_ADDRESS}`;
+    logger.error({ err, oracle: ORACLE_ADDRESS }, 'Oracle contract unavailable — disabling update loop but keeping health endpoint online');
+    return;
   }
 
   // Initial fetch + load last known prices

@@ -132,6 +132,8 @@ async function main(): Promise<void> {
   try {
     config = loadConfig();
   } catch (err) {
+    process.env.SERVICE_HEALTH_STATUS = 'degraded';
+    process.env.SERVICE_DISABLED_REASON = 'ORACLE_SIGNER_KEY is not set; signer loop disabled';
     console.warn('[oracle-signer] Config error — service loop disabled, health server running on port', process.env.ORACLE_SIGNER_PORT ?? '9107', ':', err instanceof Error ? err.message : String(err));
     // Return without exiting: the http.Server above keeps the event loop alive.
     return;

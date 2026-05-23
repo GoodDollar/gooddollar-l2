@@ -32,7 +32,13 @@ async function main() {
     process.exit(0);
   });
 
-  await reporter.start();
+  try {
+    await reporter.start();
+  } catch (err) {
+    process.env.SERVICE_HEALTH_STATUS = 'degraded';
+    process.env.SERVICE_DISABLED_REASON = 'AgentRegistry unavailable; activity reporting loop disabled';
+    console.error('Activity reporter disabled:', err);
+  }
 }
 
 main().catch((err) => {

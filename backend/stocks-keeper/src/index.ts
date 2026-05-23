@@ -307,12 +307,26 @@ async function main(): Promise<void> {
   });
 
   const updater = new OracleUpdater(RPC_URL, OPERATOR_KEY, ORACLE_ADDRESS);
-  await updater.init();
+  try {
+    await updater.init();
+  } catch (err) {
+    process.env.SERVICE_HEALTH_STATUS = 'degraded';
+    process.env.SERVICE_DISABLED_REASON = `StocksPriceOracle unavailable at ${ORACLE_ADDRESS}`;
+    logger.error({ err, oracle: ORACLE_ADDRESS }, 'Stocks keeper loop disabled; health endpoint remains online');
+    return;
+  }
 
   let v2Updater: OracleV2Updater | null = null;
   if (ORACLE_V2_ADDRESS) {
     v2Updater = new OracleV2Updater(RPC_URL, OPERATOR_KEY, ORACLE_V2_ADDRESS, DEVIATION_THRESHOLD_BPS);
-    await v2Updater.init(TICKERS);
+    try {
+      await v2Updater.init(TICKERS);
+    } catch (err) {
+      process.env.SERVICE_HEALTH_STATUS = 'degraded';
+      process.env.SERVICE_DISABLED_REASON = `StockOracleV2 unavailable at ${ORACLE_V2_ADDRESS}`;
+      logger.error({ err, oracleV2: ORACLE_V2_ADDRESS }, 'StockOracleV2 updater disabled; health endpoint remains online');
+      return;
+    }
     logger.info({ oracleV2: ORACLE_V2_ADDRESS }, 'StockOracleV2 updater enabled');
   }
 

@@ -78,6 +78,8 @@ async function main(): Promise<void> {
   });
 
   if (!config.riskEngineAddress) {
+    process.env.SERVICE_HEALTH_STATUS = 'degraded';
+    process.env.SERVICE_DISABLED_REASON = 'RISK_ENGINE_ADDRESS is not set; hedge loop disabled';
     console.warn('[HedgeEngine] RISK_ENGINE_ADDRESS is not set — engine loop disabled, health server running on port', process.env.HEDGE_ENGINE_PORT ?? '9106');
     // Return without exiting: the http.Server above keeps the event loop alive
     // so PM2 does not restart-loop and the health port stays bound.

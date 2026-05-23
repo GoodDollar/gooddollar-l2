@@ -490,7 +490,14 @@ async function main(): Promise<void> {
   });
 
   const reporter = new RevenueReporter(RPC_URL, OPERATOR_KEY, TRACKER_ADDRESS);
-  await reporter.init();
+  try {
+    await reporter.init();
+  } catch (err) {
+    process.env.SERVICE_HEALTH_STATUS = 'degraded';
+    process.env.SERVICE_DISABLED_REASON = `UBIRevenueTracker unavailable at ${TRACKER_ADDRESS}`;
+    logger.error({ err, tracker: TRACKER_ADDRESS }, 'Revenue tracker loop disabled; health endpoint remains online');
+    return;
+  }
 
   // Print initial status
   await reporter.printStatus();

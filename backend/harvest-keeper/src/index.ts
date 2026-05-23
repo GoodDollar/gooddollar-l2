@@ -83,7 +83,13 @@ async function main() {
     process.exit(0);
   } else {
     const intervalMs = parseInt(process.env.HARVEST_INTERVAL || '3600') * 1000;
-    await keeper.startLoop(intervalMs);
+    try {
+      await keeper.startLoop(intervalMs);
+    } catch (err) {
+      process.env.SERVICE_HEALTH_STATUS = 'degraded';
+      process.env.SERVICE_DISABLED_REASON = `VaultFactory unavailable at ${config.factoryAddress}`;
+      console.error('[harvest-keeper] Loop disabled:', err);
+    }
   }
 }
 

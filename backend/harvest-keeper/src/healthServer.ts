@@ -34,12 +34,18 @@ export function startHealthServer(opts: HealthServerOptions): http.Server {
     }
 
     try {
+      const status = process.env.SERVICE_HEALTH_STATUS === 'degraded' ? 'degraded' : 'ok';
       const body: Record<string, unknown> = {
-        status: 'ok',
+        status,
         service: name,
         uptime: Math.floor((Date.now() - startedAt) / 1000),
         timestamp: new Date().toISOString(),
       };
+
+      if (status === 'degraded') {
+        body.mode = process.env.SERVICE_HEALTH_MODE ?? 'disabled';
+        body.reason = process.env.SERVICE_DISABLED_REASON ?? 'service loop disabled';
+      }
 
       if (chainCheck) {
         try {
