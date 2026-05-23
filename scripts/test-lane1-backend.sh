@@ -24,6 +24,9 @@ PKGS=(
   "backend/hedge-engine"
 )
 
+printf '==== pm2 ecosystem ====\n'
+node scripts/check-pm2-ecosystem.js
+
 for pkg in "${PKGS[@]}"; do
   if [ ! -d "$pkg" ]; then
     printf '[skip] %s — directory missing\n' "$pkg"

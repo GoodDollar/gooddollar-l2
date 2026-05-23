@@ -37,12 +37,13 @@ Canonical PM2 configs:
 | `rpc-balancer` | `rpc-balancer/` | `8546`–`8547` | RPC proxy/balancer |
 | `status-aggregator` | `status-aggregator/` | `9200` | Polls all `/health` → `/status.json` |
 | `hedge-engine` | `hedge-engine/` | `9106` | Risk hedging (disabled until `RISK_ENGINE_ADDRESS` set — see Lane 1 section) |
+| `price-service` | `price-service/` | `9300` REST · `9301` WS | Lane-1 price broadcaster — defaults to `ETORO_MODE=mock` (see Lane 1 section) |
 | `oracle-signer` | `oracle-signer/` | `9107` | Oracle submission (disabled until `ORACLE_SIGNER_KEY` set — see Lane 1 section) |
 | `goodswap` | `../frontend/` | `3100` | Next.js production app |
 | `perps` / `goodperps` | `perps/` | `8082` | Perps order book API — see package |
 | `predict` / `goodpredict` | `predict/` | `3040` | Predict CLOB — [`predict/README.md`](predict/README.md) |
 
-Additional packages (not always in PM2 ecosystem): `price-service/`, `trading-bot/`, `etoro-client/`.
+Additional packages (not always in PM2 ecosystem): `trading-bot/`, `etoro-client/`.
 
 ## Lane 1 — live prices & demo hedging
 
