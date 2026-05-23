@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LastDemoHedgePanel } from '../LastDemoHedgePanel'
 import { NO_OP_ORDER_ID, type HedgeProof } from '@/lib/hedgeProof'
+import { parseRunId } from '@/lib/parseRunId'
 
 const T0 = new Date('2026-05-23T13:50:20.584Z').getTime()
 const T_PROOF = T0 - 3 * 60_000
@@ -338,5 +339,125 @@ describe('LastDemoHedgePanel', () => {
       (c: unknown[]) => c[0] === '[proof-panel]' && c[1] === 'hedge-proof',
     )
     expect(tagged).toBeDefined()
+  })
+
+  // Task lane6-last-demo-hedge-runid-renders-as-dash-encoded-iso-hash:
+  // runId used to render as the raw filesystem-safe composite
+  // "2026-05-23T13-47-20-583-96c7b2", which fresh readers couldn't tell
+  // was a timestamp+hash. It now renders as "YYYY-MM-DD HH:MM:SS UTC ·
+  // <tag>" with the raw value preserved on hover (title=) and reachable
+  // via a one-click copy button.
+  describe('runId parsing and copy affordance', () => {
+    it('parseRunId returns iso + tag for canonical input', () => {
+      expect(parseRunId('2026-05-23T13-47-20-583-96c7b2')).toEqual({
+        iso: '2026-05-23T13:47:20.583Z',
+        tag: '96c7b2',
+      })
+    })
+
+    it.each([
+      ['empty string', ''],
+      ['legacy id', 'legacy-run-id'],
+      ['date only', '2026-05-23'],
+      ['date + time but no tag', '2026-05-23T13-47-20-583'],
+      ['non-hex tag', '2026-05-23T13-47-20-583-zzz999'],
+      ['whitespace around canonical', '  2026-05-23T13-47-20-583-96c7b2  '],
+    ])('parseRunId returns null for malformed input (%s)', (_label, input) => {
+      expect(parseRunId(input)).toBeNull()
+    })
+
+    it('runId field renders the wallclock and tag instead of the raw composite when input matches', async () => {
+      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
+
+      render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+      const el = await waitFor(() => screen.getByTestId('hedge-runid'))
+      expect(el.textContent).toMatch(/2026-05-23 13:47:20 UTC/)
+      expect(el.textContent).toMatch(/96c7b2/)
+      expect(el.textContent).not.toMatch(/T13-47-20-583/)
+    })
+
+    it('runId field renders the raw string when input does not match the canonical pattern', async () => {
+      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: 'legacy-run-id' }))
+
+      render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+      const el = await waitFor(() => screen.getByTestId('hedge-runid'))
+      expect(el.textContent).toBe('legacy-run-id')
+    })
+
+    it.each([
+      ['canonical', '2026-05-23T13-47-20-583-96c7b2'],
+      ['legacy', 'legacy-run-id'],
+    ])(
+      'runId field surfaces the raw value (%s) as the title tooltip in both branches',
+      async (_label, raw) => {
+        mockFetchOk(envelope({ ...PROOF_NO_OP, runId: raw }))
+
+        render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+        const el = await waitFor(() => screen.getByTestId('hedge-runid'))
+        expect(el.getAttribute('title')).toBe(raw)
+      },
+    )
+
+    it('copy button writes the raw runId to the clipboard and updates aria-label', async () => {
+      const writeText = vi.fn(() => Promise.resolve())
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+        writable: true,
+      })
+
+      const raw = '2026-05-23T13-47-20-583-96c7b2'
+      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: raw }))
+
+      render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+      const button = await waitFor(() => screen.getByTestId('hedge-runid-copy'))
+      expect(button.tagName).toBe('BUTTON')
+      expect(button.getAttribute('type')).toBe('button')
+      expect(button.getAttribute('aria-label')).toMatch(/copy raw runid/i)
+
+      await act(async () => {
+        fireEvent.click(button)
+      })
+
+      expect(writeText).toHaveBeenCalledWith(raw)
+      await waitFor(() => {
+        expect(screen.getByTestId('hedge-runid-copy').getAttribute('aria-label')).toMatch(
+          /copied/i,
+        )
+      })
+    })
+
+    it('clipboard rejection is swallowed silently — no console error, no thrown promise', async () => {
+      const writeText = vi.fn(() => Promise.reject(new Error('insecure origin')))
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+        writable: true,
+      })
+
+      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
+
+      render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+      const button = await waitFor(() => screen.getByTestId('hedge-runid-copy'))
+      await act(async () => {
+        fireEvent.click(button)
+      })
+
+      expect(writeText).toHaveBeenCalled()
+      // aria-label stays in its initial "copy" state since the write
+      // never settled successfully.
+      expect(button.getAttribute('aria-label')).toMatch(/copy raw runid/i)
+      // The component must not have console.errored the clipboard failure
+      // (the tooltip is the user's fallback path).
+      const clipboardError = consoleErrorSpy.mock.calls.find((c: unknown[]) =>
+        String(c.join(' ')).toLowerCase().includes('insecure origin'),
+      )
+      expect(clipboardError).toBeUndefined()
+    })
   })
 })

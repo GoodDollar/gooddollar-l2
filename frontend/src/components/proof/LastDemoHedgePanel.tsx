@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { type ExposureSnapshot, type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
+import { parseRunId } from '@/lib/parseRunId'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 
 interface ProofEnvelope {
@@ -293,12 +294,66 @@ function ProofMeta({ proof }: { proof: HedgeProof }) {
   return (
     <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
       <Field label="orderId" value={proof.etoroOrderId ?? proof.orderId} mono />
-      <Field label="runId" value={proof.runId} mono />
+      <FieldNode label="runId">
+        <RunIdValue raw={proof.runId} />
+      </FieldNode>
       <FieldNode label="timestamp">
         <RelativeTimestamp ms={proof.timestamp} />
       </FieldNode>
       <Field label="etoroMode" value={proof.etoroMode} />
     </dl>
+  )
+}
+
+function RunIdValue({ raw }: { raw: string }) {
+  const parsed = parseRunId(raw)
+  if (parsed === null) {
+    return (
+      <span data-testid="hedge-runid" title={raw} className="font-mono break-all text-gray-200">
+        {raw}
+      </span>
+    )
+  }
+  const wallclock = `${parsed.iso.slice(0, 10)} ${parsed.iso.slice(11, 19)} UTC`
+  return (
+    <span
+      data-testid="hedge-runid"
+      title={raw}
+      className="inline-flex flex-wrap items-baseline gap-1"
+    >
+      <span className="font-mono text-gray-200">{wallclock}</span>
+      <span aria-hidden className="text-gray-500">·</span>
+      <span className="font-mono text-xs text-gray-400">{parsed.tag}</span>
+      <CopyRunIdButton raw={raw} />
+    </span>
+  )
+}
+
+function CopyRunIdButton({ raw }: { raw: string }) {
+  const [copied, setCopied] = useState(false)
+  const onClick = () => {
+    void navigator.clipboard
+      .writeText(raw)
+      .then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1_500)
+      })
+      .catch(() => {
+        // Insecure origin / browser without clipboard support. The
+        // `title=` tooltip remains the user's fallback; no console
+        // noise, no UI alert.
+      })
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid="hedge-runid-copy"
+      aria-label={copied ? 'runId copied to clipboard' : 'Copy raw runId to clipboard'}
+      className="ml-1 inline-flex items-center rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-gray-300 hover:bg-white/[0.08] focus:outline-none focus:ring-1 focus:ring-accent"
+    >
+      {copied ? 'copied' : 'copy'}
+    </button>
   )
 }
 
