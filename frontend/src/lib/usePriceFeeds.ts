@@ -217,6 +217,29 @@ const store: PriceFeedStore = {
   inFlight: false,
 }
 
+/**
+ * Pending mount-time refresh, scheduled on the next microtask so
+ * co-mounted subscribers in the same React commit (e.g. SwapPriceChart
+ * with ['ETH','G$'] alongside SwapCard with the full 18-symbol set)
+ * union their `acquire()` calls into a single `/api/prices` fetch
+ * against the now-complete tracked set instead of firing one wasted
+ * subset fetch immediately followed by the full superset fetch. The
+ * visibility-return path and the 60 s interval refresh deliberately
+ * stay synchronous — they always read the full unioned set already
+ * and a tab-return user shouldn't pay one microtask of latency. See
+ * task 0053.
+ */
+let pendingRefresh: Promise<void> | null = null
+
+function scheduleRefresh(): void {
+  if (pendingRefresh !== null) return
+  pendingRefresh = Promise.resolve().then(() => {
+    pendingRefresh = null
+    if (store.subscribers.size === 0) return
+    void refresh()
+  })
+}
+
 function notify(): void {
   for (const sub of store.subscribers) sub(store.state)
 }
@@ -330,6 +353,7 @@ export function __resetPriceFeedStoreForTests(): void {
   store.refs.clear()
   store.subscribers.clear()
   store.inFlight = false
+  pendingRefresh = null
   store.state = {
     prices: FALLBACK_PRICES,
     quotes: {},
@@ -363,10 +387,12 @@ export function usePriceFeeds(symbols: string[]): PriceFeedState {
     const newlyTracked = acquire(symbols)
     startIntervalIfNeeded()
 
-    // If we added symbols not previously tracked, kick an immediate fetch so
-    // this consumer doesn't wait up to 60s for first data.
+    // If we added symbols not previously tracked, kick a fetch so this
+    // consumer doesn't wait up to 60s for first data — deferred one
+    // microtask so a co-mounted subscriber's incremental symbols join
+    // the same fetch instead of triggering a wasted subset round-trip.
     if (newlyTracked.length > 0) {
-      void refresh()
+      scheduleRefresh()
     } else {
       // Sync the new subscriber to the latest state once.
       setSnapshot(store.state)

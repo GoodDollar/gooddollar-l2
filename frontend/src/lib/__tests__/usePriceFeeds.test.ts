@@ -156,6 +156,101 @@ describe('usePriceFeeds — shared singleton', () => {
   })
 })
 
+// ─── Co-mount coalescing (task 0053) ─────────────────────────────────────────
+//
+// When two subscribers mount in the same React commit (e.g. SwapPriceChart
+// with ['ETH','G$'] alongside SwapCard with the full 18-symbol set), the
+// hook's mount-time refresh must defer one microtask so both `acquire()`
+// calls union their incremental symbols into a single fetch with the
+// complete tracked set — instead of firing a wasted subset fetch and then
+// a second one for the union.
+
+describe('usePriceFeeds — co-mount coalescing (task 0053)', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    __resetPriceFeedStoreForTests()
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ethereum: { usd: 3500 },
+          'good-dollar': { usd: 0.01 },
+          'usd-coin': { usd: 1 },
+          'wrapped-bitcoin': { usd: 60_000 },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+    __resetPriceFeedStoreForTests()
+  })
+
+  it('two subscribers mounted in the same act() block fire ONE fetch with the unioned symbol set', async () => {
+    let a: ReturnType<typeof renderHook> | null = null
+    let b: ReturnType<typeof renderHook> | null = null
+
+    await act(async () => {
+      a = renderHook(() => usePriceFeeds(['ETH', 'G$']))
+      b = renderHook(() => usePriceFeeds(['ETH', 'USDC', 'WBTC']))
+      // Drain the scheduled microtask + the in-flight fetch promise.
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect((a!.result.current as { isLive: boolean }).isLive).toBe(true)
+      expect((b!.result.current as { isLive: boolean }).isLive).toBe(true)
+    })
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const url = fetchSpy.mock.calls[0]?.[0] as string
+    expect(url).toMatch(/symbols=/)
+    // The single batched query must carry both subscribers' new symbols.
+    for (const sym of ['ETH', 'G$', 'USDC', 'WBTC']) {
+      expect(url.includes(sym)).toBe(true)
+    }
+  })
+
+  it('mid-flight superset (mounted after the first fetch settled) still fires exactly one additional fetch', async () => {
+    const a = renderHook(() => usePriceFeeds(['ETH']))
+    await waitFor(() => expect(a.result.current.isLive).toBe(true))
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    // After the first round-trip settled, mount a strict superset. The
+    // scheduler still fires once.
+    const b = renderHook(() => usePriceFeeds(['ETH', 'USDC', 'WBTC']))
+    await waitFor(() => expect(b.result.current.prices.USDC).toBe(1))
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not refetch for a duplicate co-mount that adds zero new symbols', async () => {
+    await act(async () => {
+      renderHook(() => usePriceFeeds(['ETH']))
+      renderHook(() => usePriceFeeds(['ETH']))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('drops a scheduled refresh when the only subscriber unmounts before the microtask flushes', async () => {
+    const { unmount } = renderHook(() => usePriceFeeds(['ETH']))
+    // Unmount synchronously, before the scheduled microtask runs. The
+    // flush body short-circuits when subscribers.size === 0 so no fetch
+    // should ever fire against an empty tracked set.
+    unmount()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})
+
 // ─── Visibility-aware polling ────────────────────────────────────────────────
 
 describe('usePriceFeeds — pauses while document is hidden', () => {
