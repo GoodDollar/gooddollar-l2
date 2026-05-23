@@ -1319,6 +1319,10 @@ img, video {
   max-width: 20rem;
 }
 
+.max-w-\[10ch\] {
+  max-width: 10ch;
+}
+
 .flex-1 {
   flex: 1;
 }
@@ -3515,6 +3519,10 @@ img, video {
 
 .align-middle {
   vertical-align: middle;
+}
+
+.align-bottom {
+  vertical-align: bottom;
 }
 
 .font-mono {

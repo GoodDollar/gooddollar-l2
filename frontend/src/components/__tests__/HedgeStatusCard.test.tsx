@@ -743,6 +743,47 @@ describe('HedgeStatusCard', () => {
     expect(etoro).not.toHaveTextContent('etoro-1');
   });
 
+  it('receipts table truncates long etoroOrderId with a hover title carrying the full value (#0039)', async () => {
+    // eToro order ids are opaque ~48-char identifiers. The receipt cell
+    // used to render them verbatim, which inflated the table's scrollWidth
+    // to 2.4× the visible scroller on a 375-px phone and hid SYMBOL /
+    // SIDE / NOTIONAL / Δ / STATUS columns to the right. Truncate the
+    // rendered span to a fixed 10ch width with a title carrying the full
+    // value so hover/long-press still reveals it.
+    const longId =
+      'etoro-order-abc1234567890abcdef1234567890abcdef-xyz';
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: [{ ...BASE_RESPONSE.receipts[0], etoroOrderId: longId }],
+    });
+    render(<HedgeStatusCard />);
+    const etoro = await screen.findByTestId('hedge-receipt-etoro-id');
+    const idSpan = etoro.querySelector('span[title]');
+    expect(idSpan).not.toBeNull();
+    expect(idSpan!.getAttribute('title')).toBe(longId);
+    expect(idSpan!.textContent).toBe(longId);
+    const classes = idSpan!.className.split(/\s+/);
+    expect(classes).toContain('truncate');
+    expect(classes).toContain('max-w-[10ch]');
+    expect(classes).toContain('inline-block');
+  });
+
+  it('receipts table renders short eToro ids without overflow chrome (no regression #0039)', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: [{ ...BASE_RESPONSE.receipts[0], etoroOrderId: 'etoro-1' }],
+    });
+    render(<HedgeStatusCard />);
+    const etoro = await screen.findByTestId('hedge-receipt-etoro-id');
+    const idSpan = etoro.querySelector('span[title]');
+    expect(idSpan).not.toBeNull();
+    expect(idSpan!.getAttribute('title')).toBe('etoro-1');
+    expect(idSpan!.textContent).toBe('etoro-1');
+    // CSS truncation is a no-op for short ids — class still applied so
+    // column geometry stays identical across viewports.
+    expect(idSpan!.className.split(/\s+/)).toContain('truncate');
+  });
+
   it('renders a yellow throttled banner with countdown when the limiter returns 429', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 5 }), {

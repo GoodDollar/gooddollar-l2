@@ -1057,7 +1057,24 @@ const ReceiptRow = memo(function ReceiptRow({ receipt: r }: { receipt: HedgeRece
       <td className="py-1.5 pr-2 text-xs text-gray-300">
         <div>{shortId(r.id)}</div>
         <div data-testid="hedge-receipt-etoro-id" className="text-gray-500">
-          eToro: <span className="text-gray-400">{r.etoroOrderId ?? '—'}</span>
+          eToro:{' '}
+          {/* eToro order ids are opaque ~48-char identifiers. Without a
+              cap they single-handedly push the receipts table 2.4×
+              wider than its scroller on a 375-px phone, hiding
+              SYMBOL / SIDE / NOTIONAL / Δ / STATUS to the right. The
+              fixed 10ch cap keeps column geometry stable across
+              viewports; the title attribute restores full text on
+              hover/long-press (task 0039). */}
+          {r.etoroOrderId ? (
+            <span
+              className="text-gray-400 inline-block max-w-[10ch] truncate align-bottom"
+              title={r.etoroOrderId}
+            >
+              {r.etoroOrderId}
+            </span>
+          ) : (
+            <span className="text-gray-400">—</span>
+          )}
         </div>
       </td>
       <td className="py-1.5 pr-2 text-white">{r.symbol}</td>
