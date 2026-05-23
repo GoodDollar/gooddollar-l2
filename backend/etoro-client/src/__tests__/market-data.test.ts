@@ -587,6 +587,90 @@ describe('MarketDataModule', () => {
       expect(n).toBe(2);
     });
 
+    it('audits + counts when getQuotes receives a 200 with an unrecognized envelope', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = makeStubHttp({ weirdField: 'x' });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+
+      const result = await mod.getQuotes(['BTC']);
+      expect(result).toEqual([]);
+      expect(mod.getMalformedListResponseCount('getQuotes')).toBe(1);
+
+      const lines = entries.filter((e) => e.action === 'getQuotes-malformed');
+      expect(lines).toHaveLength(1);
+      expect(lines[0].method).toBe('PARSE');
+      expect(lines[0].path).toBe('/api/v1/market-data/quotes');
+      expect(lines[0].error).toBe(
+        'MalformedListResponse: object-no-match keys=[weirdField]',
+      );
+    });
+
+    it('does NOT audit when getQuotes returns a legitimately empty list', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = makeStubHttp({ quotes: [] });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+
+      const result = await mod.getQuotes(['BTC']);
+      expect(result).toEqual([]);
+      expect(mod.getMalformedListResponseCount('getQuotes')).toBe(0);
+      expect(entries.filter((e) => e.action === 'getQuotes-malformed')).toHaveLength(0);
+    });
+
+    it('does NOT audit when getQuotes returns a well-formed envelope with one quote', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = makeStubHttp({ quotes: [{ symbol: 'BTC', bid: 100, ask: 101, timestamp: Date.now() }] });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+
+      const result = await mod.getQuotes(['BTC']);
+      expect(result).toHaveLength(1);
+      expect(mod.getMalformedListResponseCount('getQuotes')).toBe(0);
+      expect(entries.filter((e) => e.action === 'getQuotes-malformed')).toHaveLength(0);
+    });
+
+    it('audits + counts when getInstruments receives a malformed envelope', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = makeStubHttp({ wrongKey: [] });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+
+      const result = await mod.getInstruments(['BTC']);
+      expect(result).toEqual([]);
+      expect(mod.getMalformedListResponseCount('getInstruments')).toBe(1);
+      expect(entries.filter((e) => e.action === 'getInstruments-malformed')).toHaveLength(1);
+    });
+
+    it('audits + counts when getCandles receives a malformed envelope', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = makeStubHttp({ random: 1 });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+
+      const result = await mod.getCandles('BTC', '1m', 0, 1);
+      expect(result).toEqual([]);
+      expect(mod.getMalformedListResponseCount('getCandles')).toBe(1);
+      expect(entries.filter((e) => e.action === 'getCandles-malformed')).toHaveLength(1);
+    });
+
+    it('throws MalformedListResponseError when throwOnMalformedListResponse=true', async () => {
+      const { audit } = recordingAudit();
+      const http = makeStubHttp({ weird: 'x' });
+      const mod = new MarketDataModule(http, undefined, {
+        audit,
+        consoleErrorImpl: () => undefined,
+        throwOnMalformedListResponse: true,
+      });
+
+      await expect(mod.getQuotes(['BTC'])).rejects.toMatchObject({
+        name: 'MalformedListResponseError',
+        action: 'getQuotes',
+        observedShape: 'object-no-match',
+      });
+    });
+
+    it('getMalformedListResponseCounts returns an empty snapshot on a fresh module', () => {
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, silentDeps);
+      expect(mod.getMalformedListResponseCounts()).toEqual({});
+    });
+
     it('throttles console.error to one per AUDIT_CONSOLE_THROTTLE_MS window across many drops (malformed quote)', () => {
       let now = 1_700_000_000_000;
       const consoleErrorImpl = jest.fn();

@@ -836,6 +836,79 @@ describe('TradingModule — happy paths (demo-trading)', () => {
   });
 });
 
+describe('TradingModule — malformed-list response visibility', () => {
+  function recordingAudit(mode: EtoroMode = 'demo-readonly'): {
+    audit: AuditLogger;
+    entries: AuditLogEntry[];
+  } {
+    const entries: AuditLogEntry[] = [];
+    const audit = new AuditLogger(mode, {
+      logPath: '/dev/null',
+      appendImpl: (_p, line) => { entries.push(JSON.parse(line) as AuditLogEntry); },
+      mkdirImpl: () => undefined,
+      consoleErrorImpl: () => undefined,
+    });
+    return { audit, entries };
+  }
+
+  it('getOpenPositions audits + counts on malformed envelope, returns []', async () => {
+    const { audit, entries } = recordingAudit();
+    const http = mockHttp();
+    http.get = jest.fn().mockResolvedValue({ status: 200, data: { weirdField: 'x' } });
+    const trading = new TradingModule(http, audit, { mode: 'demo-readonly' });
+
+    const out = await trading.getOpenPositions();
+    expect(out).toEqual([]);
+    expect(trading.getMalformedListResponseCount('getOpenPositions')).toBe(1);
+    const lines = entries.filter((e) => e.action === 'getOpenPositions-malformed');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].method).toBe('PARSE');
+    expect(lines[0].path).toBe('/trading/positions');
+    expect(lines[0].error).toBe(
+      'MalformedListResponse: object-no-match keys=[weirdField]',
+    );
+  });
+
+  it('getOpenPositions does NOT audit on a legitimately empty envelope', async () => {
+    const { audit, entries } = recordingAudit();
+    const http = mockHttp();
+    http.get = jest.fn().mockResolvedValue({ status: 200, data: { positions: [] } });
+    const trading = new TradingModule(http, audit, { mode: 'demo-readonly' });
+
+    const out = await trading.getOpenPositions();
+    expect(out).toEqual([]);
+    expect(trading.getMalformedListResponseCount('getOpenPositions')).toBe(0);
+    expect(entries.filter((e) => e.action === 'getOpenPositions-malformed')).toHaveLength(0);
+  });
+
+  it('getTradeHistory audits + counts on malformed envelope', async () => {
+    const { audit, entries } = recordingAudit();
+    const http = mockHttp();
+    http.get = jest.fn().mockResolvedValue({ status: 200, data: null });
+    const trading = new TradingModule(http, audit, { mode: 'demo-readonly' });
+
+    const out = await trading.getTradeHistory(10);
+    expect(out).toEqual([]);
+    expect(trading.getMalformedListResponseCount('getTradeHistory')).toBe(1);
+    expect(entries.filter((e) => e.action === 'getTradeHistory-malformed')).toHaveLength(1);
+  });
+
+  it('throws MalformedListResponseError when throwOnMalformedListResponse=true', async () => {
+    const { audit } = recordingAudit();
+    const http = mockHttp();
+    http.get = jest.fn().mockResolvedValue({ status: 200, data: { weird: 1 } });
+    const trading = new TradingModule(http, audit, {
+      mode: 'demo-readonly',
+      throwOnMalformedListResponse: true,
+    });
+
+    await expect(trading.getOpenPositions()).rejects.toMatchObject({
+      name: 'MalformedListResponseError',
+      action: 'getOpenPositions',
+    });
+  });
+});
+
 describe('TradingModule — rate-limit dispatcher integration', () => {
   function recordingAudit(mode: EtoroMode = 'demo-trading'): {
     audit: AuditLogger;

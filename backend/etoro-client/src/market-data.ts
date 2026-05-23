@@ -2,6 +2,7 @@ import { AxiosInstance } from 'axios';
 import WebSocket from 'ws';
 import { AUDIT_CONSOLE_THROTTLE_MS, AuditLogger, maskTokens } from './audit-logger';
 import { HttpDispatcher, identityDispatcher } from './rate-limiter';
+import { MalformedListSink, readListOrAudit } from './util/list-envelope';
 import {
   NormalizedQuote,
   InstrumentMetadata,
@@ -93,6 +94,13 @@ export interface MarketDataDeps {
    * no-retry pass-through.
    */
   dispatch?: HttpDispatcher;
+  /**
+   * If `true`, list-returning endpoints throw
+   * `MalformedListResponseError` when the upstream payload does not
+   * match `LIST_ENVELOPE_KEYS`. Defaults to `false` (return `[]` and
+   * audit-log) to preserve back-compat.
+   */
+  throwOnMalformedListResponse?: boolean;
 }
 
 export class MarketDataModule {
@@ -119,6 +127,7 @@ export class MarketDataModule {
   private readonly streamFailureCounts = emptyStreamFailureCounts();
   private readonly streamConsoleErrorAt = new Map<StreamFailureKind, number>();
   private lastStreamError: StreamErrorSnapshot | undefined;
+  private readonly malformedListSink: MalformedListSink;
 
   constructor(http: AxiosInstance, config?: MarketDataConfig, deps?: MarketDataDeps) {
     this.http = http;
@@ -128,6 +137,11 @@ export class MarketDataModule {
     this.clock = deps?.clock ?? Date.now;
     this.consoleErrorImpl = deps?.consoleErrorImpl ?? ((message) => console.error(message));
     this.dispatch = deps?.dispatch ?? identityDispatcher;
+    this.malformedListSink = {
+      audit: this.audit,
+      counter: new Map<string, number>(),
+      throwOnMalformed: deps?.throwOnMalformedListResponse ?? false,
+    };
   }
 
   // --- Instrument metadata ---
@@ -146,7 +160,12 @@ export class MarketDataModule {
     const { value: resp } = await this.dispatch(() =>
       this.http.get('/api/v1/market-data/instruments', { params }),
     );
-    const raw = extractArray(resp.data);
+    const raw = readListOrAudit({
+      data: resp.data,
+      action: 'getInstruments',
+      path: '/api/v1/market-data/instruments',
+      sink: this.malformedListSink,
+    });
     const results: InstrumentMetadata[] = raw.map((item) => this.normalizeInstrument(item));
 
     for (const inst of results) {
@@ -175,7 +194,12 @@ export class MarketDataModule {
         params: { symbols: symbols.join(',') },
       }),
     );
-    const raw = extractArray(resp.data);
+    const raw = readListOrAudit({
+      data: resp.data,
+      action: 'getQuotes',
+      path: '/api/v1/market-data/quotes',
+      sink: this.malformedListSink,
+    });
     const quotes: NormalizedQuote[] = [];
     for (const item of raw) {
       const quote = this.normalizeQuote(item);
@@ -224,6 +248,20 @@ export class MarketDataModule {
     return this.lastStreamError;
   }
 
+  /**
+   * Count of 200-OK responses that returned an unrecognized envelope
+   * shape for the named SDK method. Drives operator-facing schema-drift
+   * alerts via `EtoroClient.getSummary().malformedListResponses`.
+   */
+  getMalformedListResponseCount(action: string): number {
+    return this.malformedListSink.counter.get(action) ?? 0;
+  }
+
+  /** Snapshot of all malformed-list response counters keyed by action. */
+  getMalformedListResponseCounts(): Record<string, number> {
+    return Object.fromEntries(this.malformedListSink.counter);
+  }
+
   // --- Candles ---
 
   async getCandles(
@@ -237,7 +275,12 @@ export class MarketDataModule {
         params: { symbol, interval, from: String(from), to: String(to) },
       }),
     );
-    const raw = extractArray(resp.data);
+    const raw = readListOrAudit({
+      data: resp.data,
+      action: 'getCandles',
+      path: '/api/v1/market-data/candles',
+      sink: this.malformedListSink,
+    });
     return raw.map((item) => this.normalizeCandle(item, symbol));
   }
 
@@ -648,12 +691,3 @@ function normalizeAssetClass(raw?: string): EtoroAssetClass {
   return 'unknown';
 }
 
-function extractArray(data: unknown): unknown[] {
-  if (Array.isArray(data)) return data;
-  if (!data || typeof data !== 'object') return [];
-  const record = data as Record<string, unknown>;
-  for (const key of ['instruments', 'quotes', 'candles', 'items', 'data', 'results']) {
-    if (Array.isArray(record[key])) return record[key] as unknown[];
-  }
-  return [];
-}

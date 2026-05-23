@@ -138,6 +138,40 @@ source of truth for the accepted shapes.
   `normalizeQuote-malformed` audit line; the matching `console.error`
   heartbeat is throttled to ≤ 1 per 60 s.
 
+### Malformed-list response visibility
+
+Every list-returning SDK method routes its response body through a
+single shared helper, `readListEnvelope`, which classifies the payload
+as one of three outcomes: a raw array, an envelope keyed by one of
+`LIST_ENVELOPE_KEYS`, or `malformed` (any 200-OK with a shape the SDK
+does not recognize). Affected methods:
+
+- `MarketDataModule#getInstruments`, `#getQuotes`, `#getCandles`
+- `TradingModule#getOpenPositions`, `#getTradeHistory`
+- `AccountModule#getPositions`, `#getPendingOrders`
+
+When the outcome is `malformed`, the SDK:
+
+1. Audit-logs one `<action>-malformed` line with `method: 'PARSE'`,
+   `path: '<endpoint>'`, and `error: 'MalformedListResponse:
+   <observedShape> keys=[<topLevelKeys>]'`.
+2. Increments a per-action counter exposed via
+   `<module>.getMalformedListResponseCount('<action>')` and
+   `getMalformedListResponseCounts()`.
+3. By default returns `[]` (preserving back-compat for price-service /
+   hedge-engine which already treat empty as "no data").
+
+Operators see the aggregate via `EtoroClient.getSummary()
+.malformedListResponses` (the sum of all per-action counters across
+modules). Strict-mode opt-in:
+`new EtoroClient({ throwOnMalformedListResponse: true })` flips the
+behavior to throw `MalformedListResponseError` instead of returning
+`[]`, surfacing schema drift as an exception consumers can catch.
+
+Adding a new envelope key to handle a future eToro rename is a
+one-line edit to `LIST_ENVELOPE_KEYS` in
+`backend/etoro-client/src/util/list-envelope.ts`.
+
 ### Stream-failure visibility
 
 The four silent-swallow points on the streaming path now route through

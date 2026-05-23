@@ -1,5 +1,31 @@
-import { LIST_ENVELOPE_KEYS, readListEnvelope } from '../util/list-envelope';
+import {
+  LIST_ENVELOPE_KEYS,
+  readListEnvelope,
+  readListOrAudit,
+  MalformedListSink,
+} from '../util/list-envelope';
 import { MalformedListResponseError } from '../errors';
+import { AuditLogger } from '../audit-logger';
+import { AuditLogEntry } from '../types';
+
+function recordingAudit(): { audit: AuditLogger; entries: AuditLogEntry[] } {
+  const entries: AuditLogEntry[] = [];
+  const audit = new AuditLogger('demo-readonly', {
+    logPath: '/dev/null',
+    appendImpl: (_p, line) => { entries.push(JSON.parse(line) as AuditLogEntry); },
+    mkdirImpl: () => undefined,
+    consoleErrorImpl: () => undefined,
+  });
+  return { audit, entries };
+}
+
+function makeSink(overrides: Partial<MalformedListSink> = {}): MalformedListSink {
+  return {
+    counter: new Map<string, number>(),
+    throwOnMalformed: false,
+    ...overrides,
+  };
+}
 
 describe('LIST_ENVELOPE_KEYS', () => {
   it('is the de-duped, ordered union of the three legacy extractArray copies', () => {
@@ -162,5 +188,90 @@ describe('MalformedListResponseError', () => {
     });
     expect(err).toBeInstanceOf(Error);
     expect(err).toBeInstanceOf(MalformedListResponseError);
+  });
+});
+
+describe('readListOrAudit', () => {
+  it('returns items unchanged for a raw array', () => {
+    const sink = makeSink();
+    const out = readListOrAudit({
+      data: [{ a: 1 }, { a: 2 }],
+      action: 'getQuotes',
+      path: '/p',
+      sink,
+    });
+    expect(out).toEqual([{ a: 1 }, { a: 2 }]);
+    expect(sink.counter.size).toBe(0);
+  });
+
+  it('returns items from a recognized envelope key', () => {
+    const sink = makeSink();
+    const out = readListOrAudit({
+      data: { quotes: [{ s: 'BTC' }] },
+      action: 'getQuotes',
+      path: '/p',
+      sink,
+    });
+    expect(out).toEqual([{ s: 'BTC' }]);
+    expect(sink.counter.size).toBe(0);
+  });
+
+  it('audits and returns [] for malformed envelope (default flag off)', () => {
+    const { audit, entries } = recordingAudit();
+    const sink = makeSink({ audit });
+    const out = readListOrAudit({
+      data: { weird: 'x' },
+      action: 'getQuotes',
+      path: '/api/v1/market-data/quotes',
+      sink,
+    });
+    expect(out).toEqual([]);
+    expect(sink.counter.get('getQuotes')).toBe(1);
+    const lines = entries.filter((e) => e.action === 'getQuotes-malformed');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].method).toBe('PARSE');
+    expect(lines[0].path).toBe('/api/v1/market-data/quotes');
+    expect(lines[0].error).toBe(
+      'MalformedListResponse: object-no-match keys=[weird]',
+    );
+  });
+
+  it('throws MalformedListResponseError when throwOnMalformed=true', () => {
+    const { audit, entries } = recordingAudit();
+    const sink = makeSink({ audit, throwOnMalformed: true });
+    expect(() => readListOrAudit({
+      data: null,
+      action: 'getInstruments',
+      path: '/api/v1/market-data/instruments',
+      sink,
+    })).toThrow(MalformedListResponseError);
+    expect(sink.counter.get('getInstruments')).toBe(1);
+    expect(entries.filter((e) => e.action === 'getInstruments-malformed'))
+      .toHaveLength(1);
+  });
+
+  it('still increments + audits even when audit logger is absent', () => {
+    const sink = makeSink();
+    const out = readListOrAudit({
+      data: 42,
+      action: 'getCandles',
+      path: '/p',
+      sink,
+    });
+    expect(out).toEqual([]);
+    expect(sink.counter.get('getCandles')).toBe(1);
+  });
+
+  it('accumulates counts across calls', () => {
+    const sink = makeSink();
+    for (let i = 0; i < 5; i++) {
+      readListOrAudit({
+        data: { weird: i },
+        action: 'getQuotes',
+        path: '/p',
+        sink,
+      });
+    }
+    expect(sink.counter.get('getQuotes')).toBe(5);
   });
 });

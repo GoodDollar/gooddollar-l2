@@ -2,6 +2,7 @@ import { AxiosInstance } from 'axios';
 import { AuditLogger } from './audit-logger';
 import { AccountUnavailableError } from './errors';
 import { HttpDispatcher, identityDispatcher } from './rate-limiter';
+import { MalformedListSink, readListOrAudit } from './util/list-envelope';
 import { AccountBalance, EtoroMode, Position } from './types';
 
 export interface PendingOrder {
@@ -38,6 +39,13 @@ export interface AccountModuleOptions {
    * no-retry pass-through for standalone unit-test construction.
    */
   dispatch?: HttpDispatcher;
+  /**
+   * If `true`, list-returning read methods (`getPositions`,
+   * `getPendingOrders`) throw `MalformedListResponseError` on an
+   * unrecognized envelope shape instead of returning `[]`. Defaults to
+   * `false`; the audit-log line and counter still fire either way.
+   */
+  throwOnMalformedListResponse?: boolean;
 }
 
 export class AccountModule {
@@ -45,12 +53,18 @@ export class AccountModule {
   private readonly audit: AuditLogger;
   private readonly mode: EtoroMode;
   private readonly dispatch: HttpDispatcher;
+  private readonly malformedListSink: MalformedListSink;
 
   constructor(http: AxiosInstance, audit: AuditLogger, options: AccountModuleOptions) {
     this.http = http;
     this.audit = audit;
     this.mode = options.mode;
     this.dispatch = options.dispatch ?? identityDispatcher;
+    this.malformedListSink = {
+      audit: this.audit,
+      counter: new Map<string, number>(),
+      throwOnMalformed: options.throwOnMalformedListResponse ?? false,
+    };
   }
 
   async getBalance(): Promise<AccountBalance> {
@@ -71,15 +85,33 @@ export class AccountModule {
   }
 
   async getPositions(): Promise<Position[]> {
-    return this.runRead('getPositions', '/account/positions', (data) =>
-      extractArray(data).map((r) => normalizePosition(asRecord(r))),
+    const path = '/account/positions';
+    return this.runRead('getPositions', path, (data) =>
+      readListOrAudit({ data, action: 'getPositions', path, sink: this.malformedListSink })
+        .map((r) => normalizePosition(asRecord(r))),
     );
   }
 
   async getPendingOrders(): Promise<PendingOrder[]> {
-    return this.runRead('getPendingOrders', '/account/orders/pending', (data) =>
-      extractArray(data).map((r) => normalizePendingOrder(asRecord(r))),
+    const path = '/account/orders/pending';
+    return this.runRead('getPendingOrders', path, (data) =>
+      readListOrAudit({ data, action: 'getPendingOrders', path, sink: this.malformedListSink })
+        .map((r) => normalizePendingOrder(asRecord(r))),
     );
+  }
+
+  /**
+   * Count of 200-OK responses that returned an unrecognized envelope
+   * shape for one of `AccountModule`'s list-returning methods.
+   * Aggregated into `EtoroClient.getSummary().malformedListResponses`.
+   */
+  getMalformedListResponseCount(action: string): number {
+    return this.malformedListSink.counter.get(action) ?? 0;
+  }
+
+  /** Snapshot of all malformed-list counters keyed by action. */
+  getMalformedListResponseCounts(): Record<string, number> {
+    return Object.fromEntries(this.malformedListSink.counter);
   }
 
   async getPortfolioPnl(): Promise<PortfolioPnl> {
@@ -198,17 +230,6 @@ function pickTimestamp(obj: Record<string, unknown>, ...extra: string[]): number
     if (typeof v === 'string') { const d = Date.parse(v); if (!isNaN(d)) return d; }
   }
   return Date.now();
-}
-
-function extractArray(data: unknown): unknown[] {
-  if (Array.isArray(data)) return data;
-  if (data && typeof data === 'object') {
-    const obj = data as Record<string, unknown>;
-    for (const key of ['data', 'items', 'positions', 'orders', 'results']) {
-      if (Array.isArray(obj[key])) return obj[key] as unknown[];
-    }
-  }
-  return [];
 }
 
 function normalizePosition(data: Record<string, unknown>): Position {

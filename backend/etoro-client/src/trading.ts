@@ -5,10 +5,12 @@ import { DemoCapEnforcer, computeOrderNotionalUsd } from './cap-enforcer';
 import {
   DemoCapExceededError,
   InvalidOrderError,
+  MalformedListResponseError,
   MissingNotionalError,
   RealTradingDisabledError,
 } from './errors';
 import { HttpDispatcher, identityDispatcher } from './rate-limiter';
+import { MalformedListSink, readListOrAudit } from './util/list-envelope';
 import { AuditLogEntry, EtoroMode, OrderRequest, OrderResult, Position } from './types';
 
 /** Source label for the resolved USD notional, recorded in the audit log. */
@@ -116,6 +118,14 @@ export interface TradingModuleOptions {
    * Defaults to a no-retry pass-through for standalone construction.
    */
   dispatch?: HttpDispatcher;
+  /**
+   * If `true`, list-returning read methods (`getOpenPositions`,
+   * `getTradeHistory`) throw `MalformedListResponseError` on an
+   * unrecognized envelope shape instead of returning `[]`. Defaults to
+   * `false` (preserve back-compat); the audit-log line and counter
+   * still fire either way.
+   */
+  throwOnMalformedListResponse?: boolean;
 }
 
 /**
@@ -148,6 +158,7 @@ export class TradingModule {
   private readonly maxReferenceDriftRatio?: number;
   private readonly disableCapsForTestsOnly: boolean;
   private readonly dispatch: HttpDispatcher;
+  private readonly malformedListSink: MalformedListSink;
 
   constructor(http: AxiosInstance, audit: AuditLogger, options: TradingModuleOptions = {}) {
     const mode = options.mode ?? 'mock';
@@ -169,6 +180,11 @@ export class TradingModule {
     this.maxReferenceDriftRatio = options.maxReferenceDriftRatio;
     this.disableCapsForTestsOnly = disableCapsForTestsOnly;
     this.dispatch = options.dispatch ?? identityDispatcher;
+    this.malformedListSink = {
+      audit: this.audit,
+      counter: new Map<string, number>(),
+      throwOnMalformed: options.throwOnMalformedListResponse ?? false,
+    };
   }
 
   getMode(): EtoroMode {
@@ -294,25 +310,43 @@ export class TradingModule {
   }
 
   async getOpenPositions(): Promise<Position[]> {
-    const endpoint = '/trading/positions';
+    const path = '/trading/positions';
     return this.runHttp({
       action: 'getOpenPositions',
       method: 'GET',
-      path: endpoint,
-      send: () => this.http.get(endpoint),
-      parse: (data) => extractArray(data).map((r) => this.normalizePosition(asRecord(r))),
+      path,
+      send: () => this.http.get(path),
+      parse: (data) => readListOrAudit({
+        data, action: 'getOpenPositions', path, sink: this.malformedListSink,
+      }).map((r) => this.normalizePosition(asRecord(r))),
     });
   }
 
   async getTradeHistory(limit = 50): Promise<TradeHistoryEntry[]> {
-    const endpoint = `/trading/history?limit=${limit}`;
+    const path = `/trading/history?limit=${limit}`;
     return this.runHttp({
       action: 'getTradeHistory',
       method: 'GET',
-      path: endpoint,
-      send: () => this.http.get(endpoint),
-      parse: (data) => extractArray(data).map((r) => this.normalizeTradeHistory(asRecord(r))),
+      path,
+      send: () => this.http.get(path),
+      parse: (data) => readListOrAudit({
+        data, action: 'getTradeHistory', path, sink: this.malformedListSink,
+      }).map((r) => this.normalizeTradeHistory(asRecord(r))),
     });
+  }
+
+  /**
+   * Count of 200-OK responses that returned an unrecognized envelope
+   * shape for one of `TradingModule`'s list-returning methods.
+   * Aggregated into `EtoroClient.getSummary().malformedListResponses`.
+   */
+  getMalformedListResponseCount(action: string): number {
+    return this.malformedListSink.counter.get(action) ?? 0;
+  }
+
+  /** Snapshot of all malformed-list counters keyed by action. */
+  getMalformedListResponseCounts(): Record<string, number> {
+    return Object.fromEntries(this.malformedListSink.counter);
   }
 
   /**
@@ -691,6 +725,7 @@ export class TradingModule {
     if (error instanceof DemoCapExceededError) return error;
     if (error instanceof MissingNotionalError) return error;
     if (error instanceof InvalidOrderError) return error;
+    if (error instanceof MalformedListResponseError) return error;
     if (error instanceof Error) {
       const axErr = error as { response?: { data?: { errorCode?: string; message?: string } } };
       const code = axErr.response?.data?.errorCode;
@@ -747,17 +782,6 @@ function pickTimestamp(obj: Record<string, unknown>, ...extra: string[]): number
     if (typeof v === 'string') { const d = Date.parse(v); if (!isNaN(d)) return d; }
   }
   return Date.now();
-}
-
-function extractArray(data: unknown): unknown[] {
-  if (Array.isArray(data)) return data;
-  if (data && typeof data === 'object') {
-    const obj = data as Record<string, unknown>;
-    for (const key of ['data', 'items', 'positions', 'trades', 'results', 'orders', 'history']) {
-      if (Array.isArray(obj[key])) return obj[key] as unknown[];
-    }
-  }
-  return [];
 }
 
 function normalizeStatus(s: string): 'filled' | 'pending' | 'rejected' {

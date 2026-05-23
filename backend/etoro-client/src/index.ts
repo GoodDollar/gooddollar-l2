@@ -58,6 +58,13 @@ export interface EtoroMarketDataSource {
    * defaults to all-zeros.
    */
   getStreamFailureCounts?(): Record<StreamFailureKind, number>;
+  /**
+   * Per-action counter of 200-OK list responses whose envelope shape was
+   * not recognized. Aggregated into the SDK-wide
+   * `malformedListResponses` summary field. Optional so the mock source
+   * can omit it.
+   */
+  getMalformedListResponseCounts?(): Record<string, number>;
 }
 
 export interface EtoroClientConstructorConfig
@@ -87,6 +94,18 @@ export interface EtoroClientConstructorConfig
      */
     maxReferenceDriftRatio?: number;
   };
+  /**
+   * Strict-mode opt-in for malformed list responses. When `true`, every
+   * list-returning SDK method (`getQuotes`, `getInstruments`,
+   * `getCandles`, `getOpenPositions`, `getTradeHistory`, `getPositions`,
+   * `getPendingOrders`) throws `MalformedListResponseError` when the
+   * upstream payload is a 200-OK with a shape the SDK does not
+   * recognize. Defaults to `false` — drift is audit-logged and counted,
+   * but methods still return `[]` to preserve back-compat for
+   * price-service / hedge-engine consumers that don't yet handle the
+   * throw.
+   */
+  throwOnMalformedListResponse?: boolean;
 }
 
 export class EtoroClient {
@@ -131,6 +150,9 @@ export class EtoroClient {
 
     const dispatch: HttpDispatcher = (fn) => this.rateLimiter.executeWithTelemetry(fn);
 
+    const throwOnMalformedListResponse =
+      config?.throwOnMalformedListResponse ?? false;
+
     if (this.credentials.mode === 'mock') {
       this.marketData = new MockEtoroSource();
     } else {
@@ -141,6 +163,7 @@ export class EtoroClient {
       this.marketData = new MarketDataModule(this.http, mdConfig, {
         audit: this.audit,
         dispatch,
+        throwOnMalformedListResponse,
       });
     }
 
@@ -173,10 +196,12 @@ export class EtoroClient {
       maxQuoteAgeMs: config?.notional?.maxQuoteAgeMs,
       maxReferenceDriftRatio: config?.notional?.maxReferenceDriftRatio,
       dispatch,
+      throwOnMalformedListResponse,
     });
     this.account = new AccountModule(this.http, this.audit, {
       mode: this.credentials.mode,
       dispatch,
+      throwOnMalformedListResponse,
     });
   }
 
@@ -246,6 +271,11 @@ export class EtoroClient {
   }
 
   getSummary(): Record<string, string> {
+    const totalMalformedLists = sumCounts(
+      this.marketData.getMalformedListResponseCounts?.(),
+      this.trading.getMalformedListResponseCounts(),
+      this.account.getMalformedListResponseCounts(),
+    );
     return {
       ...redactCredentials(this.credentials),
       authenticated: String(this.isAuthenticated()),
@@ -255,6 +285,7 @@ export class EtoroClient {
       malformedQuotes: String(this.marketData.getMalformedQuoteCount?.() ?? 0),
       consecutiveThrottles: String(this.rateLimiter.getConsecutiveThrottles()),
       streamFailures: formatStreamFailures(this.marketData.getStreamFailureCounts?.()),
+      malformedListResponses: String(totalMalformedLists),
     };
   }
 
@@ -333,5 +364,18 @@ export {
   InvalidCapConfigError,
   InvalidInstrumentOverridesError,
   AccountUnavailableError,
+  MalformedListResponseError,
 } from './errors';
+export type { MalformedListResponseShape } from './errors';
+export { LIST_ENVELOPE_KEYS, readListEnvelope } from './util/list-envelope';
+export type { EnvelopeOutcome } from './util/list-envelope';
 export type * from './types';
+
+function sumCounts(...maps: Array<Record<string, number> | undefined>): number {
+  let total = 0;
+  for (const m of maps) {
+    if (!m) continue;
+    for (const v of Object.values(m)) total += v;
+  }
+  return total;
+}

@@ -289,3 +289,62 @@ describe('AccountModule — rate-limit dispatcher integration', () => {
     expect(success?.totalBackoffMs).toBe(0);
   });
 });
+
+describe('AccountModule — malformed-list response visibility', () => {
+  it('getPositions audits + counts on malformed envelope, returns []', async () => {
+    const get = jest.fn().mockResolvedValue({ status: 200, data: { weirdField: 'x' } });
+    const http = { get } as unknown as ReturnType<typeof mockHttp>;
+    const { audit, entries } = recordingAudit('demo-readonly');
+    const account = new AccountModule(http, audit, { mode: 'demo-readonly' });
+
+    const out = await account.getPositions();
+    expect(out).toEqual([]);
+    expect(account.getMalformedListResponseCount('getPositions')).toBe(1);
+    const lines = entries.filter((e) => e.action === 'getPositions-malformed');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].method).toBe('PARSE');
+    expect(lines[0].path).toBe('/account/positions');
+    expect(lines[0].error).toBe(
+      'MalformedListResponse: object-no-match keys=[weirdField]',
+    );
+  });
+
+  it('getPositions does NOT audit on a legitimately empty envelope', async () => {
+    const get = jest.fn().mockResolvedValue({ status: 200, data: { positions: [] } });
+    const http = { get } as unknown as ReturnType<typeof mockHttp>;
+    const { audit, entries } = recordingAudit('demo-readonly');
+    const account = new AccountModule(http, audit, { mode: 'demo-readonly' });
+
+    const out = await account.getPositions();
+    expect(out).toEqual([]);
+    expect(account.getMalformedListResponseCount('getPositions')).toBe(0);
+    expect(entries.filter((e) => e.action === 'getPositions-malformed')).toHaveLength(0);
+  });
+
+  it('getPendingOrders audits + counts on malformed envelope', async () => {
+    const get = jest.fn().mockResolvedValue({ status: 200, data: 42 });
+    const http = { get } as unknown as ReturnType<typeof mockHttp>;
+    const { audit, entries } = recordingAudit('demo-readonly');
+    const account = new AccountModule(http, audit, { mode: 'demo-readonly' });
+
+    const out = await account.getPendingOrders();
+    expect(out).toEqual([]);
+    expect(account.getMalformedListResponseCount('getPendingOrders')).toBe(1);
+    expect(entries.filter((e) => e.action === 'getPendingOrders-malformed')).toHaveLength(1);
+  });
+
+  it('throws MalformedListResponseError when throwOnMalformedListResponse=true', async () => {
+    const get = jest.fn().mockResolvedValue({ status: 200, data: { wrong: 1 } });
+    const http = { get } as unknown as ReturnType<typeof mockHttp>;
+    const { audit } = recordingAudit('demo-readonly');
+    const account = new AccountModule(http, audit, {
+      mode: 'demo-readonly',
+      throwOnMalformedListResponse: true,
+    });
+
+    await expect(account.getPositions()).rejects.toMatchObject({
+      name: 'MalformedListResponseError',
+      action: 'getPositions',
+    });
+  });
+});
