@@ -4,6 +4,7 @@ import { REAL_TRADING_ENABLED } from './auth';
 import { DemoCapEnforcer, computeOrderNotionalUsd } from './cap-enforcer';
 import {
   DemoCapExceededError,
+  InvalidOrderError,
   MissingNotionalError,
   RealTradingDisabledError,
 } from './errors';
@@ -87,6 +88,7 @@ export class TradingModule {
   }
 
   async openPosition(order: OrderRequest): Promise<OrderResult> {
+    this.validateOrder(order, { kind: 'market', action: 'openPosition' });
     this.assertTradingEnabled('openPosition');
     const notional = this.computeNotional(order);
     this.assertCapOk('openPosition', notional.usd);
@@ -126,6 +128,7 @@ export class TradingModule {
   }
 
   async placeLimitOrder(order: LimitOrderRequest): Promise<OrderResult> {
+    this.validateOrder(order, { kind: 'limit', action: 'placeLimitOrder' });
     this.assertTradingEnabled('placeLimitOrder');
     const notional = this.computeNotional(order);
     this.assertCapOk('placeLimitOrder', notional.usd);
@@ -167,6 +170,7 @@ export class TradingModule {
   }
 
   async closePosition(positionId: string): Promise<OrderResult> {
+    this.validateIdString(positionId, 'positionId', 'closePosition');
     this.assertTradingEnabled('closePosition');
 
     const start = Date.now();
@@ -192,6 +196,8 @@ export class TradingModule {
   }
 
   async partialClose(positionId: string, amount: number): Promise<OrderResult> {
+    this.validateIdString(positionId, 'positionId', 'partialClose');
+    this.validatePositiveAmount(amount, 'amount', 'partialClose');
     this.assertTradingEnabled('partialClose');
 
     const start = Date.now();
@@ -217,6 +223,7 @@ export class TradingModule {
   }
 
   async cancelOrder(orderId: string): Promise<void> {
+    this.validateIdString(orderId, 'orderId', 'cancelOrder');
     this.assertTradingEnabled('cancelOrder');
 
     const start = Date.now();
@@ -321,6 +328,100 @@ export class TradingModule {
       return;
     }
     throw new RealTradingDisabledError(action, this.mode);
+  }
+
+  /**
+   * Hand-written validator. Runs BEFORE the trading fence and cap check so
+   * caller-fixable errors take precedence over environmental ones; the
+   * trading fence still catches anything that bypasses this method.
+   *
+   * Audit log carries only the field name and a short primitive reason —
+   * never the raw request body — so secrets cannot leak via PRE-CHECK lines.
+   */
+  private validateOrder(
+    order: OrderRequest | LimitOrderRequest,
+    ctx: { kind: 'market' | 'limit'; action: string },
+  ): void {
+    const fail = (field: string, reason: string): never => {
+      this.audit.log({
+        action: ctx.action,
+        method: 'PRE-CHECK',
+        path: '/validation',
+        error: `InvalidOrderError: field=${field} reason=${reason}`,
+      });
+      throw new InvalidOrderError({ field, reason });
+    };
+
+    if (typeof order.symbol !== 'string' || order.symbol.trim() === '') {
+      fail('symbol', 'must be a non-empty string');
+    }
+    if (typeof order.instrumentId !== 'string' || order.instrumentId.trim() === '') {
+      fail('instrumentId', 'must be a non-empty string');
+    }
+    if (order.side !== 'buy' && order.side !== 'sell') {
+      fail('side', "must be 'buy' or 'sell'");
+    }
+    if (!Number.isFinite(order.amount) || order.amount <= 0) {
+      fail('amount', 'must be a finite number > 0');
+    }
+    if (order.leverage !== undefined
+      && (!Number.isFinite(order.leverage) || order.leverage <= 0)) {
+      fail('leverage', 'must be a finite number > 0 when provided');
+    }
+    if (order.stopLoss !== undefined
+      && (!Number.isFinite(order.stopLoss) || order.stopLoss <= 0)) {
+      fail('stopLoss', 'must be a finite number > 0 when provided');
+    }
+    if (order.takeProfit !== undefined
+      && (!Number.isFinite(order.takeProfit) || order.takeProfit <= 0)) {
+      fail('takeProfit', 'must be a finite number > 0 when provided');
+    }
+
+    if (ctx.kind === 'limit') {
+      const lim = order as LimitOrderRequest;
+      if (typeof lim.price !== 'number' || !Number.isFinite(lim.price) || lim.price <= 0) {
+        fail('price', 'must be a finite number > 0 for limit/stop orders');
+      }
+      if (lim.type !== 'limit' && lim.type !== 'stop') {
+        fail('type', "must be 'limit' or 'stop'");
+      }
+      if (lim.timeInForce !== undefined
+        && lim.timeInForce !== 'GTC'
+        && lim.timeInForce !== 'DAY'
+        && lim.timeInForce !== 'IOC') {
+        fail('timeInForce', "must be 'GTC', 'DAY', or 'IOC'");
+      }
+    }
+  }
+
+  private validateIdString(value: string, field: string, action: string): void {
+    if (typeof value !== 'string' || value.trim() === '') {
+      this.audit.log({
+        action,
+        method: 'PRE-CHECK',
+        path: '/validation',
+        error: `InvalidOrderError: field=${field} reason=must be a non-empty string`,
+      });
+      throw new InvalidOrderError({
+        field,
+        reason: 'must be a non-empty string',
+      });
+    }
+  }
+
+  private validatePositiveAmount(value: number, field: string, action: string): void {
+    if (!Number.isFinite(value) || value <= 0) {
+      this.audit.log({
+        action,
+        method: 'PRE-CHECK',
+        path: '/validation',
+        error: `InvalidOrderError: field=${field} reason=must be a finite number > 0`,
+      });
+      throw new InvalidOrderError({
+        field,
+        reason: 'must be a finite number > 0',
+      });
+    }
   }
 
   private assertCapOk(action: string, notional: number): void {
@@ -449,6 +550,7 @@ export class TradingModule {
     if (error instanceof RealTradingDisabledError) return error;
     if (error instanceof DemoCapExceededError) return error;
     if (error instanceof MissingNotionalError) return error;
+    if (error instanceof InvalidOrderError) return error;
     if (error instanceof Error) {
       const axErr = error as { response?: { data?: { errorCode?: string; message?: string } } };
       const code = axErr.response?.data?.errorCode;

@@ -247,5 +247,6 @@ export {
   DemoCapExceededError,
   MissingNotionalError,
   InvalidModeError,
+  InvalidOrderError,
 } from './errors';
 export type * from './types';

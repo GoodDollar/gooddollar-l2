@@ -268,6 +268,181 @@ describe('MissingNotionalError export', () => {
   });
 });
 
+describe('TradingModule — input validation (InvalidOrderError)', () => {
+  const VALID_LIMIT: LimitOrderRequest = {
+    symbol: 'AAPL',
+    instrumentId: 'AAPL-US',
+    side: 'buy',
+    amount: 1,
+    price: 100,
+    type: 'limit',
+  };
+
+  const cases: Array<[
+    string,
+    Partial<OrderRequest>,
+    string,
+    'market' | 'limit',
+  ]> = [
+    ["symbol: ''", { symbol: '' }, 'symbol', 'market'],
+    ['symbol: "   "', { symbol: '   ' }, 'symbol', 'market'],
+    ["instrumentId: ''", { instrumentId: '' }, 'instrumentId', 'market'],
+    ['side: "sideways"', { side: 'sideways' as 'buy' }, 'side', 'market'],
+    ['amount: NaN', { amount: NaN }, 'amount', 'market'],
+    ['amount: -1', { amount: -1 }, 'amount', 'market'],
+    ['amount: 0', { amount: 0 }, 'amount', 'market'],
+    ['amount: Infinity', { amount: Infinity }, 'amount', 'market'],
+    ['leverage: 0', { leverage: 0 }, 'leverage', 'market'],
+    ['stopLoss: -1', { stopLoss: -1 }, 'stopLoss', 'market'],
+    ['takeProfit: NaN', { takeProfit: NaN }, 'takeProfit', 'market'],
+  ];
+
+  for (const [label, patch, field, kind] of cases) {
+    it(`${kind} ${label} → InvalidOrderError({ field: '${field}' })`, async () => {
+      const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100_000, maxDailyNotionalUsd: 1_000_000 });
+      const { http, trading } = tradingFor('demo-trading', {
+        capEnforcer: cap,
+        notionalSizer: amountAsUsd,
+      });
+      http.post = jest.fn();
+      const { InvalidOrderError } = await import('../errors');
+      const base = kind === 'limit'
+        ? { ...VALID_LIMIT }
+        : { symbol: 'AAPL', instrumentId: 'AAPL-US', side: 'buy' as const, amount: 1 };
+      const order = { ...base, ...patch } as OrderRequest & Partial<LimitOrderRequest>;
+      const action = kind === 'limit'
+        ? trading.placeLimitOrder(order as LimitOrderRequest)
+        : trading.openPosition(order);
+      try {
+        await action;
+        fail('expected InvalidOrderError');
+      } catch (e) {
+        expect(e).toBeInstanceOf(InvalidOrderError);
+        expect((e as InstanceType<typeof InvalidOrderError>).field).toBe(field);
+      }
+      expect(http.post).not.toHaveBeenCalled();
+    });
+  }
+
+  it("limit price: 0 → field 'price'", async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100_000, maxDailyNotionalUsd: 1_000_000 });
+    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    http.post = jest.fn();
+    const { InvalidOrderError } = await import('../errors');
+    await expect(trading.placeLimitOrder({ ...VALID_LIMIT, price: 0 }))
+      .rejects.toBeInstanceOf(InvalidOrderError);
+  });
+
+  it("limit type: 'wrong' → field 'type'", async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100_000, maxDailyNotionalUsd: 1_000_000 });
+    const { trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    const { InvalidOrderError } = await import('../errors');
+    try {
+      await trading.placeLimitOrder({ ...VALID_LIMIT, type: 'wrong' as 'limit' });
+      fail('expected InvalidOrderError');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidOrderError);
+      expect((e as InstanceType<typeof InvalidOrderError>).field).toBe('type');
+    }
+  });
+
+  it("timeInForce: 'FOO' → field 'timeInForce'", async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100_000, maxDailyNotionalUsd: 1_000_000 });
+    const { trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    const { InvalidOrderError } = await import('../errors');
+    try {
+      await trading.placeLimitOrder({ ...VALID_LIMIT, timeInForce: 'FOO' as 'GTC' });
+      fail('expected InvalidOrderError');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidOrderError);
+      expect((e as InstanceType<typeof InvalidOrderError>).field).toBe('timeInForce');
+    }
+  });
+
+  it("closePosition('') → field 'positionId'", async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100_000, maxDailyNotionalUsd: 1_000_000 });
+    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    http.post = jest.fn();
+    const { InvalidOrderError } = await import('../errors');
+    await expect(trading.closePosition('')).rejects.toBeInstanceOf(InvalidOrderError);
+    expect(http.post).not.toHaveBeenCalled();
+  });
+
+  it("cancelOrder('   ') → field 'orderId'", async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100_000, maxDailyNotionalUsd: 1_000_000 });
+    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    http.delete = jest.fn();
+    const { InvalidOrderError } = await import('../errors');
+    await expect(trading.cancelOrder('   ')).rejects.toBeInstanceOf(InvalidOrderError);
+    expect(http.delete).not.toHaveBeenCalled();
+  });
+
+  it("partialClose('pos-1', -1) → field 'amount'", async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100_000, maxDailyNotionalUsd: 1_000_000 });
+    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    http.post = jest.fn();
+    const { InvalidOrderError } = await import('../errors');
+    try {
+      await trading.partialClose('pos-1', -1);
+      fail('expected InvalidOrderError');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidOrderError);
+      expect((e as InstanceType<typeof InvalidOrderError>).field).toBe('amount');
+    }
+    expect(http.post).not.toHaveBeenCalled();
+  });
+
+  it('validation runs BEFORE the trading fence (most actionable error wins)', async () => {
+    const { http, trading } = tradingFor('mock');
+    http.post = jest.fn();
+    const { InvalidOrderError } = await import('../errors');
+    await expect(trading.openPosition({
+      symbol: 'AAPL', instrumentId: 'AAPL-US', side: 'sideways' as 'buy', amount: 1,
+    })).rejects.toBeInstanceOf(InvalidOrderError);
+  });
+
+  it('audit-log PRE-CHECK entry contains field name + reason but NOT the offending raw value', async () => {
+    const writes: string[] = [];
+    const fsMock = jest.requireMock('fs') as { appendFileSync: jest.Mock };
+    fsMock.appendFileSync.mockClear();
+    fsMock.appendFileSync.mockImplementation((_p: string, line: string) => { writes.push(line); });
+
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 1_000, maxDailyNotionalUsd: 10_000 });
+    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    http.post = jest.fn();
+
+    try {
+      await trading.openPosition({
+        symbol: 'SECRETSYM', instrumentId: 'X', side: 'sideways' as 'buy', amount: 7,
+      });
+    } catch {
+      // expected
+    }
+
+    const preCheck = writes
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+      .filter((e) => e.method === 'PRE-CHECK' && e.path === '/validation');
+    expect(preCheck.length).toBe(1);
+    const err = String(preCheck[0].error ?? '');
+    expect(err).toContain('field=side');
+    expect(err).toContain('reason=');
+    // raw values must not leak
+    expect(err).not.toContain('SECRETSYM');
+    expect(err).not.toContain('sideways');
+  });
+});
+
+describe('InvalidOrderError export', () => {
+  it('is exported from @goodchain/etoro-client', async () => {
+    const mod = await import('../index');
+    expect(mod.InvalidOrderError).toBeDefined();
+    const err = new mod.InvalidOrderError({ field: 'amount', reason: 'NaN' });
+    expect(err.name).toBe('InvalidOrderError');
+    expect(err.field).toBe('amount');
+    expect(err.reason).toBe('NaN');
+  });
+});
+
 describe('TradingModule — audit-log resolvedNotionalUsd + notionalSource', () => {
   it('records resolved USD notional and source on successful openPosition', async () => {
     const writes: string[] = [];

@@ -78,6 +78,28 @@ export class DemoCapExceededError extends Error {
 }
 
 /**
+ * Thrown by `TradingModule` mutating methods when the caller hands in an
+ * obviously invalid request (NaN amount, empty symbol, invalid side, etc.).
+ * Caught and audit-logged as a PRE-CHECK entry; no HTTP call is ever made.
+ *
+ * `field` identifies the offending field name (safe to log — not secret).
+ * `reason` is a short human-readable description of why the value was
+ * rejected; raw request bodies are deliberately NOT echoed so secrets or
+ * order details never leak to logs.
+ */
+export class InvalidOrderError extends Error {
+  readonly field: string;
+  readonly reason: string;
+
+  constructor(input: { field: string; reason: string }) {
+    super(`Invalid order: field "${input.field}" — ${input.reason}.`);
+    this.name = 'InvalidOrderError';
+    this.field = input.field;
+    this.reason = input.reason;
+  }
+}
+
+/**
  * Thrown by `TradingModule` when the USD notional of a market order cannot
  * be resolved. Market orders never carry a `price`, so the SDK needs either
  * an injected `notionalSizer`, an `INSTRUMENT_MAP.referencePriceUsd` via the
