@@ -232,4 +232,41 @@ if ! node -e "
   fail "proof JSON failed validation (price field must be a positive number)"
   exit 1
 fi
+
+# ---- 8. evidence summary (success only) ----
+# Operators (and PR-screenshot consumers) want to verify the lane works at a
+# glance without opening a JSON file. Surface every fact the smoke already
+# computed + pointers to the audit log and runbook. The existing OK line
+# stays verbatim AFTER this block so CI greps still match.
+SIGNER_ADDR="$(cast wallet address "$ANVIL_KEY" 2>/dev/null || true)"
+if [[ ! "$SIGNER_ADDR" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+  fail "could not derive signer address via 'cast wallet address'"
+  exit 1
+fi
+STOCK_BLOCK="$(node -e "process.stdout.write(String(JSON.parse(process.argv[1]).stocks[0].blockNumber ?? ''))" "$PROOF")"
+STOCK_SYMS="$(node -e "process.stdout.write((JSON.parse(process.argv[1]).stocks[0].symbols ?? []).join(', '))" "$PROOF")"
+SWAP_BLOCK="$(node -e "process.stdout.write(String(JSON.parse(process.argv[1]).crypto[0].blockNumber ?? ''))" "$PROOF")"
+SWAP_SYMS="$(node -e "process.stdout.write((JSON.parse(process.argv[1]).crypto[0].symbols ?? []).join(', '))" "$PROOF")"
+# LC_ALL=C forces POSIX numeric formatting so a comma-decimal locale doesn't
+# produce '$191,56' instead of '$191.56'.
+AAPL_USD="$(LC_ALL=C awk -v p="$AAPL_PRICE8" 'BEGIN { printf "%.2f", p/1e8 }')"
+WETH_USD="$(LC_ALL=C awk -v p="$WETH_PRICE8" 'BEGIN { printf "%.2f", p/1e8 }')"
+AUDIT_DIR="${RUNDIR}/audit"
+
+log "---------- Evidence summary ----------"
+log "  Chain id           : 31337"
+log "  Signer address     : $SIGNER_ADDR"
+log "  StockOracleV2      : $STOCK_ORACLE_V2_ADDRESS"
+log "  SwapPriceOracle    : $SWAP_PRICE_ORACLE_ADDRESS"
+log "  Latest stocks tx   : $STOCK_TX"
+log "                       symbols=[$STOCK_SYMS]  block=$STOCK_BLOCK"
+log "  Latest crypto tx   : $SWAP_TX"
+log "                       symbols=[$SWAP_SYMS]  block=$SWAP_BLOCK"
+log "  On-chain AAPL      : \$$AAPL_USD  (raw: $AAPL_PRICE8 @ 1e-8)"
+log "  On-chain WETH      : \$$WETH_USD  (raw: $WETH_PRICE8 @ 1e-8)"
+log "  Proof JSON         : $PROOF_OUT"
+log "  Audit log          : $AUDIT_DIR"
+log "  Runbook            : docs/lane3-oracle-publishing-runbook.md"
+log "--------------------------------------"
+
 log "OK — proof written to $PROOF_OUT"

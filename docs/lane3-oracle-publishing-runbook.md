@@ -36,15 +36,38 @@ That script:
    `SwapPriceOracle.getPriceUnsafe(WETH)` to confirm publication.
 7. Writes `.autobuilder/lane-proof/lane3-oracle-publishing.json`.
 
-Expected steady-state output (≈4s on a warm tree):
+Expected steady-state output (≈6s on a warm tree). The final block is an
+**Evidence summary** so you (or a PR screenshot) can verify the lane works
+at a glance without opening the proof JSON. The summary is **success only**
+— on failure the script falls through to the existing log tails dump:
 
 ```
 [smoke] anvil ready
 [smoke] StockOracleV2 @ 0x5FbDB2…aa3
 [smoke] SwapPriceOracle @ 0x59b67…57b
 [smoke] proof observed: stocks + crypto rails both published
+[smoke] ---------- Evidence summary ----------
+[smoke]   Chain id           : 31337
+[smoke]   Signer address     : 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+[smoke]   StockOracleV2      : 0x5FbDB2315678afecb367f032d93F642f64180aa3
+[smoke]   SwapPriceOracle    : 0x59b670e9fA9D0A427751Af201D676719a970857b
+[smoke]   Latest stocks tx   : 0xb84a073aea607dc1c74b0767880150584a6e790331cbec59822a5c0adb1ccf52
+[smoke]                        symbols=[AAPL, TSLA]  block=11
+[smoke]   Latest crypto tx   : 0x5e6ad7f761dfd0cafb4cb6b6341ee6e1329b57dd9aceba6ebc4b2a17cb036203
+[smoke]                        symbols=[WETH, USDC]  block=11
+[smoke]   On-chain AAPL      : $191.56  (raw: 19156121741 @ 1e-8)
+[smoke]   On-chain WETH      : $3498.90 (raw: 349890118424 @ 1e-8)
+[smoke]   Proof JSON         : .autobuilder/lane-proof/lane3-oracle-publishing.json
+[smoke]   Audit log          : <RUNDIR>/audit
+[smoke]   Runbook            : docs/lane3-oracle-publishing-runbook.md
+[smoke] --------------------------------------
 [smoke] OK — proof written to .autobuilder/lane-proof/lane3-oracle-publishing.json
 ```
+
+On any `exit 1` (e.g. anvil never bound, signer build failed, neither rail
+published within `SMOKE_TIMEOUT_S`) the Evidence block is skipped and the
+existing `[smoke FAIL]` log tails (anvil/deploy/mock/signer, last 40 lines
+each) are printed instead.
 
 ## Manual rebuild from scratch (without the smoke)
 
