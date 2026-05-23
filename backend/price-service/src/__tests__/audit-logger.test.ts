@@ -68,9 +68,9 @@ describe('AuditLogger', () => {
     expect(stats.rejected).toBe(3);
     expect(stats.byReason.stale).toBe(2);
     expect(stats.byReason['spread-too-wide']).toBe(1);
-    expect(stats.firstAt).not.toBeNull();
-    expect(stats.lastAt).not.toBeNull();
-    expect(stats.lastAt).toBeGreaterThanOrEqual(stats.firstAt!);
+    expect(stats.firstAtMs).not.toBeNull();
+    expect(stats.lastAtMs).not.toBeNull();
+    expect(stats.lastAtMs).toBeGreaterThanOrEqual(stats.firstAtMs!);
     expect(stats.writeErrors).toBe(0);
   });
 
@@ -118,14 +118,14 @@ describe('AuditLogger', () => {
     }
   });
 
-  it('starts with zero stats and null firstAt/lastAt before any record', () => {
+  it('starts with zero stats and null firstAtMs/lastAtMs before any record', () => {
     const fresh = new AuditLogger({ logPath: path.join(tmpDir, 'fresh.log') });
     const stats = fresh.stats();
     expect(stats.ingested).toBe(0);
     expect(stats.rejected).toBe(0);
     expect(stats.byReason).toEqual({});
-    expect(stats.firstAt).toBeNull();
-    expect(stats.lastAt).toBeNull();
+    expect(stats.firstAtMs).toBeNull();
+    expect(stats.lastAtMs).toBeNull();
     expect(stats.writeErrors).toBe(0);
   });
 });

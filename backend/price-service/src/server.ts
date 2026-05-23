@@ -302,11 +302,11 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'Ingested vs rejected counts, rejection breakdown, acceptance ratio, ' +
       'uptime.',
     responseShape:
-      '{ ingested, rejected, byReason, ' +
-      'acceptanceRatio: number|null, ' +
-      "acceptanceRatioStatus:'ok'|'no-data', firstAt, firstAtIso, " +
-      'lastAt, lastAtIso, writeErrors, bootAt*?, uptimeMs?, ' +
-      'timestamp, timestampIso }',
+      '{ingested,rejected,byReason,acceptanceRatio:number|null,' +
+      "acceptanceRatioStatus:'ok'|'no-data'," +
+      'firstAtMs,firstAtIso,lastAtMs,lastAtIso,writeErrors,' +
+      "firstAt?,lastAt? (deprecated→*Ms),deprecations?," +
+      'bootAt*?,uptimeMs?,timestamp,timestampIso}',
   },
   {
     path: '/docs/source-reasons',
@@ -829,6 +829,54 @@ export function computeAcceptanceRatio(
 }
 
 /**
+ * In-band deprecation notes attached to the `/audit/stats` body whenever
+ * the legacy `firstAt` / `lastAt` aliases are on the wire (task 0053).
+ * Same show-iff-legacy-present rule as task 0052's source-block fix.
+ */
+const AUDIT_STATS_DEPRECATIONS: Readonly<Record<string, string>> = Object.freeze({
+  firstAt: 'rename → firstAtMs; will be removed in the next release',
+  lastAt: 'rename → lastAtMs; will be removed in the next release',
+});
+
+/**
+ * Assemble the `/audit/stats` body from an `IngestStats` snapshot.
+ * The canonical `firstAtMs` / `firstAtIso` (and `lastAt*` analog)
+ * pair is always present (null on a fresh boot), and the legacy
+ * `firstAt` / `lastAt` aliases plus the matching deprecations entries
+ * ride iff the canonical timestamp is non-null — same show-iff-
+ * legacy-present rule as task 0052's source-block fix.
+ *
+ * Field ordering encodes the policy from task 0041: canonical Ms
+ * before its ISO companion before the legacy alias; the deprecation
+ * map is returned alongside so the envelope helper can re-anchor it
+ * at the meta tail (after the boot block, before timestamp).
+ */
+function buildAuditStatsBody(
+  stats: IngestStats,
+): { body: Record<string, unknown>; deprecations?: Record<string, string> } {
+  const ratio = computeAcceptanceRatio(stats);
+  const body: Record<string, unknown> = {
+    ingested: stats.ingested,
+    rejected: stats.rejected,
+    byReason: stats.byReason,
+    acceptanceRatio: ratio.ratio,
+    acceptanceRatioStatus: ratio.status,
+    firstAtMs: stats.firstAtMs,
+    firstAtIso: isoFromMs(stats.firstAtMs),
+    lastAtMs: stats.lastAtMs,
+    lastAtIso: isoFromMs(stats.lastAtMs),
+    writeErrors: stats.writeErrors,
+  };
+  if (stats.firstAtMs !== null) body.firstAt = stats.firstAtMs;
+  if (stats.lastAtMs !== null) body.lastAt = stats.lastAtMs;
+  if (stats.firstAtMs === null && stats.lastAtMs === null) return { body };
+  const deprecations: Record<string, string> = {};
+  if (stats.firstAtMs !== null) deprecations.firstAt = AUDIT_STATS_DEPRECATIONS.firstAt;
+  if (stats.lastAtMs !== null) deprecations.lastAt = AUDIT_STATS_DEPRECATIONS.lastAt;
+  return { body, deprecations };
+}
+
+/**
  * Single source of truth for the healthy/degraded verdict on
  * `/health` and `/status/quotes`. Two endpoints reading the same
  * inputs must always agree, otherwise downstream consumers
@@ -1218,24 +1266,14 @@ export function createServer(
           ingested: 0,
           rejected: 0,
           byReason: {},
-          firstAt: null,
-          lastAt: null,
+          firstAtMs: null,
+          lastAtMs: null,
           writeErrors: 0,
         };
-    const ratio = computeAcceptanceRatio(stats);
-    const body: Record<string, unknown> = {
-      ingested: stats.ingested,
-      rejected: stats.rejected,
-      byReason: stats.byReason,
-      acceptanceRatio: ratio.ratio,
-      acceptanceRatioStatus: ratio.status,
-      firstAt: stats.firstAt,
-      firstAtIso: isoFromMs(stats.firstAt),
-      lastAt: stats.lastAt,
-      lastAtIso: isoFromMs(stats.lastAt),
-      writeErrors: stats.writeErrors,
-    };
-    res.json(finalizeEnvelope(body, now, { boot: buildBootBlock(now) }));
+    const { body, deprecations } = buildAuditStatsBody(stats);
+    res.json(
+      finalizeEnvelope(body, now, { boot: buildBootBlock(now), deprecations }),
+    );
   });
 
   app.get('/status/quotes', (_req: Request, res: Response) => {

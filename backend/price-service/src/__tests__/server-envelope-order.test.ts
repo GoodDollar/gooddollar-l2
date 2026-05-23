@@ -135,8 +135,8 @@ describe('REST Server — canonical envelope key order across endpoints', () => 
         ingested: 100,
         rejected: 5,
         byReason: { 'stale-quote': 5 },
-        firstAt: NOW - 60_000,
-        lastAt: NOW - 100,
+        firstAtMs: NOW - 60_000,
+        lastAtMs: NOW - 100,
         writeErrors: 0,
       }),
       () => sourceStatus,
@@ -242,14 +242,22 @@ describe('REST Server — canonical envelope key order across endpoints', () => 
     expect(idx('deprecations')).toBeLessThan(idx('timestamp'));
   });
 
-  it('/audit/stats: bootAtMs precedes timestamp; firstAt block stays in payload', async () => {
+  it('/audit/stats: canonical Ms precedes legacy alias precedes bootAtMs precedes deprecations precedes timestamp (tasks 0053/0041)', async () => {
     const body = await bodyOf('/audit/stats');
     const keys = Object.keys(body);
     const idx = (k: string) => keys.indexOf(k);
-    expect(idx('bootAtMs')).toBeGreaterThan(-1);
+    expect(idx('firstAtMs')).toBeGreaterThan(-1);
+    expect(idx('lastAtMs')).toBeGreaterThan(-1);
     expect(idx('firstAt')).toBeGreaterThan(-1);
-    expect(idx('firstAt')).toBeLessThan(idx('bootAtMs'));
-    expect(idx('bootAtMs')).toBeLessThan(idx('timestamp'));
+    expect(idx('lastAt')).toBeGreaterThan(-1);
+    expect(idx('deprecations')).toBeGreaterThan(-1);
+    expect(idx('bootAtMs')).toBeGreaterThan(-1);
+    expect(idx('firstAtMs')).toBeLessThan(idx('lastAtMs'));
+    expect(idx('lastAtMs')).toBeLessThan(idx('firstAt'));
+    expect(idx('firstAt')).toBeLessThan(idx('lastAt'));
+    expect(idx('lastAt')).toBeLessThan(idx('bootAtMs'));
+    expect(idx('bootAtMs')).toBeLessThan(idx('deprecations'));
+    expect(idx('deprecations')).toBeLessThan(idx('timestamp'));
   });
 
   it('/: source precedes websocket precedes status', async () => {

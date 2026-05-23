@@ -37,8 +37,8 @@ export class AuditLogger {
     ingested: 0,
     rejected: 0,
     byReason: {},
-    firstAt: null,
-    lastAt: null,
+    firstAtMs: null,
+    lastAtMs: null,
     writeErrors: 0,
   };
 
@@ -69,8 +69,8 @@ export class AuditLogger {
       const bucket = AuditLogger.reasonBucket(input.reason);
       this.statsState.byReason[bucket] = (this.statsState.byReason[bucket] ?? 0) + 1;
     }
-    if (this.statsState.firstAt === null) this.statsState.firstAt = now;
-    this.statsState.lastAt = now;
+    if (this.statsState.firstAtMs === null) this.statsState.firstAtMs = now;
+    this.statsState.lastAtMs = now;
 
     try {
       fs.appendFileSync(this.logPath, JSON.stringify(line) + '\n', 'utf8');
@@ -84,8 +84,8 @@ export class AuditLogger {
       ingested: this.statsState.ingested,
       rejected: this.statsState.rejected,
       byReason: { ...this.statsState.byReason },
-      firstAt: this.statsState.firstAt,
-      lastAt: this.statsState.lastAt,
+      firstAtMs: this.statsState.firstAtMs,
+      lastAtMs: this.statsState.lastAtMs,
       writeErrors: this.statsState.writeErrors,
     };
   }

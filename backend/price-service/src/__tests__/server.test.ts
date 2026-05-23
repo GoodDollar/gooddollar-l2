@@ -199,8 +199,8 @@ describe('REST Server with stats getter', () => {
       ingested: 0,
       rejected: 0,
       byReason: {},
-      firstAt: null,
-      lastAt: null,
+      firstAtMs: null,
+      lastAtMs: null,
       writeErrors: 0,
     };
     app = createServer(cache, { symbols: ['AAPL', 'TSLA'] }, () => stats);
@@ -222,8 +222,8 @@ describe('REST Server with stats getter', () => {
       stats.ingested = 0;
       stats.rejected = 0;
       stats.byReason = {};
-      stats.firstAt = null;
-      stats.lastAt = null;
+      stats.firstAtMs = null;
+      stats.lastAtMs = null;
       stats.writeErrors = 0;
       const res = await fetch(`${baseUrl}/audit/stats`);
       const body = (await res.json()) as Record<string, unknown>;
@@ -233,8 +233,17 @@ describe('REST Server with stats getter', () => {
       expect(body.byReason).toEqual({});
       expect(body.acceptanceRatio).toBeNull();
       expect(body.acceptanceRatioStatus).toBe('no-data');
-      expect(body.firstAt).toBeNull();
-      expect(body.lastAt).toBeNull();
+      // Canonical Ms-suffixed fields ride alongside their ISO companion
+      // even on the never-ingested branch (task 0053). The legacy
+      // unsuffixed `firstAt`/`lastAt` aliases are omitted in lockstep
+      // with the deprecation note (task 0052 null-hygiene rule).
+      expect(body.firstAtMs).toBeNull();
+      expect(body.firstAtIso).toBeNull();
+      expect(body.lastAtMs).toBeNull();
+      expect(body.lastAtIso).toBeNull();
+      expect('firstAt' in body).toBe(false);
+      expect('lastAt' in body).toBe(false);
+      expect('deprecations' in body).toBe(false);
       expect(body.timestamp).toBeGreaterThan(0);
     });
 
@@ -242,8 +251,8 @@ describe('REST Server with stats getter', () => {
       stats.ingested = 7;
       stats.rejected = 3;
       stats.byReason = { stale: 2, halted: 1 };
-      stats.firstAt = 1700000000000;
-      stats.lastAt = 1700000005000;
+      stats.firstAtMs = 1700000000000;
+      stats.lastAtMs = 1700000005000;
       stats.writeErrors = 0;
 
       const res = await fetch(`${baseUrl}/audit/stats`);
@@ -254,8 +263,15 @@ describe('REST Server with stats getter', () => {
       expect(body.byReason).toEqual({ stale: 2, halted: 1 });
       expect(body.acceptanceRatio).toBeCloseTo(0.7, 6);
       expect(body.acceptanceRatioStatus).toBe('ok');
+      expect(body.firstAtMs).toBe(1700000000000);
+      expect(body.lastAtMs).toBe(1700000005000);
+      // Legacy aliases ride for one deprecation window with matching
+      // rename pointers (task 0053).
       expect(body.firstAt).toBe(1700000000000);
       expect(body.lastAt).toBe(1700000005000);
+      const dep = body.deprecations as Record<string, string>;
+      expect(dep.firstAt).toMatch(/firstAtMs/);
+      expect(dep.lastAt).toMatch(/lastAtMs/);
     });
 
     it('returns acceptanceRatio = 1 when only ingested with no rejects (real 100%)', async () => {
@@ -309,7 +325,7 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
   it('ingested=0, rejected=0 → {ratio: null, status: "no-data"}', () => {
     const r = computeAcceptanceRatio({
       ingested: 0, rejected: 0,
-      byReason: {}, firstAt: null, lastAt: null, writeErrors: 0,
+      byReason: {}, firstAtMs: null, lastAtMs: null, writeErrors: 0,
     });
     expect(r).toEqual({ ratio: null, status: 'no-data' });
   });
@@ -317,7 +333,7 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
   it('ingested=1, rejected=0 (perfect acceptance, real data) → {1, "ok"}', () => {
     const r = computeAcceptanceRatio({
       ingested: 1, rejected: 0,
-      byReason: {}, firstAt: 0, lastAt: 0, writeErrors: 0,
+      byReason: {}, firstAtMs: 0, lastAtMs: 0, writeErrors: 0,
     });
     expect(r).toEqual({ ratio: 1, status: 'ok' });
   });
@@ -325,7 +341,7 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
   it('ingested=8, rejected=2 → {0.8, "ok"}', () => {
     const r = computeAcceptanceRatio({
       ingested: 8, rejected: 2,
-      byReason: {}, firstAt: 0, lastAt: 0, writeErrors: 0,
+      byReason: {}, firstAtMs: 0, lastAtMs: 0, writeErrors: 0,
     });
     expect(r).toEqual({ ratio: 0.8, status: 'ok' });
   });
@@ -334,7 +350,7 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
     const r = computeAcceptanceRatio({
       ingested: 0, rejected: 5,
       byReason: { 'stale-price': 5 },
-      firstAt: 0, lastAt: 0, writeErrors: 0,
+      firstAtMs: 0, lastAtMs: 0, writeErrors: 0,
     });
     expect(r).toEqual({ ratio: 0, status: 'ok' });
   });
@@ -342,11 +358,11 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
   it('warming-up (no-data) is distinguishable from real 100% acceptance', () => {
     const warming = computeAcceptanceRatio({
       ingested: 0, rejected: 0, byReason: {},
-      firstAt: null, lastAt: null, writeErrors: 0,
+      firstAtMs: null, lastAtMs: null, writeErrors: 0,
     });
     const real100 = computeAcceptanceRatio({
       ingested: 100, rejected: 0, byReason: {},
-      firstAt: 0, lastAt: 0, writeErrors: 0,
+      firstAtMs: 0, lastAtMs: 0, writeErrors: 0,
     });
     expect(warming.ratio).toBeNull();
     expect(warming.status).toBe('no-data');
@@ -1896,8 +1912,8 @@ describe('REST Server — bootAtMs / uptimeMs on /health and /audit/stats', () =
       ingested: 0,
       rejected: 0,
       byReason: {},
-      firstAt: null,
-      lastAt: null,
+      firstAtMs: null,
+      lastAtMs: null,
       writeErrors: 0,
     };
     app = createServer(
@@ -1970,8 +1986,8 @@ describe('REST Server — bootAtMs/uptimeMs omitted when no getter (regression)'
       ingested: 0,
       rejected: 0,
       byReason: {},
-      firstAt: null,
-      lastAt: null,
+      firstAtMs: null,
+      lastAtMs: null,
       writeErrors: 0,
     }));
     server = app.listen(0, () => {

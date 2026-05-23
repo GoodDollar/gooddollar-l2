@@ -98,13 +98,20 @@ export type SourceStatus =
 /**
  * Rolling in-memory counters for quote ingestion, surfaced via the
  * audit logger and exposed by the `/health` and `/audit/stats` endpoints.
+ *
+ * `firstAtMs` / `lastAtMs` are unix-millisecond timestamps. The `Ms`
+ * suffix marks unix-ms timestamps service-wide (see the policy block
+ * near the `/status/quotes` handler in `server.ts`); plain `firstAt` /
+ * `lastAt` rode for historical reasons until task 0053. The wire
+ * legacy aliases live behind a deprecation note in the `/audit/stats`
+ * handler — the in-memory contract uses the canonical names only.
  */
 export interface IngestStats {
   ingested: number;
   rejected: number;
   byReason: Record<string, number>;
-  firstAt: number | null;
-  lastAt: number | null;
+  firstAtMs: number | null;
+  lastAtMs: number | null;
   writeErrors: number;
 }
 

@@ -79,8 +79,8 @@ describe('PriceService', () => {
       expect(stats.ingested).toBe(1);
       expect(stats.rejected).toBe(1);
       expect(stats.byReason.halted).toBe(1);
-      expect(stats.firstAt).not.toBeNull();
-      expect(stats.lastAt).not.toBeNull();
+      expect(stats.firstAtMs).not.toBeNull();
+      expect(stats.lastAtMs).not.toBeNull();
 
       const lines = fs.readFileSync(logPath, 'utf8').trim().split('\n');
       expect(lines).toHaveLength(2);

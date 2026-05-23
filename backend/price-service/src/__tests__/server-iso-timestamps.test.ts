@@ -62,8 +62,8 @@ describe('REST Server — ISO 8601 timestamp companions', () => {
       ingested: 0,
       rejected: 0,
       byReason: {},
-      firstAt: null,
-      lastAt: null,
+      firstAtMs: null,
+      lastAtMs: null,
       writeErrors: 0,
     };
     const app = createServer(
@@ -103,15 +103,17 @@ describe('REST Server — ISO 8601 timestamp companions', () => {
     expect(body.bootAtIso).toBe(new Date(body.bootAtMs as number).toISOString());
   });
 
-  it('GET /audit/stats emits firstAtIso/lastAtIso null when sibling is null', async () => {
+  it('GET /audit/stats emits firstAtIso/lastAtIso null when sibling is null (task 0053: legacy alias omitted in lockstep)', async () => {
     const body = (await (await fetch(`${baseUrl}/audit/stats`)).json()) as Record<string, unknown>;
-    expect(body.firstAt).toBeNull();
+    expect(body.firstAtMs).toBeNull();
     expect(body.firstAtIso).toBeNull();
-    expect(body.lastAt).toBeNull();
+    expect(body.lastAtMs).toBeNull();
     expect(body.lastAtIso).toBeNull();
+    expect('firstAt' in body).toBe(false);
+    expect('lastAt' in body).toBe(false);
   });
 
-  it('GET /audit/stats firstAtIso/lastAtIso are real ISO strings when sibling is set', async () => {
+  it('GET /audit/stats firstAtIso/lastAtIso are real ISO strings when sibling is set, legacy alias rides alongside', async () => {
     const fixedFirst = 1700000001000;
     const fixedLast = 1700000005000;
     const cache2 = new QuoteCache({ cacheTtlMs: 30_000 });
@@ -119,18 +121,20 @@ describe('REST Server — ISO 8601 timestamp companions', () => {
       ingested: 5,
       rejected: 1,
       byReason: { 'spread-too-wide': 1 },
-      firstAt: fixedFirst,
-      lastAt: fixedLast,
+      firstAtMs: fixedFirst,
+      lastAtMs: fixedLast,
       writeErrors: 0,
     };
     const app2 = createServer(cache2, { symbols: ['AAPL'] }, () => stats);
     const { server: s2, baseUrl: u2 } = await listen(app2);
     try {
       const body = (await (await fetch(`${u2}/audit/stats`)).json()) as Record<string, unknown>;
-      expect(body.firstAt).toBe(fixedFirst);
+      expect(body.firstAtMs).toBe(fixedFirst);
       expect(body.firstAtIso).toBe(new Date(fixedFirst).toISOString());
-      expect(body.lastAt).toBe(fixedLast);
+      expect(body.lastAtMs).toBe(fixedLast);
       expect(body.lastAtIso).toBe(new Date(fixedLast).toISOString());
+      expect(body.firstAt).toBe(fixedFirst);
+      expect(body.lastAt).toBe(fixedLast);
     } finally {
       await new Promise<void>((resolve) => s2.close(() => resolve()));
     }
