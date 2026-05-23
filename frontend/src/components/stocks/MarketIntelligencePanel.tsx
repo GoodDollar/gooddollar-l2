@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Stock } from '@/lib/stockData'
 import { formatStockPrice } from '@/lib/stockData'
+import { hasLiveOracleChange } from '@/lib/oracleHonesty'
 
 type MoversMode = 'gainers' | 'losers'
 
@@ -34,16 +35,14 @@ export function MarketIntelligencePanel({
   const [mode, setMode] = useState<MoversMode>('gainers')
 
   const movers = useMemo(() => {
-    if (stocks.length === 0) return []
-
+    const eligible = stocks.filter((stock) => hasLiveOracleChange(stock))
     if (mode === 'gainers') {
-      return [...stocks]
-        .filter((stock) => stock.change24h >= 0)
+      return [...eligible]
+        .filter((stock) => stock.change24h > 0)
         .sort((a, b) => b.change24h - a.change24h)
         .slice(0, 5)
     }
-
-    return [...stocks]
+    return [...eligible]
       .filter((stock) => stock.change24h < 0)
       .sort((a, b) => a.change24h - b.change24h)
       .slice(0, 5)
@@ -104,6 +103,13 @@ export function MarketIntelligencePanel({
             </div>
           ) : !hasData ? (
             <p className="text-xs text-gray-500">No movers available.</p>
+          ) : movers.length === 0 ? (
+            <div
+              className="rounded-lg border border-dashed border-gray-700/30 px-3 py-4 text-center text-xs text-gray-500"
+              data-testid="top-movers-empty"
+            >
+              No movers to show — oracle feed degraded.
+            </div>
           ) : (
             <ul className="space-y-1.5">
               {movers.map((stock) => (
@@ -114,8 +120,8 @@ export function MarketIntelligencePanel({
                     className="flex w-full items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/60 px-2.5 py-1.5 text-xs hover:border-goodgreen/30 hover:text-white"
                   >
                     <span className="font-medium text-gray-200">{stock.ticker}</span>
-                    <span className={stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                      {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
+                    <span className={stock.change24h > 0 ? 'text-green-400' : 'text-red-400'}>
+                      {stock.change24h > 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
                     </span>
                   </button>
                 </li>

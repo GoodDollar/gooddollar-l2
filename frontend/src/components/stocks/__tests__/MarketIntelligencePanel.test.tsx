@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MarketIntelligencePanel } from '@/components/stocks/MarketIntelligencePanel'
 import type { Stock } from '@/lib/stockData'
 
@@ -103,6 +103,53 @@ describe('MarketIntelligencePanel', () => {
     expect(screen.getByText(/No movers available/i)).toBeInTheDocument()
     expect(screen.getByText(/No earnings events available/i)).toBeInTheDocument()
     expect(screen.getByText(/No headlines available/i)).toBeInTheDocument()
+  })
+
+  it('renders the muted "oracle feed degraded" empty state when every stock is a zero sentinel', () => {
+    const degradedStocks: Stock[] = stocks.map((s) => ({
+      ...s,
+      change24h: 0,
+      volume24h: 0,
+      marketCap: 0,
+    }))
+    const { container } = render(
+      <MarketIntelligencePanel
+        stocks={degradedStocks}
+        isLive={false}
+        isLoading={false}
+        onSelectTicker={vi.fn()}
+      />
+    )
+
+    const empty = screen.getByTestId('top-movers-empty')
+    expect(empty).toBeInTheDocument()
+    expect(empty.textContent).toMatch(/oracle feed degraded/i)
+
+    const topMovers = container.querySelector('article')
+    expect(topMovers?.querySelector('.text-green-400')).toBeNull()
+    expect(topMovers?.querySelector('.text-red-400')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Losers' }))
+    expect(screen.getByTestId('top-movers-empty')).toBeInTheDocument()
+  })
+
+  it('shows only the live-change names in Top Movers when fundamentals are mixed', () => {
+    const mixed: Stock[] = [
+      { ...stocks[0]!, change24h: 2.4, volume24h: 1e9 },
+      { ...stocks[1]!, change24h: -1.1, volume24h: 5e8 },
+      { ...stocks[2]!, change24h: 0, volume24h: 0, marketCap: 0 },
+    ]
+    render(
+      <MarketIntelligencePanel stocks={mixed} isLive isLoading={false} onSelectTicker={vi.fn()} />
+    )
+
+    const topMovers = screen.getByRole('heading', { name: /Top Movers/i }).closest('article')!
+    expect(within(topMovers).getByRole('button', { name: /AAPL\+2.40%/i })).toBeInTheDocument()
+    expect(within(topMovers).queryByRole('button', { name: /META/i })).not.toBeInTheDocument()
+
+    fireEvent.click(within(topMovers).getByRole('button', { name: 'Losers' }))
+    expect(within(topMovers).getByRole('button', { name: /TSLA-1.10%/i })).toBeInTheDocument()
+    expect(within(topMovers).queryByRole('button', { name: /META/i })).not.toBeInTheDocument()
   })
 
   it('renders skeleton shimmer bars instead of plain text when loading', () => {
