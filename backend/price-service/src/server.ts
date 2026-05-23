@@ -422,6 +422,74 @@ function canonicalSuggestion(reqPath: string): string | undefined {
 }
 
 /**
+ * Detect Express's URL-decode failure. Both shapes covered:
+ *  - the raw `URIError` from `decodeURIComponent`.
+ *  - the `HttpError`-wrapped variant (`status: 400` plus
+ *    `code: 'INVALID_URI'` or `type: 'entity.parse.failed'`) used by
+ *    some Express versions and the body-parser branches.
+ *
+ * Lives next to `canonicalSuggestion` so the URL-cleanup helpers stay
+ * grouped — the malformed-uri 400 reuses `canonicalSuggestion` to
+ * suggest a cleaned canonical form.
+ */
+function isMalformedUriError(err: unknown): boolean {
+  if (err instanceof URIError) return true;
+  if (err && typeof err === 'object') {
+    const e = err as { status?: unknown; code?: unknown; type?: unknown };
+    if (
+      e.status === 400 &&
+      (e.code === 'INVALID_URI' || e.type === 'entity.parse.failed')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Strip every malformed-percent fragment from a path so the malformed-
+ * uri 400 can suggest the cleaned form via `didYouMean`. A fragment is
+ * malformed when `%` is NOT followed by exactly two hex digits — the
+ * negative lookahead catches all four `decodeURIComponent` failure
+ * modes:
+ *
+ *  - orphan `%` at end (`/quotes/AAPL%`)
+ *  - single hex digit (`/quotes/AAPL%2`)
+ *  - first digit non-hex (`/quotes/%G`, `/quotes/AAPL%G`)
+ *  - second digit non-hex (`/quotes/%4Z`)
+ *
+ * The trailing `[\s\S]{0,2}` consumes the `%` plus up to two characters
+ * — exactly the bytes that would have been the percent-escape sequence
+ * if it had been valid. Valid `%XX` (e.g. `%FF`, accepted lexically
+ * but rejected as bad UTF-8 by `decodeURIComponent`) is left intact,
+ * so the cleaned form falls through to "no real route" and `didYouMean`
+ * is omitted.
+ *
+ * Suggests only when the cleaned form names a route as-is — direct
+ * catalog hit or parametric `/quotes/<symbol>` shape. Stays out of
+ * `canonicalSuggestion`'s case-fold / trailing-slash steering: a
+ * cleaned `/quotes/` (parametric parent with the symbol stripped)
+ * shouldn't be steered to the bulk `/quotes` endpoint because the
+ * user's URL shape clearly meant single-symbol.
+ */
+function suggestCleanedPath(rawPath: string): string | undefined {
+  const cleaned = rawPath.replace(/%(?![0-9A-Fa-f]{2})[\s\S]{0,2}/g, '');
+  if (cleaned === rawPath) return undefined;
+  if (CATALOG_EXACT.has(cleaned)) return cleaned;
+  if (QUOTES_SYMBOL_RE.test(cleaned)) return cleaned;
+  return undefined;
+}
+
+const MALFORMED_URI_MESSAGE =
+  "URL contains malformed percent encoding — '%' must be followed by " +
+  "exactly two hex digits (or be percent-encoded as '%25')";
+
+const MALFORMED_URI_EXPECTED = Object.freeze({
+  percentEncoding: '%XX',
+  hexDigits: '0-9A-Fa-f',
+});
+
+/**
  * Derive a "what real route does this single path segment name?" map
  * from `ENDPOINT_CATALOG`. Drift-proof: adding a new endpoint
  * automatically extends the hint map; nothing to hand-edit.
@@ -1261,6 +1329,29 @@ export function createServer(
 
   app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     const now = Date.now();
+    if (isMalformedUriError(err)) {
+      // Match the 404 catch-all envelope shape so a consumer can treat
+      // malformed-uri as a sibling: `{error, message, expected,
+      // didYouMean?, path, method, discovery, endpoints, [timestamp,
+      // timestampIso]}`. Pre-fixed body filed the same diagnostic gap
+      // every other 400 on the endpoint family already filled.
+      const endpoints: EndpointIndexCompactEntry[] = buildEndpointIndexCompact();
+      const ws = buildWsAdvertisement(req);
+      if (ws) endpoints.push({ path: ws.url, methods: ['CONNECT'] });
+      const didYouMean = suggestCleanedPath(req.path);
+      const body: Record<string, unknown> = {
+        error: 'malformed-uri',
+        message: MALFORMED_URI_MESSAGE,
+        expected: MALFORMED_URI_EXPECTED,
+      };
+      if (didYouMean !== undefined) body.didYouMean = didYouMean;
+      body.path = req.path;
+      body.method = req.method;
+      body.discovery = '/';
+      body.endpoints = endpoints;
+      res.status(400).json(finalizeTimestamps(body, now));
+      return;
+    }
     const e = (err && typeof err === 'object' ? err : {}) as {
       status?: unknown;
       expose?: unknown;
