@@ -258,10 +258,12 @@ function FlowNode({
       className="inline-flex items-center"
     >
       <span
-        className={`inline-flex flex-col items-start rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`}
+        className={`inline-flex items-baseline gap-1.5 rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`}
       >
         <span className="font-mono uppercase tracking-wider">{spec.label}</span>
-        {spec.subtitle && <span className="text-[10px] text-gray-400">{spec.subtitle}</span>}
+        {spec.subtitle && (
+          <span className="text-[10px] uppercase tracking-wider text-gray-400">{spec.subtitle}</span>
+        )}
       </span>
       {trailingEdge && (
         <span

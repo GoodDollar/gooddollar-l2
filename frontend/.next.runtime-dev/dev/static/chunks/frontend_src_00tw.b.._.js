@@ -3020,7 +3020,7 @@ function FlowNode({ spec, tone, trailingEdge }) {
         className: "inline-flex items-center",
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                className: `inline-flex flex-col items-start rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`,
+                className: `inline-flex items-baseline gap-1.5 rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`,
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         className: "font-mono uppercase tracking-wider",
@@ -3031,12 +3031,12 @@ function FlowNode({ spec, tone, trailingEdge }) {
                         columnNumber: 9
                     }, this),
                     spec.subtitle && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "text-[10px] text-gray-400",
+                        className: "text-[10px] uppercase tracking-wider text-gray-400",
                         children: spec.subtitle
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 264,
-                        columnNumber: 27
+                        lineNumber: 265,
+                        columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
@@ -3052,7 +3052,7 @@ function FlowNode({ spec, tone, trailingEdge }) {
                 children: "→"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 267,
+                lineNumber: 269,
                 columnNumber: 9
             }, this)
         ]

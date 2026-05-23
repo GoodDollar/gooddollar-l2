@@ -314,4 +314,32 @@ describe('PipelineFlowDiagram', () => {
     expect(section.textContent).not.toMatch(/10\.0\.0\.42/)
     expect(section.textContent).not.toMatch(/super-secret-host/)
   })
+
+  it('eToro pill renders the demo subtitle inline, not stacked (#0041)', () => {
+    // Before the fix, only the eToro node carried a `subtitle: 'demo'`
+    // and rendered as a 2-row flex-col pill that broke the diagram's
+    // shared baseline. The fix puts the subtitle inline on the same row
+    // as the label so all six pipeline pills share one pill height.
+    mockOnChainUnknown()
+    installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
+
+    const etoroLi = screen.getByTestId('pipeline-node-etoro')
+    const pill = etoroLi.querySelector(':scope > span:first-child') as HTMLElement
+    expect(pill).not.toBeNull()
+    expect(pill.className).toMatch(/\bitems-baseline\b/)
+    expect(pill.className).not.toMatch(/\bflex-col\b/)
+
+    const labelSpans = pill.querySelectorAll(':scope > span')
+    expect(labelSpans.length).toBeGreaterThanOrEqual(2)
+    const labelTexts = Array.from(labelSpans).map((s) => s.textContent?.trim())
+    expect(labelTexts).toEqual(expect.arrayContaining(['eToro', 'demo']))
+
+    const priceServicePill = screen
+      .getByTestId('pipeline-node-price-service')
+      .querySelector(':scope > span:first-child') as HTMLElement
+    expect(priceServicePill).not.toBeNull()
+    expect(priceServicePill.className).toMatch(/\bitems-baseline\b/)
+    expect(priceServicePill.className).not.toMatch(/\bflex-col\b/)
+  })
 })
