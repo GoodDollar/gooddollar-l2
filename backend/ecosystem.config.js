@@ -271,6 +271,20 @@ module.exports = {
         HEDGE_DELTA_THRESHOLD_PCT: pick('HEDGE_DELTA_THRESHOLD_PCT', '2'),
       },
     }),
+    // Lane-1 price producer — defaults to ETORO_MODE=mock so PM2 can bring
+    // up the lane on any host without demo credentials. The downstream
+    // oracle-signer entry below points its PRICE_SERVICE_URL at this
+    // service's WS broadcaster (9301). Set ETORO_MODE (and demo creds)
+    // via the host's environment to switch to live demo.
+    app({
+      name: 'price-service',
+      script: 'price-service/dist/index.js',
+      env: {
+        ...BASE_ENV,
+        ETORO_MODE: pick('ETORO_MODE', 'mock'),
+        ORACLE_SYMBOLS: pick('ORACLE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ,NFLX'),
+      },
+    }),
     app({
       name: 'oracle-signer',
       script: 'oracle-signer/dist/index.js',
