@@ -58,7 +58,7 @@ describe('GET /api/oracle/status — merged response', () => {
     expect(data.quotes).toHaveLength(1)
     expect(data.proof.stocks[0].txHash).toBe('0xS1')
     expect(data.proof.crypto[0].txHash).toBe('0xC1')
-    expect(data.upstreams.priceService).toEqual({ status: 'ok' })
+    expect(data.upstreams.priceService).toEqual({ status: 'ok', label: 'mock' })
     expect(data.upstreams.oracleSigner).toEqual({ status: 'ok' })
   })
 
@@ -75,7 +75,7 @@ describe('GET /api/oracle/status — merged response', () => {
     expect(data.quotes).toHaveLength(1)
     expect(data.proof.stocks).toEqual([])
     expect(data.proof.crypto).toEqual([])
-    expect(data.upstreams.priceService).toEqual({ status: 'ok' })
+    expect(data.upstreams.priceService).toEqual({ status: 'ok', label: 'mock' })
     expect(data.upstreams.oracleSigner.status).toBe('down')
     expect(data.upstreams.oracleSigner.reason).toContain('ECONNREFUSED')
   })
