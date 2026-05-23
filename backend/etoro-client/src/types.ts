@@ -31,13 +31,42 @@ export interface NormalizedQuote {
   stale: boolean;
 }
 
-export type EtoroMode = 'sandbox' | 'real';
+/**
+ * Lane-1 mode contract.
+ *
+ * - `mock`: zero-network deterministic fake. No credentials required.
+ *   Trading is hard-disabled — every order method throws
+ *   `RealTradingDisabledError`. Used by tests and downstream services
+ *   when demo credentials are absent.
+ * - `demo-readonly`: real eToro demo base URLs. Market data is live
+ *   against the demo endpoint, trading methods throw
+ *   `RealTradingDisabledError`.
+ * - `demo-trading`: real eToro demo base URLs. Market data and trading
+ *   are both live against the demo account. Demo caps
+ *   (`MAX_DEMO_ORDER_NOTIONAL_USD`, `MAX_DAILY_DEMO_NOTIONAL_USD`) are
+ *   enforced before any order leaves the SDK.
+ * - `real-disabled`: market data only against demo URLs. Trading is
+ *   hard-disabled by `REAL_TRADING_ENABLED=false` in source. Provided
+ *   so a future lane can flip the source-level fence without re-doing
+ *   credential plumbing.
+ */
+export type EtoroMode =
+  | 'mock'
+  | 'demo-readonly'
+  | 'demo-trading'
+  | 'real-disabled';
 
 export interface EtoroCredentials {
   apiKey: string;
   apiSecret: string;
   baseUrl: string;
+  wsUrl: string;
   mode: EtoroMode;
+}
+
+export interface DemoCapConfig {
+  maxOrderNotionalUsd: number;
+  maxDailyNotionalUsd: number;
 }
 
 export interface EtoroClientConfig {

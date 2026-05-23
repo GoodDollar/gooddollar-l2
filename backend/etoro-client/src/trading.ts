@@ -1,6 +1,9 @@
 import { AxiosInstance } from 'axios';
 import { AuditLogger } from './audit-logger';
-import { OrderRequest, OrderResult, Position } from './types';
+import { REAL_TRADING_ENABLED } from './auth';
+import { DemoCapEnforcer, computeOrderNotionalUsd } from './cap-enforcer';
+import { DemoCapExceededError, RealTradingDisabledError } from './errors';
+import { EtoroMode, OrderRequest, OrderResult, Position } from './types';
 
 export interface LimitOrderRequest extends OrderRequest {
   type: 'limit' | 'stop';
@@ -21,16 +24,46 @@ export interface TradeHistoryEntry {
   status: 'filled' | 'cancelled' | 'expired';
 }
 
+export interface TradingModuleOptions {
+  /** SDK mode the module is operating in. Defaults to `mock`. */
+  mode?: EtoroMode;
+  /** Optional cap enforcer; when omitted, a no-cap stub is wired for non-`demo-trading` modes. */
+  capEnforcer?: DemoCapEnforcer;
+  /** Tradeable last-prices keyed by symbol, used to size notional for `openPosition` requests when `amount` is unit-count. */
+  notionalSizer?: (order: OrderRequest) => number;
+}
+
+/**
+ * TradingModule owns the source-level real-trading fence and the demo cap
+ * enforcement. Every mutating method is gated by `assertTradingEnabled()`,
+ * which throws `RealTradingDisabledError` for any mode that is not
+ * `demo-trading`. In `demo-trading` mode, `assertCapOk()` consults the
+ * `DemoCapEnforcer` and throws `DemoCapExceededError` before any HTTP call.
+ */
 export class TradingModule {
   private readonly http: AxiosInstance;
   private readonly audit: AuditLogger;
+  private readonly mode: EtoroMode;
+  private readonly capEnforcer?: DemoCapEnforcer;
+  private readonly notionalSizer?: (order: OrderRequest) => number;
 
-  constructor(http: AxiosInstance, audit: AuditLogger) {
+  constructor(http: AxiosInstance, audit: AuditLogger, options: TradingModuleOptions = {}) {
     this.http = http;
     this.audit = audit;
+    this.mode = options.mode ?? 'mock';
+    this.capEnforcer = options.capEnforcer;
+    this.notionalSizer = options.notionalSizer;
+  }
+
+  getMode(): EtoroMode {
+    return this.mode;
   }
 
   async openPosition(order: OrderRequest): Promise<OrderResult> {
+    this.assertTradingEnabled('openPosition');
+    const notional = this.computeNotional(order);
+    this.assertCapOk('openPosition', notional);
+
     const start = Date.now();
     try {
       const response = await this.http.post('/trading/orders', {
@@ -47,6 +80,7 @@ export class TradingModule {
       const data = asRecord(response.data);
       const result = this.normalizeOrderResult(data);
 
+      this.recordCap(notional);
       this.audit.log({
         action: 'openPosition',
         method: 'POST',
@@ -63,6 +97,10 @@ export class TradingModule {
   }
 
   async placeLimitOrder(order: LimitOrderRequest): Promise<OrderResult> {
+    this.assertTradingEnabled('placeLimitOrder');
+    const notional = this.computeNotional(order);
+    this.assertCapOk('placeLimitOrder', notional);
+
     const start = Date.now();
     try {
       const response = await this.http.post('/trading/orders', {
@@ -81,6 +119,7 @@ export class TradingModule {
       const data = asRecord(response.data);
       const result = this.normalizeOrderResult(data);
 
+      this.recordCap(notional);
       this.audit.log({
         action: 'placeLimitOrder',
         method: 'POST',
@@ -97,6 +136,8 @@ export class TradingModule {
   }
 
   async closePosition(positionId: string): Promise<OrderResult> {
+    this.assertTradingEnabled('closePosition');
+
     const start = Date.now();
     const endpoint = `/trading/positions/${positionId}/close`;
     try {
@@ -120,6 +161,8 @@ export class TradingModule {
   }
 
   async partialClose(positionId: string, amount: number): Promise<OrderResult> {
+    this.assertTradingEnabled('partialClose');
+
     const start = Date.now();
     const endpoint = `/trading/positions/${positionId}/close`;
     try {
@@ -143,6 +186,8 @@ export class TradingModule {
   }
 
   async cancelOrder(orderId: string): Promise<void> {
+    this.assertTradingEnabled('cancelOrder');
+
     const start = Date.now();
     const endpoint = `/trading/orders/${orderId}`;
     try {
@@ -230,6 +275,52 @@ export class TradingModule {
     }
   }
 
+  /**
+   * Source-level fence. Trading is permitted only when:
+   *   - mode === 'demo-trading' (the only mode that addresses the demo
+   *     trading endpoint), AND
+   *   - REAL_TRADING_ENABLED === false (which is hardcoded). The check is
+   *     phrased so that a future flip to true on real-disabled would still
+   *     refuse demo-trading without code change here.
+   *
+   * Every other mode (`mock`, `demo-readonly`, `real-disabled`) throws.
+   */
+  private assertTradingEnabled(action: string): void {
+    if (this.mode === 'demo-trading' && REAL_TRADING_ENABLED === false) {
+      return;
+    }
+    throw new RealTradingDisabledError(action, this.mode);
+  }
+
+  private assertCapOk(action: string, notional: number): void {
+    if (!this.capEnforcer) return;
+    const err = this.capEnforcer.wouldExceed(notional);
+    if (err) {
+      this.audit.log({
+        action,
+        method: 'PRE-CHECK',
+        path: '/cap-enforcer',
+        error: `${err.name}: cap=${err.cap} limit=${err.capLimitUsd} attempt=${err.attemptedNotionalUsd}`,
+      });
+      throw err;
+    }
+  }
+
+  private recordCap(notional: number): void {
+    if (this.capEnforcer && notional > 0) {
+      this.capEnforcer.recordOrder(notional);
+    }
+  }
+
+  private computeNotional(order: OrderRequest | LimitOrderRequest): number {
+    if (this.notionalSizer) {
+      const sized = this.notionalSizer(order);
+      if (Number.isFinite(sized) && sized > 0) return sized;
+    }
+    const price = 'price' in order && typeof order.price === 'number' ? order.price : undefined;
+    return computeOrderNotionalUsd({ price, amount: order.amount });
+  }
+
   private normalizeOrderResult(data: Record<string, unknown>): OrderResult {
     return {
       orderId: pickStr(data, 'orderId', 'order_id', 'id') || 'unknown',
@@ -286,6 +377,8 @@ export class TradingModule {
   }
 
   private wrapError(error: unknown, action: string): Error {
+    if (error instanceof RealTradingDisabledError) return error;
+    if (error instanceof DemoCapExceededError) return error;
     if (error instanceof Error) {
       const axErr = error as { response?: { data?: { errorCode?: string; message?: string } } };
       const code = axErr.response?.data?.errorCode;

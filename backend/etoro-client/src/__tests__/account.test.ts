@@ -11,7 +11,7 @@ function mockHttp() {
 }
 
 function mockAudit() {
-  return new AuditLogger('sandbox', '/dev/null');
+  return new AuditLogger('demo-readonly', '/dev/null');
 }
 
 describe('AccountModule', () => {

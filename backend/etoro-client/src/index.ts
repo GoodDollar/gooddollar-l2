@@ -1,27 +1,67 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { loadCredentialsFromEnv, redactCredentials } from './auth';
+import {
+  loadCredentialsFromEnv,
+  loadDemoCapConfig,
+  redactCredentials,
+  REAL_TRADING_ENABLED,
+  MODE_CAPABILITIES,
+} from './auth';
 import { RateLimiter, RateLimiterConfig } from './rate-limiter';
 import { AuditLogger } from './audit-logger';
 import { MarketDataModule } from './market-data';
 import { TradingModule } from './trading';
 import { AccountModule } from './account';
-import { EtoroClientConfig, EtoroCredentials, MarketDataConfig } from './types';
+import { DemoCapEnforcer } from './cap-enforcer';
+import { MockEtoroSource } from './mock-source';
+import {
+  DemoCapConfig,
+  EtoroClientConfig,
+  EtoroCredentials,
+  EtoroMode,
+  MarketDataConfig,
+  NormalizedQuote,
+  QuoteCallback,
+} from './types';
+
+/**
+ * Minimal interface the SDK satisfies for downstream services that just
+ * want to consume streaming quotes. Mirrors price-service's
+ * `MarketDataSource` so that `mock` mode can substitute a `MockEtoroSource`
+ * for a `MarketDataModule` without consumer changes.
+ */
+export interface EtoroMarketDataSource {
+  onQuote(callback: QuoteCallback): () => void;
+  subscribe(symbols: string[]): void;
+  startStreaming(): void;
+  stopStreaming(): void;
+  getCachedQuote?(symbol: string): NormalizedQuote | undefined;
+}
+
+export interface EtoroClientConstructorConfig
+  extends Partial<EtoroClientConfig> {
+  rateLimiter?: RateLimiterConfig;
+  marketData?: MarketDataConfig;
+  capConfig?: DemoCapConfig;
+}
 
 export class EtoroClient {
   readonly credentials: EtoroCredentials;
-  readonly marketData: MarketDataModule;
+  readonly marketData: EtoroMarketDataSource;
   readonly trading: TradingModule;
   readonly account: AccountModule;
+  readonly capEnforcer: DemoCapEnforcer;
 
   private readonly http: AxiosInstance;
   private readonly rateLimiter: RateLimiter;
   private readonly audit: AuditLogger;
   private sessionToken?: string;
 
-  constructor(config?: Partial<EtoroClientConfig & { rateLimiter?: RateLimiterConfig; marketData?: MarketDataConfig }>) {
+  constructor(config?: EtoroClientConstructorConfig) {
     this.credentials = config?.credentials ?? loadCredentialsFromEnv();
     this.rateLimiter = new RateLimiter(config?.rateLimiter);
     this.audit = new AuditLogger(this.credentials.mode);
+    const capConfig = config?.capConfig ?? loadDemoCapConfig();
+    this.capEnforcer = new DemoCapEnforcer(capConfig);
 
     this.http = axios.create({
       baseURL: this.credentials.baseUrl,
@@ -33,12 +73,29 @@ export class EtoroClient {
       },
     });
 
-    this.marketData = new MarketDataModule(this.http, config?.marketData);
-    this.trading = new TradingModule(this.http, this.audit);
+    if (this.credentials.mode === 'mock') {
+      this.marketData = new MockEtoroSource();
+    } else {
+      const mdConfig: MarketDataConfig = {
+        ...(config?.marketData ?? {}),
+        wsUrl: config?.marketData?.wsUrl ?? this.credentials.wsUrl,
+      };
+      this.marketData = new MarketDataModule(this.http, mdConfig);
+    }
+
+    this.trading = new TradingModule(this.http, this.audit, {
+      mode: this.credentials.mode,
+      capEnforcer: this.capEnforcer,
+    });
     this.account = new AccountModule(this.http, this.audit);
   }
 
   async authenticate(): Promise<string> {
+    if (this.credentials.mode === 'mock') {
+      this.sessionToken = 'mock-token';
+      return this.sessionToken;
+    }
+
     return this.rateLimiter.executeWithRetry(async () => {
       const start = Date.now();
       try {
@@ -87,14 +144,19 @@ export class EtoroClient {
     return Boolean(this.sessionToken);
   }
 
-  getMode(): string {
+  getMode(): EtoroMode {
     return this.credentials.mode;
+  }
+
+  getModeCapabilities() {
+    return MODE_CAPABILITIES[this.credentials.mode];
   }
 
   getSummary(): Record<string, string> {
     return {
       ...redactCredentials(this.credentials),
       authenticated: String(this.isAuthenticated()),
+      realTradingEnabled: String(REAL_TRADING_ENABLED),
     };
   }
 
@@ -127,15 +189,39 @@ export class EtoroClient {
 }
 
 export function createEtoroClient(
-  config?: Partial<EtoroClientConfig & { rateLimiter?: RateLimiterConfig }>,
+  config?: EtoroClientConstructorConfig,
 ): EtoroClient {
   return new EtoroClient(config);
 }
 
-export { loadCredentialsFromEnv, redactCredentials } from './auth';
+export {
+  loadCredentialsFromEnv,
+  loadDemoCapConfig,
+  redactCredentials,
+  resolveMode,
+  REAL_TRADING_ENABLED,
+  DEMO_BASE_URL_DEFAULT,
+  DEMO_WS_URL_DEFAULT,
+  MODE_CAPABILITIES,
+} from './auth';
 export { RateLimiter } from './rate-limiter';
 export { AuditLogger } from './audit-logger';
 export { MarketDataModule, computeConfidence } from './market-data';
-export { TradingModule } from './trading';
+export { TradingModule, TradingError } from './trading';
 export { AccountModule } from './account';
+export { DemoCapEnforcer, computeOrderNotionalUsd } from './cap-enforcer';
+export { MockEtoroSource } from './mock-source';
+export {
+  INSTRUMENT_SYMBOLS,
+  INSTRUMENT_MAP,
+  getInstrument,
+  isLaneSymbol,
+  loadInstrumentOverrides,
+  applyInstrumentOverrides,
+} from './instruments';
+export type { LaneSymbol, LaneInstrument, InstrumentOverrides } from './instruments';
+export {
+  RealTradingDisabledError,
+  DemoCapExceededError,
+} from './errors';
 export type * from './types';

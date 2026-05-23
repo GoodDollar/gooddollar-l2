@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { TradingModule, TradingError, LimitOrderRequest } from '../trading';
 import { AuditLogger } from '../audit-logger';
+import { DemoCapEnforcer } from '../cap-enforcer';
+import { DemoCapExceededError, RealTradingDisabledError } from '../errors';
+import { EtoroMode, OrderRequest } from '../types';
 
 jest.mock('fs', () => ({
   appendFileSync: jest.fn(),
@@ -10,19 +13,135 @@ function mockHttp() {
   return axios.create({ baseURL: 'https://mock.etoro.com' });
 }
 
-function mockAudit() {
-  return new AuditLogger('sandbox', '/dev/null');
+function mockAudit(mode: EtoroMode = 'demo-trading') {
+  return new AuditLogger(mode, '/dev/null');
 }
 
-describe('TradingModule', () => {
+function tradingFor(mode: EtoroMode, opts: { capEnforcer?: DemoCapEnforcer; notionalSizer?: (o: OrderRequest) => number } = {}) {
+  const http = mockHttp();
+  const audit = mockAudit(mode);
+  const trading = new TradingModule(http, audit, {
+    mode,
+    capEnforcer: opts.capEnforcer,
+    notionalSizer: opts.notionalSizer,
+  });
+  return { http, audit, trading };
+}
+
+describe('TradingModule — RealTradingDisabledError fence', () => {
+  const NON_TRADING_MODES: EtoroMode[] = ['mock', 'demo-readonly', 'real-disabled'];
+  const ORDER: OrderRequest = { symbol: 'AAPL', instrumentId: 'AAPL-US', side: 'buy', amount: 1 };
+
+  for (const mode of NON_TRADING_MODES) {
+    describe(`mode=${mode}`, () => {
+      it('openPosition throws RealTradingDisabledError', async () => {
+        const { trading } = tradingFor(mode);
+        await expect(trading.openPosition(ORDER)).rejects.toBeInstanceOf(RealTradingDisabledError);
+      });
+
+      it('placeLimitOrder throws RealTradingDisabledError', async () => {
+        const { trading } = tradingFor(mode);
+        await expect(trading.placeLimitOrder({ ...ORDER, type: 'limit', price: 1 })).rejects.toBeInstanceOf(RealTradingDisabledError);
+      });
+
+      it('closePosition throws RealTradingDisabledError', async () => {
+        const { trading } = tradingFor(mode);
+        await expect(trading.closePosition('POS-1')).rejects.toBeInstanceOf(RealTradingDisabledError);
+      });
+
+      it('partialClose throws RealTradingDisabledError', async () => {
+        const { trading } = tradingFor(mode);
+        await expect(trading.partialClose('POS-1', 1)).rejects.toBeInstanceOf(RealTradingDisabledError);
+      });
+
+      it('cancelOrder throws RealTradingDisabledError', async () => {
+        const { trading } = tradingFor(mode);
+        await expect(trading.cancelOrder('ORD-1')).rejects.toBeInstanceOf(RealTradingDisabledError);
+      });
+
+      it('the error mentions the action and the mode', async () => {
+        const { trading } = tradingFor(mode);
+        try {
+          await trading.openPosition(ORDER);
+          fail('expected RealTradingDisabledError');
+        } catch (e) {
+          expect(e).toBeInstanceOf(RealTradingDisabledError);
+          const err = e as RealTradingDisabledError;
+          expect(err.action).toBe('openPosition');
+          expect(err.mode).toBe(mode);
+          expect(err.message).toContain('REAL_TRADING_ENABLED');
+        }
+      });
+    });
+  }
+
+  it('does NOT throw RealTradingDisabledError in demo-trading happy path', async () => {
+    const { http, trading } = tradingFor('demo-trading');
+    http.post = jest.fn().mockResolvedValue({
+      status: 200,
+      data: { orderId: 'ORD', symbol: 'AAPL', side: 'buy', amount: 1, status: 'filled' },
+    });
+    await expect(trading.openPosition(ORDER)).resolves.toBeDefined();
+  });
+
+  it('read-only methods (getOrderStatus, getOpenPositions, getTradeHistory) do not require trading', async () => {
+    const { http, trading } = tradingFor('demo-readonly');
+    http.get = jest.fn().mockResolvedValue({ status: 200, data: { positions: [] } });
+    await expect(trading.getOpenPositions()).resolves.toEqual([]);
+  });
+});
+
+describe('TradingModule — DemoCapExceededError', () => {
+  it('throws when single order exceeds MAX_DEMO_ORDER_NOTIONAL_USD', async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100, maxDailyNotionalUsd: 10_000 });
+    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    http.post = jest.fn();
+
+    await expect(trading.openPosition({
+      symbol: 'AAPL',
+      instrumentId: 'AAPL-US',
+      side: 'buy',
+      amount: 200, // notional in USD-as-stake mode
+    })).rejects.toBeInstanceOf(DemoCapExceededError);
+
+    expect(http.post).not.toHaveBeenCalled();
+  });
+
+  it('throws when daily total would exceed MAX_DAILY_DEMO_NOTIONAL_USD', async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 1_000, maxDailyNotionalUsd: 1_500 });
+    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    http.post = jest.fn().mockResolvedValue({
+      status: 200,
+      data: { orderId: 'ORD', symbol: 'AAPL', side: 'buy', amount: 1, status: 'filled' },
+    });
+
+    // First order: 800 — accepted, recorded.
+    await trading.openPosition({ symbol: 'AAPL', instrumentId: 'AAPL-US', side: 'buy', amount: 800 });
+    // Second order: 800 — would push daily to 1600 > 1500 → reject.
+    await expect(trading.openPosition({
+      symbol: 'AAPL', instrumentId: 'AAPL-US', side: 'buy', amount: 800,
+    })).rejects.toBeInstanceOf(DemoCapExceededError);
+  });
+
+  it('does not record a cap when the HTTP call fails', async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 1_000, maxDailyNotionalUsd: 10_000 });
+    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    http.post = jest.fn().mockRejectedValue(new Error('500'));
+    await expect(trading.openPosition({
+      symbol: 'AAPL', instrumentId: 'AAPL-US', side: 'buy', amount: 500,
+    })).rejects.toBeInstanceOf(Error);
+    expect(cap.getDailyTotalUsd()).toBe(0);
+  });
+});
+
+describe('TradingModule — happy paths (demo-trading)', () => {
   let http: ReturnType<typeof mockHttp>;
-  let audit: ReturnType<typeof mockAudit>;
   let trading: TradingModule;
 
   beforeEach(() => {
-    http = mockHttp();
-    audit = mockAudit();
-    trading = new TradingModule(http, audit);
+    const built = tradingFor('demo-trading');
+    http = built.http;
+    trading = built.trading;
   });
 
   describe('openPosition', () => {
