@@ -72,11 +72,16 @@ const PROFILES = {
       { name: 'status-aggregator', status: 'error' },
     ],
   },
+  // Returns HTTP 500 with an HTML body on every path. Used by task 0007
+  // to verify the smoke surfaces the HTTP code, content-type, and a
+  // redacted body snippet on probe failure (instead of collapsing the
+  // diagnostic into a generic `status=unknown` line).
+  'lane7-smoke-html-500': null,
 };
 
 function buildBody(profile) {
   const p = PROFILES[profile];
-  if (!p) throw new Error(`unknown profile: ${profile}`);
+  if (!p || typeof p !== 'object') throw new Error(`unknown profile: ${profile}`);
   const services = p.services.map((s) => ({
     name: s.name,
     status: s.status,
@@ -98,14 +103,26 @@ function send(res, code, body) {
 
 function main() {
   const { port, profile } = parseArgs(process.argv);
-  if (!PROFILES[profile]) {
+  if (!(profile in PROFILES)) {
     console.error(
       `unknown profile "${profile}" (known: ${Object.keys(PROFILES).join(', ')})`,
     );
     process.exit(2);
   }
 
+  const isHtml500Profile = profile === 'lane7-smoke-html-500';
+
   const server = http.createServer((req, res) => {
+    if (isHtml500Profile) {
+      // Every path returns 500 + an HTML body so the smoke can exercise
+      // the diagnostic-row path. Body intentionally contains a long
+      // hex-ish token so the redaction pass has something to scrub.
+      res.writeHead(500, { 'content-type': 'text/html' });
+      res.end(
+        '<html>Internal Server Error: token=Bearer abcdef0123456789abcdef0123456789</html>',
+      );
+      return;
+    }
     const url = new URL(req.url || '/', `http://localhost:${port}`);
     if (url.pathname === '/api/status' || url.pathname === '/status.json') {
       return send(res, 200, buildBody(profile));

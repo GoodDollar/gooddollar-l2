@@ -145,10 +145,50 @@ add_summary() { SUMMARY_LINES+=("$1"); }
 
 # ----- helpers -----
 
-# Fetch a URL into stdout. Returns empty string on failure (exit code 0
-# preserved so probes keep advancing on error).
-http_body() {
-  curl -k -sS --max-time 10 "$1" 2>/dev/null || true
+# Reusable tempfile for probe bodies. A single trap drops it on exit so
+# probes never leak across runs and we keep curl/-w invocations atomic.
+TMP_BODY="$(mktemp)"
+trap 'rm -f "$TMP_BODY"' EXIT
+
+# Probe a URL. On return, the calling shell sees:
+#   HTTP_BODY  body bytes (empty on transport failure)
+#   HTTP_CODE  HTTP status code (3-digit string; "000" if curl could not
+#              complete the request)
+#   HTTP_CT    response Content-Type header (empty on transport failure)
+#   CURL_EXIT  curl(1) exit code — 0 success, 6 DNS, 7 refused, 28 timeout,
+#              35 TLS, 52 empty reply, 56 receive-failure (see `man curl`).
+# DO NOT call this inside `$(...)` — globals do not propagate out of
+# subshells. Designed as a drop-in replacement for the previous `http_body`
+# helper which discarded everything except the body.
+http_probe() {
+  local meta
+  meta="$(curl -k -sS --max-time 10 -o "$TMP_BODY" \
+    -w '%{http_code}\t%{content_type}' "$1" 2>/dev/null)"
+  CURL_EXIT=$?
+  HTTP_CODE="${meta%%$'\t'*}"
+  HTTP_CT="${meta#*$'\t'}"
+  HTTP_BODY="$(cat "$TMP_BODY" 2>/dev/null || true)"
+}
+
+# Trim a body to a single line of 80 bytes and redact 20+ char
+# alphanumeric tokens (JWT / OAuth / base64 secrets / API keys). Mirrors
+# the redaction shape used in scripts/testnet/health-gate.sh so the two
+# probes never leak shaped secrets, even by accident.
+redact_snippet() {
+  printf '%s' "$1" \
+    | tr -d '\n\r' \
+    | tr '|' '_' \
+    | sed -E 's#[A-Za-z0-9_+/=-]{20,}#[REDACTED-token]#g' \
+    | head -c 80
+}
+
+# Emit a 3-column diagnostic table row capturing the last http_probe
+# globals. Designed to follow the canonical OK/BLOCKER row so the
+# operator sees the failure context inline (HTTP code, content-type,
+# curl exit code, redacted body snippet) without re-running curl by
+# hand.
+add_diag_row() {
+  add_summary "| ↳ | HTTP ${HTTP_CODE:-000}, content-type ${HTTP_CT:-?}, curl_exit=${CURL_EXIT:-?} | body[:80]=\`$(redact_snippet "$HTTP_BODY")\` |"
 }
 
 # Extract a string field from a JSON body via node -e. Prints empty on
@@ -171,24 +211,31 @@ json_field() {
 
 probe_health() {
   local svc="$1" url="$2" want="$3"  # want = csv of acceptable statuses
-  local body status
-  body="$(http_body "$url")"
-  if [[ -z "$body" ]]; then
+  local status diag=0
+  http_probe "$url"
+  if [[ -z "$HTTP_BODY" ]]; then
     add_summary "| \`$svc\` | unreachable | ❌ BLOCKER |"
     BLOCKERS+=("$svc unreachable at $url")
-    return
+    diag=1
+  elif [[ ! "$HTTP_CODE" =~ ^2 ]]; then
+    add_summary "| \`$svc\` | http-$HTTP_CODE | ❌ BLOCKER |"
+    BLOCKERS+=("$svc returned HTTP $HTTP_CODE at $url")
+    diag=1
+  else
+    status="$(printf "%s" "$HTTP_BODY" | json_field status)"
+    status="${status:-unknown}"
+    case ",$want," in
+      *,"$status",*)
+        add_summary "| \`$svc\` | $status | ✅ OK |"
+        ;;
+      *)
+        add_summary "| \`$svc\` | $status | ❌ BLOCKER |"
+        BLOCKERS+=("$svc reported status=$status (want one of: $want)")
+        diag=1
+        ;;
+    esac
   fi
-  status="$(printf "%s" "$body" | json_field status)"
-  status="${status:-unknown}"
-  case ",$want," in
-    *,"$status",*)
-      add_summary "| \`$svc\` | $status | ✅ OK |"
-      ;;
-    *)
-      add_summary "| \`$svc\` | $status | ❌ BLOCKER |"
-      BLOCKERS+=("$svc reported status=$status (want one of: $want)")
-      ;;
-  esac
+  (( diag )) && add_diag_row
 }
 
 # ----- preflight -----
@@ -221,10 +268,17 @@ add_summary ""
 add_summary "## status-aggregator + contract classification"
 add_summary ""
 
-agg_body="$(http_body "$STATUS_AGGREGATOR_URL")"
+http_probe "$STATUS_AGGREGATOR_URL"
+agg_body="$HTTP_BODY"
+agg_diag=0
 if [[ -z "$agg_body" ]]; then
   add_summary "❌ status-aggregator at \`$STATUS_AGGREGATOR_URL\` returned empty body"
   BLOCKERS+=("status-aggregator unreachable at $STATUS_AGGREGATOR_URL")
+  agg_diag=1
+elif [[ ! "$HTTP_CODE" =~ ^2 ]]; then
+  add_summary "❌ status-aggregator at \`$STATUS_AGGREGATOR_URL\` returned HTTP $HTTP_CODE"
+  BLOCKERS+=("status-aggregator returned HTTP $HTTP_CODE at $STATUS_AGGREGATOR_URL")
+  agg_diag=1
 else
   parsed="$(printf "%s" "$agg_body" | node -e '
     let raw = "";
@@ -244,6 +298,7 @@ else
   if [[ "$(printf "%s" "$parsed" | head -n 1)" != "OK" ]]; then
     add_summary "❌ status-aggregator response did not parse as JSON with \`services[]\`"
     BLOCKERS+=("status-aggregator response not parseable")
+    agg_diag=1
   else
     declare -A AGG_STATUS=()
     while IFS=$'\t' read -r name st; do
@@ -272,6 +327,7 @@ else
     done
   fi
 fi
+(( agg_diag )) && add_diag_row
 
 # ----- 5. on-chain freshness -----
 
