@@ -84,8 +84,9 @@ surfaces the misconfiguration.
 
 ## Where to go next
 
+- Live-prices-on-chain proof runbook: [`docs/runbooks/lane1-live-prices-on-chain.md`](../../docs/runbooks/lane1-live-prices-on-chain.md)
+- Demo-hedge proof runbook: [`docs/runbooks/lane1-demo-hedge-proof.md`](../../docs/runbooks/lane1-demo-hedge-proof.md)
 - Full lane contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../../docs/ETORO_GOODCHAIN_ADAPTER.md)
 - Upstream producer: [`backend/price-service/README.md`](../price-service/README.md)
 - Sibling lane-1 consumer: [`backend/hedge-engine/README.md`](../hedge-engine/README.md)
-- Demo-hedge proof runbook: [`docs/runbooks/lane1-demo-hedge-proof.md`](../../docs/runbooks/lane1-demo-hedge-proof.md)
 - Lane scripts: `npm run install:lane1`, `npm run test:lane1`

@@ -181,8 +181,12 @@ npm run test:lane1      # runs all four suites; halts on first failure
 Full env contract, four-mode safety matrix, endpoint table, and the
 demo-proof runbook live in
 [`docs/ETORO_GOODCHAIN_ADAPTER.md`](docs/ETORO_GOODCHAIN_ADAPTER.md).
-The operator runbook for the demo-hedge proof is
-[`docs/runbooks/lane1-demo-hedge-proof.md`](docs/runbooks/lane1-demo-hedge-proof.md).
+Two operator runbooks cover the lane's two DoD halves:
+
+- Live-prices proof (eToro → price-service → oracle-signer → on-chain):
+  [`docs/runbooks/lane1-live-prices-on-chain.md`](docs/runbooks/lane1-live-prices-on-chain.md).
+- Demo-hedge proof (one capped demo open):
+  [`docs/runbooks/lane1-demo-hedge-proof.md`](docs/runbooks/lane1-demo-hedge-proof.md).
 
 ## Repository layout
 

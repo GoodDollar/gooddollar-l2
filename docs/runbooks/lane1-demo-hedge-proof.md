@@ -10,6 +10,10 @@ this file documents the existing behavior, never redefines it. The deep
 contract (env table, four-mode matrix, endpoints) lives in
 [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../ETORO_GOODCHAIN_ADAPTER.md).
 
+**Sibling proof:** the lane's other DoD half (live eToro demo prices on
+the L2 oracle) has its own runbook at
+[`docs/runbooks/lane1-live-prices-on-chain.md`](./lane1-live-prices-on-chain.md).
+
 ## Prerequisites
 
 - Valid eToro demo credentials: `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET`,

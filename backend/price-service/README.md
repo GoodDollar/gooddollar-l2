@@ -56,6 +56,7 @@ The SDK env (modes, credentials, caps, instrument overrides) is read by
 
 ## Where to go next
 
+- Live-prices-on-chain proof runbook: [`docs/runbooks/lane1-live-prices-on-chain.md`](../../docs/runbooks/lane1-live-prices-on-chain.md)
 - Full lane contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../../docs/ETORO_GOODCHAIN_ADAPTER.md)
 - SDK package: [`backend/etoro-client/README.md`](../etoro-client/README.md)
 - Lane scripts: `npm run install:lane1`, `npm run test:lane1`

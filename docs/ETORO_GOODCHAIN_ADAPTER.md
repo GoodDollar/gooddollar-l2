@@ -423,21 +423,12 @@ itself fails.
 
 ## Runbook — swap fake → real demo creds
 
-1. Provision a demo API key/secret pair in eToro's partner portal.
-2. Add to your `.env`:
-   ```
-   ETORO_MODE=demo-readonly
-   ETORO_DEMO_KEY=<key>
-   ETORO_DEMO_SECRET=<secret>
-   ```
-3. Run `node -e "require('./dist').createEtoroClient().getMode()"` —
-   should print `demo-readonly`.
-4. To enable demo trading: change `ETORO_MODE=demo-trading` and confirm
-   `MAX_DEMO_ORDER_NOTIONAL_USD` and `MAX_DAILY_DEMO_NOTIONAL_USD` are
-   set to safe values for your demo account.
-5. Verify with the price-service smoke: live demo quotes flow into
-   `backend/price-service` without code change because `MarketDataSource`
-   is interface-stable across modes.
+Operator runbook:
+[`docs/runbooks/lane1-live-prices-on-chain.md`](runbooks/lane1-live-prices-on-chain.md)
+walks the full path from demo creds → price-service → oracle-signer →
+on-chain `StockOracleV2`, including verification curls and a
+common-failures table. The sibling demo-hedge proof runbook is
+[`docs/runbooks/lane1-demo-hedge-proof.md`](runbooks/lane1-demo-hedge-proof.md).
 
 ## Lane-1 quick start
 
