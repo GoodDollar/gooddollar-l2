@@ -781,11 +781,14 @@ describe('HedgeStatusCard', () => {
     });
     render(<HedgeStatusCard />);
     const etoro = await screen.findByTestId('hedge-receipt-etoro-id');
-    const idSpan = etoro.querySelector('span[title]');
-    expect(idSpan).not.toBeNull();
-    expect(idSpan!.getAttribute('title')).toBe(longId);
-    expect(idSpan!.textContent).toBe(longId);
-    const classes = idSpan!.className.split(/\s+/);
+    // After #0043 the truncated id is rendered as a <button> (click-to-copy);
+    // the full id still lives in the `title` attribute and the truncate
+    // classes still cap visual width.
+    const idEl = etoro.querySelector('[title]') as HTMLElement | null;
+    expect(idEl).not.toBeNull();
+    expect(idEl!.getAttribute('title')).toBe(longId);
+    expect(idEl!.textContent).toBe(longId);
+    const classes = idEl!.className.split(/\s+/);
     expect(classes).toContain('truncate');
     expect(classes).toContain('max-w-[10ch]');
     expect(classes).toContain('inline-block');
@@ -813,6 +816,30 @@ describe('HedgeStatusCard', () => {
     expect(cell.textContent).not.toContain('undefined');
   });
 
+  it('receipt id and eToro id are rendered as copy buttons with aria-label (#0043)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const internal = await screen.findByTestId('hedge-receipt-internal-id-copy');
+    expect(internal.tagName).toBe('BUTTON');
+    expect(internal.getAttribute('aria-label')).toBe(
+      'Copy hedge id abc12345defg',
+    );
+    const etoro = screen.getByTestId('hedge-receipt-etoro-id-copy');
+    expect(etoro.tagName).toBe('BUTTON');
+    expect(etoro.getAttribute('aria-label')).toBe('Copy eToro order id etoro-1');
+  });
+
+  it('eToro id placeholder stays a non-interactive span when receipt has no eToro id (#0043)', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: [{ ...BASE_RESPONSE.receipts[0], etoroOrderId: undefined }],
+    });
+    render(<HedgeStatusCard />);
+    const etoro = await screen.findByTestId('hedge-receipt-etoro-id');
+    expect(etoro).toHaveTextContent('—');
+    expect(screen.queryByTestId('hedge-receipt-etoro-id-copy')).toBeNull();
+  });
+
   it('receipts table renders short eToro ids without overflow chrome (no regression #0039)', async () => {
     mockFetchOnce({
       ...BASE_RESPONSE,
@@ -820,13 +847,13 @@ describe('HedgeStatusCard', () => {
     });
     render(<HedgeStatusCard />);
     const etoro = await screen.findByTestId('hedge-receipt-etoro-id');
-    const idSpan = etoro.querySelector('span[title]');
-    expect(idSpan).not.toBeNull();
-    expect(idSpan!.getAttribute('title')).toBe('etoro-1');
-    expect(idSpan!.textContent).toBe('etoro-1');
-    // CSS truncation is a no-op for short ids — class still applied so
-    // column geometry stays identical across viewports.
-    expect(idSpan!.className.split(/\s+/)).toContain('truncate');
+    // After #0043 the id is a <button> with click-to-copy. The truncate
+    // class still applies so geometry stays identical across viewports.
+    const idEl = etoro.querySelector('[title]') as HTMLElement | null;
+    expect(idEl).not.toBeNull();
+    expect(idEl!.getAttribute('title')).toBe('etoro-1');
+    expect(idEl!.textContent).toBe('etoro-1');
+    expect(idEl!.className.split(/\s+/)).toContain('truncate');
   });
 
   it('renders a yellow throttled banner with countdown when the limiter returns 429', async () => {

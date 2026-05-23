@@ -21,6 +21,7 @@ import {
   ArrowPathIcon,
   InboxIcon,
 } from './HedgeStatusCard/icons'
+import { CopyIdButton } from './HedgeStatusCard/CopyIdButton'
 import { ReceiptsExportToolbar } from './HedgeStatusCard/ReceiptsExportToolbar'
 
 /**
@@ -1034,7 +1035,14 @@ const ReceiptRow = memo(function ReceiptRow({ receipt: r }: { receipt: HedgeRece
         {timeAgo(r.timestamp)}
       </td>
       <td className="py-1.5 pr-2 text-xs text-gray-300">
-        <div>{shortId(r.id)}</div>
+        <div>
+          <CopyIdButton
+            value={r.id}
+            label={shortId(r.id)}
+            ariaLabel={`Copy hedge id ${r.id}`}
+            testId="hedge-receipt-internal-id-copy"
+          />
+        </div>
         <div data-testid="hedge-receipt-etoro-id" className="text-gray-500">
           eToro:{' '}
           {/* eToro order ids are opaque ~48-char identifiers. Without a
@@ -1043,17 +1051,17 @@ const ReceiptRow = memo(function ReceiptRow({ receipt: r }: { receipt: HedgeRece
               SYMBOL / SIDE / NOTIONAL / Δ / STATUS to the right. The
               fixed 10ch cap keeps column geometry stable across
               viewports; the title attribute restores full text on
-              hover/long-press (task 0039). */}
-          {r.etoroOrderId ? (
-            <span
-              className="text-gray-400 inline-block max-w-[10ch] truncate align-bottom"
-              title={r.etoroOrderId}
-            >
-              {r.etoroOrderId}
-            </span>
-          ) : (
-            <span className="text-gray-400">—</span>
-          )}
+              hover/long-press (task 0039). CopyIdButton wraps the
+              truncated span so an operator can copy the FULL id with
+              one tap (task 0043). */}
+          <CopyIdButton
+            value={r.etoroOrderId}
+            label={r.etoroOrderId}
+            ariaLabel={r.etoroOrderId ? `Copy eToro order id ${r.etoroOrderId}` : ''}
+            visibleClassName="text-gray-400 inline-block max-w-[10ch] truncate align-bottom"
+            placeholder={<span className="text-gray-400">—</span>}
+            testId="hedge-receipt-etoro-id-copy"
+          />
         </div>
       </td>
       <td className="py-1.5 pr-2 text-white">{r.symbol}</td>
