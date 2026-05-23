@@ -105,41 +105,101 @@ export function readPackageVersion(
 const PACKAGE_VERSION = readPackageVersion();
 
 /**
- * Map of exact known paths to the methods they accept. Keep grep-friendly:
- * downstreams (oracle-signer, frontend) match on path → 405 Allow header.
- * The parametric `/quotes/:symbol` route is matched by `QUOTES_SYMBOL_RE`.
+ * Single source of truth for every endpoint the service exposes. The
+ * discovery payload (`GET /`), the 404 hint list, and the 405 method
+ * dispatch all read off this one array — there's no second place to
+ * forget when a new endpoint lands.
+ *
+ * Summaries are one-line operator hints; the wire contract caps them at
+ * 140 chars (asserted in the test suite) so a grep through the live
+ * discovery payload stays readable.
+ *
+ * `parametric: true` marks routes whose path shape carries a placeholder
+ * (`/quotes/:symbol`). They are matched by a single regex below rather
+ * than by exact-string lookup.
  */
-const KNOWN_ROUTES: ReadonlyMap<string, readonly string[]> = new Map([
-  ['/', ['GET', 'OPTIONS']],
-  ['/health', ['GET', 'OPTIONS']],
-  ['/quotes', ['GET', 'OPTIONS']],
-  ['/quotes/fresh/all', ['GET', 'OPTIONS']],
-  ['/audit/stats', ['GET', 'OPTIONS']],
-  ['/status/quotes', ['GET', 'OPTIONS']],
-]);
-const QUOTES_SYMBOL_RE = /^\/quotes\/[^/]+$/;
-
-/**
- * Routes whose path shape is parametric and so cannot live in the
- * exact-match `KNOWN_ROUTES` map. Listed here so the discovery surface
- * (`GET /` and the unknown-route 404) can advertise them off the same
- * single source of truth as the static routes.
- */
-const PARAMETRIC_ROUTES: readonly string[] = ['/quotes/:symbol'];
-
-function buildEndpointPaths(): string[] {
-  return [...KNOWN_ROUTES.keys(), ...PARAMETRIC_ROUTES];
+interface EndpointDoc {
+  path: string;
+  methods: readonly string[];
+  summary: string;
+  parametric?: boolean;
 }
 
-function buildEndpointIndex(): Array<{ path: string; methods: string[] }> {
-  const out: Array<{ path: string; methods: string[] }> = [];
-  for (const [path, methods] of KNOWN_ROUTES) {
-    // OPTIONS is a CORS-layer transport detail; hide it from the
-    // discovery payload so integrators see only the data verbs.
-    out.push({ path, methods: methods.filter((m) => m !== 'OPTIONS') });
+const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
+  {
+    path: '/',
+    methods: ['GET'],
+    summary: 'Service discovery: lists endpoints, version, docs.',
+  },
+  {
+    path: '/health',
+    methods: ['GET'],
+    summary: 'Liveness + readiness for load balancers; 503 when degraded.',
+  },
+  {
+    path: '/quotes',
+    methods: ['GET'],
+    summary: 'Every cached quote with cache age and per-quote filter verdict.',
+  },
+  {
+    path: '/quotes/fresh/all',
+    methods: ['GET'],
+    summary: 'Only quotes that are non-stale AND accepted by the risk filter.',
+  },
+  {
+    path: '/quotes/:symbol',
+    methods: ['GET'],
+    summary:
+      'Single symbol; 400 invalid-symbol, 404 symbol-not-configured or ' +
+      'no-quote, 200 quote envelope.',
+    parametric: true,
+  },
+  {
+    path: '/status/quotes',
+    methods: ['GET'],
+    summary:
+      'Per-symbol freshness (last-update age, session state, confidence) ' +
+      'for dashboards.',
+  },
+  {
+    path: '/audit/stats',
+    methods: ['GET'],
+    summary:
+      'Ingested vs rejected counts, rejection breakdown, acceptance ratio, ' +
+      'uptime.',
+  },
+];
+
+/**
+ * Pinned regex for the one parametric route this service exposes today.
+ * Future parametric routes would carry their own matcher inside the
+ * catalog entry; with a single entry, a const keeps the matcher
+ * declared next to the data structure it serves.
+ */
+const QUOTES_SYMBOL_RE = /^\/quotes\/[^/]+$/;
+
+const CATALOG_EXACT: ReadonlyMap<string, EndpointDoc> = new Map(
+  ENDPOINT_CATALOG.filter((e) => !e.parametric).map((e) => [e.path, e]),
+);
+
+function findCatalogEntry(reqPath: string): EndpointDoc | undefined {
+  const exact = CATALOG_EXACT.get(reqPath);
+  if (exact) return exact;
+  // Only one parametric shape today; if we add more, generalise to a
+  // (path, regex) tuple inside `EndpointDoc` rather than reaching for
+  // a dispatch table.
+  if (QUOTES_SYMBOL_RE.test(reqPath)) {
+    return ENDPOINT_CATALOG.find((e) => e.path === '/quotes/:symbol');
   }
-  for (const path of PARAMETRIC_ROUTES) out.push({ path, methods: ['GET'] });
-  return out;
+  return undefined;
+}
+
+function buildEndpointIndex(): Array<{ path: string; methods: readonly string[]; summary: string }> {
+  return ENDPOINT_CATALOG.map((e) => ({
+    path: e.path,
+    methods: e.methods,
+    summary: e.summary,
+  }));
 }
 
 /**
@@ -437,10 +497,12 @@ export function createServer(
   });
 
   app.all('*', (req: Request, res: Response) => {
-    const allowed =
-      KNOWN_ROUTES.get(req.path) ??
-      (QUOTES_SYMBOL_RE.test(req.path) ? ['GET', 'OPTIONS'] : undefined);
-    if (allowed && !allowed.includes(req.method)) {
+    const entry = findCatalogEntry(req.path);
+    if (entry && !entry.methods.includes(req.method)) {
+      // OPTIONS is appended at the call site (rather than stored in the
+      // catalog) so the discovery payload stays clean of the CORS
+      // transport verb while the 405 still advertises it.
+      const allowed = [...entry.methods, 'OPTIONS'];
       res.setHeader('Allow', allowed.join(', '));
       res.status(405).json({
         error: 'method-not-allowed',
@@ -451,9 +513,16 @@ export function createServer(
       });
       return;
     }
-    const endpoints: string[] = buildEndpointPaths();
+    const endpoints: Array<{ path: string; methods: readonly string[]; summary: string }> =
+      buildEndpointIndex();
     const ws = buildWsAdvertisement(req);
-    if (ws) endpoints.push(ws.url);
+    if (ws) {
+      endpoints.push({
+        path: ws.url,
+        methods: ['CONNECT'],
+        summary: 'WebSocket broadcaster: snapshot on connect, then live quote frames.',
+      });
+    }
     res.status(404).json({
       error: 'not-found',
       path: req.path,

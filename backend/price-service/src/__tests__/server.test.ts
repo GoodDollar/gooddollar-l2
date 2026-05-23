@@ -1170,17 +1170,23 @@ describe('REST Server — root index and 404 endpoint discovery', () => {
     expect(body.allowed).toEqual(['GET', 'OPTIONS']);
   });
 
-  it('GET /openapi.json returns 404 with endpoints array of path strings', async () => {
+  it('GET /openapi.json returns 404 with a catalog-shaped endpoints array', async () => {
     const res = await fetch(`${baseUrl}/openapi.json`);
     const body = (await res.json()) as Record<string, unknown>;
     expect(res.status).toBe(404);
     expect(body.error).toBe('not-found');
     expect(Array.isArray(body.endpoints)).toBe(true);
-    const eps = body.endpoints as unknown[];
-    expect(eps).toEqual(expect.arrayContaining(['/health', '/quotes', '/quotes/:symbol']));
+    const eps = body.endpoints as Array<{ path: string; methods: string[]; summary: string }>;
+    const paths = eps.map((e) => e.path);
+    expect(paths).toEqual(
+      expect.arrayContaining(['/health', '/quotes', '/quotes/:symbol']),
+    );
     for (const e of eps) {
-      expect(typeof e).toBe('string');
-      expect((e as string).length).toBeGreaterThan(0);
+      expect(typeof e.path).toBe('string');
+      expect(e.path.length).toBeGreaterThan(0);
+      expect(Array.isArray(e.methods)).toBe(true);
+      expect(typeof e.summary).toBe('string');
+      expect(e.summary.length).toBeGreaterThan(0);
     }
   });
 
