@@ -95,7 +95,7 @@ export function OracleUpdatesPanel() {
     <section
       id="panel-oracle-updates"
       aria-labelledby="oracle-updates-heading"
-      className="rounded-2xl border border-white/10 bg-dark-100/60 p-5"
+      className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
       <header className="mb-3 flex items-center justify-between">
         <h2 id="oracle-updates-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
@@ -104,6 +104,7 @@ export function OracleUpdatesPanel() {
         <span className="text-xs text-gray-500">last {MAX_EVENTS} PriceUpdated events</span>
       </header>
 
+      <div className="flex-1">
       {subscriptionError && (
         <div className="mb-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
           <div className="font-semibold">Oracle event subscription degraded</div>
@@ -152,6 +153,7 @@ export function OracleUpdatesPanel() {
           })}
         </ul>
       )}
+      </div>
     </section>
   )
 }

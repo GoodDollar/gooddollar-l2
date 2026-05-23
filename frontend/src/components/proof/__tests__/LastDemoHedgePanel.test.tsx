@@ -159,6 +159,18 @@ describe('LastDemoHedgePanel', () => {
     expect(container.querySelector('section[id="panel-last-hedge"]')).not.toBeNull()
   })
 
+  it('outer section uses flex flex-col h-full so it fills its grid cell row height (#0039)', () => {
+    globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
+    const { container } = render(<LastDemoHedgePanel intervalMs={60_000} />)
+    const section = container.querySelector('section[id="panel-last-hedge"]') as HTMLElement
+    expect(section).not.toBeNull()
+    expect(section.className).toMatch(/\bh-full\b/)
+    expect(section.className).toMatch(/\bflex\b/)
+    expect(section.className).toMatch(/\bflex-col\b/)
+    const body = section.querySelector(':scope > div.flex-1')
+    expect(body, 'expected a flex-1 body wrapper inside the panel').not.toBeNull()
+  })
+
   it('renders the no-op sentinel as a "below-threshold tick" card without a BUY badge', async () => {
     mockFetchOk(envelope(PROOF_NO_OP))
 

@@ -166,7 +166,7 @@ export function LiveQuotesPanel({
     <section
       id="panel-live-quotes"
       aria-labelledby="live-quotes-heading"
-      className="rounded-2xl border border-white/10 bg-dark-100/60 p-5"
+      className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
       <header className="mb-3 flex flex-wrap items-center justify-between gap-y-1">
         <h2 id="live-quotes-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
@@ -188,6 +188,7 @@ export function LiveQuotesPanel({
         </div>
       </header>
 
+      <div className="flex-1">
       {state.status === 'loading' && (
         <div className="space-y-2" role="status" aria-label="Loading live quotes">
           {[0, 1, 2, 3].map((i) => (
@@ -257,6 +258,7 @@ export function LiveQuotesPanel({
           </table>
         </div>
       )}
+      </div>
     </section>
   )
 }

@@ -10,17 +10,31 @@ vi.mock('@/components/proof/PipelineStatusBanner', () => ({
 vi.mock('@/components/proof/PipelineFlowDiagram', () => ({
   PipelineFlowDiagram: () => <div data-testid="mock-pipeline-flow-diagram" />,
 }))
+// Each panel mock mirrors the outer <section> shell the real component
+// renders (id + the layout classes the page-level grid relies on for
+// row alignment), so page-level tests can assert composition without
+// pulling in wagmi / fetch dependencies. The actual class-list contract
+// for the real shells is enforced by the per-panel test files.
+const PANEL_SHELL = 'flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5'
 vi.mock('@/components/proof/LiveQuotesPanel', () => ({
-  LiveQuotesPanel: () => <div data-testid="mock-live-quotes-panel" />,
+  LiveQuotesPanel: () => (
+    <section id="panel-live-quotes" data-testid="mock-live-quotes-panel" className={PANEL_SHELL} />
+  ),
 }))
 vi.mock('@/components/proof/OnChainOraclePanel', () => ({
-  OnChainOraclePanel: () => <div data-testid="mock-on-chain-oracle-panel" />,
+  OnChainOraclePanel: () => (
+    <section id="panel-onchain-oracle" data-testid="mock-on-chain-oracle-panel" className={PANEL_SHELL} />
+  ),
 }))
 vi.mock('@/components/proof/OracleUpdatesPanel', () => ({
-  OracleUpdatesPanel: () => <div data-testid="mock-oracle-updates-panel" />,
+  OracleUpdatesPanel: () => (
+    <section id="panel-oracle-updates" data-testid="mock-oracle-updates-panel" className={PANEL_SHELL} />
+  ),
 }))
 vi.mock('@/components/proof/LastDemoHedgePanel', () => ({
-  LastDemoHedgePanel: () => <div data-testid="mock-last-demo-hedge-panel" />,
+  LastDemoHedgePanel: () => (
+    <section id="panel-last-hedge" data-testid="mock-last-demo-hedge-panel" className={PANEL_SHELL} />
+  ),
 }))
 
 import LivePricesProofPage from '../page'
@@ -125,5 +139,27 @@ describe('LivePricesProofPage', () => {
     expect(screen.getByTestId('proof-page-footer')).not.toHaveTextContent(
       /If any panel is empty/i,
     )
+  })
+
+  it('each grid panel section carries the h-full + flex flex-col shell so short rows fill their grid cell', () => {
+    // Guards lane6-proof-grid-left-column-ends-short-leaves-dead-space (#0039):
+    // when a left-column panel renders a short error/empty box, the row must
+    // still stretch to the taller panel's height so the panel background
+    // (not the page background) paints the rest of the cell.
+    const { container } = render(<LivePricesProofPage />)
+    const panelIds = [
+      'panel-live-quotes',
+      'panel-onchain-oracle',
+      'panel-oracle-updates',
+      'panel-last-hedge',
+    ] as const
+    for (const id of panelIds) {
+      const section = container.querySelector(`section#${id}`)
+      expect(section, `panel ${id} should render as a <section>`).not.toBeNull()
+      const cls = section?.className ?? ''
+      expect(cls, `panel ${id} className: ${cls}`).toMatch(/\bh-full\b/)
+      expect(cls, `panel ${id} className: ${cls}`).toMatch(/\bflex\b/)
+      expect(cls, `panel ${id} className: ${cls}`).toMatch(/\bflex-col\b/)
+    }
   })
 })

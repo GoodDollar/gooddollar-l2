@@ -59,6 +59,22 @@ describe('OnChainOraclePanel', () => {
     expect(container.querySelector('section[id="panel-onchain-oracle"]')).not.toBeNull()
   })
 
+  it('outer section uses flex flex-col h-full so it fills its grid cell row height (#0039)', () => {
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+    const { container } = render(<OnChainOraclePanel />)
+    const section = container.querySelector('section[id="panel-onchain-oracle"]') as HTMLElement
+    expect(section).not.toBeNull()
+    expect(section.className).toMatch(/\bh-full\b/)
+    expect(section.className).toMatch(/\bflex\b/)
+    expect(section.className).toMatch(/\bflex-col\b/)
+    const body = section.querySelector(':scope > div.flex-1')
+    expect(body, 'expected a flex-1 body wrapper inside the panel').not.toBeNull()
+  })
+
   it('renders the sanitised oracle copy and leaks no wagmi internals in the error block', async () => {
     useReadContractsMock.mockReturnValue({
       data: undefined,

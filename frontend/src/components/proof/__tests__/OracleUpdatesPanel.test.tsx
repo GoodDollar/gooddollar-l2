@@ -51,6 +51,17 @@ describe('OracleUpdatesPanel', () => {
     expect(container.querySelector('section[id="panel-oracle-updates"]')).not.toBeNull()
   })
 
+  it('outer section uses flex flex-col h-full so it fills its grid cell row height (#0039)', () => {
+    const { container } = render(<OracleUpdatesPanel />)
+    const section = container.querySelector('section[id="panel-oracle-updates"]') as HTMLElement
+    expect(section).not.toBeNull()
+    expect(section.className).toMatch(/\bh-full\b/)
+    expect(section.className).toMatch(/\bflex\b/)
+    expect(section.className).toMatch(/\bflex-col\b/)
+    const body = section.querySelector(':scope > div.flex-1')
+    expect(body, 'expected a flex-1 body wrapper inside the panel').not.toBeNull()
+  })
+
   it('renders the canned degraded card when wagmi invokes onError, without leaking the raw error', () => {
     render(<OracleUpdatesPanel />)
 

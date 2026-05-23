@@ -158,6 +158,21 @@ describe('LiveQuotesPanel', () => {
     expect(container.querySelector('section[id="panel-live-quotes"]')).not.toBeNull()
   })
 
+  it('outer section uses flex flex-col h-full so it fills its grid cell row height', () => {
+    // Lane6 #0039: a short error/empty branch must not leak a dark void
+    // below the panel. The shell stretches to the grid row height and the
+    // body content is wrapped in a flex-1 container.
+    globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
+    const { container } = render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+    const section = container.querySelector('section[id="panel-live-quotes"]') as HTMLElement
+    expect(section).not.toBeNull()
+    expect(section.className).toMatch(/\bh-full\b/)
+    expect(section.className).toMatch(/\bflex\b/)
+    expect(section.className).toMatch(/\bflex-col\b/)
+    const body = section.querySelector(':scope > div.flex-1')
+    expect(body, 'expected a flex-1 body wrapper inside the panel').not.toBeNull()
+  })
+
   it('renders a stale row pill when cacheAge exceeds the threshold', async () => {
     mockFetchOnce(QUOTES_STALE)
 

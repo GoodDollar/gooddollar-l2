@@ -166,7 +166,7 @@ export function OnChainOraclePanel() {
     <section
       id="panel-onchain-oracle"
       aria-labelledby="onchain-oracle-heading"
-      className="rounded-2xl border border-white/10 bg-dark-100/60 p-5"
+      className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
       <header className="mb-3 flex items-center justify-between">
         <h2 id="onchain-oracle-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
@@ -195,6 +195,7 @@ export function OnChainOraclePanel() {
         )}
       </header>
 
+      <div className="flex-1">
       {isLoading && (
         <div className="space-y-2" role="status" aria-label="Loading on-chain oracle data">
           {[0, 1, 2, 3].map((i) => (
@@ -272,6 +273,7 @@ export function OnChainOraclePanel() {
           </table>
         </div>
       )}
+      </div>
     </section>
   )
 }

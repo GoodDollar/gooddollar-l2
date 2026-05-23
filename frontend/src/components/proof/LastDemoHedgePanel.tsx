@@ -168,7 +168,7 @@ export function LastDemoHedgePanel({
     <section
       id="panel-last-hedge"
       aria-labelledby="last-hedge-heading"
-      className="rounded-2xl border border-white/10 bg-dark-100/60 p-5"
+      className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
       <header className="mb-3 flex items-center justify-between">
         <h2 id="last-hedge-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
@@ -179,6 +179,7 @@ export function LastDemoHedgePanel({
         </span>
       </header>
 
+      <div className="flex-1">
       {state.status === 'loading' && (
         <div className="h-32 animate-pulse rounded bg-white/5" role="status" aria-label="Loading hedge proof" />
       )}
@@ -203,6 +204,7 @@ export function LastDemoHedgePanel({
       {state.status === 'ok' && (
         <ProofCard proof={state.data.proof} source={state.data.source} />
       )}
+      </div>
     </section>
   )
 }
