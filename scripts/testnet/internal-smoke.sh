@@ -101,7 +101,13 @@ for pair in \
   fi
 done
 (( malformed == 0 )) || exit 2
-unset PROBE_URL_RE malformed pair url
+unset malformed pair url
+# PROBE_URL_RE intentionally stays in scope below — `LANE7_RPC` is the
+# fifth URL the smoke consumes (via `new URL(...)` in the on-chain
+# eth_call). Adding it to the loop above is awkward (it's optional and
+# resolved later); the cleanest fix is one extra regex check after the
+# LANE7_RPC resolution. If a future task introduces yet another URL
+# input, validate it here too before unsetting the regex.
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 LANE7_ENV_FILE="${LANE7_ENV_FILE:-$REPO_ROOT/.env}"
@@ -109,6 +115,24 @@ REPORT="${REPORT:-$REPO_ROOT/docs/testnet/iter05-internal-smoke.md}"
 HEALTH_CONTRACT="${HEALTH_CONTRACT-$REPO_ROOT/docs/testnet/HEALTH-CONTRACT.md}"
 STALENESS_THRESHOLD_S="${STALENESS_THRESHOLD_S-600}"
 LANE7_RPC="${LANE7_RPC-}"
+
+# `LANE7_RPC` is consumed by `new URL(...)` in the on-chain freshness
+# probe. A malformed value (`foo`, `tcp://...`, `http://localhost:8545 `
+# with a trailing space copied from chat, `http://localhost:8545\r`
+# from a Windows-CRLF .env) throws synchronously inside node, the
+# child exits with stderr redirected to /dev/null, stdout empty
+# defaults to `"0"`, and the operator sees the misleading
+# `fresh oracle absent (testnet candidate phase)` WARN — the
+# expected pre-deploy signal, so they take no action. Fail fast at
+# preflight with a single FATAL block, redacting any `?key=...`
+# query string before echoing (some hosted RPCs put API keys there).
+if [[ -n "$LANE7_RPC" ]] && [[ ! "$LANE7_RPC" =~ $PROBE_URL_RE ]]; then
+  redacted_rpc="${LANE7_RPC%%\?*}"
+  echo "FATAL: malformed LANE7_RPC — must match http(s)://host[:port][/path]" >&2
+  echo "FATAL: LANE7_RPC=$redacted_rpc" >&2
+  exit 2
+fi
+unset PROBE_URL_RE
 
 # Numeric-input preflight. STALENESS_THRESHOLD_S participates in `(( ))`
 # arithmetic; any non-digit value (e.g. systemd-style `10m`) used to raise
@@ -415,7 +439,13 @@ else
         # only blocker path; transport failure is warning-grade.
         last_updated="$(node -e '
           const http = process.argv[1].startsWith("https://") ? require("https") : require("http");
-          const url = new URL(process.argv[1]);
+          // Belt-and-suspenders for inputs that pass the bash preflight
+          // regex but still throw inside `new URL` (e.g. a future locale-
+          // specific host class). Print the BADURL sentinel and exit 0
+          // so the bash side can branch the same way it handles TIMEOUT.
+          let url;
+          try { url = new URL(process.argv[1]); }
+          catch (_) { console.log("BADURL"); process.exit(0); }
           const data = JSON.stringify({
             jsonrpc: "2.0", id: 1, method: "eth_call",
             params: [{ to: process.argv[2], data: "0xd0b06f5d" }, "latest"],
@@ -445,7 +475,10 @@ else
         ' "$LANE7_RPC" "$stock_oracle" 2>/dev/null)"
 
         last_updated="${last_updated:-0}"
-        if [[ "$last_updated" == "TIMEOUT" ]]; then
+        if [[ "$last_updated" == "BADURL" ]]; then
+          add_summary "⚠️  \`LANE7_RPC=$LANE7_RPC\` failed URL parsing in node — on-chain freshness skipped"
+          WARNINGS+=("LANE7_RPC failed URL parsing (LANE7_RPC=$LANE7_RPC)")
+        elif [[ "$last_updated" == "TIMEOUT" ]]; then
           add_summary "⚠️  StockOracleV2.lastUpdated() probe timed out after 10s (\`LANE7_RPC=$LANE7_RPC\`)"
           WARNINGS+=("on-chain freshness probe timed out after 10s (LANE7_RPC=$LANE7_RPC)")
         elif [[ "$last_updated" == "0" ]]; then
