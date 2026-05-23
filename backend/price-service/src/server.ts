@@ -51,6 +51,31 @@ function computeAcceptanceRatio(stats: IngestStats): number {
   return stats.ingested / total;
 }
 
+/**
+ * Single source of truth for the healthy/degraded verdict on
+ * `/health` and `/status/quotes`. Two endpoints reading the same
+ * inputs must always agree, otherwise downstream consumers
+ * (oracle-signer) get conflicting signals.
+ *
+ * The cache alone is not enough: an empty cache during warmup is
+ * fine when the source is connected, but the same empty cache with
+ * a dead source is "we will never tick" — degraded.
+ */
+function computeDegraded(
+  cache: QuoteCache,
+  sourceStatusGetter?: SourceStatusGetter,
+): { degraded: boolean; src?: SourceStatus } {
+  const fresh = cache.getFresh();
+  const cacheHealthy = fresh.length > 0 || cache.size === 0;
+  let degraded = !cacheHealthy;
+  let src: SourceStatus | undefined;
+  if (sourceStatusGetter) {
+    src = sanitizeSourceStatus(sourceStatusGetter());
+    if (!src.connected) degraded = true;
+  }
+  return { degraded, src };
+}
+
 export function createServer(
   cache: QuoteCache,
   config?: Partial<PriceServiceConfig>,
@@ -76,11 +101,9 @@ export function createServer(
 
   app.get('/health', (_req: Request, res: Response) => {
     const fresh = cache.getFresh();
-    const total = cache.size;
-    const healthy = fresh.length > 0 || total === 0;
     const body: Record<string, unknown> = {
       freshQuotes: fresh.length,
-      totalCached: total,
+      totalCached: cache.size,
       configuredSymbols: cfg.symbols.length,
       timestamp: Date.now(),
     };
@@ -90,15 +113,8 @@ export function createServer(
       body.rejected = stats.rejected;
       body.acceptanceRatio = computeAcceptanceRatio(stats);
     }
-    let degraded = !healthy;
-    if (sourceStatusGetter) {
-      const src = sanitizeSourceStatus(sourceStatusGetter());
-      body.source = src;
-      // A populated cache + healthy filter is not enough to claim
-      // health if the upstream source is dead — those cached ticks
-      // will go stale and never be refreshed.
-      if (!src.connected) degraded = true;
-    }
+    const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
+    if (src) body.source = src;
     body.status = degraded ? 'degraded' : 'ok';
     res.status(degraded ? 503 : 200).json(body);
   });
@@ -190,10 +206,9 @@ export function createServer(
 
     let freshCount = 0;
     for (const [symbol, entry] of all) {
-      const age = now - entry.cachedAt;
       quotes.push({
         symbol,
-        lastUpdateMs: age,
+        lastUpdateMs: now - entry.cachedAt,
         sessionState: entry.quote.sessionState,
         confidence: entry.quote.confidence,
       });
@@ -202,17 +217,16 @@ export function createServer(
       }
     }
 
+    const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
     const responseBody: Record<string, unknown> = {
-      healthy: freshCount > 0 || all.size === 0,
+      healthy: !degraded,
       freshCount,
       totalCount: all.size,
       quotes,
       timestamp: now,
     };
-    if (sourceStatusGetter) {
-      responseBody.source = sanitizeSourceStatus(sourceStatusGetter());
-    }
-    res.json(responseBody);
+    if (src) responseBody.source = src;
+    res.status(degraded ? 503 : 200).json(responseBody);
   });
 
   app.all('*', (req: Request, res: Response) => {

@@ -625,18 +625,67 @@ describe('REST Server — /health and /status/quotes with source status wired', 
     expect(body.status).toBe('ok');
   });
 
-  it('/status/quotes mirrors /health.source', async () => {
-    srcState = {
-      connected: false,
-      reason: 'Cannot find module …',
-      lastAttachAt: null,
-    };
+  it('/status/quotes returns 503 + healthy:false when source dead and cache empty', async () => {
+    cache.clear();
+    srcState = { connected: false, reason: 'lost connection', lastAttachAt: null };
+    const res = await fetch(`${baseUrl}/status/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(503);
+    expect(body.healthy).toBe(false);
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(false);
+  });
+
+  it('/status/quotes returns 503 + healthy:false when source dead even with fresh quotes', async () => {
+    cache.clear();
+    cache.update(makeQuote({ symbol: 'AAPL' }));
+    srcState = { connected: false, reason: 'lost connection', lastAttachAt: null };
+    const res = await fetch(`${baseUrl}/status/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(503);
+    expect(body.healthy).toBe(false);
+  });
+
+  it('/status/quotes returns 200 + healthy:true when source connected with fresh quote', async () => {
+    cache.clear();
+    cache.update(makeQuote({ symbol: 'AAPL' }));
+    srcState = { connected: true, symbols: ['AAPL'], lastAttachAt: 1700000000000 };
     const res = await fetch(`${baseUrl}/status/quotes`);
     const body = (await res.json()) as Record<string, unknown>;
     expect(res.status).toBe(200);
-    const src = body.source as Record<string, unknown>;
-    expect(src.connected).toBe(false);
-    expect(src.reason).toBe('Cannot find module …');
+    expect(body.healthy).toBe(true);
+  });
+
+  it('/status/quotes returns 200 + healthy:true during warmup (source up, cache empty)', async () => {
+    cache.clear();
+    srcState = { connected: true, symbols: ['AAPL'], lastAttachAt: 1700000000000 };
+    const res = await fetch(`${baseUrl}/status/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body.healthy).toBe(true);
+  });
+
+  it('/status/quotes and /health agree on the degraded verdict for every input combo', async () => {
+    type Combo = { src: SourceStatus; cacheFresh: boolean };
+    const combos: Combo[] = [
+      { src: { connected: true, symbols: ['AAPL'], lastAttachAt: 1 }, cacheFresh: true },
+      { src: { connected: true, symbols: ['AAPL'], lastAttachAt: 1 }, cacheFresh: false },
+      { src: { connected: false, reason: 'down', lastAttachAt: null }, cacheFresh: true },
+      { src: { connected: false, reason: 'down', lastAttachAt: null }, cacheFresh: false },
+    ];
+    for (const combo of combos) {
+      cache.clear();
+      if (combo.cacheFresh) cache.update(makeQuote({ symbol: 'AAPL' }));
+      srcState = combo.src;
+      const [hRes, sRes] = await Promise.all([
+        fetch(`${baseUrl}/health`),
+        fetch(`${baseUrl}/status/quotes`),
+      ]);
+      const hBody = (await hRes.json()) as Record<string, unknown>;
+      const sBody = (await sRes.json()) as Record<string, unknown>;
+      expect(hRes.status).toBe(sRes.status);
+      expect(hBody.status === 'ok').toBe(sBody.healthy === true);
+    }
   });
 });
 
