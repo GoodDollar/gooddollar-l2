@@ -2496,3 +2496,38 @@ These are acceptable as they're:
 ⚠️ **Bundle analysis gap** — Scripts need updating for size monitoring  
 
 **Risk reduction:** High → Low. The application is now secure against the most critical attack vectors while maintaining full functionality.
+
+## TypeScript Compatibility Issues — Next.js 16 Post-Upgrade (2026-05-22)
+
+### Resolved Issues ✅ 
+
+**Test Mock Type Fixes:**
+- Fixed `StockHoldingsState` mocks missing `isError` and `refetch` properties
+- Added missing `displayName` property to `Stock` interface mocks  
+- Corrected `OracleStatusState` mocks using non-existent `refresh` property
+- Resolved spread argument type issues in discovery modules
+- Removed duplicate `NextRequest` imports
+
+### Remaining Issues ⚠️
+
+**65 TypeScript errors across 14 files** indicate broader compatibility issues with Next.js 16 type definitions:
+
+#### High Impact Areas
+- **Market Hours State** (21 errors): `useMarketHoursState.test.ts` — likely type definition changes in date/time handling
+- **Chart Data** (9 errors): `chartData.test.ts` — potential Lightweight Charts library type conflicts 
+- **Stock Insights** (16 errors): `stockInsights.test.ts` — missing `ratings` property on `AnalystOutlook` type
+
+#### Other Affected Areas  
+- **API Route Tests**: Oracle status and feedback routes missing required parameters
+- **Component Mocks**: OracleStatusBadge missing `nextRetryAt` properties
+- **Discovery Components**: RelatedMoversPanel, StocksDiscoveryShelves type mismatches
+- **Lending Data**: lendData.test.ts type incompatibilities
+
+### Recommended Resolution Strategy
+
+1. **Systematic Type Definition Review**: Update custom interfaces to match Next.js 16 expectations
+2. **Mock Object Standardization**: Create type-safe factory functions for test mocks
+3. **Dependency Audit**: Check if any libraries need updates for Next.js 16 compatibility
+4. **Incremental Fixing**: Address highest-impact areas first (market hours, insights, chart data)
+
+**Status**: Core Next.js upgrade successful with security benefits achieved. Type compatibility cleanup needed for complete test suite health.
