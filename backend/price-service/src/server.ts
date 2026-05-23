@@ -793,6 +793,15 @@ export function createServer(
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Max-Age', '600');
+    // RFC 9111 §5.2.2.5 — `no-store` forbids any storage of the
+    // response, including by browser BFCache and CDN edge caches.
+    // Live-tick prices are by definition non-cacheable at the transport
+    // layer; without this, a CDN fronting the service could pin
+    // /quotes/AAPL for minutes and turn the wire itself into a stale
+    // source the upstream risk-filter can't detect. `Pragma: no-cache`
+    // rides along for HTTP/1.0 intermediaries. See task 0043.
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
     if (req.method === 'OPTIONS') {
       res.status(204).end();
       return;
