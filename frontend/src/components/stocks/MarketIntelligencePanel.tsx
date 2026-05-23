@@ -17,6 +17,29 @@ function FeedPendingCaption() {
   )
 }
 
+function formatAge(ms: number): string {
+  if (ms < 1_000)       return 'just now'
+  if (ms < 60_000)      return `${Math.floor(ms / 1_000)}s ago`
+  if (ms < 3_600_000)   return `${Math.floor(ms / 60_000)}m ago`
+  return `${Math.floor(ms / 3_600_000)}h ago`
+}
+
+/**
+ * Source caption for the Top Movers column. Mirrors the sibling Earnings /
+ * News captions when the oracle isn't live, and switches to an honest
+ * `Source: oracle · Updated Xs ago` line when the page passes a fresh
+ * `updatedAtMs`. Task 0028.
+ */
+function TopMoversSourceCaption({ isLive, updatedAtMs }: { isLive: boolean; updatedAtMs?: number }) {
+  if (!isLive || updatedAtMs === undefined) return <FeedPendingCaption />
+  const age = Math.max(0, Date.now() - updatedAtMs)
+  return (
+    <p className="mt-0.5 text-[10px] text-gray-500">
+      Source: oracle · Updated {formatAge(age)}
+    </p>
+  )
+}
+
 function LoadingSkeleton() {
   return (
     <div className="space-y-1.5" aria-busy="true">
@@ -30,6 +53,8 @@ function LoadingSkeleton() {
 export function MarketIntelligencePanel({
   stocks,
   globalStocks,
+  isLive = false,
+  updatedAtMs,
   isLoading,
   onSelectTicker,
 }: {
@@ -43,44 +68,52 @@ export function MarketIntelligencePanel({
    */
   globalStocks?: Stock[]
   /**
-   * Live-feed flag retained on the prop API for forward compatibility
-   * with a real news/earnings adapter — currently only Top Movers is
-   * gated by oracle freshness, so the value is no longer read inside
-   * this panel.
+   * Oracle-live signal from the page. When `false`, Top Movers refuses to
+   * rank seed `change24h` rows — instead it surfaces the same
+   * `Source: feed pending` caption the Earnings / News columns use, plus
+   * an explicit per-mode empty state ("No gainers yet — waiting for live
+   * feed."). Task 0028.
    */
   isLive?: boolean
+  /**
+   * Timestamp of the last successful oracle read in ms (e.g. `Date.now()`
+   * at the moment `useOnChainStocks` returned `isLive: true`). Used to
+   * render the `Updated Xs ago` line under the Top Movers heading.
+   */
+  updatedAtMs?: number
   isLoading: boolean
   onSelectTicker: (ticker: string) => void
 }) {
   const isFiltered = !!globalStocks && globalStocks.length > stocks.length
   const [mode, setMode] = useState<MoversMode>('gainers')
 
-  // Only consider symbols whose 24h change actually came from a live feed.
-  // The seed dataset uses 0 as a "no oracle update" sentinel; ranking on it
-  // produces a fake "top movers" list of 5 identical +0.00% rows.
+  // Two-step gate, in priority order:
+  //   1. `isLive === false` (oracle offline) — refuse to rank anything,
+  //      regardless of what the seed dataset says. The page banner already
+  //      tells the user the oracle is offline; ranking demo prices behind
+  //      a "Top Movers" leaderboard contradicts that.
+  //   2. `!isNoData(change24h)` — drop rows where the oracle returned a
+  //      zero placeholder so a fresh chain reading isn't polluted by
+  //      stale rows for symbols that haven't updated yet.
   const liveMovers = useMemo(
-    () => stocks.filter((s) => !isNoData(s.change24h)),
-    [stocks],
+    () => (isLive ? stocks.filter((s) => !isNoData(s.change24h)) : []),
+    [isLive, stocks],
   )
-  const hasLiveMovers = liveMovers.length > 0
 
   const movers = useMemo(() => {
     if (liveMovers.length === 0) return []
-
-    if (mode === 'gainers') {
-      return [...liveMovers]
-        .filter((stock) => stock.change24h >= 0)
-        .sort((a, b) => b.change24h - a.change24h)
-        .slice(0, 5)
-    }
-
+    const direction = mode === 'gainers' ? 1 : -1
     return [...liveMovers]
-      .filter((stock) => stock.change24h < 0)
-      .sort((a, b) => a.change24h - b.change24h)
+      .filter((s) => (mode === 'gainers' ? s.change24h >= 0 : s.change24h < 0))
+      .sort((a, b) => (b.change24h - a.change24h) * direction)
       .slice(0, 5)
   }, [mode, liveMovers])
 
   const hasData = stocks.length > 0
+  const emptyTestId = mode === 'gainers' ? 'top-movers-empty-gainers' : 'top-movers-empty-losers'
+  const emptyCopy = mode === 'gainers'
+    ? 'No gainers yet — waiting for live feed.'
+    : 'No losers yet — waiting for live feed.'
 
   return (
     <section
@@ -113,13 +146,14 @@ export function MarketIntelligencePanel({
               </button>
             </div>
           </div>
+          <TopMoversSourceCaption isLive={isLive} updatedAtMs={updatedAtMs} />
           {isLoading ? (
             <LoadingSkeleton />
           ) : !hasData ? (
             <p className="text-xs text-gray-500">No movers available.</p>
-          ) : !hasLiveMovers ? (
-            <p className="text-xs text-gray-500" data-testid="top-movers-empty">
-              No movers yet, waiting for live feed.
+          ) : movers.length === 0 ? (
+            <p className="text-xs text-gray-500" data-testid={emptyTestId}>
+              {emptyCopy}
             </p>
           ) : (
             <ul className="space-y-1.5">

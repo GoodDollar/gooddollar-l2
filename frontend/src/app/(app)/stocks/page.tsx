@@ -446,6 +446,7 @@ export default function StocksPage() {
         stocks={filteredStocks}
         globalStocks={data}
         isLive={isLive}
+        updatedAtMs={isLive ? Date.now() : undefined}
         isLoading={isLoading}
         onSelectTicker={pushTickerRoute}
       />
