@@ -93,6 +93,11 @@ restart-looping. On refusal:
 - No `setInterval` is scheduled, no WS connection is opened.
 - The process continues running so PM2 and the status aggregator see `degraded`
   rather than `unreachable`.
+- `/proof` returns **HTTP 503** with `service.status: "degraded"` (and a
+  redacted `service.reason`) merged into the canonical proof body — operators
+  can poll a single endpoint instead of `/health` + `/proof` to triage. The
+  body shape is identical between the healthy 200 path and the degraded 503
+  path, so consumers use one parser regardless.
 
 ## Tests
 

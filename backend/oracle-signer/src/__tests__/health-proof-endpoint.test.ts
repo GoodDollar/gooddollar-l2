@@ -13,12 +13,16 @@ async function get(url: string): Promise<{ status: number; body: string }> {
   });
 }
 
-function withServer(opts: { proofProvider?: () => unknown } = {}): Promise<{ port: number; close: () => Promise<void> }> {
+function withServer(opts: {
+  proofProvider?: () => unknown;
+  proofStatusProvider?: () => { status: 'ok' | 'degraded'; reason?: string };
+} = {}): Promise<{ port: number; close: () => Promise<void> }> {
   return new Promise((resolve) => {
     const server = startHealthServer({
       name: 'oracle-signer',
       port: 0,
       proofProvider: opts.proofProvider,
+      proofStatusProvider: opts.proofStatusProvider,
     });
     server.on('listening', () => {
       const port = (server.address() as AddressInfo).port;
@@ -93,6 +97,92 @@ describe('GET /proof', () => {
     expect(res.status).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.ingest).toEqual(ingest);
+    await srv.close();
+  });
+});
+
+describe('GET /proof — service status (task 0010)', () => {
+  it('returns 200 + service.status:ok by default (no proofStatusProvider)', async () => {
+    const store = new ProofStore();
+    const srv = await withServer({ proofProvider: () => store.snapshot() });
+    const res = await get(`http://127.0.0.1:${srv.port}/proof`);
+    expect(res.status).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.service).toEqual({ status: 'ok' });
+    await srv.close();
+  });
+
+  it('returns 200 + service.status:ok when proofStatusProvider reports ok', async () => {
+    const store = new ProofStore();
+    const srv = await withServer({
+      proofProvider: () => store.snapshot(),
+      proofStatusProvider: () => ({ status: 'ok' }),
+    });
+    const res = await get(`http://127.0.0.1:${srv.port}/proof`);
+    expect(res.status).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.service).toEqual({ status: 'ok' });
+    await srv.close();
+  });
+
+  it('returns 503 + service.status:degraded when proofStatusProvider reports degraded', async () => {
+    const store = new ProofStore();
+    const srv = await withServer({
+      proofProvider: () => store.snapshot(),
+      proofStatusProvider: () => ({ status: 'degraded', reason: 'refused: non-devnet chain id 1' }),
+    });
+    const res = await get(`http://127.0.0.1:${srv.port}/proof`);
+    expect(res.status).toBe(503);
+    const body = JSON.parse(res.body);
+    expect(body.service).toEqual({ status: 'degraded', reason: 'refused: non-devnet chain id 1' });
+    expect(Array.isArray(body.stocks)).toBe(true);
+    expect(Array.isArray(body.crypto)).toBe(true);
+    expect(typeof body.generatedAt).toBe('number');
+    await srv.close();
+  });
+
+  it('503 body preserves the canonical proof shape (rails, counts, failures present)', async () => {
+    const store = new ProofStore();
+    const srv = await withServer({
+      proofProvider: () => store.snapshot(),
+      proofStatusProvider: () => ({ status: 'degraded', reason: 'no rail configured' }),
+    });
+    const res = await get(`http://127.0.0.1:${srv.port}/proof`);
+    expect(res.status).toBe(503);
+    const body = JSON.parse(res.body);
+    expect(body.rails.stocks.enabled).toBe(false);
+    expect(body.rails.crypto.enabled).toBe(false);
+    expect(body.counts).toEqual({
+      stocks: { ok: 0, failed: 0 },
+      crypto: { ok: 0, failed: 0 },
+    });
+    expect(body.failures).toEqual({ stocks: [], crypto: [] });
+    await srv.close();
+  });
+
+  it('omits service.reason when provider reports ok', async () => {
+    const store = new ProofStore();
+    const srv = await withServer({
+      proofProvider: () => store.snapshot(),
+      proofStatusProvider: () => ({ status: 'ok' }),
+    });
+    const res = await get(`http://127.0.0.1:${srv.port}/proof`);
+    const body = JSON.parse(res.body);
+    expect(body.service.reason).toBeUndefined();
+    await srv.close();
+  });
+
+  it('forwards a long-hex-bearing reason verbatim from the provider (provider redacts upstream)', async () => {
+    // The provider's responsibility is to pass a redacted reason. The
+    // health server does not double-redact; it just merges what it's given.
+    const store = new ProofStore();
+    const srv = await withServer({
+      proofProvider: () => store.snapshot(),
+      proofStatusProvider: () => ({ status: 'degraded', reason: 'rpc error <redacted-hex>' }),
+    });
+    const res = await get(`http://127.0.0.1:${srv.port}/proof`);
+    const body = JSON.parse(res.body);
+    expect(body.service.reason).toBe('rpc error <redacted-hex>');
     await srv.close();
   });
 });

@@ -117,6 +117,33 @@ function defaultRailStatusState(): RailStatusState {
   return { enabled: false, lastSuccessAtMs: null, lastFailureAtMs: null };
 }
 
+function defaultRailStatus(): RailStatus {
+  return {
+    enabled: false,
+    lastSuccessAtMs: null,
+    lastSuccessAgeMs: null,
+    lastFailureAtMs: null,
+    lastFailureAgeMs: null,
+  };
+}
+
+/**
+ * Canonical empty `/proof` body. Used by `oracle-signer` before its service is
+ * constructed (e.g. while `loadConfig()` is failing) so that consumers always
+ * see the SAME superset shape — never an "alternate degraded schema" that
+ * drifts as the snapshot grows.
+ */
+export function canonicalEmptyProofSnapshot(): ProofSnapshot {
+  return {
+    generatedAt: Date.now(),
+    rails: { stocks: defaultRailStatus(), crypto: defaultRailStatus() },
+    stocks: [],
+    crypto: [],
+    failures: { stocks: [], crypto: [] },
+    counts: { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } },
+  };
+}
+
 export class ProofStore {
   private readonly capacity: number;
   private readonly rails: Record<RailName, ProofEntry[]> = { stocks: [], crypto: [] };

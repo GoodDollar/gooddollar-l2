@@ -58,6 +58,7 @@ export type RailStatusPayload = {
   lastFailureAtMs: number | null
   lastFailureAgeMs: number | null
 }
+export type ServicePayload = { status: 'ok' | 'degraded' | 'unknown'; reason?: string }
 type ProofPayload = {
   generatedAt: number
   stocks: ProofTail[]
@@ -66,7 +67,10 @@ type ProofPayload = {
   failures?: { stocks?: ProofFailurePayload[]; crypto?: ProofFailurePayload[] }
   counts?: { stocks?: RailCountsPayload; crypto?: RailCountsPayload }
   rails?: { stocks?: unknown; crypto?: unknown }
+  service?: unknown
 }
+
+export const DEFAULT_SERVICE: ServicePayload = { status: 'unknown' }
 
 const DEFAULT_RAIL_STATUS: RailStatusPayload = {
   enabled: false,
@@ -119,6 +123,15 @@ function pickRails(p: ProofPayload | undefined): { stocks: RailStatusPayload; cr
     stocks: pickRailStatus(r?.stocks),
     crypto: pickRailStatus(r?.crypto),
   }
+}
+
+function pickService(p: ProofPayload | undefined): ServicePayload {
+  const raw = p?.service
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_SERVICE }
+  const r = raw as Record<string, unknown>
+  const status = r.status === 'ok' || r.status === 'degraded' ? r.status : 'unknown'
+  const reason = typeof r.reason === 'string' ? r.reason : undefined
+  return reason ? { status, reason } : { status }
 }
 
 function pickCounts(p: ProofPayload | undefined): { stocks: RailCountsPayload; crypto: RailCountsPayload } {
@@ -196,6 +209,28 @@ async function fetchJson<T>(url: string): Promise<T> {
   }
 }
 
+/**
+ * Like `fetchJson`, but tolerates an HTTP 503 with a JSON body (the
+ * oracle-signer's documented degraded contract). Returns `{ data, ok: true }`
+ * for 200 and `{ data, ok: false }` for 503 — every other status throws.
+ * Only used for `/proof` so a degraded-but-reachable signer can still forward
+ * its `service` reason instead of being treated as totally down.
+ */
+async function fetchJsonAllowDegraded<T>(url: string): Promise<{ data: T; ok: boolean }> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' })
+    if (res.status === 200 || res.status === 503) {
+      const data = (await res.json()) as T
+      return { data, ok: res.status === 200 }
+    }
+    throw new Error(`upstream ${url} returned ${res.status}`)
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 type QuotesPayload = {
   healthy?: boolean
   freshCount?: number
@@ -209,7 +244,7 @@ const EMPTY_PROOF: ProofPayload = { generatedAt: 0, stocks: [], crypto: [] }
 async function handleGet(_req?: NextRequest) {
   const [quotesRes, proofRes] = await Promise.allSettled([
     fetchJson<QuotesPayload>(`${PRICE_SERVICE_URL}/status/quotes`),
-    fetchJson<ProofPayload>(`${ORACLE_SIGNER_URL}/proof`),
+    fetchJsonAllowDegraded<ProofPayload>(`${ORACLE_SIGNER_URL}/proof`),
   ])
 
   const upstreams = {
@@ -218,9 +253,14 @@ async function handleGet(_req?: NextRequest) {
   }
 
   const quotesOk = quotesRes.status === 'fulfilled'
-  const proofOk = proofRes.status === 'fulfilled'
+  // `proofReachable` is whether the signer responded at all (200 OR 503-with-body).
+  // The signer is "down" only when the helper threw (network error / non-200/503).
+  // `proofServiceOk` is whether the signer itself is healthy (200) — different axis.
+  const proofReachable = proofRes.status === 'fulfilled'
+  const proofData: ProofPayload | undefined = proofReachable ? proofRes.value.data : undefined
+  const proofServiceOk = proofReachable && proofRes.value.ok
 
-  if (!quotesOk && !proofOk) {
+  if (!quotesOk && !proofReachable) {
     return NextResponse.json(
       {
         error: 'Oracle status unavailable',
@@ -232,6 +272,7 @@ async function handleGet(_req?: NextRequest) {
         failures: { stocks: [], crypto: [] },
         counts: { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } },
         rails: { stocks: { ...DEFAULT_RAIL_STATUS }, crypto: { ...DEFAULT_RAIL_STATUS } },
+        service: { ...DEFAULT_SERVICE },
         freshCount: 0,
         totalCount: 0,
         upstreams,
@@ -242,21 +283,22 @@ async function handleGet(_req?: NextRequest) {
   }
 
   const quotes = quotesOk ? (quotesRes.value.quotes ?? []) : []
-  const proof = proofOk
+  const proof = proofData
     ? {
-        generatedAt: proofRes.value.generatedAt ?? Date.now(),
-        stocks: Array.isArray(proofRes.value.stocks) ? proofRes.value.stocks : [],
-        crypto: Array.isArray(proofRes.value.crypto) ? proofRes.value.crypto : [],
+        generatedAt: proofData.generatedAt ?? Date.now(),
+        stocks: Array.isArray(proofData.stocks) ? proofData.stocks : [],
+        crypto: Array.isArray(proofData.crypto) ? proofData.crypto : [],
       }
     : EMPTY_PROOF
-  const ingest = proofOk ? pickIngest(proofRes.value) : { ...DEFAULT_INGEST }
-  const failures = proofOk ? pickFailures(proofRes.value) : { stocks: [], crypto: [] }
-  const counts = proofOk ? pickCounts(proofRes.value) : { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } }
-  const rails = proofOk
-    ? pickRails(proofRes.value)
+  const ingest = proofData ? pickIngest(proofData) : { ...DEFAULT_INGEST }
+  const failures = proofData ? pickFailures(proofData) : { stocks: [], crypto: [] }
+  const counts = proofData ? pickCounts(proofData) : { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } }
+  const rails = proofData
+    ? pickRails(proofData)
     : { stocks: { ...DEFAULT_RAIL_STATUS }, crypto: { ...DEFAULT_RAIL_STATUS } }
+  const service = proofData ? pickService(proofData) : { ...DEFAULT_SERVICE }
 
-  const healthy = quotesOk && proofOk && (quotesRes.value.healthy ?? true)
+  const healthy = quotesOk && proofServiceOk && (quotesRes.value.healthy ?? true)
   const freshCount = quotesOk ? (quotesRes.value.freshCount ?? quotes.length) : 0
   const totalCount = quotesOk ? (quotesRes.value.totalCount ?? quotes.length) : 0
 
@@ -270,6 +312,7 @@ async function handleGet(_req?: NextRequest) {
     failures,
     counts,
     rails,
+    service,
     freshCount,
     totalCount,
     timestamp: quotesOk ? (quotesRes.value.timestamp ?? Date.now()) : Date.now(),

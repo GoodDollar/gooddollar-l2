@@ -129,21 +129,45 @@ curl -s http://localhost:3123/api/oracle/status | jq '.upstreams'
 }
 ```
 
-**Signer refusing on chain-guard (HTTP 200, degraded):**
+**Signer refusing on chain-guard (HTTP 200, oracleSigner reachable but degraded):**
 
 ```json
 {
   "priceService": { "status": "ok" },
-  "oracleSigner": { "status": "down", "reason": "upstream http://localhost:9107/proof returned 503" }
+  "oracleSigner": { "status": "ok" }
 }
 ```
 
-The signer's own `/health` body will also include `chainCheck.refused: "non-devnet chain id …"` — read both endpoints together when diagnosing.
+`upstreams.oracleSigner.status: "ok"` means "I could reach the signer". To
+see "is the signer actually healthy", read the new `service` block — the
+signer's `/proof` route returns HTTP 503 with the canonical proof body plus
+a merged `service: { status: "degraded", reason: "..." }` block, and the
+route forwards it verbatim:
 
-**Signer key missing (HTTP 200, degraded):** identical to chain-guard refusal above —
-the signer keeps the health port alive and returns 503 from `/proof` with
-`signer disabled (no ORACLE_SIGNER_KEY)` in the body. Inspect the signer's
-`/health` to disambiguate.
+```bash
+curl -s http://localhost:3123/api/oracle/status | jq '.service'
+# { "status": "degraded", "reason": "refused: non-devnet chain id 1" }
+```
+
+Or directly from the signer:
+
+```bash
+curl -i http://localhost:9107/proof
+# HTTP/1.1 503 Service Unavailable
+# { "service": { "status": "degraded", "reason": "refused: non-devnet chain id 1" },
+#   "generatedAt": ..., "rails": {...}, "stocks": [], "crypto": [], ... }
+```
+
+The body shape is the **canonical proof superset on both 200 and 503** so
+consumers can use a single parser regardless of status. Only `service.status`
+differs.
+
+**Signer key missing (HTTP 503, degraded):** identical UX to chain-guard
+refusal above — the signer keeps the health port alive and returns 503 from
+`/proof` with `service: { status: "degraded", reason: "ORACLE_SIGNER_KEY is
+not set; signer loop disabled" }`. No need to read `/health` separately —
+the `service.reason` field gives you the operator-readable explanation in
+one round trip.
 
 **Reason field guarantees:** newlines collapsed to spaces, `0x`-prefixed hex
 of length ≥40 (signer keys / addresses) replaced with `<redacted-hex>`,

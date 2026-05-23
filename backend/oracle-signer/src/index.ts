@@ -31,7 +31,7 @@ import { CryptoSymbolMap, parseCryptoSymbolMap } from './crypto-symbol-map';
 import { NormalizedQuote, OracleSignerConfig, UpdateResult } from './types';
 import { startHealthServer } from './healthServer';
 import { assertDevnetChain, parseAllowedChainIds } from './chain-guard';
-import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY, redactProofReason } from './proof-store';
+import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY, redactProofReason, canonicalEmptyProofSnapshot } from './proof-store';
 import { AuditLog } from './audit-log';
 import * as path from 'path';
 import { ethers } from 'ethers';
@@ -439,6 +439,22 @@ export class OracleSignerService {
   get isRefused(): boolean { return this.refused; }
   getRefusalReason(): string | null { return this.refusalReason; }
 
+  /**
+   * Service-status oracle wired into `startHealthServer`'s `proofStatusProvider`.
+   * Returns `degraded` whenever the service refused to start (chain-guard
+   * refusal, no rail configured). The reason is redacted via
+   * `redactProofReason` so an accidentally-leaked credential never escapes.
+   * Note: the `ORACLE_SIGNER_KEY`-missing case lives in `main()` and binds
+   * its own provider directly — this method only reports class-level refusal.
+   */
+  serviceStatus(): { status: 'ok' | 'degraded'; reason?: string } {
+    if (!this.refused) return { status: 'ok' };
+    return {
+      status: 'degraded',
+      reason: redactProofReason(this.refusalReason ?? 'unknown refusal'),
+    };
+  }
+
   getStats(): OracleSignerStats {
     return {
       stocks: {
@@ -507,27 +523,38 @@ async function main(): Promise<void> {
   // port — even if the service cannot start due to missing config (e.g. no
   // ORACLE_SIGNER_KEY). PM2 will not restart-loop the process and the
   // status-aggregator will see "ok" instead of "unreachable".
-  // The proofProvider is bound late via a forwarder ref so the service can be
-  // created after the health server.
-  let proofRef: (() => unknown) | null = null;
+  // proofProvider + proofStatusProvider are bound late via forwarder refs so
+  // the service can be created after the health server.
+  let proofRef: () => ProofSnapshot = canonicalEmptyProofSnapshot;
+  let proofStatusRef: () => { status: 'ok' | 'degraded'; reason?: string } = () => ({ status: 'ok' });
   const healthServer = startHealthServer({
     name: 'oracle-signer',
     port: parseInt(process.env.HEALTH_PORT ?? process.env.ORACLE_SIGNER_PORT ?? '9107', 10),
-    proofProvider: () => (proofRef ? proofRef() : { generatedAt: Date.now(), stocks: [], crypto: [] }),
+    proofProvider: () => proofRef(),
+    proofStatusProvider: () => proofStatusRef(),
   });
 
   let config: OracleSignerConfig;
   try {
     config = loadConfig();
   } catch (err) {
+    const reason = 'ORACLE_SIGNER_KEY is not set; signer loop disabled';
     process.env.SERVICE_HEALTH_STATUS = 'degraded';
-    process.env.SERVICE_DISABLED_REASON = 'ORACLE_SIGNER_KEY is not set; signer loop disabled';
+    process.env.SERVICE_DISABLED_REASON = reason;
+    // /proof now reports the missing-key refusal in-band: HTTP 503 with
+    // `service: { status: 'degraded', reason }` merged into the canonical
+    // empty snapshot. Operators no longer have to read /health separately.
+    proofStatusRef = () => ({
+      status: 'degraded',
+      reason: redactProofReason(process.env.SERVICE_DISABLED_REASON ?? reason),
+    });
     console.warn('[oracle-signer] Config error — service loop disabled, health server running on port', process.env.ORACLE_SIGNER_PORT ?? '9107', ':', err instanceof Error ? err.message : String(err));
     return;
   }
 
   const service = new OracleSignerService(config);
   proofRef = () => service.getProofSnapshot();
+  proofStatusRef = () => service.serviceStatus();
 
   const shutdown = () => {
     service.stop();

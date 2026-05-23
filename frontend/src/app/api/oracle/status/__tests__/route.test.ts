@@ -377,6 +377,95 @@ describe('GET /api/oracle/status — per-rail status', () => {
   })
 })
 
+describe('GET /api/oracle/status — service block (task 0010)', () => {
+  it('forwards service:{status:degraded,reason} from an upstream 503-with-body', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(
+        JSON.stringify({
+          ...proofBody,
+          service: { status: 'degraded', reason: 'refused: non-devnet chain id 1' },
+        }),
+        { status: 503 },
+      ),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    // Reachable but degraded — upstream "down" axis stays 'ok' because the
+    // signer responded with a valid (if degraded) JSON body.
+    expect(data.upstreams.oracleSigner.status).toBe('ok')
+    expect(data.service).toEqual({ status: 'degraded', reason: 'refused: non-devnet chain id 1' })
+    expect(data.healthy).toBe(false)
+    expect(data.degraded).toBe(true)
+  })
+
+  it('forwards service:{status:ok} from a healthy upstream', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(
+        JSON.stringify({ ...proofBody, service: { status: 'ok' } }),
+        { status: 200 },
+      ),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.service).toEqual({ status: 'ok' })
+  })
+
+  it('defaults service to {status:unknown} when upstream omits the field', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.service).toEqual({ status: 'unknown' })
+  })
+
+  it('503 both-down branch includes service:{status:unknown}', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.service).toEqual({ status: 'unknown' })
+  })
+
+  it('still treats a non-200/503 upstream response as down (502)', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response('bad gateway', { status: 502 }),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.upstreams.oracleSigner.status).toBe('down')
+    expect(data.service).toEqual({ status: 'unknown' })
+  })
+
+  it('coerces malformed upstream service to {status:unknown}', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(
+        JSON.stringify({ ...proofBody, service: { status: 'unexpected-value' } }),
+        { status: 200 },
+      ),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.service.status).toBe('unknown')
+  })
+})
+
 describe('redactUpstreamReason', () => {
   it('strips long hex sequences (signer keys, addresses)', () => {
     const r = redactUpstreamReason(
