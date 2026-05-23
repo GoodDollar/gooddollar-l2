@@ -20,8 +20,12 @@
  *   HEDGE_TRADING_ENABLED=true \
  *   ETORO_DEMO_KEY=… ETORO_DEMO_SECRET=… ETORO_DEMO_USER_KEY=… \
  *   RISK_ENGINE_ADDRESS=0x… RPC_URL=https://… \
- *   PROOF_SYMBOL=AAPL PROOF_AMOUNT_USD=25 \
+ *   PROOF_SYMBOL=AAPL PROOF_AMOUNT_USD=25 PROOF_INSTRUMENT_ID=INST-1001 \
  *   node -r ts-node/register backend/hedge-engine/scripts/demo-proof.ts
+ *
+ * If you add or remove a `requireEnv(...)` call in main(), update this
+ * Usage block to match (enforced by
+ * src/__tests__/demo-proof-docstring.test.ts).
  *
  * Exits non-zero on any failure; the failure mode is also recorded in
  * the proof JSON so a post-mortem has the full pre/post snapshot.
