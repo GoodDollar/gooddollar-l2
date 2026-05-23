@@ -1,12 +1,27 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { QuoteCache } from './quote-cache';
-import { RiskFilterResult } from './types';
+import { NormalizedQuote, RiskFilterResult, SourceStatus } from './types';
+import { sanitizeSourceStatus } from './source-status';
+
+export type SourceStatusGetter = () => SourceStatus;
+
+interface SnapshotFrame {
+  type: 'snapshot';
+  data: NormalizedQuote[];
+  count: number;
+  timestamp: number;
+  source?: SourceStatus;
+}
 
 export class WsBroadcaster {
   private wss: WebSocketServer | null = null;
   private unsubscribe?: () => void;
 
-  start(port: number, cache: QuoteCache): WebSocketServer {
+  start(
+    port: number,
+    cache: QuoteCache,
+    sourceStatusGetter?: SourceStatusGetter,
+  ): WebSocketServer {
     this.wss = new WebSocketServer({ port });
 
     // Attach an `'error'` listener so a server-level fault doesn't bubble
@@ -26,13 +41,16 @@ export class WsBroadcaster {
       // Send the current fresh-quote snapshot immediately so a fresh
       // (or reconnecting) consumer is never starved between live ticks.
       const fresh = cache.getFresh();
-      const snapshot = JSON.stringify({
+      const snapshot: SnapshotFrame = {
         type: 'snapshot',
         data: fresh,
         count: fresh.length,
         timestamp: Date.now(),
-      });
-      this.safeSend(client, snapshot);
+      };
+      if (sourceStatusGetter) {
+        snapshot.source = sanitizeSourceStatus(sourceStatusGetter());
+      }
+      this.safeSend(client, JSON.stringify(snapshot));
     });
 
     this.unsubscribe = cache.onUpdate((_symbol: string, result: RiskFilterResult) => {

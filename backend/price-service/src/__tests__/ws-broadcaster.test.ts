@@ -1,6 +1,6 @@
 import { WsBroadcaster } from '../ws-broadcaster';
 import { QuoteCache } from '../quote-cache';
-import { NormalizedQuote, computeSpread } from '../types';
+import { NormalizedQuote, SourceStatus, computeSpread } from '../types';
 import WebSocket, { WebSocketServer } from 'ws';
 
 function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
@@ -123,6 +123,17 @@ describe('WsBroadcaster', () => {
         done();
       });
     });
+
+    it('omits source field when no getter is supplied (legacy two-arg start)', (done) => {
+      const client = new WebSocket(`ws://127.0.0.1:${port}`);
+      client.on('message', (data) => {
+        const parsed = JSON.parse(data.toString());
+        expect(parsed.type).toBe('snapshot');
+        expect(parsed.source).toBeUndefined();
+        client.close();
+        done();
+      });
+    });
   });
 
   describe('per-client send isolation', () => {
@@ -138,13 +149,7 @@ describe('WsBroadcaster', () => {
 
       const maybeProceed = () => {
         if (openA && openB && snapshotA && snapshotB) {
-          // Find the server-side WebSocket for clientA via the wss
-          // clients set. The order of `wss.clients` depends on connect
-          // timing, so we patch BOTH server-side sends and only the
-          // first invocation throws — that is enough to prove the loop
-          // continues to subsequent clients.
           const sockets = Array.from(wss.clients);
-          // Patch the first server-side socket to throw on send.
           const target = sockets[0];
           const origSend = target.send.bind(target);
           let thrown = false;
@@ -187,8 +192,6 @@ describe('WsBroadcaster', () => {
           bGotQuote = true;
           clientA.terminate();
           clientB.close();
-          // Sibling received the tick despite a thrown send on the other
-          // client — proving per-client isolation.
           expect(bGotQuote).toBe(true);
           done();
         }
@@ -208,12 +211,9 @@ describe('WsBroadcaster', () => {
 
         const sockets = Array.from(wss.clients);
         expect(sockets.length).toBeGreaterThan(0);
-        // Synthesizing an `'error'` event on the server-side socket
-        // exercises the per-client error listener installed by start().
         sockets[0].emit('error', new Error('synthetic-client-error'));
 
         setTimeout(() => {
-          // Process is still alive; warn was called with the expected tag.
           expect(warnSpy).toHaveBeenCalled();
           const calls = warnSpy.mock.calls.map((c) => c.join(' '));
           expect(calls.some((s) => s.includes('WS client error'))).toBe(true);
@@ -223,6 +223,91 @@ describe('WsBroadcaster', () => {
         }, 50);
       };
       client.on('message', onSnapshot);
+    });
+  });
+});
+
+describe('WsBroadcaster — snapshot with source-status getter', () => {
+  let broadcaster: WsBroadcaster;
+  let cache: QuoteCache;
+  let port: number;
+  let wss: WebSocketServer;
+  let srcState: SourceStatus;
+
+  beforeEach((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    broadcaster = new WsBroadcaster();
+    srcState = { connected: false, reason: 'etoro-client-not-installed', lastAttachAt: null };
+    wss = broadcaster.start(0, cache, () => srcState);
+    wss.on('listening', () => {
+      const addr = wss.address();
+      if (typeof addr === 'object' && addr) port = addr.port;
+      done();
+    });
+  });
+
+  afterEach(() => {
+    broadcaster.stop();
+  });
+
+  it('snapshot includes source.connected=false when source-status getter reports disconnect', (done) => {
+    srcState = { connected: false, reason: 'etoro-client-not-installed', lastAttachAt: null };
+    const client = new WebSocket(`ws://127.0.0.1:${port}`);
+    client.on('message', (data) => {
+      const parsed = JSON.parse(data.toString());
+      expect(parsed.type).toBe('snapshot');
+      expect(parsed.source.connected).toBe(false);
+      expect(parsed.source.reason).toBe('etoro-client-not-installed');
+      client.close();
+      done();
+    });
+  });
+
+  it('snapshot includes source.connected=true and symbols when source is attached', (done) => {
+    srcState = { connected: true, symbols: ['AAPL', 'TSLA'], lastAttachAt: 1700000000000 };
+    const client = new WebSocket(`ws://127.0.0.1:${port}`);
+    client.on('message', (data) => {
+      const parsed = JSON.parse(data.toString());
+      expect(parsed.type).toBe('snapshot');
+      expect(parsed.source.connected).toBe(true);
+      expect(parsed.source.symbols).toEqual(['AAPL', 'TSLA']);
+      expect(parsed.source.lastAttachAt).toBe(1700000000000);
+      client.close();
+      done();
+    });
+  });
+
+  it('live quote frames do not carry source field', (done) => {
+    srcState = { connected: true, symbols: ['AAPL'], lastAttachAt: 1700000000000 };
+    const client = new WebSocket(`ws://127.0.0.1:${port}`);
+    client.on('open', () => {
+      cache.update(makeQuote({ symbol: 'AAPL', last: 195 }));
+    });
+    client.on('message', (data) => {
+      const parsed = JSON.parse(data.toString());
+      if (parsed.type === 'snapshot') return;
+      expect(parsed.type).toBe('quote');
+      expect(parsed.source).toBeUndefined();
+      client.close();
+      done();
+    });
+  });
+
+  it('getter is called per-connect, not memoised — second client gets the then-current status', (done) => {
+    srcState = { connected: false, reason: 'a', lastAttachAt: null };
+    const clientA = new WebSocket(`ws://127.0.0.1:${port}`);
+    clientA.on('message', (dataA) => {
+      const a = JSON.parse(dataA.toString());
+      expect(a.source.reason).toBe('a');
+      srcState = { connected: false, reason: 'b', lastAttachAt: null };
+      const clientB = new WebSocket(`ws://127.0.0.1:${port}`);
+      clientB.on('message', (dataB) => {
+        const b = JSON.parse(dataB.toString());
+        expect(b.source.reason).toBe('b');
+        clientA.close();
+        clientB.close();
+        done();
+      });
     });
   });
 });

@@ -79,7 +79,7 @@ export class PriceService {
     this.httpServer = app.listen(this.config.port, () => {
       console.log(`[price-service] REST server listening on port ${this.config.port}`);
     });
-    this.broadcaster.start(this.config.wsPort, this.cache);
+    this.broadcaster.start(this.config.wsPort, this.cache, () => this.getSourceStatus());
     console.log(`[price-service] WS broadcaster listening on port ${this.config.wsPort}`);
   }
 
