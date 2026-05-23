@@ -45,8 +45,12 @@
 #   REPORT                    default docs/testnet/iter05-internal-smoke.md
 #
 # Exit semantics:
-#   0  no blockers (green or green-with-warnings)
+#   0  no blockers (green or green-with-warnings) AND report written
 #   1  one or more blockers — operator must fix before promotion
+#   2  preflight failure (bad input, missing tool, unwritable REPORT)
+#   3  verdict computed but report file failed to write (disk full,
+#      mount unavailable mid-run) — operator must re-run after
+#      fixing the filesystem
 
 set -u
 
@@ -213,6 +217,32 @@ require_uint STATUS_AGGREGATOR_PORT "$STATUS_AGGREGATOR_PORT" 1 65535
 if [[ ! -r "$HEALTH_CONTRACT" ]]; then
   echo "FATAL: HEALTH_CONTRACT not readable at: $HEALTH_CONTRACT" >&2
   echo "FATAL: set HEALTH_CONTRACT=<path> or restore docs/testnet/HEALTH-CONTRACT.md" >&2
+  exit 2
+fi
+
+# REPORT path preflight. The Markdown report is the lane-7 promotion
+# artifact; an unwritable path silently strands the smoke's evidence
+# and gives the operator a false-green console line ("report: <path>"
+# while no file exists). Operator pastes the path into the promotion
+# ticket; reviewer sees stale content from yesterday or no file at
+# all. Symmetric with the other preflights (0008/9/13/14/15/19) —
+# fail fast with a single FATAL line that names the offending case.
+# Touch-then-truncate happens at write time below; here we only
+# validate the path is usable so probes don't run against an
+# unwritable target.
+REPORT_DIR="$(dirname "$REPORT")"
+if ! mkdir -p "$REPORT_DIR" 2>/dev/null; then
+  echo "FATAL: cannot create REPORT parent directory: $REPORT_DIR" >&2
+  echo "FATAL: set REPORT=<path> or fix the parent permissions" >&2
+  exit 2
+fi
+if [[ -d "$REPORT" ]]; then
+  echo "FATAL: REPORT is a directory, not a file: $REPORT" >&2
+  echo "FATAL: include a filename, e.g. REPORT=$REPORT/iter05-internal-smoke.md" >&2
+  exit 2
+fi
+if [[ -e "$REPORT" && ! -w "$REPORT" ]]; then
+  echo "FATAL: REPORT exists but is not writable: $REPORT" >&2
   exit 2
 fi
 
@@ -686,7 +716,13 @@ fi
 
 # ----- write report -----
 
+# Parent directory was preflighted above; recreating here is a no-op
+# guard against a concurrent process having deleted it between
+# preflight and write. Capture the redirect's exit status so a
+# mid-write failure (disk full, FUSE unmount, race-deleted parent)
+# becomes a non-zero exit instead of a false-green console line.
 mkdir -p "$(dirname "$REPORT")"
+report_write_ok=1
 {
   echo "# Lane-7 Internal Smoke Run"
   echo
@@ -720,7 +756,18 @@ mkdir -p "$(dirname "$REPORT")"
   echo '```bash'
   echo "./scripts/testnet/internal-smoke.sh"
   echo '```'
-} > "$REPORT"
+} > "$REPORT" || report_write_ok=0
+
+# A successful redirect can still produce an empty file if the first
+# `echo` failed mid-stream (open succeeded but write hit ENOSPC).
+# Treat both signals — captured failure status AND zero-size file —
+# as a mid-write failure. Exit code 3 distinguishes "verdict
+# computed but artifact missing" from the verdict-grade {0, 1} and
+# preflight-grade {2}.
+if (( ! report_write_ok )) || [[ ! -s "$REPORT" ]]; then
+  echo "FATAL: failed to write smoke report: $REPORT (disk full? mount unavailable?)" >&2
+  exit 3
+fi
 
 # ----- console summary -----
 
