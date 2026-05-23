@@ -45,6 +45,12 @@ export function StocksRebalanceDashboard({
   error = null,
 }: StocksRebalanceDashboardProps) {
   const showFilteredHeading = isFiltered && typeof totalCount === 'number'
+  // When every visible row is unsynced, the per-row em-dash policy renders
+  // 12 nearly-identical "Unknown" rows that hide the real signal (oracle
+  // offline). Collapse to one banner instead. The row-by-row dash policy
+  // (task 0012) is preserved unchanged for the mixed case.
+  const allUnsynced =
+    !isLoading && !error && symbols.length > 0 && symbols.every(isUnsynced)
   return (
     <section className="rounded-2xl border border-gray-700/20 bg-dark-100/50 p-4 sm:p-5" aria-label="Stocks drift and rebalance dashboard">
       <div className="flex items-center justify-between gap-3 mb-3">
@@ -79,7 +85,25 @@ export function StocksRebalanceDashboard({
         </p>
       )}
 
-      {!isLoading && !error && symbols.length > 0 && (
+      {allUnsynced && (
+        <div
+          className="rounded-xl border border-gray-700/25 bg-dark-50/30 p-4 text-center"
+          data-testid="rebalance-all-unsynced"
+        >
+          <p className="text-sm text-gray-200 font-medium">
+            Oracle has not synced any of {symbols.length} symbols yet
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Drift, skew, and divergence will populate once oracles publish
+            their first block. Symbols tracked:{' '}
+            <span className="text-gray-300">
+              {symbols.map((s) => s.symbol).join(', ')}
+            </span>
+          </p>
+        </div>
+      )}
+
+      {!isLoading && !error && symbols.length > 0 && !allUnsynced && (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
