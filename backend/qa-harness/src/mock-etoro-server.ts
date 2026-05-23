@@ -75,26 +75,27 @@ export function createMockEtoro(opts: { axios: AxiosInstance }): MockEtoroHandle
   const quotes: Record<string, MockQuote> = JSON.parse(JSON.stringify(DEFAULT_SEEDS));
   const orders: Array<{ payload: Record<string, unknown>; orderId: string }> = [];
 
-  adapter.onPost('/auth/login').reply(() => [
-    200,
-    {
-      accessToken: 'mock-token-' + (++mockCounter),
-      tokenType: 'Bearer',
-      expiresIn: 3600,
-    },
-  ]);
+  type Reply = [number, unknown];
 
-  const quotesHandler = () => {
-    const arr = Object.values(quotes).map((q) => ({
-      ...q,
-      timestamp: q.timestamp,
-    }));
+  adapter.onPost('/auth/login').reply(
+    (): Reply => [
+      200,
+      {
+        accessToken: 'mock-token-' + ++mockCounter,
+        tokenType: 'Bearer',
+        expiresIn: 3600,
+      },
+    ],
+  );
+
+  const quotesHandler = (): Reply => {
+    const arr = Object.values(quotes).map((q) => ({ ...q }));
     return [200, { quotes: arr }];
   };
   adapter.onGet('/quotes').reply(quotesHandler);
   adapter.onGet('/sapi/quotes').reply(quotesHandler);
 
-  const instrumentsHandler = () => {
+  const instrumentsHandler = (): Reply => {
     const arr = Object.values(quotes).map((q) => ({
       instrumentId: q.instrumentId,
       symbol: q.symbol,
@@ -110,10 +111,11 @@ export function createMockEtoro(opts: { axios: AxiosInstance }): MockEtoroHandle
   adapter.onGet('/instruments').reply(instrumentsHandler);
   adapter.onGet('/sapi/instruments').reply(instrumentsHandler);
 
-  adapter.onPost('/trading/orders').reply((config) => {
-    const payload = config.data ? JSON.parse(config.data) : {};
+  adapter.onPost('/trading/orders').reply((config): Reply => {
+    const payload: Record<string, unknown> = config.data ? JSON.parse(config.data) : {};
     const orderId = `mock-ord-${++mockCounter}`;
     orders.push({ payload, orderId });
+    const sym = typeof payload.symbol === 'string' ? payload.symbol : '';
     return [
       200,
       {
@@ -122,14 +124,14 @@ export function createMockEtoro(opts: { axios: AxiosInstance }): MockEtoroHandle
         symbol: payload.symbol,
         side: payload.side,
         amount: payload.amount,
-        executionPrice: quotes[payload.symbol]?.last ?? 0,
+        executionPrice: quotes[sym]?.last ?? 0,
         timestamp: Date.now(),
         status: 'filled',
       },
     ];
   });
 
-  adapter.onGet('/trading/positions').reply(() => [200, { positions: [] }]);
+  adapter.onGet('/trading/positions').reply((): Reply => [200, { positions: [] }]);
 
   return {
     axios,

@@ -11,6 +11,8 @@ export interface DeployedOracle {
 
 const ORACLE_ABI = [
   'function owner() external view returns (address)',
+  'function addSigner(address signer) external',
+  'function removeSigner(address signer) external',
   'function registerSymbol(string calldata symbol, uint256 maxStalenessSeconds, uint256 maxDeviationBps) external',
   'function batchUpdatePrices(string[] calldata symbols, uint256[] calldata prices8, uint256[] calldata timestamps, uint8[] calldata sessions, uint8[] calldata confidences) external',
   'function updatePrice(string calldata symbol, uint256 price8, uint256 timestamp, uint8 session, uint8 confidence) external',
@@ -75,6 +77,12 @@ export async function bootLocalChain(opts: { port?: number; symbols?: string[] }
       contract: oracle,
       abi: ORACLE_ABI,
       stop: async () => {
+        try {
+          provider.removeAllListeners();
+          provider.destroy();
+        } catch {
+          // best effort
+        }
         await anvil.stop();
       },
     };
@@ -85,7 +93,7 @@ export async function bootLocalChain(opts: { port?: number; symbols?: string[] }
 }
 
 interface ForgeArtifact {
-  abi: ReadonlyArray<unknown>;
+  abi: ethers.InterfaceAbi;
   bytecode: string;
 }
 
@@ -101,11 +109,14 @@ function loadOracleArtifact(): ForgeArtifact {
       throw new Error(`forge build StockOracleV2 failed:\n${r.stdout}\n${r.stderr}`);
     }
   }
-  const raw = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+  const raw = JSON.parse(fs.readFileSync(artifactPath, 'utf8')) as {
+    abi: ethers.InterfaceAbi;
+    bytecode: string | { object?: string };
+  };
   const bytecode: string =
     typeof raw.bytecode === 'string'
       ? raw.bytecode
-      : raw.bytecode?.object ?? '';
+      : (raw.bytecode?.object ?? '');
   if (!bytecode || bytecode === '0x') {
     throw new Error(`StockOracleV2 artifact has no bytecode at ${artifactPath}`);
   }
