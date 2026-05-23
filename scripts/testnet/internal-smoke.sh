@@ -263,16 +263,28 @@ http_probe() {
   fi
 }
 
-# Trim a body to a single line of 80 bytes and redact 20+ char
-# alphanumeric tokens (JWT / OAuth / base64 secrets / API keys). Mirrors
-# the redaction shape used in scripts/testnet/health-gate.sh so the two
-# probes never leak shaped secrets, even by accident.
+# Trim a body to 80 codepoints (not bytes) and redact 20+ char
+# alphanumeric tokens (JWT / OAuth / base64 secrets / API keys).
+# The final stage uses node so the snippet is always valid UTF-8
+# regardless of LANG / mawk-vs-gawk on the host: a `head -c 80`
+# byte cut would split multi-byte codepoints (emoji, accented
+# Latin, CJK) and render as `�` in any reader. `Array.from(str)`
+# iterates by Unicode scalar value (surrogate pairs handled
+# correctly), so non-BMP emoji stay intact. Node is already on the
+# preflight tool list — no new dependency.
 redact_snippet() {
   printf '%s' "$1" \
     | tr -d '\n\r' \
     | tr '|' '_' \
     | sed -E 's#[A-Za-z0-9_+/=-]{20,}#[REDACTED-token]#g' \
-    | head -c 80
+    | node -e '
+      let raw = "";
+      process.stdin.on("data", c => raw += c);
+      process.stdin.on("end", () => {
+        const chars = Array.from(raw);
+        process.stdout.write(chars.slice(0, 80).join(""));
+      });
+    '
 }
 
 # Escape bytes that break Markdown table-cell rendering. Untrusted
