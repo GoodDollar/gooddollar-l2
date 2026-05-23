@@ -1,6 +1,7 @@
 import { AxiosInstance } from 'axios';
 import { AuditLogger } from './audit-logger';
 import { AccountUnavailableError } from './errors';
+import { HttpDispatcher, identityDispatcher } from './rate-limiter';
 import { AccountBalance, EtoroMode, Position } from './types';
 
 export interface PendingOrder {
@@ -29,15 +30,27 @@ export interface PortfolioPnl {
   dividends: number;
 }
 
+export interface AccountModuleOptions {
+  mode: EtoroMode;
+  /**
+   * HTTP dispatcher (typically `EtoroClient.withRateLimit`) so account
+   * reads share the SDK's single rate-limit bucket. Defaults to a
+   * no-retry pass-through for standalone unit-test construction.
+   */
+  dispatch?: HttpDispatcher;
+}
+
 export class AccountModule {
   private readonly http: AxiosInstance;
   private readonly audit: AuditLogger;
   private readonly mode: EtoroMode;
+  private readonly dispatch: HttpDispatcher;
 
-  constructor(http: AxiosInstance, audit: AuditLogger, mode: EtoroMode) {
+  constructor(http: AxiosInstance, audit: AuditLogger, options: AccountModuleOptions) {
     this.http = http;
     this.audit = audit;
-    this.mode = mode;
+    this.mode = options.mode;
+    this.dispatch = options.dispatch ?? identityDispatcher;
   }
 
   async getBalance(): Promise<AccountBalance> {
@@ -99,8 +112,8 @@ export class AccountModule {
    * Single read-pipeline that every public method funnels through. Order
    * of operations is intentional:
    *   1. Mode-gate refusal (PRE-CHECK audit + typed error, no HTTP).
-   *   2. HTTP call.
-   *   3. Success audit (GET/200 + duration).
+   *   2. Rate-limited HTTP via the injected dispatcher.
+   *   3. Success audit (GET/200 + duration + retry telemetry).
    *   4. On failure: error audit (GET/duration + masked error message),
    *      rethrow.
    */
@@ -112,7 +125,8 @@ export class AccountModule {
     this.assertAccountReachable(action);
     const start = Date.now();
     try {
-      const response = await this.http.get(endpoint);
+      const { value: response, attempts, totalBackoffMs } =
+        await this.dispatch(() => this.http.get(endpoint));
       const value = parse(response.data);
       this.audit.log({
         action,
@@ -120,6 +134,8 @@ export class AccountModule {
         path: endpoint,
         statusCode: response.status,
         durationMs: Date.now() - start,
+        attempts,
+        totalBackoffMs,
       });
       return value;
     } catch (error) {
