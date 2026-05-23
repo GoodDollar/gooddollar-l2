@@ -196,6 +196,12 @@ The smoke probes (in order):
    unset}`. Read from `pm2 env <id>` when `PM2_ID_PRICE_SERVICE` is
    exported, otherwise from `LANE7_ENV_FILE` (default `.env` at repo
    root). **Only env-presence is logged — values are never printed.**
+   `.env` values are forwarded **literally** to the `BLOCKERS[]`
+   console echo (the operator's terminal stays byte-faithful so
+   typos/quirks are visible) but routed through `escape_md_cell`
+   before landing in the Markdown report (so backticks / pipes /
+   CR-LF copy-paste artifacts can't scramble the fence section
+   that reviewers stare at hardest).
 
 ### Smoke env contract
 

@@ -873,19 +873,30 @@ fi
 rte="${ENV_PRESENCE[REAL_TRADING_ENABLED]:-unset}"
 mode="${ENV_PRESENCE[ETORO_MODE]:-unset}"
 
+# Sanitize for the report's inline-code spans. The raw value stays in
+# BLOCKERS[] (terminal echo is byte-faithful via `printf '%s'`) and
+# the case-match below tests the raw value so an operator who types
+# `ETORO_MODE=demo|readonly` still hits the * branch and gets the
+# BLOCKER they deserve. escape_md_cell downgrades `\`` → `'`,
+# escapes `|` → `\|`, drops CR, and turns LF into space — exactly
+# the chars that break inline-code spans in summary lines.
+# (Task 0018 / 0021 convergence — closes the env-source scope-out.)
+rte_md="$(escape_md_cell "$rte")"
+mode_md="$(escape_md_cell "$mode")"
+
 if [[ "$rte" == "unset" || "$rte" == "false" ]]; then
-  add_summary "✅ \`REAL_TRADING_ENABLED\` = \`$rte\` (fence intact)"
+  add_summary "✅ \`REAL_TRADING_ENABLED\` = \`$rte_md\` (fence intact)"
 else
-  add_summary "❌ \`REAL_TRADING_ENABLED\` = \`$rte\` — lane-7 forbids real trading"
+  add_summary "❌ \`REAL_TRADING_ENABLED\` = \`$rte_md\` — lane-7 forbids real trading"
   BLOCKERS+=("REAL_TRADING_ENABLED is $rte — must be unset or false on the lane-7 host")
 fi
 
 case "$mode" in
   mock|demo-readonly|sandbox|demo-trading|unset)
-    add_summary "✅ \`ETORO_MODE\` = \`$mode\` (within lane-7 allowlist)"
+    add_summary "✅ \`ETORO_MODE\` = \`$mode_md\` (within lane-7 allowlist)"
     ;;
   *)
-    add_summary "❌ \`ETORO_MODE\` = \`$mode\` — lane-7 only allows {mock, demo-readonly, sandbox, demo-trading, unset}"
+    add_summary "❌ \`ETORO_MODE\` = \`$mode_md\` — lane-7 only allows {mock, demo-readonly, sandbox, demo-trading, unset}"
     BLOCKERS+=("ETORO_MODE is $mode — outside lane-7 allowlist")
     ;;
 esac
