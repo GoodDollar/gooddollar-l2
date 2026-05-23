@@ -264,22 +264,30 @@ export default function PortfolioPage() {
           />
         ) : (
           <div className="space-y-2">
-            {perpsPositions.slice(0, 3).map((pos, i) => (
-              <Link key={i} href="/perps/portfolio" className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm font-medium text-white">{pos.pair}</span>
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
-                    {pos.side.toUpperCase()} {pos.leverage}x
-                  </span>
-                </div>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {pos.unrealizedPnl >= 0 ? '+' : ''}{formatPerpsPrice(pos.unrealizedPnl)}
+            {perpsPositions.slice(0, 3).map((pos, i) => {
+              const baseAsset = pos.pair.split('-')[0]
+              const sq = priceStatus?.quotes.find(q => q.symbol === baseAsset)
+              const cryptoSrc: PriceSource = sq && (sq.sessionState === 'closed' || sq.sessionState === 'halted')
+                ? 'closed'
+                : (pos.markPrice > 0 ? 'chain-oracle' : 'fallback')
+              return (
+                <Link key={`${pos.pair}-${i}`} href="/perps/portfolio" className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm font-medium text-white">{pos.pair}</span>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {pos.side.toUpperCase()} {pos.leverage}x
+                    </span>
+                    <PriceSourceBadge source={cryptoSrc} size="sm" />
                   </div>
-                  <div className="text-xs text-gray-500">Size {pos.size}</div>
-                </div>
-              </Link>
-            ))}
+                  <div className="text-right">
+                    <div className={`text-sm font-medium ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {pos.unrealizedPnl >= 0 ? '+' : ''}{formatPerpsPrice(pos.unrealizedPnl)}
+                    </div>
+                    <div className="text-xs text-gray-500">Size {pos.size}</div>
+                  </div>
+                </Link>
+              )
+            })}
             {perpsPositions.length > 3 && (
               <p className="text-xs text-gray-500 text-center pt-1">+{perpsPositions.length - 3} more</p>
             )}

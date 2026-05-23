@@ -50,7 +50,7 @@ function PositionRow({ pos, source }: { pos: OpenPosition; source: PriceSource }
   }
 
   return (
-    <div className="px-3 py-3 border-b border-gray-700/10 last:border-0">
+    <div className="p-3 border-b border-gray-700/10 last:border-0">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-white">{pos.pair}</span>
