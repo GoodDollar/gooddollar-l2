@@ -15,3 +15,7 @@ Running execute phase via cursor model=claude-opus-4-7-thinking-high (chat pendi
   exclusions: see
   `.autobuilder/initiatives/0007g-testnet-setup/iter03-health-contract-proof.md`
   (BEFORE = UNCLASSIFIED, AFTER = EXCLUDED).
+- 0007g/0004 — cherry-pick batch 1 (lane1 + lane6) landed at SHA
+  `04be6915`. Conflict log + resolutions in
+  `.autobuilder/initiatives/0007g-testnet-setup/iter04-cherry-pick-batch1.md`.
+  REAL_TRADING_ENABLED=false default added to price-service PM2 entry.
