@@ -6,15 +6,37 @@ import {
   sanitizeSourceStatus,
   SanitizedSourceStatus,
 } from './source-status';
+import { isoFromMs } from './iso';
 
 export type SourceStatusGetter = () => SourceStatus;
 
+/**
+ * On-connect frame summarising the current cache state. `timestampIso`
+ * mirrors the REST envelope's task-0023 invariant
+ * (`new Date(timestamp).toISOString() === timestampIso`) so consumers
+ * subscribed to BOTH WS and REST surfaces handle one timestamp shape.
+ * Field order matches the REST envelope tail convention from task 0041:
+ * `..., source?, timestamp, timestampIso`.
+ */
 interface SnapshotFrame {
   type: 'snapshot';
   data: NormalizedQuote[];
   count: number;
-  timestamp: number;
   source?: SanitizedSourceStatus;
+  timestamp: number;
+  timestampIso: string;
+}
+
+/**
+ * Per-tick broadcast frame. Same `{timestamp, timestampIso}` pair as the
+ * snapshot so the producer's `Date.now()` instant is reproducible on
+ * both REST and WS surfaces (task 0048).
+ */
+interface QuoteFrame {
+  type: 'quote';
+  data: NormalizedQuote;
+  timestamp: number;
+  timestampIso: string;
 }
 
 /**
@@ -96,27 +118,34 @@ export class WsBroadcaster {
 
       // Send the current fresh-quote snapshot immediately so a fresh
       // (or reconnecting) consumer is never starved between live ticks.
+      // `now` is hoisted so `timestamp` and `timestampIso` describe the
+      // same instant (task 0048 invariant).
       const fresh = cache.getFresh();
+      const now = Date.now();
+      const source = sourceStatusGetter
+        ? sanitizeSourceStatus(sourceStatusGetter())
+        : undefined;
       const snapshot: SnapshotFrame = {
         type: 'snapshot',
         data: fresh,
         count: fresh.length,
-        timestamp: Date.now(),
+        ...(source !== undefined && { source }),
+        timestamp: now,
+        timestampIso: isoFromMs(now)!,
       };
-      if (sourceStatusGetter) {
-        snapshot.source = sanitizeSourceStatus(sourceStatusGetter());
-      }
       this.safeSend(client, JSON.stringify(snapshot));
     });
 
     this.unsubscribe = cache.onUpdate((_symbol: string, result: RiskFilterResult) => {
       if (!result.accepted) return;
-      const msg = JSON.stringify({
+      const now = Date.now();
+      const frame: QuoteFrame = {
         type: 'quote',
         data: result.quote,
-        timestamp: Date.now(),
-      });
-      this.broadcast(msg);
+        timestamp: now,
+        timestampIso: isoFromMs(now)!,
+      };
+      this.broadcast(JSON.stringify(frame));
     });
 
     return this.wss;

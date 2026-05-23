@@ -52,10 +52,10 @@ export interface WsErrorBlock {
 const WS_FRAME_DOCS = {
   snapshot:
     "sent on connect; { type:'snapshot', data: NormalizedQuote[], " +
-    'count, timestamp, source? }',
+    'count, source?, timestamp, timestampIso }',
   quote:
     "broadcast per accepted tick; " +
-    "{ type:'quote', data: NormalizedQuote, timestamp }",
+    "{ type:'quote', data: NormalizedQuote, timestamp, timestampIso }",
 } as const;
 
 /**
