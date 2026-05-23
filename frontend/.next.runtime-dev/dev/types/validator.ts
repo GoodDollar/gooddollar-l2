@@ -74,6 +74,24 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../src/app/(app)/analytics/hedge/proof/[receiptId]/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/analytics/hedge/proof/[receiptId]">> = Specific
+  const handler = {} as typeof import("../../../src/app/(app)/analytics/hedge/proof/[receiptId]/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/(app)/analytics/hedge/proof/invalid/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/analytics/hedge/proof/invalid">> = Specific
+  const handler = {} as typeof import("../../../src/app/(app)/analytics/hedge/proof/invalid/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../src/app/(app)/analytics/hedge/proof/latest/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/analytics/hedge/proof/latest">> = Specific
@@ -411,6 +429,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/feedback">> = Specific
   const handler = {} as typeof import("../../../src/app/api/feedback/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/api/hedge/proof/[receiptId]/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/hedge/proof/[receiptId]">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/hedge/proof/[receiptId]/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

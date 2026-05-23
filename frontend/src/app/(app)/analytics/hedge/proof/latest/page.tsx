@@ -19,6 +19,7 @@ export default function HedgeProofViewerLatestPage() {
     <HedgeProofViewer
       endpoint="/api/hedge/proof/latest.json"
       rawMarkdownHref="/api/hedge/proof/latest"
+      surface="latest"
     />
   )
 }

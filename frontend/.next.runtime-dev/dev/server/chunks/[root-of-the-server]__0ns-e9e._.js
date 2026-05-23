@@ -113,6 +113,8 @@ __turbopack_context__.s([
     ()=>PROOF_TIMEOUT_MS,
     "PROOF_URL",
     ()=>PROOF_URL,
+    "proofUrlsForReceipt",
+    ()=>proofUrlsForReceipt,
     "resolveSafePath",
     ()=>resolveSafePath,
     "timedFetch",
@@ -133,6 +135,14 @@ var __TURBOPACK__imported__module__$5b$externals$5d2f$node$3a$path__$5b$external
 const PROOF_DIR_ABS = __TURBOPACK__imported__module__$5b$externals$5d2f$node$3a$path__$5b$external$5d$__$28$node$3a$path$2c$__cjs$29$__["resolve"](PROOF_DIR_RAW);
 const PROOF_URL = process.env.HEDGE_PROOF_URL ?? 'http://localhost:9116/hedge/proof/latest';
 const PROOF_TIMEOUT_MS = 5_000;
+function proofUrlsForReceipt(id) {
+    const safeId = encodeURIComponent(id);
+    const base = PROOF_URL.replace(/\/+$/, '').replace(/\/proof\/latest$/, '');
+    return [
+        `${base}/proof/${safeId}`,
+        `${PROOF_URL}?id=${safeId}`
+    ];
+}
 async function timedFetch(url, timeoutMs = PROOF_TIMEOUT_MS) {
     const controller = new AbortController();
     const timer = setTimeout(()=>controller.abort(), timeoutMs);

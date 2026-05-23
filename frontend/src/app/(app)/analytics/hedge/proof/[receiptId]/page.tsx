@@ -25,6 +25,7 @@ export default function HedgeProofViewerPerReceiptPage({ params }: PageProps) {
       endpoint={`/api/hedge/proof/${safe}`}
       notFoundTitle={`Proof not found for receipt ${receiptId}`}
       notFoundDetail="The hedge engine has no proof artifact for this receipt id. It may have been pruned or the id may belong to a different engine instance."
+      surface="receipt"
     />
   )
 }

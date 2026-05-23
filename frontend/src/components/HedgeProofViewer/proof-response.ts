@@ -36,7 +36,18 @@ export interface ErrorCopy {
   detail: string
 }
 
-export function copyForResponse(res: ProofResponse): ErrorCopy {
+/**
+ * Which proof surface is rendering the copy. The /latest viewer keeps
+ * its historical "latest proof pointer" wording — operators recognise
+ * it. The per-receipt viewer (#0061) drops "latest"/"pointer" because
+ * the user requested a specific receipt id, not the latest pointer.
+ */
+export type ProofSurface = 'latest' | 'receipt'
+
+export function copyForResponse(
+  res: ProofResponse,
+  surface: ProofSurface = 'latest',
+): ErrorCopy {
   switch (res.status) {
     case 'ok':
     case 'no_proof':
@@ -47,12 +58,18 @@ export function copyForResponse(res: ProofResponse): ErrorCopy {
     case 'engine_down':
       return {
         title: 'Hedge engine unreachable',
-        detail: 'Could not fetch the latest proof pointer from the hedge engine.',
+        detail:
+          surface === 'receipt'
+            ? "Could not fetch this receipt's proof from the hedge engine."
+            : 'Could not fetch the latest proof pointer from the hedge engine.',
       }
     case 'engine_error':
       return {
         title: 'Hedge engine returned an error',
-        detail: `Proof pointer endpoint returned HTTP ${res.httpStatus}.`,
+        detail:
+          surface === 'receipt'
+            ? `Receipt proof endpoint returned HTTP ${res.httpStatus}.`
+            : `Proof pointer endpoint returned HTTP ${res.httpStatus}.`,
       }
     case 'unreadable':
       return {

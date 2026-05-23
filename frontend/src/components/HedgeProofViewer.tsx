@@ -9,9 +9,13 @@ import {
   copyForResponse,
   type ErrorCopy,
   type ProofResponse,
+  type ProofSurface,
 } from './HedgeProofViewer/proof-response'
 
-export type { ProofResponse } from './HedgeProofViewer/proof-response'
+export type {
+  ProofResponse,
+  ProofSurface,
+} from './HedgeProofViewer/proof-response'
 
 /**
  * Lane 5 — shared in-app hedge proof viewer.
@@ -74,6 +78,13 @@ export interface HedgeProofViewerProps {
    * viewers omit this since there is no equivalent markdown route.
    */
   rawMarkdownHref?: string
+  /**
+   * Which proof surface is rendering. Drives per-surface error copy
+   * (`copyForResponse`) so the engine_down/engine_error cards say the
+   * right thing on the per-receipt page (#0061). Defaults to `'latest'`
+   * for backwards-compatibility with the existing latest viewer.
+   */
+  surface?: ProofSurface
 }
 
 const DEFAULT_NOT_FOUND_TITLE = 'No hedge proof yet'
@@ -85,6 +96,7 @@ export default function HedgeProofViewer({
   notFoundTitle = DEFAULT_NOT_FOUND_TITLE,
   notFoundDetail = DEFAULT_NOT_FOUND_DETAIL,
   rawMarkdownHref,
+  surface = 'latest',
 }: HedgeProofViewerProps) {
   const [view, setView] = useState<ViewState>({ kind: 'loading' })
 
@@ -122,8 +134,8 @@ export default function HedgeProofViewer({
       setView({ kind: 'no_proof' })
       return
     }
-    setView({ kind: 'error', copy: copyForResponse(body) })
-  }, [endpoint])
+    setView({ kind: 'error', copy: copyForResponse(body, surface) })
+  }, [endpoint, surface])
 
   useEffect(() => {
     void load()
