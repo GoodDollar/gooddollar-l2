@@ -32,7 +32,6 @@ export function PriceSourceBadge({ source, size = 'md', className = '' }: PriceS
       data-source={source}
       aria-label={`Price source: ${label}`}
       className={`inline-flex items-center ${gap} ${textSize} ${variant.textClass} ${className}`}
-      role="status"
     >
       <span
         data-testid="price-source-dot"

@@ -72,7 +72,7 @@ export function LivePriceCard(props: LivePriceCardProps) {
           <AlertTriangle
             data-testid="live-price-warning"
             aria-label={source === 'closed' ? 'Market closed' : 'Stale price'}
-            className="w-3.5 h-3.5 text-amber-400 shrink-0"
+            className="size-3.5 text-amber-400 shrink-0"
           />
         )}
       </div>
