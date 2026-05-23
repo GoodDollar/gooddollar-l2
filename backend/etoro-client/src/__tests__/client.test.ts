@@ -1,6 +1,10 @@
-import { EtoroClient } from '../index';
+import { EtoroClient, InvalidModeError } from '../index';
 import { MockEtoroSource } from '../mock-source';
 import { EtoroCredentials } from '../types';
+
+jest.mock('fs', () => ({
+  appendFileSync: jest.fn(),
+}));
 
 const DEMO_CREDENTIALS: EtoroCredentials = {
   apiKey: 'test-key-12345',
@@ -78,5 +82,32 @@ describe('EtoroClient — construction', () => {
     const token = await client.authenticate();
     expect(token).toBe('mock-token');
     expect(client.isAuthenticated()).toBe(true);
+  });
+});
+
+describe('EtoroClient — mode-resolved audit line', () => {
+  it('writes exactly one mode-resolved entry on construction', () => {
+    const writes: string[] = [];
+    const fsMock = jest.requireMock('fs') as { appendFileSync: jest.Mock };
+    fsMock.appendFileSync.mockClear();
+    fsMock.appendFileSync.mockImplementation((_p: string, line: string) => { writes.push(line); });
+
+    new EtoroClient({ credentials: DEMO_CREDENTIALS });
+
+    const lines = writes
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+      .filter((e) => e.action === 'mode-resolved');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].resolvedMode).toBe('demo-readonly');
+    expect(lines[0].modeSource).toBe('explicit');
+  });
+});
+
+describe('InvalidModeError export', () => {
+  it('is exported from @goodchain/etoro-client', () => {
+    expect(InvalidModeError).toBeDefined();
+    const err = new InvalidModeError('demo', ['mock', 'demo-readonly', 'demo-trading', 'real-disabled']);
+    expect(err.name).toBe('InvalidModeError');
+    expect(err.rawValue).toBe('demo');
   });
 });

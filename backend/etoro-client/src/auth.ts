@@ -1,3 +1,4 @@
+import { InvalidModeError } from './errors';
 import { DemoCapConfig, EtoroCredentials, EtoroMode } from './types';
 
 /**
@@ -43,10 +44,26 @@ const DEFAULT_CAP_DAILY_USD = 10_000;
 export function resolveMode(
   env: Record<string, string | undefined> = process.env,
 ): EtoroMode {
-  const raw = env.ETORO_MODE?.toLowerCase().trim();
+  const rawOriginal = env.ETORO_MODE;
+  const raw = rawOriginal?.toLowerCase().trim();
   if (!raw) return 'mock';
   const normalized = ALL_MODES.find((m) => m === raw);
-  return normalized ?? 'mock';
+  if (!normalized) {
+    throw new InvalidModeError(rawOriginal ?? '', ALL_MODES);
+  }
+  return normalized;
+}
+
+/**
+ * Reports whether the resolved mode came from `ETORO_MODE` being explicitly
+ * set (any value, including invalid — though invalid throws before it gets
+ * here) or from the unset → `mock` default path.
+ */
+export function resolveModeSource(
+  env: Record<string, string | undefined> = process.env,
+): 'env' | 'default' {
+  const raw = env.ETORO_MODE?.toLowerCase().trim();
+  return raw ? 'env' : 'default';
 }
 
 /**
@@ -64,10 +81,19 @@ export function resolveMode(
  */
 export function loadCredentialsFromEnv(
   env: Record<string, string | undefined> = process.env,
+  opts: { silent?: boolean } = {},
 ): EtoroCredentials {
   const mode = resolveMode(env);
+  const source = resolveModeSource(env);
 
   if (mode === 'mock') {
+    if (source === 'default' && !opts.silent) {
+      console.warn(
+        'ETORO_MODE not set; defaulting to mock. ' +
+        'No live or demo eToro traffic will occur. ' +
+        'Set ETORO_MODE to one of: mock, demo-readonly, demo-trading, real-disabled.',
+      );
+    }
     return { ...MOCK_CREDS };
   }
 

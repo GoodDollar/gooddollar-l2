@@ -1,6 +1,30 @@
 import { EtoroMode } from './types';
 
 /**
+ * Thrown by `resolveMode` when `ETORO_MODE` is set but is not one of the
+ * four canonical modes (`mock`, `demo-readonly`, `demo-trading`,
+ * `real-disabled`). Carries the offending raw value (safe to log — mode
+ * names are not secret) and the list of valid modes so operators can fix
+ * the typo without grepping source.
+ */
+export class InvalidModeError extends Error {
+  readonly rawValue: string;
+  readonly validModes: readonly EtoroMode[];
+
+  constructor(rawValue: string, validModes: readonly EtoroMode[]) {
+    super(
+      `ETORO_MODE="${rawValue}" is not a recognized mode. ` +
+      `Valid modes: ${validModes.join(', ')}. ` +
+      `Note: the older "sandbox" and bare "demo" / "real" names were retired in lane 0007; ` +
+      `use "demo-readonly" or "demo-trading" instead.`,
+    );
+    this.name = 'InvalidModeError';
+    this.rawValue = rawValue;
+    this.validModes = validModes;
+  }
+}
+
+/**
  * Thrown by any trading-mutating method when the SDK is not in a mode
  * that allows real-money or demo trading. The lane's `REAL_TRADING_ENABLED`
  * fence guarantees this is also thrown for `real-disabled` mode regardless

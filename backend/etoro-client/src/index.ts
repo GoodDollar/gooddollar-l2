@@ -62,9 +62,17 @@ export class EtoroClient {
   private sessionToken?: string;
 
   constructor(config?: EtoroClientConstructorConfig) {
+    const modeSource: 'env' | 'explicit' = config?.credentials ? 'explicit' : 'env';
     this.credentials = config?.credentials ?? loadCredentialsFromEnv();
     this.rateLimiter = new RateLimiter(config?.rateLimiter);
     this.audit = new AuditLogger(this.credentials.mode);
+    this.audit.log({
+      action: 'mode-resolved',
+      method: 'INIT',
+      path: '/mode',
+      resolvedMode: this.credentials.mode,
+      modeSource,
+    });
     const capConfig = config?.capConfig ?? loadDemoCapConfig();
     this.capEnforcer = new DemoCapEnforcer(capConfig);
 
@@ -238,5 +246,6 @@ export {
   RealTradingDisabledError,
   DemoCapExceededError,
   MissingNotionalError,
+  InvalidModeError,
 } from './errors';
 export type * from './types';

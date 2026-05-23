@@ -7,7 +7,9 @@ import {
   REAL_TRADING_ENABLED,
   redactCredentials,
   resolveMode,
+  resolveModeSource,
 } from '../auth';
+import { InvalidModeError } from '../errors';
 
 describe('REAL_TRADING_ENABLED fence', () => {
   it('is a const set to false at the source level', () => {
@@ -41,10 +43,38 @@ describe('resolveMode', () => {
     expect(resolveMode({ ETORO_MODE: 'Mock' })).toBe('mock');
   });
 
-  it('falls back to mock for unrecognized modes (no real or sandbox accepted)', () => {
-    expect(resolveMode({ ETORO_MODE: 'real' })).toBe('mock');
-    expect(resolveMode({ ETORO_MODE: 'sandbox' })).toBe('mock');
-    expect(resolveMode({ ETORO_MODE: 'production' })).toBe('mock');
+  it('throws InvalidModeError for legacy or unknown mode names', () => {
+    for (const raw of ['real', 'sandbox', 'production', 'live', 'demo', 'PRODUCTION-LIVE']) {
+      expect(() => resolveMode({ ETORO_MODE: raw })).toThrow(InvalidModeError);
+    }
+  });
+
+  it('InvalidModeError carries the raw value and the list of valid modes', () => {
+    try {
+      resolveMode({ ETORO_MODE: 'demo' });
+      fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidModeError);
+      const err = e as InvalidModeError;
+      expect(err.rawValue).toBe('demo');
+      expect(err.validModes).toContain('demo-trading');
+      expect(err.validModes).toContain('demo-readonly');
+      expect(err.message).toContain('demo-readonly');
+    }
+  });
+
+  it('trims and lowercases the raw mode before validating', () => {
+    expect(resolveMode({ ETORO_MODE: '  DEMO-TRADING  ' })).toBe('demo-trading');
+  });
+});
+
+describe('resolveModeSource', () => {
+  it("returns 'default' when ETORO_MODE is unset", () => {
+    expect(resolveModeSource({})).toBe('default');
+  });
+
+  it("returns 'env' when ETORO_MODE is set", () => {
+    expect(resolveModeSource({ ETORO_MODE: 'mock' })).toBe('env');
   });
 });
 
@@ -55,7 +85,7 @@ describe('loadCredentialsFromEnv', () => {
   };
 
   it('returns deterministic mock credentials when ETORO_MODE is unset', () => {
-    const creds = loadCredentialsFromEnv({});
+    const creds = loadCredentialsFromEnv({}, { silent: true });
     expect(creds.mode).toBe('mock');
     expect(creds.apiKey).toBe('mock-api-key');
     expect(creds.apiSecret).toBe('mock-api-secret');
@@ -63,12 +93,48 @@ describe('loadCredentialsFromEnv', () => {
     expect(creds.wsUrl).toMatch(/^mock:/);
   });
 
+  it('emits exactly one default-mock warning when ETORO_MODE is unset', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      loadCredentialsFromEnv({});
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toMatch(/ETORO_MODE not set/);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('suppresses the warning when { silent: true }', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      loadCredentialsFromEnv({}, { silent: true });
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('does NOT warn when ETORO_MODE is explicitly set to mock', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      loadCredentialsFromEnv({ ETORO_MODE: 'mock' });
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('propagates InvalidModeError for unknown ETORO_MODE values', () => {
+    expect(() => loadCredentialsFromEnv({ ETORO_MODE: 'demo' }, { silent: true }))
+      .toThrow(InvalidModeError);
+  });
+
   it('returns mock creds for ETORO_MODE=mock without consulting demo env vars', () => {
     const creds = loadCredentialsFromEnv({
       ETORO_MODE: 'mock',
       ETORO_DEMO_KEY: 'should-not-be-read',
       ETORO_DEMO_SECRET: 'should-not-be-read',
-    });
+    }, { silent: true });
     expect(creds.mode).toBe('mock');
     expect(creds.apiKey).toBe('mock-api-key');
     expect(creds.apiSecret).toBe('mock-api-secret');
