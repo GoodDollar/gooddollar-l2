@@ -401,25 +401,25 @@ describe('REST Server — 404 and 405 envelopes', () => {
     expect(text).not.toContain('Cannot GET');
   });
 
-  it('POST /quotes returns JSON 405 with Allow: GET', async () => {
+  it('POST /quotes returns JSON 405 with Allow: GET, OPTIONS', async () => {
     const res = await fetch(`${baseUrl}/quotes`, { method: 'POST' });
     const body = (await res.json()) as Record<string, unknown>;
     expect(res.status).toBe(405);
-    expect(res.headers.get('allow')).toBe('GET');
+    expect(res.headers.get('allow')).toBe('GET, OPTIONS');
     expect(body.error).toBe('method-not-allowed');
-    expect(body.allowed).toEqual(['GET']);
+    expect(body.allowed).toEqual(['GET', 'OPTIONS']);
     expect(body.path).toBe('/quotes');
     expect(body.method).toBe('POST');
     expect(typeof body.timestamp).toBe('number');
   });
 
-  it('PUT /quotes/AAPL returns JSON 405 with Allow: GET', async () => {
+  it('PUT /quotes/AAPL returns JSON 405 with Allow: GET, OPTIONS', async () => {
     const res = await fetch(`${baseUrl}/quotes/AAPL`, { method: 'PUT' });
     const body = (await res.json()) as Record<string, unknown>;
     expect(res.status).toBe(405);
-    expect(res.headers.get('allow')).toBe('GET');
+    expect(res.headers.get('allow')).toBe('GET, OPTIONS');
     expect(body.error).toBe('method-not-allowed');
-    expect(body.allowed).toEqual(['GET']);
+    expect(body.allowed).toEqual(['GET', 'OPTIONS']);
     expect(body.path).toBe('/quotes/AAPL');
     expect(body.method).toBe('PUT');
   });
@@ -429,7 +429,7 @@ describe('REST Server — 404 and 405 envelopes', () => {
     const body = (await res.json()) as Record<string, unknown>;
     expect(res.status).toBe(405);
     expect(body.error).toBe('method-not-allowed');
-    expect(body.allowed).toEqual(['GET']);
+    expect(body.allowed).toEqual(['GET', 'OPTIONS']);
   });
 
   it('GET /quotes// returns JSON 404 (not Express HTML default)', async () => {
@@ -699,6 +699,82 @@ describe('REST Server — source.reason redaction', () => {
     expect(reason).not.toContain('\n');
     expect(reason).not.toMatch(/\/home\//);
     expect(reason).not.toContain('Require stack');
+  });
+});
+
+describe('REST Server — CORS preflight', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  const KNOWN_PATHS = [
+    '/health',
+    '/quotes',
+    '/quotes/AAPL',
+    '/quotes/fresh/all',
+    '/audit/stats',
+    '/status/quotes',
+  ];
+
+  it.each(KNOWN_PATHS)('OPTIONS %s returns 204 with full CORS allow headers', async (path) => {
+    const res = await fetch(`${baseUrl}${path}`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://example.com',
+        'Access-Control-Request-Method': 'GET',
+      },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get('access-control-allow-origin')).toBe('*');
+    expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
+    expect(res.headers.get('access-control-allow-headers')).toBe('Content-Type');
+    expect(res.headers.get('access-control-max-age')).toBe('600');
+    const text = await res.text();
+    expect(text).toBe('');
+  });
+
+  it('OPTIONS to an unknown path returns 204 (preflight is not the discovery surface)', async () => {
+    const res = await fetch(`${baseUrl}/this-does-not-exist`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://example.com',
+        'Access-Control-Request-Method': 'GET',
+      },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
+  });
+
+  it('POST /quotes returns 405 with Allow header that includes OPTIONS', async () => {
+    const res = await fetch(`${baseUrl}/quotes`, { method: 'POST' });
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(405);
+    expect(res.headers.get('allow')).toBe('GET, OPTIONS');
+    expect(body.allowed).toEqual(['GET', 'OPTIONS']);
+  });
+
+  it('GET on a known path is unchanged after the preflight short-circuit', async () => {
+    const res = await fetch(`${baseUrl}/health`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.status).toBe('ok');
   });
 });
 

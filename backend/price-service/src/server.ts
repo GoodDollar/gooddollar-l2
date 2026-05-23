@@ -12,11 +12,11 @@ export type SourceStatusGetter = () => SourceStatus;
  * The parametric `/quotes/:symbol` route is matched by `QUOTES_SYMBOL_RE`.
  */
 const KNOWN_ROUTES: ReadonlyMap<string, readonly string[]> = new Map([
-  ['/health', ['GET']],
-  ['/quotes', ['GET']],
-  ['/quotes/fresh/all', ['GET']],
-  ['/audit/stats', ['GET']],
-  ['/status/quotes', ['GET']],
+  ['/health', ['GET', 'OPTIONS']],
+  ['/quotes', ['GET', 'OPTIONS']],
+  ['/quotes/fresh/all', ['GET', 'OPTIONS']],
+  ['/audit/stats', ['GET', 'OPTIONS']],
+  ['/status/quotes', ['GET', 'OPTIONS']],
 ]);
 const QUOTES_SYMBOL_RE = /^\/quotes\/[^/]+$/;
 
@@ -61,10 +61,15 @@ export function createServer(
   app.disable('x-powered-by');
   const cfg = { ...DEFAULT_CONFIG, ...config };
 
-  app.use((_req: Request, res: Response, next) => {
+  app.use((req: Request, res: Response, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Max-Age', '600');
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
     next();
   });
   app.use(express.json({ limit: '32kb' }));
@@ -213,7 +218,7 @@ export function createServer(
   app.all('*', (req: Request, res: Response) => {
     const allowed =
       KNOWN_ROUTES.get(req.path) ??
-      (QUOTES_SYMBOL_RE.test(req.path) ? ['GET'] : undefined);
+      (QUOTES_SYMBOL_RE.test(req.path) ? ['GET', 'OPTIONS'] : undefined);
     if (allowed && !allowed.includes(req.method)) {
       res.setHeader('Allow', allowed.join(', '));
       res.status(405).json({
