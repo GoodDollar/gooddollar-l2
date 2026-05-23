@@ -1494,14 +1494,15 @@ export function createServer(
   app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     const now = Date.now();
     if (isMalformedUriError(err)) {
-      // Match the 404 catch-all envelope shape so a consumer can treat
-      // malformed-uri as a sibling: `{error, message, expected,
-      // didYouMean?, path, method, discovery, endpoints, [timestamp,
-      // timestampIso]}`. Pre-fixed body filed the same diagnostic gap
-      // every other 400 on the endpoint family already filled.
-      const endpoints: EndpointIndexCompactEntry[] = buildEndpointIndexCompact();
-      const ws = buildWsAdvertisement(req);
-      if (ws) endpoints.push({ path: ws.url, methods: ['CONNECT'] });
+      // Slim envelope: the actionable diagnostic (`expected` block) plus
+      // a single 5-byte `discovery:'/'` pointer for an automated client
+      // that hasn't found the catalog yet. The `endpoints[]` dump that
+      // 0027 already trimmed off 404 is deliberately NOT replicated here
+      // — an integrator typo'ing percent-encoding already knows the
+      // path they meant and should not pay the catalog tax (~400 B
+      // saved per response). `endpoints[]` now lives on exactly two
+      // call sites: GET / (the discovery endpoint) and the catch-all
+      // 404 (typo recovery). See task 0061.
       const didYouMean = suggestCleanedPath(req.path);
       const echoed = echoPath(req.path);
       const body: Record<string, unknown> = {
@@ -1513,7 +1514,6 @@ export function createServer(
       Object.assign(body, echoed);
       body.method = req.method;
       body.discovery = '/';
-      body.endpoints = endpoints;
       res.status(400).json(finalizeTimestamps(body, now));
       return;
     }

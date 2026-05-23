@@ -37,11 +37,14 @@ function rawGet(path: string, port: number): Promise<RawResponse> {
  * `%FF`) hit Express's URL-decode error path with `URIError`/`HttpError`
  * and previously rendered the bare `{error:'bad-request',
  * message:'bad-request'}` envelope — no diagnostic info, no
- * `didYouMean`, no `discovery` pointer. Every other 400 on the same
- * endpoint family ships rich diagnostics. After this task the
- * malformed-uri 400 mirrors the 404 catch-all shape:
- * `{error, message, expected, didYouMean?, path, method, discovery,
- * endpoints, timestamp, timestampIso}`.
+ * `didYouMean`, no `discovery` pointer.
+ *
+ * Task 0061 then trimmed off the `endpoints[]` array — the same bloat
+ * task 0027 removed from the 404 path — so the malformed-uri 400 now
+ * ships only `{error, message, expected, didYouMean?, path, method,
+ * discovery, timestamp, timestampIso}`. The `discovery:'/'` pointer
+ * stays so an automated client can still find the catalog without
+ * the dump being inlined on every reply.
  */
 describe('GET /quotes/<malformed-percent> → 400 malformed-uri', () => {
   let server: ReturnType<express.Express['listen']>;
@@ -86,8 +89,13 @@ describe('GET /quotes/<malformed-percent> → 400 malformed-uri', () => {
       expect(body.path).toBe(input);
       expect(body.method).toBe('GET');
       expect(body.discovery).toBe('/');
-      expect(Array.isArray(body.endpoints)).toBe(true);
-      expect((body.endpoints as unknown[]).length).toBeGreaterThan(0);
+      // Task 0061: `endpoints[]` array is intentionally absent on
+      // malformed-uri responses — the actionable diagnostic is the
+      // `expected.percentEncoding` block, not a catalog dump.
+      expect('endpoints' in body).toBe(false);
+      // Body-size cap: with `endpoints[]` removed, the slim envelope
+      // fits comfortably under 400 B (was ~745 B in the regressed shape).
+      expect(Buffer.byteLength(res.body, 'utf8')).toBeLessThan(400);
       expect(typeof body.timestamp).toBe('number');
       expect(typeof body.timestampIso).toBe('string');
       const keys = Object.keys(body);
@@ -113,5 +121,25 @@ describe('GET /quotes/<malformed-percent> → 400 malformed-uri', () => {
     expect(res.status).toBe(400);
     const body = JSON.parse(res.body) as Record<string, unknown>;
     expect(body.error).toBe('invalid-symbol');
+  });
+
+  it('full diagnostic block survives the trim — error/message/expected/path/method/discovery all present', async () => {
+    const res = await rawGet('/quotes/AAPL%', port);
+    expect(res.status).toBe(400);
+    const body = JSON.parse(res.body) as Record<string, unknown>;
+    expect(body.error).toBe('malformed-uri');
+    expect(typeof body.message).toBe('string');
+    expect(body.expected).toBeDefined();
+    expect(typeof body.path).toBe('string');
+    expect(typeof body.method).toBe('string');
+    expect(body.discovery).toBe('/');
+  });
+
+  it('GET / still ships the full endpoints[] catalog (single legitimate emit site)', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { endpoints: unknown[] };
+    expect(Array.isArray(body.endpoints)).toBe(true);
+    expect(body.endpoints.length).toBeGreaterThan(0);
   });
 });
