@@ -22,6 +22,15 @@ function resolveProofDir(): string {
  */
 export const RELATIVE_SOURCE_LOCATOR = 'qa-proof/hedges/latest.json'
 
+/**
+ * Fixed, sanitised user-visible message for the `read_failed` (500)
+ * branch. The underlying parser/IO error is still written to server
+ * logs via `console.error`, but never to the response body — that
+ * would leak filesystem paths, errno codes, and parser internals to
+ * any browser or curl client.
+ */
+export const PROOF_UNREADABLE_MESSAGE = 'Hedge proof file is present but unreadable.'
+
 async function handleGet(_req: NextRequest) {
   const proofPath = path.join(resolveProofDir(), 'latest.json')
   try {
@@ -42,8 +51,18 @@ async function handleGet(_req: NextRequest) {
         { status: 404, headers: { 'Cache-Control': 'no-store' } },
       )
     }
+    const errno = err as NodeJS.ErrnoException
+    console.error(
+      '[hedge-proof] read failed',
+      { name: errno.name, code: errno.code },
+      err,
+    )
     return NextResponse.json(
-      { error: 'read_failed', message: (err as Error).message },
+      {
+        error: 'read_failed',
+        code: 'PROOF_UNREADABLE',
+        message: PROOF_UNREADABLE_MESSAGE,
+      },
       { status: 500 },
     )
   }

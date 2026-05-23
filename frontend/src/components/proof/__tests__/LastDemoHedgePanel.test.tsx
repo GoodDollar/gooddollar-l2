@@ -132,12 +132,18 @@ describe('LastDemoHedgePanel', () => {
     expect(screen.getByText(/hedge:demo/)).toBeInTheDocument()
   })
 
-  it('renders an inline error when the API fails with a 500', async () => {
+  it('renders the canned sanitised message from a 500 body without leaking debug strings', async () => {
+    const cannedMessage = 'Hedge proof file is present but unreadable.'
     globalThis.fetch = vi.fn(() =>
       Promise.resolve({
         ok: false,
         status: 500,
-        json: () => Promise.resolve({ error: 'oops' }),
+        json: () =>
+          Promise.resolve({
+            error: 'read_failed',
+            code: 'PROOF_UNREADABLE',
+            message: cannedMessage,
+          }),
       } as Response),
     )
 
@@ -146,5 +152,26 @@ describe('LastDemoHedgePanel', () => {
     await waitFor(() => {
       expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
     })
+    expect(screen.getByText(cannedMessage)).toBeInTheDocument()
+    expect(screen.queryByText(/JSON/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/parse/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\/home\//)).not.toBeInTheDocument()
+  })
+
+  it('falls back to a generic HTTP message when the 500 body is not JSON', async () => {
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 502,
+        json: () => Promise.reject(new Error('not json')),
+      } as Response),
+    )
+
+    render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
+    })
+    expect(screen.getByText(/HTTP 502/)).toBeInTheDocument()
   })
 })

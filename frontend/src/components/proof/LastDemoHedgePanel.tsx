@@ -20,6 +20,18 @@ interface LastDemoHedgePanelProps {
   intervalMs?: number
 }
 
+async function readSanitisedMessage(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { message?: unknown }
+    if (typeof body?.message === 'string' && body.message.length > 0) {
+      return body.message
+    }
+  } catch {
+    // body wasn't JSON; fall through to the generic status message.
+  }
+  return `HTTP ${res.status}`
+}
+
 function formatUsd(n: number): string {
   if (!Number.isFinite(n)) return '—'
   return n.toLocaleString('en-US', {
@@ -52,7 +64,11 @@ export function LastDemoHedgePanel({
           if (!cancelled) setState({ status: 'missing', message: 'No hedge proof recorded yet.' })
           return
         }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        if (!res.ok) {
+          const sanitisedMessage = await readSanitisedMessage(res)
+          if (!cancelled) setState({ status: 'error', message: sanitisedMessage })
+          return
+        }
         const data = (await res.json()) as ProofEnvelope
         if (!cancelled) setState({ status: 'ok', data })
       } catch (err) {
