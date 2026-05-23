@@ -3,8 +3,8 @@
 
 __turbopack_context__.v((parentImport) => {
     return Promise.all([
-  "static/chunks/frontend_src_0jkz95f._.js",
-  "static/chunks/frontend_src_components_stocks_MarketIntelligencePanel_tsx_0vwzdp.._.js"
+  "static/chunks/frontend_src_components_stocks_MarketIntelligencePanel_tsx_06mpkkd._.js",
+  "static/chunks/frontend_src_components_stocks_MarketIntelligencePanel_tsx_0eg6y.8._.js"
 ].map((chunk) => __turbopack_context__.l(chunk))).then(() => {
         return parentImport("[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx [app-client] (ecmascript, next/dynamic entry)");
     });
@@ -14,8 +14,8 @@ __turbopack_context__.v((parentImport) => {
 
 __turbopack_context__.v((parentImport) => {
     return Promise.all([
-  "static/chunks/frontend_src_0awp88x._.js",
-  "static/chunks/frontend_src_components_stocks_StocksRebalanceDashboard_tsx_0vwzdp.._.js"
+  "static/chunks/frontend_src_components_stocks_StocksRebalanceDashboard_tsx_0v-19nj._.js",
+  "static/chunks/frontend_src_components_stocks_StocksRebalanceDashboard_tsx_0eg6y.8._.js"
 ].map((chunk) => __turbopack_context__.l(chunk))).then(() => {
         return parentImport("[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx [app-client] (ecmascript, next/dynamic entry)");
     });

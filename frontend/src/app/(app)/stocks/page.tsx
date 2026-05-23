@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
+import { isNoData, NO_DATA_DASH } from '@/lib/formatNoData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { Sparkline } from '@/components/Sparkline'
@@ -138,13 +139,17 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, i
         </div>
       </td>
       <td className="py-3 px-3 text-right font-medium">
-        <PercentageChange value={stock.change24h} decimals={2} size="sm" />
+        <PercentageChange
+          value={isNoData(stock.change24h) ? null : stock.change24h}
+          decimals={2}
+          size="sm"
+        />
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">
-        {formatLargeNumber(stock.volume24h)}
+        {isNoData(stock.volume24h) ? NO_DATA_DASH : formatLargeNumber(stock.volume24h)}
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden md:table-cell">
-        {formatLargeNumber(stock.marketCap)}
+        {isNoData(stock.marketCap) ? NO_DATA_DASH : formatLargeNumber(stock.marketCap)}
       </td>
       <td className="py-3 px-2 hidden sm:table-cell" aria-label={`7-day trend: ${stock.change24h >= 0 ? 'up' : 'down'} ${Math.abs(stock.change24h).toFixed(1)}%`}>
         <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
@@ -556,7 +561,12 @@ export default function StocksPage() {
               <div className="text-right shrink-0 w-[96px]">
                 <p className="text-white font-medium text-sm whitespace-nowrap" data-testid="price-cell">{formatStockPrice(stock.price)}</p>
                 <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
-                  <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
+                  <PercentageChange
+                    value={isNoData(stock.change24h) ? null : stock.change24h}
+                    decimals={2}
+                    size="xs"
+                    showSign
+                  />
                 </div>
                 <div className="inline-flex justify-end w-full mt-0.5">
                   <PriceSourceBadge source={stockSources[stock.ticker] ?? 'fallback'} size="sm" />

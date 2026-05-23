@@ -9,6 +9,8 @@ __turbopack_context__.s([
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$stockData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/stockData.ts [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$formatNoData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/formatNoData.ts [app-ssr] (ecmascript)");
+;
 ;
 ;
 ;
@@ -31,19 +33,26 @@ function buildFallbackHeadlines(stocks) {
 }
 function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) {
     const [mode, setMode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('gainers');
+    // Only consider symbols whose 24h change actually came from a live feed.
+    // The seed dataset uses 0 as a "no oracle update" sentinel; ranking on it
+    // produces a fake "top movers" list of 5 identical +0.00% rows.
+    const liveMovers = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>stocks.filter((s)=>!(0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$formatNoData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["isNoData"])(s.change24h)), [
+        stocks
+    ]);
+    const hasLiveMovers = liveMovers.length > 0;
     const movers = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
-        if (stocks.length === 0) return [];
+        if (liveMovers.length === 0) return [];
         if (mode === 'gainers') {
             return [
-                ...stocks
+                ...liveMovers
             ].filter((stock)=>stock.change24h >= 0).sort((a, b)=>b.change24h - a.change24h).slice(0, 5);
         }
         return [
-            ...stocks
+            ...liveMovers
         ].filter((stock)=>stock.change24h < 0).sort((a, b)=>a.change24h - b.change24h).slice(0, 5);
     }, [
         mode,
-        stocks
+        liveMovers
     ]);
     const earnings = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
         return stocks.slice(0, 5).map((stock, idx)=>({
@@ -73,7 +82,7 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                 children: "Market Intelligence"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 68,
+                                lineNumber: 78,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -81,13 +90,13 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                 children: "Top movers, upcoming earnings, and a quick news flow."
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 69,
+                                lineNumber: 79,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                        lineNumber: 67,
+                        lineNumber: 77,
                         columnNumber: 9
                     }, this),
                     isDemo && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -95,13 +104,13 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                         children: "Demo intelligence data"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                        lineNumber: 72,
+                        lineNumber: 82,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                lineNumber: 66,
+                lineNumber: 76,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -118,7 +127,7 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                         children: "Top Movers"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                        lineNumber: 81,
+                                        lineNumber: 91,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -131,7 +140,7 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                                 children: "Gainers"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                lineNumber: 83,
+                                                lineNumber: 93,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -141,19 +150,19 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                                 children: "Losers"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                lineNumber: 90,
+                                                lineNumber: 100,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                        lineNumber: 82,
+                                        lineNumber: 92,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 80,
+                                lineNumber: 90,
                                 columnNumber: 11
                             }, this),
                             isLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -167,19 +176,27 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                         className: "animate-pulse h-8 rounded-lg bg-dark-50/30"
                                     }, i, false, {
                                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                        lineNumber: 102,
+                                        lineNumber: 112,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 100,
+                                lineNumber: 110,
                                 columnNumber: 13
                             }, this) : !hasData ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 className: "text-xs text-gray-500",
                                 children: "No movers available."
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 106,
+                                lineNumber: 116,
+                                columnNumber: 13
+                            }, this) : !hasLiveMovers ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                className: "text-xs text-gray-500",
+                                "data-testid": "top-movers-empty",
+                                children: "No movers yet, waiting for live feed."
+                            }, void 0, false, {
+                                fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
+                                lineNumber: 118,
                                 columnNumber: 13
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
                                 className: "space-y-1.5",
@@ -194,41 +211,37 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                                     children: stock.ticker
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                    lineNumber: 116,
+                                                    lineNumber: 130,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                     className: stock.change24h >= 0 ? 'text-green-400' : 'text-red-400',
-                                                    children: [
-                                                        stock.change24h >= 0 ? '+' : '',
-                                                        stock.change24h.toFixed(2),
-                                                        "%"
-                                                    ]
-                                                }, void 0, true, {
+                                                    children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$formatNoData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["pctOrDash"])(stock.change24h)
+                                                }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                    lineNumber: 117,
+                                                    lineNumber: 131,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                            lineNumber: 111,
+                                            lineNumber: 125,
                                             columnNumber: 19
                                         }, this)
                                     }, stock.ticker, false, {
                                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                        lineNumber: 110,
+                                        lineNumber: 124,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 108,
+                                lineNumber: 122,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                        lineNumber: 79,
+                        lineNumber: 89,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("article", {
@@ -239,7 +252,7 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                 children: "Upcoming Earnings"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 128,
+                                lineNumber: 142,
                                 columnNumber: 11
                             }, this),
                             isLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -253,19 +266,19 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                         className: "animate-pulse h-8 rounded-lg bg-dark-50/30"
                                     }, i, false, {
                                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                        lineNumber: 132,
+                                        lineNumber: 146,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 130,
+                                lineNumber: 144,
                                 columnNumber: 13
                             }, this) : !hasData ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 className: "text-xs text-gray-500",
                                 children: "No earnings events available."
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 136,
+                                lineNumber: 150,
                                 columnNumber: 13
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
                                 className: "space-y-1.5",
@@ -280,7 +293,7 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                                     children: event.ticker
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                    lineNumber: 146,
+                                                    lineNumber: 160,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -292,29 +305,29 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                    lineNumber: 147,
+                                                    lineNumber: 161,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                            lineNumber: 141,
+                                            lineNumber: 155,
                                             columnNumber: 19
                                         }, this)
                                     }, `${event.ticker}-${event.period}`, false, {
                                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                        lineNumber: 140,
+                                        lineNumber: 154,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 138,
+                                lineNumber: 152,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                        lineNumber: 127,
+                        lineNumber: 141,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("article", {
@@ -325,7 +338,7 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                 children: "News Flow"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 156,
+                                lineNumber: 170,
                                 columnNumber: 11
                             }, this),
                             isLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -339,19 +352,19 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                         className: "animate-pulse h-8 rounded-lg bg-dark-50/30"
                                     }, i, false, {
                                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                        lineNumber: 160,
+                                        lineNumber: 174,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 158,
+                                lineNumber: 172,
                                 columnNumber: 13
                             }, this) : !hasData ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 className: "text-xs text-gray-500",
                                 children: "No headlines available."
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 164,
+                                lineNumber: 178,
                                 columnNumber: 13
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
                                 className: "space-y-2",
@@ -370,7 +383,7 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                                             children: item.ticker
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                            lineNumber: 171,
+                                                            lineNumber: 185,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -378,13 +391,13 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                                             children: item.age
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                            lineNumber: 172,
+                                                            lineNumber: 186,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                    lineNumber: 170,
+                                                    lineNumber: 184,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -392,7 +405,7 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                                     children: item.title
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                    lineNumber: 174,
+                                                    lineNumber: 188,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -404,41 +417,41 @@ function MarketIntelligencePanel({ stocks, isLive, isLoading, onSelectTicker }) 
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                                    lineNumber: 175,
+                                                    lineNumber: 189,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                            lineNumber: 169,
+                                            lineNumber: 183,
                                             columnNumber: 19
                                         }, this)
                                     }, item.id, false, {
                                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                        lineNumber: 168,
+                                        lineNumber: 182,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                                lineNumber: 166,
+                                lineNumber: 180,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                        lineNumber: 155,
+                        lineNumber: 169,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-                lineNumber: 78,
+                lineNumber: 88,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx",
-        lineNumber: 65,
+        lineNumber: 75,
         columnNumber: 5
     }, this);
 }

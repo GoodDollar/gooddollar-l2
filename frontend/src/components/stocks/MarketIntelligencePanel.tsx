@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Stock } from '@/lib/stockData'
 import { formatStockPrice } from '@/lib/stockData'
+import { isNoData, pctOrDash } from '@/lib/formatNoData'
 
 type MoversMode = 'gainers' | 'losers'
 
@@ -33,21 +34,30 @@ export function MarketIntelligencePanel({
 }) {
   const [mode, setMode] = useState<MoversMode>('gainers')
 
+  // Only consider symbols whose 24h change actually came from a live feed.
+  // The seed dataset uses 0 as a "no oracle update" sentinel; ranking on it
+  // produces a fake "top movers" list of 5 identical +0.00% rows.
+  const liveMovers = useMemo(
+    () => stocks.filter((s) => !isNoData(s.change24h)),
+    [stocks],
+  )
+  const hasLiveMovers = liveMovers.length > 0
+
   const movers = useMemo(() => {
-    if (stocks.length === 0) return []
+    if (liveMovers.length === 0) return []
 
     if (mode === 'gainers') {
-      return [...stocks]
+      return [...liveMovers]
         .filter((stock) => stock.change24h >= 0)
         .sort((a, b) => b.change24h - a.change24h)
         .slice(0, 5)
     }
 
-    return [...stocks]
+    return [...liveMovers]
       .filter((stock) => stock.change24h < 0)
       .sort((a, b) => a.change24h - b.change24h)
       .slice(0, 5)
-  }, [mode, stocks])
+  }, [mode, liveMovers])
 
   const earnings = useMemo(() => {
     return stocks.slice(0, 5).map((stock, idx) => ({
@@ -104,6 +114,10 @@ export function MarketIntelligencePanel({
             </div>
           ) : !hasData ? (
             <p className="text-xs text-gray-500">No movers available.</p>
+          ) : !hasLiveMovers ? (
+            <p className="text-xs text-gray-500" data-testid="top-movers-empty">
+              No movers yet, waiting for live feed.
+            </p>
           ) : (
             <ul className="space-y-1.5">
               {movers.map((stock) => (
@@ -115,7 +129,7 @@ export function MarketIntelligencePanel({
                   >
                     <span className="font-medium text-gray-200">{stock.ticker}</span>
                     <span className={stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                      {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
+                      {pctOrDash(stock.change24h)}
                     </span>
                   </button>
                 </li>

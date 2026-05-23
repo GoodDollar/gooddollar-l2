@@ -8,6 +8,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
+import { isNoData, NO_DATA_DASH, pctOrDash } from '@/lib/formatNoData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { StalePriceBanner } from '@/components/StalePriceBanner'
 import { getAnalystOutlook } from '@/lib/stockInsights'
@@ -549,9 +550,13 @@ export function StockDetailContent() {
 
           <div className="flex items-baseline gap-3 mb-1">
             <PriceWithTick price={stock.price} className="text-3xl font-bold text-white" />
-            <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
-            </span>
+            {isNoData(stock.change24h) ? (
+              <span className="text-sm font-medium text-gray-500">{NO_DATA_DASH}</span>
+            ) : (
+              <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {pctOrDash(stock.change24h)}
+              </span>
+            )}
             <PriceSourceBadge source={stockSources[stock.ticker] ?? 'fallback'} size="md" />
           </div>
           <div className="mb-2">
@@ -600,49 +605,78 @@ export function StockDetailContent() {
           </div>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
-            <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
+            <h2
+              className="text-sm font-semibold text-white mb-3"
+              title="Some fields show '—' when the price service has no live data yet."
+            >
+              Key Statistics
+            </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">Market Cap</div>
-                <div className="text-white font-medium">{formatLargeNumber(stock.marketCap)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
-                <div className="text-white font-medium">{formatLargeNumber(stock.volume24h)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">Sector</div>
-                <div className="text-white font-medium">{stock.sector}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">52W High</div>
-                <div className="text-white font-medium">{formatStockPrice(stock.high52w)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
-                <div className="text-white font-medium">{formatStockPrice(stock.low52w)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
-                <div className={`font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
+                <div className="text-white font-medium">
+                  {isNoData(stock.marketCap) ? NO_DATA_DASH : formatLargeNumber(stock.marketCap)}
                 </div>
               </div>
               <div>
+                <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
+                <div className="text-white font-medium">
+                  {isNoData(stock.volume24h) ? NO_DATA_DASH : formatLargeNumber(stock.volume24h)}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs mb-0.5">Sector</div>
+                <div className="text-white font-medium">{stock.sector || NO_DATA_DASH}</div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs mb-0.5">52W High</div>
+                <div className="text-white font-medium">
+                  {isNoData(stock.high52w) ? NO_DATA_DASH : formatStockPrice(stock.high52w)}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
+                <div className="text-white font-medium">
+                  {isNoData(stock.low52w) ? NO_DATA_DASH : formatStockPrice(stock.low52w)}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
+                {isNoData(stock.change24h) ? (
+                  <div className="font-medium text-gray-500">{NO_DATA_DASH}</div>
+                ) : (
+                  <div className={`font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {pctOrDash(stock.change24h)}
+                  </div>
+                )}
+              </div>
+              <div>
                 <div className="text-gray-500 text-xs mb-0.5">P/E Ratio</div>
-                <div className="text-white font-medium">{stock.peRatio.toFixed(1)}x</div>
+                <div className="text-white font-medium">
+                  {isNoData(stock.peRatio) ? NO_DATA_DASH : `${stock.peRatio.toFixed(1)}x`}
+                </div>
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">EPS</div>
-                <div className={`font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>${stock.eps.toFixed(2)}</div>
+                {isNoData(stock.eps) ? (
+                  <div className="font-medium text-gray-500">{NO_DATA_DASH}</div>
+                ) : (
+                  <div className={`font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    ${stock.eps.toFixed(2)}
+                  </div>
+                )}
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">Dividend Yield</div>
-                <div className="text-white font-medium">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : '—'}</div>
+                <div className="text-white font-medium">
+                  {stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : NO_DATA_DASH}
+                </div>
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-0.5">Avg Volume</div>
-                <div className="text-white font-medium">{formatLargeNumber(stock.avgVolume).replace('$', '')}</div>
+                <div className="text-white font-medium">
+                  {isNoData(stock.avgVolume) ? NO_DATA_DASH : formatLargeNumber(stock.avgVolume).replace('$', '')}
+                </div>
               </div>
             </div>
           </div>

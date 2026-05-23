@@ -1,4 +1,74 @@
 (globalThis["TURBOPACK"] || (globalThis["TURBOPACK"] = [])).push([typeof document === "object" ? document.currentScript : undefined,
+"[project]/frontend/src/lib/formatNoData.ts [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "NO_DATA_DASH",
+    ()=>NO_DATA_DASH,
+    "formatCompactUsd",
+    ()=>formatCompactUsd,
+    "intOrDash",
+    ()=>intOrDash,
+    "isNoData",
+    ()=>isNoData,
+    "pctOrDash",
+    ()=>pctOrDash,
+    "usdOrDash",
+    ()=>usdOrDash
+]);
+/**
+ * formatNoData — tiny formatting helpers that render a Unicode em-dash
+ * ("—") whenever the underlying number is missing, non-finite, or a
+ * suspicious zero used as a "no data" sentinel.
+ *
+ * Why exist: several stocks-related blocks (Top Movers, Drift & Rebalance,
+ * Browse table 24h Change / Volume / Market Cap, per-ticker Key Statistics)
+ * currently render literal `0` / `+0.00%` / `$0` for symbols whose
+ * upstream feed has no value. That makes "we don't know" indistinguishable
+ * from a real zero. These helpers gate every such cell on a single,
+ * auditable rule:
+ *
+ *   isNoData(v) === true  →  render "—"
+ *
+ * Callers that have a genuine known-live zero can bypass by formatting
+ * the value directly; the helpers are only for the "could be zero, could
+ * be missing, we can't tell" case.
+ */ const DASH = '—';
+function isNoData(v) {
+    if (v == null) return true;
+    if (typeof v !== 'number') return true;
+    if (!Number.isFinite(v)) return true;
+    return v === 0;
+}
+function pctOrDash(value, decimals = 2) {
+    if (isNoData(value)) return DASH;
+    const n = value;
+    const sign = n > 0 ? '+' : '';
+    return `${sign}${n.toFixed(decimals)}%`;
+}
+function usdOrDash(value) {
+    if (isNoData(value)) return DASH;
+    return formatCompactUsd(value);
+}
+function intOrDash(value) {
+    if (isNoData(value)) return DASH;
+    return Math.round(value).toLocaleString();
+}
+function formatCompactUsd(value) {
+    const abs = Math.abs(value);
+    if (abs >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
+    if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
+    if (abs >= 1_000) return `$${value.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    })}`;
+    return `$${value.toFixed(2)}`;
+}
+const NO_DATA_DASH = DASH;
+if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
+    __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
+}
+}),
 "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx [app-client] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
@@ -273,4 +343,4 @@ __turbopack_context__.n(__turbopack_context__.i("[project]/frontend/src/componen
 }),
 ]);
 
-//# sourceMappingURL=frontend_src_components_stocks_StocksRebalanceDashboard_tsx_0v-19nj._.js.map
+//# sourceMappingURL=frontend_src_0awp88x._.js.map

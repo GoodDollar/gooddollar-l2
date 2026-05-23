@@ -2212,6 +2212,10 @@ img, video {
   border-color: #f59e0b40;
 }
 
+.border-gray-500\/25 {
+  border-color: #9ca3af40;
+}
+
 .border-t-dark {
   --tw-border-opacity: 1;
   border-top-color: rgb(15 23 41 / var(--tw-border-opacity, 1));

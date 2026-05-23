@@ -1,6 +1,7 @@
 'use client'
 
 import type { RebalanceInvariantResult } from '@/lib/stocksRebalanceInvariant'
+import { NO_DATA_DASH } from '@/lib/formatNoData'
 
 interface StocksRebalanceDashboardProps {
   symbols: RebalanceInvariantResult[]
@@ -12,9 +13,20 @@ function formatBps(bps: number): string {
   return `${(bps / 100).toFixed(2)}%`
 }
 
+/** Row has never been synced — every numeric field reads as no-data. */
+function isUnsynced(entry: RebalanceInvariantResult): boolean {
+  return entry.lastSyncedBlock === 0
+}
+
 function statusTone(entry: RebalanceInvariantResult): string {
+  if (isUnsynced(entry)) return 'text-gray-300 bg-gray-500/10 border-gray-500/25'
   if (entry.riskIncreaseAllowed) return 'text-green-400 bg-green-500/10 border-green-500/25'
   return 'text-red-300 bg-red-500/10 border-red-500/25'
+}
+
+function statusLabel(entry: RebalanceInvariantResult): string {
+  if (isUnsynced(entry)) return 'Unknown'
+  return entry.riskIncreaseAllowed ? 'Open' : 'Stopped'
 }
 
 export function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }: StocksRebalanceDashboardProps) {
@@ -57,20 +69,23 @@ export function StocksRebalanceDashboard({ symbols, isLoading = false, error = n
               </tr>
             </thead>
             <tbody>
-              {symbols.map((entry) => (
-                <tr key={entry.symbol} className="border-b border-gray-700/10">
-                  <td className="py-2 text-white font-medium">{entry.symbol}</td>
-                  <td className="py-2 text-right text-gray-300">{entry.oracleBlock}</td>
-                  <td className="py-2 text-right text-gray-300">{entry.lastSyncedBlock}</td>
-                  <td className="py-2 text-right text-gray-300">{entry.blockSkew}</td>
-                  <td className="py-2 text-right text-gray-300">{formatBps(entry.divergenceBps)}</td>
-                  <td className="py-2 text-right">
-                    <span className={`inline-flex rounded-md border px-2 py-1 ${statusTone(entry)}`}>
-                      {entry.riskIncreaseAllowed ? 'Open' : 'Stopped'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {symbols.map((entry) => {
+                const unsynced = isUnsynced(entry)
+                return (
+                  <tr key={entry.symbol} className="border-b border-gray-700/10" data-testid={unsynced ? 'rebalance-row-unsynced' : 'rebalance-row'}>
+                    <td className="py-2 text-white font-medium">{entry.symbol}</td>
+                    <td className="py-2 text-right text-gray-300">{unsynced ? NO_DATA_DASH : entry.oracleBlock}</td>
+                    <td className="py-2 text-right text-gray-300">{unsynced ? NO_DATA_DASH : entry.lastSyncedBlock}</td>
+                    <td className="py-2 text-right text-gray-300">{unsynced ? NO_DATA_DASH : entry.blockSkew}</td>
+                    <td className="py-2 text-right text-gray-300">{unsynced ? NO_DATA_DASH : formatBps(entry.divergenceBps)}</td>
+                    <td className="py-2 text-right">
+                      <span className={`inline-flex rounded-md border px-2 py-1 ${statusTone(entry)}`}>
+                        {statusLabel(entry)}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

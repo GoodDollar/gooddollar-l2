@@ -3,14 +3,14 @@
     "id": "[project]/frontend/src/components/stocks/MarketIntelligencePanel.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
       "static/chunks/frontend_src_components_stocks_MarketIntelligencePanel_tsx_06mpkkd._.js",
-      "static/chunks/frontend_src_components_stocks_MarketIntelligencePanel_tsx_0vwzdp.._.js"
+      "static/chunks/frontend_src_components_stocks_MarketIntelligencePanel_tsx_0eg6y.8._.js"
     ]
   },
   "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx [app-client] (ecmascript, next/dynamic entry)": {
     "id": "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
       "static/chunks/frontend_src_components_stocks_StocksRebalanceDashboard_tsx_0v-19nj._.js",
-      "static/chunks/frontend_src_components_stocks_StocksRebalanceDashboard_tsx_0vwzdp.._.js"
+      "static/chunks/frontend_src_components_stocks_StocksRebalanceDashboard_tsx_0eg6y.8._.js"
     ]
   }
 }

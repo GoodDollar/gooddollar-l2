@@ -7,14 +7,24 @@ __turbopack_context__.s([
     ()=>StocksRebalanceDashboard
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$formatNoData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/formatNoData.ts [app-ssr] (ecmascript)");
 'use client';
+;
 ;
 function formatBps(bps) {
     return `${(bps / 100).toFixed(2)}%`;
 }
+/** Row has never been synced — every numeric field reads as no-data. */ function isUnsynced(entry) {
+    return entry.lastSyncedBlock === 0;
+}
 function statusTone(entry) {
+    if (isUnsynced(entry)) return 'text-gray-300 bg-gray-500/10 border-gray-500/25';
     if (entry.riskIncreaseAllowed) return 'text-green-400 bg-green-500/10 border-green-500/25';
     return 'text-red-300 bg-red-500/10 border-red-500/25';
+}
+function statusLabel(entry) {
+    if (isUnsynced(entry)) return 'Unknown';
+    return entry.riskIncreaseAllowed ? 'Open' : 'Stopped';
 }
 function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -30,7 +40,7 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                             children: "Drift & Rebalance"
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                            lineNumber: 25,
+                            lineNumber: 37,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -38,18 +48,18 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                             children: "Per-symbol block coherence across AMM, perps, prediction, lend, and yield."
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                            lineNumber: 26,
+                            lineNumber: 38,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                    lineNumber: 24,
+                    lineNumber: 36,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                lineNumber: 23,
+                lineNumber: 35,
                 columnNumber: 7
             }, this),
             isLoading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -63,12 +73,12 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                         className: "animate-pulse h-6 rounded bg-dark-50/30"
                     }, i, false, {
                         fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                        lineNumber: 33,
+                        lineNumber: 45,
                         columnNumber: 13
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                lineNumber: 31,
+                lineNumber: 43,
                 columnNumber: 9
             }, this),
             !isLoading && error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -79,7 +89,7 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                lineNumber: 39,
+                lineNumber: 51,
                 columnNumber: 9
             }, this),
             !isLoading && !error && symbols.length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -87,7 +97,7 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                 children: "No active symbols reported."
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                lineNumber: 43,
+                lineNumber: 55,
                 columnNumber: 9
             }, this),
             !isLoading && !error && symbols.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -104,7 +114,7 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                                         children: "Symbol"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                        lineNumber: 51,
+                                        lineNumber: 63,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -112,7 +122,7 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                                         children: "Oracle block"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                        lineNumber: 52,
+                                        lineNumber: 64,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -120,7 +130,7 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                                         children: "Last synced"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                        lineNumber: 53,
+                                        lineNumber: 65,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -128,7 +138,7 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                                         children: "Skew"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                        lineNumber: 54,
+                                        lineNumber: 66,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -136,7 +146,7 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                                         children: "Divergence"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                        lineNumber: 55,
+                                        lineNumber: 67,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -144,105 +154,109 @@ function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }) 
                                         children: "Risk gate"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                        lineNumber: 56,
+                                        lineNumber: 68,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                lineNumber: 50,
+                                lineNumber: 62,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                            lineNumber: 49,
+                            lineNumber: 61,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
-                            children: symbols.map((entry)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                            children: symbols.map((entry)=>{
+                                const unsynced = isUnsynced(entry);
+                                return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
                                     className: "border-b border-gray-700/10",
+                                    "data-testid": unsynced ? 'rebalance-row-unsynced' : 'rebalance-row',
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-2 text-white font-medium",
                                             children: entry.symbol
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                            lineNumber: 62,
-                                            columnNumber: 19
+                                            lineNumber: 76,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-2 text-right text-gray-300",
-                                            children: entry.oracleBlock
+                                            children: unsynced ? __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$formatNoData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["NO_DATA_DASH"] : entry.oracleBlock
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                            lineNumber: 63,
-                                            columnNumber: 19
+                                            lineNumber: 77,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-2 text-right text-gray-300",
-                                            children: entry.lastSyncedBlock
+                                            children: unsynced ? __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$formatNoData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["NO_DATA_DASH"] : entry.lastSyncedBlock
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                            lineNumber: 64,
-                                            columnNumber: 19
+                                            lineNumber: 78,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-2 text-right text-gray-300",
-                                            children: entry.blockSkew
+                                            children: unsynced ? __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$formatNoData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["NO_DATA_DASH"] : entry.blockSkew
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                            lineNumber: 65,
-                                            columnNumber: 19
+                                            lineNumber: 79,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-2 text-right text-gray-300",
-                                            children: formatBps(entry.divergenceBps)
+                                            children: unsynced ? __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$formatNoData$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["NO_DATA_DASH"] : formatBps(entry.divergenceBps)
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                            lineNumber: 66,
-                                            columnNumber: 19
+                                            lineNumber: 80,
+                                            columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                             className: "py-2 text-right",
                                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 className: `inline-flex rounded-md border px-2 py-1 ${statusTone(entry)}`,
-                                                children: entry.riskIncreaseAllowed ? 'Open' : 'Stopped'
+                                                children: statusLabel(entry)
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                                lineNumber: 68,
-                                                columnNumber: 21
+                                                lineNumber: 82,
+                                                columnNumber: 23
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                            lineNumber: 67,
-                                            columnNumber: 19
+                                            lineNumber: 81,
+                                            columnNumber: 21
                                         }, this)
                                     ]
                                 }, entry.symbol, true, {
                                     fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                                    lineNumber: 61,
-                                    columnNumber: 17
-                                }, this))
+                                    lineNumber: 75,
+                                    columnNumber: 19
+                                }, this);
+                            })
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                            lineNumber: 59,
+                            lineNumber: 71,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                    lineNumber: 48,
+                    lineNumber: 60,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-                lineNumber: 47,
+                lineNumber: 59,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/stocks/StocksRebalanceDashboard.tsx",
-        lineNumber: 22,
+        lineNumber: 34,
         columnNumber: 5
     }, this);
 }
