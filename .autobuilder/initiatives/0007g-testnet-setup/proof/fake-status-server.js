@@ -77,6 +77,10 @@ const PROFILES = {
   // redacted body snippet on probe failure (instead of collapsing the
   // diagnostic into a generic `status=unknown` line).
   'lane7-smoke-html-500': null,
+  // JSON-RPC handler that returns `now-60` as the StockOracleV2
+  // lastUpdated() value. Used by task 0010 to prove the on-chain
+  // freshness probe still works on the green path.
+  'lane7-smoke-rpc-fresh': null,
 };
 
 function buildBody(profile) {
@@ -111,6 +115,7 @@ function main() {
   }
 
   const isHtml500Profile = profile === 'lane7-smoke-html-500';
+  const isRpcFreshProfile = profile === 'lane7-smoke-rpc-fresh';
 
   const server = http.createServer((req, res) => {
     if (isHtml500Profile) {
@@ -121,6 +126,23 @@ function main() {
       res.end(
         '<html>Internal Server Error: token=Bearer abcdef0123456789abcdef0123456789</html>',
       );
+      return;
+    }
+    if (isRpcFreshProfile && req.method === 'POST') {
+      // Minimal JSON-RPC eth_call handler for the StockOracleV2
+      // lastUpdated() selector (0xd0b06f5d). Returns a 32-byte hex
+      // value of `floor(now/1000)-60` so the smoke reports the
+      // oracle as fresh (60 s old).
+      let raw = '';
+      req.on('data', (c) => { raw += c; });
+      req.on('end', () => {
+        let id = 1;
+        try { id = JSON.parse(raw).id; } catch (_) { /* ignore */ }
+        const ts = Math.floor(Date.now() / 1000) - 60;
+        const hex = ts.toString(16).padStart(64, '0');
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ jsonrpc: '2.0', id, result: '0x' + hex }));
+      });
       return;
     }
     const url = new URL(req.url || '/', `http://localhost:${port}`);

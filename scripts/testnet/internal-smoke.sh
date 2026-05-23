@@ -364,7 +364,13 @@ else
         WARNINGS+=("StockOracleV2 address unresolved — freshness probe skipped")
       else
         # Pure node + JSON-RPC eth_call (selector for lastUpdated() =
-        # cast sig "lastUpdated()" = 0xd0b06f5d).
+        # cast sig "lastUpdated()" = 0xd0b06f5d). Bound by a 10s socket
+        # timeout that mirrors the curl `--max-time 10` policy elsewhere
+        # in the script — a paused/silent RPC must not freeze the smoke
+        # indefinitely. On timeout we print a `TIMEOUT` sentinel and the
+        # bash side promotes it to a warning (matching the existing
+        # "LANE7_RPC unset" rule). Staleness threshold breach is the
+        # only blocker path; transport failure is warning-grade.
         last_updated="$(node -e '
           const http = process.argv[1].startsWith("https://") ? require("https") : require("http");
           const url = new URL(process.argv[1]);
@@ -387,12 +393,20 @@ else
               } catch (_) { console.log("0"); }
             });
           });
-          req.on("error", () => console.log("0"));
+          req.on("error", () => { console.log("0"); process.exit(0); });
+          req.setTimeout(10000, () => {
+            req.destroy();
+            console.log("TIMEOUT");
+            process.exit(0);
+          });
           req.write(data); req.end();
         ' "$LANE7_RPC" "$stock_oracle" 2>/dev/null)"
 
         last_updated="${last_updated:-0}"
-        if [[ "$last_updated" == "0" ]]; then
+        if [[ "$last_updated" == "TIMEOUT" ]]; then
+          add_summary "⚠️  StockOracleV2.lastUpdated() probe timed out after 10s (\`LANE7_RPC=$LANE7_RPC\`)"
+          WARNINGS+=("on-chain freshness probe timed out after 10s (LANE7_RPC=$LANE7_RPC)")
+        elif [[ "$last_updated" == "0" ]]; then
           add_summary "⚠️  StockOracleV2.lastUpdated() returned 0 — fresh oracle absent (testnet candidate phase)"
           WARNINGS+=("on-chain oracle has no signer-supplied data yet")
         else
