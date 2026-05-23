@@ -12,6 +12,7 @@ import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
+import { isNoData, pctOrDash, NO_DATA_DASH } from '@/lib/formatNoData'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
@@ -812,7 +813,13 @@ export default function StockDetailPage() {
           {activeTab === 'overview' && (
           <section className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4" aria-labelledby="analysis-heading">
             <div className="flex items-center justify-between gap-2">
-              <h2 id="analysis-heading" className="text-sm font-semibold text-white">Analysis</h2>
+              <h2
+                id="analysis-heading"
+                title="Some fields show '—' when the price service has no live data yet."
+                className="text-sm font-semibold text-white"
+              >
+                Analysis
+              </h2>
               <button
                 type="button"
                 className="text-xs text-gray-400 hover:text-white transition-colors"
@@ -827,11 +834,21 @@ export default function StockDetailPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
                     <div className="text-[10px] uppercase tracking-wide text-gray-500">Valuation</div>
-                    <div className="mt-1 text-sm font-medium text-white">P/E {stock.peRatio.toFixed(1)}x</div>
+                    <div
+                      data-testid="analysis-pe"
+                      className={`mt-1 text-sm font-medium ${isNoData(stock.peRatio) ? 'text-gray-500' : 'text-white'}`}
+                    >
+                      {isNoData(stock.peRatio) ? `P/E ${NO_DATA_DASH}` : `P/E ${stock.peRatio.toFixed(1)}x`}
+                    </div>
                   </div>
                   <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
                     <div className="text-[10px] uppercase tracking-wide text-gray-500">Profitability</div>
-                    <div className={`mt-1 text-sm font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>EPS ${stock.eps.toFixed(2)}</div>
+                    <div
+                      data-testid="analysis-eps"
+                      className={`mt-1 text-sm font-medium ${isNoData(stock.eps) ? 'text-gray-500' : (stock.eps >= 0 ? 'text-green-400' : 'text-red-400')}`}
+                    >
+                      {isNoData(stock.eps) ? `EPS ${NO_DATA_DASH}` : `EPS $${stock.eps.toFixed(2)}`}
+                    </div>
                   </div>
                   <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
                     <div className="text-[10px] uppercase tracking-wide text-gray-500">Income</div>
@@ -839,7 +856,12 @@ export default function StockDetailPage() {
                   </div>
                   <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
                     <div className="text-[10px] uppercase tracking-wide text-gray-500">Liquidity</div>
-                    <div className="mt-1 text-sm font-medium text-white">{formatLargeNumber(stock.avgVolume).replace('$', '')} avg vol</div>
+                    <div
+                      data-testid="analysis-avg-vol"
+                      className={`mt-1 text-sm font-medium ${isNoData(stock.avgVolume) ? 'text-gray-500' : 'text-white'}`}
+                    >
+                      {isNoData(stock.avgVolume) ? NO_DATA_DASH : `${formatLargeNumber(stock.avgVolume).replace('$', '')} avg vol`}
+                    </div>
                   </div>
                 </div>
 
@@ -852,22 +874,36 @@ export default function StockDetailPage() {
                       <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'peRatio' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('peRatio')}>P/E</button>
                     </div>
                   </div>
-                  {peerCandidates.length === 0 ? (
-                    <p className="text-xs text-gray-500">Peer data unavailable right now.</p>
+                  {peerCandidates.length === 0 || peerCandidates.every((peer) => isNoData(peer[peerMetric])) ? (
+                    <p className="text-xs text-gray-500" data-testid="peer-empty-state">
+                      Peer data unavailable right now.
+                    </p>
                   ) : (
                     <div className="space-y-1.5">
                       {peerCandidates
                         .toSorted((a, b) => (b[peerMetric] - a[peerMetric]))
                         .map((peer) => (
-                          <div key={peer.ticker} className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2 text-xs">
+                          <div
+                            key={peer.ticker}
+                            data-testid={`peer-row-${peer.ticker}`}
+                            className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2 text-xs"
+                          >
                             <Link href={`/stocks/${peer.ticker}`} className="font-medium text-white hover:text-goodgreen transition-colors">{peer.ticker}</Link>
                             {peerMetric === 'change24h' && (
-                              <span className={peer.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                {peer.change24h >= 0 ? '+' : ''}{peer.change24h.toFixed(2)}%
+                              isNoData(peer.change24h)
+                                ? <span className="text-gray-500">{NO_DATA_DASH}</span>
+                                : <span className={peer.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>{pctOrDash(peer.change24h)}</span>
+                            )}
+                            {peerMetric === 'marketCap' && (
+                              <span className={isNoData(peer.marketCap) ? 'text-gray-500' : 'text-gray-200'}>
+                                {isNoData(peer.marketCap) ? NO_DATA_DASH : formatLargeNumber(peer.marketCap)}
                               </span>
                             )}
-                            {peerMetric === 'marketCap' && <span className="text-gray-200">{formatLargeNumber(peer.marketCap)}</span>}
-                            {peerMetric === 'peRatio' && <span className="text-gray-200">{peer.peRatio.toFixed(1)}x</span>}
+                            {peerMetric === 'peRatio' && (
+                              <span className={isNoData(peer.peRatio) ? 'text-gray-500' : 'text-gray-200'}>
+                                {isNoData(peer.peRatio) ? NO_DATA_DASH : `${peer.peRatio.toFixed(1)}x`}
+                              </span>
+                            )}
                           </div>
                         ))}
                     </div>
