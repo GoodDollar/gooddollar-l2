@@ -198,6 +198,26 @@ function ToneLegend() {
         />
         <span>loading</span>
       </li>
+      {/*
+       * #0058 — fourth entry explains the small green indicator dot that
+       * the demo-hedge pill renders when the hedgeProof axis is healthy
+       * but upstream is degraded (subordinated tone per #0047). The
+       * swatch deliberately uses the same `h-1.5 w-1.5` sizing as the
+       * actual indicator on the pill (NOT the larger `h-2 w-2` of the
+       * three tone entries above) so the visual link from legend to
+       * indicator is pixel-accurate. The `sm:ml-2` separator keeps it
+       * visually distinct from the three tone-family entries above.
+       */}
+      <li
+        className="inline-flex items-center gap-1.5 sm:ml-2"
+        data-testid="pipeline-legend-hedge-subordinated"
+      >
+        <span
+          aria-hidden
+          className="inline-block h-1.5 w-1.5 rounded-full bg-green-400/80"
+        />
+        <span>hedge-proof healthy (mirroring upstream tone)</span>
+      </li>
     </ul>
   )
 }
@@ -238,6 +258,7 @@ function FlowNode({
         <span
           aria-hidden
           data-testid={`pipeline-node-${spec.id}-indicator`}
+          title="hedge-proof axis healthy — pill colour mirrors upstream tone"
           className="ml-1 inline-block h-1.5 w-1.5 self-center rounded-full bg-green-400/80"
         />
       )}

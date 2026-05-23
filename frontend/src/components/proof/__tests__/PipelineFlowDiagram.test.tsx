@@ -427,6 +427,82 @@ describe('PipelineFlowDiagram', () => {
     })
   })
 
+  // #0058 — the small green indicator dot that the demo-hedge pill renders
+  // when the hedgeProof axis is healthy but upstream is degraded had no
+  // surrounding caption, no title, no legend entry. A reviewer would see
+  // a "random green speck" with no on-page hint what it means. The fix
+  // adds (a) a `title` on the dot, and (b) a dedicated legend entry
+  // sharing the same 1.5×1.5 swatch size as the dot itself.
+  describe('subordinated demo-hedge indicator legend + tooltip (#0058)', () => {
+    it('indicator dot carries a title attribute explaining the subordinated state', async () => {
+      mockOnChainDegraded()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) throw new Error('boom')
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        const dot = screen.getByTestId('pipeline-node-demo-hedge-indicator')
+        expect(dot.getAttribute('title')).toBe(
+          'hedge-proof axis healthy — pill colour mirrors upstream tone',
+        )
+      })
+    })
+
+    it('legend contains a hedge-subordinated entry as the last item', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const legend = screen.getByTestId('pipeline-flow-legend')
+      const entries = legend.querySelectorAll('[data-testid^="pipeline-legend-"]')
+      expect(entries).toHaveLength(4)
+      expect(entries[3].getAttribute('data-testid')).toBe(
+        'pipeline-legend-hedge-subordinated',
+      )
+
+      const text = (entries[3].textContent ?? '').toLowerCase()
+      expect(text).toMatch(/hedge-proof healthy/)
+      expect(text).toMatch(/mirroring upstream tone/)
+    })
+
+    it('hedge-subordinated legend swatch matches the indicator dot size (h-1.5 w-1.5)', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const entry = screen.getByTestId('pipeline-legend-hedge-subordinated')
+      const swatch = entry.querySelector('[aria-hidden]') as HTMLElement | null
+      expect(swatch).not.toBeNull()
+      const cls = swatch?.className ?? ''
+      expect(cls).toMatch(/\bh-1\.5\b/)
+      expect(cls).toMatch(/\bw-1\.5\b/)
+    })
+
+    it('indicator dot is absent when the demo-hedge pill is not subordinated (regression guard for #0047)', async () => {
+      mockOnChainHealthy()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+          'healthy',
+        )
+      })
+      expect(screen.queryByTestId('pipeline-node-demo-hedge-indicator')).toBeNull()
+      // Legend entry stays in place — the legend is static, not state-driven.
+      expect(screen.queryByTestId('pipeline-legend-hedge-subordinated')).not.toBeNull()
+    })
+  })
+
   // #0057 — diagram paints three tones (green/yellow/gray) but carried no
   // legend mapping tone → meaning. A reviewer who sees a yellow pill +
   // three gray pills had no on-page key to decode the colour signal.
@@ -441,10 +517,13 @@ describe('PipelineFlowDiagram', () => {
       expect(legend.tagName).toBe('UL')
       expect(legend.getAttribute('aria-label')).toBe('Pipeline tone legend')
 
+      // Three tone-family entries from #0057 plus the hedge-subordinated
+      // entry from #0058 — see the #0058 describe block below for the
+      // assertions specific to the fourth entry.
       const entries = legend.querySelectorAll('[data-testid^="pipeline-legend-"]')
-      expect(entries).toHaveLength(3)
+      expect(entries.length).toBeGreaterThanOrEqual(3)
       const ids = Array.from(entries).map((e) => e.getAttribute('data-testid'))
-      expect(ids).toEqual([
+      expect(ids.slice(0, 3)).toEqual([
         'pipeline-legend-healthy',
         'pipeline-legend-degraded',
         'pipeline-legend-loading',
