@@ -2012,5 +2012,153 @@ describe('HedgeStatusCard', () => {
         expect(fetchSpy.mock.calls.length).toBeGreaterThan(before);
       });
     });
+
+    it('FreshnessLabel ticker stops while tab is hidden, restarts on visible (#0041)', async () => {
+      const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+      const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-last-success');
+      // Mounting created the visibility-aware interval for FreshnessLabel.
+      const baselineSetCount = setIntervalSpy.mock.calls.length;
+      expect(baselineSetCount).toBeGreaterThan(0);
+      const baselineClearCount = clearIntervalSpy.mock.calls.length;
+
+      act(() => {
+        setVisibility('hidden');
+      });
+      // Hiding the tab clears the freshness interval.
+      expect(clearIntervalSpy.mock.calls.length).toBeGreaterThan(baselineClearCount);
+      const hiddenSetCount = setIntervalSpy.mock.calls.length;
+
+      act(() => {
+        setVisibility('visible');
+      });
+      // Returning to visible recreates the interval.
+      expect(setIntervalSpy.mock.calls.length).toBeGreaterThan(hiddenSetCount);
+    });
+
+    it('StaleChip ticker stops while tab is hidden, restarts on visible (#0041)', async () => {
+      // Force the stale-chip path: lastGood + then an engine_down poll.
+      const okResponse = BASE_RESPONSE;
+      const errResponse = {
+        error: 'Hedge engine unreachable',
+        snapshot: null,
+        mode: null,
+        receipts: [],
+        proof: null,
+      };
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify(okResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify(errResponse), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      const handle = createRef<HedgeStatusCardHandle>();
+      render(<HedgeStatusCard ref={handle} />);
+      await screen.findByTestId('hedge-mode-badge');
+      await act(async () => {
+        await handle.current!.refresh();
+      });
+      const staleChip = await screen.findByTestId('hedge-receipts-stale');
+      expect(staleChip).toBeInTheDocument();
+
+      const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+      const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
+      const baselineClearCount = clearIntervalSpy.mock.calls.length;
+
+      act(() => {
+        setVisibility('hidden');
+      });
+      expect(clearIntervalSpy.mock.calls.length).toBeGreaterThan(baselineClearCount);
+      const hiddenSetCount = setIntervalSpy.mock.calls.length;
+
+      act(() => {
+        setVisibility('visible');
+      });
+      expect(setIntervalSpy.mock.calls.length).toBeGreaterThan(hiddenSetCount);
+    });
+
+    it('ThrottleCountdown ticker stops while tab is hidden, restarts on visible (#0041)', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 30 }),
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/json', 'Retry-After': '30' },
+          },
+        ),
+      );
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-throttle-countdown');
+
+      const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+      const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
+      const baselineClearCount = clearIntervalSpy.mock.calls.length;
+
+      act(() => {
+        setVisibility('hidden');
+      });
+      expect(clearIntervalSpy.mock.calls.length).toBeGreaterThan(baselineClearCount);
+      const hiddenSetCount = setIntervalSpy.mock.calls.length;
+
+      act(() => {
+        setVisibility('visible');
+      });
+      expect(setIntervalSpy.mock.calls.length).toBeGreaterThan(hiddenSetCount);
+    });
+
+    it('ThrottleCountdown fires onExpire on visibility-return when deadline passed during hidden window (#0041)', async () => {
+      // Mount the card under throttle (retry deadline in future), flip
+      // visibility to hidden, wait past the deadline using real wall time,
+      // flip back: the visibility-return tick sees retryAt <= now, fires
+      // onExpire, clears the throttle, and triggers the recovery fetch.
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 1 }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': '1',
+            },
+          },
+        ),
+      );
+      fetchSpy.mockResolvedValue(
+        new Response(JSON.stringify(BASE_RESPONSE), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-status-throttled');
+      const baseFetchCount = fetchSpy.mock.calls.length;
+
+      act(() => {
+        setVisibility('hidden');
+      });
+      // Wait past the throttle deadline using real time.
+      await new Promise((resolve) => setTimeout(resolve, 1_200));
+      // Still throttled while hidden — interval is paused, nothing
+      // fired onExpire.
+      expect(screen.queryByTestId('hedge-status-throttled')).not.toBeNull();
+
+      act(() => {
+        setVisibility('visible');
+      });
+      await waitFor(() => {
+        expect(screen.queryByTestId('hedge-status-throttled')).toBeNull();
+      });
+      expect(fetchSpy.mock.calls.length).toBeGreaterThan(baseFetchCount);
+    });
   });
 });

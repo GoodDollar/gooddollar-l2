@@ -14,6 +14,7 @@ import {
 import { formatExposureDelta } from '@/lib/format-exposure-delta'
 import { formatNotionalUsd } from '@/lib/format-notional'
 import { buildHedgeErrorHeadline, classifyClientError } from '@/lib/hedge-error'
+import { useIntervalWhileVisible } from '@/lib/useIntervalWhileVisible'
 import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
 import {
   AlertTriangleIcon,
@@ -154,14 +155,12 @@ function FreshnessLabel({
   pollIntervalMs: number
 }) {
   const [, setTick] = useState(0)
-  useEffect(() => {
-    const now = Date.now()
-    const tickStale = lastTickAt === null || now - lastTickAt >= FRESHNESS_STALE_MS
-    const polledStale = lastPolledAt === null || now - lastPolledAt >= FRESHNESS_STALE_MS
-    const ms = tickStale && polledStale ? FRESHNESS_SLOW_INTERVAL_MS : FRESHNESS_FAST_INTERVAL_MS
-    const t = setInterval(() => setTick((n) => n + 1), ms)
-    return () => clearInterval(t)
-  }, [lastTickAt, lastPolledAt])
+  const now = Date.now()
+  const tickStale = lastTickAt === null || now - lastTickAt >= FRESHNESS_STALE_MS
+  const polledStale = lastPolledAt === null || now - lastPolledAt >= FRESHNESS_STALE_MS
+  const intervalMs =
+    tickStale && polledStale ? FRESHNESS_SLOW_INTERVAL_MS : FRESHNESS_FAST_INTERVAL_MS
+  useIntervalWhileVisible(() => setTick((n) => n + 1), intervalMs)
   return (
     <span data-testid="hedge-last-success" className="text-gray-500">
       {renderFreshnessText({ lastTickAt, lastPolledAt, pollIntervalMs })}
@@ -171,6 +170,12 @@ function FreshnessLabel({
 
 // Owns its own 250 ms countdown ticker. Calls back on expiry so the
 // parent can clear its throttle state and trigger the next fetch.
+//
+// `usePollWhileVisible` semantics fit exactly: the callback runs on
+// mount (catches deadline-already-past), every 250 ms while visible,
+// pauses while hidden, and fires once on visibility-return (so a
+// deadline that elapsed during the hidden window expires immediately on
+// return). See task 0041.
 function ThrottleCountdown({
   retryAt,
   onExpire,
@@ -179,21 +184,13 @@ function ThrottleCountdown({
   onExpire: () => void
 }) {
   const [, setTick] = useState(0)
-  useEffect(() => {
+  usePollWhileVisible(() => {
     if (retryAt - Date.now() <= 0) {
       onExpire()
       return
     }
-    const t = setInterval(() => {
-      if (retryAt - Date.now() <= 0) {
-        clearInterval(t)
-        onExpire()
-        return
-      }
-      setTick((n) => n + 1)
-    }, 250)
-    return () => clearInterval(t)
-  }, [retryAt, onExpire])
+    setTick((n) => n + 1)
+  }, 250)
   const remaining = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000))
   return (
     <span data-testid="hedge-throttle-countdown" className="font-mono">
@@ -294,10 +291,7 @@ function resolveEngineLabel(input: {
 // as `FreshnessLabel` (#0031).
 function StaleChip({ sinceMs }: { sinceMs: number }) {
   const [, setTick] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 30_000)
-    return () => clearInterval(t)
-  }, [])
+  useIntervalWhileVisible(() => setTick((n) => n + 1), 30_000)
   const minutes = Math.max(0, Math.floor((Date.now() - sinceMs) / 60_000))
   const label = minutes <= 0 ? 'stale just now' : `stale ${minutes}m ago`
   return (
