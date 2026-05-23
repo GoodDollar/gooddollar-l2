@@ -58,12 +58,13 @@ describe('REST Server — GET / quickstart array', () => {
     });
   });
 
-  it('every quickstart request matches HTTP-verb or CONNECT-ws shape', async () => {
+  it('every quickstart request is paste-runnable: HTTP verb path or wscat/websocat ws:// recipe (task 0056)', async () => {
     const body = (await (await fetch(`${baseUrl}/`)).json()) as Record<string, unknown>;
     const qs = body.quickstart as Array<Record<string, unknown>>;
-    const re = /^(?:(?:GET|POST|PUT|PATCH|DELETE) \/\S+|CONNECT ws:\/\/)/;
+    const re = /^(?:(?:GET|POST|PUT|PATCH|DELETE) \/\S+|(?:wscat|websocat)(?: -c)? ws:\/\/)/;
     for (const s of qs) {
       expect(s.request as string).toMatch(re);
+      expect(s.request as string).not.toMatch(/^CONNECT\s/);
     }
   });
 

@@ -17,8 +17,8 @@ async function close(s: import('http').Server): Promise<void> {
   await new Promise<void>((resolve) => s.close(() => resolve()));
 }
 
-describe('GET / quickstart step 4 reflects live WS advertisement (task 0037)', () => {
-  it('default WS port 9301: step 4 request equals "CONNECT " + websocket.url', async () => {
+describe('GET / quickstart step 4 reflects live WS advertisement (tasks 0037, 0056)', () => {
+  it('default WS port 9301: step 4 request equals "wscat -c " + websocket.url with alternatives list', async () => {
     const cache = new QuoteCache({ cacheTtlMs: 30_000 });
     const app = createServer(
       cache,
@@ -35,14 +35,20 @@ describe('GET / quickstart step 4 reflects live WS advertisement (task 0037)', (
       const ws = body.websocket as Record<string, unknown>;
       expect(qs.length).toBe(4);
       expect(qs[3].step).toBe(4);
-      expect(qs[3].request).toBe(`CONNECT ${ws.url}`);
+      expect(qs[3].request).toBe(`wscat -c ${ws.url}`);
       expect(qs[3].request).toMatch(/:9301$/);
+      const alts = qs[3].alternatives as string[];
+      expect(Array.isArray(alts)).toBe(true);
+      expect(alts).toHaveLength(2);
+      expect(alts[0]).toBe(`websocat ${ws.url}`);
+      expect(alts[1]).toContain(`'${ws.url}'`);
+      expect(alts[1]).toMatch(/^node -e/);
     } finally {
       await close(server);
     }
   });
 
-  it('custom WS port (44444): step 4 request matches the actual websocket.url', async () => {
+  it('custom WS port (44444): step 4 request and alternatives all embed the actual websocket.url', async () => {
     const cache = new QuoteCache({ cacheTtlMs: 30_000 });
     const app = createServer(
       cache,
@@ -58,8 +64,10 @@ describe('GET / quickstart step 4 reflects live WS advertisement (task 0037)', (
       const qs = body.quickstart as Array<Record<string, unknown>>;
       const ws = body.websocket as Record<string, unknown>;
       expect(qs.length).toBe(4);
-      expect(qs[3].request).toBe(`CONNECT ${ws.url}`);
+      expect(qs[3].request).toBe(`wscat -c ${ws.url}`);
       expect(qs[3].request).toMatch(/:44444$/);
+      const alts = qs[3].alternatives as string[];
+      for (const alt of alts) expect(alt).toMatch(/:44444/);
       expect(ws.port).toBe(44444);
     } finally {
       await close(server);

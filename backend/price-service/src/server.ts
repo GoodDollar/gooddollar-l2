@@ -15,6 +15,21 @@ import {
   finalizeTimestamps,
   isoFromMs,
 } from './envelope';
+import { WsAdvertisement } from './ws-advertisement';
+import { buildQuickstart } from './quickstart';
+
+// Re-export the quickstart + WS types and helpers off `./server` so
+// existing test imports (`from '../server'`) keep compiling. The
+// canonical home is `./quickstart` and `./ws-advertisement`; this
+// barrel exists only for back-compat with pre-extraction call sites.
+export type { QuickstartStep } from './quickstart';
+export {
+  STATIC_QUICKSTART,
+  buildQuickstart,
+  buildWsQuickstartAlternatives,
+  buildWsQuickstartStep,
+} from './quickstart';
+export type { WsAdvertisement } from './ws-advertisement';
 
 // Re-exported so the existing public surface keeps working: tests and
 // downstream callers can keep importing `isoFromMs` from `./server`.
@@ -77,14 +92,6 @@ export function hostnameFromHostHeader(h: string | undefined): string {
   return idx > 0 ? h.slice(0, idx) : h;
 }
 
-export interface WsAdvertisement {
-  url: string;
-  port: number;
-  frames: readonly ['snapshot', 'quote'];
-  snapshot: string;
-  quote: string;
-}
-
 /**
  * Top-level discovery copy for `GET /`. Static so the body assembly stays a
  * single object literal and the docs can't drift between handler + README.
@@ -97,73 +104,6 @@ const SERVICE_DESCRIPTION =
 const DOCS_URL =
   'https://github.com/goodchain/goodchain-live-prices-lanes/blob/' +
   'ab/0007-lane2-price-service/backend/price-service/README.md';
-
-/**
- * Sequenced fresh-user walk-through emitted on `GET /`. Replaces the old
- * unordered `examples` map: a fresh integrator gets a step-by-step
- * runbook (verify alive → see all quotes → fetch one symbol → subscribe
- * to live ticks) instead of four parallel options with no "start here".
- * Each step records the user *goal*, the *request* line, and what to
- * *expect* back so the consumer code can be written from this payload
- * alone.
- *
- * Convention: any step that names a deployment-dependent port (e.g.
- * the WS broadcaster port) MUST be assembled per request from
- * `buildWsAdvertisement` — never hardcoded. This constant carries only
- * the three deployment-independent steps; step 4 (the WS CONNECT line)
- * is appended inline in the `/` handler off the live broadcaster's
- * actual bind address, and omitted when the broadcaster isn't
- * listening — see task 0037.
- */
-export interface QuickstartStep {
-  readonly step: number;
-  readonly goal: string;
-  readonly request: string;
-  readonly expect: string;
-}
-
-export const STATIC_QUICKSTART: readonly QuickstartStep[] = Object.freeze([
-  Object.freeze({
-    step: 1,
-    goal: "Verify the service is alive and see what's configured",
-    request: 'GET /health',
-    expect:
-      '200 ok / 503 degraded; body carries status, configured symbols, ' +
-      'source.reason',
-  }),
-  Object.freeze({
-    step: 2,
-    goal: 'See every cached quote at once',
-    request: 'GET /quotes',
-    expect: '200; body { totalCached, quotes, source, degraded }',
-  }),
-  Object.freeze({
-    step: 3,
-    goal: 'Fetch a single symbol (substitute any from /health.symbols)',
-    request: 'GET /quotes/AAPL',
-    expect:
-      "200 with quote envelope, or 404 { error: 'no-quote' } before " +
-      'first tick',
-  }),
-]) as readonly QuickstartStep[];
-
-const WS_QUICKSTART_GOAL = 'Subscribe to live ticks';
-const WS_QUICKSTART_EXPECT =
-  'snapshot frame on connect, then quote frames per accepted tick';
-
-/**
- * Assemble step 4 of the quickstart array from a live `WsAdvertisement`.
- * Centralised so the `request` field is always `CONNECT ${ws.url}` —
- * impossible to drift from `body.websocket.url` on the same response.
- */
-function buildWsQuickstartStep(ws: WsAdvertisement): QuickstartStep {
-  return {
-    step: 4,
-    goal: WS_QUICKSTART_GOAL,
-    request: `CONNECT ${ws.url}`,
-    expect: WS_QUICKSTART_EXPECT,
-  };
-}
 
 /**
  * Pull the version string off a `package.json`-shaped object. Defaults to
@@ -1028,8 +968,7 @@ export function createServer(
   app.get('/', (req: Request, res: Response) => {
     const now = Date.now();
     const ws = buildWsAdvertisement(req);
-    const quickstart: QuickstartStep[] = [...STATIC_QUICKSTART];
-    if (ws) quickstart.push(buildWsQuickstartStep(ws));
+    const quickstart = buildQuickstart(ws ?? null);
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
     // Runtime block (task 0055) sits high in the body — directly after
     // the identity triplet (`service`/`description`/`version`/`docs`)
