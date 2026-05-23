@@ -466,6 +466,102 @@ describe('GET /api/oracle/status — service block (task 0010)', () => {
   })
 })
 
+describe('GET /api/oracle/status — chain info (task 0011)', () => {
+  it('forwards chain block from upstream proof when present', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        chain: {
+          chainId: 31337,
+          rpcEndpoint: 'http://localhost:8545/',
+          signerAddress: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+          oracleAddresses: {
+            stocks: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+            crypto: '0x59b670e9fA9D0A427751Af201D676719a970857b',
+          },
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.chain).toEqual({
+      chainId: 31337,
+      rpcEndpoint: 'http://localhost:8545/',
+      signerAddress: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+      oracleAddresses: {
+        stocks: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+        crypto: '0x59b670e9fA9D0A427751Af201D676719a970857b',
+      },
+    })
+  })
+
+  it('defaults chain to null/null when upstream omits the block', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.chain).toEqual({
+      chainId: null,
+      signerAddress: null,
+      oracleAddresses: { stocks: null, crypto: null },
+    })
+  })
+
+  it('503 both-down branch includes chain defaults', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.chain).toBeDefined()
+    expect(data.chain.chainId).toBeNull()
+    expect(data.chain.signerAddress).toBeNull()
+    expect(data.chain.oracleAddresses).toEqual({ stocks: null, crypto: null })
+  })
+
+  it('coerces malformed upstream chain values to defaults', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        chain: { chainId: 'not-a-number', signerAddress: 42, oracleAddresses: 'oops' },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.chain.chainId).toBeNull()
+    expect(data.chain.signerAddress).toBeNull()
+    expect(data.chain.oracleAddresses).toEqual({ stocks: null, crypto: null })
+  })
+
+  it('preserves signer-address checksum casing verbatim', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        chain: {
+          chainId: 31337,
+          signerAddress: '0xAbCdEf0123456789abcdef0123456789abcdef01',
+          oracleAddresses: { stocks: null, crypto: null },
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.chain.signerAddress).toBe('0xAbCdEf0123456789abcdef0123456789abcdef01')
+  })
+})
+
 describe('redactUpstreamReason', () => {
   it('strips long hex sequences (signer keys, addresses)', () => {
     const r = redactUpstreamReason(

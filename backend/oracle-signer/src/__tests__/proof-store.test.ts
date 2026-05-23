@@ -1,4 +1,4 @@
-import { ProofStore, redactProofReason } from '../proof-store';
+import { ProofStore, redactProofReason, redactRpcEndpoint } from '../proof-store';
 
 const baseFailure = {
   reason: 'execution reverted: deviation too high',
@@ -259,6 +259,105 @@ describe('ProofStore — per-rail status', () => {
     expect(snap.rails.stocks.lastSuccessAtMs).toBe(1700000001000);
     expect(snap.rails.crypto.enabled).toBe(false);
     expect(snap.rails.crypto.lastSuccessAtMs).toBeNull();
+  });
+});
+
+describe('ProofStore — chain info (task 0011)', () => {
+  it('default snapshot has chain with all-null defaults', () => {
+    const ps = new ProofStore();
+    const snap = ps.snapshot();
+    expect(snap.chain.chainId).toBeNull();
+    expect(snap.chain.signerAddress).toBeNull();
+    expect(snap.chain.oracleAddresses).toEqual({ stocks: null, crypto: null });
+    expect(snap.chain.rpcEndpoint).toBeUndefined();
+  });
+
+  it('setChainInfo({chainId}) reflects in next snapshot', () => {
+    const ps = new ProofStore();
+    ps.setChainInfo({ chainId: 31337 });
+    expect(ps.snapshot().chain.chainId).toBe(31337);
+  });
+
+  it('partial setChainInfo merges fields across calls', () => {
+    const ps = new ProofStore();
+    ps.setChainInfo({ chainId: 31337 });
+    ps.setChainInfo({ signerAddress: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' });
+    const snap = ps.snapshot();
+    expect(snap.chain.chainId).toBe(31337);
+    expect(snap.chain.signerAddress).toBe('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266');
+  });
+
+  it('setChainInfo({oracleAddresses:{stocks}}) does not clobber crypto', () => {
+    const ps = new ProofStore();
+    ps.setChainInfo({ oracleAddresses: { stocks: '0xaaa', crypto: '0xbbb' } });
+    ps.setChainInfo({ oracleAddresses: { stocks: '0xccc' } as unknown as { stocks: string; crypto: string } });
+    expect(ps.snapshot().chain.oracleAddresses).toEqual({ stocks: '0xccc', crypto: '0xbbb' });
+  });
+
+  it('setChainInfo({rpcEndpoint}) reflects and survives subsequent merges', () => {
+    const ps = new ProofStore();
+    ps.setChainInfo({ rpcEndpoint: 'http://localhost:8545' });
+    ps.setChainInfo({ chainId: 31337 });
+    const snap = ps.snapshot();
+    expect(snap.chain.rpcEndpoint).toBe('http://localhost:8545');
+    expect(snap.chain.chainId).toBe(31337);
+  });
+
+  it('snapshot chain.oracleAddresses is a copy (mutation does not affect store)', () => {
+    const ps = new ProofStore();
+    ps.setChainInfo({ oracleAddresses: { stocks: '0xaaa', crypto: '0xbbb' } });
+    const snap = ps.snapshot();
+    snap.chain.oracleAddresses.stocks = null;
+    expect(ps.snapshot().chain.oracleAddresses.stocks).toBe('0xaaa');
+  });
+});
+
+describe('redactRpcEndpoint', () => {
+  it('strips userinfo from https URLs', () => {
+    expect(redactRpcEndpoint('https://user:pass@host.example.com:1234/path')).toBe('https://host.example.com:1234/path');
+  });
+
+  it('strips userinfo from ws URLs', () => {
+    expect(redactRpcEndpoint('ws://user:secret@host/feed')).toBe('ws://host/feed');
+  });
+
+  it('preserves query strings while stripping userinfo', () => {
+    expect(redactRpcEndpoint('wss://user:p@host/?k=v')).toBe('wss://host/?k=v');
+  });
+
+  it('returns undefined for undefined input', () => {
+    expect(redactRpcEndpoint(undefined)).toBeUndefined();
+  });
+
+  it('returns undefined for empty string', () => {
+    expect(redactRpcEndpoint('')).toBeUndefined();
+    expect(redactRpcEndpoint('   ')).toBeUndefined();
+  });
+
+  it('returns undefined for IPC paths / non-URL strings', () => {
+    expect(redactRpcEndpoint('/var/run/sock.ipc')).toBeUndefined();
+    expect(redactRpcEndpoint('not a url at all')).toBeUndefined();
+  });
+
+  it('preserves URL with no userinfo', () => {
+    expect(redactRpcEndpoint('http://localhost:8545')).toBe('http://localhost:8545/');
+  });
+
+  it('clamps to 200 chars', () => {
+    const huge = 'https://example.com/' + 'a'.repeat(500);
+    const out = redactRpcEndpoint(huge);
+    expect(out).toBeDefined();
+    expect(out!.length).toBeLessThanOrEqual(200);
+  });
+
+  it('handles IPv6 hosts (no userinfo to strip)', () => {
+    const out = redactRpcEndpoint('http://[::1]:8545');
+    expect(out).toBe('http://[::1]:8545/');
+  });
+
+  it('returns undefined for non-string inputs', () => {
+    expect(redactRpcEndpoint(null)).toBeUndefined();
+    expect(redactRpcEndpoint(undefined)).toBeUndefined();
   });
 });
 

@@ -160,6 +160,42 @@ describe('OracleSignerService', () => {
     expect(snap.ingest!.droppedMissingSymbol).toBe(0);
   });
 
+  it('populates proof.chain with chainId + signerAddress + oracleAddresses after start()', async () => {
+    const service = new OracleSignerService(
+      makeConfig({ oracleAddress: '0xAA00000000000000000000000000000000000001' }),
+      withDeps({ getChainId: ALLOWED_DEVNET }),
+    );
+    expect(service.getProofSnapshot().chain.chainId).toBeNull();
+
+    await service.start();
+
+    const snap = service.getProofSnapshot();
+    expect(snap.chain.chainId).toBe(31337);
+    expect(snap.chain.signerAddress).toBe('0x1111111111111111111111111111111111111111');
+    expect(snap.chain.oracleAddresses.stocks).toBe('0xAA00000000000000000000000000000000000001');
+    expect(snap.chain.oracleAddresses.crypto).toBeNull();
+    expect(snap.chain.rpcEndpoint).toBe('http://localhost:8545/');
+
+    service.stop();
+  });
+
+  it('chain.oracleAddresses.crypto is null when crypto rail not configured', async () => {
+    const service = new OracleSignerService(makeConfig(), withDeps({ getChainId: ALLOWED_DEVNET }));
+    await service.start();
+    expect(service.getProofSnapshot().chain.oracleAddresses.crypto).toBeNull();
+    service.stop();
+  });
+
+  it('chain.rpcEndpoint strips userinfo when rpcUrl contains credentials', async () => {
+    const cfg = makeConfig({ rpcUrl: 'https://u:p@rpc.example.com/path' });
+    const service = new OracleSignerService(cfg, withDeps({ getChainId: ALLOWED_DEVNET }));
+    await service.start();
+    const snap = service.getProofSnapshot();
+    expect(snap.chain.rpcEndpoint).toBe('https://rpc.example.com/path');
+    expect(JSON.stringify(snap)).not.toContain('u:p@');
+    service.stop();
+  });
+
   it('accepts all symbols when config list is empty', async () => {
     const config = makeConfig({ symbols: [] });
     const service = new OracleSignerService(config, withDeps({ getChainId: ALLOWED_DEVNET }));

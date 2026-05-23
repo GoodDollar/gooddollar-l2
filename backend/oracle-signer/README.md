@@ -48,6 +48,15 @@ symbol map) is configured.
   ```json
   {
     "generatedAt": 1716100000000,
+    "chain": {
+      "chainId": 31337,
+      "rpcEndpoint": "http://localhost:8545/",
+      "signerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "oracleAddresses": {
+        "stocks": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        "crypto": "0x59b670e9fA9D0A427751Af201D676719a970857b"
+      }
+    },
     "rails": {
       "stocks": {
         "enabled": true,
@@ -80,6 +89,16 @@ symbol map) is configured.
   so they stay correct even when 50+ failures push all successes off the
   ring. Older signer builds may omit `rails`; consumers default each rail
   to `{ enabled: false, …nulls }`.
+
+  The `chain` block carries the static deployment context so dashboards can
+  render explorer URLs (`https://explorer/<chainId>/tx/<txHash>`) without
+  any chain-specific config on the dashboard side. `chainId` is `null`
+  until `assertDevnetChain` runs successfully. `signerAddress` is the
+  wallet's PUBLIC address derived from `ORACLE_SIGNER_KEY` — the private
+  key is never serialised. Addresses use ethers v6's checksum casing.
+  `rpcEndpoint` is run through `redactRpcEndpoint` (strips `user:pass@`
+  from URLs, drops IPC paths). Each rail's `oracleAddresses.<rail>` is
+  `null` when that rail's address isn't configured.
 
 ## Health and refusal semantics
 

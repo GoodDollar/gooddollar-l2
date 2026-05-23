@@ -59,6 +59,12 @@ export type RailStatusPayload = {
   lastFailureAgeMs: number | null
 }
 export type ServicePayload = { status: 'ok' | 'degraded' | 'unknown'; reason?: string }
+export type ChainPayload = {
+  chainId: number | null
+  rpcEndpoint?: string
+  signerAddress: string | null
+  oracleAddresses: { stocks: string | null; crypto: string | null }
+}
 type ProofPayload = {
   generatedAt: number
   stocks: ProofTail[]
@@ -68,9 +74,15 @@ type ProofPayload = {
   counts?: { stocks?: RailCountsPayload; crypto?: RailCountsPayload }
   rails?: { stocks?: unknown; crypto?: unknown }
   service?: unknown
+  chain?: unknown
 }
 
 export const DEFAULT_SERVICE: ServicePayload = { status: 'unknown' }
+export const DEFAULT_CHAIN: ChainPayload = {
+  chainId: null,
+  signerAddress: null,
+  oracleAddresses: { stocks: null, crypto: null },
+}
 
 const DEFAULT_RAIL_STATUS: RailStatusPayload = {
   enabled: false,
@@ -132,6 +144,28 @@ function pickService(p: ProofPayload | undefined): ServicePayload {
   const status = r.status === 'ok' || r.status === 'degraded' ? r.status : 'unknown'
   const reason = typeof r.reason === 'string' ? r.reason : undefined
   return reason ? { status, reason } : { status }
+}
+
+function pickChain(p: ProofPayload | undefined): ChainPayload {
+  const raw = p?.chain
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_CHAIN, oracleAddresses: { stocks: null, crypto: null } }
+  const r = raw as Record<string, unknown>
+  const numOrNull = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null
+  const strOrNull = (v: unknown): string | null => (typeof v === 'string' ? v : null)
+  const addrs = r.oracleAddresses && typeof r.oracleAddresses === 'object'
+    ? r.oracleAddresses as Record<string, unknown>
+    : {}
+  const out: ChainPayload = {
+    chainId: numOrNull(r.chainId),
+    signerAddress: strOrNull(r.signerAddress),
+    oracleAddresses: {
+      stocks: strOrNull(addrs.stocks),
+      crypto: strOrNull(addrs.crypto),
+    },
+  }
+  if (typeof r.rpcEndpoint === 'string') out.rpcEndpoint = r.rpcEndpoint
+  return out
 }
 
 function pickCounts(p: ProofPayload | undefined): { stocks: RailCountsPayload; crypto: RailCountsPayload } {
@@ -273,6 +307,7 @@ async function handleGet(_req?: NextRequest) {
         counts: { stocks: { ok: 0, failed: 0 }, crypto: { ok: 0, failed: 0 } },
         rails: { stocks: { ...DEFAULT_RAIL_STATUS }, crypto: { ...DEFAULT_RAIL_STATUS } },
         service: { ...DEFAULT_SERVICE },
+        chain: { ...DEFAULT_CHAIN, oracleAddresses: { stocks: null, crypto: null } },
         freshCount: 0,
         totalCount: 0,
         upstreams,
@@ -297,6 +332,7 @@ async function handleGet(_req?: NextRequest) {
     ? pickRails(proofData)
     : { stocks: { ...DEFAULT_RAIL_STATUS }, crypto: { ...DEFAULT_RAIL_STATUS } }
   const service = proofData ? pickService(proofData) : { ...DEFAULT_SERVICE }
+  const chain = proofData ? pickChain(proofData) : { ...DEFAULT_CHAIN, oracleAddresses: { stocks: null, crypto: null } }
 
   const healthy = quotesOk && proofServiceOk && (quotesRes.value.healthy ?? true)
   const freshCount = quotesOk ? (quotesRes.value.freshCount ?? quotes.length) : 0
@@ -313,6 +349,7 @@ async function handleGet(_req?: NextRequest) {
     counts,
     rails,
     service,
+    chain,
     freshCount,
     totalCount,
     timestamp: quotesOk ? (quotesRes.value.timestamp ?? Date.now()) : Date.now(),

@@ -69,8 +69,34 @@ export interface RailStatus {
   lastFailureAgeMs: number | null;
 }
 
+/**
+ * Static deployment context for the proof endpoint — answers "which chain?",
+ * "which oracle contracts?", and "which keeper address?" so dashboards can
+ * render explorer links and operators can verify the right oracle is being
+ * written to.
+ *
+ * `chainId` is populated after `assertDevnetChain` runs successfully; it
+ * stays null on a refused signer or before the first guard probe.
+ * `signerAddress` is the wallet's PUBLIC address derived from the signer key
+ * — the private key is never serialised anywhere in this snapshot.
+ * `rpcEndpoint` is the RPC URL passed through `redactRpcEndpoint` (strips
+ * URL `userinfo` like `user:pass@`). `oracleAddresses.<rail>` is null when
+ * that rail's address isn't configured.
+ *
+ * Casing for addresses follows ethers v6's checksum casing — callers that
+ * need lowercased addresses should normalise downstream.
+ */
+export interface ChainInfo {
+  chainId: number | null;
+  rpcEndpoint?: string;
+  signerAddress: string | null;
+  oracleAddresses: { stocks: string | null; crypto: string | null };
+}
+
 export interface ProofSnapshot {
   generatedAt: number;
+  /** Static deployment context — chainId, addresses. Added by task 0011. */
+  chain: ChainInfo;
   /** Per-rail status block — added by task 0009 so operators can answer
    *  "is the oracle publishing? how fresh?" without subtracting timestamps. */
   rails: { stocks: RailStatus; crypto: RailStatus };
@@ -93,6 +119,37 @@ const REASON_MAX_LEN = 200;
  * keys, addresses), collapses CR/LF, and clamps length so a stack trace or
  * accidentally-leaked credential never escapes.
  */
+const RPC_ENDPOINT_MAX_LEN = 200;
+
+/**
+ * Sanitise an RPC URL for inclusion in the public `/proof` response.
+ *
+ * - Strips `userinfo` from URLs (`https://user:pass@host` → `https://host`).
+ * - Returns `undefined` for non-URL inputs (IPC paths, empty strings,
+ *   malformed values, anything that the WHATWG URL parser rejects). The
+ *   public proof body would rather omit the field than expose a partially-
+ *   sanitised value that may still carry credentials.
+ * - Clamps the result to ≤200 chars.
+ *
+ * Operators using IPC paths or other non-URL transports can read the env
+ * var directly on the signer host; this helper deliberately drops them.
+ */
+export function redactRpcEndpoint(raw: string | undefined | null): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return undefined;
+  let u: URL;
+  try {
+    u = new URL(trimmed);
+  } catch {
+    return undefined;
+  }
+  u.username = '';
+  u.password = '';
+  const out = u.toString();
+  return out.length > RPC_ENDPOINT_MAX_LEN ? out.slice(0, RPC_ENDPOINT_MAX_LEN) : out;
+}
+
 export function redactProofReason(err: unknown): string {
   let raw: string;
   if (err instanceof Error) {
@@ -127,6 +184,14 @@ function defaultRailStatus(): RailStatus {
   };
 }
 
+function defaultChainInfo(): ChainInfo {
+  return {
+    chainId: null,
+    signerAddress: null,
+    oracleAddresses: { stocks: null, crypto: null },
+  };
+}
+
 /**
  * Canonical empty `/proof` body. Used by `oracle-signer` before its service is
  * constructed (e.g. while `loadConfig()` is failing) so that consumers always
@@ -136,6 +201,7 @@ function defaultRailStatus(): RailStatus {
 export function canonicalEmptyProofSnapshot(): ProofSnapshot {
   return {
     generatedAt: Date.now(),
+    chain: defaultChainInfo(),
     rails: { stocks: defaultRailStatus(), crypto: defaultRailStatus() },
     stocks: [],
     crypto: [],
@@ -156,6 +222,7 @@ export class ProofStore {
     stocks: defaultRailStatusState(),
     crypto: defaultRailStatusState(),
   };
+  private chainInfoState: ChainInfo = defaultChainInfo();
 
   constructor(capacity: number = DEFAULT_PROOF_CAPACITY) {
     this.capacity = Math.max(1, Math.floor(capacity));
@@ -168,6 +235,34 @@ export class ProofStore {
    */
   setRailEnabled(rail: RailName, enabled: boolean): void {
     this.railStatus[rail].enabled = enabled;
+  }
+
+  /**
+   * Merge static deployment context (chain id, addresses, RPC endpoint) into
+   * the snapshot. Shallowly merges top-level fields; `oracleAddresses` merges
+   * one rail at a time so callers can set just `stocks` or just `crypto`
+   * without clobbering the other. `rpcEndpoint: undefined` removes the
+   * existing value (use for resetting); pass a string to overwrite.
+   */
+  setChainInfo(partial: Partial<ChainInfo>): void {
+    const merged: ChainInfo = {
+      chainId: partial.chainId !== undefined ? partial.chainId : this.chainInfoState.chainId,
+      signerAddress: partial.signerAddress !== undefined ? partial.signerAddress : this.chainInfoState.signerAddress,
+      oracleAddresses: {
+        stocks: partial.oracleAddresses?.stocks !== undefined
+          ? partial.oracleAddresses.stocks
+          : this.chainInfoState.oracleAddresses.stocks,
+        crypto: partial.oracleAddresses?.crypto !== undefined
+          ? partial.oracleAddresses.crypto
+          : this.chainInfoState.oracleAddresses.crypto,
+      },
+    };
+    if ('rpcEndpoint' in partial) {
+      if (partial.rpcEndpoint !== undefined) merged.rpcEndpoint = partial.rpcEndpoint;
+    } else if (this.chainInfoState.rpcEndpoint !== undefined) {
+      merged.rpcEndpoint = this.chainInfoState.rpcEndpoint;
+    }
+    this.chainInfoState = merged;
   }
 
   record(rail: RailName, entry: ProofEntryInput): void {
@@ -198,8 +293,17 @@ export class ProofStore {
         lastFailureAgeMs: s.lastFailureAtMs === null ? null : generatedAt - s.lastFailureAtMs,
       };
     };
+    const chain: ChainInfo = {
+      chainId: this.chainInfoState.chainId,
+      signerAddress: this.chainInfoState.signerAddress,
+      oracleAddresses: { ...this.chainInfoState.oracleAddresses },
+    };
+    if (this.chainInfoState.rpcEndpoint !== undefined) {
+      chain.rpcEndpoint = this.chainInfoState.rpcEndpoint;
+    }
     return {
       generatedAt,
+      chain,
       rails: { stocks: buildRail('stocks'), crypto: buildRail('crypto') },
       stocks: this.rails.stocks.slice().reverse(),
       crypto: this.rails.crypto.slice().reverse(),

@@ -31,7 +31,7 @@ import { CryptoSymbolMap, parseCryptoSymbolMap } from './crypto-symbol-map';
 import { NormalizedQuote, OracleSignerConfig, UpdateResult } from './types';
 import { startHealthServer } from './healthServer';
 import { assertDevnetChain, parseAllowedChainIds } from './chain-guard';
-import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY, redactProofReason, canonicalEmptyProofSnapshot } from './proof-store';
+import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY, redactProofReason, canonicalEmptyProofSnapshot, redactRpcEndpoint } from './proof-store';
 import { AuditLog } from './audit-log';
 import * as path from 'path';
 import { ethers } from 'ethers';
@@ -260,6 +260,20 @@ export class OracleSignerService {
       void this.auditLog.append({ rail: 'stocks', event: 'refused', error: this.refusalReason, chainId: guard.chainId });
       return;
     }
+
+    // Publish static deployment context now that the chain probe has resolved.
+    // Operators and dashboards read `/proof.chain` to render explorer links and
+    // to verify the right oracle is being written to.
+    const signerAddress = this.submitter?.signerAddress ?? this.cryptoSubmitter?.signerAddress ?? null;
+    this.proofStore.setChainInfo({
+      chainId: guard.chainId,
+      signerAddress,
+      oracleAddresses: {
+        stocks: this.config.oracleAddress && this.config.oracleAddress.length > 0 ? this.config.oracleAddress : null,
+        crypto: this.config.swapPriceOracleAddress && this.config.swapPriceOracleAddress.length > 0 ? this.config.swapPriceOracleAddress : null,
+      },
+      rpcEndpoint: redactRpcEndpoint(this.config.rpcUrl),
+    });
 
     this.running = true;
     void this.auditLog.append({ rail: 'stocks', event: 'startup', chainId: guard.chainId });

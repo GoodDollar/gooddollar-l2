@@ -199,6 +199,41 @@ The audit log lives in `.autobuilder/logs/oracle-signer/YYYY-MM-DD.jsonl`
 (also gitignored) with one line per `submit_ok` / `submit_fail` / `refused`
 / `startup` / `shutdown` event.
 
+### Chain context — explorer links + which oracle is being written to
+
+`/proof` exposes the static deployment context so dashboards and operators
+don't have to bake in chain id or contract addresses:
+
+```bash
+curl -s http://localhost:9107/proof | jq '.chain'
+```
+
+```json
+{
+  "chainId": 31337,
+  "rpcEndpoint": "http://localhost:8545/",
+  "signerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "oracleAddresses": {
+    "stocks": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "crypto": "0x59b670e9fA9D0A427751Af201D676719a970857b"
+  }
+}
+```
+
+Compose an explorer URL from a tx hash on `.stocks[0].txHash`:
+
+```bash
+CHAIN=$(curl -s http://localhost:9107/proof | jq -r '.chain.chainId')
+TX=$(curl -s   http://localhost:9107/proof | jq -r '.stocks[0].txHash')
+echo "https://explorer/${CHAIN}/tx/${TX}"
+```
+
+`signerAddress` is the keeper's PUBLIC address — use it to fund the
+keeper or to verify nonce ownership. The private key never appears in
+`/proof`. `rpcEndpoint` is sanitised through `redactRpcEndpoint`
+(`user:pass@host` is stripped to `host`); IPC paths and non-URL
+transports are omitted entirely.
+
 ### Per-rail freshness — "how fresh is the oracle?"
 
 The `/proof` snapshot exposes a top-level `rails` block so operators can
