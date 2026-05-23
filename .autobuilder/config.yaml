@@ -1,0 +1,19 @@
+# Autobuilder Project Configuration — Lane 7 testnet setup
+no_push: false
+early_complete: false
+early_complete_idle_threshold: 1
+review_polish_weight: 0.95
+review_max_tasks_polish: 5
+review_max_tasks_feature: 2
+review_strategies:
+  - surface-sweep
+  - error-handling
+  - edge-cases
+  - deep-dive
+  - release-readiness
+custom_review_strategies:
+  - name: testnet-deploy-gate
+    focus: "Focus only on internal testnet readiness: clean integration branch, service health contract, demo-only safety fences, deploy/runbook/smoke gates, and exact blockers. Do not add unrelated product features."
+    max_tasks: 4
+plan_batch_size: null
+execute_batch_size: null
