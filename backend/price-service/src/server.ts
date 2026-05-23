@@ -115,7 +115,7 @@ export const QUICKSTART: readonly QuickstartStep[] = Object.freeze([
     step: 2,
     goal: 'See every cached quote at once',
     request: 'GET /quotes',
-    expect: '200; body { count, totalCached, quotes, source, degraded }',
+    expect: '200; body { totalCached, quotes, source, degraded }',
   }),
   Object.freeze({
     step: 3,
@@ -227,9 +227,9 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     methods: ['GET'],
     summary: 'Every cached quote with cache age and per-quote filter verdict.',
     responseShape:
-      '{ count, totalCached, degraded?, message?, quotes: ' +
-      'Record<string, NormalizedQuote & {cacheAge, filterAccepted, ' +
-      'filterReason}>, source?, timestamp, timestampIso }',
+      '{ totalCached, count (deprecated→totalCached), deprecations, ' +
+      'degraded?, message?, quotes: Record<string, NormalizedQuote ' +
+      '& {cacheAge, filterAccepted, filterReason}>, source?, ts }',
   },
   {
     path: '/quotes/fresh/all',
@@ -724,9 +724,18 @@ export function createServer(
       };
     }
     const count = Object.keys(quotes).length;
+    // `count` is the legacy alias for `totalCached`. Both fields hold the
+    // EXACT SAME number (drift-gated by tests) and ship together for one
+    // deprecation window so existing consumers don't break. The follow-up
+    // task drops `count` and the `deprecations.count` entry. Keep the
+    // canonical field (`totalCached`) first so a fresh integrator reading
+    // top-down learns it before the deprecated alias.
     const body: Record<string, unknown> = {
-      count,
       totalCached: cache.size,
+      count,
+      deprecations: {
+        count: 'rename → totalCached; will be removed in the next release',
+      },
     };
     if (sourceStatusGetter) {
       const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
