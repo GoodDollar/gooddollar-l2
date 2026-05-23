@@ -32,13 +32,21 @@ export default function LivePricesProofPage() {
         <aside
           aria-label="How to read this page"
           data-testid="reviewer-context"
-          className="mt-3 max-w-2xl rounded-lg border border-white/10 bg-white/[0.02] p-3 text-xs text-gray-400"
+          className="mt-4 flex max-w-3xl items-start gap-3 rounded-2xl border border-accent/20 bg-dark-100/60 p-5 text-sm text-gray-300"
         >
-          <span className="font-semibold text-gray-300">How to read this page:</span>{' '}
-          Each panel below is the live output of one service in the live-prices
-          pipeline. If a panel is empty, that service is unreachable. Yellow
-          &ldquo;degraded&rdquo; boxes are inline error states, intentional and not
-          silently swallowed.
+          <span
+            aria-hidden
+            className="mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center rounded-full border border-accent/40 bg-accent/10 text-[11px] font-bold text-accent"
+          >
+            i
+          </span>
+          <div>
+            <span className="font-semibold text-white">How to read this page:</span>{' '}
+            Each panel below is the live output of one service in the live-prices
+            pipeline. If a panel is empty, that service is unreachable. Yellow
+            &ldquo;degraded&rdquo; boxes are inline error states, intentional and not
+            silently swallowed.
+          </div>
         </aside>
       </header>
 

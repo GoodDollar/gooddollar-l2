@@ -81,6 +81,22 @@ describe('LivePricesProofPage', () => {
     expect(aside).toHaveTextContent(/degraded.*box(?:es)?/i)
   })
 
+  it('reviewer-context aside is structurally aligned with the data panels (rounded-2xl, panel background, accent border, info icon)', () => {
+    render(<LivePricesProofPage />)
+    const aside = screen.getByTestId('reviewer-context')
+    const cls = aside.className
+    expect(cls).toMatch(/rounded-2xl/)
+    expect(cls).toMatch(/bg-dark-100/)
+    expect(cls).toMatch(/border-accent/)
+    expect(cls).toMatch(/p-5/)
+    expect(cls).not.toMatch(/rounded-lg\b/)
+    expect(cls).not.toMatch(/bg-white\/\[0\.02\]/)
+    expect(cls).not.toMatch(/text-xs\b/)
+    const icon = aside.querySelector('[aria-hidden]')
+    expect(icon).not.toBeNull()
+    expect(icon?.textContent?.trim()).toBe('i')
+  })
+
   it('aside is rendered above the safety banner / panel grid', () => {
     render(<LivePricesProofPage />)
     const aside = screen.getByTestId('reviewer-context')
