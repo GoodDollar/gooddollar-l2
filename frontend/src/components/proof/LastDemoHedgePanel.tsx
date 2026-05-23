@@ -9,10 +9,13 @@ import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { shortenSourcePath } from './panelHeaderMetaUtils'
 
 // Shared chip family for the LastDemoHedge header row. All status pills
-// (side, threshold, dry-run flag, real-trading flag) render through this
-// helper so they share padding, weight, casing, and baseline. The helper
-// stays local to this file until a second panel needs it; see #0040.
-type StatusTone = 'neutral' | 'buy' | 'sell' | 'accent' | 'safe'
+// (side, symbol, threshold, dry-run flag, real-trading flag) render
+// through this helper so they share padding, weight, casing, and
+// baseline. The `symbol` tone (one notch brighter than `neutral`) marks
+// the row's primary identifier without breaking the chip rhythm — see
+// #0044. Helper stays local to this file until a second panel needs it;
+// see #0040.
+type StatusTone = 'neutral' | 'buy' | 'sell' | 'accent' | 'safe' | 'symbol'
 
 const STATUS_PILL_BASE =
   'rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-wider'
@@ -23,6 +26,7 @@ const STATUS_PILL_TONE: Record<StatusTone, string> = {
   sell: 'bg-red-500/10 text-red-300',
   accent: 'bg-accent/10 text-accent',
   safe: 'bg-green-500/10 text-green-300',
+  symbol: 'bg-white/15 text-white',
 }
 
 function StatusPill({ tone, children }: { tone: StatusTone; children: ReactNode }) {
@@ -32,9 +36,9 @@ function StatusPill({ tone, children }: { tone: StatusTone; children: ReactNode 
 function SymbolLabel({ symbol, notionalUsd }: { symbol: string; notionalUsd?: number }) {
   return (
     <span className="inline-flex items-baseline gap-2">
-      <span className="text-sm font-semibold text-white">{symbol}</span>
+      <StatusPill tone="symbol">{symbol}</StatusPill>
       {notionalUsd !== undefined && (
-        <span className="font-mono text-sm text-gray-100">{formatUsd(notionalUsd)}</span>
+        <span className="font-mono text-xs text-gray-100">{formatUsd(notionalUsd)}</span>
       )}
     </span>
   )

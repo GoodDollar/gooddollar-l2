@@ -2980,6 +2980,10 @@ img, video {
   background-color: #18181b80;
 }
 
+.bg-white\/15 {
+  background-color: #ffffff26;
+}
+
 .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
 }

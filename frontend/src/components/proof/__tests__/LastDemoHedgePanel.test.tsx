@@ -271,16 +271,41 @@ describe('LastDemoHedgePanel', () => {
     expect(side.className).toMatch(/text-green-300/)
   })
 
-  it('SymbolLabel: symbol sits on a shared baseline at text-sm (not text-base) so it does not break the chip row', async () => {
+  // #0044 — symbol promotes into the StatusPill family so all four atoms
+  // in the row share padding, casing, and baseline. The bare `text-sm
+  // font-semibold text-white` span is replaced with a `StatusPill
+  // tone="symbol"` whose chrome matches the rest of the row.
+  it('SymbolLabel: symbol renders inside a StatusPill with the symbol tone (#0044)', async () => {
     mockFetchOk(envelope(PROOF_NO_OP))
     render(<LastDemoHedgePanel intervalMs={60_000} />)
 
     const symbol = await screen.findByText('AAPL')
-    expect(symbol.className).toMatch(/\btext-sm\b/)
-    expect(symbol.className).not.toMatch(/\btext-base\b/)
+    const cls = symbol.className
+    expect(cls).toMatch(/\brounded-md\b/)
+    expect(cls).toMatch(/\bpx-2\b/)
+    expect(cls).toMatch(/\bpy-0\.5\b/)
+    expect(cls).toMatch(/\btext-xs\b/)
+    expect(cls).toMatch(/\bfont-semibold\b/)
+    expect(cls).toMatch(/\buppercase\b/)
+    expect(cls).toMatch(/\btracking-wider\b/)
+    expect(cls).toMatch(/bg-white\/15/)
+    expect(cls).toMatch(/\btext-white\b/)
+    expect(cls).not.toMatch(/\btext-sm\b/)
     const parent = symbol.parentElement as HTMLElement
     expect(parent).not.toBeNull()
     expect(parent.className).toMatch(/\bitems-baseline\b/)
+  })
+
+  it('SymbolLabel: notionalUsd value renders at text-xs not text-sm so it baseline-aligns with the pill row (#0044)', async () => {
+    mockFetchOk(envelope(PROOF_DRY_RUN))
+    render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+    const dollar = await screen.findByText('$250.00')
+    const cls = dollar.className
+    expect(cls).toMatch(/\bfont-mono\b/)
+    expect(cls).toMatch(/\btext-xs\b/)
+    expect(cls).toMatch(/\btext-gray-100\b/)
+    expect(cls).not.toMatch(/\btext-sm\b/)
   })
 
   it('renders the missing-proof state on a 404', async () => {
