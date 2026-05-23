@@ -64,6 +64,25 @@ function formatAge(ms: number): string {
   return `${Math.floor(ms / 60_000)}m`
 }
 
+type FreshnessSummary =
+  | { kind: 'empty' }
+  | { kind: 'all-current'; minAgeMs: number; total: number }
+  | { kind: 'has-stale'; minAgeMs: number; totalStale: number; total: number }
+
+function computeFreshnessSummary(quotes: Quote[], thresholdMs: number): FreshnessSummary {
+  if (quotes.length === 0) return { kind: 'empty' }
+  let minAgeMs = Number.POSITIVE_INFINITY
+  let totalStale = 0
+  for (const q of quotes) {
+    if (q.cacheAge < minAgeMs) minAgeMs = q.cacheAge
+    if (q.cacheAge > thresholdMs) totalStale += 1
+  }
+  if (totalStale > 0) {
+    return { kind: 'has-stale', minAgeMs, totalStale, total: quotes.length }
+  }
+  return { kind: 'all-current', minAgeMs, total: quotes.length }
+}
+
 /**
  * Structural guard for a single quote row. Only validates the fields the
  * renderer actually reads; extending the price-service response with new
@@ -146,11 +165,11 @@ export function LiveQuotesPanel({
       aria-labelledby="live-quotes-heading"
       className="rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
-      <header className="mb-3 flex items-center justify-between">
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-y-1">
         <h2 id="live-quotes-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           Live Quotes (price-service)
         </h2>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
           <span
             className="font-mono truncate max-w-[55%]"
             title={displayHost(priceServiceUrl)}
@@ -160,6 +179,9 @@ export function LiveQuotesPanel({
           </span>
           <span aria-hidden>·</span>
           <span>refreshes every {intervalMs / 1000}s</span>
+          {state.status === 'ok' && <FreshnessChip
+            summary={computeFreshnessSummary(Object.values(state.data.quotes), stalenessThresholdMs)}
+          />}
         </div>
       </header>
 
@@ -198,13 +220,12 @@ export function LiveQuotesPanel({
                 <th className="py-2 pr-3 font-medium text-right">Bid / Ask</th>
                 <th className="py-2 pr-3 font-medium text-right">Spread</th>
                 <th className="py-2 pr-3 font-medium">Session</th>
-                <th className="py-2 pr-3 font-medium text-right">Age</th>
               </tr>
             </thead>
             <tbody>
               {Object.values(state.data.quotes).length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-4 text-center text-xs text-gray-500">
+                  <td colSpan={5} className="py-4 text-center text-xs text-gray-500">
                     No quotes returned. price-service may be running but not yet seeded.
                   </td>
                 </tr>
@@ -228,22 +249,15 @@ export function LiveQuotesPanel({
                         >
                           {q.sessionState}
                         </span>
-                      </td>
-                      <td className="py-2 pr-3 text-right">
-                        <span
-                          className={
-                            stale
-                              ? 'inline-flex items-center gap-1.5 text-xs font-medium text-yellow-300'
-                              : 'inline-flex items-center gap-1.5 text-xs text-gray-400'
-                          }
-                        >
+                        {stale && (
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${stale ? 'bg-yellow-400' : 'bg-green-400'}`}
-                            aria-hidden
-                          />
-                          {formatAge(q.cacheAge)}
-                          {stale && <span className="text-yellow-200/90">stale</span>}
-                        </span>
+                            data-testid={`quote-stale-${q.symbol}`}
+                            className="ml-2 inline-flex items-center gap-1 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-200"
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" aria-hidden />
+                            stale {formatAge(q.cacheAge)}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   )
@@ -254,5 +268,24 @@ export function LiveQuotesPanel({
         </div>
       )}
     </section>
+  )
+}
+
+function FreshnessChip({ summary }: { summary: FreshnessSummary }) {
+  if (summary.kind === 'empty') return null
+  const fresh = summary.kind === 'all-current'
+  const dotClass = fresh ? 'bg-green-400' : 'bg-yellow-400'
+  const toneClass = fresh
+    ? 'inline-flex items-center gap-1.5 rounded-md bg-white/5 px-2 py-0.5 text-xs text-gray-300'
+    : 'inline-flex items-center gap-1.5 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-200'
+  const summaryText =
+    summary.kind === 'all-current'
+      ? 'all current'
+      : `${summary.totalStale} stale of ${summary.total}`
+  return (
+    <span data-testid="quotes-freshness" className={toneClass}>
+      <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} aria-hidden />
+      <span>{formatAge(summary.minAgeMs)} · {summaryText}</span>
+    </span>
   )
 }

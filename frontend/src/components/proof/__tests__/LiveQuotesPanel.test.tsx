@@ -13,11 +13,29 @@ const QUOTES_FRESH = {
       timestamp: 1700000000_000,
       sessionState: 'Open',
       confidence: 95,
-      cacheAge: 2_000,
+      cacheAge: 2_400,
       filterAccepted: true,
     },
   },
   timestamp: 1700000005_000,
+}
+
+const QUOTES_FRESH_MULTI = {
+  quotes: {
+    AAPL: { ...QUOTES_FRESH.quotes.AAPL, symbol: 'AAPL', cacheAge: 2_400 },
+    TSLA: { ...QUOTES_FRESH.quotes.AAPL, symbol: 'TSLA', cacheAge: 2_400 },
+    NVDA: { ...QUOTES_FRESH.quotes.AAPL, symbol: 'NVDA', cacheAge: 2_400 },
+  },
+  timestamp: 1700000005_000,
+}
+
+const QUOTES_MIXED_STALE = {
+  quotes: {
+    AAPL: { ...QUOTES_FRESH.quotes.AAPL, symbol: 'AAPL', cacheAge: 2_400 },
+    TSLA: { ...QUOTES_FRESH.quotes.AAPL, symbol: 'TSLA', cacheAge: 2_400 },
+    MSFT: { ...QUOTES_FRESH.quotes.AAPL, symbol: 'MSFT', cacheAge: 60_000 },
+  },
+  timestamp: 1700000010_000,
 }
 
 const QUOTES_STALE = {
@@ -57,8 +75,55 @@ describe('LiveQuotesPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('AAPL')).toBeInTheDocument()
     })
-    expect(screen.queryByText(/stale/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('quote-stale-AAPL')).not.toBeInTheDocument()
     expect(screen.getByText(/0\.112%/)).toBeInTheDocument()
+  })
+
+  it('renders no per-row Age column header', async () => {
+    mockFetchOnce(QUOTES_FRESH)
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('AAPL')).toBeInTheDocument()
+    })
+
+    const thead = document.querySelector('thead')
+    expect(thead).not.toBeNull()
+    expect(within(thead as HTMLElement).queryByText(/^Age$/i)).toBeNull()
+  })
+
+  it('panel header shows freshness chip in all-current state', async () => {
+    mockFetchOnce(QUOTES_FRESH_MULTI)
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} stalenessThresholdMs={30_000} />)
+
+    const chip = await screen.findByTestId('quotes-freshness')
+    expect(chip.textContent).toMatch(/all current/i)
+    expect(chip.textContent).toMatch(/2\.4s/)
+    expect(chip.className).not.toMatch(/yellow/)
+  })
+
+  it('panel header shows N stale of Y when at least one quote is stale', async () => {
+    mockFetchOnce(QUOTES_MIXED_STALE)
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} stalenessThresholdMs={30_000} />)
+
+    const chip = await screen.findByTestId('quotes-freshness')
+    expect(chip.textContent).toMatch(/1 stale of 3/)
+    expect(chip.textContent).toMatch(/2\.4s/)
+    expect(chip.className).toMatch(/yellow/)
+  })
+
+  it('only the divergent row gets the stale row pill', async () => {
+    mockFetchOnce(QUOTES_MIXED_STALE)
+
+    render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} stalenessThresholdMs={30_000} />)
+
+    await screen.findByText('AAPL')
+    expect(screen.getByTestId('quote-stale-MSFT')).toBeInTheDocument()
+    expect(screen.queryByTestId('quote-stale-AAPL')).toBeNull()
+    expect(screen.queryByTestId('quote-stale-TSLA')).toBeNull()
   })
 
   it('colours the session pill green when sessionState is "open"', async () => {
@@ -93,7 +158,7 @@ describe('LiveQuotesPanel', () => {
     expect(container.querySelector('section[id="panel-live-quotes"]')).not.toBeNull()
   })
 
-  it('renders a stale badge when cacheAge exceeds the threshold', async () => {
+  it('renders a stale row pill when cacheAge exceeds the threshold', async () => {
     mockFetchOnce(QUOTES_STALE)
 
     render(<LiveQuotesPanel priceServiceUrl="http://mock" intervalMs={60_000} stalenessThresholdMs={30_000} />)
@@ -101,7 +166,7 @@ describe('LiveQuotesPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('AAPL')).toBeInTheDocument()
     })
-    expect(screen.getByText(/stale/i)).toBeInTheDocument()
+    expect(screen.getByTestId('quote-stale-AAPL')).toBeInTheDocument()
   })
 
   it('renders sanitised degraded copy when the price-service is unreachable, leaking no raw error inside the alert region', async () => {
