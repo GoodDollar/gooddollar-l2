@@ -14,11 +14,19 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const ECOSYSTEM_PATH = path.resolve(__dirname, '..', 'backend', 'ecosystem.config.js');
+const SDK_INSTRUMENTS_PATH = path.resolve(
+  __dirname,
+  '..',
+  'backend',
+  'etoro-client',
+  'dist',
+  'instruments',
+);
 
 const REQUIRED = [
-  { name: 'price-service', script: /price-service\/dist\/index\.js$/ },
-  { name: 'oracle-signer', script: /oracle-signer\/dist\/index\.js$/ },
-  { name: 'hedge-engine',  script: /hedge-engine\/dist\/index\.js$/ },
+  { name: 'price-service', script: /price-service\/dist\/index\.js$/, symbolVar: 'ORACLE_SYMBOLS' },
+  { name: 'oracle-signer', script: /oracle-signer\/dist\/index\.js$/, symbolVar: 'ORACLE_SYMBOLS' },
+  { name: 'hedge-engine',  script: /hedge-engine\/dist\/index\.js$/,  symbolVar: 'HEDGE_SYMBOLS' },
 ];
 
 const cfg = require(ECOSYSTEM_PATH);
@@ -32,6 +40,42 @@ for (const { name, script } of REQUIRED) {
     script,
     `[check-pm2-ecosystem] wrong script for ${name}: ${entry.script}`,
   );
+}
+
+// Drift guard: every lane-1 entry's resolved symbol env var must contain
+// only symbols the SDK can price/resolve. If the SDK isn't built yet we
+// skip the assertion with an informative log — the literal fallback in
+// `ecosystem.config.js` already mirrors the SDK contract.
+let sdk;
+try {
+  sdk = require(SDK_INSTRUMENTS_PATH);
+} catch (err) {
+  if (err && err.code === 'MODULE_NOT_FOUND') {
+    console.log(
+      '[check-pm2-ecosystem] skip symbol partition — etoro-client/dist not built yet',
+    );
+  } else {
+    throw err;
+  }
+}
+
+if (sdk && typeof sdk.partitionLaneSymbols === 'function') {
+  for (const { name, symbolVar } of REQUIRED) {
+    const entry = apps.find((a) => a && a.name === name);
+    const raw = entry && entry.env ? entry.env[symbolVar] : undefined;
+    assert.ok(
+      typeof raw === 'string' && raw.length > 0,
+      `[check-pm2-ecosystem] ${name}: ${symbolVar} must resolve to a non-empty CSV`,
+    );
+    const symbols = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    const { unknown } = sdk.partitionLaneSymbols(symbols);
+    assert.equal(
+      unknown.length,
+      0,
+      `[check-pm2-ecosystem] ${name}: ${symbolVar} contains symbols outside ` +
+        `INSTRUMENT_MAP: [${unknown.join(', ')}]. Valid: ${sdk.INSTRUMENT_SYMBOLS.join(', ')}`,
+    );
+  }
 }
 
 console.log(
