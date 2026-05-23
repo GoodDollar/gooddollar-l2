@@ -94,6 +94,14 @@ const DOCS_URL =
  * Each step records the user *goal*, the *request* line, and what to
  * *expect* back so the consumer code can be written from this payload
  * alone.
+ *
+ * Convention: any step that names a deployment-dependent port (e.g.
+ * the WS broadcaster port) MUST be assembled per request from
+ * `buildWsAdvertisement` — never hardcoded. This constant carries only
+ * the three deployment-independent steps; step 4 (the WS CONNECT line)
+ * is appended inline in the `/` handler off the live broadcaster's
+ * actual bind address, and omitted when the broadcaster isn't
+ * listening — see task 0037.
  */
 export interface QuickstartStep {
   readonly step: number;
@@ -102,7 +110,7 @@ export interface QuickstartStep {
   readonly expect: string;
 }
 
-export const QUICKSTART: readonly QuickstartStep[] = Object.freeze([
+export const STATIC_QUICKSTART: readonly QuickstartStep[] = Object.freeze([
   Object.freeze({
     step: 1,
     goal: "Verify the service is alive and see what's configured",
@@ -125,14 +133,25 @@ export const QUICKSTART: readonly QuickstartStep[] = Object.freeze([
       "200 with quote envelope, or 404 { error: 'no-quote' } before " +
       'first tick',
   }),
-  Object.freeze({
-    step: 4,
-    goal: 'Subscribe to live ticks',
-    request: 'CONNECT ws://<host>:9301',
-    expect:
-      'snapshot frame on connect, then quote frames per accepted tick',
-  }),
 ]) as readonly QuickstartStep[];
+
+const WS_QUICKSTART_GOAL = 'Subscribe to live ticks';
+const WS_QUICKSTART_EXPECT =
+  'snapshot frame on connect, then quote frames per accepted tick';
+
+/**
+ * Assemble step 4 of the quickstart array from a live `WsAdvertisement`.
+ * Centralised so the `request` field is always `CONNECT ${ws.url}` —
+ * impossible to drift from `body.websocket.url` on the same response.
+ */
+function buildWsQuickstartStep(ws: WsAdvertisement): QuickstartStep {
+  return {
+    step: 4,
+    goal: WS_QUICKSTART_GOAL,
+    request: `CONNECT ${ws.url}`,
+    expect: WS_QUICKSTART_EXPECT,
+  };
+}
 
 /**
  * Pull the version string off a `package.json`-shaped object. Defaults to
@@ -656,16 +675,18 @@ export function createServer(
 
   app.get('/', (req: Request, res: Response) => {
     const now = Date.now();
+    const ws = buildWsAdvertisement(req);
+    const quickstart: QuickstartStep[] = [...STATIC_QUICKSTART];
+    if (ws) quickstart.push(buildWsQuickstartStep(ws));
     const body: Record<string, unknown> = {
       service: 'price-service',
       description: SERVICE_DESCRIPTION,
       version: PACKAGE_VERSION,
       docs: DOCS_URL,
       endpoints: buildEndpointIndex(),
-      quickstart: QUICKSTART,
+      quickstart,
       sourceReasonCatalog: SOURCE_REASON_CATALOG_POINTER,
     };
-    const ws = buildWsAdvertisement(req);
     if (ws) body.websocket = ws;
     const wsErr = buildWsErrorBlock();
     if (wsErr) body.websocketError = wsErr;

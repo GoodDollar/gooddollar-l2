@@ -1,5 +1,5 @@
 import express from 'express';
-import { createServer, QUICKSTART } from '../server';
+import { createServer, STATIC_QUICKSTART } from '../server';
 import { QuoteCache } from '../quote-cache';
 import { NormalizedQuote, computeSpread } from '../types';
 
@@ -107,9 +107,9 @@ describe('/quotes count vs totalCached drift gate (task 0035)', () => {
   });
 });
 
-describe('QUICKSTART step 2 advertises totalCached not count (task 0035)', () => {
+describe('STATIC_QUICKSTART step 2 advertises totalCached not count (task 0035)', () => {
   it('step 2 expect string mentions totalCached and not "count"', () => {
-    const step2 = QUICKSTART.find((s) => s.step === 2);
+    const step2 = STATIC_QUICKSTART.find((s) => s.step === 2);
     expect(step2).toBeDefined();
     expect(step2!.expect).toMatch(/totalCached/);
     expect(step2!.expect).not.toMatch(/\bcount\b/);

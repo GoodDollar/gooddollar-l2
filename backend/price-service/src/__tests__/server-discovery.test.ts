@@ -1,5 +1,5 @@
 import express from 'express';
-import { createServer, readPackageVersion, QUICKSTART } from '../server';
+import { createServer, readPackageVersion, STATIC_QUICKSTART } from '../server';
 import { QuoteCache } from '../quote-cache';
 import { DEFAULT_CONFIG, SourceStatus } from '../types';
 
@@ -49,7 +49,7 @@ describe('REST Server — GET / discovery payload', () => {
 
   it('GET / quickstart references symbols from DEFAULT_CONFIG.symbols', () => {
     const configured = new Set(DEFAULT_CONFIG.symbols.map((s) => s.toUpperCase()));
-    for (const step of QUICKSTART) {
+    for (const step of STATIC_QUICKSTART) {
       const match = step.request.match(/\/quotes\/([A-Z0-9._-]+)(?:$|\?)/i);
       if (!match) continue;
       const symbol = match[1].toUpperCase();
