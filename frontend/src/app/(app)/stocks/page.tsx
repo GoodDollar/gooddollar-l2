@@ -76,6 +76,16 @@ function StockIcon({ ticker }: { ticker: string }) {
   return <StockLogo ticker={ticker} size="sm" />
 }
 
+const EM_DASH = '—'
+
+function isSparklineUnavailable(data: number[] | null | undefined): boolean {
+  return !data || data.length === 0 || new Set(data).size <= 1
+}
+
+function noLiveMarketData(stock: Stock): boolean {
+  return stock.change24h === 0 && stock.volume24h === 0
+}
+
 function StarButton({ active, onClick }: { active: boolean; onClick: (e: React.MouseEvent) => void }) {
   return (
     <button
@@ -131,15 +141,26 @@ const StockRow = memo(function StockRow({ stock, idx, isLive, canIncreaseRisk, i
         {formatStockPrice(stock.price)}
       </td>
       <td className="py-3 px-3 text-right font-medium">
-        <PercentageChange value={stock.change24h} decimals={2} size="sm" />
+        <PercentageChange
+          value={noLiveMarketData(stock) ? null : stock.change24h}
+          decimals={2}
+          size="sm"
+        />
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">
-        {formatLargeNumber(stock.volume24h)}
+        {stock.volume24h > 0 ? formatLargeNumber(stock.volume24h) : <span className="text-gray-500">{EM_DASH}</span>}
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden md:table-cell">
-        {formatLargeNumber(stock.marketCap)}
+        {stock.marketCap > 0 ? formatLargeNumber(stock.marketCap) : <span className="text-gray-500">{EM_DASH}</span>}
       </td>
-      <td className="py-3 px-2 hidden sm:table-cell" aria-label={`7-day trend: ${stock.change24h >= 0 ? 'up' : 'down'} ${Math.abs(stock.change24h).toFixed(1)}%`}>
+      <td
+        className="py-3 px-2 hidden sm:table-cell"
+        aria-label={
+          isSparklineUnavailable(stock.sparkline7d)
+            ? '7-day trend: data unavailable'
+            : `7-day trend: ${stock.change24h >= 0 ? 'up' : 'down'} ${Math.abs(stock.change24h).toFixed(1)}%`
+        }
+      >
         <Sparkline data={stock.sparkline7d} positive={stock.change24h >= 0} />
       </td>
       <td className="py-3 px-1 text-right w-24 hidden sm:table-cell">
@@ -550,7 +571,12 @@ export default function StocksPage() {
               <div className="text-right shrink-0 w-[96px]">
                 <p className="text-white font-medium text-sm whitespace-nowrap">{formatStockPrice(stock.price)}</p>
                 <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
-                  <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
+                  <PercentageChange
+                    value={noLiveMarketData(stock) ? null : stock.change24h}
+                    decimals={2}
+                    size="xs"
+                    showSign
+                  />
                 </div>
                 {isLive && (rebalanceBySymbol[stock.ticker]?.riskIncreaseAllowed ?? true) ? (
                   <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
