@@ -35,6 +35,37 @@ type ProofTail = {
 }
 type ProofPayload = { generatedAt: number; stocks: ProofTail[]; crypto: ProofTail[] }
 
+export type UpstreamStatus = { status: 'ok' } | { status: 'down'; reason: string }
+
+const REASON_MAX_LEN = 200
+
+/**
+ * Reduce an upstream rejection to a short, operator-readable string suitable
+ * for inclusion in a public HTTP body. Strips long hex sequences (signer keys,
+ * addresses), collapses newlines, and clamps length so a stack trace or an
+ * accidentally-leaked credential never escapes.
+ */
+export function redactUpstreamReason(err: unknown): string {
+  let raw: string
+  if (err instanceof Error) {
+    const cause = (err as { cause?: { code?: unknown } }).cause
+    const code = cause && typeof cause.code === 'string' ? cause.code : null
+    raw = code ? `${code}: ${err.message}` : err.message
+  } else {
+    raw = String(err)
+  }
+  const oneLine = raw.replace(/\r?\n/g, ' ')
+  const redactedHex = oneLine.replace(/0x[0-9a-fA-F]{40,}/g, '<redacted-hex>')
+  return redactedHex.length > REASON_MAX_LEN ? redactedHex.slice(0, REASON_MAX_LEN) : redactedHex
+}
+
+function buildUpstream(settled: PromiseSettledResult<unknown>): UpstreamStatus {
+  if (settled.status === 'fulfilled') {
+    return { status: 'ok' }
+  }
+  return { status: 'down', reason: redactUpstreamReason(settled.reason) }
+}
+
 async function fetchJson<T>(url: string): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
@@ -65,6 +96,11 @@ async function handleGet(_req?: NextRequest) {
     fetchJson<ProofPayload>(`${ORACLE_SIGNER_URL}/proof`),
   ])
 
+  const upstreams = {
+    priceService: buildUpstream(quotesRes),
+    oracleSigner: buildUpstream(proofRes),
+  }
+
   const quotesOk = quotesRes.status === 'fulfilled'
   const proofOk = proofRes.status === 'fulfilled'
 
@@ -73,11 +109,12 @@ async function handleGet(_req?: NextRequest) {
       {
         error: 'Oracle status unavailable',
         healthy: false,
-        freshCount: 0,
-        totalCount: 0,
+        degraded: true,
         quotes: [],
         proof: EMPTY_PROOF,
-        degraded: true,
+        freshCount: 0,
+        totalCount: 0,
+        upstreams,
         timestamp: Date.now(),
       },
       { status: 503 },
@@ -106,10 +143,7 @@ async function handleGet(_req?: NextRequest) {
     freshCount,
     totalCount,
     timestamp: quotesOk ? (quotesRes.value.timestamp ?? Date.now()) : Date.now(),
-    upstreams: {
-      priceService: quotesOk ? 'ok' : 'down',
-      oracleSigner: proofOk ? 'ok' : 'down',
-    },
+    upstreams,
   })
 }
 

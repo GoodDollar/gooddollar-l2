@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { NextRequest } from 'next/server'
-import { GET } from '../route'
+import { GET, redactUpstreamReason } from '../route'
 
 // Vitest tests don't need a real NextRequest — the handler only checks rate
 // limit headers via getRealIp(). A bare-bones stub typechecks and satisfies
@@ -58,8 +58,8 @@ describe('GET /api/oracle/status — merged response', () => {
     expect(data.quotes).toHaveLength(1)
     expect(data.proof.stocks[0].txHash).toBe('0xS1')
     expect(data.proof.crypto[0].txHash).toBe('0xC1')
-    expect(data.upstreams.priceService).toBe('ok')
-    expect(data.upstreams.oracleSigner).toBe('ok')
+    expect(data.upstreams.priceService).toEqual({ status: 'ok' })
+    expect(data.upstreams.oracleSigner).toEqual({ status: 'ok' })
   })
 
   it('degrades when only price-service is reachable; proof is empty', async () => {
@@ -75,8 +75,9 @@ describe('GET /api/oracle/status — merged response', () => {
     expect(data.quotes).toHaveLength(1)
     expect(data.proof.stocks).toEqual([])
     expect(data.proof.crypto).toEqual([])
-    expect(data.upstreams.priceService).toBe('ok')
-    expect(data.upstreams.oracleSigner).toBe('down')
+    expect(data.upstreams.priceService).toEqual({ status: 'ok' })
+    expect(data.upstreams.oracleSigner.status).toBe('down')
+    expect(data.upstreams.oracleSigner.reason).toContain('ECONNREFUSED')
   })
 
   it('degrades when only oracle-signer is reachable; quotes are empty', async () => {
@@ -91,8 +92,9 @@ describe('GET /api/oracle/status — merged response', () => {
     expect(data.degraded).toBe(true)
     expect(data.quotes).toEqual([])
     expect(data.proof.stocks).toHaveLength(1)
-    expect(data.upstreams.priceService).toBe('down')
-    expect(data.upstreams.oracleSigner).toBe('ok')
+    expect(data.upstreams.priceService.status).toBe('down')
+    expect(data.upstreams.priceService.reason).toContain('ECONNREFUSED')
+    expect(data.upstreams.oracleSigner).toEqual({ status: 'ok' })
   })
 
   it('returns 503 only when BOTH upstreams are down', async () => {
@@ -111,6 +113,21 @@ describe('GET /api/oracle/status — merged response', () => {
     expect(data.proof.crypto).toEqual([])
   })
 
+  it('503 body surfaces the failing-upstream reason for each rail', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('fetch failed: ECONNREFUSED 127.0.0.1:9300') },
+      '/proof':         () => new Response('bad gateway', { status: 502 }),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.upstreams.priceService.status).toBe('down')
+    expect(data.upstreams.priceService.reason).toContain('ECONNREFUSED')
+    expect(data.upstreams.oracleSigner.status).toBe('down')
+    expect(data.upstreams.oracleSigner.reason).toMatch(/returned 502/)
+  })
+
   it('treats non-OK upstream response as down (not as data)', async () => {
     fetchMockTwo({
       '/status/quotes': () => new Response('bad gateway', { status: 502 }),
@@ -121,7 +138,41 @@ describe('GET /api/oracle/status — merged response', () => {
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.degraded).toBe(true)
-    expect(data.upstreams.priceService).toBe('down')
-    expect(data.upstreams.oracleSigner).toBe('ok')
+    expect(data.upstreams.priceService.status).toBe('down')
+    expect(data.upstreams.priceService.reason).toMatch(/returned 502/)
+    expect(data.upstreams.oracleSigner).toEqual({ status: 'ok' })
+  })
+})
+
+describe('redactUpstreamReason', () => {
+  it('strips long hex sequences (signer keys, addresses)', () => {
+    const r = redactUpstreamReason(
+      new Error('rpc error using key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 — bad'),
+    )
+    expect(r).not.toContain('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80')
+    expect(r).toContain('<redacted-hex>')
+  })
+
+  it('collapses newlines into spaces', () => {
+    const r = redactUpstreamReason(new Error('first line\nsecond line\r\nthird'))
+    expect(r).not.toContain('\n')
+    expect(r).not.toContain('\r')
+    expect(r).toContain('first line second line third')
+  })
+
+  it('clamps length to <=200 chars', () => {
+    const long = 'x'.repeat(1000)
+    const r = redactUpstreamReason(new Error(long))
+    expect(r.length).toBeLessThanOrEqual(200)
+  })
+
+  it('handles non-Error throws (string)', () => {
+    expect(redactUpstreamReason('plain string failure')).toBe('plain string failure')
+  })
+
+  it('prefers err.cause.code prefix when present (undici fetch failure pattern)', () => {
+    const err = new Error('fetch failed')
+    ;(err as { cause?: { code?: string } }).cause = { code: 'ECONNREFUSED' }
+    expect(redactUpstreamReason(err)).toBe('ECONNREFUSED: fetch failed')
   })
 })

@@ -110,6 +110,44 @@ proof tail and degrades gracefully (single-upstream outage still returns
 | `Submission failed: nonce has already been used` | Two signer instances racing on the same key | Only run one signer per key. The two rails inside a single signer process share a `NonceManager`-wrapped wallet and do not collide. |
 | `Submission failed: …deviation` | Mock prices moved >10% (StockOracleV2's deviation guard) or >25% (SwapPriceOracle's) | The mock walks 0.1% per tick by design; if you raised it, scale back. |
 
+### Interpreting `/api/oracle/status`
+
+The frontend status route merges both upstreams and reports per-rail
+`{ status, reason? }` objects so you can triage without ssh-ing into either box:
+
+```bash
+curl -s http://localhost:3123/api/oracle/status | jq '.upstreams'
+```
+
+**Both upstreams down (HTTP 503):**
+
+```json
+{
+  "priceService": { "status": "down", "reason": "ECONNREFUSED: fetch failed" },
+  "oracleSigner": { "status": "down", "reason": "upstream http://localhost:9107/proof returned 503" }
+}
+```
+
+**Signer refusing on chain-guard (HTTP 200, degraded):**
+
+```json
+{
+  "priceService": { "status": "ok" },
+  "oracleSigner": { "status": "down", "reason": "upstream http://localhost:9107/proof returned 503" }
+}
+```
+
+The signer's own `/health` body will also include `chainCheck.refused: "non-devnet chain id …"` — read both endpoints together when diagnosing.
+
+**Signer key missing (HTTP 200, degraded):** identical to chain-guard refusal above —
+the signer keeps the health port alive and returns 503 from `/proof` with
+`signer disabled (no ORACLE_SIGNER_KEY)` in the body. Inspect the signer's
+`/health` to disambiguate.
+
+**Reason field guarantees:** newlines collapsed to spaces, `0x`-prefixed hex
+of length ≥40 (signer keys / addresses) replaced with `<redacted-hex>`,
+length clamped to ≤200 chars. Safe to forward to logs / dashboards.
+
 ## Where the proof lives
 
 ```
