@@ -5,23 +5,38 @@
 __turbopack_context__.s([
     "generateFundingRateHistory",
     ()=>generateFundingRateHistory,
+    "useDemoFundingHistory",
+    ()=>useDemoFundingHistory,
+    "useDemoOpenOrders",
+    ()=>useDemoOpenOrders,
+    "useDemoOrderHistory",
+    ()=>useDemoOrderHistory,
+    "useDemoTradeHistory",
+    ()=>useDemoTradeHistory,
+    "useFundingHistory",
+    ()=>useFundingHistory,
     "useFundingRateChart",
     ()=>useFundingRateChart,
-    "useMockFundingHistory",
-    ()=>useMockFundingHistory,
-    "useMockOpenOrders",
-    ()=>useMockOpenOrders,
-    "useMockOrderHistory",
-    ()=>useMockOrderHistory,
-    "useMockTradeHistory",
-    ()=>useMockTradeHistory
+    "useOpenOrders",
+    ()=>useOpenOrders,
+    "useOrderHistory",
+    ()=>useOrderHistory,
+    "useTradeHistory",
+    ()=>useTradeHistory
 ]);
 /**
- * perpsHistoryData.ts — Types and mock data generators for Perps history tabs.
+ * perpsHistoryData.ts — Types, market-wide funding-rate generator, and
+ * deterministic demo seeds for the four /perps history tabs.
  *
- * Provides hooks returning realistic placeholder data for Open Orders,
- * Order History, Trade History, and Funding History until on-chain event
- * indexing is available.
+ * Production hooks (`useOpenOrders` / `useOrderHistory` / `useTradeHistory`
+ * / `useFundingHistory`) currently return `[]` until on-chain perps event
+ * indexing is wired. The seeded demo generators are exposed via explicit
+ * `useDemo*` hooks for storybook + fixture tests only — production routes
+ * MUST NOT import them.
+ *
+ * Funding-rate **chart** data (`generateFundingRateHistory`) is market-wide
+ * and intentionally remains a deterministic placeholder until the indexer
+ * lands.
  */ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
 var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature(), _s3 = __turbopack_context__.k.signature(), _s4 = __turbopack_context__.k.signature();
 ;
@@ -33,7 +48,7 @@ function seededRng(seed) {
         return s / 0x7fffffff;
     };
 }
-// ─── Generators ───────────────────────────────────────────────────────────────
+// ─── Demo generators (storybook + fixture seeds only) ─────────────────────────
 const PAIRS = [
     'BTC-USD',
     'ETH-USD',
@@ -196,34 +211,58 @@ function useFundingRateChart(symbol, range) {
     ]);
 }
 _s(useFundingRateChart, "nwk+m61qLgjDVUp4IGV/072DDN4=");
-function useMockOpenOrders() {
+// ─── Production hooks ─────────────────────────────────────────────────────────
+// Each hook returns `[]` until perps event indexing ships. The empty array
+// flows through PerpsHistoryTabs into the existing `<EmptyState>` branches —
+// no fake rows, no orphan Cancel buttons.
+//
+// TODO: replace each return with the real on-chain reads once
+// `useOnChainOpenOrders` / `useOnChainOrderHistory` / `useOnChainTradeHistory`
+// / `useOnChainFundingPayments` exist.
+const EMPTY_OPEN_ORDERS = Object.freeze([]);
+const EMPTY_ORDER_HISTORY = Object.freeze([]);
+const EMPTY_TRADE_HISTORY = Object.freeze([]);
+const EMPTY_FUNDING_HISTORY = Object.freeze([]);
+function useOpenOrders() {
+    return EMPTY_OPEN_ORDERS;
+}
+function useOrderHistory() {
+    return EMPTY_ORDER_HISTORY;
+}
+function useTradeHistory() {
+    return EMPTY_TRADE_HISTORY;
+}
+function useFundingHistory() {
+    return EMPTY_FUNDING_HISTORY;
+}
+function useDemoOpenOrders() {
     _s1();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
-        "useMockOpenOrders.useMemo": ()=>generateOpenOrders(5)
-    }["useMockOpenOrders.useMemo"], []);
+        "useDemoOpenOrders.useMemo": ()=>generateOpenOrders(5)
+    }["useDemoOpenOrders.useMemo"], []);
 }
-_s1(useMockOpenOrders, "nwk+m61qLgjDVUp4IGV/072DDN4=");
-function useMockOrderHistory() {
+_s1(useDemoOpenOrders, "nwk+m61qLgjDVUp4IGV/072DDN4=");
+function useDemoOrderHistory() {
     _s2();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
-        "useMockOrderHistory.useMemo": ()=>generateOrderHistory(20)
-    }["useMockOrderHistory.useMemo"], []);
+        "useDemoOrderHistory.useMemo": ()=>generateOrderHistory(20)
+    }["useDemoOrderHistory.useMemo"], []);
 }
-_s2(useMockOrderHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
-function useMockTradeHistory() {
+_s2(useDemoOrderHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
+function useDemoTradeHistory() {
     _s3();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
-        "useMockTradeHistory.useMemo": ()=>generateTradeHistory(25)
-    }["useMockTradeHistory.useMemo"], []);
+        "useDemoTradeHistory.useMemo": ()=>generateTradeHistory(25)
+    }["useDemoTradeHistory.useMemo"], []);
 }
-_s3(useMockTradeHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
-function useMockFundingHistory() {
+_s3(useDemoTradeHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
+function useDemoFundingHistory() {
     _s4();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
-        "useMockFundingHistory.useMemo": ()=>generateFundingHistory(30)
-    }["useMockFundingHistory.useMemo"], []);
+        "useDemoFundingHistory.useMemo": ()=>generateFundingHistory(30)
+    }["useDemoFundingHistory.useMemo"], []);
 }
-_s4(useMockFundingHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
+_s4(useDemoFundingHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
@@ -474,10 +513,14 @@ function OpenOrdersPanel({ orders }) {
             columnNumber: 7
         }, this);
     }
+    // NOTE: the `Cancel` column was removed alongside the mock data drop in
+    // task 0017 — the previous `<button>` had no onClick, so a click on a
+    // user's "own" order silently did nothing. The real cancel wiring will
+    // be added back when on-chain order indexing ships.
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "overflow-x-auto",
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
-            className: "w-full text-xs min-w-[540px]",
+            className: "w-full text-xs min-w-[480px]",
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("thead", {
                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
@@ -488,7 +531,7 @@ function OpenOrdersPanel({ orders }) {
                                 children: "Pair"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 79,
+                                lineNumber: 83,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -496,7 +539,7 @@ function OpenOrdersPanel({ orders }) {
                                 children: "Side"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 80,
+                                lineNumber: 84,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -504,7 +547,7 @@ function OpenOrdersPanel({ orders }) {
                                 children: "Type"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 81,
+                                lineNumber: 85,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -512,7 +555,7 @@ function OpenOrdersPanel({ orders }) {
                                 children: "Price"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 82,
+                                lineNumber: 86,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -520,7 +563,7 @@ function OpenOrdersPanel({ orders }) {
                                 children: "Size"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 83,
+                                lineNumber: 87,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -528,25 +571,18 @@ function OpenOrdersPanel({ orders }) {
                                 children: "Time"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 84,
-                                columnNumber: 13
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                className: "text-right py-2 px-3 font-medium"
-                            }, void 0, false, {
-                                fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 85,
+                                lineNumber: 88,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                        lineNumber: 78,
+                        lineNumber: 82,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 77,
+                    lineNumber: 81,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -558,7 +594,7 @@ function OpenOrdersPanel({ orders }) {
                                     children: o.pair
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 91,
+                                    lineNumber: 94,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -568,12 +604,12 @@ function OpenOrdersPanel({ orders }) {
                                         leverage: o.leverage
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                        lineNumber: 92,
+                                        lineNumber: 95,
                                         columnNumber: 41
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 92,
+                                    lineNumber: 95,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -581,7 +617,7 @@ function OpenOrdersPanel({ orders }) {
                                     children: o.type
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 93,
+                                    lineNumber: 96,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -589,7 +625,7 @@ function OpenOrdersPanel({ orders }) {
                                     children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatPerpsPrice"])(o.price)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 94,
+                                    lineNumber: 97,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -597,7 +633,7 @@ function OpenOrdersPanel({ orders }) {
                                     children: o.size
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 95,
+                                    lineNumber: 98,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -605,44 +641,29 @@ function OpenOrdersPanel({ orders }) {
                                     children: timeAgo(o.createdAt)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 96,
-                                    columnNumber: 15
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                    className: "py-2 px-3 text-right",
-                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                        className: "text-red-400 hover:text-red-300 text-[10px] font-semibold transition-colors",
-                                        children: "Cancel"
-                                    }, void 0, false, {
-                                        fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                        lineNumber: 98,
-                                        columnNumber: 17
-                                    }, this)
-                                }, void 0, false, {
-                                    fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 97,
+                                    lineNumber: 99,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, o.id, true, {
                             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                            lineNumber: 90,
+                            lineNumber: 93,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 88,
+                    lineNumber: 91,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-            lineNumber: 76,
+            lineNumber: 80,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-        lineNumber: 75,
+        lineNumber: 79,
         columnNumber: 5
     }, this);
 }
@@ -662,19 +683,19 @@ function OrderHistoryPanel({ orders }) {
                     d: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 114,
+                    lineNumber: 112,
                     columnNumber: 94
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                lineNumber: 114,
+                lineNumber: 112,
                 columnNumber: 15
             }, this),
             title: "No order history",
             description: "Your past orders will appear here."
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-            lineNumber: 113,
+            lineNumber: 111,
             columnNumber: 7
         }, this);
     }
@@ -692,7 +713,7 @@ function OrderHistoryPanel({ orders }) {
                                 children: "Pair"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 125,
+                                lineNumber: 123,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -700,7 +721,7 @@ function OrderHistoryPanel({ orders }) {
                                 children: "Side"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 126,
+                                lineNumber: 124,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -708,7 +729,7 @@ function OrderHistoryPanel({ orders }) {
                                 children: "Type"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 127,
+                                lineNumber: 125,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -716,7 +737,7 @@ function OrderHistoryPanel({ orders }) {
                                 children: "Price"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 128,
+                                lineNumber: 126,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -724,7 +745,7 @@ function OrderHistoryPanel({ orders }) {
                                 children: "Size"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 129,
+                                lineNumber: 127,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -732,7 +753,7 @@ function OrderHistoryPanel({ orders }) {
                                 children: "Filled"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 130,
+                                lineNumber: 128,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -740,7 +761,7 @@ function OrderHistoryPanel({ orders }) {
                                 children: "Status"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 131,
+                                lineNumber: 129,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -748,18 +769,18 @@ function OrderHistoryPanel({ orders }) {
                                 children: "Time"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 132,
+                                lineNumber: 130,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                        lineNumber: 124,
+                        lineNumber: 122,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 123,
+                    lineNumber: 121,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -771,7 +792,7 @@ function OrderHistoryPanel({ orders }) {
                                     children: o.pair
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 138,
+                                    lineNumber: 136,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -780,12 +801,12 @@ function OrderHistoryPanel({ orders }) {
                                         side: o.side
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                        lineNumber: 139,
+                                        lineNumber: 137,
                                         columnNumber: 41
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 139,
+                                    lineNumber: 137,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -793,7 +814,7 @@ function OrderHistoryPanel({ orders }) {
                                     children: o.type
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 140,
+                                    lineNumber: 138,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -801,7 +822,7 @@ function OrderHistoryPanel({ orders }) {
                                     children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatPerpsPrice"])(o.price)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 141,
+                                    lineNumber: 139,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -809,7 +830,7 @@ function OrderHistoryPanel({ orders }) {
                                     children: o.size
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 142,
+                                    lineNumber: 140,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -821,7 +842,7 @@ function OrderHistoryPanel({ orders }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 143,
+                                    lineNumber: 141,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -830,12 +851,12 @@ function OrderHistoryPanel({ orders }) {
                                         status: o.status
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                        lineNumber: 144,
+                                        lineNumber: 142,
                                         columnNumber: 53
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 144,
+                                    lineNumber: 142,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -843,29 +864,29 @@ function OrderHistoryPanel({ orders }) {
                                     children: dateStr(o.createdAt)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 145,
+                                    lineNumber: 143,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, o.id, true, {
                             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                            lineNumber: 137,
+                            lineNumber: 135,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 135,
+                    lineNumber: 133,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-            lineNumber: 122,
+            lineNumber: 120,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-        lineNumber: 121,
+        lineNumber: 119,
         columnNumber: 5
     }, this);
 }
@@ -885,19 +906,19 @@ function TradeHistoryPanel({ trades }) {
                     d: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 158,
+                    lineNumber: 156,
                     columnNumber: 94
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                lineNumber: 158,
+                lineNumber: 156,
                 columnNumber: 15
             }, this),
             title: "No trade history",
             description: "Your executed trades will appear here."
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-            lineNumber: 157,
+            lineNumber: 155,
             columnNumber: 7
         }, this);
     }
@@ -915,7 +936,7 @@ function TradeHistoryPanel({ trades }) {
                                 children: "Pair"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 169,
+                                lineNumber: 167,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -923,7 +944,7 @@ function TradeHistoryPanel({ trades }) {
                                 children: "Side"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 170,
+                                lineNumber: 168,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -931,7 +952,7 @@ function TradeHistoryPanel({ trades }) {
                                 children: "Price"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 171,
+                                lineNumber: 169,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -939,7 +960,7 @@ function TradeHistoryPanel({ trades }) {
                                 children: "Size"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 172,
+                                lineNumber: 170,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -947,7 +968,7 @@ function TradeHistoryPanel({ trades }) {
                                 children: "Fee"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 173,
+                                lineNumber: 171,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -955,7 +976,7 @@ function TradeHistoryPanel({ trades }) {
                                 children: "P&L"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 174,
+                                lineNumber: 172,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -963,18 +984,18 @@ function TradeHistoryPanel({ trades }) {
                                 children: "Time"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 175,
+                                lineNumber: 173,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                        lineNumber: 168,
+                        lineNumber: 166,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 167,
+                    lineNumber: 165,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -986,7 +1007,7 @@ function TradeHistoryPanel({ trades }) {
                                     children: t.pair
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 181,
+                                    lineNumber: 179,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -995,12 +1016,12 @@ function TradeHistoryPanel({ trades }) {
                                         side: t.side
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                        lineNumber: 182,
+                                        lineNumber: 180,
                                         columnNumber: 41
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 182,
+                                    lineNumber: 180,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1008,7 +1029,7 @@ function TradeHistoryPanel({ trades }) {
                                     children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatPerpsPrice"])(t.price)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 183,
+                                    lineNumber: 181,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1016,7 +1037,7 @@ function TradeHistoryPanel({ trades }) {
                                     children: t.size
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 184,
+                                    lineNumber: 182,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1024,7 +1045,7 @@ function TradeHistoryPanel({ trades }) {
                                     children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatPerpsPrice"])(t.fee)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 185,
+                                    lineNumber: 183,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1035,7 +1056,7 @@ function TradeHistoryPanel({ trades }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 186,
+                                    lineNumber: 184,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1043,29 +1064,29 @@ function TradeHistoryPanel({ trades }) {
                                     children: dateStr(t.timestamp)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 189,
+                                    lineNumber: 187,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, t.id, true, {
                             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                            lineNumber: 180,
+                            lineNumber: 178,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 178,
+                    lineNumber: 176,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-            lineNumber: 166,
+            lineNumber: 164,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-        lineNumber: 165,
+        lineNumber: 163,
         columnNumber: 5
     }, this);
 }
@@ -1085,19 +1106,19 @@ function FundingHistoryPanel({ payments }) {
                     d: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 202,
+                    lineNumber: 200,
                     columnNumber: 94
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                lineNumber: 202,
+                lineNumber: 200,
                 columnNumber: 15
             }, this),
             title: "No funding payments",
             description: "Funding payments accrue every 8 hours on open positions."
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-            lineNumber: 201,
+            lineNumber: 199,
             columnNumber: 7
         }, this);
     }
@@ -1115,7 +1136,7 @@ function FundingHistoryPanel({ payments }) {
                                 children: "Pair"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 213,
+                                lineNumber: 211,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1123,7 +1144,7 @@ function FundingHistoryPanel({ payments }) {
                                 children: "Rate"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 214,
+                                lineNumber: 212,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1131,7 +1152,7 @@ function FundingHistoryPanel({ payments }) {
                                 children: "Position"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 215,
+                                lineNumber: 213,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1139,7 +1160,7 @@ function FundingHistoryPanel({ payments }) {
                                 children: "Payment"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 216,
+                                lineNumber: 214,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1147,18 +1168,18 @@ function FundingHistoryPanel({ payments }) {
                                 children: "Time"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                lineNumber: 217,
+                                lineNumber: 215,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                        lineNumber: 212,
+                        lineNumber: 210,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 211,
+                    lineNumber: 209,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1170,7 +1191,7 @@ function FundingHistoryPanel({ payments }) {
                                     children: f.pair
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 223,
+                                    lineNumber: 221,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1178,7 +1199,7 @@ function FundingHistoryPanel({ payments }) {
                                     children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatFundingRate"])(f.rate)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 224,
+                                    lineNumber: 222,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1186,7 +1207,7 @@ function FundingHistoryPanel({ payments }) {
                                     children: f.positionSize
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 227,
+                                    lineNumber: 225,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1197,7 +1218,7 @@ function FundingHistoryPanel({ payments }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 228,
+                                    lineNumber: 226,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1205,29 +1226,29 @@ function FundingHistoryPanel({ payments }) {
                                     children: dateStr(f.timestamp)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 231,
+                                    lineNumber: 229,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, f.id, true, {
                             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                            lineNumber: 222,
+                            lineNumber: 220,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 220,
+                    lineNumber: 218,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-            lineNumber: 210,
+            lineNumber: 208,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-        lineNumber: 209,
+        lineNumber: 207,
         columnNumber: 5
     }, this);
 }
@@ -1253,10 +1274,10 @@ const TAB_CONFIG = [
 function PerpsHistoryTabs() {
     _s();
     const [activeTab, setActiveTab] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('open-orders');
-    const openOrders = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMockOpenOrders"])();
-    const orderHistory = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMockOrderHistory"])();
-    const tradeHistory = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMockTradeHistory"])();
-    const fundingHistory = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMockFundingHistory"])();
+    const openOrders = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useOpenOrders"])();
+    const orderHistory = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useOrderHistory"])();
+    const tradeHistory = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useTradeHistory"])();
+    const fundingHistory = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useFundingHistory"])();
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden",
         children: [
@@ -1276,23 +1297,23 @@ function PerpsHistoryTabs() {
                                     children: openOrders.length
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                                    lineNumber: 278,
+                                    lineNumber: 276,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, tab.id, true, {
                             fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                            lineNumber: 267,
+                            lineNumber: 265,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                    lineNumber: 261,
+                    lineNumber: 259,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                lineNumber: 260,
+                lineNumber: 258,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1302,49 +1323,49 @@ function PerpsHistoryTabs() {
                         orders: openOrders
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                        lineNumber: 288,
+                        lineNumber: 286,
                         columnNumber: 41
                     }, this),
                     activeTab === 'order-history' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(OrderHistoryPanel, {
                         orders: orderHistory
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                        lineNumber: 289,
+                        lineNumber: 287,
                         columnNumber: 43
                     }, this),
                     activeTab === 'trade-history' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(TradeHistoryPanel, {
                         trades: tradeHistory
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                        lineNumber: 290,
+                        lineNumber: 288,
                         columnNumber: 43
                     }, this),
                     activeTab === 'funding-history' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(FundingHistoryPanel, {
                         payments: fundingHistory
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                        lineNumber: 291,
+                        lineNumber: 289,
                         columnNumber: 45
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-                lineNumber: 287,
+                lineNumber: 285,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/PerpsHistoryTabs.tsx",
-        lineNumber: 259,
+        lineNumber: 257,
         columnNumber: 5
     }, this);
 }
-_s(PerpsHistoryTabs, "cYmhqnQnK9RV8FjMJ25RBKeF5g0=", false, function() {
+_s(PerpsHistoryTabs, "pkoqP8vEp0m3MJnpuF53ME1xOv4=", false, function() {
     return [
-        __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMockOpenOrders"],
-        __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMockOrderHistory"],
-        __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMockTradeHistory"],
-        __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMockFundingHistory"]
+        __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useOpenOrders"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useOrderHistory"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useTradeHistory"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$perpsHistoryData$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useFundingHistory"]
     ];
 });
 _c6 = PerpsHistoryTabs;

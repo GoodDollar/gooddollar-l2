@@ -1,9 +1,16 @@
 /**
- * perpsHistoryData.ts — Types and mock data generators for Perps history tabs.
+ * perpsHistoryData.ts — Types, market-wide funding-rate generator, and
+ * deterministic demo seeds for the four /perps history tabs.
  *
- * Provides hooks returning realistic placeholder data for Open Orders,
- * Order History, Trade History, and Funding History until on-chain event
- * indexing is available.
+ * Production hooks (`useOpenOrders` / `useOrderHistory` / `useTradeHistory`
+ * / `useFundingHistory`) currently return `[]` until on-chain perps event
+ * indexing is wired. The seeded demo generators are exposed via explicit
+ * `useDemo*` hooks for storybook + fixture tests only — production routes
+ * MUST NOT import them.
+ *
+ * Funding-rate **chart** data (`generateFundingRateHistory`) is market-wide
+ * and intentionally remains a deterministic placeholder until the indexer
+ * lands.
  */
 
 import { useMemo } from 'react'
@@ -68,7 +75,7 @@ function seededRng(seed: number) {
   }
 }
 
-// ─── Generators ───────────────────────────────────────────────────────────────
+// ─── Demo generators (storybook + fixture seeds only) ─────────────────────────
 
 const PAIRS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'AAPL-USD', 'TSLA-USD']
 const BASE_PRICES: Record<string, number> = {
@@ -170,7 +177,7 @@ function generateFundingHistory(count: number): FundingHistoryItem[] {
   })
 }
 
-// ─── Funding Rate Chart Data ──────────────────────────────────────────────────
+// ─── Funding Rate Chart Data (market-wide, unchanged) ─────────────────────────
 
 export interface FundingRateSnapshot {
   timestamp: number
@@ -213,20 +220,51 @@ export function useFundingRateChart(symbol: string, range: FundingRange) {
   return useMemo(() => generateFundingRateHistory(symbol, range), [symbol, range])
 }
 
-// ─── Hooks ────────────────────────────────────────────────────────────────────
+// ─── Production hooks ─────────────────────────────────────────────────────────
+// Each hook returns `[]` until perps event indexing ships. The empty array
+// flows through PerpsHistoryTabs into the existing `<EmptyState>` branches —
+// no fake rows, no orphan Cancel buttons.
+//
+// TODO: replace each return with the real on-chain reads once
+// `useOnChainOpenOrders` / `useOnChainOrderHistory` / `useOnChainTradeHistory`
+// / `useOnChainFundingPayments` exist.
 
-export function useMockOpenOrders() {
+const EMPTY_OPEN_ORDERS: readonly HistoryOpenOrder[] = Object.freeze([])
+const EMPTY_ORDER_HISTORY: readonly OrderHistoryItem[] = Object.freeze([])
+const EMPTY_TRADE_HISTORY: readonly TradeHistoryItem[] = Object.freeze([])
+const EMPTY_FUNDING_HISTORY: readonly FundingHistoryItem[] = Object.freeze([])
+
+export function useOpenOrders(): readonly HistoryOpenOrder[] {
+  return EMPTY_OPEN_ORDERS
+}
+
+export function useOrderHistory(): readonly OrderHistoryItem[] {
+  return EMPTY_ORDER_HISTORY
+}
+
+export function useTradeHistory(): readonly TradeHistoryItem[] {
+  return EMPTY_TRADE_HISTORY
+}
+
+export function useFundingHistory(): readonly FundingHistoryItem[] {
+  return EMPTY_FUNDING_HISTORY
+}
+
+// ─── Demo / fixture hooks ─────────────────────────────────────────────────────
+// Storybook + fixture tests only. Production routes MUST NOT import these.
+
+export function useDemoOpenOrders(): HistoryOpenOrder[] {
   return useMemo(() => generateOpenOrders(5), [])
 }
 
-export function useMockOrderHistory() {
+export function useDemoOrderHistory(): OrderHistoryItem[] {
   return useMemo(() => generateOrderHistory(20), [])
 }
 
-export function useMockTradeHistory() {
+export function useDemoTradeHistory(): TradeHistoryItem[] {
   return useMemo(() => generateTradeHistory(25), [])
 }
 
-export function useMockFundingHistory() {
+export function useDemoFundingHistory(): FundingHistoryItem[] {
   return useMemo(() => generateFundingHistory(30), [])
 }

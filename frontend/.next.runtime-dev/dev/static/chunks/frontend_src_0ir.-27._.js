@@ -5,23 +5,38 @@
 __turbopack_context__.s([
     "generateFundingRateHistory",
     ()=>generateFundingRateHistory,
+    "useDemoFundingHistory",
+    ()=>useDemoFundingHistory,
+    "useDemoOpenOrders",
+    ()=>useDemoOpenOrders,
+    "useDemoOrderHistory",
+    ()=>useDemoOrderHistory,
+    "useDemoTradeHistory",
+    ()=>useDemoTradeHistory,
+    "useFundingHistory",
+    ()=>useFundingHistory,
     "useFundingRateChart",
     ()=>useFundingRateChart,
-    "useMockFundingHistory",
-    ()=>useMockFundingHistory,
-    "useMockOpenOrders",
-    ()=>useMockOpenOrders,
-    "useMockOrderHistory",
-    ()=>useMockOrderHistory,
-    "useMockTradeHistory",
-    ()=>useMockTradeHistory
+    "useOpenOrders",
+    ()=>useOpenOrders,
+    "useOrderHistory",
+    ()=>useOrderHistory,
+    "useTradeHistory",
+    ()=>useTradeHistory
 ]);
 /**
- * perpsHistoryData.ts — Types and mock data generators for Perps history tabs.
+ * perpsHistoryData.ts — Types, market-wide funding-rate generator, and
+ * deterministic demo seeds for the four /perps history tabs.
  *
- * Provides hooks returning realistic placeholder data for Open Orders,
- * Order History, Trade History, and Funding History until on-chain event
- * indexing is available.
+ * Production hooks (`useOpenOrders` / `useOrderHistory` / `useTradeHistory`
+ * / `useFundingHistory`) currently return `[]` until on-chain perps event
+ * indexing is wired. The seeded demo generators are exposed via explicit
+ * `useDemo*` hooks for storybook + fixture tests only — production routes
+ * MUST NOT import them.
+ *
+ * Funding-rate **chart** data (`generateFundingRateHistory`) is market-wide
+ * and intentionally remains a deterministic placeholder until the indexer
+ * lands.
  */ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
 var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature(), _s3 = __turbopack_context__.k.signature(), _s4 = __turbopack_context__.k.signature();
 ;
@@ -33,7 +48,7 @@ function seededRng(seed) {
         return s / 0x7fffffff;
     };
 }
-// ─── Generators ───────────────────────────────────────────────────────────────
+// ─── Demo generators (storybook + fixture seeds only) ─────────────────────────
 const PAIRS = [
     'BTC-USD',
     'ETH-USD',
@@ -196,34 +211,58 @@ function useFundingRateChart(symbol, range) {
     ]);
 }
 _s(useFundingRateChart, "nwk+m61qLgjDVUp4IGV/072DDN4=");
-function useMockOpenOrders() {
+// ─── Production hooks ─────────────────────────────────────────────────────────
+// Each hook returns `[]` until perps event indexing ships. The empty array
+// flows through PerpsHistoryTabs into the existing `<EmptyState>` branches —
+// no fake rows, no orphan Cancel buttons.
+//
+// TODO: replace each return with the real on-chain reads once
+// `useOnChainOpenOrders` / `useOnChainOrderHistory` / `useOnChainTradeHistory`
+// / `useOnChainFundingPayments` exist.
+const EMPTY_OPEN_ORDERS = Object.freeze([]);
+const EMPTY_ORDER_HISTORY = Object.freeze([]);
+const EMPTY_TRADE_HISTORY = Object.freeze([]);
+const EMPTY_FUNDING_HISTORY = Object.freeze([]);
+function useOpenOrders() {
+    return EMPTY_OPEN_ORDERS;
+}
+function useOrderHistory() {
+    return EMPTY_ORDER_HISTORY;
+}
+function useTradeHistory() {
+    return EMPTY_TRADE_HISTORY;
+}
+function useFundingHistory() {
+    return EMPTY_FUNDING_HISTORY;
+}
+function useDemoOpenOrders() {
     _s1();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
-        "useMockOpenOrders.useMemo": ()=>generateOpenOrders(5)
-    }["useMockOpenOrders.useMemo"], []);
+        "useDemoOpenOrders.useMemo": ()=>generateOpenOrders(5)
+    }["useDemoOpenOrders.useMemo"], []);
 }
-_s1(useMockOpenOrders, "nwk+m61qLgjDVUp4IGV/072DDN4=");
-function useMockOrderHistory() {
+_s1(useDemoOpenOrders, "nwk+m61qLgjDVUp4IGV/072DDN4=");
+function useDemoOrderHistory() {
     _s2();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
-        "useMockOrderHistory.useMemo": ()=>generateOrderHistory(20)
-    }["useMockOrderHistory.useMemo"], []);
+        "useDemoOrderHistory.useMemo": ()=>generateOrderHistory(20)
+    }["useDemoOrderHistory.useMemo"], []);
 }
-_s2(useMockOrderHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
-function useMockTradeHistory() {
+_s2(useDemoOrderHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
+function useDemoTradeHistory() {
     _s3();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
-        "useMockTradeHistory.useMemo": ()=>generateTradeHistory(25)
-    }["useMockTradeHistory.useMemo"], []);
+        "useDemoTradeHistory.useMemo": ()=>generateTradeHistory(25)
+    }["useDemoTradeHistory.useMemo"], []);
 }
-_s3(useMockTradeHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
-function useMockFundingHistory() {
+_s3(useDemoTradeHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
+function useDemoFundingHistory() {
     _s4();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
-        "useMockFundingHistory.useMemo": ()=>generateFundingHistory(30)
-    }["useMockFundingHistory.useMemo"], []);
+        "useDemoFundingHistory.useMemo": ()=>generateFundingHistory(30)
+    }["useDemoFundingHistory.useMemo"], []);
 }
-_s4(useMockFundingHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
+_s4(useDemoFundingHistory, "nwk+m61qLgjDVUp4IGV/072DDN4=");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }

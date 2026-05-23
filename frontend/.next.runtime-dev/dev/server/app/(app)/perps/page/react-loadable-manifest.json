@@ -4,42 +4,42 @@
     "files": [
       "static/chunks/node_modules_11s3oyj._.js",
       "static/chunks/frontend_src_components_PriceChart_tsx_0erjrg6._.js",
-      "static/chunks/frontend_src_components_PriceChart_tsx_0qagdfj._.js"
+      "static/chunks/frontend_src_components_PriceChart_tsx_0nnoylu._.js"
     ]
   },
   "[project]/frontend/src/components/OrderBook.tsx [app-client] (ecmascript, next/dynamic entry)": {
     "id": "[project]/frontend/src/components/OrderBook.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
       "static/chunks/frontend_src_components_OrderBook_tsx_0jwa26f._.js",
-      "static/chunks/frontend_src_components_OrderBook_tsx_0qagdfj._.js"
+      "static/chunks/frontend_src_components_OrderBook_tsx_0nnoylu._.js"
     ]
   },
   "[project]/frontend/src/components/RecentTrades.tsx [app-client] (ecmascript, next/dynamic entry)": {
     "id": "[project]/frontend/src/components/RecentTrades.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
       "static/chunks/frontend_src_components_RecentTrades_tsx_0x60g5z._.js",
-      "static/chunks/frontend_src_components_RecentTrades_tsx_0qagdfj._.js"
+      "static/chunks/frontend_src_components_RecentTrades_tsx_0nnoylu._.js"
     ]
   },
   "[project]/frontend/src/components/PerpsHistoryTabs.tsx [app-client] (ecmascript, next/dynamic entry)": {
     "id": "[project]/frontend/src/components/PerpsHistoryTabs.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
       "static/chunks/frontend_src_013pfqr._.js",
-      "static/chunks/frontend_src_components_PerpsHistoryTabs_tsx_0qagdfj._.js"
+      "static/chunks/frontend_src_components_PerpsHistoryTabs_tsx_0nnoylu._.js"
     ]
   },
   "[project]/frontend/src/components/FundingRateChart.tsx [app-client] (ecmascript, next/dynamic entry)": {
     "id": "[project]/frontend/src/components/FundingRateChart.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
       "static/chunks/frontend_src_0ir.-27._.js",
-      "static/chunks/frontend_src_components_FundingRateChart_tsx_0qagdfj._.js"
+      "static/chunks/frontend_src_components_FundingRateChart_tsx_0nnoylu._.js"
     ]
   },
   "[project]/frontend/src/components/OpenPositions.tsx [app-client] (ecmascript, next/dynamic entry)": {
     "id": "[project]/frontend/src/components/OpenPositions.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
       "static/chunks/frontend_src_02t5pbb._.js",
-      "static/chunks/frontend_src_components_OpenPositions_tsx_0qagdfj._.js"
+      "static/chunks/frontend_src_components_OpenPositions_tsx_0nnoylu._.js"
     ]
   }
 }
