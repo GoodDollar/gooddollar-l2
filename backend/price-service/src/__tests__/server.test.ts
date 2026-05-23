@@ -279,3 +279,87 @@ describe('REST Server with stats getter', () => {
     });
   });
 });
+
+describe('REST Server — error handling envelope', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL', 'TSLA'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('POST /quotes with malformed JSON returns JSON 400 envelope', async () => {
+    const res = await fetch(`${baseUrl}/quotes`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{not json',
+    });
+    const text = await res.text();
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(res.status).toBe(400);
+    expect(res.headers.get('content-type') || '').toMatch(/^application\/json/);
+    expect(body.error).toBe('malformed-json');
+    expect(body.path).toBe('/quotes');
+    expect(body.method).toBe('POST');
+    expect(typeof body.timestamp).toBe('number');
+    expect(text).not.toMatch(/\bat /);
+    expect(text).not.toContain('node_modules');
+    expect(text).not.toMatch(/\/home\//);
+    expect(text).not.toMatch(/\/usr\//);
+  });
+
+  it('POST /quotes with oversized body returns JSON 413', async () => {
+    const big = JSON.stringify({ x: 'A'.repeat(40_000) });
+    const res = await fetch(`${baseUrl}/quotes`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: big,
+    });
+    expect(res.status).toBe(413);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.error).toBe('payload-too-large');
+    expect(body.path).toBe('/quotes');
+    expect(body.method).toBe('POST');
+  });
+
+  it('route handler throw returns JSON 500 with literal "internal error"', async () => {
+    // Drive the error handler through the production code path by making
+    // a real cache method throw — no test-only routes leak into prod.
+    const original = cache.getFresh.bind(cache);
+    cache.getFresh = () => {
+      throw new Error('boom: this should not reach the client');
+    };
+    try {
+      const res = await fetch(`${baseUrl}/health`);
+      const text = await res.text();
+      const body = JSON.parse(text) as Record<string, unknown>;
+      expect(res.status).toBe(500);
+      expect(body.error).toBe('internal-error');
+      expect(body.message).toBe('internal error');
+      expect(text).not.toContain('boom');
+      expect(text).not.toMatch(/\bat /);
+      expect(text).not.toContain('node_modules');
+    } finally {
+      cache.getFresh = original;
+    }
+  });
+
+  it('does not expose the X-Powered-By header', async () => {
+    const res = await fetch(`${baseUrl}/health`);
+    expect(res.headers.get('x-powered-by')).toBeNull();
+  });
+});
