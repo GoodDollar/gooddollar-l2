@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber, type Stock } from '@/lib/stockData'
 import { isNoData, NO_DATA_DASH } from '@/lib/formatNoData'
+import { truncateQuery } from '@/lib/truncateQuery'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { Sparkline } from '@/components/Sparkline'
@@ -332,7 +333,7 @@ export default function StocksPage() {
         : hasActiveFilters
           ? 'No stocks match your current filters.'
           : hasSearchQuery
-            ? `No matches for “${query.trim()}”.`
+            ? `No matches for “${truncateQuery(query.trim())}”.`
             : 'No stocks available right now.'
 
   const emptyStateActionLabel = watchlistActive && favorites.size === 0
@@ -558,7 +559,13 @@ export default function StocksPage() {
       <div className="sm:hidden space-y-2 mb-2">
         {filtered.length === 0 ? (
           <div className="py-12 text-center text-gray-500 bg-dark-100 rounded-2xl border border-gray-700/20">
-            {emptyStateMessage}{' '}
+            <span
+              data-testid="stocks-empty-state-mobile"
+              spellCheck={false}
+              className="break-all"
+            >
+              {emptyStateMessage}
+            </span>{' '}
             {emptyStateActionLabel && (
               <button onClick={clearEmptyStateConstraints} className="text-goodgreen underline">
                 {emptyStateActionLabel}
@@ -649,7 +656,13 @@ export default function StocksPage() {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-gray-500">
-                    {emptyStateMessage}{' '}
+                    <span
+                      data-testid="stocks-empty-state-desktop"
+                      spellCheck={false}
+                      className="break-all"
+                    >
+                      {emptyStateMessage}
+                    </span>{' '}
                     {emptyStateActionLabel && (
                       <button onClick={clearEmptyStateConstraints} className="text-goodgreen underline">
                         {emptyStateActionLabel}
