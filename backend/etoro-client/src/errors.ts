@@ -201,6 +201,55 @@ export class InvalidOrderError extends Error {
  * none are available we refuse the order rather than letting the cap math
  * silently treat a unit count as a USD figure.
  */
+/**
+ * Thrown by any SDK list-returning read endpoint when the eToro API
+ * returns a 200-OK with a shape the SDK does not recognize (neither a
+ * raw array nor an object carrying one of `LIST_ENVELOPE_KEYS`).
+ *
+ * The error is opt-in: only fired when the client is constructed with
+ * `throwOnMalformedListResponse: true`. The default path returns `[]`
+ * and audit-logs the drift, preserving back-compat.
+ *
+ * `action` identifies the SDK method (`'getQuotes'`, `'getInstruments'`,
+ * etc.), `observedShape` mirrors the discriminator from
+ * `readListEnvelope`, and `topLevelKeys` is the alphabetically-sorted
+ * set of top-level keys observed on the payload — together they give
+ * an operator everything needed to identify the upstream rename
+ * without re-running the request.
+ */
+export type MalformedListResponseShape =
+  | 'null'
+  | 'primitive'
+  | 'object-no-match';
+
+export class MalformedListResponseError extends Error {
+  readonly action: string;
+  readonly observedShape: MalformedListResponseShape;
+  readonly topLevelKeys: readonly string[];
+  readonly path: string;
+
+  constructor(input: {
+    action: string;
+    observedShape: MalformedListResponseShape;
+    topLevelKeys: readonly string[];
+    path: string;
+  }) {
+    super(
+      `Malformed list response from "${input.path}" (action="${input.action}"): ` +
+      `observedShape=${input.observedShape}, ` +
+      `topLevelKeys=[${input.topLevelKeys.join(',')}]. ` +
+      `eToro returned a 200-OK with a body shape the SDK does not recognize. ` +
+      `Either add the new envelope key to LIST_ENVELOPE_KEYS or set ` +
+      `throwOnMalformedListResponse=false to fall back to the empty-list default.`,
+    );
+    this.name = 'MalformedListResponseError';
+    this.action = input.action;
+    this.observedShape = input.observedShape;
+    this.topLevelKeys = input.topLevelKeys;
+    this.path = input.path;
+  }
+}
+
 export class MissingNotionalError extends Error {
   readonly symbol: string;
   readonly attemptedAmount: number;

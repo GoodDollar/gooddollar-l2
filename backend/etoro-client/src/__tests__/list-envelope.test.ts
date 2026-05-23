@@ -1,4 +1,5 @@
 import { LIST_ENVELOPE_KEYS, readListEnvelope } from '../util/list-envelope';
+import { MalformedListResponseError } from '../errors';
 
 describe('LIST_ENVELOPE_KEYS', () => {
   it('is the de-duped, ordered union of the three legacy extractArray copies', () => {
@@ -122,5 +123,44 @@ describe('readListEnvelope', () => {
       observedShape: 'object-no-match',
       topLevelKeys: ['data'],
     });
+  });
+});
+
+describe('MalformedListResponseError', () => {
+  it('carries all four diagnostic fields as readonly props', () => {
+    const err = new MalformedListResponseError({
+      action: 'getQuotes',
+      observedShape: 'object-no-match',
+      topLevelKeys: ['weird', 'other'],
+      path: '/api/v1/market-data/quotes',
+    });
+    expect(err.name).toBe('MalformedListResponseError');
+    expect(err.action).toBe('getQuotes');
+    expect(err.observedShape).toBe('object-no-match');
+    expect(err.topLevelKeys).toEqual(['weird', 'other']);
+    expect(err.path).toBe('/api/v1/market-data/quotes');
+  });
+
+  it('embeds all four fields into the message string for fast triage', () => {
+    const err = new MalformedListResponseError({
+      action: 'getOpenPositions',
+      observedShape: 'null',
+      topLevelKeys: [],
+      path: '/api/v1/positions',
+    });
+    expect(err.message).toContain('getOpenPositions');
+    expect(err.message).toContain('null');
+    expect(err.message).toContain('/api/v1/positions');
+  });
+
+  it('is a real Error subclass (instanceof checks work)', () => {
+    const err = new MalformedListResponseError({
+      action: 'getInstruments',
+      observedShape: 'primitive',
+      topLevelKeys: [],
+      path: '/api/v1/market-data/instruments',
+    });
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(MalformedListResponseError);
   });
 });
