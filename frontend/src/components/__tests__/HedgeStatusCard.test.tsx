@@ -992,6 +992,60 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  describe('header pill never wraps (#0026)', () => {
+    it('engine down pill has whitespace-nowrap + shrink-0', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const pill = await screen.findByTestId('hedge-engine-state-pill');
+      expect(pill.className).toMatch(/\bwhitespace-nowrap\b/);
+      expect(pill.className).toMatch(/\bshrink-0\b/);
+    });
+
+    it('engine halted pill has whitespace-nowrap + shrink-0', async () => {
+      mockFetchOnce({ ...BASE_RESPONSE, killSwitchEngaged: true });
+      render(<HedgeStatusCard />);
+      const pill = await screen.findByTestId('hedge-engine-state-pill');
+      expect(pill.className).toMatch(/\bwhitespace-nowrap\b/);
+      expect(pill.className).toMatch(/\bshrink-0\b/);
+    });
+
+    it('engine degraded pill has whitespace-nowrap + shrink-0', async () => {
+      mockFetchOnce({
+        ...BASE_RESPONSE,
+        breakerState: { tripped: true, reason: 'exposure_stale' },
+      });
+      render(<HedgeStatusCard />);
+      const pill = await screen.findByTestId('hedge-engine-state-pill');
+      expect(pill.className).toMatch(/\bwhitespace-nowrap\b/);
+      expect(pill.className).toMatch(/\bshrink-0\b/);
+    });
+
+    it('mode badge (healthy demo) has whitespace-nowrap + shrink-0', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const badge = await screen.findByTestId('hedge-mode-badge');
+      expect(badge.className).toMatch(/\bwhitespace-nowrap\b/);
+      expect(badge.className).toMatch(/\bshrink-0\b/);
+    });
+
+    it('header row 1 carries flex-wrap so refresh can drop below the pill', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-mode-badge');
+      const row1 = screen.getByTestId('hedge-header-row1');
+      expect(row1.className).toMatch(/\bflex-wrap\b/);
+    });
+  });
+
   describe('normalizeHedgeError (#0022)', () => {
     it('strips the "Hedge engine" subject prefix', () => {
       expect(normalizeHedgeError('Hedge engine unreachable')).toBe('unreachable');

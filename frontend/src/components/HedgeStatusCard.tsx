@@ -308,7 +308,7 @@ function ModeBadge({ mode }: { mode: HedgeMode }) {
   return (
     <span
       data-testid="hedge-mode-badge"
-      className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${c.cls}`}
+      className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md text-xs font-medium border ${c.cls}`}
     >
       {c.label}
     </span>
@@ -372,7 +372,7 @@ function HeaderStatusPill({
       <span title={title}>
         <span
           data-testid="hedge-engine-state-pill"
-          className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${pill.cls}`}
+          className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md text-xs font-medium border ${pill.cls}`}
         >
           {pill.label}
         </span>
@@ -568,7 +568,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
       <header className="mb-3">
         <div
           data-testid="hedge-header-row1"
-          className="flex items-center justify-between gap-3"
+          className="flex flex-wrap items-center justify-between gap-3"
         >
           <div className="flex items-center gap-3 min-w-0">
             <h2 className="text-lg font-semibold text-white truncate">
