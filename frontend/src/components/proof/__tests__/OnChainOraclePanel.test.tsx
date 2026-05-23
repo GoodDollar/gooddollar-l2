@@ -6,7 +6,7 @@ vi.mock('wagmi', () => ({
 }))
 
 vi.mock('@/lib/stockData', () => ({
-  getAllTickers: () => ['AAPL'],
+  getAllTickers: () => ['AAPL', 'TSLA', 'NVDA'],
 }))
 
 vi.mock('@/lib/chain', () => ({
@@ -106,7 +106,7 @@ describe('OnChainOraclePanel', () => {
     expect(tagged?.[2]).toBe(VERBOSE_WAGMI_ERROR)
   })
 
-  it('renders the empty-state row on the happy path with no error', () => {
+  it('renders the empty-state placeholder rows on the happy path with no error', () => {
     useReadContractsMock.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -116,9 +116,69 @@ describe('OnChainOraclePanel', () => {
     render(<OnChainOraclePanel />)
 
     expect(screen.queryByText(/Oracle multicall failed/i)).not.toBeInTheDocument()
+    // Old single-sentence "no data" copy is gone, replaced by placeholders.
     expect(
-      screen.getByText(/No on-chain price data available/i),
-    ).toBeInTheDocument()
+      screen.queryByText(/No on-chain price data available/i),
+    ).not.toBeInTheDocument()
+  })
+
+  it('renders one placeholder row per ticker when no on-chain prices are available', () => {
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    for (const symbol of ['AAPL', 'TSLA', 'NVDA']) {
+      const row = screen.getByTestId(`onchain-oracle-placeholder-${symbol}`)
+      expect(row).toBeInTheDocument()
+      expect(within(row).getByText(symbol)).toBeInTheDocument()
+    }
+  })
+
+  it('renders the onchain-oracle-empty-banner with the expected symbol count', () => {
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    const banner = screen.getByTestId('onchain-oracle-empty-banner')
+    expect(banner).toBeInTheDocument()
+    expect(banner.textContent).toMatch(/Waiting for on-chain prices/)
+    expect(banner.textContent).toMatch(/3 symbols/)
+    expect(banner.textContent).toMatch(/oracle-signer keeper/)
+  })
+
+  it('does not render placeholder rows or the empty banner when populated rows exist', () => {
+    useReadContractsMock.mockReturnValue({
+      data: [
+        {
+          status: 'success',
+          result: {
+            price8: 17_860_000_000n,
+            timestamp: BigInt(Math.floor(Date.now() / 1000)),
+            session: 0,
+            confidence: 95,
+            signerCount: 1,
+          },
+        },
+        { status: 'failure', error: new Error('skip') },
+        { status: 'failure', error: new Error('skip') },
+      ],
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+
+    expect(screen.queryByTestId('onchain-oracle-empty-banner')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('onchain-oracle-placeholder-AAPL')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('onchain-oracle-placeholder-TSLA')).not.toBeInTheDocument()
   })
 
   it('renders the contract address as a link to the block explorer when NEXT_PUBLIC_BLOCK_EXPLORER is set', () => {

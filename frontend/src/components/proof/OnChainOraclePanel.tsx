@@ -164,11 +164,31 @@ export function OnChainOraclePanel() {
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-4 text-center text-xs text-gray-500">
-                    No on-chain price data available. The oracle may be unset or unreachable.
-                  </td>
-                </tr>
+                <>
+                  <tr>
+                    <td
+                      colSpan={6}
+                      data-testid="onchain-oracle-empty-banner"
+                      className="border-b border-white/5 py-2 pr-3 text-xs text-gray-500"
+                    >
+                      Waiting for on-chain prices · {tickers.length} symbol{tickers.length === 1 ? '' : 's'} expected from oracle-signer keeper
+                    </td>
+                  </tr>
+                  {tickers.map((symbol) => (
+                    <tr
+                      key={symbol}
+                      data-testid={`onchain-oracle-placeholder-${symbol}`}
+                      className="border-b border-white/5 last:border-0"
+                    >
+                      <td className="py-2 pr-3 font-medium text-white">{symbol}</td>
+                      <td className="py-2 pr-3 text-right font-mono text-gray-500">—</td>
+                      <td className="py-2 pr-3 text-gray-500">—</td>
+                      <td className="py-2 pr-3 text-right font-mono text-gray-500">—</td>
+                      <td className="py-2 pr-3 text-right font-mono text-gray-500">—</td>
+                      <td className="py-2 pr-3 text-right text-xs text-gray-500">—</td>
+                    </tr>
+                  ))}
+                </>
               ) : (
                 rows.map((row) => (
                   <tr key={row.symbol} className="border-b border-white/5 last:border-0">
