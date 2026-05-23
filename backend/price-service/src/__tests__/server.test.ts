@@ -1,6 +1,6 @@
 import { createServer } from '../server';
 import { QuoteCache } from '../quote-cache';
-import { NormalizedQuote, computeSpread } from '../types';
+import { NormalizedQuote, IngestStats, computeSpread } from '../types';
 import express from 'express';
 
 function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
@@ -168,6 +168,114 @@ describe('REST Server', () => {
     it('includes CORS headers', async () => {
       const res = await fetch(`${baseUrl}/status/quotes`);
       expect(res.headers.get('access-control-allow-origin')).toBe('*');
+    });
+  });
+});
+
+describe('REST Server with stats getter', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+  let stats: IngestStats;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    stats = {
+      ingested: 0,
+      rejected: 0,
+      byReason: {},
+      firstAt: null,
+      lastAt: null,
+      writeErrors: 0,
+    };
+    app = createServer(cache, { symbols: ['AAPL', 'TSLA'] }, () => stats);
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  describe('GET /audit/stats', () => {
+    it('returns empty stats shape when nothing ingested', async () => {
+      const res = await fetch(`${baseUrl}/audit/stats`);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(res.status).toBe(200);
+      expect(body.ingested).toBe(0);
+      expect(body.rejected).toBe(0);
+      expect(body.byReason).toEqual({});
+      expect(body.acceptanceRatio).toBe(1);
+      expect(body.firstAt).toBeNull();
+      expect(body.lastAt).toBeNull();
+      expect(body.timestamp).toBeGreaterThan(0);
+    });
+
+    it('reflects mutated stats from the getter', async () => {
+      stats.ingested = 7;
+      stats.rejected = 3;
+      stats.byReason = { stale: 2, halted: 1 };
+      stats.firstAt = 1700000000000;
+      stats.lastAt = 1700000005000;
+      stats.writeErrors = 0;
+
+      const res = await fetch(`${baseUrl}/audit/stats`);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(res.status).toBe(200);
+      expect(body.ingested).toBe(7);
+      expect(body.rejected).toBe(3);
+      expect(body.byReason).toEqual({ stale: 2, halted: 1 });
+      expect(body.acceptanceRatio).toBeCloseTo(0.7, 6);
+      expect(body.firstAt).toBe(1700000000000);
+      expect(body.lastAt).toBe(1700000005000);
+    });
+
+    it('returns acceptanceRatio = 1 when only ingested with no rejects', async () => {
+      stats.ingested = 5;
+      stats.rejected = 0;
+      stats.byReason = {};
+
+      const res = await fetch(`${baseUrl}/audit/stats`);
+      const body = (await res.json()) as Record<string, number>;
+      expect(body.acceptanceRatio).toBe(1);
+    });
+
+    it('returns acceptanceRatio = 0 when only rejected', async () => {
+      stats.ingested = 0;
+      stats.rejected = 4;
+      stats.byReason = { halted: 4 };
+
+      const res = await fetch(`${baseUrl}/audit/stats`);
+      const body = (await res.json()) as Record<string, number>;
+      expect(body.acceptanceRatio).toBe(0);
+    });
+
+    it('exposes writeErrors counter', async () => {
+      stats.writeErrors = 12;
+      const res = await fetch(`${baseUrl}/audit/stats`);
+      const body = (await res.json()) as Record<string, number>;
+      expect(body.writeErrors).toBe(12);
+    });
+  });
+
+  describe('GET /health with stats wired', () => {
+    it('includes ingested, rejected, and acceptanceRatio', async () => {
+      stats.ingested = 9;
+      stats.rejected = 1;
+      stats.byReason = { stale: 1 };
+
+      const res = await fetch(`${baseUrl}/health`);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(res.status).toBe(200);
+      expect(body.ingested).toBe(9);
+      expect(body.rejected).toBe(1);
+      expect(body.acceptanceRatio).toBeCloseTo(0.9, 6);
     });
   });
 });

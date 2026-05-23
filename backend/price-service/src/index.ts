@@ -49,7 +49,7 @@ export class PriceService {
   }
 
   start(): void {
-    const app = createServer(this.cache, this.config);
+    const app = createServer(this.cache, this.config, () => this.getIngestStats());
     this.httpServer = app.listen(this.config.port, () => {
       console.log(`[price-service] REST server listening on port ${this.config.port}`);
     });
