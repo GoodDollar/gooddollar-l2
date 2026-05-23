@@ -521,7 +521,12 @@ async function fetchStatus() {
         }
         const data = await res.json();
         const services = Array.isArray(data.services) ? data.services : [];
-        const healthy = typeof data.healthy === 'number' ? data.healthy : services.filter((s)=>s != null && typeof s === 'object' && s.status === 'healthy').length;
+        // Always derive `healthy` from `services[].status === 'ok'`. The status
+        // aggregator at port 9200 has been observed to publish `healthy: 14`
+        // alongside services in `'degraded'` state — its pre-aggregated count is
+        // not trustworthy. The per-service status is authoritative, so we
+        // recount here instead of forwarding `data.healthy`.
+        const healthy = services.filter((s)=>s != null && typeof s === 'object' && s.status === 'ok').length;
         const total = typeof data.total === 'number' ? data.total : services.length;
         return {
             ok: true,
