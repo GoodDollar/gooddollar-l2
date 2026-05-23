@@ -49,7 +49,7 @@ any of the four documented modes — that requires a fifth mode.
 
 | Variable | Default | Required for | Notes |
 |----------|---------|--------------|-------|
-| `ETORO_MODE` | `mock` | All modes | Unknown values fall back to `mock`. |
+| `ETORO_MODE` | `mock` | All modes | Unknown values throw `InvalidModeError` at construction. Valid: `mock`, `demo-readonly`, `demo-trading`, `real-disabled`. Leave unset to default to `mock`. |
 | `ETORO_DEMO_KEY` | — | demo-readonly, demo-trading, real-disabled | Demo API key. |
 | `ETORO_DEMO_SECRET` | — | demo-readonly, demo-trading, real-disabled | Demo API secret. |
 | `ETORO_DEMO_BASE_URL` | `https://api.etoro.com/sapi/demo` | optional | REST base URL. |
@@ -172,6 +172,27 @@ The day bucket rolls at UTC midnight in-process. Process restart resets
 the bucket; persistence is intentionally out of scope for this lane (see
 `backend/etoro-client/src/cap-enforcer.ts`).
 
+## Error taxonomy
+
+Every typed error the SDK can throw at construction, configuration, or
+trading time. Operators should be able to grep this single table to map
+a thrown error name back to the module and constructor responsible.
+
+| Error | Module | Thrown when |
+|-------|--------|-------------|
+| `InvalidModeError` | `auth.ts:resolveMode` | `ETORO_MODE` is set to anything other than `mock`, `demo-readonly`, `demo-trading`, or `real-disabled`. |
+| `InvalidCapConfigError` | `auth.ts:loadDemoCapConfig` | `MAX_DEMO_ORDER_NOTIONAL_USD` or `MAX_DAILY_DEMO_NOTIONAL_USD` is non-numeric or negative. `0` is valid (= "no orders allowed"). |
+| `InvalidInstrumentOverridesError` | `instruments.ts:loadInstrumentOverrides` | `ETORO_INSTRUMENT_OVERRIDES` JSON is malformed, references unknown symbols, or contains empty / non-positive fields. |
+| `RealTradingDisabledError` | `trading.ts:assertTradingEnabled` | Any mutating method (`openPosition`, `placeLimitOrder`, `closePosition`, `partialClose`, `cancelOrder`) is invoked outside `demo-trading` mode. |
+| `DemoCapExceededError` | `trading.ts:assertCapOk` / `assertReferenceDriftWithinBounds` | A `demo-trading` order would push the per-order or daily USD total over its configured cap, or its live quote diverges from the reference by more than `maxReferenceDriftRatio`. Carries `cap: 'per-order' \| 'daily' \| 'reference-drift'`. |
+| `InvalidOrderError` | `trading.ts:validateOrder` | Pre-HTTP validation rejects an obviously invalid request (NaN amount, empty symbol, invalid side, bad time-in-force, etc.). |
+| `MissingNotionalError` | `trading.ts:computeNotional` | A market order's USD notional cannot be resolved via any of the five resolver tiers (sizer / limit price / live quote / reference). |
+| `TradingError` | `trading.ts:wrapError` | HTTP layer returned a structured error (`INSUFFICIENT_MARGIN`, `INSTRUMENT_UNAVAILABLE`, `MARKET_CLOSED`, `POSITION_NOT_FOUND`, `ORDER_NOT_FOUND`, etc.). |
+
+This list mirrors the error re-exports in
+`backend/etoro-client/src/index.ts`. If a future task adds a ninth typed
+error, append a row here in the same commit.
+
 ## Instrument map (lane-1)
 
 | Symbol | Asset class | Display name | Reference USD |
@@ -192,9 +213,14 @@ The `etoroInstrumentId` for each symbol is a placeholder of the form
 export ETORO_INSTRUMENT_OVERRIDES='{"BTC":{"etoroInstrumentId":"INST-100100"},"AAPL":{"etoroInstrumentId":"INST-1001"}}'
 ```
 
-`loadInstrumentOverrides()` parses the JSON safely (unknown symbols are
-dropped, invalid types are dropped) and `applyInstrumentOverrides()` merges
-the result with `INSTRUMENT_MAP` to produce the runtime table.
+`loadInstrumentOverrides()` throws `InvalidInstrumentOverridesError` for
+any malformed input: invalid JSON, non-object root, unknown symbol keys
+(must be one of the eight lane symbols), empty-string IDs or display
+names, or non-positive reference prices. The intent is that operators
+notice configuration errors at deploy time rather than after the first
+hedge silently uses placeholder IDs (see lane task #0006).
+`applyInstrumentOverrides()` then merges the validated overrides with
+`INSTRUMENT_MAP` to produce the runtime table.
 
 ## Runbook — swap fake → real demo creds
 
