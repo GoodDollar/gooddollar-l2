@@ -1,7 +1,7 @@
 import http from 'http';
 import { createServer } from '../server';
 import { QuoteCache } from '../quote-cache';
-import { NormalizedQuote, IngestStats, SourceStatus, computeSpread } from '../types';
+import { DEFAULT_CONFIG, NormalizedQuote, IngestStats, SourceStatus, computeSpread } from '../types';
 import express from 'express';
 
 function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
@@ -58,6 +58,19 @@ describe('REST Server', () => {
       const body = (await res.json()) as Record<string, unknown>;
       expect(res.status).toBe(200);
       expect(body.freshQuotes).toBeGreaterThan(0);
+    });
+
+    it('includes symbols array matching cfg.symbols', async () => {
+      const res = await fetch(`${baseUrl}/health`);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.symbols).toEqual(['AAPL', 'TSLA']);
+      expect(body.configuredSymbols).toBe(2);
+    });
+
+    it('symbols and configuredSymbols stay in sync', async () => {
+      const res = await fetch(`${baseUrl}/health`);
+      const body = (await res.json()) as { symbols: string[]; configuredSymbols: number };
+      expect(body.symbols.length).toBe(body.configuredSymbols);
     });
   });
 
@@ -1184,6 +1197,40 @@ describe('REST Server — root index and 404 endpoint discovery', () => {
     });
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
+  });
+});
+
+describe('REST Server — /health symbols list reflects cfg.symbols', () => {
+  it('symbols is the default 10-ticker list when no config override', async () => {
+    const cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    const app = createServer(cache);
+    const server = app.listen(0);
+    try {
+      await new Promise<void>((resolve) => server.on('listening', () => resolve()));
+      const addr = server.address() as import('net').AddressInfo;
+      const res = await fetch(`http://127.0.0.1:${addr.port}/health`);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.symbols).toEqual(DEFAULT_CONFIG.symbols);
+      expect(body.configuredSymbols).toBe(DEFAULT_CONFIG.symbols.length);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it('symbols echoes custom config verbatim (order preserved, special chars allowed)', async () => {
+    const cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    const app = createServer(cache, { symbols: ['BRK.B', 'BTC-USD', 'AAPL'] });
+    const server = app.listen(0);
+    try {
+      await new Promise<void>((resolve) => server.on('listening', () => resolve()));
+      const addr = server.address() as import('net').AddressInfo;
+      const res = await fetch(`http://127.0.0.1:${addr.port}/health`);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.symbols).toEqual(['BRK.B', 'BTC-USD', 'AAPL']);
+      expect(body.configuredSymbols).toBe(3);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 });
 

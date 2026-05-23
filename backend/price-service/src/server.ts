@@ -138,6 +138,7 @@ export function createServer(
       freshQuotes: fresh.length,
       totalCached: cache.size,
       configuredSymbols: cfg.symbols.length,
+      symbols: cfg.symbols,
       timestamp: Date.now(),
     };
     if (statsGetter) {
