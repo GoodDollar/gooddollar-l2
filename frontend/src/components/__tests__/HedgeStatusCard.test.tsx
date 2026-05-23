@@ -1549,6 +1549,88 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  describe('header title locks to a single line on narrow mobile (#0059)', () => {
+    // Task #0017 stacked the header into a row1 (title + pill + refresh)
+    // and row2 (freshness label) so the action group could not orphan
+    // onto its own line. At 375 / 320 viewports the *title group* itself
+    // wrapped because the <h2> had no `whitespace-nowrap` — `Demo hedge`
+    // landed on line 1 and `proof` on line 2 with the pill nested next
+    // to the wrapped fragment, which forced row1 to overflow and
+    // re-orphaned the Refresh button. The fix pins the <h2> to a single
+    // line and lets the title group flex-wrap so the pill (not the
+    // title fragment) is what drops below at extreme widths. JSDOM has
+    // no layout engine, so we assert the structural invariant: the
+    // <h2> carries `whitespace-nowrap` and the title group carries
+    // `flex-wrap` + `gap-y-1`.
+    it('h2 carries whitespace-nowrap so it never breaks mid-title', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const h2 = await screen.findByRole('heading', {
+        level: 2,
+        name: /demo hedge proof/i,
+      });
+      const classes = h2.className.split(/\s+/);
+      expect(classes).toContain('whitespace-nowrap');
+    });
+
+    it('title group flex-wraps (with gap-y-1) so the pill drops below the title at narrow widths instead of nesting beside a wrapped title fragment', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const h2 = await screen.findByRole('heading', {
+        level: 2,
+        name: /demo hedge proof/i,
+      });
+      const titleGroup = h2.parentElement;
+      expect(titleGroup).not.toBeNull();
+      const classes = titleGroup!.className.split(/\s+/);
+      expect(classes).toContain('flex');
+      expect(classes).toContain('items-center');
+      expect(classes).toContain('min-w-0');
+      expect(classes).toContain('flex-wrap');
+      expect(classes).toContain('gap-y-1');
+    });
+
+    it('title group still hosts both the h2 and the engine-state pill (no structural regression)', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const h2 = await screen.findByRole('heading', {
+        level: 2,
+        name: /demo hedge proof/i,
+      });
+      const pill = await screen.findByTestId('hedge-engine-state-pill');
+      const titleGroup = h2.parentElement;
+      expect(titleGroup).not.toBeNull();
+      expect(titleGroup!.contains(pill)).toBe(true);
+    });
+  });
+
   describe('engine stat tile uses short label (#0028)', () => {
     it('engine unreachable: stat tile reads "down" (not "unreachable") in red', async () => {
       mockFetchOnce(
