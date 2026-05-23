@@ -13,9 +13,15 @@ describe('resolveMode', () => {
     expect(resolveMode({ ETORO_MODE: 'real' })).toBe('real');
   });
 
+  it('returns demo for ETORO_MODE=demo', () => {
+    expect(resolveMode({ ETORO_MODE: 'demo' })).toBe('demo');
+  });
+
   it('is case-insensitive', () => {
     expect(resolveMode({ ETORO_MODE: 'REAL' })).toBe('real');
     expect(resolveMode({ ETORO_MODE: 'Sandbox' })).toBe('sandbox');
+    expect(resolveMode({ ETORO_MODE: 'DEMO' })).toBe('demo');
+    expect(resolveMode({ ETORO_MODE: 'Demo' })).toBe('demo');
   });
 });
 
@@ -104,6 +110,82 @@ describe('loadCredentialsFromEnv', () => {
         ETORO_REAL_CONFIRMED: 'false',
       }),
     ).toThrow('ETORO_REAL_CONFIRMED=true is required');
+  });
+
+  describe('demo mode', () => {
+    it('loads demo credentials when ETORO_DEMO_KEY/SECRET are present', () => {
+      const demoEnv = {
+        ETORO_MODE: 'demo',
+        ETORO_DEMO_KEY: 'demo-key-123',
+        ETORO_DEMO_SECRET: 'demo-secret-456',
+      };
+      const creds = loadCredentialsFromEnv(demoEnv);
+      expect(creds.mode).toBe('demo');
+      expect(creds.apiKey).toBe('demo-key-123');
+      expect(creds.apiSecret).toBe('demo-secret-456');
+      // Demo aliases the sandbox API surface
+      expect(creds.baseUrl).toBe('https://api.etoro.com/sapi');
+    });
+
+    it('falls back to sandbox credentials when demo creds are absent', () => {
+      const demoEnv = {
+        ETORO_MODE: 'demo',
+        ETORO_SANDBOX_KEY: 'sb-key-fallback',
+        ETORO_SANDBOX_SECRET: 'sb-secret-fallback',
+      };
+      const creds = loadCredentialsFromEnv(demoEnv);
+      // Mode is NEVER silently coerced — we stay on `demo` even if
+      // sandbox credentials were used to populate the request.
+      expect(creds.mode).toBe('demo');
+      expect(creds.apiKey).toBe('sb-key-fallback');
+      expect(creds.apiSecret).toBe('sb-secret-fallback');
+      expect(creds.baseUrl).toBe('https://api.etoro.com/sapi');
+    });
+
+    it('prefers demo-specific credentials when both demo and sandbox vars are set', () => {
+      const env = {
+        ETORO_MODE: 'demo',
+        ETORO_DEMO_KEY: 'demo-key',
+        ETORO_DEMO_SECRET: 'demo-secret',
+        ETORO_SANDBOX_KEY: 'sb-key',
+        ETORO_SANDBOX_SECRET: 'sb-secret',
+      };
+      const creds = loadCredentialsFromEnv(env);
+      expect(creds.mode).toBe('demo');
+      expect(creds.apiKey).toBe('demo-key');
+      expect(creds.apiSecret).toBe('demo-secret');
+    });
+
+    it('throws when neither demo nor sandbox creds are present', () => {
+      expect(() =>
+        loadCredentialsFromEnv({ ETORO_MODE: 'demo' }),
+      ).toThrow('Missing eToro demo credentials');
+    });
+
+    it('does NOT require ETORO_REAL_CONFIRMED for demo mode', () => {
+      expect(() =>
+        loadCredentialsFromEnv({
+          ETORO_MODE: 'demo',
+          ETORO_DEMO_KEY: 'k',
+          ETORO_DEMO_SECRET: 's',
+        }),
+      ).not.toThrow();
+    });
+
+    it('demo mode never loads real credentials even if present', () => {
+      const env = {
+        ETORO_MODE: 'demo',
+        ETORO_DEMO_KEY: 'demo-key',
+        ETORO_DEMO_SECRET: 'demo-secret',
+        ETORO_REAL_KEY: 'real-key-should-not-appear',
+        ETORO_REAL_SECRET: 'real-secret-should-not-appear',
+        ETORO_REAL_CONFIRMED: 'true',
+      };
+      const creds = loadCredentialsFromEnv(env);
+      expect(creds.mode).toBe('demo');
+      expect(creds.apiKey).not.toContain('real');
+      expect(creds.apiSecret).not.toContain('real');
+    });
   });
 });
 

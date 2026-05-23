@@ -11,6 +11,12 @@ const ENV_MAP = {
     secret: 'ETORO_REAL_SECRET',
     baseUrl: 'https://api.etoro.com/api',
   },
+  demo: {
+    key: 'ETORO_DEMO_KEY',
+    secret: 'ETORO_DEMO_SECRET',
+    // Demo aliases the sandbox API surface — same endpoints, no real money.
+    baseUrl: 'https://api.etoro.com/sapi',
+  },
 } as const;
 
 export function loadCredentialsFromEnv(
@@ -19,12 +25,24 @@ export function loadCredentialsFromEnv(
   const mode = resolveMode(env);
   const config = ENV_MAP[mode];
 
-  const apiKey = env[config.key];
-  const apiSecret = env[config.secret];
+  let apiKey = env[config.key];
+  let apiSecret = env[config.secret];
+
+  // Demo mode falls back to sandbox credentials when demo-specific vars are
+  // absent. This lets existing sandbox test envs work unmodified while
+  // still labelling the run as `demo` for safety-fence purposes.
+  if (mode === 'demo' && (!apiKey || !apiSecret)) {
+    apiKey = env[ENV_MAP.sandbox.key];
+    apiSecret = env[ENV_MAP.sandbox.secret];
+  }
 
   if (!apiKey || !apiSecret) {
+    const hint =
+      mode === 'demo'
+        ? `${config.key}/${config.secret} (or ${ENV_MAP.sandbox.key}/${ENV_MAP.sandbox.secret})`
+        : `${config.key} and ${config.secret}`;
     throw new Error(
-      `Missing eToro ${mode} credentials: ${config.key} and ${config.secret} must be set`,
+      `Missing eToro ${mode} credentials: ${hint} must be set`,
     );
   }
 
@@ -48,6 +66,7 @@ export function resolveMode(
 ): EtoroMode {
   const raw = env.ETORO_MODE?.toLowerCase().trim();
   if (raw === 'real') return 'real';
+  if (raw === 'demo') return 'demo';
   return 'sandbox';
 }
 

@@ -64,6 +64,11 @@ export interface HedgeEngineConfig {
   pollIntervalMs: number;
   /** If true, log actions but don't execute real eToro trades. */
   dryRun: boolean;
+  /**
+   * eToro trading mode. The safety fence (`safety.ts`) only allows
+   * non-dry-run trading when this is exactly `'demo'`.
+   */
+  etoroMode: 'sandbox' | 'real' | 'demo';
 }
 
 /** Snapshot of a full reconciliation cycle. */

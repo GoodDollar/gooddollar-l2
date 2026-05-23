@@ -15,6 +15,7 @@ function makeConfig(overrides?: Partial<HedgeEngineConfig>): HedgeEngineConfig {
     deltaThresholdPct: 2,
     pollIntervalMs: 10000,
     dryRun: true,
+    etoroMode: 'demo',
     ...overrides,
   };
 }

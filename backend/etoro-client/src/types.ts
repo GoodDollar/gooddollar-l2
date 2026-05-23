@@ -31,7 +31,15 @@ export interface NormalizedQuote {
   stale: boolean;
 }
 
-export type EtoroMode = 'sandbox' | 'real';
+/**
+ * Trading mode for the eToro client.
+ * - `sandbox` — eToro's public sandbox API (no real money).
+ * - `real`    — live trading; gated by `ETORO_REAL_CONFIRMED=true`.
+ * - `demo`    — aliases the sandbox API surface but is a distinct label
+ *               so downstream safety fences can require it explicitly
+ *               (see `backend/hedge-engine/src/safety.ts`).
+ */
+export type EtoroMode = 'sandbox' | 'real' | 'demo';
 
 export interface EtoroCredentials {
   apiKey: string;
