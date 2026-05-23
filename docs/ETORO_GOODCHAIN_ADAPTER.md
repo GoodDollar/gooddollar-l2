@@ -122,6 +122,14 @@ source of truth for the accepted shapes.
   subscribed, non-stale quote per tick. Cache replay from prior
   subscriptions is intentionally avoided so downstream consumers see
   the true update rate instead of the cache size.
+- Quotes whose upstream payload omits every recognized name field
+  (`symbol`, `ticker`, `instrumentSymbol`) are dropped before any cache
+  write or listener fan-out — the SDK never fabricates a synthetic
+  `UNKNOWN` symbol. Each drop bumps a counter (surfaced via
+  `EtoroClient.getSummary().malformedQuotes` and
+  `MarketDataModule.getMalformedQuoteCount()`) and emits one
+  `normalizeQuote-malformed` audit line; the matching `console.error`
+  heartbeat is throttled to ≤ 1 per 60 s.
 
 ## Demo cap enforcement
 

@@ -1,5 +1,6 @@
 import { AxiosInstance } from 'axios';
 import WebSocket from 'ws';
+import { AUDIT_CONSOLE_THROTTLE_MS, AuditLogger } from './audit-logger';
 import {
   NormalizedQuote,
   InstrumentMetadata,
@@ -20,9 +21,31 @@ const DEFAULT_CONFIG: Required<MarketDataConfig> = {
   wsReconnectMaxDelayMs: 30_000,
 };
 
+/**
+ * Injectable dependencies for `MarketDataModule`. All optional; defaults
+ * preserve production behavior (no audit logger, wall-clock time, real
+ * `console.error`).
+ */
+export interface MarketDataDeps {
+  /**
+   * Optional audit logger. When wired, malformed-payload drops emit one
+   * audit line per dropped record (`action: 'normalizeQuote-malformed'`).
+   * Defaults to a no-op sink so existing direct-construction callers are
+   * unaffected.
+   */
+  audit?: AuditLogger;
+  /** Injectable clock so throttle tests are deterministic. */
+  clock?: () => number;
+  /** Injectable `console.error` for throttle tests without spying on globals. */
+  consoleErrorImpl?: (message: string) => void;
+}
+
 export class MarketDataModule {
   private readonly http: AxiosInstance;
   private readonly config: Required<MarketDataConfig>;
+  private readonly audit: AuditLogger | undefined;
+  private readonly clock: () => number;
+  private readonly consoleErrorImpl: (message: string) => void;
   private instrumentCache = new Map<string, InstrumentMetadata>();
   private instrumentCacheExpiry = 0;
   private readonly quoteCache = new Map<string, NormalizedQuote>();
@@ -34,11 +57,17 @@ export class MarketDataModule {
   private subscribedSymbols = new Set<string>();
   private readonly listeners: QuoteCallback[] = [];
   private stopped = false;
+  private malformedQuoteCount = 0;
+  private lastMalformedKeys: string[] | undefined;
+  private lastMalformedConsoleErrorAt = Number.NEGATIVE_INFINITY;
 
-  constructor(http: AxiosInstance, config?: MarketDataConfig) {
+  constructor(http: AxiosInstance, config?: MarketDataConfig, deps?: MarketDataDeps) {
     this.http = http;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.wsReconnectDelay = this.config.wsReconnectDelayMs;
+    this.audit = deps?.audit;
+    this.clock = deps?.clock ?? Date.now;
+    this.consoleErrorImpl = deps?.consoleErrorImpl ?? ((message) => console.error(message));
   }
 
   // --- Instrument metadata ---
@@ -83,17 +112,37 @@ export class MarketDataModule {
       params: { symbols: symbols.join(',') },
     });
     const raw = extractArray(resp.data);
-    const quotes = raw.map((item) => this.normalizeQuote(item));
-
-    for (const q of quotes) {
-      this.quoteCache.set(q.symbol, q);
+    const quotes: NormalizedQuote[] = [];
+    for (const item of raw) {
+      const quote = this.normalizeQuote(item);
+      if (quote === null) continue;
+      this.quoteCache.set(quote.symbol, quote);
+      quotes.push(quote);
     }
-
     return quotes;
   }
 
   getCachedQuote(symbol: string): NormalizedQuote | undefined {
     return this.quoteCache.get(symbol.toUpperCase());
+  }
+
+  /**
+   * Count of inbound quote records that were rejected because their
+   * payload omitted every recognized symbol field. Surfaced via
+   * `EtoroClient.getSummary().malformedQuotes` so an operator can spot a
+   * schema drift / partial outage from a single field.
+   */
+  getMalformedQuoteCount(): number {
+    return this.malformedQuoteCount;
+  }
+
+  /**
+   * Keys (sorted) of the most recently dropped malformed payload, or
+   * `undefined` if none have been seen. Keys only — never values — to
+   * keep secrets out of the diagnostic surface.
+   */
+  getLastMalformedKeys(): string[] | undefined {
+    return this.lastMalformedKeys;
   }
 
   // --- Candles ---
@@ -180,19 +229,7 @@ export class MarketDataModule {
       }
     });
 
-    this.ws.on('message', (data) => {
-      try {
-        const parsed = JSON.parse(data.toString());
-        const quotes = Array.isArray(parsed) ? parsed : [parsed];
-        for (const raw of quotes) {
-          const quote = this.normalizeQuote(raw);
-          this.quoteCache.set(quote.symbol, quote);
-          for (const listener of this.listeners) {
-            try { listener(quote); } catch { /* listener errors don't crash stream */ }
-          }
-        }
-      } catch { /* malformed WS messages ignored */ }
-    });
+    this.ws.on('message', (data) => this.handleWsMessage(data));
 
     this.ws.on('close', () => {
       this.wsConnected = false;
@@ -265,9 +302,44 @@ export class MarketDataModule {
 
   // --- Normalization ---
 
-  private normalizeQuote(raw: unknown): NormalizedQuote {
+  /**
+   * Parse a WS frame and route each contained quote through the same
+   * null-dropping pipeline as the REST path. Exposed as a method (not an
+   * inline lambda) so tests can drive the path without booting a real
+   * WebSocket. Malformed JSON frames are recorded via the audit logger,
+   * not silently swallowed.
+   */
+  handleWsMessage(data: WebSocket.RawData | string): void {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(typeof data === 'string' ? data : data.toString());
+    } catch (err: unknown) {
+      this.audit?.log({
+        action: 'ws-message-parse-failed',
+        method: 'PARSE',
+        path: '/market-data/ws',
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+    const quotes = Array.isArray(parsed) ? parsed : [parsed];
+    for (const raw of quotes) {
+      const quote = this.normalizeQuote(raw);
+      if (quote === null) continue;
+      this.quoteCache.set(quote.symbol, quote);
+      for (const listener of this.listeners) {
+        try { listener(quote); } catch { /* listener errors don't crash stream */ }
+      }
+    }
+  }
+
+  private normalizeQuote(raw: unknown): NormalizedQuote | null {
     const src = asRecord(raw);
-    const symbol = pickStr(src, ['symbol', 'ticker', 'instrumentSymbol']) ?? 'UNKNOWN';
+    const symbol = pickStr(src, ['symbol', 'ticker', 'instrumentSymbol']);
+    if (symbol === undefined) {
+      this.recordMalformedQuote(src);
+      return null;
+    }
     const instrumentId = pickStr(src, ['instrumentId', 'instrumentID', 'instrument_id', 'id']) ?? symbol;
     const bid = pickNum(src, ['bid', 'bidPrice', 'buy']);
     const ask = pickNum(src, ['ask', 'askPrice', 'sell']);
@@ -295,6 +367,28 @@ export class MarketDataModule {
       currency: pickStr(src, ['currency', 'quoteCurrency']) ?? 'USD',
       stale,
     };
+  }
+
+  private recordMalformedQuote(src: Record<string, unknown>): void {
+    const keys = Object.keys(src).sort();
+    this.malformedQuoteCount += 1;
+    this.lastMalformedKeys = keys;
+
+    const errorMsg = `malformed-quote keys=[${keys.join(',')}]`;
+    this.audit?.log({
+      action: 'normalizeQuote-malformed',
+      method: 'PARSE',
+      path: '/market-data/normalize',
+      error: errorMsg,
+    });
+
+    const now = this.clock();
+    if (now - this.lastMalformedConsoleErrorAt > AUDIT_CONSOLE_THROTTLE_MS) {
+      this.lastMalformedConsoleErrorAt = now;
+      this.consoleErrorImpl(
+        `[etoro-market-data] dropped malformed quote (n=${this.malformedQuoteCount}): ${errorMsg}`,
+      );
+    }
   }
 
   private normalizeInstrument(raw: unknown): InstrumentMetadata {

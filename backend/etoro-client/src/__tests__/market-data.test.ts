@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
-import { MarketDataModule, detectUSMarketSession } from '../market-data';
-import { NormalizedQuote, InstrumentMetadata, SessionState } from '../types';
+import { MarketDataModule, MarketDataDeps, detectUSMarketSession } from '../market-data';
+import { AuditLogger, AUDIT_CONSOLE_THROTTLE_MS } from '../audit-logger';
+import { AuditLogEntry, EtoroMode, NormalizedQuote, InstrumentMetadata, SessionState } from '../types';
 
 function createMockAxios(responses: Record<string, unknown> = {}): AxiosInstance {
   const instance = {
@@ -428,6 +429,141 @@ describe('MarketDataModule', () => {
       expect(cb).toHaveBeenCalledTimes(0);
       expect(mod.getCachedQuote('BTC')).toEqual(before);
       mod.stopStreaming();
+    });
+  });
+
+  describe('normalizeQuote malformed payloads', () => {
+    function recordingAudit(): { audit: AuditLogger; entries: AuditLogEntry[] } {
+      const entries: AuditLogEntry[] = [];
+      const mode: EtoroMode = 'demo-readonly';
+      const audit = new AuditLogger(mode, {
+        logPath: '/dev/null',
+        appendImpl: (_p, line) => { entries.push(JSON.parse(line) as AuditLogEntry); },
+        mkdirImpl: () => undefined,
+        consoleErrorImpl: () => undefined,
+      });
+      return { audit, entries };
+    }
+
+    function makeStubHttp(payload: unknown): AxiosInstance {
+      return { get: jest.fn(async () => ({ data: payload })) } as unknown as AxiosInstance;
+    }
+
+    const silentDeps: MarketDataDeps = { consoleErrorImpl: () => undefined };
+
+    it('returns null for getQuote when payload omits every symbol field', async () => {
+      const http = makeStubHttp({ quotes: [{ bid: 100, ask: 101 }] });
+      const mod = new MarketDataModule(http, undefined, silentDeps);
+      const result = await mod.getQuote('BTC');
+      expect(result).toBeNull();
+      expect(mod.getCachedQuote('UNKNOWN')).toBeUndefined();
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+    });
+
+    it('returns [] from getQuotes when every record is malformed and audits each drop', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = makeStubHttp({ quotes: [{ bid: 100, ask: 101 }, { foo: 'bar' }] });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const result = await mod.getQuotes(['BTC', 'ETH']);
+      expect(result).toEqual([]);
+      expect(mod.getMalformedQuoteCount()).toBe(2);
+      expect(mod.getCachedQuote('UNKNOWN')).toBeUndefined();
+      const drops = entries.filter((e) => e.action === 'normalizeQuote-malformed');
+      expect(drops).toHaveLength(2);
+      expect(drops[0].method).toBe('PARSE');
+      expect(drops[0].path).toBe('/market-data/normalize');
+      expect(drops[0].error).toMatch(/malformed-quote keys=\[/);
+    });
+
+    it('returns only identifiable records when mixed good + malformed', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = makeStubHttp({
+        quotes: [
+          { symbol: 'BTC', bid: 100, ask: 101, timestamp: Date.now() },
+          { bid: 200, ask: 201 },
+        ],
+      });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const result = await mod.getQuotes(['BTC', 'ETH']);
+      expect(result.map((q) => q.symbol)).toEqual(['BTC']);
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+      expect(mod.getCachedQuote('BTC')).toBeDefined();
+      expect(mod.getCachedQuote('UNKNOWN')).toBeUndefined();
+      const drops = entries.filter((e) => e.action === 'normalizeQuote-malformed');
+      expect(drops).toHaveLength(1);
+    });
+
+    it('exposes sorted keys of the most recently dropped record', async () => {
+      const http = makeStubHttp({ quotes: [{ bid: 100, ask: 101, foo: true }] });
+      const mod = new MarketDataModule(http, undefined, silentDeps);
+      await mod.getQuotes(['BTC']);
+      expect(mod.getLastMalformedKeys()).toEqual(['ask', 'bid', 'foo']);
+    });
+
+    it('WS message handler drops malformed records — no listener call, no cache write', () => {
+      const { audit, entries } = recordingAudit();
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      mod.handleWsMessage(JSON.stringify({ bid: 100, ask: 101 }));
+
+      expect(cb).not.toHaveBeenCalled();
+      expect(mod.getCachedQuote('UNKNOWN')).toBeUndefined();
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+      const drops = entries.filter((e) => e.action === 'normalizeQuote-malformed');
+      expect(drops).toHaveLength(1);
+    });
+
+    it('WS message handler still emits identifiable records when the same frame mixes good + bad', () => {
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, silentDeps);
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      mod.handleWsMessage(JSON.stringify([
+        { symbol: 'BTC', bid: 100, ask: 101, timestamp: Date.now() },
+        { bid: 200, ask: 201 },
+      ]));
+
+      expect(cb).toHaveBeenCalledTimes(1);
+      expect((cb.mock.calls[0][0] as NormalizedQuote).symbol).toBe('BTC');
+      expect(mod.getCachedQuote('BTC')).toBeDefined();
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+    });
+
+    it('audits unparseable WS frames instead of silently swallowing them', () => {
+      const { audit, entries } = recordingAudit();
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, { audit });
+
+      mod.handleWsMessage('not-json');
+
+      const parseErrors = entries.filter((e) => e.action === 'ws-message-parse-failed');
+      expect(parseErrors).toHaveLength(1);
+      expect(parseErrors[0].method).toBe('PARSE');
+    });
+
+    it('throttles console.error to one per AUDIT_CONSOLE_THROTTLE_MS window across many drops', () => {
+      let now = 1_700_000_000_000;
+      const consoleErrorImpl = jest.fn();
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, {
+        clock: () => now,
+        consoleErrorImpl,
+      });
+
+      for (let i = 0; i < 10; i++) {
+        now += 1_000;
+        mod.handleWsMessage(JSON.stringify({ bid: 100, ask: 101 }));
+      }
+      expect(mod.getMalformedQuoteCount()).toBe(10);
+      expect(consoleErrorImpl).toHaveBeenCalledTimes(1);
+
+      now += AUDIT_CONSOLE_THROTTLE_MS + 1;
+      mod.handleWsMessage(JSON.stringify({ bid: 100, ask: 101 }));
+      expect(consoleErrorImpl).toHaveBeenCalledTimes(2);
     });
   });
 });

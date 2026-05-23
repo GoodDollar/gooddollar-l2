@@ -152,6 +152,23 @@ describe('EtoroClient — audit-log path surfacing', () => {
   });
 });
 
+describe('EtoroClient — getSummary.malformedQuotes', () => {
+  it('reports "0" on a fresh client regardless of mode', () => {
+    const readonly = new EtoroClient({ credentials: DEMO_CREDENTIALS });
+    expect(readonly.getSummary().malformedQuotes).toBe('0');
+
+    const mockCreds: EtoroCredentials = {
+      apiKey: 'mock',
+      apiSecret: 'mock',
+      baseUrl: 'mock://etoro.local',
+      wsUrl: 'mock://etoro.local/ws',
+      mode: 'mock',
+    };
+    const mock = new EtoroClient({ credentials: mockCreds });
+    expect(mock.getSummary().malformedQuotes).toBe('0');
+  });
+});
+
 describe('EtoroClient — live-quote wiring through MockEtoroSource', () => {
   const MOCK_CREDENTIALS: EtoroCredentials = {
     apiKey: 'mock-api-key',

@@ -40,6 +40,13 @@ export interface EtoroMarketDataSource {
   startStreaming(): void;
   stopStreaming(): void;
   getCachedQuote?(symbol: string): NormalizedQuote | undefined;
+  /**
+   * Count of inbound quote records dropped because their payload lacked
+   * every recognized symbol field. Optional so `MockEtoroSource` (which
+   * never produces malformed quotes) can omit it; `EtoroClient.getSummary`
+   * defaults to `0` when absent.
+   */
+  getMalformedQuoteCount?(): number;
 }
 
 export interface EtoroClientConstructorConfig
@@ -118,7 +125,7 @@ export class EtoroClient {
         ...(config?.marketData ?? {}),
         wsUrl: config?.marketData?.wsUrl ?? this.credentials.wsUrl,
       };
-      this.marketData = new MarketDataModule(this.http, mdConfig);
+      this.marketData = new MarketDataModule(this.http, mdConfig, { audit: this.audit });
     }
 
     const overrides = loadInstrumentOverrides();
@@ -222,6 +229,7 @@ export class EtoroClient {
       realTradingEnabled: String(REAL_TRADING_ENABLED),
       auditLogPath: this.audit.getResolvedLogPath(),
       auditWriteFailures: String(this.audit.getWriteFailureCount()),
+      malformedQuotes: String(this.marketData.getMalformedQuoteCount?.() ?? 0),
     };
   }
 
