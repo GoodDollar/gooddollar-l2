@@ -374,6 +374,33 @@ else
         fi
       fi
 
+      # Normalize + validate the resolved address shape. An invalid value
+      # (typo, wrong JSON type, trailing whitespace/CRLF copied from chat
+      # or a Windows-line-endinged .env) makes the JSON-RPC `eth_call`
+      # reject with `invalid argument 0`. The node side maps that to
+      # `last_updated == 0`, which the bash side prints as the misleading
+      # "fresh oracle absent (testnet candidate phase)" WARN — same
+      # message the operator would see for a genuinely-pre-deploy testnet,
+      # so they take no action while their oracle is actually writing
+      # fine and the smoke is just calling the wrong address. Strip
+      # whitespace + CR, regex-check the canonical 0x[40 hex] shape,
+      # WARN-and-skip on mismatch (NOT BLOCKER — testnet candidate phase
+      # explicitly tolerates a missing/unresolved oracle address).
+      if [[ -n "$stock_oracle" ]]; then
+        stock_oracle="${stock_oracle%$'\r'}"
+        stock_oracle="${stock_oracle#"${stock_oracle%%[![:space:]]*}"}"
+        stock_oracle="${stock_oracle%"${stock_oracle##*[![:space:]]}"}"
+        if [[ ! "$stock_oracle" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+          # Redact: keep at most 10 chars of the input + length suffix so
+          # a partial typo is hinted at without copying a long
+          # secret-shaped string into the report.
+          shape="${stock_oracle:0:10}…(${#stock_oracle} chars)"
+          add_summary "⚠️  STOCK_ORACLE_V2_ADDRESS does not look like a 0x-prefixed 20-byte hex address (shape: \`$shape\`) — on-chain freshness skipped"
+          WARNINGS+=("STOCK_ORACLE_V2_ADDRESS shape invalid (\`$shape\`) — set a 0x-prefixed 40-hex address")
+          stock_oracle=""
+        fi
+      fi
+
       if [[ -z "$stock_oracle" ]]; then
         add_summary "⚠️  StockOracleV2 address unknown — set STOCK_ORACLE_V2_ADDRESS or populate op-stack/addresses.json"
         WARNINGS+=("StockOracleV2 address unresolved — freshness probe skipped")
