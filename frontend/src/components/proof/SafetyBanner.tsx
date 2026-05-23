@@ -11,7 +11,7 @@ import {
 type FetchState =
   | { status: 'loading' }
   | { status: 'ok'; data: SafetyStateResponse }
-  | { status: 'error'; message: string }
+  | { status: 'error' }
 
 interface SafetyBannerProps {
   /** Optional override for the fetch URL, used by tests. */
@@ -29,8 +29,9 @@ export function SafetyBanner({ endpoint = '/api/safety-state' }: SafetyBannerPro
         const data = (await res.json()) as SafetyStateResponse
         if (!cancelled) setState({ status: 'ok', data })
       })
-      .catch((err: Error) => {
-        if (!cancelled) setState({ status: 'error', message: err.message })
+      .catch((err: unknown) => {
+        console.error('[safety-banner] fetch failed', err)
+        if (!cancelled) setState({ status: 'error' })
       })
     return () => {
       cancelled = true
@@ -53,10 +54,15 @@ export function SafetyBanner({ endpoint = '/api/safety-state' }: SafetyBannerPro
     return (
       <div
         role="alert"
-        className="w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+        className="w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3"
       >
-        <span className="font-semibold">Safety state unavailable.</span>{' '}
-        <span className="text-red-300/80">{state.message}</span>
+        <div className="text-sm font-semibold text-red-200">
+          Safety state unverified.
+        </div>
+        <div className="mt-1 text-xs text-red-300/80">
+          The /api/safety-state endpoint did not respond. Treat the release
+          as unverified until the safety check completes.
+        </div>
       </div>
     )
   }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { SafetyBanner } from '../SafetyBanner'
 
@@ -13,7 +13,13 @@ function mockFetchResponse(body: unknown, status = 200) {
 }
 
 describe('SafetyBanner', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
     vi.restoreAllMocks()
   })
 
@@ -78,13 +84,43 @@ describe('SafetyBanner', () => {
     expect(screen.getByText(/demo/)).toBeInTheDocument()
   })
 
-  it('renders an inline error when the safety-state endpoint fails', async () => {
+  it('renders unverified copy with no raw status / parser / fetch leak when the endpoint returns 500', async () => {
     mockFetchResponse({}, 500)
 
     render(<SafetyBanner />)
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/Safety state unavailable/i)
+      expect(screen.getByRole('alert')).toHaveTextContent(/Safety state unverified/i)
     })
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent(
+      /The \/api\/safety-state endpoint did not respond/i,
+    )
+    expect(alert).not.toHaveTextContent(/safety-state returned/)
+    expect(alert).not.toHaveTextContent(/\b\d{3}\b/)
+    expect(alert).not.toHaveTextContent(/JSON/i)
+    expect(alert).not.toHaveTextContent(/parse/i)
+    expect(alert).not.toHaveTextContent(/Failed to fetch/)
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[safety-banner] fetch failed',
+      expect.anything(),
+    )
+  })
+
+  it('renders unverified copy when the fetch itself rejects (network drop)', async () => {
+    globalThis.fetch = vi.fn(() => Promise.reject(new Error('Failed to fetch')))
+
+    render(<SafetyBanner />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Safety state unverified/i)
+    })
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent(/did not respond/i)
+    expect(alert).not.toHaveTextContent(/Failed to fetch/)
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[safety-banner] fetch failed',
+      expect.anything(),
+    )
   })
 })
