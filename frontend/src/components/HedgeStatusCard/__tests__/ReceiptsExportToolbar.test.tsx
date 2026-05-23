@@ -56,53 +56,89 @@ afterEach(() => {
 })
 
 describe('ReceiptsExportToolbar', () => {
-  it('renders an Export button + menu toggle even when receipts are empty', () => {
+  it('renders only the Export button when receipts are empty (chevron toggle hidden to avoid aria duplication, #0064)', () => {
     render(<ReceiptsExportToolbar receipts={[]} />)
     const btn = screen.getByTestId('hedge-receipts-export-csv-button')
-    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle')
     expect(btn).toBeDisabled()
-    expect(toggle).toBeDisabled()
     expect(btn).toHaveAttribute(
       'title',
       'No receipts to export — nothing has happened yet',
     )
+    expect(
+      screen.queryByTestId('hedge-receipts-export-menu-toggle'),
+    ).toBeNull()
   })
 
-  it('uses the engine-offline tooltip on both buttons when reason="engine-offline"', () => {
+  it('exposes the engine-offline disabled copy on exactly one button (#0064)', () => {
     render(<ReceiptsExportToolbar receipts={[]} reason="engine-offline" />)
     const expected =
       'Engine offline — receipts will be exportable once it comes back'
     const btn = screen.getByTestId('hedge-receipts-export-csv-button')
-    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle')
     expect(btn).toHaveAttribute('title', expected)
     expect(btn).toHaveAttribute('aria-label', expected)
-    expect(toggle).toHaveAttribute('title', expected)
-    expect(toggle).toHaveAttribute('aria-label', expected)
+    expect(
+      screen.queryByTestId('hedge-receipts-export-menu-toggle'),
+    ).toBeNull()
+    const matching = screen
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('aria-label') === expected)
+    expect(matching).toHaveLength(1)
   })
 
-  it('uses the degraded-source tooltip on both buttons when reason="receipts-source-degraded"', () => {
+  it('exposes the degraded-source disabled copy on exactly one button (#0064)', () => {
     render(
       <ReceiptsExportToolbar receipts={[]} reason="receipts-source-degraded" />,
     )
     const expected =
       'Receipts source degraded — export disabled until receipts are healthy'
     const btn = screen.getByTestId('hedge-receipts-export-csv-button')
-    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle')
     expect(btn).toHaveAttribute('title', expected)
     expect(btn).toHaveAttribute('aria-label', expected)
-    expect(toggle).toHaveAttribute('title', expected)
-    expect(toggle).toHaveAttribute('aria-label', expected)
+    expect(
+      screen.queryByTestId('hedge-receipts-export-menu-toggle'),
+    ).toBeNull()
+    const matching = screen
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('aria-label') === expected)
+    expect(matching).toHaveLength(1)
   })
 
-  it('uses the no-activity tooltip on both buttons when reason="no-activity"', () => {
+  it('exposes the no-activity disabled copy on exactly one button (#0064)', () => {
     render(<ReceiptsExportToolbar receipts={[]} reason="no-activity" />)
     const expected = 'No receipts to export — nothing has happened yet'
     const btn = screen.getByTestId('hedge-receipts-export-csv-button')
-    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle')
     expect(btn).toHaveAttribute('title', expected)
     expect(btn).toHaveAttribute('aria-label', expected)
-    expect(toggle).toHaveAttribute('title', expected)
-    expect(toggle).toHaveAttribute('aria-label', expected)
+    expect(
+      screen.queryByTestId('hedge-receipts-export-menu-toggle'),
+    ).toBeNull()
+    const matching = screen
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('aria-label') === expected)
+    expect(matching).toHaveLength(1)
+  })
+
+  it('duplicate-aria-label invariant: every disabled reason exposes its copy on at most one button (#0064)', () => {
+    const reasons = [
+      'no-activity',
+      'engine-offline',
+      'receipts-source-degraded',
+    ] as const
+    for (const reason of reasons) {
+      const { unmount } = render(
+        <ReceiptsExportToolbar receipts={[]} reason={reason} />,
+      )
+      const labels = screen
+        .getAllByRole('button')
+        .map((b) => b.getAttribute('aria-label'))
+        .filter((label): label is string => Boolean(label))
+      const seen = new Set<string>()
+      for (const label of labels) {
+        expect(seen.has(label)).toBe(false)
+        seen.add(label)
+      }
+      unmount()
+    }
   })
 
   it('keeps enabled-state copy unchanged when receipts are present (regression guard)', () => {

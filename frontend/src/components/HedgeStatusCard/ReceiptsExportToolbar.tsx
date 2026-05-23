@@ -91,6 +91,16 @@ export function ReceiptsExportToolbar({
       data-testid="hedge-receipts-export-toolbar"
       className="relative inline-flex items-stretch rounded-md border border-dark-50 overflow-hidden"
     >
+      {/*
+        When `disabled`, the chevron toggle is suppressed entirely
+        (#0064). The popover it opens is gated by `open && !disabled`
+        below — so a disabled chevron has no functional effect, and
+        having two disabled buttons with the same long aria-label
+        makes screen-reader users hear the same explanation twice in
+        a row when tabbing across the toolbar. Render only the
+        primary Export button in the disabled state; the enabled
+        state continues to show the full split-button shape.
+      */}
       <button
         type="button"
         data-testid="hedge-receipts-export-csv-button"
@@ -103,20 +113,20 @@ export function ReceiptsExportToolbar({
       >
         Export
       </button>
-      <button
-        type="button"
-        data-testid="hedge-receipts-export-menu-toggle"
-        onClick={() => setOpen((v) => !v)}
-        disabled={disabled}
-        aria-disabled={disabled || undefined}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={disabled ? disabledCopy : 'More export options'}
-        title={disabled ? disabledCopy : 'More export options'}
-        className={`${baseBtn} border-0 border-l border-dark-50 rounded-none rounded-r-md px-1.5`}
-      >
-        <span aria-hidden="true">▾</span>
-      </button>
+      {!disabled && (
+        <button
+          type="button"
+          data-testid="hedge-receipts-export-menu-toggle"
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label="More export options"
+          title="More export options"
+          className={`${baseBtn} border-0 border-l border-dark-50 rounded-none rounded-r-md px-1.5`}
+        >
+          <span aria-hidden="true">▾</span>
+        </button>
+      )}
       {open && !disabled && (
         <div
           role="menu"

@@ -1692,32 +1692,30 @@ function ReceiptsExportToolbar({ receipts, reason = 'no-activity' }) {
                 children: "Export"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard/ReceiptsExportToolbar.tsx",
-                lineNumber: 94,
+                lineNumber: 104,
                 columnNumber: 7
             }, this),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+            !disabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                 type: "button",
                 "data-testid": "hedge-receipts-export-menu-toggle",
                 onClick: ()=>setOpen((v)=>!v),
-                disabled: disabled,
-                "aria-disabled": disabled || undefined,
                 "aria-haspopup": "menu",
                 "aria-expanded": open,
-                "aria-label": disabled ? disabledCopy : 'More export options',
-                title: disabled ? disabledCopy : 'More export options',
+                "aria-label": "More export options",
+                title: "More export options",
                 className: `${baseBtn} border-0 border-l border-dark-50 rounded-none rounded-r-md px-1.5`,
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                     "aria-hidden": "true",
                     children: "▾"
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/HedgeStatusCard/ReceiptsExportToolbar.tsx",
-                    lineNumber: 118,
-                    columnNumber: 9
+                    lineNumber: 127,
+                    columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard/ReceiptsExportToolbar.tsx",
-                lineNumber: 106,
-                columnNumber: 7
+                lineNumber: 117,
+                columnNumber: 9
             }, this),
             open && !disabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 role: "menu",
@@ -1733,7 +1731,7 @@ function ReceiptsExportToolbar({ receipts, reason = 'no-activity' }) {
                         children: "Download CSV"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard/ReceiptsExportToolbar.tsx",
-                        lineNumber: 126,
+                        lineNumber: 136,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1745,13 +1743,13 @@ function ReceiptsExportToolbar({ receipts, reason = 'no-activity' }) {
                         children: "Download JSON"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeStatusCard/ReceiptsExportToolbar.tsx",
-                        lineNumber: 135,
+                        lineNumber: 145,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeStatusCard/ReceiptsExportToolbar.tsx",
-                lineNumber: 121,
+                lineNumber: 131,
                 columnNumber: 9
             }, this)
         ]

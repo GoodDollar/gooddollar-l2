@@ -365,7 +365,7 @@ describe('HedgeStatusCard', () => {
     );
   });
 
-  it('export toolbar tooltip says "Engine offline" when the engine is unreachable, matching the empty-state below (#0048)', async () => {
+  it('export toolbar tooltip says "Engine offline" when the engine is unreachable, matching the empty-state below (#0048, #0064)', async () => {
     mockFetchOnce(
       {
         error: 'Hedge engine unreachable',
@@ -377,13 +377,16 @@ describe('HedgeStatusCard', () => {
     );
     render(<HedgeStatusCard />);
     const csvBtn = await screen.findByTestId('hedge-receipts-export-csv-button');
-    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle');
     const expected =
       'Engine offline — receipts will be exportable once it comes back';
     expect(csvBtn).toBeDisabled();
     expect(csvBtn.getAttribute('title')).toBe(expected);
-    expect(toggle.getAttribute('title')).toBe(expected);
-    expect(toggle.getAttribute('aria-label')).toBe(expected);
+    expect(csvBtn.getAttribute('aria-label')).toBe(expected);
+    // #0064 — the chevron toggle is suppressed when disabled so AT
+    // doesn't hear the same long explanation twice in a row.
+    expect(
+      screen.queryByTestId('hedge-receipts-export-menu-toggle'),
+    ).toBeNull();
     expect(csvBtn.getAttribute('title')).not.toMatch(/^No receipts to export$/);
   });
 
