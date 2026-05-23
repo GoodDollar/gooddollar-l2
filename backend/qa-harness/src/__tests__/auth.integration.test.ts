@@ -21,7 +21,7 @@ describe('Lane 6 / auth — eToro client authenticates against mock server', () 
       },
     });
 
-    const mock = createMockEtoro({ axios: (client as unknown as { http: import('axios').AxiosInstance }).http });
+    const mock = createMockEtoro({ axios: client.getHttpClient() });
 
     let token: string | null = null;
     let error: string | null = null;

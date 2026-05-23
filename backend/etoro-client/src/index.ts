@@ -100,6 +100,14 @@ export class EtoroClient {
     return this.credentials.mode;
   }
 
+  /**
+   * Exposes the underlying axios instance for harness use (e.g.
+   * `axios-mock-adapter` in qa-harness). Production code should NOT call this.
+   */
+  getHttpClient(): AxiosInstance {
+    return this.http;
+  }
+
   getSummary(): Record<string, string> {
     return {
       ...redactCredentials(this.credentials),
