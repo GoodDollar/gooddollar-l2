@@ -1,0 +1,27 @@
+{
+  "name": "@goodchain/qa-harness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lane 6 integration harness — proves the eToro→price-service→oracle→chain→hedge pipeline",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --runInBand",
+    "qa:gate": "jest --runInBand",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "axios-mock-adapter": "^2.1.0",
+    "ethers": "^6.13.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.14.0",
+    "@types/ws": "^8.5.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.5.0"
+  }
+}
