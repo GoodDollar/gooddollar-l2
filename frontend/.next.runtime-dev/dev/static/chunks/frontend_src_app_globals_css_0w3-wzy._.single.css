@@ -4489,6 +4489,10 @@ img, video {
   display: none;
 }
 
+.\[overflow-wrap\:anywhere\] {
+  overflow-wrap: anywhere;
+}
+
 html {
   overflow-x: hidden;
 }

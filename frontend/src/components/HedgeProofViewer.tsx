@@ -73,6 +73,13 @@ export interface HedgeProofViewerProps {
   notFoundTitle?: string
   notFoundDetail?: string
   /**
+   * Optional `title=` attribute forwarded onto the no_proof error
+   * card's `<h2>` (#0063). The per-receipt viewer truncates very long
+   * ids in the visible headline but stashes the full id here for
+   * hover / long-press copy-paste recovery.
+   */
+  notFoundTitleTooltip?: string
+  /**
    * Raw markdown escape-hatch link rendered inside the metadata strip.
    * The latest viewer points at `/api/hedge/proof/latest`; per-receipt
    * viewers omit this since there is no equivalent markdown route.
@@ -95,6 +102,7 @@ export default function HedgeProofViewer({
   endpoint,
   notFoundTitle = DEFAULT_NOT_FOUND_TITLE,
   notFoundDetail = DEFAULT_NOT_FOUND_DETAIL,
+  notFoundTitleTooltip,
   rawMarkdownHref,
   surface = 'latest',
 }: HedgeProofViewerProps) {
@@ -160,6 +168,7 @@ export default function HedgeProofViewer({
           title={notFoundTitle}
           detail={notFoundDetail}
           onRetry={load}
+          titleTooltip={notFoundTitleTooltip}
         />
       )}
       {view.kind === 'error' && (

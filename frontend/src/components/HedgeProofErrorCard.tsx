@@ -30,6 +30,13 @@ export interface HedgeProofErrorCardProps {
   onRetry?: () => void | Promise<void>
   variant?: 'error' | 'neutral'
   testid?: string
+  /**
+   * Optional `title=` attribute on the h2 — used by per-receipt surfaces
+   * to surface the FULL receipt id when the visible title is truncated
+   * (#0063). Hover (desktop) or long-press (mobile) reveals it for
+   * copy-paste recovery.
+   */
+  titleTooltip?: string
 }
 
 export default function HedgeProofErrorCard({
@@ -38,6 +45,7 @@ export default function HedgeProofErrorCard({
   onRetry,
   variant = 'neutral',
   testid = 'hedge-proof-error',
+  titleTooltip,
 }: HedgeProofErrorCardProps) {
   const wrapperClass =
     variant === 'error'
@@ -74,7 +82,21 @@ export default function HedgeProofErrorCard({
           <StatusGlyph size={20} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className={`text-base font-semibold ${titleColor}`}>{title}</h2>
+          {/*
+            `break-words` (overflow-wrap: break-word) wraps gracefully
+            at word boundaries; the arbitrary `[overflow-wrap:anywhere]`
+            keyword breaks INSIDE an unbreakable token (200-char hash,
+            base64 blob) once the wrap-at-boundary attempt fails. Both
+            are required: the first preserves multi-word title aesthetics
+            ("Proof not found for receipt …"), the second is the safety
+            net for ids longer than the card width (#0063).
+          */}
+          <h2
+            className={`text-base font-semibold ${titleColor} break-words [overflow-wrap:anywhere]`}
+            title={titleTooltip}
+          >
+            {title}
+          </h2>
           <p className="mt-1 text-sm text-gray-300">{detail}</p>
         </div>
       </div>

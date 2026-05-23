@@ -101,6 +101,49 @@ describe('HedgeProofErrorCard', () => {
     expect(screen.queryAllByRole('link', { name: /back to dashboard/i }).length).toBe(0)
   })
 
+  describe('long-id title wrapping (#0063)', () => {
+    it('h2 carries break-words / overflow-wrap rules so an unbreakable token wraps inside the card', () => {
+      render(
+        <HedgeProofErrorCard
+          title={`Proof not found for receipt ${'a'.repeat(200)}`}
+          detail="The hedge engine has no proof artifact for this receipt id."
+          variant="error"
+          onRetry={() => {}}
+        />,
+      )
+      const heading = screen.getByRole('heading', { level: 2 })
+      expect(heading.className).toContain('break-words')
+      expect(heading.className).toMatch(/overflow-wrap/)
+    })
+
+    it('surfaces the full id via title attribute when titleTooltip is provided', () => {
+      const fullId = 'a'.repeat(200)
+      render(
+        <HedgeProofErrorCard
+          title="Proof not found for receipt aaaaaaaaaaaa…aaaaaaaa"
+          detail="..."
+          variant="error"
+          onRetry={() => {}}
+          titleTooltip={fullId}
+        />,
+      )
+      const heading = screen.getByRole('heading', { level: 2 })
+      expect(heading.getAttribute('title')).toBe(fullId)
+    })
+
+    it('omits the title attribute when titleTooltip is not provided (regression for short-id surfaces)', () => {
+      render(
+        <HedgeProofErrorCard
+          title="No hedge proof yet"
+          detail="..."
+          onRetry={() => {}}
+        />,
+      )
+      const heading = screen.getByRole('heading', { level: 2 })
+      expect(heading.getAttribute('title')).toBeNull()
+    })
+  })
+
   describe('status icon anchor (#0057)', () => {
     it('variant="error" renders a red exclamation glyph at the top-left', () => {
       render(
