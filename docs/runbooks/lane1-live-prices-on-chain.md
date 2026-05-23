@@ -22,7 +22,11 @@ The two are produced independently and can be run in either order.
 - Valid eToro demo credentials: `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET`,
   `ETORO_DEMO_USER_KEY`. The mock smoke at the bottom of this runbook
   works without them.
-- Lane installed: `npm run install:lane1` from the repo root.
+- Lane installed **and built**: `npm run install:lane1` from the repo
+  root. This installs deps AND runs `tsc` in each of the four lane-1
+  packages so `dist/index.js` is present for `npm start`. If you edit
+  source after install, run `npm run build:lane1` to rebuild before
+  starting any service.
 - For the **on-chain leg** (Step 2 + Step 3): a JSON-RPC URL for the L2
   that hosts `StockOracleV2`, the deployed `STOCK_ORACLE_V2_ADDRESS`,
   and a funded `ORACLE_SIGNER_KEY`. Without all three the oracle-signer

@@ -61,11 +61,13 @@ oracle-signer → on-chain → apps, plus a capped demo-hedge proof from
 | `oracle-signer` | `oracle-signer/` | `9107` | Signs and publishes prices on-chain | (see ecosystem.config.js) |
 | `@goodchain/hedge-engine` | `hedge-engine/` | `9106` | Maps GoodChain exposure to capped demo eToro hedges; ships demo-proof script | [README](hedge-engine/README.md) · [proof runbook](../docs/runbooks/lane1-demo-hedge-proof.md) |
 
-Install + test the lane in one shot from the repo root:
+Install, build, and test the lane in one shot from the repo root:
 
 ```bash
-npm run install:lane1
+npm run install:lane1   # installs deps AND builds tsc → dist/ for all four packages
 npm run test:lane1
+# After editing source, rebuild without re-installing:
+npm run build:lane1     # pass --force to rebuild even when dist/index.js already exists
 ```
 
 Deep contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../docs/ETORO_GOODCHAIN_ADAPTER.md).

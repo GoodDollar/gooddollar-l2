@@ -21,7 +21,10 @@ the L2 oracle) has its own runbook at
   follow-ups; keep it set.)
 - A live JSON-RPC URL for the chain that hosts the risk engine.
 - The deployed `RISK_ENGINE_ADDRESS`.
-- The lane installed: `npm run install:lane1` from the repo root.
+- The lane installed **and built**: `npm run install:lane1` from the
+  repo root (installs deps + runs `tsc` so `dist/index.js` exists for
+  `npm start`). Run `npm run build:lane1` to rebuild after editing
+  source.
 - A pinned eToro instrument id for `PROOF_SYMBOL` (`PROOF_INSTRUMENT_ID`).
   Resolve it once via:
 

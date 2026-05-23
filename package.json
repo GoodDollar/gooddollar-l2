@@ -22,6 +22,7 @@
     "health": "bash scripts/health-check.sh",
     "test:e2e": "cd frontend && npm run test:e2e",
     "tests:publish": "python3 scripts/publish-tests-page.py",
+    "build:lane1": "bash scripts/build-lane1-backend.sh",
     "install:lane1": "bash scripts/install-lane1-backend.sh",
     "test:lane1": "bash scripts/test-lane1-backend.sh"
   },
