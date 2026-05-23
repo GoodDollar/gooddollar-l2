@@ -116,6 +116,22 @@ export interface MarketDataDeps {
 const RATES_BATCH_SIZE = 100;
 const RATES_PATH = '/market-data/instruments/rates';
 
+/**
+ * Grace window for quote timestamps that arrive slightly ahead of the
+ * local wall clock (NTP drift, upstream skew). A timestamp beyond
+ * `now + FUTURE_TIMESTAMP_GRACE_MS` is treated as malformed.
+ */
+const FUTURE_TIMESTAMP_GRACE_MS = 30_000;
+
+/**
+ * Result of parsing a timestamp field off a raw payload. The discriminated
+ * shape lets the caller route the three malformed cases through the same
+ * `recordMalformedQuote` channel with operator-readable reason keys.
+ */
+type TimestampResult =
+  | { ok: true; ms: number }
+  | { ok: false; reason: 'absent' | 'negative' | 'future' };
+
 export class MarketDataModule {
   private readonly http: AxiosInstance;
   private readonly config: Required<MarketDataConfig>;
@@ -324,7 +340,9 @@ export class MarketDataModule {
       path,
       sink: this.malformedListSink,
     });
-    return raw.map((item) => this.normalizeCandle(item, symbol));
+    return raw
+      .map((item) => this.normalizeCandle(item, symbol))
+      .filter((c): c is CandleData => c !== null);
   }
 
   // --- Session state ---
@@ -506,6 +524,12 @@ export class MarketDataModule {
       this.recordMalformedQuote(src);
       return null;
     }
+    const now = this.clock();
+    const ts = pickTimestamp(src, now);
+    if (!ts.ok) {
+      this.recordMalformedQuote(src, `ts=${ts.reason}`);
+      return null;
+    }
     const instrumentId = pickStr(src, ['instrumentId', 'instrumentID', 'instrument_id', 'id']) ?? symbol;
     const bid = pickNum(src, ['bid', 'bidPrice', 'buy']);
     const ask = pickNum(src, ['ask', 'askPrice', 'sell']);
@@ -513,8 +537,8 @@ export class MarketDataModule {
     const mid = bid !== undefined && ask !== undefined ? (bid + ask) / 2 : undefined;
     const price = mid ?? last ?? bid ?? ask ?? 0;
 
-    const timestamp = pickTimestamp(src);
-    const stale = Date.now() - timestamp > this.config.maxQuoteAgeMs;
+    const timestamp = ts.ms;
+    const stale = now - timestamp > this.config.maxQuoteAgeMs;
     const assetClass = normalizeAssetClass(pickStr(src, ['assetClass', 'instrumentType', 'type']));
     const sessionState = this.detectSessionState(symbol.toUpperCase());
 
@@ -568,12 +592,13 @@ export class MarketDataModule {
     }
   }
 
-  private recordMalformedQuote(src: Record<string, unknown>): void {
+  private recordMalformedQuote(src: Record<string, unknown>, reason?: string): void {
     const keys = Object.keys(src).sort();
     this.malformedQuoteCount += 1;
     this.lastMalformedKeys = keys;
 
-    const errorMsg = `malformed-quote keys=[${keys.join(',')}]`;
+    const reasonStr = reason ? ` ${reason}` : '';
+    const errorMsg = `malformed-quote${reasonStr} keys=[${keys.join(',')}]`;
     this.audit?.log({
       action: 'normalizeQuote-malformed',
       method: 'PARSE',
@@ -614,6 +639,12 @@ export class MarketDataModule {
       return null;
     }
     const symbol = idToSymbol.get(instrumentId) ?? instrumentId;
+    const now = this.clock();
+    const ts = pickTimestamp(src, now);
+    if (!ts.ok) {
+      this.recordMalformedQuote(src, `ts=${ts.reason}`);
+      return null;
+    }
     const bid = pickNum(src, ['bid']);
     const ask = pickNum(src, ['ask']);
     const last = pickNum(src, ['lastExecution', 'last']);
@@ -621,8 +652,8 @@ export class MarketDataModule {
     const mid = bothBidAsk ? (bid + ask) / 2 : undefined;
     const price = mid ?? last ?? 0;
 
-    const timestamp = pickTimestamp(src);
-    const stale = Date.now() - timestamp > this.config.maxQuoteAgeMs;
+    const timestamp = ts.ms;
+    const stale = now - timestamp > this.config.maxQuoteAgeMs;
     const sessionState = this.detectSessionState(symbol.toUpperCase());
 
     return {
@@ -641,8 +672,13 @@ export class MarketDataModule {
     };
   }
 
-  private normalizeCandle(raw: unknown, symbol: string): CandleData {
+  private normalizeCandle(raw: unknown, symbol: string): CandleData | null {
     const src = asRecord(raw);
+    const ts = pickTimestamp(src, this.clock());
+    if (!ts.ok) {
+      this.recordMalformedQuote(src, `candle-ts=${ts.reason}`);
+      return null;
+    }
     return {
       symbol: symbol.toUpperCase(),
       open: pickNum(src, ['open', 'o']) ?? 0,
@@ -650,7 +686,7 @@ export class MarketDataModule {
       low: pickNum(src, ['low', 'l']) ?? 0,
       close: pickNum(src, ['close', 'c']) ?? 0,
       volume: pickNum(src, ['volume', 'v']) ?? 0,
-      timestamp: pickTimestamp(src),
+      timestamp: ts.ms,
     };
   }
 }
@@ -748,16 +784,29 @@ function pickNum(src: Record<string, unknown>, keys: string[]): number | undefin
   return undefined;
 }
 
-function pickTimestamp(src: Record<string, unknown>): number {
+/**
+ * Parse a timestamp field off a raw payload, returning a discriminated
+ * result so the caller can route malformed cases through
+ * `recordMalformedQuote` with a precise reason key.
+ *
+ * Rejected as malformed:
+ *   - field absent or unparseable                  → reason 'absent'
+ *   - negative timestamp                           → reason 'negative'
+ *   - timestamp > now + FUTURE_TIMESTAMP_GRACE_MS  → reason 'future'
+ */
+function pickTimestamp(src: Record<string, unknown>, now: number): TimestampResult {
   const raw = src.date ?? src.timestamp ?? src.updatedAt ?? src.time ?? src.lastUpdate;
+  let ms: number | null = null;
   if (typeof raw === 'number' && Number.isFinite(raw)) {
-    return raw > 10_000_000_000 ? raw : raw * 1000;
-  }
-  if (typeof raw === 'string' && raw.trim()) {
+    ms = raw > 10_000_000_000 ? raw : raw * 1000;
+  } else if (typeof raw === 'string' && raw.trim()) {
     const parsed = Date.parse(raw);
-    if (Number.isFinite(parsed)) return parsed;
+    if (Number.isFinite(parsed)) ms = parsed;
   }
-  return Date.now();
+  if (ms === null) return { ok: false, reason: 'absent' };
+  if (ms < 0) return { ok: false, reason: 'negative' };
+  if (ms > now + FUTURE_TIMESTAMP_GRACE_MS) return { ok: false, reason: 'future' };
+  return { ok: true, ms };
 }
 
 /**

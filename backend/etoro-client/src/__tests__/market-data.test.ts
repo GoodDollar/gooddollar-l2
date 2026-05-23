@@ -555,6 +555,92 @@ describe('MarketDataModule', () => {
       expect(mod.getStreamFailureCount('ws-parse')).toBe(1);
     });
 
+    it('drops a WS frame with a far-future timestamp (Date.now() + 10y)', () => {
+      const { audit, entries } = recordingAudit();
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      const farFuture = Date.now() + 10 * 365 * 86400_000;
+      mod.handleWsMessage(JSON.stringify({
+        symbol: 'BTC', bid: 100, ask: 101, timestamp: farFuture,
+      }));
+
+      expect(cb).not.toHaveBeenCalled();
+      expect(mod.getCachedQuote('BTC')).toBeUndefined();
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+      const drops = entries.filter((e) => e.action === 'normalizeQuote-malformed');
+      expect(drops).toHaveLength(1);
+      expect(drops[0].error).toMatch(/ts=future/);
+    });
+
+    it('drops a WS frame with a negative timestamp', () => {
+      const { audit, entries } = recordingAudit();
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      mod.handleWsMessage(JSON.stringify({
+        symbol: 'BTC', bid: 100, ask: 101, timestamp: -1,
+      }));
+
+      expect(cb).not.toHaveBeenCalled();
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+      const drops = entries.filter((e) => e.action === 'normalizeQuote-malformed');
+      expect(drops[0].error).toMatch(/ts=negative/);
+    });
+
+    it('accepts a near-future timestamp (+15s) as within grace window', () => {
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, silentDeps);
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      const nearFuture = Date.now() + 15_000;
+      mod.handleWsMessage(JSON.stringify({
+        symbol: 'BTC', bid: 100, ask: 101, timestamp: nearFuture,
+      }));
+
+      expect(cb).toHaveBeenCalledTimes(1);
+      expect(mod.getMalformedQuoteCount()).toBe(0);
+    });
+
+    it('drops a rates record with a far-future date and emits a ts=future audit line', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = makeStubHttp({
+        rates: [toRateRecord({ instrumentID: 'INST_2001', bid: 100, ask: 101, date: Date.now() + 3600_000 })],
+      });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined, resolver: defaultResolver() });
+
+      const result = await mod.getQuotes(['BTC']);
+      expect(result).toEqual([]);
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+      const drops = entries.filter((e) => e.action === 'normalizeQuote-malformed');
+      expect(drops[0].error).toMatch(/ts=future/);
+    });
+
+    it('drops a candle with a far-future timestamp and audits candle-ts=future', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = {
+        get: jest.fn(async () => ({
+          data: { candles: [
+            { open: 1, high: 2, low: 0.5, close: 1.5, volume: 10, timestamp: Date.now() + 10 * 365 * 86400_000 },
+            { open: 1, high: 2, low: 0.5, close: 1.5, volume: 10, timestamp: Date.now() - 3600_000 },
+          ] },
+          status: 200,
+        })),
+      } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined, resolver: defaultResolver() });
+
+      const result = await mod.getCandles('BTC', '1m', 0, 1);
+      expect(result).toHaveLength(1);
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+      const drops = entries.filter((e) => e.action === 'normalizeQuote-malformed');
+      expect(drops[0].error).toMatch(/candle-ts=future/);
+    });
+
     it('getQuotes absorbs a 429 via the injected dispatcher and resolves', async () => {
       let n = 0;
       const get = jest.fn(async () => {
