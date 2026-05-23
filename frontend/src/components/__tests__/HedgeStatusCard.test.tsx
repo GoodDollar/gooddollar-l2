@@ -243,7 +243,13 @@ describe('HedgeStatusCard', () => {
     expect(titleRow).not.toBeNull();
     expect(titleRow!.contains(modeBadge)).toBe(true);
     expect(screen.queryByTestId('hedge-proof-link')).toBeNull();
-    expect(screen.queryByTestId('hedge-header-row2')).toBeNull();
+    // After 0020 lands, row 2 always renders to host the "Updated"
+    // timestamp + auto-refresh hint, but it must NOT contain the
+    // refresh button — that stays anchored in row 1.
+    const row2 = screen.queryByTestId('hedge-header-row2');
+    if (row2) {
+      expect(row2.contains(refreshBtn)).toBe(false);
+    }
   });
 
   it('header places proof link in a separate row-2 metadata block when a proof is present (#0017)', async () => {
