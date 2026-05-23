@@ -5,6 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -144,4 +145,33 @@ export function ProofPanelActionsProvider({ children }: PropsWithChildren) {
  */
 export function useProofPanelActionsContext(): ProofPanelActionsState {
   return useContext(ProofPanelActionsContext) ?? NOOP_STATE
+}
+
+export interface UsePanelRetry {
+  /** True iff this panel's retry is in flight via the cross-panel registry. */
+  busy: boolean
+  /** Bound trigger that calls `retryPanel(key)` and tracks busy state. */
+  fire: () => Promise<void>
+}
+
+/**
+ * Bind a panel's `retry` callback to the cross-panel actions registry.
+ *
+ * Every panel needs the same three-line incantation: register on mount,
+ * unregister on unmount, mirror the central `isRetrying` flag, and
+ * expose a thin `fire` for header buttons. Consolidating it here keeps
+ * the panel components free of registry plumbing.
+ *
+ * Pass a stable callback via `useCallback` — registration runs only
+ * when {@link key} or the callback identity changes.
+ */
+export function usePanelRetry(
+  key: ProofPanelKey,
+  retry: () => Promise<void> | void,
+): UsePanelRetry {
+  const { registerPanelRetry, retryPanel, isRetrying } = useProofPanelActionsContext()
+  useEffect(() => registerPanelRetry(key, retry), [registerPanelRetry, key, retry])
+  const busy = isRetrying(key)
+  const fire = useCallback(() => retryPanel(key), [retryPanel, key])
+  return { busy, fire }
 }

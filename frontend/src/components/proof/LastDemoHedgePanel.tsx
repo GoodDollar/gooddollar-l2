@@ -7,7 +7,7 @@ import { parseRunId } from '@/lib/parseRunId'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
-import { useProofPanelActionsContext } from './ProofPanelActionsProvider'
+import { usePanelRetry } from './ProofPanelActionsProvider'
 import { shortenSourcePath } from './panelHeaderMetaUtils'
 
 // Shared chip family for the LastDemoHedge header row. All status pills
@@ -207,10 +207,7 @@ export function LastDemoHedgePanel({
     }
   }, [load, intervalMs])
 
-  const { registerPanelRetry, retryPanel, isRetrying } = useProofPanelActionsContext()
-  useEffect(() => registerPanelRetry('hedgeProof', load), [registerPanelRetry, load])
-  const busy = isRetrying('hedgeProof')
-  const handleRetry = () => retryPanel('hedgeProof')
+  const { busy, fire: handleRetry } = usePanelRetry('hedgeProof', load)
 
   return (
     <section

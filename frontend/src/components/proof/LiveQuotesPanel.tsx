@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { formatProofUsd } from '@/lib/proofFormat'
 import { sessionPillClass } from './sessionPill'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
-import { useProofPanelActionsContext } from './ProofPanelActionsProvider'
+import { usePanelRetry } from './ProofPanelActionsProvider'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 interface Quote {
@@ -133,9 +133,7 @@ export function LiveQuotesPanel() {
     stalenessThresholdMs,
     retryQuotes,
   } = useProofPipelineAxesContext()
-  const { registerPanelRetry, retryPanel, isRetrying } = useProofPanelActionsContext()
-
-  useEffect(() => registerPanelRetry('quotes', retryQuotes), [registerPanelRetry, retryQuotes])
+  const { busy, fire: handleRetry } = usePanelRetry('quotes', retryQuotes)
 
   const state: FetchState = useMemo(() => {
     if (lastQuotesStatus === 'loading') return { status: 'loading' }
@@ -146,8 +144,6 @@ export function LiveQuotesPanel() {
     return { status: 'ok', data: lastQuotesPayload }
   }, [lastQuotesPayload, lastQuotesStatus])
 
-  const busy = isRetrying('quotes')
-  const handleRetry = () => retryPanel('quotes')
   const quotesUrl = `${priceServiceUrl.replace(/\/$/, '')}/quotes`
 
   return (

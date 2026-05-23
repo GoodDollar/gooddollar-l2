@@ -10,7 +10,7 @@ import { formatProofUsd } from '@/lib/proofFormat'
 import { sessionPillClass } from './sessionPill'
 import { MonoLinkAtom, MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
-import { useProofPanelActionsContext } from './ProofPanelActionsProvider'
+import { usePanelRetry } from './ProofPanelActionsProvider'
 
 const ON_CHAIN_INTERVAL_MS = 30_000
 
@@ -151,10 +151,7 @@ export function OnChainOraclePanel() {
     await refetch()
   }, [refetch])
 
-  const { registerPanelRetry, retryPanel, isRetrying } = useProofPanelActionsContext()
-  useEffect(() => registerPanelRetry('onChain', retry), [registerPanelRetry, retry])
-  const busy = isRetrying('onChain')
-  const handleRetry = () => retryPanel('onChain')
+  const { busy, fire: handleRetry } = usePanelRetry('onChain', retry)
 
   const rows = useMemo<DecodedPriceData[]>(() => {
     if (!data) return []

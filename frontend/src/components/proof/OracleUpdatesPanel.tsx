@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useWatchContractEvent } from 'wagmi'
 import { CONTRACTS } from '@/lib/chain'
 import { PriceOracleABI } from '@/lib/abi'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { RetryButton } from './PanelHeaderControls'
-import { useProofPanelActionsContext } from './ProofPanelActionsProvider'
+import { usePanelRetry } from './ProofPanelActionsProvider'
 import { shortAddress } from './panelHeaderMetaUtils'
 
 interface UpdateEntry {
@@ -92,10 +92,7 @@ export function OracleUpdatesPanel() {
     setSubscriptionEpoch((e) => e + 1)
   }, [])
 
-  const { registerPanelRetry, retryPanel, isRetrying } = useProofPanelActionsContext()
-  useEffect(() => registerPanelRetry('oracleEvents', retry), [registerPanelRetry, retry])
-  const busy = isRetrying('oracleEvents')
-  const handleRetry = () => retryPanel('oracleEvents')
+  const { busy, fire: handleRetry } = usePanelRetry('oracleEvents', retry)
 
   return (
     <section
