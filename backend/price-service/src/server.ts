@@ -406,22 +406,40 @@ export function build404BodySize(): number {
 }
 
 /**
+ * Raw-input shape gate: pre-fold ASCII-only check. Run BEFORE
+ * `.toUpperCase()` so JavaScript's full Unicode case-fold (which
+ * expands `ß → SS`, Latin ligatures → ASCII letters, `ı → I`) cannot
+ * silently rewrite caller input into something the post-fold regex
+ * would accept.
+ *
+ * Once raw is ASCII, `.toUpperCase()` is provably letter-case-only
+ * (1:1 on the ASCII alphabet, locale-insensitive), so the canonical
+ * symbol is exactly what the caller meant — no silent semantic
+ * rewrite, no homoglyph slip-through.
+ */
+const ASCII_TICKER_RAW = /^[A-Za-z0-9._-]{1,16}$/;
+
+/**
  * eToro / standard ticker shape: 1..16 chars of upper-case letters,
  * digits, dot, dash, underscore. Matches every symbol in
  * DEFAULT_CONFIG.symbols (`AAPL`, `TSLA`, ...) and the standard eToro
- * instrument surface (`BRK.B`, `BTC-USD`, `BTC_USD`).
+ * instrument surface (`BRK.B`, `BTC-USD`, `BTC_USD`). Kept as a
+ * defensive assertion below — unreachable from the public surface
+ * once `ASCII_TICKER_RAW` has passed; fires only on a future refactor
+ * that breaks the invariant.
  */
 const VALID_SYMBOL = /^[A-Z0-9._-]{1,16}$/;
 
-function normalizeSymbol(
+export function normalizeSymbol(
   raw: string,
 ): { ok: true; symbol: string } | { ok: false } {
   if (typeof raw !== 'string') return { ok: false };
-  // Pre-uppercase length cap: certain Unicode chars (`ß` → `SS`) grow
-  // when uppercased, so cap the raw input at 32 to bound worst-case
-  // post-uppercase length well below the regex limit.
-  if (raw.length === 0 || raw.length > 32) return { ok: false };
+  if (raw.length === 0 || raw.length > 16) return { ok: false };
+  if (!ASCII_TICKER_RAW.test(raw)) return { ok: false };
   const upper = raw.toUpperCase();
+  // Defensive: `ASCII_TICKER_RAW` already accepted the raw shape, and
+  // `.toUpperCase()` on ASCII letters is provably 1:1. Unreachable in
+  // production; guards against a future refactor that loosens the gate.
   if (!VALID_SYMBOL.test(upper)) return { ok: false };
   return { ok: true, symbol: upper };
 }

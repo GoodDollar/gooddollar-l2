@@ -1,5 +1,5 @@
 import http from 'http';
-import { createServer } from '../server';
+import { createServer, normalizeSymbol } from '../server';
 import { QuoteCache } from '../quote-cache';
 import { DEFAULT_CONFIG, NormalizedQuote, IngestStats, SourceStatus, computeSpread } from '../types';
 import express from 'express';
@@ -489,6 +489,114 @@ describe('REST Server — 404 and 405 envelopes', () => {
     expect(result.body).not.toContain('<!DOCTYPE');
     const body = JSON.parse(result.body) as Record<string, unknown>;
     expect(body.error).toBe('symbol-not-configured');
+  });
+});
+
+describe('normalizeSymbol — non-ASCII inputs rejected pre-fold (task 0029)', () => {
+  const SILENT_REWRITES: ReadonlyArray<{ raw: string; oldFold: string }> = [
+    { raw: '\u00DF', oldFold: 'SS' },      // ß
+    { raw: '\uFB00', oldFold: 'FF' },      // ﬀ
+    { raw: '\uFB01', oldFold: 'FI' },      // ﬁ
+    { raw: '\uFB02', oldFold: 'FL' },      // ﬂ
+    { raw: '\uFB03', oldFold: 'FFI' },     // ﬃ
+    { raw: '\uFB04', oldFold: 'FFL' },     // ﬄ
+    { raw: '\uFB05', oldFold: 'ST' },      // ﬅ
+    { raw: '\uFB06', oldFold: 'ST' },      // ﬆ
+    { raw: '\u0131', oldFold: 'I' },       // ı
+  ];
+
+  for (const { raw, oldFold } of SILENT_REWRITES) {
+    it(`normalizeSymbol(U+${raw.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}) rejects (no fold to "${oldFold}")`, () => {
+      const r = normalizeSymbol(raw);
+      expect(r.ok).toBe(false);
+    });
+  }
+
+  it('ASCII letters, digits, and . - _ still accepted (lowercase → uppercase)', () => {
+    const cases: ReadonlyArray<readonly [string, string]> = [
+      ['aapl', 'AAPL'],
+      ['AAPL', 'AAPL'],
+      ['BRK.B', 'BRK.B'],
+      ['BTC-USD', 'BTC-USD'],
+      ['BTC_USD', 'BTC_USD'],
+      ['A', 'A'],                            // 1-char boundary
+      ['AAAAAAAAAAAAAAAA', 'AAAAAAAAAAAAAAAA'],  // 16-char boundary
+    ];
+    for (const [raw, want] of cases) {
+      const r = normalizeSymbol(raw);
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.symbol).toBe(want);
+    }
+  });
+
+  it('17-char ASCII still rejected (length cap)', () => {
+    expect(normalizeSymbol('AAAAAAAAAAAAAAAAA').ok).toBe(false);
+  });
+
+  it('0-char rejected', () => {
+    expect(normalizeSymbol('').ok).toBe(false);
+  });
+
+  it('non-string inputs rejected', () => {
+    expect(normalizeSymbol(undefined as unknown as string).ok).toBe(false);
+    expect(normalizeSymbol(null as unknown as string).ok).toBe(false);
+    expect(normalizeSymbol(123 as unknown as string).ok).toBe(false);
+  });
+});
+
+describe('GET /quotes/<non-ASCII> returns 400 invalid-symbol (task 0029)', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('GET /quotes/%C3%9F (ß) returns 400 invalid-symbol; body has no "SS"', async () => {
+    const r = await fetch(`${baseUrl}/quotes/%C3%9F`);
+    expect(r.status).toBe(400);
+    const text = await r.text();
+    expect(text).not.toMatch(/"symbol"\s*:\s*"SS"/);
+    const body = JSON.parse(text) as Record<string, unknown>;
+    expect(body.error).toBe('invalid-symbol');
+  });
+
+  it('GET /quotes/%EF%AC%80 (ﬀ) returns 400; body has no "FF" symbol value', async () => {
+    const r = await fetch(`${baseUrl}/quotes/%EF%AC%80`);
+    expect(r.status).toBe(400);
+    const body = (await r.json()) as Record<string, unknown>;
+    expect(body.error).toBe('invalid-symbol');
+    expect(JSON.stringify(body)).not.toMatch(/"symbol"\s*:\s*"FF"/);
+  });
+
+  it('GET /quotes/%C4%B1 (ı) returns 400', async () => {
+    const r = await fetch(`${baseUrl}/quotes/%C4%B1`);
+    expect(r.status).toBe(400);
+    const body = (await r.json()) as Record<string, unknown>;
+    expect(body.error).toBe('invalid-symbol');
+  });
+
+  it('GET /quotes/aapl (pure ASCII lowercase) still resolves to AAPL behaviour (not 400)', async () => {
+    const r = await fetch(`${baseUrl}/quotes/aapl`);
+    expect(r.status).not.toBe(400);
+    if (r.status === 404) {
+      const body = (await r.json()) as Record<string, unknown>;
+      expect(body.symbol).toBe('AAPL');
+    }
   });
 });
 
