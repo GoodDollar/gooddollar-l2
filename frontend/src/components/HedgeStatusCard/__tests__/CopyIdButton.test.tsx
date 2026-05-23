@@ -78,7 +78,7 @@ describe('CopyIdButton', () => {
         fireEvent.click(screen.getByTestId('copy-internal'))
       })
       const pill = await screen.findByText('copied')
-      const status = pill.closest('[role="status"]')
+      const status = pill.closest('output')
       expect(status).not.toBeNull()
       expect(status!.getAttribute('aria-live')).toBe('polite')
 

@@ -122,8 +122,7 @@ export function CopyIdButton({
       >
         {label ?? value}
       </button>
-      <span
-        role="status"
+      <output
         aria-live="polite"
         data-testid={testId ? `${testId}-status` : undefined}
         className={`text-[10px] uppercase tracking-wide ${
@@ -135,7 +134,7 @@ export function CopyIdButton({
         }`}
       >
         {status === 'copied' ? 'copied' : status === 'select-all' ? 'select-all' : ''}
-      </span>
+      </output>
     </span>
   )
 }

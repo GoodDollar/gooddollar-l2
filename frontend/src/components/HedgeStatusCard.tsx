@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -14,8 +15,10 @@ import {
 import { formatExposureDelta } from '@/lib/format-exposure-delta'
 import { formatNotionalUsd } from '@/lib/format-notional'
 import { buildHedgeErrorHeadline, classifyClientError } from '@/lib/hedge-error'
+import { buildDailySeries } from '@/lib/hedge-daily-series'
 import { useIntervalWhileVisible } from '@/lib/useIntervalWhileVisible'
 import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
+import { Sparkline } from './Sparkline'
 import {
   AlertTriangleIcon,
   ArrowPathIcon,
@@ -59,6 +62,12 @@ interface CapSnapshot {
   dailyOrders: number
   cycleOrders: number
   dayKey: string
+  // Optional cap thresholds surfaced by the engine when configured. When
+  // present, the notional + orders stat tiles draw a dashed cap line on
+  // their sparklines and swap the polyline to red when today's value
+  // crosses it (task 0044).
+  dailyNotionalCapUsd?: number
+  dailyOrderCap?: number
 }
 
 interface BreakerState {
@@ -646,6 +655,22 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const renderSource = isStale ? lastGood : data
   const receipts = renderSource?.receipts ?? []
   const cap = renderSource?.capSnapshot ?? null
+  const dailySeries = useMemo(() => buildDailySeries(receipts), [receipts])
+  const hasSeries = dailySeries.coverageDays >= 2
+  const notionalCap = cap?.dailyNotionalCapUsd
+  const ordersCap = cap?.dailyOrderCap
+  const notionalCrossedCap =
+    cap !== null &&
+    Number.isFinite(notionalCap) &&
+    cap.dailyNotionalUsd > (notionalCap as number)
+  const ordersCrossedCap =
+    cap !== null &&
+    Number.isFinite(ordersCap) &&
+    cap.dailyOrders > (ordersCap as number)
+  const partialSeriesSuffix =
+    !hasSeries && receipts.length > 0
+      ? ` · last ${receipts.length} receipts only`
+      : ''
   const mode = resolveMode(data, error)
   const lastReceiptMode = receipts[0]?.mode
   const breaker = data?.breakerState
@@ -841,27 +866,41 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             <Stat
               testId="hedge-notional-stat"
               label="Today's notional"
-              value={cap ? formatNotionalUsd(cap.dailyNotionalUsd) : '—'}
+              value={
+                cap
+                  ? formatNotionalUsd(cap.dailyNotionalUsd)
+                  : '—'
+              }
+              valueColor={notionalCrossedCap ? 'text-red-400' : undefined}
               sub={
                 cap
-                  ? `${cap.dailyOrders} orders${isStale ? ' · stale' : ''}`
+                  ? `${cap.dailyOrders} orders${isStale ? ' · stale' : ''}${partialSeriesSuffix}`
                   : hasSnapshot
                   ? 'no caps'
                   : 'awaiting tick'
               }
+              series={hasSeries ? dailySeries.notional : undefined}
+              capLine={notionalCap}
+              crossedCap={notionalCrossedCap}
+              sparklineTestId="hedge-notional-sparkline"
               stale={isStale}
             />
             <Stat
               testId="hedge-cycle-orders-stat"
               label="Cycle orders"
               value={cap ? `${cap.cycleOrders}` : '—'}
+              valueColor={ordersCrossedCap ? 'text-red-400' : undefined}
               sub={
                 cap
-                  ? `day ${cap.dayKey}${isStale ? ' · stale' : ''}`
+                  ? `day ${cap.dayKey}${isStale ? ' · stale' : ''}${partialSeriesSuffix}`
                   : hasSnapshot
                   ? 'no data'
                   : 'awaiting tick'
               }
+              series={hasSeries ? dailySeries.orders : undefined}
+              capLine={ordersCap}
+              crossedCap={ordersCrossedCap}
+              sparklineTestId="hedge-cycle-orders-sparkline"
               stale={isStale}
             />
             <Stat
@@ -943,18 +982,10 @@ export default HedgeStatusCard
 
 // Memoised so the four stat tiles skip the className build + re-render
 // when their (entirely-primitive) props are unchanged. Default shallow
-// compare is sufficient — every prop is a string/boolean.
-const Stat = memo(function Stat({
-  label,
-  value,
-  sub,
-  color,
-  testId,
-  subColor,
-  subMono,
-  subTestId,
-  stale,
-}: {
+// compare is sufficient — every prop is a string/boolean. The `series`
+// array is passed via `useMemo` from the parent so its reference is
+// stable across renders.
+interface StatProps {
   label: string
   value: string
   sub?: string
@@ -964,7 +995,32 @@ const Stat = memo(function Stat({
   subMono?: boolean
   subTestId?: string
   stale?: boolean
-}) {
+  series?: number[]
+  capLine?: number
+  crossedCap?: boolean
+  sparklineTestId?: string
+  // Renamed from `color` so the legacy prop continues to mean "stat label
+  // color" while a separate, narrower prop can drive the headline value
+  // color independently (red on cap breach, default white otherwise).
+  valueColor?: string
+}
+
+const Stat = memo(function Stat({
+  label,
+  value,
+  sub,
+  color,
+  valueColor,
+  testId,
+  subColor,
+  subMono,
+  subTestId,
+  stale,
+  series,
+  capLine,
+  crossedCap,
+  sparklineTestId,
+}: StatProps) {
   const subClasses = [
     'text-xs',
     subColor ?? 'text-gray-500',
@@ -983,10 +1039,22 @@ const Stat = memo(function Stat({
       <span className="text-xs text-gray-400 uppercase tracking-wide min-h-[2lh] sm:min-h-0">{label}</span>
       <span
         data-testid={testId}
-        className={`text-lg font-bold ${color ?? 'text-white'}`}
+        className={`text-lg font-bold ${valueColor ?? color ?? 'text-white'}`}
       >
         {value}
       </span>
+      {series !== undefined && (
+        <span className="flex items-center h-6 sm:h-7 text-gray-500">
+          <Sparkline
+            data={series}
+            width={80}
+            height={24}
+            capLine={capLine}
+            crossedCap={crossedCap}
+            testId={sparklineTestId}
+          />
+        </span>
+      )}
       {sub && (
         <span data-testid={subTestId} className={subClasses}>
           {sub}

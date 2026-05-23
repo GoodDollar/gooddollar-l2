@@ -248,6 +248,60 @@ describe('HedgeStatusCard', () => {
     expect(empty).toHaveTextContent(/cache miss/i);
   });
 
+  it('renders sparklines on notional + orders tiles when the series has ≥2 days (#0044)', async () => {
+    const dayMs = 86_400_000;
+    const now = Date.now();
+    const recs = [
+      { ...BASE_RESPONSE.receipts[0], id: 'r-old', timestamp: now - dayMs * 3 },
+      { ...BASE_RESPONSE.receipts[0], id: 'r-new', timestamp: now },
+    ];
+    mockFetchOnce({ ...BASE_RESPONSE, receipts: recs });
+    render(<HedgeStatusCard />);
+    await screen.findByTestId('hedge-mode-badge');
+    expect(screen.getByTestId('hedge-notional-sparkline')).toBeInTheDocument();
+    expect(screen.getByTestId('hedge-cycle-orders-sparkline')).toBeInTheDocument();
+    // Receipts visible + Engine tiles must NOT render a sparkline.
+    expect(screen.queryByTestId('hedge-receipts-visible-sparkline')).toBeNull();
+    expect(screen.queryByTestId('hedge-engine-sparkline')).toBeNull();
+  });
+
+  it('skips sparklines and appends "last N receipts only" when coverageDays < 2 (#0044)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    await screen.findByTestId('hedge-mode-badge');
+    expect(screen.queryByTestId('hedge-notional-sparkline')).toBeNull();
+    expect(screen.queryByTestId('hedge-cycle-orders-sparkline')).toBeNull();
+    const notionalTile = screen
+      .getByTestId('hedge-notional-stat')
+      .closest('.bg-dark-50') as HTMLElement;
+    expect(notionalTile.textContent).toMatch(/last 1 receipts only/);
+  });
+
+  it('paints the notional polyline + value red when today crosses the cap (#0044)', async () => {
+    const dayMs = 86_400_000;
+    const now = Date.now();
+    const recs = [
+      { ...BASE_RESPONSE.receipts[0], id: 'r-old', timestamp: now - dayMs * 2 },
+      { ...BASE_RESPONSE.receipts[0], id: 'r-new', timestamp: now },
+    ];
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: recs,
+      capSnapshot: {
+        ...BASE_RESPONSE.capSnapshot,
+        dailyNotionalUsd: 999,
+        dailyNotionalCapUsd: 500,
+      },
+    });
+    render(<HedgeStatusCard />);
+    const sparkline = await screen.findByTestId('hedge-notional-sparkline');
+    const polyline = sparkline.querySelector('polyline');
+    expect(polyline!.getAttribute('stroke')).toBe('#f87171');
+    expect(screen.getByTestId('hedge-notional-stat').className).toMatch(
+      /text-red-400/,
+    );
+  });
+
   it('export toolbar is enabled with receipts and the button does not live inside the empty state (#0042)', async () => {
     mockFetchOnce(BASE_RESPONSE);
     render(<HedgeStatusCard />);
