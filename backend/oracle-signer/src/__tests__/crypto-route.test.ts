@@ -3,8 +3,17 @@
  * - submit is called with (address[], uint256[]) only — no timestamps
  * - missing symbol map disables the crypto rail
  */
-import { OracleSignerService } from '../index';
+import { OracleSignerService, OracleSignerDeps } from '../index';
 import { OracleSignerConfig, NormalizedQuote } from '../types';
+import { AuditLog } from '../audit-log';
+
+class NoopAuditLog extends AuditLog {
+  constructor() { super({ dir: '/tmp/__never__' }); }
+  async append(): Promise<void> { return; }
+}
+function deps(extra: Partial<OracleSignerDeps> = {}): OracleSignerDeps {
+  return { auditLog: new NoopAuditLog(), ...extra };
+}
 
 const WETH = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
 
@@ -77,7 +86,7 @@ describe('crypto route', () => {
   });
 
   it('crypto quote populates crypto buffer, not stocks buffer', () => {
-    const svc = new OracleSignerService(makeConfig());
+    const svc = new OracleSignerService(makeConfig(), deps());
     const ws = (svc as any).wsClient;
     ws._onQuote(makeQuote({ symbol: 'WETH', assetClass: 'crypto' }));
 
@@ -86,7 +95,7 @@ describe('crypto route', () => {
   });
 
   it('tickCrypto calls SwapPriceOracle submitter with (address[], uint256[]) shape only', async () => {
-    const svc = new OracleSignerService(makeConfig());
+    const svc = new OracleSignerService(makeConfig(), deps());
     const ws = (svc as any).wsClient;
     ws._onQuote(makeQuote({ symbol: 'WETH', assetClass: 'crypto', mid: 3500 }));
 
@@ -104,18 +113,18 @@ describe('crypto route', () => {
   });
 
   it('crypto rail is disabled when CRYPTO_SYMBOL_MAP is empty even if SWAP_PRICE_ORACLE_ADDRESS is set', () => {
-    const svc = new OracleSignerService(makeConfig({ cryptoSymbolMap: '' }));
+    const svc = new OracleSignerService(makeConfig({ cryptoSymbolMap: '' }), deps());
     expect(svc.getCryptoBuffer()).toBeNull();
     expect(svc.getCryptoSubmitter()).toBeNull();
   });
 
   it('crypto rail is disabled when SWAP_PRICE_ORACLE_ADDRESS is empty', () => {
-    const svc = new OracleSignerService(makeConfig({ swapPriceOracleAddress: '' }));
+    const svc = new OracleSignerService(makeConfig({ swapPriceOracleAddress: '' }), deps());
     expect(svc.getCryptoBuffer()).toBeNull();
   });
 
   it('stocks rail is disabled when STOCK_ORACLE_V2_ADDRESS is empty', () => {
-    const svc = new OracleSignerService(makeConfig({ oracleAddress: '' }));
+    const svc = new OracleSignerService(makeConfig({ oracleAddress: '' }), deps());
     expect((svc as any).submitter).toBeNull();
     expect((svc as any).buffer).toBeNull();
   });
@@ -123,7 +132,7 @@ describe('crypto route', () => {
   it('with both rails disabled, start() degrades the service without scheduling intervals', async () => {
     const svc = new OracleSignerService(
       makeConfig({ oracleAddress: '', swapPriceOracleAddress: '' }),
-      { getChainId: async () => 31337 },
+      deps({ getChainId: async () => 31337 }),
     );
     await svc.start();
     expect(svc.isRunning).toBe(false);
@@ -134,7 +143,7 @@ describe('crypto route', () => {
   });
 
   it('getStats reports per-rail counters', async () => {
-    const svc = new OracleSignerService(makeConfig());
+    const svc = new OracleSignerService(makeConfig(), deps());
     const ws = (svc as any).wsClient;
 
     ws._onQuote(makeQuote({ symbol: 'WETH', assetClass: 'crypto' }));

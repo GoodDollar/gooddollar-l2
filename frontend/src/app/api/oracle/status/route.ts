@@ -1,3 +1,17 @@
+/**
+ * GET /api/oracle/status
+ *
+ * Merges two upstream feeds into a single status payload for the frontend:
+ *
+ *   - `price-service` `/status/quotes` — per-symbol off-chain freshness data
+ *   - `oracle-signer`  `/proof`        — most-recent on-chain submissions
+ *
+ * Resilience: both fetches use `Promise.allSettled` so a single rail outage
+ * never blocks the other. When at least one upstream succeeds the route
+ * returns 200 with a `degraded: true` flag and the missing sections present
+ * but empty. Only when both upstreams fail do we 503.
+ */
+
 import { NextResponse, type NextRequest } from 'next/server'
 
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
@@ -5,33 +19,98 @@ import { withApiRateLimit } from '@/lib/withApiRateLimit'
 export const runtime = 'nodejs'
 
 const PRICE_SERVICE_URL = process.env.PRICE_SERVICE_URL ?? process.env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? 'http://localhost:9300'
+const ORACLE_SIGNER_URL = process.env.ORACLE_SIGNER_URL ?? 'http://localhost:9107'
 const TIMEOUT_MS = 5000
 
-async function handleGet(_req: NextRequest) {
+type QuoteRow = { symbol: string; lastUpdateMs: number; sessionState: string; confidence: number }
+type ProofTail = {
+  rail: 'stocks' | 'crypto'
+  txHash: string
+  blockNumber: number
+  gasUsed: string
+  symbols: string[]
+  roundTripMs: number
+  submittedAtMs: number
+  mids: Record<string, number>
+}
+type ProofPayload = { generatedAt: number; stocks: ProofTail[]; crypto: ProofTail[] }
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
-    const res = await fetch(`${PRICE_SERVICE_URL}/status/quotes`, {
-      signal: controller.signal,
-      cache: 'no-store',
-    })
-    clearTimeout(timer)
-
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' })
     if (!res.ok) {
-      return NextResponse.json(
-        { error: `Oracle status endpoint returned ${res.status}` },
-        { status: 502 },
-      )
+      throw new Error(`upstream ${url} returned ${res.status}`)
     }
+    return (await res.json()) as T
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
-    const data = await res.json()
-    return NextResponse.json(data)
-  } catch {
+type QuotesPayload = {
+  healthy?: boolean
+  freshCount?: number
+  totalCount?: number
+  quotes?: QuoteRow[]
+  timestamp?: number
+}
+
+const EMPTY_PROOF: ProofPayload = { generatedAt: 0, stocks: [], crypto: [] }
+
+async function handleGet(_req?: NextRequest) {
+  const [quotesRes, proofRes] = await Promise.allSettled([
+    fetchJson<QuotesPayload>(`${PRICE_SERVICE_URL}/status/quotes`),
+    fetchJson<ProofPayload>(`${ORACLE_SIGNER_URL}/proof`),
+  ])
+
+  const quotesOk = quotesRes.status === 'fulfilled'
+  const proofOk = proofRes.status === 'fulfilled'
+
+  if (!quotesOk && !proofOk) {
     return NextResponse.json(
-      { error: 'Oracle status unavailable', healthy: false, freshCount: 0, totalCount: 0, quotes: [], timestamp: Date.now() },
+      {
+        error: 'Oracle status unavailable',
+        healthy: false,
+        freshCount: 0,
+        totalCount: 0,
+        quotes: [],
+        proof: EMPTY_PROOF,
+        degraded: true,
+        timestamp: Date.now(),
+      },
       { status: 503 },
     )
   }
+
+  const quotes = quotesOk ? (quotesRes.value.quotes ?? []) : []
+  const proof = proofOk
+    ? {
+        generatedAt: proofRes.value.generatedAt ?? Date.now(),
+        stocks: Array.isArray(proofRes.value.stocks) ? proofRes.value.stocks : [],
+        crypto: Array.isArray(proofRes.value.crypto) ? proofRes.value.crypto : [],
+      }
+    : EMPTY_PROOF
+
+  const healthy = quotesOk && proofOk && (quotesRes.value.healthy ?? true)
+  const freshCount = quotesOk ? (quotesRes.value.freshCount ?? quotes.length) : 0
+  const totalCount = quotesOk ? (quotesRes.value.totalCount ?? quotes.length) : 0
+
+  return NextResponse.json({
+    healthy,
+    degraded: !healthy,
+    generatedAt: Date.now(),
+    quotes,
+    proof,
+    freshCount,
+    totalCount,
+    timestamp: quotesOk ? (quotesRes.value.timestamp ?? Date.now()) : Date.now(),
+    upstreams: {
+      priceService: quotesOk ? 'ok' : 'down',
+      oracleSigner: proofOk ? 'ok' : 'down',
+    },
+  })
 }
 
 export const GET = withApiRateLimit(handleGet)

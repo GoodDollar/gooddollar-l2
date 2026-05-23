@@ -1,5 +1,15 @@
-import { OracleSignerService } from '../index';
+import { OracleSignerService, OracleSignerDeps } from '../index';
 import { OracleSignerConfig } from '../types';
+import { AuditLog } from '../audit-log';
+
+class NoopAuditLog extends AuditLog {
+  constructor() { super({ dir: '/tmp/__never__' }); }
+  async append(): Promise<void> { return; }
+}
+const noopDeps: OracleSignerDeps = { auditLog: new NoopAuditLog() };
+function withDeps(extra: Partial<OracleSignerDeps> = {}): OracleSignerDeps {
+  return { ...noopDeps, ...extra };
+}
 
 jest.mock('../oracle-submitter', () => {
   return {
@@ -53,7 +63,7 @@ describe('OracleSignerService', () => {
   });
 
   it('starts and stops cleanly', async () => {
-    const service = new OracleSignerService(makeConfig(), { getChainId: ALLOWED_DEVNET });
+    const service = new OracleSignerService(makeConfig(), withDeps({ getChainId: ALLOWED_DEVNET }));
     await service.start();
     expect(service.isRunning).toBe(true);
 
@@ -62,13 +72,13 @@ describe('OracleSignerService', () => {
   });
 
   it('tick returns null when no quotes buffered', async () => {
-    const service = new OracleSignerService(makeConfig(), { getChainId: ALLOWED_DEVNET });
+    const service = new OracleSignerService(makeConfig(), withDeps({ getChainId: ALLOWED_DEVNET }));
     const result = await service.tick();
     expect(result).toBeNull();
   });
 
   it('tick submits buffered quotes', async () => {
-    const service = new OracleSignerService(makeConfig(), { getChainId: ALLOWED_DEVNET });
+    const service = new OracleSignerService(makeConfig(), withDeps({ getChainId: ALLOWED_DEVNET }));
 
     service.getBuffer().update({
       source: 'etoro',
@@ -93,7 +103,7 @@ describe('OracleSignerService', () => {
 
   it('filters symbols not in config', async () => {
     const config = makeConfig({ symbols: ['AAPL'] });
-    const service = new OracleSignerService(config, { getChainId: ALLOWED_DEVNET });
+    const service = new OracleSignerService(config, withDeps({ getChainId: ALLOWED_DEVNET }));
     await service.start();
 
     // Simulate WS quote for a non-configured symbol
@@ -135,7 +145,7 @@ describe('OracleSignerService', () => {
 
   it('accepts all symbols when config list is empty', async () => {
     const config = makeConfig({ symbols: [] });
-    const service = new OracleSignerService(config, { getChainId: ALLOWED_DEVNET });
+    const service = new OracleSignerService(config, withDeps({ getChainId: ALLOWED_DEVNET }));
     await service.start();
 
     const wsClient = (service as any).wsClient;
@@ -166,7 +176,7 @@ describe('OracleSignerService', () => {
     });
 
     it('refuses to start when chain id is not in allowlist', async () => {
-      const service = new OracleSignerService(makeConfig(), { getChainId: async () => 1 });
+      const service = new OracleSignerService(makeConfig(), withDeps({ getChainId: async () => 1 }));
       await service.start();
       expect(service.isRunning).toBe(false);
       expect(service.isRefused).toBe(true);
@@ -176,7 +186,7 @@ describe('OracleSignerService', () => {
     });
 
     it('does not connect WS or schedule interval when refused', async () => {
-      const service = new OracleSignerService(makeConfig(), { getChainId: async () => 1 });
+      const service = new OracleSignerService(makeConfig(), withDeps({ getChainId: async () => 1 }));
       await service.start();
       const wsClient = (service as any).wsClient;
       expect(wsClient.connect).not.toHaveBeenCalled();
@@ -187,7 +197,7 @@ describe('OracleSignerService', () => {
     it('starts normally when chain id matches allowlist override', async () => {
       const service = new OracleSignerService(
         makeConfig({ allowedChainIds: [9999] }),
-        { getChainId: async () => 9999 },
+        withDeps({ getChainId: async () => 9999 }),
       );
       await service.start();
       expect(service.isRunning).toBe(true);
@@ -196,7 +206,7 @@ describe('OracleSignerService', () => {
     });
 
     it('refuses repeatedly: start() is idempotent on refusal', async () => {
-      const service = new OracleSignerService(makeConfig(), { getChainId: async () => 1 });
+      const service = new OracleSignerService(makeConfig(), withDeps({ getChainId: async () => 1 }));
       await service.start();
       await service.start();
       expect(service.isRefused).toBe(true);
@@ -204,9 +214,9 @@ describe('OracleSignerService', () => {
     });
 
     it('marks degraded when getChainId throws (e.g. RPC unreachable)', async () => {
-      const service = new OracleSignerService(makeConfig(), {
+      const service = new OracleSignerService(makeConfig(), withDeps({
         getChainId: async () => { throw new Error('econnrefused'); },
-      });
+      }));
       await service.start();
       expect(service.isRunning).toBe(false);
       expect(service.isRefused).toBe(true);

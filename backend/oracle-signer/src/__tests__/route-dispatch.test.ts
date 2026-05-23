@@ -8,8 +8,17 @@
  *                                   with a warn-once log.
  */
 
-import { OracleSignerService } from '../index';
+import { OracleSignerService, OracleSignerDeps } from '../index';
 import { OracleSignerConfig, NormalizedQuote } from '../types';
+import { AuditLog } from '../audit-log';
+
+class NoopAuditLog extends AuditLog {
+  constructor() { super({ dir: '/tmp/__never__' }); }
+  async append(): Promise<void> { return; }
+}
+function deps(extra: Partial<OracleSignerDeps> = {}): OracleSignerDeps {
+  return { auditLog: new NoopAuditLog(), ...extra };
+}
 
 const WETH = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
 const USDC = '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0';
@@ -77,7 +86,7 @@ function makeConfig(overrides: Partial<OracleSignerConfig> = {}): OracleSignerCo
 
 describe('route dispatch', () => {
   it('equities go to the stocks buffer only', () => {
-    const svc = new OracleSignerService(makeConfig());
+    const svc = new OracleSignerService(makeConfig(), deps());
     const ws = (svc as any).wsClient;
 
     ws._onQuote(makeQuote({ symbol: 'AAPL', assetClass: 'equity' }));
@@ -87,7 +96,7 @@ describe('route dispatch', () => {
   });
 
   it('crypto goes to the crypto buffer only when symbol resolves', () => {
-    const svc = new OracleSignerService(makeConfig());
+    const svc = new OracleSignerService(makeConfig(), deps());
     const ws = (svc as any).wsClient;
 
     ws._onQuote(makeQuote({ symbol: 'WETH', assetClass: 'crypto', mid: 3500 }));
@@ -97,7 +106,7 @@ describe('route dispatch', () => {
   });
 
   it('crypto with unresolvable symbol is dropped (no buffer entry)', () => {
-    const svc = new OracleSignerService(makeConfig());
+    const svc = new OracleSignerService(makeConfig(), deps());
     const ws = (svc as any).wsClient;
 
     ws._onQuote(makeQuote({ symbol: 'FOOBAR', assetClass: 'crypto' }));
@@ -107,7 +116,7 @@ describe('route dispatch', () => {
   });
 
   it('etf / index map to stocks rail', () => {
-    const svc = new OracleSignerService(makeConfig({ symbols: ['SPY', 'QQQ', 'NDX'] }));
+    const svc = new OracleSignerService(makeConfig({ symbols: ['SPY', 'QQQ', 'NDX'] }), deps());
     const ws = (svc as any).wsClient;
 
     ws._onQuote(makeQuote({ symbol: 'SPY', assetClass: 'etf' }));
@@ -118,7 +127,7 @@ describe('route dispatch', () => {
   });
 
   it('unknown assetClass falls back to stocks rail when symbol is in stocks allowlist', () => {
-    const svc = new OracleSignerService(makeConfig({ symbols: ['AAPL'] }));
+    const svc = new OracleSignerService(makeConfig({ symbols: ['AAPL'] }), deps());
     const ws = (svc as any).wsClient;
 
     ws._onQuote(makeQuote({ symbol: 'AAPL', assetClass: undefined }));
@@ -127,7 +136,7 @@ describe('route dispatch', () => {
   });
 
   it('unknown assetClass not in stocks allowlist is dropped', () => {
-    const svc = new OracleSignerService(makeConfig({ symbols: ['AAPL'] }));
+    const svc = new OracleSignerService(makeConfig({ symbols: ['AAPL'] }), deps());
     const ws = (svc as any).wsClient;
 
     ws._onQuote(makeQuote({ symbol: 'XYZ', assetClass: undefined }));
@@ -137,7 +146,7 @@ describe('route dispatch', () => {
   });
 
   it('symbol-not-in-stocks-allowlist filtering still works for equities', () => {
-    const svc = new OracleSignerService(makeConfig({ symbols: ['AAPL'] }));
+    const svc = new OracleSignerService(makeConfig({ symbols: ['AAPL'] }), deps());
     const ws = (svc as any).wsClient;
 
     ws._onQuote(makeQuote({ symbol: 'GOOGL', assetClass: 'equity' }));
@@ -147,7 +156,7 @@ describe('route dispatch', () => {
 
   it('warns once per missing crypto symbol', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const svc = new OracleSignerService(makeConfig());
+    const svc = new OracleSignerService(makeConfig(), deps());
     const ws = (svc as any).wsClient;
 
     ws._onQuote(makeQuote({ symbol: 'NOPE', assetClass: 'crypto' }));

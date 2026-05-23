@@ -36,7 +36,26 @@ symbol map) is configured.
 | `ORACLE_CRYPTO_MIN_DEVIATION` | *(stocks deviation)* | Optional crypto deviation override. |
 | `ORACLE_CRYPTO_SYMBOLS` | *(keys of CRYPTO_SYMBOL_MAP)* | Optional crypto allowlist. |
 | `ORACLE_SIGNER_ALLOWED_CHAIN_IDS` | `31337,1337` | **Devnet allowlist.** Refuses to start when `provider.getNetwork().chainId` is not in this list. Malformed values fall back to the default. |
+| `ORACLE_PROOF_CAPACITY` | `50` | Per-rail in-memory proof ring buffer size. |
+| `ORACLE_AUDIT_LOG_DIR` | `.autobuilder/logs/oracle-signer/` | jsonl audit log directory. Created on first write. |
 | `HEALTH_PORT` / `ORACLE_SIGNER_PORT` | `9107` | Health server port. |
+
+## HTTP endpoints
+
+- `GET /health` — service status (existing).
+- `GET /proof` — most-recent on-chain submissions per rail; the frontend
+  status API consumes this and merges it with price-service freshness data:
+  ```json
+  {
+    "generatedAt": 1716100000000,
+    "stocks": [{
+      "rail": "stocks", "txHash": "0x…", "blockNumber": 123,
+      "gasUsed": "150000", "symbols": ["AAPL"], "roundTripMs": 80,
+      "submittedAtMs": 1716100000000, "mids": { "AAPL": 191.5 }
+    }],
+    "crypto": [/* same shape */]
+  }
+  ```
 
 ## Health and refusal semantics
 

@@ -196,6 +196,7 @@ export class OracleSignerService {
       process.env.SERVICE_HEALTH_STATUS = 'degraded';
       process.env.SERVICE_DISABLED_REASON = this.refusalReason;
       console.warn(`[oracle-signer] ${this.refusalReason} — submission loop disabled, health server stays up`);
+      void this.auditLog.append({ rail: 'stocks', event: 'refused', error: this.refusalReason });
       return;
     }
 
@@ -211,6 +212,7 @@ export class OracleSignerService {
       process.env.SERVICE_HEALTH_STATUS = 'degraded';
       process.env.SERVICE_DISABLED_REASON = this.refusalReason;
       console.warn(`[oracle-signer] ${this.refusalReason} — submission loop disabled, health server stays up`);
+      void this.auditLog.append({ rail: 'stocks', event: 'refused', error: this.refusalReason });
       return;
     }
 
@@ -224,10 +226,12 @@ export class OracleSignerService {
         `Allowed chain ids: [${Array.from(allowed).sort((a, b) => a - b).join(', ')}]. ` +
         `Set ORACLE_SIGNER_ALLOWED_CHAIN_IDS to override (devnet-only).`,
       );
+      void this.auditLog.append({ rail: 'stocks', event: 'refused', error: this.refusalReason, chainId: guard.chainId });
       return;
     }
 
     this.running = true;
+    void this.auditLog.append({ rail: 'stocks', event: 'startup', chainId: guard.chainId });
     this.wsClient.connect();
     console.log(`[oracle-signer] Connected to price service at ${this.config.priceServiceUrl}`);
     console.log(`[oracle-signer] Chain id: ${guard.chainId} (allowlist OK)`);
@@ -371,6 +375,7 @@ export class OracleSignerService {
     if (this.stocksIntervalHandle) { clearInterval(this.stocksIntervalHandle); this.stocksIntervalHandle = null; }
     if (this.cryptoIntervalHandle) { clearInterval(this.cryptoIntervalHandle); this.cryptoIntervalHandle = null; }
     this.wsClient.close();
+    void this.auditLog.append({ rail: 'stocks', event: 'shutdown' });
     console.log(`[oracle-signer] Stopped after ${this.stocksUpdateCount + this.cryptoUpdateCount} updates (stocks=${this.stocksUpdateCount}, crypto=${this.cryptoUpdateCount})`);
   }
 
@@ -451,9 +456,13 @@ async function main(): Promise<void> {
   // port — even if the service cannot start due to missing config (e.g. no
   // ORACLE_SIGNER_KEY). PM2 will not restart-loop the process and the
   // status-aggregator will see "ok" instead of "unreachable".
+  // The proofProvider is bound late via a forwarder ref so the service can be
+  // created after the health server.
+  let proofRef: (() => unknown) | null = null;
   const healthServer = startHealthServer({
     name: 'oracle-signer',
     port: parseInt(process.env.HEALTH_PORT ?? process.env.ORACLE_SIGNER_PORT ?? '9107', 10),
+    proofProvider: () => (proofRef ? proofRef() : { generatedAt: Date.now(), stocks: [], crypto: [] }),
   });
 
   let config: OracleSignerConfig;
@@ -467,6 +476,7 @@ async function main(): Promise<void> {
   }
 
   const service = new OracleSignerService(config);
+  proofRef = () => service.getProofSnapshot();
 
   const shutdown = () => {
     service.stop();
