@@ -23,7 +23,7 @@ describe('SwapWalletActions hint text', () => {
         />
       </TestWrapper>
     )
-    expect(screen.getByText(/fees fund basic income/i)).toBeInTheDocument()
+    expect(screen.getByText(/fees fund universal basic income/i)).toBeInTheDocument()
   })
 
   it('hides hint text when hasAmount is true', () => {
@@ -38,6 +38,6 @@ describe('SwapWalletActions hint text', () => {
         />
       </TestWrapper>
     )
-    expect(screen.queryByText(/fees fund basic income/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/fees fund universal basic income/i)).not.toBeInTheDocument()
   })
 })

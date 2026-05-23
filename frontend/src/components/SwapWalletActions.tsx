@@ -186,7 +186,7 @@ function SwapButton({
             Enter an Amount
           </button>
           <p className="text-xs text-gray-500 text-center mt-3">
-            Try swapping {inputToken.symbol} → {outputToken.symbol} — 0.1% of fees fund basic income for 640K+ people
+            Try swapping {inputToken.symbol} → {outputToken.symbol} — 0.1% of fees fund universal basic income for recipients worldwide
           </p>
         </>
       ) : !canSubmit ? (

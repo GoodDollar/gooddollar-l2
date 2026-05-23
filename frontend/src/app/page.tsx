@@ -3,6 +3,7 @@
 import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import { ProductPills } from '@/components/ProductPills'
+import { HeroImpactLine } from '@/components/HeroImpactLine'
 
 const SwapCard = dynamic(
   () => import('@/components/LandingSwapCard'),
@@ -69,13 +70,7 @@ export default function Home() {
         <p className="text-sm text-gray-400">
           Trade tokenized AAPL, TSLA, NVDA 24/7. Every swap and trade automatically funds universal basic income worldwide.
         </p>
-        <p className="mt-3 text-xs text-gray-500 flex items-center justify-center gap-1.5">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-goodgreen animate-pulse" />
-          <span className="text-goodgreen/80 font-medium">$2.4M</span>
-          already distributed to
-          <span className="text-goodgreen/80 font-medium">640K+</span>
-          people worldwide
-        </p>
+        <HeroImpactLine />
       </div>
 
       <ProductPills />
