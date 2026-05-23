@@ -310,6 +310,11 @@ module.exports = {
         ...BASE_ENV,
         ETORO_MODE: pick('ETORO_MODE', 'mock'),
         ORACLE_SYMBOLS: pick('ORACLE_SYMBOLS', LANE_SYMBOLS_CSV),
+        // Bind ports — must match the status-aggregator probe and the
+        // oracle-signer's PRICE_SERVICE_URL below. price-service reads
+        // both via parseEnvPort() at boot and fails loud on garbage.
+        PRICE_SERVICE_PORT: pick('PRICE_SERVICE_PORT', '9300'),
+        PRICE_SERVICE_WS_PORT: pick('PRICE_SERVICE_WS_PORT', '9301'),
       },
     }),
     app({

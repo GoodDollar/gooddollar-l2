@@ -19,6 +19,42 @@ export {
 export type { BootstrapDeps, BootstrapResult } from './bootstrap';
 export type * from './types';
 
+/**
+ * Parse a TCP port from an env var with loud-fail semantics.
+ *
+ * - Unset / empty → `defaultPort` (operator opted out, use the
+ *   service default unchanged).
+ * - Anything else MUST be a base-10 integer in `1..65535`. Trailing
+ *   whitespace is tolerated (`'9410 '`); embedded non-digits
+ *   (`'9410abc'`) and out-of-range values (`'0'`, `'99999'`,
+ *   `'-1'`) throw with the var name and the valid range, so a
+ *   typo fails loud at boot rather than silently binding the
+ *   default.
+ *
+ * Exported so the unit suite (`__tests__/parse-env-port.test.ts`)
+ * can pin the contract without having to spawn the service.
+ */
+export function parseEnvPort(
+  value: string | undefined,
+  defaultPort: number,
+  name: string,
+): number {
+  if (value === undefined || value === '') return defaultPort;
+  const trimmed = value.trim();
+  const n = Number.parseInt(trimmed, 10);
+  if (
+    !Number.isInteger(n) ||
+    String(n) !== trimmed ||
+    n < 1 ||
+    n > 65535
+  ) {
+    throw new Error(
+      `[price-service] Invalid ${name}="${value}" — must be 1..65535`,
+    );
+  }
+  return n;
+}
+
 export class PriceService {
   readonly cache: QuoteCache;
   readonly broadcaster: WsBroadcaster;
@@ -54,7 +90,18 @@ export class PriceService {
 }
 
 if (require.main === module) {
-  const service = new PriceService();
+  const service = new PriceService({
+    port: parseEnvPort(
+      process.env.PRICE_SERVICE_PORT,
+      DEFAULT_CONFIG.port,
+      'PRICE_SERVICE_PORT',
+    ),
+    wsPort: parseEnvPort(
+      process.env.PRICE_SERVICE_WS_PORT,
+      DEFAULT_CONFIG.wsPort,
+      'PRICE_SERVICE_WS_PORT',
+    ),
+  });
   service.start();
 
   let sourceHandle: EtoroSourceHandle | undefined;
