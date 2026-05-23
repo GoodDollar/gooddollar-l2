@@ -133,6 +133,72 @@ function renderFreshnessText(input: {
   return `Last tick ${tickStr} · last polled ${polledStr}`
 }
 
+// Owns its own 1 s ticker so the parent card does not reconcile every
+// second just to advance the "Last tick Xs ago" copy. Once the inputs
+// are older than 60 s the rendered string only changes once per minute,
+// so we slow the ticker to 30 s to avoid pure-overhead renders.
+const FRESHNESS_STALE_MS = 60_000
+const FRESHNESS_FAST_INTERVAL_MS = 1_000
+const FRESHNESS_SLOW_INTERVAL_MS = 30_000
+
+function FreshnessLabel({
+  lastTickAt,
+  lastPolledAt,
+  pollIntervalMs,
+}: {
+  lastTickAt: number | null
+  lastPolledAt: number | null
+  pollIntervalMs: number
+}) {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const now = Date.now()
+    const tickStale = lastTickAt === null || now - lastTickAt >= FRESHNESS_STALE_MS
+    const polledStale = lastPolledAt === null || now - lastPolledAt >= FRESHNESS_STALE_MS
+    const ms = tickStale && polledStale ? FRESHNESS_SLOW_INTERVAL_MS : FRESHNESS_FAST_INTERVAL_MS
+    const t = setInterval(() => setTick((n) => n + 1), ms)
+    return () => clearInterval(t)
+  }, [lastTickAt, lastPolledAt])
+  return (
+    <span data-testid="hedge-last-success" className="text-gray-500">
+      {renderFreshnessText({ lastTickAt, lastPolledAt, pollIntervalMs })}
+    </span>
+  )
+}
+
+// Owns its own 250 ms countdown ticker. Calls back on expiry so the
+// parent can clear its throttle state and trigger the next fetch.
+function ThrottleCountdown({
+  retryAt,
+  onExpire,
+}: {
+  retryAt: number
+  onExpire: () => void
+}) {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (retryAt - Date.now() <= 0) {
+      onExpire()
+      return
+    }
+    const t = setInterval(() => {
+      if (retryAt - Date.now() <= 0) {
+        clearInterval(t)
+        onExpire()
+        return
+      }
+      setTick((n) => n + 1)
+    }, 250)
+    return () => clearInterval(t)
+  }, [retryAt, onExpire])
+  const remaining = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000))
+  return (
+    <span data-testid="hedge-throttle-countdown" className="font-mono">
+      {remaining}s
+    </span>
+  )
+}
+
 interface ExposureDeltaParts {
   display: string
   deltaSigned: string
@@ -423,7 +489,6 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [throttle, setThrottle] = useState<ThrottleState | null>(null)
-  const [throttleTick, setThrottleTick] = useState(0)
   // `lastPolledAt` updates after every resolved fetch (including error
   // shells that return 200 + `{error, snapshot: null}`). `lastTickAt`
   // only advances when we accept a real snapshot. Tracking them
@@ -432,7 +497,6 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   // data".
   const [lastPolledAt, setLastPolledAt] = useState<number | null>(null)
   const [lastTickAt, setLastTickAt] = useState<number | null>(null)
-  const [nowTick, setNowTick] = useState(0)
 
   // Race-condition guards: many call sites (mount, poll, header button,
   // retry button, imperative refresh) all write to the same state. Without
@@ -516,40 +580,16 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
     }
   }, [fetchOnce])
 
-  // Drives the "Updated Ns ago" copy in the row-2 metadata block. A 1 s
-  // re-render is cheap for a single card and matches the analytics page-
-  // level Refresh control's cadence.
-  useEffect(() => {
-    const t = setInterval(() => setNowTick((n) => n + 1), 1_000)
-    return () => clearInterval(t)
-  }, [])
-
-  // Countdown + auto-retry when throttled. Stores an absolute retryAt so
-  // tab-switch / background-throttling don't drift the countdown.
-  useEffect(() => {
-    if (!throttle) return
-    const tick = () => {
-      const remaining = throttle.retryAt - Date.now()
-      if (remaining <= 0) {
-        setThrottle(null)
-        void fetchOnce()
-        return
-      }
-      setThrottleTick((n) => n + 1)
-    }
-    tick()
-    const t = setInterval(tick, 250)
-    return () => clearInterval(t)
-  }, [throttle, fetchOnce])
-
   useImperativeHandle(ref, () => ({ refresh: () => fetchOnce() }), [fetchOnce])
+
+  const handleThrottleExpire = useCallback(() => {
+    setThrottle(null)
+    void fetchOnce()
+  }, [fetchOnce])
 
   const throttleRemainingSeconds = throttle
     ? Math.max(0, Math.ceil((throttle.retryAt - Date.now()) / 1000))
     : 0
-  // throttleTick / nowTick are read so React re-runs the render on every interval tick.
-  void throttleTick
-  void nowTick
   const isThrottled = throttle !== null
   const fetchBusy = isFetching || isThrottled
 
@@ -622,13 +662,11 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
           data-testid="hedge-header-row2"
           className="mt-2 flex items-center gap-2 flex-wrap text-xs"
         >
-          <span data-testid="hedge-last-success" className="text-gray-500">
-            {renderFreshnessText({
-              lastTickAt,
-              lastPolledAt,
-              pollIntervalMs: POLL_INTERVAL_MS,
-            })}
-          </span>
+          <FreshnessLabel
+            lastTickAt={lastTickAt}
+            lastPolledAt={lastPolledAt}
+            pollIntervalMs={POLL_INTERVAL_MS}
+          />
           {data?.degraded?.proof && (
             <DegradedHint>proof: {data.degraded.proof}</DegradedHint>
           )}
@@ -658,16 +696,14 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         </div>
       </header>
 
-      {isThrottled && (
+      {isThrottled && throttle && (
         <div
           data-testid="hedge-status-throttled"
           className="mb-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-200 flex items-center justify-between gap-3 flex-wrap"
         >
           <div>
             <span className="font-medium">Throttled.</span> Too many requests, retrying in{' '}
-            <span data-testid="hedge-throttle-countdown" className="font-mono">
-              {throttleRemainingSeconds}s
-            </span>
+            <ThrottleCountdown retryAt={throttle.retryAt} onExpire={handleThrottleExpire} />
             .
           </div>
           <button

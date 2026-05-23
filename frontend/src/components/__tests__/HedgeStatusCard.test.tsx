@@ -1248,4 +1248,120 @@ describe('HedgeStatusCard', () => {
       expect(normalizeHedgeError('Hedge engine is unreachable')).toBe('is unreachable');
     });
   });
+
+  describe('leaf-isolated tickers (#0031)', () => {
+    // Snapshots a region's serialised HTML at a moment in time. Any
+    // re-render that touches the region — even a no-op one with
+    // identical attributes — produces the same string, which is the
+    // user-visible invariant we care about for these perf fixes.
+    function htmlSnapshot(el: HTMLElement | null): string {
+      return el ? el.outerHTML : '';
+    }
+
+    it('freshness ticker does not mutate the receipts panel or stat grid', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        mockFetchOnce(BASE_RESPONSE);
+        render(<HedgeStatusCard />);
+        await screen.findByTestId('hedge-mode-badge');
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        const grid = screen.getByTestId('hedge-stat-grid');
+        const receipts = screen.getByTestId('hedge-receipts-reserved');
+        const gridBefore = htmlSnapshot(grid);
+        const receiptsBefore = htmlSnapshot(receipts);
+        await act(async () => {
+          vi.advanceTimersByTime(5_000);
+        });
+        // Stat grid + receipts table must be byte-identical: only the
+        // freshness leaf is allowed to re-render on the 1 s ticker.
+        expect(htmlSnapshot(screen.getByTestId('hedge-stat-grid'))).toBe(gridBefore);
+        expect(htmlSnapshot(screen.getByTestId('hedge-receipts-reserved'))).toBe(
+          receiptsBefore,
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('throttle countdown does not mutate the rest of the card while throttled', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+          new Response(
+            JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 5 }),
+            {
+              status: 429,
+              headers: { 'Content-Type': 'application/json', 'Retry-After': '5' },
+            },
+          ),
+        );
+        render(<HedgeStatusCard />);
+        await screen.findByTestId('hedge-status-throttled');
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        const grid = screen.getByTestId('hedge-stat-grid');
+        const gridBefore = htmlSnapshot(grid);
+        await act(async () => {
+          vi.advanceTimersByTime(1_000);
+        });
+        // 4 throttle ticks elapsed — none should reach the stat grid.
+        expect(htmlSnapshot(screen.getByTestId('hedge-stat-grid'))).toBe(gridBefore);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('throttle countdown calls onExpire and triggers a fresh fetch when the deadline passes', async () => {
+      vi.useFakeTimers();
+      try {
+        const fetchSpy = vi.spyOn(globalThis, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 1 }),
+              {
+                status: 429,
+                headers: { 'Content-Type': 'application/json', 'Retry-After': '1' },
+              },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify(BASE_RESPONSE), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          );
+        render(<HedgeStatusCard />);
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        expect(fetchSpy.mock.calls.length).toBe(1);
+        await act(async () => {
+          vi.advanceTimersByTime(1_200);
+        });
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        expect(fetchSpy.mock.calls.length).toBe(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('freshness rendering is byte-for-byte unchanged: "Last tick Xs ago · auto-refresh 10s"', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const stamp = await screen.findByTestId('hedge-last-success');
+      await waitFor(() => {
+        expect(stamp.textContent ?? '').toMatch(/Last tick\s+\d+s ago\s+·\s+auto-refresh\s+10s/i);
+      });
+    });
+  });
 });
