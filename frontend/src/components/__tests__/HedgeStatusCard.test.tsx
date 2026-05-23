@@ -273,6 +273,75 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  it('refresh button reads "Refresh" with an icon in idle state (#0020)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const btn = await screen.findByTestId('hedge-header-refresh-button');
+    expect(btn).toHaveTextContent(/Refresh/);
+    expect(btn.querySelector('svg')).not.toBeNull();
+  });
+
+  it('refresh button label switches to "Refreshing…" with a spinning icon during fetch (#0020)', async () => {
+    let resolveFn: (value: Response) => void = () => {};
+    const inFlight = new Promise<Response>((resolve) => { resolveFn = resolve; });
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify(BASE_RESPONSE), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }))
+      .mockReturnValueOnce(inFlight);
+    render(<HedgeStatusCard />);
+    const btn = await screen.findByTestId('hedge-header-refresh-button');
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(btn).toHaveTextContent(/Refreshing/);
+    });
+    const svg = btn.querySelector('svg');
+    expect(svg).not.toBeNull();
+    expect(svg!.getAttribute('class') ?? '').toContain('animate-spin');
+    await act(async () => {
+      resolveFn(new Response(JSON.stringify(BASE_RESPONSE), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+      await inFlight;
+    });
+  });
+
+  it('refresh button label switches to "Retry in Ns" when the limiter returns 429 (#0020)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Too many requests', retryAfterSeconds: 5 }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '5' },
+      }),
+    );
+    render(<HedgeStatusCard />);
+    const btn = await screen.findByTestId('hedge-header-refresh-button');
+    await waitFor(() => {
+      expect(btn).toHaveTextContent(/Retry in \d+s/);
+    });
+  });
+
+  it('header surfaces an "auto-refresh" hint with the poll interval in seconds (#0020)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    await screen.findByTestId('hedge-mode-badge');
+    expect(screen.getByText(/auto-refresh 10s/i)).toBeInTheDocument();
+  });
+
+  it('"Updated Ns ago" reads em-dash before any fetch resolves (#0020)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    render(<HedgeStatusCard />);
+    const stamp = await screen.findByTestId('hedge-last-success');
+    expect(stamp.textContent ?? '').toMatch(/Updated\s+—/);
+  });
+
+  it('"Updated Ns ago" populates after a successful fetch (#0020)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    await screen.findByTestId('hedge-mode-badge');
+    const stamp = await screen.findByTestId('hedge-last-success');
+    expect(stamp.textContent ?? '').toMatch(/Updated\s+\d+s ago/);
+  });
+
   it('exposes an imperative refresh() method via ref', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(BASE_RESPONSE), { status: 200, headers: { 'Content-Type': 'application/json' } }),

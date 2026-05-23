@@ -158,6 +158,28 @@ function DegradedHint({ children }: { children: ReactNode }) {
   )
 }
 
+function ArrowPathIcon({ spinning = false }: { spinning?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={spinning ? 'animate-spin' : undefined}
+    >
+      <path d="M3 12a9 9 0 0 1 15.5-6.3L21 8" />
+      <path d="M21 4v4h-4" />
+      <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16" />
+      <path d="M3 20v-4h4" />
+    </svg>
+  )
+}
+
 function CloudOffIcon() {
   return (
     <svg
@@ -327,6 +349,8 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const [error, setError] = useState<string | null>(null)
   const [throttle, setThrottle] = useState<ThrottleState | null>(null)
   const [throttleTick, setThrottleTick] = useState(0)
+  const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null)
+  const [nowTick, setNowTick] = useState(0)
 
   // Race-condition guards: many call sites (mount, poll, header button,
   // retry button, imperative refresh) all write to the same state. Without
@@ -382,6 +406,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         setError(null)
         setData(body)
       }
+      setLastSuccessAt(Date.now())
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       if (gen !== genRef.current) return
