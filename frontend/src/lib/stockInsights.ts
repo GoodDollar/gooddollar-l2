@@ -3,6 +3,7 @@ export interface AnalystOutlook {
   targetLow: number
   targetMean: number
   targetHigh: number
+  /** ISO timestamp for the underlying snapshot — formatted on render. */
   asOf: string
   analystCount: number
   ratingDistribution: {
@@ -11,7 +12,15 @@ export interface AnalystOutlook {
     sell: number
   }
   revisionTrend: 'Up' | 'Flat' | 'Down'
-  source: string
+  /**
+   * Discriminator. Only `'street'` is treated as a real Street consensus
+   * by `AnalystOutlookCard`; anything else (incl. `'sample'` or
+   * undefined) collapses to a `Source: feed pending` empty state.
+   * Task 0029.
+   */
+  source?: 'street' | 'sample'
+  /** Optional ms timestamp of the underlying feed read. */
+  updatedAtMs?: number
 }
 
 export interface StockNewsItem {
@@ -24,99 +33,17 @@ export interface StockNewsItem {
   url: string
 }
 
-const ANALYST_OUTLOOK_BY_TICKER: Record<string, AnalystOutlook> = {
-  AAPL: {
-    consensus: 'Bullish',
-    targetLow: 196,
-    targetMean: 224,
-    targetHigh: 248,
-    asOf: 'May 2026',
-    analystCount: 37,
-    ratingDistribution: { buy: 73, hold: 24, sell: 3 },
-    revisionTrend: 'Up',
-    source: 'Street consensus aggregate',
-  },
-  MSFT: {
-    consensus: 'Bullish',
-    targetLow: 418,
-    targetMean: 451,
-    targetHigh: 486,
-    asOf: 'May 2026',
-    analystCount: 34,
-    ratingDistribution: { buy: 76, hold: 21, sell: 3 },
-    revisionTrend: 'Up',
-    source: 'Street consensus aggregate',
-  },
-  NVDA: {
-    consensus: 'Bullish',
-    targetLow: 98,
-    targetMean: 117,
-    targetHigh: 138,
-    asOf: 'May 2026',
-    analystCount: 41,
-    ratingDistribution: { buy: 79, hold: 18, sell: 3 },
-    revisionTrend: 'Up',
-    source: 'Street consensus aggregate',
-  },
-  AMZN: {
-    consensus: 'Bullish',
-    targetLow: 176,
-    targetMean: 204,
-    targetHigh: 226,
-    asOf: 'May 2026',
-    analystCount: 45,
-    ratingDistribution: { buy: 71, hold: 25, sell: 4 },
-    revisionTrend: 'Up',
-    source: 'Street consensus aggregate',
-  },
-  GOOGL: {
-    consensus: 'Bullish',
-    targetLow: 154,
-    targetMean: 176,
-    targetHigh: 198,
-    asOf: 'May 2026',
-    analystCount: 38,
-    ratingDistribution: { buy: 69, hold: 27, sell: 4 },
-    revisionTrend: 'Flat',
-    source: 'Street consensus aggregate',
-  },
-  META: {
-    consensus: 'Neutral',
-    targetLow: 545,
-    targetMean: 588,
-    targetHigh: 633,
-    asOf: 'May 2026',
-    analystCount: 32,
-    ratingDistribution: { buy: 53, hold: 39, sell: 8 },
-    revisionTrend: 'Flat',
-    source: 'Street consensus aggregate',
-  },
-  TSLA: {
-    consensus: 'Neutral',
-    targetLow: 231,
-    targetMean: 278,
-    targetHigh: 338,
-    asOf: 'May 2026',
-    analystCount: 30,
-    ratingDistribution: { buy: 46, hold: 40, sell: 14 },
-    revisionTrend: 'Down',
-    source: 'Street consensus aggregate',
-  },
-  AMD: {
-    consensus: 'Neutral',
-    targetLow: 92,
-    targetMean: 110,
-    targetHigh: 136,
-    asOf: 'May 2026',
-    analystCount: 29,
-    ratingDistribution: { buy: 48, hold: 42, sell: 10 },
-    revisionTrend: 'Flat',
-    source: 'Street consensus aggregate',
-  },
-}
-
-export function getAnalystOutlook(ticker: string): AnalystOutlook | null {
-  return ANALYST_OUTLOOK_BY_TICKER[ticker] ?? null
+/**
+ * Returns the latest analyst consensus for a ticker, or `null` when no
+ * real adapter is wired. Task 0029 removed the hardcoded
+ * `ANALYST_OUTLOOK_BY_TICKER` table — the ticker page now surfaces a
+ * `Source: feed pending` empty state via `AnalystOutlookCard` until a
+ * real Street-consensus adapter is added. Future implementations should
+ * return `{ ..., source: 'street', updatedAtMs }`; only the `'street'`
+ * discriminant unlocks the full rendering path.
+ */
+export function getAnalystOutlook(_ticker: string): AnalystOutlook | null {
+  return null
 }
 
 export function calcUpsidePercent(currentPrice: number, targetMean: number): number {
