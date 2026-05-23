@@ -6,6 +6,38 @@ import { type ExposureSnapshot, type HedgeProof, isNoOpProof } from '@/lib/hedge
 import { parseRunId } from '@/lib/parseRunId'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 
+// Shared chip family for the LastDemoHedge header row. All status pills
+// (side, threshold, dry-run flag, real-trading flag) render through this
+// helper so they share padding, weight, casing, and baseline. The helper
+// stays local to this file until a second panel needs it; see #0040.
+type StatusTone = 'neutral' | 'buy' | 'sell' | 'accent' | 'safe'
+
+const STATUS_PILL_BASE =
+  'rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-wider'
+
+const STATUS_PILL_TONE: Record<StatusTone, string> = {
+  neutral: 'bg-white/10 text-gray-200',
+  buy: 'bg-green-500/10 text-green-300',
+  sell: 'bg-red-500/10 text-red-300',
+  accent: 'bg-accent/10 text-accent',
+  safe: 'bg-green-500/10 text-green-300',
+}
+
+function StatusPill({ tone, children }: { tone: StatusTone; children: ReactNode }) {
+  return <span className={`${STATUS_PILL_BASE} ${STATUS_PILL_TONE[tone]}`}>{children}</span>
+}
+
+function SymbolLabel({ symbol, notionalUsd }: { symbol: string; notionalUsd?: number }) {
+  return (
+    <span className="inline-flex items-baseline gap-2">
+      <span className="text-sm font-semibold text-white">{symbol}</span>
+      {notionalUsd !== undefined && (
+        <span className="font-mono text-sm text-gray-100">{formatUsd(notionalUsd)}</span>
+      )}
+    </span>
+  )
+}
+
 interface ProofEnvelope {
   proof: HedgeProof
   source: string
@@ -217,23 +249,14 @@ function ProofCard({ proof, source }: { proof: HedgeProof; source: string }) {
 }
 
 function HedgeCard({ proof, source }: { proof: HedgeProof; source: string }) {
-  const sideColor = proof.side === 'buy' ? 'text-green-300' : 'text-red-300'
-  const sideBg = proof.side === 'buy' ? 'bg-green-500/10' : 'bg-red-500/10'
   return (
     <div className="space-y-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${sideBg} ${sideColor}`}>
-          {proof.side}
-        </span>
-        <span className="text-base font-semibold text-white">{proof.symbol}</span>
-        <span className="font-mono text-base text-gray-100">{formatUsd(proof.notionalUsd)}</span>
-        {proof.dryRun && (
-          <span className="rounded-md bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">DRY-RUN</span>
-        )}
+        <StatusPill tone={proof.side === 'buy' ? 'buy' : 'sell'}>{proof.side}</StatusPill>
+        <SymbolLabel symbol={proof.symbol} notionalUsd={proof.notionalUsd} />
+        {proof.dryRun && <StatusPill tone="accent">DRY-RUN</StatusPill>}
         {!proof.realTradingEnabled && (
-          <span className="rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-300">
-            real trading: false
-          </span>
+          <StatusPill tone="safe">real trading: false</StatusPill>
         )}
       </div>
 
@@ -260,17 +283,11 @@ function NoOpCard({ proof, source }: { proof: HedgeProof; source: string }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-gray-200">
-          Below-threshold tick
-        </span>
-        <span className="text-base font-semibold text-white">{proof.symbol}</span>
-        {proof.dryRun && (
-          <span className="rounded-md bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">DRY-RUN</span>
-        )}
+        <StatusPill tone="neutral">Below-threshold tick</StatusPill>
+        <SymbolLabel symbol={proof.symbol} />
+        {proof.dryRun && <StatusPill tone="accent">DRY-RUN</StatusPill>}
         {!proof.realTradingEnabled && (
-          <span className="rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-300">
-            real trading: false
-          </span>
+          <StatusPill tone="safe">real trading: false</StatusPill>
         )}
       </div>
 

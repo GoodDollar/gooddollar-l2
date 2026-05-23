@@ -220,6 +220,69 @@ describe('LastDemoHedgePanel', () => {
     expect(screen.queryByText(/Below-threshold tick/i)).not.toBeInTheDocument()
   })
 
+  // #0040 — uniform chip family on the LastDemoHedge header row.
+  it('NoOpCard chip-row: below-threshold, DRY-RUN, real trading: false share the StatusPill base classes', async () => {
+    mockFetchOk(envelope(PROOF_NO_OP))
+    render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+    const threshold = await screen.findByText(/Below-threshold tick/i)
+    const dryRun = screen.getByText(/^DRY-RUN$/)
+    const noLive = screen.getByText(/real trading: false/i)
+
+    for (const chip of [threshold, dryRun, noLive]) {
+      const cls = chip.className
+      expect(cls).toMatch(/\bpx-2\b/)
+      expect(cls).toMatch(/\bpy-0\.5\b/)
+      expect(cls).toMatch(/\btext-xs\b/)
+      expect(cls).toMatch(/\bfont-semibold\b/)
+      expect(cls).toMatch(/\buppercase\b/)
+      expect(cls).toMatch(/\btracking-wider\b/)
+      expect(cls).toMatch(/\brounded-md\b/)
+      // Guard against the old oversized variant.
+      expect(cls).not.toMatch(/\bpx-2\.5\b/)
+      expect(cls).not.toMatch(/\bpy-1\b/)
+      expect(cls).not.toMatch(/\bfont-medium\b/)
+    }
+  })
+
+  it('HedgeCard chip-row: side, DRY-RUN, real trading: false share the StatusPill base classes and tone', async () => {
+    mockFetchOk(envelope(PROOF_DRY_RUN))
+    render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+    const side = await screen.findByText(/^buy$/i)
+    const dryRun = screen.getByText(/^DRY-RUN$/)
+    const noLive = screen.getByText(/real trading: false/i)
+
+    for (const chip of [side, dryRun, noLive]) {
+      const cls = chip.className
+      expect(cls).toMatch(/\bpx-2\b/)
+      expect(cls).toMatch(/\bpy-0\.5\b/)
+      expect(cls).toMatch(/\btext-xs\b/)
+      expect(cls).toMatch(/\bfont-semibold\b/)
+      expect(cls).toMatch(/\buppercase\b/)
+      expect(cls).toMatch(/\btracking-wider\b/)
+      expect(cls).toMatch(/\brounded-md\b/)
+      expect(cls).not.toMatch(/\bpx-2\.5\b/)
+      expect(cls).not.toMatch(/\bpy-1\b/)
+      expect(cls).not.toMatch(/\bfont-medium\b/)
+    }
+
+    expect(side.className).toMatch(/bg-green-500\/10/)
+    expect(side.className).toMatch(/text-green-300/)
+  })
+
+  it('SymbolLabel: symbol sits on a shared baseline at text-sm (not text-base) so it does not break the chip row', async () => {
+    mockFetchOk(envelope(PROOF_NO_OP))
+    render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+    const symbol = await screen.findByText('AAPL')
+    expect(symbol.className).toMatch(/\btext-sm\b/)
+    expect(symbol.className).not.toMatch(/\btext-base\b/)
+    const parent = symbol.parentElement as HTMLElement
+    expect(parent).not.toBeNull()
+    expect(parent.className).toMatch(/\bitems-baseline\b/)
+  })
+
   it('renders the missing-proof state on a 404', async () => {
     globalThis.fetch = vi.fn(() =>
       Promise.resolve({

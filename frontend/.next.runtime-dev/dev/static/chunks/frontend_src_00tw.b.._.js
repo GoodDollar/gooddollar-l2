@@ -104,6 +104,53 @@ var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.sign
 ;
 ;
 ;
+const STATUS_PILL_BASE = 'rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-wider';
+const STATUS_PILL_TONE = {
+    neutral: 'bg-white/10 text-gray-200',
+    buy: 'bg-green-500/10 text-green-300',
+    sell: 'bg-red-500/10 text-red-300',
+    accent: 'bg-accent/10 text-accent',
+    safe: 'bg-green-500/10 text-green-300'
+};
+function StatusPill({ tone, children }) {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+        className: `${STATUS_PILL_BASE} ${STATUS_PILL_TONE[tone]}`,
+        children: children
+    }, void 0, false, {
+        fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
+        lineNumber: 27,
+        columnNumber: 10
+    }, this);
+}
+_c = StatusPill;
+function SymbolLabel({ symbol, notionalUsd }) {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+        className: "inline-flex items-baseline gap-2",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                className: "text-sm font-semibold text-white",
+                children: symbol
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
+                lineNumber: 33,
+                columnNumber: 7
+            }, this),
+            notionalUsd !== undefined && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                className: "font-mono text-sm text-gray-100",
+                children: formatUsd(notionalUsd)
+            }, void 0, false, {
+                fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
+                lineNumber: 35,
+                columnNumber: 9
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
+        lineNumber: 32,
+        columnNumber: 5
+    }, this);
+}
+_c1 = SymbolLabel;
 const SHAPE_MISMATCH = 'SHAPE_MISMATCH';
 function isExposure(v) {
     if (typeof v !== 'object' || v === null) return false;
@@ -173,7 +220,7 @@ function RelativeTimestamp({ ms }) {
             children: "—"
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-            lineNumber: 104,
+            lineNumber: 136,
             columnNumber: 12
         }, this);
     }
@@ -198,18 +245,18 @@ function RelativeTimestamp({ ms }) {
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 116,
+                lineNumber: 148,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 110,
+        lineNumber: 142,
         columnNumber: 5
     }, this);
 }
 _s(RelativeTimestamp, "/BsGHtAT6SHgLOdnp4Vgh6P3EWk=");
-_c = RelativeTimestamp;
+_c2 = RelativeTimestamp;
 function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs = 15_000 }) {
     _s1();
     const [state, setState] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
@@ -286,7 +333,7 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                         children: "Last Demo Hedge"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 174,
+                        lineNumber: 206,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -294,13 +341,13 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                         children: state.status === 'ok' ? state.data.proof.dryRun ? 'dry-run' : 'demo trade' : '—'
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 177,
+                        lineNumber: 209,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 173,
+                lineNumber: 205,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -312,7 +359,7 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                         "aria-label": "Loading hedge proof"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 184,
+                        lineNumber: 216,
                         columnNumber: 9
                     }, this),
                     state.status === 'missing' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -323,7 +370,7 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                 children: "No proof yet."
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 189,
+                                lineNumber: 221,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -335,7 +382,7 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                         children: "npm run hedge:demo -- --dry-run"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                        lineNumber: 191,
+                                        lineNumber: 223,
                                         columnNumber: 17
                                     }, this),
                                     " in",
@@ -344,20 +391,20 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                         children: " backend/hedge-engine"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                        lineNumber: 192,
+                                        lineNumber: 224,
                                         columnNumber: 13
                                     }, this),
                                     " to generate one."
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 190,
+                                lineNumber: 222,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 188,
+                        lineNumber: 220,
                         columnNumber: 9
                     }, this),
                     state.status === 'error' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -368,7 +415,7 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                 children: "Hedge proof unavailable"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 199,
+                                lineNumber: 231,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -376,13 +423,13 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                                 children: state.message
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 200,
+                                lineNumber: 232,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 198,
+                        lineNumber: 230,
                         columnNumber: 9
                     }, this),
                     state.status === 'ok' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ProofCard, {
@@ -390,24 +437,24 @@ function LastDemoHedgePanel({ endpoint = '/api/hedge-proof/latest', intervalMs =
                         source: state.data.source
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 205,
+                        lineNumber: 237,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 182,
+                lineNumber: 214,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 168,
+        lineNumber: 200,
         columnNumber: 5
     }, this);
 }
 _s1(LastDemoHedgePanel, "89uoRRnsEk3s2dQRu70t7khov70=");
-_c1 = LastDemoHedgePanel;
+_c3 = LastDemoHedgePanel;
 function ProofCard({ proof, source }) {
     if ((0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$hedgeProof$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["isNoOpProof"])(proof)) {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NoOpCard, {
@@ -415,7 +462,7 @@ function ProofCard({ proof, source }) {
             source: source
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-            lineNumber: 214,
+            lineNumber: 246,
             columnNumber: 12
         }, this);
     }
@@ -424,71 +471,61 @@ function ProofCard({ proof, source }) {
         source: source
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 216,
+        lineNumber: 248,
         columnNumber: 10
     }, this);
 }
-_c2 = ProofCard;
+_c4 = ProofCard;
 function HedgeCard({ proof, source }) {
-    const sideColor = proof.side === 'buy' ? 'text-green-300' : 'text-red-300';
-    const sideBg = proof.side === 'buy' ? 'bg-green-500/10' : 'bg-red-500/10';
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "space-y-3 text-sm",
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "flex flex-wrap items-center gap-2",
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: `rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${sideBg} ${sideColor}`,
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
+                        tone: proof.side === 'buy' ? 'buy' : 'sell',
                         children: proof.side
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 225,
+                        lineNumber: 255,
                         columnNumber: 9
                     }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "text-base font-semibold text-white",
-                        children: proof.symbol
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SymbolLabel, {
+                        symbol: proof.symbol,
+                        notionalUsd: proof.notionalUsd
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 228,
+                        lineNumber: 256,
                         columnNumber: 9
                     }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "font-mono text-base text-gray-100",
-                        children: formatUsd(proof.notionalUsd)
-                    }, void 0, false, {
-                        fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 229,
-                        columnNumber: 9
-                    }, this),
-                    proof.dryRun && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "rounded-md bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent",
+                    proof.dryRun && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
+                        tone: "accent",
                         children: "DRY-RUN"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 231,
-                        columnNumber: 11
+                        lineNumber: 257,
+                        columnNumber: 26
                     }, this),
-                    !proof.realTradingEnabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-300",
+                    !proof.realTradingEnabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
+                        tone: "safe",
                         children: "real trading: false"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 234,
+                        lineNumber: 259,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 224,
+                lineNumber: 254,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ProofMeta, {
                 proof: proof
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 240,
+                lineNumber: 263,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -499,7 +536,7 @@ function HedgeCard({ proof, source }) {
                         children: "netDelta (before → after)"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 243,
+                        lineNumber: 266,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -510,7 +547,7 @@ function HedgeCard({ proof, source }) {
                                 children: formatUsd(proof.beforeExposure.netDelta)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 245,
+                                lineNumber: 268,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -518,7 +555,7 @@ function HedgeCard({ proof, source }) {
                                 children: "→"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 246,
+                                lineNumber: 269,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -526,13 +563,13 @@ function HedgeCard({ proof, source }) {
                                 children: formatUsd(proof.afterExposure.netDelta)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                                lineNumber: 247,
+                                lineNumber: 270,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 244,
+                        lineNumber: 267,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -545,30 +582,30 @@ function HedgeCard({ proof, source }) {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 249,
+                        lineNumber: 272,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 242,
+                lineNumber: 265,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SourceFooter, {
                 source: source
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 254,
+                lineNumber: 277,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 223,
+        lineNumber: 253,
         columnNumber: 5
     }, this);
 }
-_c3 = HedgeCard;
+_c5 = HedgeCard;
 function NoOpCard({ proof, source }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "space-y-3 text-sm",
@@ -576,42 +613,41 @@ function NoOpCard({ proof, source }) {
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "flex flex-wrap items-center gap-2",
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-gray-200",
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
+                        tone: "neutral",
                         children: "Below-threshold tick"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 263,
+                        lineNumber: 286,
                         columnNumber: 9
                     }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "text-base font-semibold text-white",
-                        children: proof.symbol
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SymbolLabel, {
+                        symbol: proof.symbol
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 266,
+                        lineNumber: 287,
                         columnNumber: 9
                     }, this),
-                    proof.dryRun && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "rounded-md bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent",
+                    proof.dryRun && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
+                        tone: "accent",
                         children: "DRY-RUN"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 268,
-                        columnNumber: 11
+                        lineNumber: 288,
+                        columnNumber: 26
                     }, this),
-                    !proof.realTradingEnabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-300",
+                    !proof.realTradingEnabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatusPill, {
+                        tone: "safe",
                         children: "real trading: false"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 271,
+                        lineNumber: 290,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 262,
+                lineNumber: 285,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -619,14 +655,14 @@ function NoOpCard({ proof, source }) {
                 children: "No hedge needed — exposure stayed inside the configured threshold; the engine still recorded a proof so the pipeline is observable."
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 277,
+                lineNumber: 294,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ProofMeta, {
                 proof: proof
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 282,
+                lineNumber: 299,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -639,7 +675,7 @@ function NoOpCard({ proof, source }) {
                         children: formatUsd(proof.beforeExposure.netDelta)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                        lineNumber: 286,
+                        lineNumber: 303,
                         columnNumber: 9
                     }, this),
                     ' ',
@@ -648,24 +684,24 @@ function NoOpCard({ proof, source }) {
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 284,
+                lineNumber: 301,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SourceFooter, {
                 source: source
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 290,
+                lineNumber: 307,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 261,
+        lineNumber: 284,
         columnNumber: 5
     }, this);
 }
-_c4 = NoOpCard;
+_c6 = NoOpCard;
 function ProofMeta({ proof }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("dl", {
         className: "grid grid-cols-1 gap-2 text-xs sm:grid-cols-2",
@@ -676,7 +712,7 @@ function ProofMeta({ proof }) {
                 mono: true
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 298,
+                lineNumber: 315,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(FieldNode, {
@@ -685,12 +721,12 @@ function ProofMeta({ proof }) {
                     raw: proof.runId
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                    lineNumber: 300,
+                    lineNumber: 317,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 299,
+                lineNumber: 316,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(FieldNode, {
@@ -699,12 +735,12 @@ function ProofMeta({ proof }) {
                     ms: proof.timestamp
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                    lineNumber: 303,
+                    lineNumber: 320,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 302,
+                lineNumber: 319,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Field, {
@@ -712,17 +748,17 @@ function ProofMeta({ proof }) {
                 value: proof.etoroMode
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 305,
+                lineNumber: 322,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 297,
+        lineNumber: 314,
         columnNumber: 5
     }, this);
 }
-_c5 = ProofMeta;
+_c7 = ProofMeta;
 function RunIdValue({ raw }) {
     const parsed = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$parseRunId$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["parseRunId"])(raw);
     if (parsed === null) {
@@ -733,7 +769,7 @@ function RunIdValue({ raw }) {
             children: raw
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-            lineNumber: 314,
+            lineNumber: 331,
             columnNumber: 7
         }, this);
     }
@@ -748,7 +784,7 @@ function RunIdValue({ raw }) {
                 children: wallclock
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 326,
+                lineNumber: 343,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -757,7 +793,7 @@ function RunIdValue({ raw }) {
                 children: "·"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 327,
+                lineNumber: 344,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -765,24 +801,24 @@ function RunIdValue({ raw }) {
                 children: parsed.tag
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 328,
+                lineNumber: 345,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(CopyRunIdButton, {
                 raw: raw
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 329,
+                lineNumber: 346,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 321,
+        lineNumber: 338,
         columnNumber: 5
     }, this);
 }
-_c6 = RunIdValue;
+_c8 = RunIdValue;
 function CopyRunIdButton({ raw }) {
     _s2();
     const [copied, setCopied] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
@@ -805,12 +841,12 @@ function CopyRunIdButton({ raw }) {
         children: copied ? 'copied' : 'copy'
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 350,
+        lineNumber: 367,
         columnNumber: 5
     }, this);
 }
 _s2(CopyRunIdButton, "NE86rL3vg4NVcTTWDavsT0hUBJs=");
-_c7 = CopyRunIdButton;
+_c9 = CopyRunIdButton;
 function SourceFooter({ source }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "text-[10px] text-gray-600 break-all",
@@ -820,17 +856,17 @@ function SourceFooter({ source }) {
                 children: source
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 364,
+                lineNumber: 381,
                 columnNumber: 66
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 364,
+        lineNumber: 381,
         columnNumber: 5
     }, this);
 }
-_c8 = SourceFooter;
+_c10 = SourceFooter;
 function Field({ label, value, mono = false }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         children: [
@@ -839,7 +875,7 @@ function Field({ label, value, mono = false }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 371,
+                lineNumber: 388,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -847,17 +883,17 @@ function Field({ label, value, mono = false }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 372,
+                lineNumber: 389,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 370,
+        lineNumber: 387,
         columnNumber: 5
     }, this);
 }
-_c9 = Field;
+_c11 = Field;
 function FieldNode({ label, children }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         children: [
@@ -866,7 +902,7 @@ function FieldNode({ label, children }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 380,
+                lineNumber: 397,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -874,29 +910,31 @@ function FieldNode({ label, children }) {
                 children: children
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-                lineNumber: 381,
+                lineNumber: 398,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LastDemoHedgePanel.tsx",
-        lineNumber: 379,
+        lineNumber: 396,
         columnNumber: 5
     }, this);
 }
-_c10 = FieldNode;
-var _c, _c1, _c2, _c3, _c4, _c5, _c6, _c7, _c8, _c9, _c10;
-__turbopack_context__.k.register(_c, "RelativeTimestamp");
-__turbopack_context__.k.register(_c1, "LastDemoHedgePanel");
-__turbopack_context__.k.register(_c2, "ProofCard");
-__turbopack_context__.k.register(_c3, "HedgeCard");
-__turbopack_context__.k.register(_c4, "NoOpCard");
-__turbopack_context__.k.register(_c5, "ProofMeta");
-__turbopack_context__.k.register(_c6, "RunIdValue");
-__turbopack_context__.k.register(_c7, "CopyRunIdButton");
-__turbopack_context__.k.register(_c8, "SourceFooter");
-__turbopack_context__.k.register(_c9, "Field");
-__turbopack_context__.k.register(_c10, "FieldNode");
+_c12 = FieldNode;
+var _c, _c1, _c2, _c3, _c4, _c5, _c6, _c7, _c8, _c9, _c10, _c11, _c12;
+__turbopack_context__.k.register(_c, "StatusPill");
+__turbopack_context__.k.register(_c1, "SymbolLabel");
+__turbopack_context__.k.register(_c2, "RelativeTimestamp");
+__turbopack_context__.k.register(_c3, "LastDemoHedgePanel");
+__turbopack_context__.k.register(_c4, "ProofCard");
+__turbopack_context__.k.register(_c5, "HedgeCard");
+__turbopack_context__.k.register(_c6, "NoOpCard");
+__turbopack_context__.k.register(_c7, "ProofMeta");
+__turbopack_context__.k.register(_c8, "RunIdValue");
+__turbopack_context__.k.register(_c9, "CopyRunIdButton");
+__turbopack_context__.k.register(_c10, "SourceFooter");
+__turbopack_context__.k.register(_c11, "Field");
+__turbopack_context__.k.register(_c12, "FieldNode");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
