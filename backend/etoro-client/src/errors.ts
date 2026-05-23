@@ -114,14 +114,16 @@ export class RealTradingDisabledError extends Error {
  * cumulative-day notional cap. The cap-enforcer audits the attempt and
  * never lets the request reach the HTTP layer.
  */
+export type DemoCapKind = 'per-order' | 'daily' | 'reference-drift';
+
 export class DemoCapExceededError extends Error {
-  readonly cap: 'per-order' | 'daily';
+  readonly cap: DemoCapKind;
   readonly capLimitUsd: number;
   readonly attemptedNotionalUsd: number;
   readonly currentDailyTotalUsd: number;
 
   constructor(input: {
-    cap: 'per-order' | 'daily';
+    cap: DemoCapKind;
     capLimitUsd: number;
     attemptedNotionalUsd: number;
     currentDailyTotalUsd: number;

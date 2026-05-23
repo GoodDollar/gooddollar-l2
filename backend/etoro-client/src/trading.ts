@@ -11,11 +11,21 @@ import {
 import { EtoroMode, OrderRequest, OrderResult, Position } from './types';
 
 /** Source label for the resolved USD notional, recorded in the audit log. */
-export type NotionalSource = 'sizer' | 'limit-price' | 'reference';
+export type NotionalSource = 'sizer' | 'limit-price' | 'live-quote' | 'reference-fallback';
 
 export interface ResolvedNotional {
   usd: number;
   source: NotionalSource;
+  /** Age in ms of the live quote used (only when `source === 'live-quote'`). */
+  quoteAgeMs?: number;
+}
+
+/** Default freshness window for live quotes used in notional resolution. */
+export const DEFAULT_MAX_QUOTE_AGE_MS = 60_000;
+
+export interface LiveQuoteSnapshot {
+  mid: number;
+  timestamp: number;
 }
 
 export interface LimitOrderRequest extends OrderRequest {
@@ -53,14 +63,40 @@ export interface TradingModuleOptions {
    */
   notionalSizer?: (order: OrderRequest) => number;
   /**
-   * Reference-price hook used for market orders when no `notionalSizer`
-   * yields a value and the order does not carry a `price`. Returning
-   * `undefined` for unknown symbols causes the SDK to throw
+   * Reference-price hook used as a degraded fallback for market orders
+   * when no `notionalSizer` yields a value, the order does not carry a
+   * `price`, AND no fresh `liveQuoteSource` snapshot is available.
+   * Returning `undefined` for unknown symbols causes the SDK to throw
    * `MissingNotionalError` instead of silently treating the unit count as
    * USD. The default `EtoroClient` wires this to the lane's
-   * `INSTRUMENT_MAP.referencePriceUsd`.
+   * `INSTRUMENT_MAP.referencePriceUsd` constants — which are frozen
+   * literals and therefore inherently stale; prefer `liveQuoteSource`.
    */
   symbolReferencePriceUsd?: (symbol: string) => number | undefined;
+  /**
+   * Live-quote hook consulted ahead of the reference-price fallback. If
+   * it returns `{ mid, timestamp }` with `mid > 0` and the timestamp is
+   * within `maxQuoteAgeMs` of `Date.now()`, market-order notionals are
+   * sized as `mid * amount` and audit-logged with
+   * `notionalSource: 'live-quote'` plus a numeric `quoteAgeMs`.
+   *
+   * The default `EtoroClient` wires this to `marketData.getCachedQuote`
+   * so the SDK's most recently observed quote drives sizing instead of
+   * the hardcoded reference price.
+   */
+  liveQuoteSource?: (symbol: string) => LiveQuoteSnapshot | undefined;
+  /**
+   * Freshness window (ms) for `liveQuoteSource` snapshots. Quotes older
+   * than this fall through to the reference fallback. Default 60 s.
+   */
+  maxQuoteAgeMs?: number;
+  /**
+   * Optional guardrail: when set, a market order is rejected with
+   * `DemoCapExceededError({ cap: 'reference-drift' })` whenever the live
+   * quote and the reference price diverge by more than this ratio
+   * (absolute, `|live - ref| / ref`). Unset means "no drift check".
+   */
+  maxReferenceDriftRatio?: number;
   /**
    * Test-only escape hatch. When set, allows constructing a
    * `TradingModule` in `demo-trading` mode without a `DemoCapEnforcer`.

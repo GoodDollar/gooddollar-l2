@@ -165,7 +165,9 @@ export interface AuditLogEntry {
   /** Resolved USD notional captured at cap-check time (trading actions only). */
   resolvedNotionalUsd?: number;
   /** Where the resolved notional came from. */
-  notionalSource?: 'sizer' | 'limit-price' | 'reference';
+  notionalSource?: 'sizer' | 'limit-price' | 'live-quote' | 'reference-fallback';
+  /** Age in ms of the live quote used for sizing (live-quote source only). */
+  quoteAgeMs?: number;
   /** Resolved mode label emitted once at EtoroClient construction. */
   resolvedMode?: EtoroMode;
   /** Whether the mode was resolved from env or set explicitly. */
