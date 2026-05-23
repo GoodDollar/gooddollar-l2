@@ -1580,6 +1580,220 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  describe('stale preservation on transient errors (#0035)', () => {
+    function mockFetchSequence(
+      ...responses: Array<{ body: unknown; init?: ResponseInit }>
+    ) {
+      const spy = vi.spyOn(globalThis, 'fetch');
+      for (const r of responses) {
+        spy.mockResolvedValueOnce(
+          new Response(JSON.stringify(r.body), {
+            status: r.init?.status ?? 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
+      return spy;
+    }
+
+    it('keeps cap stat tile values across a healthy → error transition', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      mockFetchSequence(
+        { body: BASE_RESPONSE },
+        {
+          body: {
+            error: 'Hedge engine unreachable',
+            snapshot: null,
+            capSnapshot: null,
+            breakerState: null,
+            killSwitchEngaged: false,
+            mode: null,
+            receipts: [],
+            proof: null,
+          },
+          init: { status: 503 },
+        },
+      );
+      render(<HedgeStatusCard ref={ref} />);
+      const notional = await screen.findByTestId('hedge-notional-stat');
+      expect(notional).toHaveTextContent('$150.00');
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      // After the engine flap, the three cap tiles must still surface
+      // the prior values so the operator does not lose diagnostic
+      // context. The engine tile flips to "down" — that one tracks live
+      // state.
+      expect(screen.getByTestId('hedge-notional-stat')).toHaveTextContent('$150.00');
+      expect(screen.getByTestId('hedge-cycle-orders-stat')).toHaveTextContent('1');
+      expect(screen.getByTestId('hedge-receipts-visible-stat')).toHaveTextContent('1');
+      expect(screen.getByTestId('hedge-engine-stat').textContent).toMatch(/^down$/i);
+    });
+
+    it('engine stat tile still flips to "down" + header pill reads "engine down"', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      mockFetchSequence(
+        { body: BASE_RESPONSE },
+        {
+          body: {
+            error: 'Hedge engine unreachable',
+            snapshot: null,
+            capSnapshot: null,
+            receipts: [],
+            proof: null,
+          },
+          init: { status: 503 },
+        },
+      );
+      render(<HedgeStatusCard ref={ref} />);
+      await screen.findByTestId('hedge-mode-badge');
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      const engineStat = screen.getByTestId('hedge-engine-stat');
+      expect(engineStat.textContent).toMatch(/^down$/i);
+      expect(engineStat.className).toContain('text-red-400');
+      const pill = screen.getByTestId('hedge-engine-state-pill');
+      expect(pill).toHaveTextContent(/engine down/i);
+    });
+
+    it('renders a stale chip in the receipts panel header after the transition', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      mockFetchSequence(
+        { body: BASE_RESPONSE },
+        {
+          body: {
+            error: 'Hedge engine unreachable',
+            snapshot: null,
+            capSnapshot: null,
+            receipts: [],
+            proof: null,
+          },
+          init: { status: 503 },
+        },
+      );
+      render(<HedgeStatusCard ref={ref} />);
+      await screen.findByTestId('hedge-mode-badge');
+      expect(screen.queryByTestId('hedge-receipts-stale')).toBeNull();
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      const chip = await screen.findByTestId('hedge-receipts-stale');
+      expect(chip.textContent ?? '').toMatch(/stale/i);
+    });
+
+    it('keeps receipt rows + proof link when the engine flaps', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      mockFetchSequence(
+        { body: BASE_RESPONSE },
+        {
+          body: {
+            error: 'Hedge engine unreachable',
+            snapshot: null,
+            capSnapshot: null,
+            receipts: [],
+            proof: null,
+          },
+          init: { status: 503 },
+        },
+      );
+      render(<HedgeStatusCard ref={ref} />);
+      await screen.findByTestId('hedge-receipt-row');
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      // Receipt rows preserved
+      expect(screen.getAllByTestId('hedge-receipt-row').length).toBe(1);
+      // Proof link preserved
+      const link = screen.getByTestId('hedge-proof-link');
+      expect(link).toBeInTheDocument();
+    });
+
+    it('recovery clears the stale chip and restores live data', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      mockFetchSequence(
+        { body: BASE_RESPONSE },
+        {
+          body: {
+            error: 'Hedge engine unreachable',
+            snapshot: null,
+            capSnapshot: null,
+            receipts: [],
+            proof: null,
+          },
+          init: { status: 503 },
+        },
+        {
+          body: {
+            ...BASE_RESPONSE,
+            capSnapshot: { ...BASE_RESPONSE.capSnapshot, dailyNotionalUsd: 200 },
+          },
+        },
+      );
+      render(<HedgeStatusCard ref={ref} />);
+      await screen.findByTestId('hedge-mode-badge');
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      expect(screen.getByTestId('hedge-receipts-stale')).toBeInTheDocument();
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      expect(screen.queryByTestId('hedge-receipts-stale')).toBeNull();
+      expect(screen.getByTestId('hedge-notional-stat')).toHaveTextContent('$200.00');
+    });
+
+    it('first-ever-load + first-poll error renders em-dash placeholders (no prior data → no stale chip)', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          capSnapshot: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-status-error');
+      const grid = screen.getByTestId('hedge-stat-grid');
+      expect(grid.textContent).toContain('—');
+      expect(screen.queryByTestId('hedge-receipts-stale')).toBeNull();
+    });
+
+    it('cap stat tiles get reduced opacity when showing stale data', async () => {
+      const ref = createRef<HedgeStatusCardHandle>();
+      mockFetchSequence(
+        { body: BASE_RESPONSE },
+        {
+          body: {
+            error: 'Hedge engine unreachable',
+            snapshot: null,
+            capSnapshot: null,
+            receipts: [],
+            proof: null,
+          },
+          init: { status: 503 },
+        },
+      );
+      render(<HedgeStatusCard ref={ref} />);
+      await screen.findByTestId('hedge-mode-badge');
+      await act(async () => {
+        await ref.current?.refresh();
+      });
+      const notionalTile = screen
+        .getByTestId('hedge-notional-stat')
+        .closest('.bg-dark-50');
+      expect(notionalTile).not.toBeNull();
+      expect(notionalTile!.className).toMatch(/opacity-60/);
+      // Engine tile is live, never marked stale.
+      const engineTile = screen
+        .getByTestId('hedge-engine-stat')
+        .closest('.bg-dark-50');
+      expect(engineTile!.className).not.toMatch(/opacity-60/);
+    });
+  });
+
   describe('visibility-gated polling (#0033)', () => {
     let visibilityState: DocumentVisibilityState;
     let originalDescriptor: PropertyDescriptor | undefined;

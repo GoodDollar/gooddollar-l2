@@ -305,6 +305,28 @@ function resolveEngineLabel(input: {
   return 'ok'
 }
 
+// Owns its own minute-resolution ticker so the receipts panel header
+// re-renders the staleness label "stale 2m ago" without the parent
+// card reconciling on every second. Reuses the same isolation pattern
+// as `FreshnessLabel` (#0031).
+function StaleChip({ sinceMs }: { sinceMs: number }) {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 30_000)
+    return () => clearInterval(t)
+  }, [])
+  const minutes = Math.max(0, Math.floor((Date.now() - sinceMs) / 60_000))
+  const label = minutes <= 0 ? 'stale just now' : `stale ${minutes}m ago`
+  return (
+    <span
+      data-testid="hedge-receipts-stale"
+      className="text-xs rounded-md px-2 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30"
+    >
+      {label}
+    </span>
+  )
+}
+
 function DegradedHint({ children }: { children: ReactNode }) {
   return (
     <span
@@ -499,6 +521,15 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   // data".
   const [lastPolledAt, setLastPolledAt] = useState<number | null>(null)
   const [lastTickAt, setLastTickAt] = useState<number | null>(null)
+  // `lastGood` is the most recent healthy envelope. When the engine
+  // flaps, the live `data` flips to the engine-down shell (so the
+  // engine tile / pill / banner stay accurate) but `lastGood` keeps
+  // feeding the cap tiles, receipts table, and proof link so the
+  // operator never loses diagnostic context. `staleSinceMs` marks the
+  // *first* unhealthy poll after the most recent healthy one — it
+  // resets to null on recovery.
+  const [lastGood, setLastGood] = useState<HedgeStatusResponse | null>(null)
+  const [staleSinceMs, setStaleSinceMs] = useState<number | null>(null)
 
   // Race-condition guards: many call sites (mount, poll, header button,
   // retry button, imperative refresh) all write to the same state. Without
@@ -560,29 +591,36 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
       setThrottle(null)
       const now = Date.now()
       setLastPolledAt(now)
+      const markStale = () => setStaleSinceMs((prev) => prev ?? now)
       if (parseFailed) {
         setError(classifyClientError(new SyntaxError('parse failed')))
+        markStale()
         return
       }
       if (!res.ok) {
         const reason = body?.error ?? `upstream error (HTTP ${res.status})`
         setError(reason)
         if (res.status === 503 && body) setData(body)
+        markStale()
         return
       }
       const envelope = body!
       if (envelope.error && !envelope.snapshot) {
         setError(envelope.error)
         setData(envelope)
+        markStale()
       } else {
         setError(null)
         setData(envelope)
+        setLastGood(envelope)
+        setStaleSinceMs(null)
         setLastTickAt(now)
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       if (gen !== genRef.current) return
       setError(classifyClientError(err))
+      setStaleSinceMs((prev) => prev ?? Date.now())
     } finally {
       if (gen === genRef.current) {
         inFlightRef.current = false
@@ -621,13 +659,19 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const isThrottled = throttle !== null
   const fetchBusy = isFetching || isThrottled
 
-  const receipts = data?.receipts ?? []
+  const isStale = staleSinceMs !== null && lastGood !== null
+  // Cap, receipts, and proof come from `lastGood` while stale so the
+  // operator sees the prior numbers (clearly marked) instead of em-dash
+  // placeholders. Live signals — engine state, mode, breaker, kill
+  // switch — keep flowing from `data`.
+  const renderSource = isStale ? lastGood : data
+  const receipts = renderSource?.receipts ?? []
+  const cap = renderSource?.capSnapshot ?? null
   const mode = resolveMode(data, error)
   const lastReceiptMode = receipts[0]?.mode
   const breaker = data?.breakerState
-  const cap = data?.capSnapshot
   const killSwitch = Boolean(data?.killSwitchEngaged)
-  const hasSnapshot = Boolean(data?.snapshot)
+  const hasSnapshot = Boolean(renderSource?.snapshot)
   const showSkeleton = loading && !data
   const engineState = resolveEngineState({
     snapshot: data?.snapshot ?? null,
@@ -698,15 +742,15 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
           {data?.degraded?.proof && (
             <DegradedHint>proof: {data.degraded.proof}</DegradedHint>
           )}
-          {data?.proof && (
+          {renderSource?.proof && (
             <div className="flex items-center gap-2 flex-wrap">
-              {data.proof.summary && (
+              {renderSource.proof.summary && (
                 <span
                   data-testid="hedge-proof-summary"
                   className="text-gray-400 font-mono truncate max-w-[28ch]"
-                  title={data.proof.summary}
+                  title={renderSource.proof.summary}
                 >
-                  {data.proof.summary}
+                  {renderSource.proof.summary}
                 </span>
               )}
               <a
@@ -715,7 +759,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-goodgreen hover:underline font-mono"
-                title={data.proof.path}
+                title={renderSource.proof.path}
               >
                 latest proof →
               </a>
@@ -809,19 +853,38 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               testId="hedge-notional-stat"
               label="Today's notional"
               value={cap ? formatNotionalUsd(cap.dailyNotionalUsd) : '—'}
-              sub={cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'}
+              sub={
+                cap
+                  ? `${cap.dailyOrders} orders${isStale ? ' · stale' : ''}`
+                  : hasSnapshot
+                  ? 'no caps'
+                  : 'awaiting tick'
+              }
+              stale={isStale}
             />
             <Stat
               testId="hedge-cycle-orders-stat"
               label="Cycle orders"
               value={cap ? `${cap.cycleOrders}` : '—'}
-              sub={cap ? `day ${cap.dayKey}` : hasSnapshot ? 'no data' : 'awaiting tick'}
+              sub={
+                cap
+                  ? `day ${cap.dayKey}${isStale ? ' · stale' : ''}`
+                  : hasSnapshot
+                  ? 'no data'
+                  : 'awaiting tick'
+              }
+              stale={isStale}
             />
             <Stat
               testId="hedge-receipts-visible-stat"
               label="Receipts visible"
               value={hasSnapshot ? `${receipts.length}` : '—'}
-              sub={hasSnapshot ? 'newest 5' : 'awaiting tick'}
+              sub={
+                hasSnapshot
+                  ? `newest 5${isStale ? ' · stale' : ''}`
+                  : 'awaiting tick'
+              }
+              stale={isStale}
             />
             <Stat
               testId="hedge-engine-stat"
@@ -839,7 +902,12 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
 
       <div className="bg-dark-50 rounded-lg p-3 overflow-x-auto">
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <h3 className="text-sm font-medium text-gray-300">Recent receipts</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-medium text-gray-300">Recent receipts</h3>
+            {isStale && staleSinceMs !== null && (
+              <StaleChip sinceMs={staleSinceMs} />
+            )}
+          </div>
           {data?.degraded?.receipts && (
             <DegradedHint>receipts source degraded: {data.degraded.receipts}</DegradedHint>
           )}
@@ -895,6 +963,7 @@ const Stat = memo(function Stat({
   subColor,
   subMono,
   subTestId,
+  stale,
 }: {
   label: string
   value: string
@@ -904,6 +973,7 @@ const Stat = memo(function Stat({
   subColor?: string
   subMono?: boolean
   subTestId?: string
+  stale?: boolean
 }) {
   const subClasses = [
     'text-xs',
@@ -912,8 +982,14 @@ const Stat = memo(function Stat({
   ]
     .filter(Boolean)
     .join(' ')
+  const containerClasses = [
+    'bg-dark-50 rounded-xl p-3 flex flex-col gap-0.5',
+    stale ? 'opacity-60' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
   return (
-    <div className="bg-dark-50 rounded-xl p-3 flex flex-col gap-0.5">
+    <div className={containerClasses}>
       <span className="text-xs text-gray-400 uppercase tracking-wide min-h-[2lh] sm:min-h-0">{label}</span>
       <span
         data-testid={testId}
