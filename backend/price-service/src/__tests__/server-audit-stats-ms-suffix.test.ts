@@ -48,6 +48,7 @@ describe('/audit/stats Ms-suffix wire shape (task 0053)', () => {
       firstAtMs: null,
       lastAtMs: null,
       writeErrors: 0,
+      bufferedDrops: 0,
     };
     const app = createServer(cache, { symbols: ['AAPL'] }, () => stats);
     const { server, baseUrl } = await listen(app);
@@ -79,6 +80,7 @@ describe('/audit/stats Ms-suffix wire shape (task 0053)', () => {
       firstAtMs: FIRST,
       lastAtMs: LAST,
       writeErrors: 0,
+      bufferedDrops: 0,
     };
     const app = createServer(cache, { symbols: ['AAPL'] }, () => stats);
     const { server, baseUrl } = await listen(app);
@@ -109,6 +111,7 @@ describe('/audit/stats Ms-suffix wire shape (task 0053)', () => {
       firstAtMs: 1700000123456,
       lastAtMs: 1700000123456,
       writeErrors: 0,
+      bufferedDrops: 0,
     };
     const app = createServer(cache, { symbols: ['AAPL'] }, () => stats);
     const { server, baseUrl } = await listen(app);
@@ -133,6 +136,7 @@ describe('/audit/stats Ms-suffix wire shape (task 0053)', () => {
       firstAtMs: 1700000000000,
       lastAtMs: 1700000000000,
       writeErrors: 0,
+      bufferedDrops: 0,
     };
     const app = createServer(cache, { symbols: ['AAPL'] }, () => stats);
     const { server, baseUrl } = await listen(app);

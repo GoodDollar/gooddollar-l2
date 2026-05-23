@@ -333,9 +333,9 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'Ingested vs rejected counts, rejection breakdown, acceptance ratio, ' +
       'uptime.',
     responseShape:
-      '{ingested,rejected,byReason,acceptanceRatio:number|null,' +
+      '{ingested,rejected,byReason,acceptanceRatio,' +
       "acceptanceRatioStatus:'ok'|'no-data'," +
-      'firstAtMs,firstAtIso,lastAtMs,lastAtIso,writeErrors,' +
+      'firstAtMs,firstAtIso,lastAtMs,lastAtIso,writeErrors,bufferedDrops,' +
       "firstAt?,lastAt? (deprecated→*Ms),deprecations?," +
       'bootAt*?,uptimeMs?,timestamp,timestampIso}',
   },
@@ -1047,6 +1047,7 @@ function buildAuditStatsBody(
     lastAtMs: stats.lastAtMs,
     lastAtIso: isoFromMs(stats.lastAtMs),
     writeErrors: stats.writeErrors,
+    bufferedDrops: stats.bufferedDrops,
   };
   if (stats.firstAtMs !== null) body.firstAt = stats.firstAtMs;
   if (stats.lastAtMs !== null) body.lastAt = stats.lastAtMs;
@@ -1596,6 +1597,7 @@ export function createServer(
           firstAtMs: null,
           lastAtMs: null,
           writeErrors: 0,
+          bufferedDrops: 0,
         };
     const { body, deprecations } = buildAuditStatsBody(stats);
     res.json(

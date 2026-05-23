@@ -65,6 +65,7 @@ describe('REST Server — ISO 8601 timestamp companions', () => {
       firstAtMs: null,
       lastAtMs: null,
       writeErrors: 0,
+      bufferedDrops: 0,
     };
     const app = createServer(
       cache,
@@ -124,6 +125,7 @@ describe('REST Server — ISO 8601 timestamp companions', () => {
       firstAtMs: fixedFirst,
       lastAtMs: fixedLast,
       writeErrors: 0,
+      bufferedDrops: 0,
     };
     const app2 = createServer(cache2, { symbols: ['AAPL'] }, () => stats);
     const { server: s2, baseUrl: u2 } = await listen(app2);

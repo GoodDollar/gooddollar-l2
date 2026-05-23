@@ -202,6 +202,7 @@ describe('REST Server with stats getter', () => {
       firstAtMs: null,
       lastAtMs: null,
       writeErrors: 0,
+      bufferedDrops: 0,
     };
     app = createServer(cache, { symbols: ['AAPL', 'TSLA'] }, () => stats);
     server = app.listen(0, () => {
@@ -325,7 +326,7 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
   it('ingested=0, rejected=0 → {ratio: null, status: "no-data"}', () => {
     const r = computeAcceptanceRatio({
       ingested: 0, rejected: 0,
-      byReason: {}, firstAtMs: null, lastAtMs: null, writeErrors: 0,
+      byReason: {}, firstAtMs: null, lastAtMs: null, writeErrors: 0, bufferedDrops: 0,
     });
     expect(r).toEqual({ ratio: null, status: 'no-data' });
   });
@@ -333,7 +334,7 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
   it('ingested=1, rejected=0 (perfect acceptance, real data) → {1, "ok"}', () => {
     const r = computeAcceptanceRatio({
       ingested: 1, rejected: 0,
-      byReason: {}, firstAtMs: 0, lastAtMs: 0, writeErrors: 0,
+      byReason: {}, firstAtMs: 0, lastAtMs: 0, writeErrors: 0, bufferedDrops: 0,
     });
     expect(r).toEqual({ ratio: 1, status: 'ok' });
   });
@@ -341,7 +342,7 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
   it('ingested=8, rejected=2 → {0.8, "ok"}', () => {
     const r = computeAcceptanceRatio({
       ingested: 8, rejected: 2,
-      byReason: {}, firstAtMs: 0, lastAtMs: 0, writeErrors: 0,
+      byReason: {}, firstAtMs: 0, lastAtMs: 0, writeErrors: 0, bufferedDrops: 0,
     });
     expect(r).toEqual({ ratio: 0.8, status: 'ok' });
   });
@@ -350,7 +351,7 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
     const r = computeAcceptanceRatio({
       ingested: 0, rejected: 5,
       byReason: { 'stale-price': 5 },
-      firstAtMs: 0, lastAtMs: 0, writeErrors: 0,
+      firstAtMs: 0, lastAtMs: 0, writeErrors: 0, bufferedDrops: 0,
     });
     expect(r).toEqual({ ratio: 0, status: 'ok' });
   });
@@ -358,11 +359,11 @@ describe('computeAcceptanceRatio — explicit no-data state (task 0031)', () => 
   it('warming-up (no-data) is distinguishable from real 100% acceptance', () => {
     const warming = computeAcceptanceRatio({
       ingested: 0, rejected: 0, byReason: {},
-      firstAtMs: null, lastAtMs: null, writeErrors: 0,
+      firstAtMs: null, lastAtMs: null, writeErrors: 0, bufferedDrops: 0,
     });
     const real100 = computeAcceptanceRatio({
       ingested: 100, rejected: 0, byReason: {},
-      firstAtMs: 0, lastAtMs: 0, writeErrors: 0,
+      firstAtMs: 0, lastAtMs: 0, writeErrors: 0, bufferedDrops: 0,
     });
     expect(warming.ratio).toBeNull();
     expect(warming.status).toBe('no-data');
@@ -1917,6 +1918,7 @@ describe('REST Server — bootAtMs / uptimeMs on /health and /audit/stats', () =
       firstAtMs: null,
       lastAtMs: null,
       writeErrors: 0,
+      bufferedDrops: 0,
     };
     app = createServer(
       cache,
@@ -1991,6 +1993,7 @@ describe('REST Server — bootAtMs/uptimeMs omitted when no getter (regression)'
       firstAtMs: null,
       lastAtMs: null,
       writeErrors: 0,
+      bufferedDrops: 0,
     }));
     server = app.listen(0, () => {
       const addr = server.address();

@@ -67,7 +67,7 @@ describe('PriceService', () => {
       } catch {}
     });
 
-    it('records accepted and rejected quotes via the audit logger', () => {
+    it('records accepted and rejected quotes via the audit logger', async () => {
       const logPath = path.join(tmpDir, 'svc.log');
       const auditLogger = new AuditLogger({ logPath });
       const service = new PriceService({ port: 0, wsPort: 0 }, { auditLogger });
@@ -82,6 +82,9 @@ describe('PriceService', () => {
       expect(stats.firstAtMs).not.toBeNull();
       expect(stats.lastAtMs).not.toBeNull();
 
+      // Audit writes are non-blocking (task 0067) — flush before
+      // reading the file so the assertion sees the persisted lines.
+      await auditLogger.flush(500);
       const lines = fs.readFileSync(logPath, 'utf8').trim().split('\n');
       expect(lines).toHaveLength(2);
     });

@@ -30,8 +30,10 @@ need to set them.
   confidence.
 - `GET /audit/stats` — `{ ingested, rejected, byReason,
   acceptanceRatio, acceptanceRatioStatus, firstAt, lastAt,
-  writeErrors, timestamp }`. `acceptanceRatio` is `null` and
-  `acceptanceRatioStatus` is `'no-data'` until the first tick lands.
+  writeErrors, bufferedDrops, timestamp }`. `acceptanceRatio` is
+  `null` and `acceptanceRatioStatus` is `'no-data'` until the first
+  tick lands. `bufferedDrops` rises when the audit log can't keep up
+  with ingestion and oldest lines are shed (see "Audit log").
 
 ## Env
 
@@ -60,10 +62,15 @@ Schema:
 }
 ```
 
-Write failures are swallowed and counted as `writeErrors` so a missing
-or read-only directory cannot crash the service. The same counters are
-exposed in-memory via `/audit/stats`, so consumers do not have to read
-the file.
+The logger writes to a single append-mode `WriteStream` opened on the
+first record, so `record()` never blocks the Node event loop on disk
+I/O. An in-memory queue (capped at 10 000 lines by default) absorbs
+bursts when the kernel falls behind; if the cap is exceeded while the
+stream is backpressured, the oldest queued lines are dropped and
+`bufferedDrops` increments — recent forensic detail wins over ten-
+minute-old ticks. Stream errors (full disk, unwritable path) bump
+`writeErrors` instead. Both counters are exposed in-memory via
+`/audit/stats`, so consumers do not have to read the file.
 
 ## PM2
 

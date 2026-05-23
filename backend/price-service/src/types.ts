@@ -113,6 +113,15 @@ export interface IngestStats {
   firstAtMs: number | null;
   lastAtMs: number | null;
   writeErrors: number;
+  /**
+   * Lines shed by the audit logger because the in-memory buffer was
+   * over its cap while the WriteStream was backpressured (task 0067).
+   * Distinct from `writeErrors`: that counts kernel-rejected writes
+   * (full disk, bad path); this counts producer-side shedding under
+   * "kernel can't keep up" pressure. Drop-oldest policy — recent
+   * forensic detail wins over ancient ticks.
+   */
+  bufferedDrops: number;
 }
 
 export const DEFAULT_CONFIG: PriceServiceConfig = {

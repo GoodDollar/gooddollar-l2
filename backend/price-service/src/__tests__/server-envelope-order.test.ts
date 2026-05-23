@@ -140,6 +140,7 @@ describe('REST Server — canonical envelope key order across endpoints', () => 
         firstAtMs: NOW - 60_000,
         lastAtMs: NOW - 100,
         writeErrors: 0,
+        bufferedDrops: 0,
       }),
       () => sourceStatus,
       () => NOW - 120_000,
