@@ -339,7 +339,17 @@ async function handleGet(_req?: NextRequest) {
     )
   }
 
-  const quotes = quotesOk ? (quotesRes.value.quotes ?? []) : []
+  const rawQuotes = quotesOk ? (quotesRes.value.quotes ?? []) : []
+  const synthesisNow = Date.now()
+  // Synthesize a sessionAsOfMs anchor when the upstream price-service does
+  // not yet emit one and the session is closed/after-hours/pre-market. This
+  // is purely additive — open sessions and upstreams that already emit the
+  // field are untouched.
+  const quotes = rawQuotes.map((q) => {
+    if (typeof q.sessionAsOfMs === 'number') return q
+    const anchor = lastSessionAnchorMs(q.sessionState, synthesisNow)
+    return anchor == null ? q : { ...q, sessionAsOfMs: anchor }
+  })
   const proof = proofData
     ? {
         generatedAt: proofData.generatedAt ?? Date.now(),

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePriceServiceStatus, getSessionLabel, getDominantSession, type QuoteStatus } from '@/lib/usePriceServiceStatus'
 import { deriveStocksOracleHealth, getStocksKeeperAgeMs, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
+import { formatSessionAsOf } from '@/lib/sessionAnchor'
+import { OracleBadgeFooter } from './OracleBadgeFooter'
 
 function formatAge(ms: number): string {
   if (ms < 1000) return 'just now'
@@ -27,6 +29,21 @@ const STATUS_DOT_RED = `${STATUS_DOT} bg-red-400`
 const STATUS_DOT_GRAY = `${STATUS_DOT} bg-gray-500`
 const STATUS_SKELETON = 'animate-pulse h-4 w-28 rounded-full bg-dark-50/30'
 
+/**
+ * Build the "session" clause for the detail row. When the upstream carries
+ * a `sessionAsOfMs` AND the session is not 'open', we render an explicit
+ * as-of clause ("At close · May 22, 20:00 EDT" / "Halted since 14:32 EDT")
+ * so the user can tell *when* the displayed print was published. Otherwise
+ * we fall back to today's bare label ("Market Closed", "Halted", …).
+ */
+function sessionClauseFor(quoteStatus: QuoteStatus): string {
+  if (quoteStatus.sessionState !== 'open' && typeof quoteStatus.sessionAsOfMs === 'number') {
+    const formatted = formatSessionAsOf(quoteStatus.sessionState, quoteStatus.sessionAsOfMs)
+    if (formatted) return formatted
+  }
+  return getSessionLabel(quoteStatus.sessionState)
+}
+
 function renderDetailRow(quoteStatus: QuoteStatus) {
   const isStale = quoteStatus.lastUpdateMs > 60_000
   const dotClass = quoteStatus.lastUpdateMs < 15_000
@@ -43,7 +60,7 @@ function renderDetailRow(quoteStatus: QuoteStatus) {
       </span>
       <span className="text-gray-600">·</span>
       <span className="text-gray-400">
-        {getSessionLabel(quoteStatus.sessionState)}
+        {sessionClauseFor(quoteStatus)}
       </span>
       {quoteStatus.confidence > 0 && (
         <>
