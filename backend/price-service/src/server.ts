@@ -234,9 +234,11 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
   {
     path: '/quotes/fresh/all',
     methods: ['GET'],
-    summary: 'Only quotes that are non-stale AND accepted by the risk filter.',
+    summary:
+      'Fresh + risk-accepted quotes only; 503 when source/WS is dead.',
     responseShape:
-      '{ quotes: NormalizedQuote[], count, source?, timestamp, timestampIso }',
+      '{ quotes: NormalizedQuote[], count, degraded?, message?, ' +
+      'source?, timestamp, timestampIso } -- 200 healthy / 503 degraded',
   },
   {
     path: '/quotes/:symbol',
@@ -835,11 +837,27 @@ export function createServer(
   app.get('/quotes/fresh/all', (_req: Request, res: Response) => {
     const now = Date.now();
     const fresh = cache.getFresh();
+    // Reuse the canonical `computeDegraded` verdict so /quotes/fresh/all,
+    // /health, /status/quotes, and /quotes all agree on "should a consumer
+    // trust the empty array?". Without sourceStatusGetter the legacy
+    // 200-always behaviour is preserved (cache-only verdict on an empty
+    // cache is "not degraded" — the warmup window).
+    const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
     const body: Record<string, unknown> = { quotes: fresh, count: fresh.length };
-    if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
+    if (sourceStatusGetter) {
+      body.degraded = degraded;
+      if (fresh.length === 0) {
+        body.message = degraded
+          ? 'no fresh quotes — upstream source is degraded ' +
+            '(see source.reason / source.nextStep)'
+          : 'no fresh quotes — source is healthy, awaiting first ' +
+            'accepted tick';
+      }
+    }
+    if (src) body.source = src;
     body.timestamp = now;
     body.timestampIso = isoFromMs(now)!;
-    res.json(body);
+    res.status(degraded ? 503 : 200).json(body);
   });
 
   app.get('/audit/stats', (_req: Request, res: Response) => {

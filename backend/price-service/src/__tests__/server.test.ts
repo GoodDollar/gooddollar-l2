@@ -1241,14 +1241,15 @@ describe('REST Server — data endpoints carry source state when getter wired', 
     expect(src.symbols).toEqual(['AAPL']);
   });
 
-  it('GET /quotes/fresh/all includes source.connected=false when disconnected', async () => {
+  it('GET /quotes/fresh/all returns 503 with source.connected=false when disconnected (task 0034)', async () => {
     cache.clear();
     srcState = { connected: false, reason: 'etoro-client-not-installed', lastAttachAt: null };
     const res = await fetch(`${baseUrl}/quotes/fresh/all`);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
     const src = body.source as Record<string, unknown>;
     expect(src.connected).toBe(false);
+    expect(body.degraded).toBe(true);
   });
 
   it('GET /quotes/:symbol cached symbol returns 200 with source block', async () => {
