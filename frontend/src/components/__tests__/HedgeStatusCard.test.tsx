@@ -255,6 +255,37 @@ describe('HedgeStatusCard', () => {
     expect(empty).toHaveTextContent(/cache miss/i);
   });
 
+  it('renders an instrument badge next to the receipt symbol (#0046)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const badge = await screen.findByTestId('hedge-receipt-instrument-badge');
+    expect(badge.getAttribute('data-instrument-class')).toBe('stock');
+    expect(badge.getAttribute('aria-hidden')).toBe('true');
+    // The visible ticker text is still rendered exactly once.
+    const row = screen.getByTestId('hedge-receipt-row');
+    expect(row).toHaveTextContent('AAPL');
+  });
+
+  it('badge changes treatment per asset class for BTC / EURUSD (#0046)', async () => {
+    const customResponse = {
+      ...BASE_RESPONSE,
+      receipts: [
+        { ...BASE_RESPONSE.receipts[0], id: 'r-btc', symbol: 'BTC' },
+        {
+          ...BASE_RESPONSE.receipts[0],
+          id: 'r-eurusd',
+          symbol: 'EURUSD',
+        },
+      ],
+    };
+    mockFetchOnce(customResponse);
+    render(<HedgeStatusCard />);
+    const badges = await screen.findAllByTestId('hedge-receipt-instrument-badge');
+    expect(badges).toHaveLength(2);
+    const classes = badges.map((b) => b.getAttribute('data-instrument-class'));
+    expect(classes).toEqual(['crypto', 'fx']);
+  });
+
   it('renders sparklines on notional + orders tiles when the series has ≥2 days (#0044)', async () => {
     const dayMs = 86_400_000;
     const now = Date.now();

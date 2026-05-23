@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { formatExposureDelta } from '@/lib/format-exposure-delta'
 import { formatNotionalUsd } from '@/lib/format-notional'
 import { CopyIdButton } from './CopyIdButton'
+import { InstrumentBadge } from './InstrumentBadge'
 
 /**
  * Lane 5 — receipts table row.
@@ -142,7 +143,12 @@ export const ReceiptRow = memo(function ReceiptRow({
           />
         </div>
       </td>
-      <td className="py-1.5 pr-2 text-white">{r.symbol}</td>
+      <td className="py-1.5 pr-2 text-white">
+        <span className="inline-flex items-center gap-1.5">
+          <InstrumentBadge ticker={r.symbol} testId="hedge-receipt-instrument-badge" />
+          <span>{r.symbol}</span>
+        </span>
+      </td>
       <td className="py-1.5 pr-2 text-gray-300">{r.side}</td>
       <td className="py-1.5 pr-2 text-right text-gray-200">
         {formatNotionalUsd(r.notionalUsd)}
