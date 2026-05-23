@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 
+import { isPageHidden, subscribePageVisibility } from './usePageVisibility'
+
 export interface QuoteStatus {
   symbol: string
   lastUpdateMs: number
@@ -52,6 +54,7 @@ interface StatusStore {
   inFlight: boolean
   failureCount: number
   cooldownUntil: number
+  unsubscribeVisibility: (() => void) | null
 }
 
 const store: StatusStore = {
@@ -61,6 +64,7 @@ const store: StatusStore = {
   inFlight: false,
   failureCount: 0,
   cooldownUntil: 0,
+  unsubscribeVisibility: null,
 }
 
 function notify(): void {
@@ -69,7 +73,7 @@ function notify(): void {
 
 async function fetchStatus(force = false): Promise<void> {
   if (store.inFlight) return
-  if (typeof document !== 'undefined' && document.hidden) return
+  if (!force && isPageHidden()) return
   if (!force && Date.now() < store.cooldownUntil) return
 
   store.inFlight = true
@@ -101,17 +105,38 @@ async function fetchStatus(force = false): Promise<void> {
   }
 }
 
-function startPolling(): void {
+function armInterval(): void {
   if (store.intervalId !== null) return
-  if (typeof window === 'undefined') return
   store.intervalId = setInterval(fetchStatus, POLL_INTERVAL_MS)
+}
+
+function disarmInterval(): void {
+  if (store.intervalId === null) return
+  clearInterval(store.intervalId)
+  store.intervalId = null
+}
+
+function startPolling(): void {
+  if (typeof window === 'undefined') return
+  if (store.unsubscribeVisibility === null) {
+    store.unsubscribeVisibility = subscribePageVisibility((hidden) => {
+      if (hidden) {
+        disarmInterval()
+        return
+      }
+      armInterval()
+      void fetchStatus(true)
+    })
+  }
+  if (!isPageHidden()) armInterval()
 }
 
 function stopPolling(): void {
   if (store.subscribers.size > 0) return
-  if (store.intervalId !== null) {
-    clearInterval(store.intervalId)
-    store.intervalId = null
+  disarmInterval()
+  if (store.unsubscribeVisibility) {
+    store.unsubscribeVisibility()
+    store.unsubscribeVisibility = null
   }
 }
 
@@ -174,10 +199,14 @@ export function __resetPriceServiceStatusStoreForTests(): void {
   if (store.intervalId !== null) {
     clearInterval(store.intervalId)
   }
+  if (store.unsubscribeVisibility) {
+    store.unsubscribeVisibility()
+  }
   store.state = { status: null, isLoading: true, error: null, nextRetryAt: null }
   store.subscribers.clear()
   store.intervalId = null
   store.inFlight = false
   store.failureCount = 0
   store.cooldownUntil = 0
+  store.unsubscribeVisibility = null
 }

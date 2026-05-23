@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import type { RebalanceInvariantResult } from '@/lib/stocksRebalanceInvariant'
+import { isPageHidden, subscribePageVisibility } from '@/lib/usePageVisibility'
 
 interface RebalanceApiResponse {
   generatedAt: string
@@ -79,12 +80,35 @@ export function useStocksRebalanceStatus(symbols: string[]): UseStocksRebalanceS
       }
     }
 
-    void tick()
-    timer = setInterval(tick, POLL_MS)
+    const disarm = () => {
+      if (timer !== null) {
+        clearInterval(timer)
+        timer = null
+      }
+    }
+    const arm = () => {
+      if (timer === null) timer = setInterval(tick, POLL_MS)
+    }
+
+    if (!isPageHidden()) {
+      void tick()
+      arm()
+    }
+
+    const unsubscribe = subscribePageVisibility((hidden) => {
+      if (cancelled) return
+      if (hidden) {
+        disarm()
+      } else {
+        void tick()
+        arm()
+      }
+    })
 
     return () => {
       cancelled = true
-      if (timer) clearInterval(timer)
+      disarm()
+      unsubscribe()
     }
   }, [symbolKey])
 
