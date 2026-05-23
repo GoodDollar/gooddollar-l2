@@ -363,8 +363,25 @@ export function createServer(
         filterReason: entry.filterResult.reason,
       };
     }
-    const body: Record<string, unknown> = { quotes };
-    if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
+    const count = Object.keys(quotes).length;
+    const body: Record<string, unknown> = {
+      count,
+      totalCached: cache.size,
+    };
+    if (sourceStatusGetter) {
+      const { degraded, src } = computeDegraded(cache, sourceStatusGetter);
+      body.degraded = degraded;
+      if (count === 0) {
+        body.message = degraded
+          ? 'no cached quotes — upstream source is degraded ' +
+            '(see source.reason / source.nextStep)'
+          : 'no cached quotes — source is healthy, awaiting first tick';
+      }
+      body.quotes = quotes;
+      if (src) body.source = src;
+    } else {
+      body.quotes = quotes;
+    }
     body.timestamp = Date.now();
     res.json(body);
   });
