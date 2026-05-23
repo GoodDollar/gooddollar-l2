@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation'
 
 import { formatExposureDelta } from '@/lib/format-exposure-delta'
 import { formatNotionalUsd } from '@/lib/format-notional'
+import {
+  formatClockTimeUtc,
+  formatIsoTitle,
+  formatRelativeTime,
+} from '@/lib/format-receipt-time'
 import { CopyIdButton } from './CopyIdButton'
 import { InstrumentBadge } from './InstrumentBadge'
 
@@ -39,20 +44,6 @@ export interface HedgeReceipt {
 function shortId(id: string): string {
   if (!id) return '—'
   return id.length <= 8 ? id : id.slice(0, 8)
-}
-
-function timeAgo(ms: number | undefined): string {
-  if (!ms) return '—'
-  const diff = Math.max(0, Math.floor((Date.now() - ms) / 1000))
-  if (diff < 60) return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return `${Math.floor(diff / 86400)}d ago`
-}
-
-function isoTitle(ms: number | undefined): string | undefined {
-  if (!ms || !Number.isFinite(ms)) return undefined
-  return new Date(ms).toISOString()
 }
 
 // Color the SIDE cell using the same goodgreen / red-300 / gray
@@ -134,9 +125,21 @@ export const ReceiptRow = memo(function ReceiptRow({
     >
       <td
         className="py-1.5 pr-2 text-xs text-gray-300"
-        title={isoTitle(r.timestamp)}
+        title={formatIsoTitle(r.timestamp)}
       >
-        {timeAgo(r.timestamp)}
+        <div>
+          <span data-testid="hedge-receipt-time-relative">
+            {formatRelativeTime(r.timestamp)}
+          </span>
+        </div>
+        <div>
+          <span
+            data-testid="hedge-receipt-time-clock"
+            className="text-gray-500 text-[10px]"
+          >
+            {formatClockTimeUtc(r.timestamp)}
+          </span>
+        </div>
       </td>
       <td className="py-1.5 pr-2 text-xs text-gray-300">
         <div>

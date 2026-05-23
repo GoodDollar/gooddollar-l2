@@ -2378,6 +2378,48 @@ describe('HedgeStatusCard', () => {
     });
   });
 
+  describe('receipt TIME cell stacks relative + clock UTC inline (#0054)', () => {
+    it('renders both a relative span and an HH:MM:SS UTC clock span', async () => {
+      const ms = Date.UTC(2026, 4, 23, 14, 32, 18, 237);
+      mockFetchOnce({
+        ...BASE_RESPONSE,
+        receipts: [{ ...BASE_RESPONSE.receipts[0], timestamp: ms }],
+      });
+      render(<HedgeStatusCard />);
+      const rel = await screen.findByTestId('hedge-receipt-time-relative');
+      const clock = screen.getByTestId('hedge-receipt-time-clock');
+      expect(rel.textContent ?? '').toMatch(/(\d+[smhd] ago|—)/);
+      expect(clock.textContent).toBe('14:32:18 UTC');
+    });
+
+    it('preserves the cell title attribute with the full ISO when timestamp is finite', async () => {
+      const ms = 1700000000000;
+      mockFetchOnce({
+        ...BASE_RESPONSE,
+        receipts: [{ ...BASE_RESPONSE.receipts[0], timestamp: ms }],
+      });
+      render(<HedgeStatusCard />);
+      const rel = await screen.findByTestId('hedge-receipt-time-relative');
+      const cell = rel.closest('td')!;
+      expect(cell.getAttribute('title')).toBe(new Date(ms).toISOString());
+    });
+
+    it('collapses the clock span to empty and shows em-dash on missing timestamp', async () => {
+      mockFetchOnce({
+        ...BASE_RESPONSE,
+        receipts: [{ ...BASE_RESPONSE.receipts[0], timestamp: 0 }],
+      });
+      render(<HedgeStatusCard />);
+      const rel = await screen.findByTestId('hedge-receipt-time-relative');
+      const clock = screen.getByTestId('hedge-receipt-time-clock');
+      expect(rel.textContent).toBe('—');
+      expect(clock.textContent).toBe('');
+      const cell = rel.closest('td')!;
+      // React omits the title attribute when value is undefined.
+      expect(cell.hasAttribute('title')).toBe(false);
+    });
+  });
+
   describe('receipts table totals footer (#0053)', () => {
     const fiveMixed = [
       { ...BASE_RESPONSE.receipts[0], id: 'r-1', side: 'sell' as const, notionalUsd: 42.18, beforeExposure: 1480.22, afterExposure: 1438.04 },
