@@ -255,12 +255,11 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     path: '/status/quotes',
     methods: ['GET'],
     summary:
-      'Per-symbol freshness (last-update age, session state, confidence) ' +
-      'for dashboards.',
+      'Per-symbol cache age, session state, confidence for dashboards.',
     responseShape:
       '{ healthy, freshCount, totalCount, quotes: Array<{symbol, ' +
-      'lastUpdateMs, sessionState, confidence}>, source?, timestamp, ' +
-      'timestampIso } -- 200 healthy / 503 degraded',
+      'cacheAge, lastUpdateMs (deprecated→cacheAge), sessionState, ' +
+      'confidence}>, deprecations, source?, ts } -- 200/503',
   },
   {
     path: '/audit/stats',
@@ -882,8 +881,16 @@ export function createServer(
   app.get('/status/quotes', (_req: Request, res: Response) => {
     const now = Date.now();
     const all = cache.getAll();
+    // Per-quote entry shape pins the canonical-duration convention
+    // service-wide: `cacheAge` is the duration field across /quotes,
+    // /quotes/:symbol, and /status/quotes. `lastUpdateMs` is preserved
+    // for one release as a deprecated alias (drift-gated by tests so
+    // the two fields stay equal). The `Age` suffix marks durations
+    // going forward; `Ms` suffix marks unix-ms timestamps. The lone
+    // legacy exception (`uptimeMs`) is intentional.
     const quotes: Array<{
       symbol: string;
+      cacheAge: number;
       lastUpdateMs: number;
       sessionState: string;
       confidence: number;
@@ -891,9 +898,11 @@ export function createServer(
 
     let freshCount = 0;
     for (const [symbol, entry] of all) {
+      const age = now - entry.cachedAt;
       quotes.push({
         symbol,
-        lastUpdateMs: now - entry.cachedAt,
+        cacheAge: age,
+        lastUpdateMs: age,
         sessionState: entry.quote.sessionState,
         confidence: entry.quote.confidence,
       });
@@ -908,6 +917,10 @@ export function createServer(
       freshCount,
       totalCount: all.size,
       quotes,
+      deprecations: {
+        lastUpdateMs:
+          'rename → cacheAge; will be removed in the next release',
+      },
       timestamp: now,
       timestampIso: isoFromMs(now)!,
     };
