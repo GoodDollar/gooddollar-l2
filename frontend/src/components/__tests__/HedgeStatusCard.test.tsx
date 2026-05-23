@@ -168,6 +168,43 @@ describe('HedgeStatusCard', () => {
     expect(callout).toHaveTextContent('oldest read age=30000ms');
   });
 
+  it('breaker callout wraps long underscore-separated reason identifiers on mobile (#0038)', async () => {
+    // Engine emits SCREAMING_SNAKE_CASE breaker reasons. CSS treats them as
+    // single unbreakable words, so a long identifier overflows the card on a
+    // 375-px viewport and is clipped offscreen by body overflow-x-hidden.
+    // The reason span must carry `break-all` so the full identifier wraps
+    // inside the callout.
+    const longReason =
+      'STALE_PRICE_FOR_BTC_USDT_OVER_TWELVE_MINUTES_FROM_ETORO_DEMO_FEED_LAST_TICK_AT_2026_05_23_T_17_03_45_Z';
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      breakerState: { tripped: true, reason: longReason, detail: 'oracle reported price=12345.6789 but lastFeed=stale' },
+    });
+    render(<HedgeStatusCard />);
+    const callout = await screen.findByTestId('hedge-breaker-callout');
+    expect(callout.textContent).toContain(longReason);
+    const reasonSpan = callout.querySelector('span.font-mono');
+    expect(reasonSpan).not.toBeNull();
+    const reasonClasses = reasonSpan!.className.split(/\s+/);
+    expect(reasonClasses).toContain('break-all');
+    expect(reasonClasses).toContain('min-w-0');
+  });
+
+  it('breaker callout still renders short reasons correctly (no regression #0038)', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      breakerState: { tripped: true, reason: 'STALE_PRICE', detail: 'oldest read age=30000ms' },
+    });
+    render(<HedgeStatusCard />);
+    const callout = await screen.findByTestId('hedge-breaker-callout');
+    expect(callout).toHaveTextContent('STALE_PRICE');
+    expect(callout).toHaveTextContent('oldest read age=30000ms');
+    const reasonSpan = callout.querySelector('span.font-mono');
+    expect(reasonSpan).not.toBeNull();
+    // break-all still applied — it's a no-op for short identifiers that already fit.
+    expect(reasonSpan!.className.split(/\s+/)).toContain('break-all');
+  });
+
   it('shows the healthy empty state when snapshot present + no receipts (#0019)', async () => {
     mockFetchOnce({ ...BASE_RESPONSE, receipts: [] });
     render(<HedgeStatusCard />);

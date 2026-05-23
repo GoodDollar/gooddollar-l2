@@ -829,8 +829,18 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
           className="mb-3 bg-yellow-500/15 border border-yellow-500/40 rounded-lg p-3 text-sm text-yellow-200"
         >
           <strong>Breaker tripped:</strong>{' '}
-          <span className="font-mono">{breaker.reason}</span>
-          {breaker.detail && <span className="text-yellow-300/80"> — {breaker.detail}</span>}
+          {/* SCREAMING_SNAKE_CASE engine reasons have no soft-break points,
+              so `word-break: normal` treats them as one giant word and the
+              span overflows the callout on narrow viewports (task 0038).
+              `break-all` lets the identifier wrap mid-token; `min-w-0`
+              defends against flex/grid parents that refuse to shrink. */}
+          <span className="font-mono break-all min-w-0">{breaker.reason}</span>
+          {breaker.detail && (
+            <span className="text-yellow-300/80 block sm:inline">
+              {' '}
+              — {breaker.detail}
+            </span>
+          )}
         </div>
       )}
 
