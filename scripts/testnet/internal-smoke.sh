@@ -91,6 +91,24 @@ redact_url_secrets() {
   printf '%s' "$u"
 }
 
+# Output collectors. Declared up here so the early `.env` loader can
+# push CRLF + unrecognized-key warnings into WARNINGS[] before the
+# parameter-expansion defaults run.
+declare -a BLOCKERS=()
+declare -a WARNINGS=()
+declare -a SUMMARY_LINES=()
+declare -A ENV_PRESENCE=()
+
+# Load lane-local overrides from .env BEFORE the parameter-expansion
+# defaults below resolve. Implementation lives in lib/load-lane7-env.sh
+# (sourced, not exec'd, so it can append to WARNINGS / ENV_PRESENCE
+# in this shell). See that file's header for the allowlist + the
+# shell-vs-.env precedence rule. Task 0026 + 0027 convergence.
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+LANE7_ENV_FILE="${LANE7_ENV_FILE:-$REPO_ROOT/.env}"
+# shellcheck source=lib/load-lane7-env.sh
+. "$(dirname "$0")/lib/load-lane7-env.sh"
+
 LANE7_BASE="${LANE7_BASE:-http://localhost}"
 PRICE_SERVICE_PORT="${PRICE_SERVICE_PORT:-4000}"
 ORACLE_SIGNER_PORT="${ORACLE_SIGNER_PORT:-9107}"
@@ -161,8 +179,12 @@ unset malformed pair url
 # LANE7_RPC resolution. If a future task introduces yet another URL
 # input, validate it here too before unsetting the regex.
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-LANE7_ENV_FILE="${LANE7_ENV_FILE:-$REPO_ROOT/.env}"
+# REPO_ROOT and LANE7_ENV_FILE are resolved above (before the .env
+# loader runs). REPORT / HEALTH_CONTRACT / STALENESS_THRESHOLD_S /
+# LANE7_RPC fall through to their hardcoded defaults here when neither
+# the shell nor `.env` set them — the loader's `export "$key=$val"`
+# means `.env`-sourced values look identical to shell-exported ones
+# at this point.
 REPORT="${REPORT:-$REPO_ROOT/docs/testnet/iter05-internal-smoke.md}"
 HEALTH_CONTRACT="${HEALTH_CONTRACT-$REPO_ROOT/docs/testnet/HEALTH-CONTRACT.md}"
 STALENESS_THRESHOLD_S="${STALENESS_THRESHOLD_S-600}"
@@ -265,10 +287,6 @@ if [[ -e "$REPORT" && ! -w "$REPORT" ]]; then
   echo "FATAL: REPORT exists but is not writable: $REPORT" >&2
   exit 2
 fi
-
-declare -a BLOCKERS=()
-declare -a WARNINGS=()
-declare -a SUMMARY_LINES=()
 
 now_iso() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
 add_summary() { SUMMARY_LINES+=("$1"); }
@@ -840,35 +858,17 @@ add_summary ""
 add_summary "## Real-trading fence (env-presence only — never values)"
 add_summary ""
 
-# Read .env if present; pm2 env <id> is preferred when PM2 is running but
-# the lane-7 worktree is push-fenced and may not own a daemon. Operator
-# can set PM2_ID_PRICE_SERVICE to feed env from a running lane-7 PM2
-# entry; otherwise fall back to file inspection.
-declare -A ENV_PRESENCE=()
+# pm2 env <id> is preferred when PM2 is running because it reflects the
+# live process environment, not the on-disk `.env` file. The lane-7
+# worktree is push-fenced and may not own a daemon — when
+# PM2_ID_PRICE_SERVICE is unset, the .env-file values populated by the
+# early loader at the top of the script (REAL_TRADING_ENABLED /
+# ETORO_MODE → ENV_PRESENCE[]) are already in place.
 if [[ -n "${PM2_ID_PRICE_SERVICE:-}" ]] && command -v pm2 >/dev/null 2>&1; then
   for key in REAL_TRADING_ENABLED ETORO_MODE; do
     val="$(pm2 env "$PM2_ID_PRICE_SERVICE" 2>/dev/null | awk -F': *' -v k="$key" '$1==k {print $2; exit}')"
     if [[ -n "$val" ]]; then ENV_PRESENCE[$key]="$val"; fi
   done
-elif [[ -f "$LANE7_ENV_FILE" ]]; then
-  # `read -r` does not strip trailing CR. A `.env` edited on Windows
-  # (or downloaded via a tool that adds CRLF) yields `val="false\r"`,
-  # which fails the equality check below and fires a contradictory
-  # `REAL_TRADING_ENABLED is false — must be unset or false` BLOCKER
-  # whose printed `\r` scrambles the operator's terminal during what
-  # already feels like a 3 AM safety alarm. Strip the CR per side
-  # before the existing quote-strip pass + raise a one-shot WARN so
-  # the operator knows to `dos2unix .env` the file at the source.
-  if grep -q $'\r' "$LANE7_ENV_FILE" 2>/dev/null; then
-    WARNINGS+=("$LANE7_ENV_FILE has CRLF line endings — run \`dos2unix\` or \`sed -i 's/\\r\$//'\`")
-  fi
-  while IFS='=' read -r key val; do
-    key="${key%$'\r'}"; val="${val%$'\r'}"
-    [[ -z "$key" || "$key" =~ ^# ]] && continue
-    [[ "$key" == "REAL_TRADING_ENABLED" || "$key" == "ETORO_MODE" ]] || continue
-    val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"
-    ENV_PRESENCE[$key]="$val"
-  done < "$LANE7_ENV_FILE"
 fi
 
 rte="${ENV_PRESENCE[REAL_TRADING_ENABLED]:-unset}"
