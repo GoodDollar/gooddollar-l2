@@ -1,16 +1,22 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { REAL_TRADING_ENABLED, EtoroClient } from '../../../etoro-client/src';
+import { DeltaCalculator } from '../../../hedge-engine/src/delta-calculator';
+import { HedgeEngine } from '../../../hedge-engine/src/engine';
+import { ExposureReader } from '../../../hedge-engine/src/exposure-reader';
 import { HedgeExecutor } from '../../../hedge-engine/src/hedge-executor';
-import { HedgeOrder } from '../../../hedge-engine/src/types';
+import { HedgeProofRecorder } from '../../../hedge-engine/src/hedge-proof';
 import { createMockEtoro } from '../mock-etoro-server';
 import { writeEvidence } from '../evidence';
 import { getRunId } from '../run-id';
 
-describe('Lane 6 / hedge-dryrun — dry-run hedge never touches the mock /trading endpoint', () => {
+describe('Lane 6 / hedge-dryrun — dry-run hedge produces a proof and never hits /trading', () => {
   it('REAL_TRADING_ENABLED is hardcoded false (precondition)', () => {
     expect(REAL_TRADING_ENABLED).toBe(false);
   });
 
-  it('HedgeExecutor.execute in dry-run returns etoroOrderId="dry-run" with NO order on mock', async () => {
+  it('HedgeEngine.runOnce in dry-run writes a HedgeProof with orderId="dry-run" and NO order on mock', async () => {
     const runId = getRunId();
     const t0 = Date.now();
 
@@ -24,8 +30,6 @@ describe('Lane 6 / hedge-dryrun — dry-run hedge never touches the mock /tradin
     });
     const mock = createMockEtoro({ axios: client.getHttpClient() });
 
-    // Adapter forwards to the client's TradingModule — but dry-run mode in the
-    // executor should bypass the adapter entirely.
     const adapter = {
       async openPosition(p: { symbol: string; instrumentId: string; side: 'buy' | 'sell'; amount: number }) {
         const r = await client.trading.openPosition(p);
@@ -46,44 +50,66 @@ describe('Lane 6 / hedge-dryrun — dry-run hedge never touches the mock /tradin
       },
     };
 
+    // Stub reader: 10_000 USD net delta before, 0 after.
+    const reader = {
+      async getExposure(symbol: string) {
+        return { symbol, netDelta: 10_000, absExposure: 10_000, blockNumber: 42, readTimestamp: Date.now() };
+      },
+      async getAllExposures() {
+        return [{ symbol: 'AAPL', netDelta: 10_000, absExposure: 10_000, blockNumber: 42, readTimestamp: Date.now() }];
+      },
+    } as unknown as ExposureReader;
+
+    const calculator = new DeltaCalculator({ deltaThresholdUsd: 5_000, deltaThresholdPct: 2 });
     const instrumentMap = new Map([['AAPL', 'INST-AAPL']]);
     const executor = new HedgeExecutor(adapter, instrumentMap, {
       dryRun: true,
       safetyMode: 'sandbox',
     });
+    const engine = new HedgeEngine(reader, calculator, executor, {
+      rpcUrl: 'mock',
+      riskEngineAddress: '0x0',
+      symbols: ['AAPL'],
+      deltaThresholdUsd: 5_000,
+      deltaThresholdPct: 2,
+      pollIntervalMs: 30_000,
+      dryRun: true,
+    });
 
-    const order: HedgeOrder = {
-      symbol: 'AAPL',
-      deltaToHedge: 50, // well under $100 demo cap
-      reason: 'reconciliation',
-    };
-    const result = await executor.execute(order);
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-hedge-proof-'));
+    const recorder = new HedgeProofRecorder(tmp);
+    const proof = await engine.runOnce('AAPL', { recorder, etoroMode: 'sandbox' });
+
+    const latestExists = fs.existsSync(path.join(tmp, 'latest.json'));
 
     const ok =
-      result.success &&
-      result.etoroOrderId === 'dry-run' &&
-      mock.orders.length === 0;
+      proof.orderId === 'dry-run' &&
+      proof.dryRun === true &&
+      proof.realTradingEnabled === false &&
+      proof.beforeExposure.netDelta === 10_000 &&
+      mock.orders.length === 0 &&
+      latestExists;
+
     writeEvidence({
       check: '06-hedge-dryrun',
       ok,
       runId,
       details: {
         durationMs: Date.now() - t0,
-        hedgeResult: {
-          success: result.success,
-          etoroOrderId: result.etoroOrderId,
-          timestamp: result.timestamp,
-          error: result.error ?? null,
-        },
+        proof,
         mockOrderCount: mock.orders.length,
+        proofDir: tmp,
         realTradingEnabled: REAL_TRADING_ENABLED,
       },
     });
 
+    fs.rmSync(tmp, { recursive: true, force: true });
     mock.stop();
 
-    expect(result.success).toBe(true);
-    expect(result.etoroOrderId).toBe('dry-run');
+    expect(proof.orderId).toBe('dry-run');
+    expect(proof.dryRun).toBe(true);
+    expect(proof.realTradingEnabled).toBe(false);
     expect(mock.orders).toHaveLength(0);
+    expect(latestExists).toBe(true);
   });
 });
