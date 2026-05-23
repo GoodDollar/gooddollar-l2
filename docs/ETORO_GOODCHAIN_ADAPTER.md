@@ -372,6 +372,55 @@ startup; unknown symbols cause the service to write
 (price-service degrades broadcaster; oracle-signer degrades publish set;
 hedge-engine degrades hedge set).
 
+## Hedge-engine adapter selection
+
+`backend/hedge-engine/src/select-adapter.ts` is the one place that
+decides which `EtoroAdapter` powers the hedge loop. The lane's runtime
+fence (independent of `REAL_TRADING_ENABLED`) is the
+`mode` + `HEDGE_TRADING_ENABLED` pair:
+
+| `ETORO_MODE`     | `HEDGE_TRADING_ENABLED` | Adapter | Loop runs? |
+|------------------|-------------------------|---------|------------|
+| `mock`           | (any)                   | `createMockAdapter()` — deterministic `mock-<SYMBOL>-<n>` IDs, in-memory positions | yes |
+| `demo-trading`   | `'true'`                | `createEtoroBackedAdapter(createEtoroClient())` — real demo orders | yes |
+| `demo-trading`   | unset / anything else   | `createReadOnlyAdapter()` — throws `ReadOnlyAdapterError` on mutation | no (read-only) |
+| `demo-readonly`  | (any)                   | `createReadOnlyAdapter()` | no (read-only) |
+| `real-disabled`  | (any)                   | `createReadOnlyAdapter()` | no (read-only) |
+
+`main()` only invokes `executor.executeAll` when `selection.readOnly`
+is `false`; the read-only sentinel is a belt-and-suspenders second
+line of defense — if a future code path bypasses the `readOnly` flag,
+the adapter still refuses to issue orders at the HTTP boundary.
+
+The placeholder `createPlaceholderAdapter()` that returned
+`sim-<Date.now()>` IDs and an always-empty position book has been
+deleted; mock semantics now live in the named, typed
+`createMockAdapter()`.
+
+### Demo-proof script
+
+`backend/hedge-engine/scripts/demo-proof.ts` writes the lane's
+"Overall Definition of Done" artifact (one capped demo open + before /
+after on-chain and eToro snapshots) to
+`.autobuilder/initiatives/0007a-etoro-connectivity/proofs/hedge-proof-<ISO>.json`.
+It refuses to run unless `ETORO_MODE=demo-trading` and
+`HEDGE_TRADING_ENABLED=true`.
+
+```bash
+ETORO_MODE=demo-trading \
+HEDGE_TRADING_ENABLED=true \
+ETORO_DEMO_KEY=… ETORO_DEMO_SECRET=… ETORO_DEMO_USER_KEY=… \
+RISK_ENGINE_ADDRESS=0x… RPC_URL=https://… \
+PROOF_SYMBOL=AAPL PROOF_AMOUNT_USD=25 PROOF_INSTRUMENT_ID=INST-1001 \
+node -r ts-node/register backend/hedge-engine/scripts/demo-proof.ts
+```
+
+`PROOF_AMOUNT_USD` is hard-clamped to `MAX_DEMO_ORDER_NOTIONAL_USD`
+(default 1000) so the script never moves more than the configured
+per-order cap. Failures land in the proof artifact's `error` field so
+post-mortems retain the pre/post snapshot even when the demo open
+itself fails.
+
 ## Runbook — swap fake → real demo creds
 
 1. Provision a demo API key/secret pair in eToro's partner portal.

@@ -37,4 +37,30 @@ describe('hedge-engine loadConfig', () => {
     expect(config.deltaThresholdUsd).toBe(1000);
     expect(config.dryRun).toBe(false);
   });
+
+  it('defaults mode to mock when ETORO_MODE is unset', () => {
+    const config = loadConfig({});
+    expect(config.mode).toBe('mock');
+    expect(config.tradingEnabled).toBe(false);
+  });
+
+  it('resolves ETORO_MODE=demo-trading and enables trading only with HEDGE_TRADING_ENABLED=true', () => {
+    const enabled = loadConfig({ ETORO_MODE: 'demo-trading', HEDGE_TRADING_ENABLED: 'true' });
+    expect(enabled.mode).toBe('demo-trading');
+    expect(enabled.tradingEnabled).toBe(true);
+
+    const disabled = loadConfig({ ETORO_MODE: 'demo-trading' });
+    expect(disabled.mode).toBe('demo-trading');
+    expect(disabled.tradingEnabled).toBe(false);
+  });
+
+  it('never sets tradingEnabled outside demo-trading even with HEDGE_TRADING_ENABLED=true', () => {
+    const readonly = loadConfig({ ETORO_MODE: 'demo-readonly', HEDGE_TRADING_ENABLED: 'true' });
+    expect(readonly.mode).toBe('demo-readonly');
+    expect(readonly.tradingEnabled).toBe(false);
+
+    const realDisabled = loadConfig({ ETORO_MODE: 'real-disabled', HEDGE_TRADING_ENABLED: 'true' });
+    expect(realDisabled.mode).toBe('real-disabled');
+    expect(realDisabled.tradingEnabled).toBe(false);
+  });
 });
