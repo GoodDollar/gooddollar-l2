@@ -35,7 +35,7 @@ export default function LivePricesProofPage() {
 
       <footer className="mt-8 text-xs text-gray-500">
         Reviewers: this page is the canonical Lane 6 proof artifact. If any panel is
-        empty, the corresponding service is unreachable — degraded states are surfaced
+        empty, the corresponding service is unreachable; degraded states are surfaced
         inline, not silently swallowed.
       </footer>
     </main>

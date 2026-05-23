@@ -251,6 +251,20 @@ python3 scripts/check-doc-links.py README.md docs/TESTNET_README.md docs/ARCHITE
 | RC slice (2026-05-22) | 62/62 analytics+regression; 20/20 perps journey |
 | Full E2E | **807 passed, 7 skipped, 0 failed** — RC browser gate green |
 
+### Lane 6 — Live prices & demo hedge proof
+
+A single command exercises the full live-prices pipeline (eToro → price-service
+→ oracle → chain → hedge) and writes auditable evidence:
+
+```bash
+./scripts/release/lane6-qa-gate.sh
+```
+
+The reviewer checklist lives at [`docs/release/lane6-qa-gate-checklist.md`](docs/release/lane6-qa-gate-checklist.md);
+the visible artifact is the [`/live-prices-proof`](frontend/src/app/(app)/live-prices-proof/page.tsx)
+page (`/proof` alias) — open it in the running app to verify the safety
+banner, on-chain oracle reads, recent tx hashes, and the latest demo hedge.
+
 ## Deployment & PM2 model
 
 ### Frontend (required path)

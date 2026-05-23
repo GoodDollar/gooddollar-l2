@@ -68,7 +68,7 @@ export function SafetyBanner({ endpoint = '/api/safety-state' }: SafetyBannerPro
       >
         <div className="flex items-center gap-2 text-sm font-semibold text-red-200">
           <span className="inline-block h-2 w-2 rounded-full bg-red-400" aria-hidden />
-          REFUSAL — real trading flag tripped. This release is NOT safe to ship.
+          REFUSAL: real trading flag tripped. This release is NOT safe to ship.
         </div>
         <div className="mt-1 text-xs text-red-300/80">
           frontend.REAL_TRADING_ENABLED = {String(frontendOk ? false : true)} ·

@@ -97,7 +97,7 @@ export function OracleUpdatesPanel() {
 
       {events.length === 0 ? (
         <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 text-xs text-gray-500">
-          Listening for <code className="text-gray-400">PriceUpdated</code> events. None observed yet —
+          Listening for <code className="text-gray-400">PriceUpdated</code> events. None observed yet;
           this populates as the oracle-signer keeper writes to the chain.
           {SESSION_LABEL[0] /* keep tree-shaker honest */ ? null : null}
         </div>
