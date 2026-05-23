@@ -1,7 +1,13 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { HedgeProofRecorder, HedgeProof, newProofRunId } from '../hedge-proof';
+import {
+  HedgeProofRecorder,
+  HedgeProof,
+  NO_OP_ORDER_ID,
+  isNoOpProof,
+  newProofRunId,
+} from '../hedge-proof';
 
 function makeProof(overrides: Partial<HedgeProof> = {}): HedgeProof {
   return {
@@ -26,6 +32,56 @@ describe('newProofRunId', () => {
     const b = newProofRunId();
     expect(a).not.toBe(b);
     expect(a).toMatch(/^\d{4}-\d{2}-\d{2}/);
+  });
+});
+
+describe('NO_OP_ORDER_ID', () => {
+  it('is exactly "no-op" — rename guard for the frontend mirror', () => {
+    expect(NO_OP_ORDER_ID).toBe('no-op');
+  });
+});
+
+describe('isNoOpProof', () => {
+  function noOpProof(overrides: Partial<HedgeProof> = {}): HedgeProof {
+    return makeProof({
+      orderId: NO_OP_ORDER_ID,
+      notionalUsd: 0,
+      beforeExposure: { netDelta: 100, absExposure: 100, blockNumber: 5 },
+      afterExposure: { netDelta: 100, absExposure: 100, blockNumber: 5 },
+      ...overrides,
+    });
+  }
+
+  it('returns true on the canonical sentinel shape', () => {
+    expect(isNoOpProof(noOpProof())).toBe(true);
+  });
+
+  it('returns false when orderId is not the sentinel', () => {
+    expect(isNoOpProof(noOpProof({ orderId: 'real-order-1' }))).toBe(false);
+  });
+
+  it('returns false when notionalUsd is non-zero', () => {
+    expect(isNoOpProof(noOpProof({ notionalUsd: 12.5 }))).toBe(false);
+  });
+
+  it('returns false when before/after blockNumber differ', () => {
+    expect(
+      isNoOpProof(
+        noOpProof({
+          afterExposure: { netDelta: 100, absExposure: 100, blockNumber: 6 },
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false when before/after netDelta differ', () => {
+    expect(
+      isNoOpProof(
+        noOpProof({
+          afterExposure: { netDelta: 110, absExposure: 110, blockNumber: 5 },
+        }),
+      ),
+    ).toBe(false);
   });
 });
 

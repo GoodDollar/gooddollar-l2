@@ -1,7 +1,7 @@
 import { ExposureReader } from './exposure-reader';
 import { DeltaCalculator } from './delta-calculator';
 import { HedgeExecutor } from './hedge-executor';
-import { HedgeProof, HedgeProofRecorder, newProofRunId } from './hedge-proof';
+import { HedgeProof, HedgeProofRecorder, NO_OP_ORDER_ID, newProofRunId } from './hedge-proof';
 import {
   HedgeEngineConfig,
   HedgeOrder,
@@ -143,8 +143,7 @@ export class HedgeEngine {
     const after = await this.reader.getExposure(symbol);
 
     const runId = newProofRunId();
-    const noOpOrderId = 'no-op';
-    const orderId = result?.etoroOrderId ?? noOpOrderId;
+    const orderId = result?.etoroOrderId ?? NO_OP_ORDER_ID;
     const delta = order?.deltaToHedge ?? 0;
     const proof: HedgeProof = {
       runId,

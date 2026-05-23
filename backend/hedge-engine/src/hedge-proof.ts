@@ -31,6 +31,31 @@ export interface ExposureSnapshot {
 }
 
 /**
+ * Sentinel order id written by the hedge engine when there is nothing
+ * to hedge (residual delta below the configured threshold). The
+ * frontend's `LastDemoHedgePanel` uses this constant (mirrored in
+ * `frontend/src/lib/hedgeProof.ts`) to render a distinct "below-threshold
+ * tick" card instead of a misleading green BUY $0.00 row. Never rename
+ * casually — both modules cross-check the string value.
+ */
+export const NO_OP_ORDER_ID = 'no-op' as const;
+
+/**
+ * Returns true when the proof is the engine's no-hedge sentinel — i.e.
+ * the orderId is `NO_OP_ORDER_ID`, no notional was placed, and exposure
+ * did not move between the before/after snapshots. Guards against
+ * labelling a legitimate $0 hedge as a sentinel.
+ */
+export function isNoOpProof(proof: HedgeProof): boolean {
+  return (
+    proof.orderId === NO_OP_ORDER_ID &&
+    proof.notionalUsd === 0 &&
+    proof.beforeExposure.netDelta === proof.afterExposure.netDelta &&
+    proof.beforeExposure.blockNumber === proof.afterExposure.blockNumber
+  );
+}
+
+/**
  * Writes hedge proofs as JSON files under a configurable directory.
  * `write(proof)` always produces two files:
  *   - `<runId>.json` — durable per-run artifact

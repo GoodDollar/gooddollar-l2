@@ -2,21 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-interface HedgeProof {
-  runId: string
-  orderId: string
-  symbol: string
-  side: 'buy' | 'sell'
-  notionalUsd: number
-  timestamp: number
-  beforeExposure: { netDelta: number; absExposure: number; blockNumber: number }
-  afterExposure: { netDelta: number; absExposure: number; blockNumber: number }
-  dryRun: boolean
-  etoroMode: string
-  realTradingEnabled: boolean
-  etoroOrderId?: string
-  error?: string
-}
+import { type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
 
 interface ProofEnvelope {
   proof: HedgeProof
@@ -125,6 +111,13 @@ export function LastDemoHedgePanel({
 }
 
 function ProofCard({ proof, source }: { proof: HedgeProof; source: string }) {
+  if (isNoOpProof(proof)) {
+    return <NoOpCard proof={proof} source={source} />
+  }
+  return <HedgeCard proof={proof} source={source} />
+}
+
+function HedgeCard({ proof, source }: { proof: HedgeProof; source: string }) {
   const sideColor = proof.side === 'buy' ? 'text-green-300' : 'text-red-300'
   const sideBg = proof.side === 'buy' ? 'bg-green-500/10' : 'bg-red-500/10'
   return (
@@ -145,12 +138,7 @@ function ProofCard({ proof, source }: { proof: HedgeProof; source: string }) {
         )}
       </div>
 
-      <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-        <Field label="orderId" value={proof.etoroOrderId ?? proof.orderId} mono />
-        <Field label="runId" value={proof.runId} mono />
-        <Field label="timestamp" value={formatTs(proof.timestamp)} mono />
-        <Field label="etoroMode" value={proof.etoroMode} />
-      </dl>
+      <ProofMeta proof={proof} />
 
       <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
         <div className="mb-1 text-xs uppercase tracking-wider text-gray-500">netDelta (before → after)</div>
@@ -164,8 +152,61 @@ function ProofCard({ proof, source }: { proof: HedgeProof; source: string }) {
         </div>
       </div>
 
-      <div className="text-[10px] text-gray-600 break-all">source: <code>{source}</code></div>
+      <SourceFooter source={source} />
     </div>
+  )
+}
+
+function NoOpCard({ proof, source }: { proof: HedgeProof; source: string }) {
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-gray-200">
+          Below-threshold tick
+        </span>
+        <span className="text-base font-semibold text-white">{proof.symbol}</span>
+        {proof.dryRun && (
+          <span className="rounded-md bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">DRY-RUN</span>
+        )}
+        {!proof.realTradingEnabled && (
+          <span className="rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-300">
+            real trading: false
+          </span>
+        )}
+      </div>
+
+      <p className="text-xs text-gray-400">
+        No hedge needed — exposure stayed inside the configured threshold; the engine
+        still recorded a proof so the pipeline is observable.
+      </p>
+
+      <ProofMeta proof={proof} />
+
+      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-xs text-gray-400">
+        netDelta unchanged at{' '}
+        <span className="font-mono text-gray-200">{formatUsd(proof.beforeExposure.netDelta)}</span>{' '}
+        · block #{proof.beforeExposure.blockNumber}
+      </div>
+
+      <SourceFooter source={source} />
+    </div>
+  )
+}
+
+function ProofMeta({ proof }: { proof: HedgeProof }) {
+  return (
+    <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+      <Field label="orderId" value={proof.etoroOrderId ?? proof.orderId} mono />
+      <Field label="runId" value={proof.runId} mono />
+      <Field label="timestamp" value={formatTs(proof.timestamp)} mono />
+      <Field label="etoroMode" value={proof.etoroMode} />
+    </dl>
+  )
+}
+
+function SourceFooter({ source }: { source: string }) {
+  return (
+    <div className="text-[10px] text-gray-600 break-all">source: <code>{source}</code></div>
   )
 }
 
