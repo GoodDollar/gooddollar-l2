@@ -87,6 +87,30 @@ ORACLE_SIGNER_PORT="${ORACLE_SIGNER_PORT:-9107}"
 HEDGE_ENGINE_PORT="${HEDGE_ENGINE_PORT:-9106}"
 STATUS_AGGREGATOR_PORT="${STATUS_AGGREGATOR_PORT:-9200}"
 
+# LANE7_BASE shape preflight. The default URL templates below
+# concatenate `:$PORT/health` (or `/status.json`) onto $LANE7_BASE,
+# so the base must be a bare scheme+host[:port] with no trailing
+# slash and no path. Trailing slash / path silently produces shapes
+# like `http://localhost/:4000/health` that curl resolves against
+# port 80, producing cascading 404 BLOCKERs from whatever's on the
+# default port — operators chase a phantom 4-service outage when
+# the real fault is one bad env var. Catch the typo here with a
+# single FATAL line that names the offending variable AND points
+# at the per-service `*_URL` escape hatches for path-prefix proxies.
+# Skip the check if every *_URL override is set — then LANE7_BASE
+# is unused, and operators with reverse-proxy setups can keep it
+# as a documentary value without tripping the preflight.
+if [[ -z "${PRICE_SERVICE_URL:-}" || -z "${ORACLE_SIGNER_URL:-}" \
+    || -z "${HEDGE_ENGINE_URL:-}" || -z "${STATUS_AGGREGATOR_URL:-}" ]]; then
+  LANE7_BASE_RE='^https?://[^:/]+(:[0-9]+)?$'
+  if [[ ! "$LANE7_BASE" =~ $LANE7_BASE_RE ]]; then
+    echo "FATAL: LANE7_BASE='$LANE7_BASE' must be scheme://host[:port] with no trailing slash or path" >&2
+    echo "FATAL: use http://localhost (default) or override per-service via PRICE_SERVICE_URL / ORACLE_SIGNER_URL / HEDGE_ENGINE_URL / STATUS_AGGREGATOR_URL" >&2
+    exit 2
+  fi
+  unset LANE7_BASE_RE
+fi
+
 PRICE_SERVICE_URL="${PRICE_SERVICE_URL:-$LANE7_BASE:$PRICE_SERVICE_PORT/health}"
 ORACLE_SIGNER_URL="${ORACLE_SIGNER_URL:-$LANE7_BASE:$ORACLE_SIGNER_PORT/health}"
 HEDGE_ENGINE_URL="${HEDGE_ENGINE_URL:-$LANE7_BASE:$HEDGE_ENGINE_PORT/health}"
