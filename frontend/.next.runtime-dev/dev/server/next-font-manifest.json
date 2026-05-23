@@ -1,6 +1,34 @@
 {
   "app": {
+    "[project]/frontend/src/app/(app)/agents/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
     "[project]/frontend/src/app/(app)/analytics/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/bridge/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/explore/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/faucet/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/governance/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/invite/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/lend/page": [
       "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
       "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
     ],
@@ -8,7 +36,19 @@
       "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
       "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
     ],
+    "[project]/frontend/src/app/(app)/pool/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
     "[project]/frontend/src/app/(app)/portfolio/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/predict/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/stable/page": [
       "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
       "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
     ],
@@ -17,6 +57,22 @@
       "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
     ],
     "[project]/frontend/src/app/(app)/stocks/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/test-dashboard/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/testnet-guide/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/ubi-impact/page": [
+      "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
+      "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
+    ],
+    "[project]/frontend/src/app/(app)/yield/page": [
       "static/media/Geist_Variable-s.p.0-te~ja_gpvcf.woff2",
       "static/media/GeistMono_Variable.p.17jn9btb_52pq.woff2"
     ],

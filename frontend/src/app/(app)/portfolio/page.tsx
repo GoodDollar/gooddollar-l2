@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useAccount } from 'wagmi'
 import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
 import { formatVolume } from '@/lib/predictData'
@@ -8,7 +9,8 @@ import { useOnChainPredictPositions, useOnChainPredictSummary, useOnChainMarkets
 import { formatPerpsPrice } from '@/lib/perpsData'
 import { useOnChainHoldings } from '@/lib/useOnChainStocks'
 import { useOnChainPositions, useOnChainAccountSummary } from '@/lib/useOnChainPerps'
-import { useMockLendPositions, useMockYieldPositions } from '@/lib/portfolioLendYieldData'
+import { useLendPositions, useYieldPositions } from '@/lib/portfolioLendYieldData'
+import { DEVNET_CHAIN_ID } from '@/lib/devnet'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { ConnectWalletBanner } from '@/components/ConnectWalletBanner'
 import { PortfolioOnChain } from '@/components/PortfolioOnChain'
@@ -40,10 +42,12 @@ export default function PortfolioPage() {
   const { markets: predictMarkets } = useOnChainMarkets()
   const { positions: perpsPositions } = useOnChainPositions()
   const { summary: perpsAccount } = useOnChainAccountSummary()
-  const lend = useMockLendPositions()
-  const yield_ = useMockYieldPositions()
+  const lend = useLendPositions()
+  const yield_ = useYieldPositions()
   const { sources: stockSources } = useStockPrices()
   const { status: priceStatus } = usePriceServiceStatus()
+  const { isConnected, chainId } = useAccount()
+  const onCanonicalChain = isConnected && chainId === DEVNET_CHAIN_ID
 
   // Resolve per-row source for the stocks panel — overlay session state
   // from price-service status on the chain-oracle reading from useStockPrices.
@@ -108,14 +112,29 @@ export default function PortfolioPage() {
       {/* Live on-chain positions — only visible when connected to devnet (chain 42069) */}
       <PortfolioOnChain />
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
-        <SummaryCard label="Total Value" value={formatLargeNumber(totalValue)} />
+      <div
+        className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8"
+        data-testid={onCanonicalChain ? 'portfolio-summary' : 'portfolio-summary-disabled'}
+      >
+        <SummaryCard
+          label="Total Value"
+          value={onCanonicalChain ? formatLargeNumber(totalValue) : '—'}
+          disabled={!onCanonicalChain}
+          valueTestId="portfolio-summary-totalValue"
+        />
         <SummaryCard
           label="Unrealized P&L"
-          value={`${totalPnl >= 0 ? '+' : ''}${formatStockPrice(totalPnl)}`}
-          color={pnlColor}
+          value={onCanonicalChain ? `${totalPnl >= 0 ? '+' : ''}${formatStockPrice(totalPnl)}` : '—'}
+          color={onCanonicalChain ? pnlColor : undefined}
+          disabled={!onCanonicalChain}
+          valueTestId="portfolio-summary-totalPnl"
         />
-        <SummaryCard label="Active Positions" value={String(totalPositions)} />
+        <SummaryCard
+          label="Active Positions"
+          value={onCanonicalChain ? String(totalPositions) : '—'}
+          disabled={!onCanonicalChain}
+          valueTestId="portfolio-summary-totalPositions"
+        />
       </div>
 
       {/* Stocks Section */}
@@ -307,16 +326,18 @@ export default function PortfolioPage() {
           }
         />
         {lend.supplies.length === 0 && lend.borrows.length === 0 ? (
-          <EmptyState
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18M8 6v12M16 6v12" />
-              </svg>
-            }
-            title="No lending positions"
-            description="Supply collateral to earn yield or borrow against your assets."
-            action={{ label: 'Start lending', href: '/lend' }}
-          />
+          <div data-testid="lend-empty-state">
+            <EmptyState
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18M8 6v12M16 6v12" />
+                </svg>
+              }
+              title="No lending positions"
+              description="Supply collateral to earn yield or borrow against your assets."
+              action={{ label: 'Start lending', href: '/lend' }}
+            />
+          </div>
         ) : (
           <div className="space-y-1">
             {lend.supplies.length > 0 && (
@@ -386,16 +407,18 @@ export default function PortfolioPage() {
           }
         />
         {yield_.vaults.length === 0 ? (
-          <EmptyState
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-            title="No yield positions"
-            description="Deposit into vaults to earn yield on your assets."
-            action={{ label: 'Browse vaults', href: '/yield' }}
-          />
+          <div data-testid="yield-empty-state">
+            <EmptyState
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+              title="No yield positions"
+              description="Deposit into vaults to earn yield on your assets."
+              action={{ label: 'Browse vaults', href: '/yield' }}
+            />
+          </div>
         ) : (
           <div className="space-y-1">
             {yield_.vaults.map(v => (

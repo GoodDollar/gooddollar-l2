@@ -2996,6 +2996,10 @@ img, video {
   background-color: #18181b80;
 }
 
+.bg-dark-200\/30 {
+  background-color: #121a2e4d;
+}
+
 .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
 }
@@ -3655,6 +3659,10 @@ img, video {
 
 .font-semibold {
   font-weight: 600;
+}
+
+.font-normal {
+  font-weight: 400;
 }
 
 .uppercase {
@@ -5241,6 +5249,10 @@ input[type="number"] {
 
 .focus-visible\:ring-yellow-400\/60:focus-visible {
   --tw-ring-color: #facc1599;
+}
+
+.focus-visible\:ring-gray-500\/60:focus-visible {
+  --tw-ring-color: #9ca3af99;
 }
 
 .focus-visible\:ring-offset-1:focus-visible {
