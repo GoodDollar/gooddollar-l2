@@ -378,6 +378,37 @@ function findCatalogEntry(reqPath: string): EndpointDoc | undefined {
 }
 
 /**
+ * Suggest a canonical route for a near-miss request path. Handles the two
+ * deterministic corrections the strict router can otherwise not auto-apply:
+ *
+ *  - **case-only mismatch** (task 0042): `/HEALTH` → `/health`
+ *  - **trailing-slash-only mismatch** (task 0046): `/quotes/` → `/quotes`
+ *
+ * For the parametric `/quotes/:symbol` shape, the prefix is lowercased
+ * (so `/QUOTES/AAPL` → `/quotes/AAPL`) but the user's symbol case is
+ * preserved — `normalizeSymbol` will fold it anyway, and the suggestion
+ * reads more naturally when it echoes back the ticker the caller typed.
+ *
+ * Returns `undefined` when the request path is already canonical or
+ * cannot be steered toward a known route — the 404 envelope then omits
+ * the field rather than shipping a confusing null.
+ */
+function canonicalSuggestion(reqPath: string): string | undefined {
+  if (reqPath === '/') return undefined;
+  const stripped = reqPath.endsWith('/') && reqPath.length > 1
+    ? reqPath.slice(0, -1)
+    : reqPath;
+  const candidate = stripped.toLowerCase();
+  if (candidate === reqPath) return undefined;
+  if (CATALOG_EXACT.has(candidate)) return candidate;
+  if (QUOTES_SYMBOL_RE.test(candidate)) {
+    const slashIdx = stripped.lastIndexOf('/');
+    return `/quotes/${stripped.slice(slashIdx + 1)}`;
+  }
+  return undefined;
+}
+
+/**
  * Derive a "what real route does this single path segment name?" map
  * from `ENDPOINT_CATALOG`. Drift-proof: adding a new endpoint
  * automatically extends the hint map; nothing to hand-edit.
@@ -689,6 +720,13 @@ export function createServer(
 ): express.Express {
   const app = express();
   app.disable('x-powered-by');
+  // RFC 9110 §4.2.3 — URL paths are case-sensitive. Default Express
+  // matching folds `/HEALTH` onto `/health`, contradicting the discovery
+  // catalog which only ships canonical lowercase forms. Flipping this
+  // routes case-mangled paths to the 404 catch-all where they get an
+  // explicit `didYouMean` steer instead of silently serving the canonical
+  // body. See task 0042.
+  app.set('case sensitive routing', true);
   const cfg = { ...DEFAULT_CONFIG, ...config };
   // Built once: per-request membership check is O(1). Uppercase every
   // entry so deploys with mixed-case `ORACLE_SYMBOLS` still match the
@@ -1101,13 +1139,15 @@ export function createServer(
     if (ws) {
       endpoints.push({ path: ws.url, methods: ['CONNECT'] });
     }
+    const didYouMean = canonicalSuggestion(req.path);
     const body: Record<string, unknown> = {
       error: 'not-found',
       path: req.path,
       method: req.method,
       discovery: '/',
-      endpoints,
     };
+    if (didYouMean !== undefined) body.didYouMean = didYouMean;
+    body.endpoints = endpoints;
     res.status(404).json(finalizeTimestamps(body, now));
   });
 
