@@ -63,7 +63,11 @@ vi.mock('@/lib/chartData', () => ({
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
-  useOnChainStocks: () => ({ stocks: currentStocks, isLive: false, isLoading: false }),
+  // These tests cover ticker validation, analysis-section rendering, and
+  // peer-metric switching — none of which is about the oracle isLive gate
+  // (task 0038). Using `isLive: true` keeps the Analysis card / Peer
+  // Compare panel rendering through the live branch.
+  useOnChainStocks: () => ({ stocks: currentStocks, isLive: true, isLoading: false }),
 }))
 
 vi.mock('@/lib/useStocks', () => ({

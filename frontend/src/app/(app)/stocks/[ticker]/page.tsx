@@ -6,7 +6,7 @@ import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import Link from 'next/link'
-import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
+import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { getAnalystOutlook } from '@/lib/stockInsights'
@@ -88,6 +88,93 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 
 const TIMEFRAMES: Timeframe[] = ['1H', '4H', '1D', '1W', '1M', '3M', '1Y']
 type PeerMetric = 'change24h' | 'marketCap' | 'peRatio'
+
+const FEED_PENDING_CAPTION = 'Source: feed pending — values populate once the on-chain stocks oracle is live.'
+
+interface KeyStatRow {
+  label: string
+  value: string
+  /**
+   * When true the cell renders as a dim em-dash regardless of the raw
+   * value. Used for two cases: the on-chain oracle is offline (`!isLive`)
+   * or the row was explicitly flagged as having no data (per-field
+   * `isNoData` check or `looksLikePlaceholder52w` detection).
+   */
+  missing: boolean
+  /** Tint colour applied when `missing === false`. */
+  tone?: 'positive' | 'negative' | 'neutral'
+}
+
+function buildKeyStatRows(stock: Stock, isLive: boolean): KeyStatRow[] {
+  const placeholder52w = looksLikePlaceholder52w(stock)
+  const dashIfOffline = (raw: unknown) => !isLive || isNoData(raw)
+  const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`
+  return [
+    { label: 'Market Cap', value: usdOrDash(stock.marketCap),    missing: dashIfOffline(stock.marketCap) },
+    { label: '24h Volume', value: usdOrDash(stock.volume24h),    missing: dashIfOffline(stock.volume24h) },
+    { label: 'Sector',     value: stock.sector,                  missing: false },
+    { label: '52W High',   value: formatStockPrice(stock.high52w), missing: dashIfOffline(stock.high52w) || placeholder52w },
+    { label: '52W Low',    value: formatStockPrice(stock.low52w),  missing: dashIfOffline(stock.low52w)  || placeholder52w },
+    { label: '24h Change', value: fmtPct(stock.change24h), missing: dashIfOffline(stock.change24h), tone: stock.change24h >= 0 ? 'positive' : 'negative' },
+    { label: 'P/E Ratio',  value: `${stock.peRatio.toFixed(1)}x`, missing: dashIfOffline(stock.peRatio) },
+    { label: 'EPS',        value: `$${stock.eps.toFixed(2)}`,     missing: dashIfOffline(stock.eps), tone: stock.eps >= 0 ? 'positive' : 'negative' },
+    { label: 'Dividend Yield', value: `${stock.dividendYield.toFixed(2)}%`, missing: !isLive || stock.dividendYield <= 0 },
+    { label: 'Avg Volume', value: intOrDash(stock.avgVolume),    missing: dashIfOffline(stock.avgVolume) },
+  ]
+}
+
+interface AnalysisTileProps {
+  label: string
+  /** Live-path text shown when `missing === false`. */
+  value: string
+  /** Offline / no-data text shown when `missing === true`. */
+  dash: string
+  missing: boolean
+  testId?: string
+  tone?: 'positive' | 'negative' | 'neutral'
+}
+
+function AnalysisTile({ label, value, dash, missing, testId, tone }: AnalysisTileProps) {
+  const toneClass = tone === 'positive' ? 'text-green-400' : tone === 'negative' ? 'text-red-400' : 'text-white'
+  const valueClass = missing ? 'text-gray-500' : toneClass
+  return (
+    <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
+      <div className="text-[10px] uppercase tracking-wide text-gray-500">{label}</div>
+      <div data-testid={testId} className={`mt-1 text-sm font-medium ${valueClass}`}>
+        {missing ? dash : value}
+      </div>
+    </div>
+  )
+}
+
+function KeyStatisticsCard({ stock, isLive }: { stock: Stock; isLive: boolean }) {
+  const rows = buildKeyStatRows(stock, isLive)
+  const anyMissing = rows.some((row) => row.missing)
+  return (
+    <div data-testid="ticker-key-statistics" className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
+      <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
+        {rows.map((row) => {
+          const toneClass = row.tone === 'positive' ? 'text-green-400' : row.tone === 'negative' ? 'text-red-400' : 'text-white'
+          const valueClass = row.missing ? 'text-gray-500' : toneClass
+          return (
+            <div key={row.label} className="min-w-0">
+              <div className="text-gray-500 text-xs mb-0.5">{row.label}</div>
+              <div className={`font-medium truncate ${valueClass}`}>
+                {row.missing ? NO_DATA_DASH : row.value}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {anyMissing && (
+        <p className="mt-3 text-[11px] text-gray-500" data-testid="key-statistics-feed-pending">
+          {FEED_PENDING_CAPTION}
+        </p>
+      )}
+    </div>
+  )
+}
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const DETAIL_BACK_LINKS: Record<string, { label: string; href: string }> = {
   watchlist: { label: 'Back to Watchlist', href: '/stocks/watchlist' },
@@ -680,7 +767,7 @@ export default function StockDetailPage() {
             ) : null}
           </div>
 
-          <StockStatsBar stock={stock} />
+          <StockStatsBar stock={stock} isLive={isLive} />
 
           <Suspense fallback={<div className="mb-4 h-24 rounded-2xl bg-dark-100 animate-pulse" />}>
             <AnalystOutlookCard
@@ -771,75 +858,7 @@ export default function StockDetailPage() {
           </div>
 
           {activeTab === 'overview' && (
-            <div data-testid="ticker-key-statistics" className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
-              <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
-                <div className="min-w-0">
-                  <div className="text-gray-500 text-xs mb-0.5">Market Cap</div>
-                  <div className={`font-medium truncate ${isNoData(stock.marketCap) ? 'text-gray-500' : 'text-white'}`}>
-                    {usdOrDash(stock.marketCap)}
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
-                  <div className={`font-medium truncate ${isNoData(stock.volume24h) ? 'text-gray-500' : 'text-white'}`}>
-                    {usdOrDash(stock.volume24h)}
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-gray-500 text-xs mb-0.5">Sector</div>
-                  <div className="text-white font-medium truncate">{stock.sector}</div>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-gray-500 text-xs mb-0.5">52W High</div>
-                  <div className={`font-medium truncate ${looksLikePlaceholder52w(stock) || isNoData(stock.high52w) ? 'text-gray-500' : 'text-white'}`}>
-                    {looksLikePlaceholder52w(stock) || isNoData(stock.high52w) ? NO_DATA_DASH : formatStockPrice(stock.high52w)}
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
-                  <div className={`font-medium truncate ${looksLikePlaceholder52w(stock) || isNoData(stock.low52w) ? 'text-gray-500' : 'text-white'}`}>
-                    {looksLikePlaceholder52w(stock) || isNoData(stock.low52w) ? NO_DATA_DASH : formatStockPrice(stock.low52w)}
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
-                  {isNoData(stock.change24h) ? (
-                    <div className="font-medium text-gray-500">{NO_DATA_DASH}</div>
-                  ) : (
-                    <div className={`font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {pctOrDash(stock.change24h)}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <div className="text-gray-500 text-xs mb-0.5">P/E Ratio</div>
-                  <div className={`font-medium ${isNoData(stock.peRatio) ? 'text-gray-500' : 'text-white'}`}>
-                    {isNoData(stock.peRatio) ? NO_DATA_DASH : `${stock.peRatio.toFixed(1)}x`}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-500 text-xs mb-0.5">EPS</div>
-                  {isNoData(stock.eps) ? (
-                    <div className="font-medium text-gray-500">{NO_DATA_DASH}</div>
-                  ) : (
-                    <div className={`font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>${stock.eps.toFixed(2)}</div>
-                  )}
-                </div>
-                <div>
-                  <div className="text-gray-500 text-xs mb-0.5">Dividend Yield</div>
-                  <div className={`font-medium ${stock.dividendYield > 0 ? 'text-white' : 'text-gray-500'}`}>
-                    {stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : NO_DATA_DASH}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-500 text-xs mb-0.5">Avg Volume</div>
-                  <div className={`font-medium ${isNoData(stock.avgVolume) ? 'text-gray-500' : 'text-white'}`}>
-                    {intOrDash(stock.avgVolume)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <KeyStatisticsCard stock={stock} isLive={isLive} />
           )}
 
           {activeTab === 'fundamentals' && (
@@ -900,49 +919,50 @@ export default function StockDetailPage() {
             {analysisExpanded && (
               <div className="mt-4 space-y-4">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Valuation</div>
-                    <div
-                      data-testid="analysis-pe"
-                      className={`mt-1 text-sm font-medium ${isNoData(stock.peRatio) ? 'text-gray-500' : 'text-white'}`}
-                    >
-                      {isNoData(stock.peRatio) ? `P/E ${NO_DATA_DASH}` : `P/E ${stock.peRatio.toFixed(1)}x`}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Profitability</div>
-                    <div
-                      data-testid="analysis-eps"
-                      className={`mt-1 text-sm font-medium ${isNoData(stock.eps) ? 'text-gray-500' : (stock.eps >= 0 ? 'text-green-400' : 'text-red-400')}`}
-                    >
-                      {isNoData(stock.eps) ? `EPS ${NO_DATA_DASH}` : `EPS $${stock.eps.toFixed(2)}`}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Income</div>
-                    <div className="mt-1 text-sm font-medium text-white">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}% yield` : 'No dividend'}</div>
-                  </div>
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Liquidity</div>
-                    <div
-                      data-testid="analysis-avg-vol"
-                      className={`mt-1 text-sm font-medium ${isNoData(stock.avgVolume) ? 'text-gray-500' : 'text-white'}`}
-                    >
-                      {isNoData(stock.avgVolume) ? NO_DATA_DASH : `${formatLargeNumber(stock.avgVolume).replace('$', '')} avg vol`}
-                    </div>
-                  </div>
+                  <AnalysisTile
+                    label="Valuation"
+                    testId="analysis-pe"
+                    missing={!isLive || isNoData(stock.peRatio)}
+                    value={`P/E ${stock.peRatio.toFixed(1)}x`}
+                    dash={`P/E ${NO_DATA_DASH}`}
+                  />
+                  <AnalysisTile
+                    label="Profitability"
+                    testId="analysis-eps"
+                    missing={!isLive || isNoData(stock.eps)}
+                    value={`EPS $${stock.eps.toFixed(2)}`}
+                    dash={`EPS ${NO_DATA_DASH}`}
+                    tone={stock.eps >= 0 ? 'positive' : 'negative'}
+                  />
+                  <AnalysisTile
+                    label="Income"
+                    missing={!isLive || stock.dividendYield <= 0}
+                    value={`${stock.dividendYield.toFixed(2)}% yield`}
+                    dash="No dividend"
+                  />
+                  <AnalysisTile
+                    label="Liquidity"
+                    testId="analysis-avg-vol"
+                    missing={!isLive || isNoData(stock.avgVolume)}
+                    value={`${formatLargeNumber(stock.avgVolume).replace('$', '')} avg vol`}
+                    dash={NO_DATA_DASH}
+                  />
                 </div>
 
                 <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300">Peer Compare</h3>
                     <div className="flex flex-wrap gap-1">
-                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'change24h' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('change24h')}>24h%</button>
-                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'marketCap' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('marketCap')}>Mkt Cap</button>
-                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'peRatio' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('peRatio')}>P/E</button>
+                      <button type="button" disabled={!isLive} className={`px-2 py-1 rounded-md text-[11px] disabled:opacity-50 disabled:cursor-not-allowed ${peerMetric === 'change24h' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('change24h')}>24h%</button>
+                      <button type="button" disabled={!isLive} className={`px-2 py-1 rounded-md text-[11px] disabled:opacity-50 disabled:cursor-not-allowed ${peerMetric === 'marketCap' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('marketCap')}>Mkt Cap</button>
+                      <button type="button" disabled={!isLive} className={`px-2 py-1 rounded-md text-[11px] disabled:opacity-50 disabled:cursor-not-allowed ${peerMetric === 'peRatio' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('peRatio')}>P/E</button>
                     </div>
                   </div>
-                  {peerCandidates.length === 0 || peerCandidates.every((peer) => isNoData(peer[peerMetric])) ? (
+                  {!isLive ? (
+                    <p className="text-xs text-gray-500" data-testid="peer-empty-state">
+                      Peer comparison populates when the stocks oracle is reachable.
+                    </p>
+                  ) : peerCandidates.length === 0 || peerCandidates.every((peer) => isNoData(peer[peerMetric])) ? (
                     <p className="text-xs text-gray-500" data-testid="peer-empty-state">
                       Peer data unavailable right now.
                     </p>
@@ -980,7 +1000,11 @@ export default function StockDetailPage() {
 
                 <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300 mb-2">Trend Summary</h3>
-                  {!trendSummary ? (
+                  {!isLive ? (
+                    <p className="text-xs text-gray-500" data-testid="trend-summary-empty-state">
+                      Trend summary populates when the on-chain price history is available.
+                    </p>
+                  ) : !trendSummary ? (
                     <p className="text-xs text-gray-500">Trend signal unavailable while chart data loads.</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">

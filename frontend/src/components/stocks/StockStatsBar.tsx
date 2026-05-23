@@ -18,9 +18,18 @@ function derive24hRange(price: number, change24h: number) {
   }
 }
 
-export function StockStatsBar({ stock }: { stock: Stock }) {
+/**
+ * `isLive` defaults to `true` for backward compatibility. Callers
+ * should pass `useOnChainStocks().isLive` explicitly; when the gate is
+ * false the 24h%, 24h H, 24h L and Vol cells collapse to em-dashes so
+ * the strip never reprints `FALLBACK_STOCKS` literals as live market
+ * data (task 0038). The Mark cell keeps rendering — it's the
+ * well-attributed value that already carries its own source pill.
+ */
+export function StockStatsBar({ stock, isLive = true }: { stock: Stock; isLive?: boolean }) {
   const { high, low } = derive24hRange(stock.price, stock.change24h)
-  const changeMissing = isNoData(stock.change24h)
+  const derivedMissing = !isLive || isNoData(stock.change24h)
+  const volMissing = !isLive || isNoData(stock.volume24h)
 
   const tileCls = 'flex flex-col sm:flex-row sm:items-baseline'
   const labelCls =
@@ -40,7 +49,7 @@ export function StockStatsBar({ stock }: { stock: Stock }) {
       </div>
       <div className={tileCls}>
         <span className={labelCls}>24h</span>
-        {changeMissing ? (
+        {derivedMissing ? (
           <span className={dashCls}>{NO_DATA_DASH}</span>
         ) : (
           <span
@@ -53,7 +62,7 @@ export function StockStatsBar({ stock }: { stock: Stock }) {
       </div>
       <div className={tileCls}>
         <span className={labelCls}>24h H</span>
-        {changeMissing ? (
+        {derivedMissing ? (
           <span className={dashCls}>{NO_DATA_DASH}</span>
         ) : (
           <span className="text-green-400 font-medium sm:ml-1.5">
@@ -63,7 +72,7 @@ export function StockStatsBar({ stock }: { stock: Stock }) {
       </div>
       <div className={tileCls}>
         <span className={labelCls}>24h L</span>
-        {changeMissing ? (
+        {derivedMissing ? (
           <span className={dashCls}>{NO_DATA_DASH}</span>
         ) : (
           <span className="text-red-400 font-medium sm:ml-1.5">
@@ -73,8 +82,8 @@ export function StockStatsBar({ stock }: { stock: Stock }) {
       </div>
       <div className={tileCls}>
         <span className={labelCls}>Vol</span>
-        <span className={isNoData(stock.volume24h) ? dashCls : 'text-white font-medium sm:ml-1.5'}>
-          {usdOrDash(stock.volume24h)}
+        <span className={volMissing ? dashCls : 'text-white font-medium sm:ml-1.5'}>
+          {volMissing ? NO_DATA_DASH : usdOrDash(stock.volume24h)}
         </span>
       </div>
     </div>
