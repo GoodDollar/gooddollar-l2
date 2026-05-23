@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { type ExposureSnapshot, type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
@@ -79,9 +79,44 @@ function formatUsd(n: number): string {
   })
 }
 
-function formatTs(ms: number): string {
-  if (!Number.isFinite(ms) || ms === 0) return '—'
-  return new Date(ms).toISOString()
+function formatRelative(ts: number): string {
+  const ageMs = Math.max(0, Date.now() - ts)
+  if (ageMs < 1_000) return 'just now'
+  if (ageMs < 60_000) return `${Math.floor(ageMs / 1_000)}s ago`
+  if (ageMs < 3_600_000) return `${Math.floor(ageMs / 60_000)}m ago`
+  return `${Math.floor(ageMs / 3_600_000)}h ago`
+}
+
+const RELATIVE_TICK_MS = 30_000
+
+function RelativeTimestamp({ ms }: { ms: number }) {
+  const [, setTick] = useState(0)
+  const finite = Number.isFinite(ms) && ms !== 0
+
+  useEffect(() => {
+    if (!finite) return
+    const id = setInterval(() => setTick((n) => n + 1), RELATIVE_TICK_MS)
+    return () => clearInterval(id)
+  }, [finite])
+
+  if (!finite) {
+    return <span data-testid="hedge-timestamp">—</span>
+  }
+  const date = new Date(ms)
+  const iso = date.toISOString()
+  const local = date.toLocaleString(undefined, { timeZoneName: 'short' })
+  return (
+    <span
+      data-testid="hedge-timestamp"
+      title={`${iso}\n${local}`}
+      className="font-mono break-all"
+    >
+      {formatRelative(ms)}
+      <span aria-hidden className="ml-1 text-gray-500">
+        · {iso.slice(11, 19)} UTC
+      </span>
+    </span>
+  )
 }
 
 export function LastDemoHedgePanel({
@@ -259,7 +294,9 @@ function ProofMeta({ proof }: { proof: HedgeProof }) {
     <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
       <Field label="orderId" value={proof.etoroOrderId ?? proof.orderId} mono />
       <Field label="runId" value={proof.runId} mono />
-      <Field label="timestamp" value={formatTs(proof.timestamp)} mono />
+      <FieldNode label="timestamp">
+        <RelativeTimestamp ms={proof.timestamp} />
+      </FieldNode>
       <Field label="etoroMode" value={proof.etoroMode} />
     </dl>
   )
@@ -276,6 +313,15 @@ function Field({ label, value, mono = false }: { label: string; value: string; m
     <div>
       <dt className="text-[10px] uppercase tracking-wider text-gray-500">{label}</dt>
       <dd className={`mt-0.5 text-gray-200 ${mono ? 'font-mono break-all' : ''}`}>{value}</dd>
+    </div>
+  )
+}
+
+function FieldNode({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <dt className="text-[10px] uppercase tracking-wider text-gray-500">{label}</dt>
+      <dd className="mt-0.5 text-gray-200">{children}</dd>
     </div>
   )
 }

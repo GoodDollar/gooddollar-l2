@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { LastDemoHedgePanel } from '../LastDemoHedgePanel'
 import { NO_OP_ORDER_ID, type HedgeProof } from '@/lib/hedgeProof'
+
+const T0 = new Date('2026-05-23T13:50:20.584Z').getTime()
+const T_PROOF = T0 - 3 * 60_000
 
 const RELATIVE_SOURCE = 'qa-proof/hedges/latest.json'
 
@@ -70,6 +73,83 @@ describe('LastDemoHedgePanel', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  it('renders the hedge timestamp as a humanised relative phrase plus HH:MM:SS UTC', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(T0))
+    mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp: T_PROOF }))
+
+    render(<LastDemoHedgePanel intervalMs={5 * 60_000} />)
+
+    const ts = await vi.waitFor(() => {
+      const el = screen.getByTestId('hedge-timestamp')
+      expect(el.textContent).toMatch(/3m ago/i)
+      return el
+    })
+    expect(ts.textContent).toMatch(/13:47:20 UTC/)
+  })
+
+  it('exposes the full ISO and local-time wall clock on the title attribute', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(T0))
+    mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp: T_PROOF }))
+
+    render(<LastDemoHedgePanel intervalMs={5 * 60_000} />)
+
+    const title = await vi.waitFor(() => {
+      const t = screen.getByTestId('hedge-timestamp').getAttribute('title') ?? ''
+      expect(t).toContain('2026-05-23T13:47:20.584Z')
+      return t
+    })
+    expect(title.split('\n').length).toBeGreaterThanOrEqual(2)
+    expect(title).toMatch(/2026/)
+  })
+
+  it.each([
+    ['zero', 0],
+    ['NaN', Number.NaN],
+  ])('renders — when timestamp is %s', async (_label, timestamp) => {
+    mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp }))
+
+    render(<LastDemoHedgePanel intervalMs={5 * 60_000} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('hedge-timestamp')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('hedge-timestamp').textContent).toBe('—')
+  })
+
+  it('relative phrase updates at the 30s ticker without a fresh fetch', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(T0))
+    mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp: T_PROOF }))
+
+    render(<LastDemoHedgePanel intervalMs={10 * 60_000} />)
+
+    const initial = await vi.waitFor(() => {
+      const t = screen.getByTestId('hedge-timestamp').textContent ?? ''
+      expect(t).toMatch(/m ago/i)
+      return t
+    })
+    const initialMatch = initial.match(/(\d+)m ago/i)
+    expect(initialMatch).not.toBeNull()
+    const initialMinutes = Number(initialMatch![1])
+
+    const fetchSpy = globalThis.fetch as ReturnType<typeof vi.fn>
+    const fetchCallsBefore = fetchSpy.mock.calls.length
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(120_000)
+    })
+
+    const after = screen.getByTestId('hedge-timestamp').textContent ?? ''
+    const afterMatch = after.match(/(\d+)m ago/i)
+    expect(afterMatch).not.toBeNull()
+    const afterMinutes = Number(afterMatch![1])
+    expect(afterMinutes).toBeGreaterThan(initialMinutes)
+    expect(fetchSpy.mock.calls.length).toBe(fetchCallsBefore)
   })
 
   it('renders the outer section with the stable jump-target id', () => {

@@ -90,6 +90,17 @@ test.describe('Lane 6 — /live-prices-proof', () => {
       await expect(page.locator(`section#${panelId}`)).toHaveCount(1)
     }
 
+    // The last-demo-hedge panel may be in `missing` / `error` state in
+    // CI; only assert the humanised timestamp when the panel actually
+    // rendered the proof card (the hedge-timestamp testid only exists
+    // inside the ok branch).
+    const hedgeTimestamp = page.getByTestId('hedge-timestamp')
+    if (await hedgeTimestamp.count()) {
+      await expect(hedgeTimestamp).toBeVisible()
+      const title = await hedgeTimestamp.getAttribute('title')
+      expect(title ?? '').toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
+    }
+
     // When the banner is degraded, the reason chips render as anchors
     // pointing at their corresponding panel. Click the first chip and
     // confirm the matching panel scrolls into view.
