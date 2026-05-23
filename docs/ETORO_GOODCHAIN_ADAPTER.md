@@ -240,6 +240,28 @@ hedge silently uses placeholder IDs (see lane task #0006).
    `backend/price-service` without code change because `MarketDataSource`
    is interface-stable across modes.
 
+## Lane-1 quick start
+
+From the repo root:
+
+```bash
+npm run install:lane1   # installs deps in 4 lane-1 backend packages
+npm run test:lane1      # runs all four suites; halts on first failure
+```
+
+The install step is idempotent — re-running prints `[skip] <pkg>` for
+any package whose `node_modules/.bin/jest` already exists. The test
+step prefixes every line with `[<pkg>]` so CI logs stay diagnosable, and
+exits with the failing package's exit code on first failure (printing a
+trailing `[fail] <pkg> exited <N>` line).
+
+The root `package.json` does NOT include the backend packages in its
+`workspaces` array; the helper scripts (`scripts/install-lane1-backend.sh`,
+`scripts/test-lane1-backend.sh`) walk the four lane-1 directories
+explicitly so the existing `frontend` / `sdk` install semantics stay
+unchanged. Adding a fifth lane-1 package later means editing the `PKGS`
+array at the top of each script.
+
 ## Verification
 
 - `cd backend/etoro-client && npm test` — full unit suite.
