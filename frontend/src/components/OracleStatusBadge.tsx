@@ -11,6 +11,36 @@ function formatAge(ms: number): string {
   return `${Math.floor(ms / 3_600_000)}h ago`
 }
 
+function renderDetailRow(quoteStatus: QuoteStatus) {
+  const isStale = quoteStatus.lastUpdateMs > 60_000
+  const dotColor = quoteStatus.lastUpdateMs < 15_000
+    ? 'bg-green-400'
+    : isStale
+      ? 'bg-red-400'
+      : 'bg-yellow-400'
+
+  return (
+    <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs">
+      <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+      <span className="text-gray-400">
+        Updated {formatAge(quoteStatus.lastUpdateMs)}
+      </span>
+      <span className="text-gray-600">·</span>
+      <span className="text-gray-400">
+        {getSessionLabel(quoteStatus.sessionState)}
+      </span>
+      {quoteStatus.confidence > 0 && (
+        <>
+          <span className="text-gray-600">·</span>
+          <span className={quoteStatus.confidence >= 70 ? 'text-gray-400' : 'text-yellow-400'}>
+            {quoteStatus.confidence}% conf
+          </span>
+        </>
+      )}
+    </div>
+  )
+}
+
 type Variant = 'compact' | 'detail'
 type TimeoutPhase = 'loading' | 'slow' | 'timed-out'
 
@@ -269,33 +299,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       )
     }
 
-    const isStale = quoteStatus.lastUpdateMs > 60_000
-    const dotColor = quoteStatus.lastUpdateMs < 15_000
-      ? 'bg-green-400'
-      : isStale
-        ? 'bg-red-400'
-        : 'bg-yellow-400'
-
-    return (
-      <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs">
-        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-        <span className="text-gray-400">
-          Updated {formatAge(quoteStatus.lastUpdateMs)}
-        </span>
-        <span className="text-gray-600">·</span>
-        <span className="text-gray-400">
-          {getSessionLabel(quoteStatus.sessionState)}
-        </span>
-        {quoteStatus.confidence > 0 && (
-          <>
-            <span className="text-gray-600">·</span>
-            <span className={quoteStatus.confidence >= 70 ? 'text-gray-400' : 'text-yellow-400'}>
-              {quoteStatus.confidence}% conf
-            </span>
-          </>
-        )}
-      </div>
-    )
+    return renderDetailRow(quoteStatus)
   }
 
   const dominantSession = getDominantSession(quotes)
@@ -326,4 +330,6 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
 export function __resetOracleStatusFallbackForTests(): void {
   fallbackCache = null
   fallbackInFlight = null
+  quoteFallbackCache = null
+  quoteFallbackInFlight = null
 }
