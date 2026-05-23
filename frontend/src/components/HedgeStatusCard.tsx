@@ -106,6 +106,28 @@ function isoTitle(ms: number | undefined): string | undefined {
   return new Date(ms).toISOString()
 }
 
+// "Healthy converged" → the most recent poll *was* the most recent tick;
+// collapse the two timestamps into a single compact freshness line. When
+// they diverge (engine error path keeps polling but stops ticking) render
+// both so the operator can see at a glance which value is actually stale.
+const HEALTHY_CONVERGED_TOLERANCE_MS = 1_500
+
+function renderFreshnessText(input: {
+  lastTickAt: number | null
+  lastPolledAt: number | null
+  pollIntervalMs: number
+}): string {
+  const tickStr = input.lastTickAt === null ? 'never' : timeAgo(input.lastTickAt)
+  const polledStr = input.lastPolledAt === null ? '—' : timeAgo(input.lastPolledAt)
+  const autoRefresh = `auto-refresh ${Math.round(input.pollIntervalMs / 1000)}s`
+  const healthyConverged =
+    input.lastTickAt !== null &&
+    input.lastPolledAt !== null &&
+    Math.abs(input.lastPolledAt - input.lastTickAt) < HEALTHY_CONVERGED_TOLERANCE_MS
+  if (healthyConverged) return `Last tick ${tickStr} · ${autoRefresh}`
+  return `Last tick ${tickStr} · last polled ${polledStr}`
+}
+
 interface ExposureDeltaParts {
   display: string
   deltaSigned: string
@@ -402,7 +424,14 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const [error, setError] = useState<string | null>(null)
   const [throttle, setThrottle] = useState<ThrottleState | null>(null)
   const [throttleTick, setThrottleTick] = useState(0)
-  const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null)
+  // `lastPolledAt` updates after every resolved fetch (including error
+  // shells that return 200 + `{error, snapshot: null}`). `lastTickAt`
+  // only advances when we accept a real snapshot. Tracking them
+  // separately lets the freshness label tell two distinct truths instead
+  // of conflating "we reached the proxy" with "we have fresh engine
+  // data".
+  const [lastPolledAt, setLastPolledAt] = useState<number | null>(null)
+  const [lastTickAt, setLastTickAt] = useState<number | null>(null)
   const [nowTick, setNowTick] = useState(0)
 
   // Race-condition guards: many call sites (mount, poll, header button,
@@ -452,14 +481,16 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
       const body = (await res.json()) as HedgeStatusResponse & { error?: string }
       if (gen !== genRef.current) return
       setThrottle(null)
+      const now = Date.now()
+      setLastPolledAt(now)
       if (body.error && !body.snapshot) {
         setError(body.error)
         setData(body)
       } else {
         setError(null)
         setData(body)
+        setLastTickAt(now)
       }
-      setLastSuccessAt(Date.now())
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       if (gen !== genRef.current) return
@@ -592,14 +623,12 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
           className="mt-2 flex items-center gap-2 flex-wrap text-xs"
         >
           <span data-testid="hedge-last-success" className="text-gray-500">
-            Updated {timeAgo(lastSuccessAt ?? undefined)} ·
-            auto-refresh {Math.round(POLL_INTERVAL_MS / 1000)}s
+            {renderFreshnessText({
+              lastTickAt,
+              lastPolledAt,
+              pollIntervalMs: POLL_INTERVAL_MS,
+            })}
           </span>
-          {data?.snapshot?.timestamp && (
-            <span className="text-gray-500">
-              · last tick {timeAgo(data.snapshot.timestamp)}
-            </span>
-          )}
           {data?.degraded?.proof && (
             <DegradedHint>proof: {data.degraded.proof}</DegradedHint>
           )}

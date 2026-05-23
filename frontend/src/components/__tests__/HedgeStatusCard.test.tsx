@@ -334,19 +334,19 @@ describe('HedgeStatusCard', () => {
     expect(screen.getByText(/auto-refresh 10s/i)).toBeInTheDocument();
   });
 
-  it('"Updated Ns ago" reads em-dash before any fetch resolves (#0020)', async () => {
+  it('freshness label reads "Last tick: never" before any fetch resolves (#0020/#0023)', async () => {
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
     render(<HedgeStatusCard />);
     const stamp = await screen.findByTestId('hedge-last-success');
-    expect(stamp.textContent ?? '').toMatch(/Updated\s+—/);
+    expect(stamp.textContent ?? '').toMatch(/Last tick\s+never/i);
   });
 
-  it('"Updated Ns ago" populates after a successful fetch (#0020)', async () => {
+  it('freshness label collapses to "Last tick Ns ago" after a healthy fetch (#0020/#0023)', async () => {
     mockFetchOnce(BASE_RESPONSE);
     render(<HedgeStatusCard />);
     await screen.findByTestId('hedge-mode-badge');
     const stamp = await screen.findByTestId('hedge-last-success');
-    expect(stamp.textContent ?? '').toMatch(/Updated\s+\d+s ago/);
+    expect(stamp.textContent ?? '').toMatch(/Last tick\s+\d+s ago/i);
   });
 
   it('exposes an imperative refresh() method via ref', async () => {
@@ -847,6 +847,39 @@ describe('HedgeStatusCard', () => {
       await waitFor(() => {
         expect(fetchSpy.mock.calls.length).toBeGreaterThan(before);
       });
+    });
+  });
+
+  describe('freshness label (#0023)', () => {
+    it('error-shell response: "Last tick: never · last polled Ns ago"', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const row = await screen.findByTestId('hedge-header-row2');
+      await waitFor(() => {
+        expect(row.textContent ?? '').toMatch(/Last tick\s+never/i);
+      });
+      expect(row.textContent ?? '').toMatch(/last polled\s+\d+s ago/i);
+      expect(row.textContent ?? '').not.toMatch(/auto-refresh/i);
+    });
+
+    it('healthy converged path collapses to a single line with auto-refresh hint', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const stamp = await screen.findByTestId('hedge-last-success');
+      await waitFor(() => {
+        expect(stamp.textContent ?? '').toMatch(/Last tick\s+\d+s ago/i);
+      });
+      expect(stamp.textContent ?? '').toMatch(/auto-refresh\s+10s/i);
+      expect(stamp.textContent ?? '').not.toMatch(/last polled/i);
     });
   });
 
