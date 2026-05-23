@@ -49,3 +49,20 @@ test('status field takes precedence over ok field when both are present', () => 
   // A service that supplies both should be trusted on its explicit `status`.
   assert.equal(parseHealthStatus({ status: 'degraded', ok: true }), 'degraded');
 });
+
+test('price-service degraded body (503-shape) maps to degraded', () => {
+  // The price-service `/health` returns 503 with this body shape after 10s
+  // without fresh quotes (`backend/price-service/README.md`). The aggregator
+  // also flags it as `error` on non-2xx, but the body classifier must still
+  // recognise the degraded signal when callers parse the body directly.
+  assert.equal(
+    parseHealthStatus({
+      status: 'degraded',
+      freshQuotes: 0,
+      totalCached: 5,
+      configuredSymbols: 8,
+      timestamp: Date.now(),
+    }),
+    'degraded',
+  );
+});

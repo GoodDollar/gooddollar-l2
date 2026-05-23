@@ -82,7 +82,7 @@ frontend GET /api/status  →  https://goodswap.goodclaw.org/api/status
 
 Service list defined in [`status-aggregator/src/index.ts`](status-aggregator/src/index.ts).
 
-**2026-05-22 note:** `hedge-engine` and `oracle-signer` may report **unreachable** or degraded when running in health-only mode (empty `RISK_ENGINE_ADDRESS` / `ORACLE_SIGNER_KEY`). This is expected per [`ecosystem.config.js`](ecosystem.config.js) comments.
+**2026-05-22 note:** `hedge-engine` and `oracle-signer` may report **unreachable** or degraded when running in health-only mode (empty `RISK_ENGINE_ADDRESS` / `ORACLE_SIGNER_KEY`). This is expected per [`ecosystem.config.js`](ecosystem.config.js) comments. `price-service` may report **degraded** when no fresh quotes have flowed for ≥10s (e.g. demo credentials expired or the eToro upstream is unreachable) — see [`price-service/README.md`](price-service/README.md) for the health contract.
 
 ## Environment & addresses
 
