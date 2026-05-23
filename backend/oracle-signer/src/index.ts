@@ -125,7 +125,7 @@ export function loadConfig(
   }
 
   return {
-    priceServiceUrl: env.PRICE_SERVICE_URL || 'ws://localhost:4001',
+    priceServiceUrl: env.PRICE_SERVICE_URL || 'ws://localhost:9301',
     rpcUrl: env.L2_RPC_URL || env.RPC || 'http://localhost:8545',
     oracleAddress: env.STOCK_ORACLE_V2_ADDRESS || '',
     signerKey,

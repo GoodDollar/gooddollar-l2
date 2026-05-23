@@ -32,7 +32,7 @@ jest.mock('../price-ws-client', () => {
 
 function makeConfig(overrides: Partial<OracleSignerConfig> = {}): OracleSignerConfig {
   return {
-    priceServiceUrl: 'ws://localhost:4001',
+    priceServiceUrl: 'ws://localhost:9301',
     rpcUrl: 'http://localhost:8545',
     oracleAddress: '0x0000000000000000000000000000000000000001',
     signerKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
@@ -137,6 +137,26 @@ describe('OracleSignerService', () => {
     const config = loadConfig(env);
     expect(config.symbols).toEqual([...DEFAULT_LANE_SYMBOLS]);
     expect(env.SERVICE_HEALTH_STATUS).toBeUndefined();
+  });
+
+  // Anchors the default URL to the producer's canonical WS port
+  // (backend/price-service src/types.ts DEFAULT_CONFIG.wsPort).
+  // Regression guard against drift back to a port nothing listens on.
+  it('loadConfig defaults priceServiceUrl to the price-service WS broadcaster port', () => {
+    const env: NodeJS.ProcessEnv = {
+      ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+    };
+    const config = loadConfig(env);
+    expect(config.priceServiceUrl).toBe('ws://localhost:9301');
+  });
+
+  it('loadConfig prefers PRICE_SERVICE_URL when set', () => {
+    const env: NodeJS.ProcessEnv = {
+      ORACLE_SIGNER_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      PRICE_SERVICE_URL: 'ws://upstream.example.com:1234',
+    };
+    const config = loadConfig(env);
+    expect(config.priceServiceUrl).toBe('ws://upstream.example.com:1234');
   });
 
   it('loadConfig degrades + filters out unknown symbols passed via ORACLE_SYMBOLS', () => {
