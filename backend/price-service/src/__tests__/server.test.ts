@@ -482,13 +482,13 @@ describe('REST Server — 404 and 405 envelopes', () => {
       req.end();
     });
     // Raw `/quotes/..` matches the parametric `/quotes/:symbol` route; the
-    // symbol `..` passes the shape regex but misses the cache, so the
-    // response is a JSON 404 `no-quote` — no HTML default leaks through.
+    // symbol `..` passes the shape regex but is not in cfg.symbols, so the
+    // response is a JSON 404 `symbol-not-configured` — no HTML default leaks.
     expect(result.status).toBe(404);
     expect(result.body).not.toContain('Cannot GET');
     expect(result.body).not.toContain('<!DOCTYPE');
     const body = JSON.parse(result.body) as Record<string, unknown>;
-    expect(body.error).toBe('no-quote');
+    expect(body.error).toBe('symbol-not-configured');
   });
 });
 
@@ -500,7 +500,9 @@ describe('REST Server — GET /quotes/:symbol shape validation', () => {
 
   beforeAll((done) => {
     cache = new QuoteCache({ cacheTtlMs: 30_000 });
-    app = createServer(cache, { symbols: ['AAPL'] });
+    // Configure every symbol whose *shape* this block exercises so the
+    // regex acceptance is what's under test, not the membership check.
+    app = createServer(cache, { symbols: ['AAPL', 'BRK.B', 'BTC-USD', 'BTC_USD'] });
     server = app.listen(0, () => {
       const addr = server.address();
       if (addr && typeof addr === 'object') {
@@ -523,7 +525,9 @@ describe('REST Server — GET /quotes/:symbol shape validation', () => {
     expect(body.error).toBe('no-quote');
     expect(body.symbol).toBe('AAPL');
     expect(typeof body.timestamp).toBe('number');
-    expect(text.length).toBeLessThan(100);
+    // Bound stays small — the body holds a static message, the symbol,
+    // configured flag, error code, and ms timestamp. No quote, no stack.
+    expect(text.length).toBeLessThan(300);
   });
 
   it.each([
@@ -1197,6 +1201,156 @@ describe('REST Server — root index and 404 endpoint discovery', () => {
     });
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
+  });
+});
+
+describe('REST Server — /quotes/:symbol distinguishes unconfigured vs uncached', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL', 'TSLA'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('returns symbol-not-configured when symbol absent from cfg.symbols', async () => {
+    cache.clear();
+    const res = await fetch(`${baseUrl}/quotes/BRKB`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('symbol-not-configured');
+    expect(body.symbol).toBe('BRKB');
+    expect(body.configured).toBe(false);
+    expect(typeof body.message).toBe('string');
+    expect((body.message as string).length).toBeGreaterThan(0);
+    expect(typeof body.timestamp).toBe('number');
+  });
+
+  it('returns no-quote with configured:true when symbol is in cfg.symbols but uncached', async () => {
+    cache.clear();
+    const res = await fetch(`${baseUrl}/quotes/AAPL`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('no-quote');
+    expect(body.symbol).toBe('AAPL');
+    expect(body.configured).toBe(true);
+    expect(typeof body.message).toBe('string');
+  });
+
+  it('cached symbol still returns 200 with quote envelope (no regression)', async () => {
+    cache.clear();
+    cache.update(makeQuote({ symbol: 'AAPL', last: 190 }));
+    const res = await fetch(`${baseUrl}/quotes/AAPL`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body.symbol).toBe('AAPL');
+    expect(body.last).toBe(190);
+    expect(body.error).toBeUndefined();
+  });
+
+  it('lowercase path param matches uppercase configured symbol (case-insensitive)', async () => {
+    cache.clear();
+    const res = await fetch(`${baseUrl}/quotes/aapl`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('no-quote');
+    expect(body.symbol).toBe('AAPL');
+    expect(body.configured).toBe(true);
+  });
+
+  it('mixed-case configured list still matches uppercase request (membership is case-insensitive)', async () => {
+    const c2 = new QuoteCache({ cacheTtlMs: 30_000 });
+    const app2 = createServer(c2, { symbols: ['aapl', 'Tsla'] });
+    const s2 = app2.listen(0);
+    try {
+      await new Promise<void>((resolve) => s2.on('listening', () => resolve()));
+      const addr = s2.address() as import('net').AddressInfo;
+      const res = await fetch(`http://127.0.0.1:${addr.port}/quotes/AAPL`);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(res.status).toBe(404);
+      expect(body.error).toBe('no-quote');
+      expect(body.configured).toBe(true);
+    } finally {
+      await new Promise<void>((resolve) => s2.close(() => resolve()));
+    }
+  });
+
+  it('invalid-symbol still returns 400 (membership check is post-normalization)', async () => {
+    const res = await fetch(`${baseUrl}/quotes/${encodeURIComponent('!@#$')}`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('invalid-symbol');
+    expect(body.configured).toBeUndefined();
+  });
+
+  it('symbol-not-configured 404 has stable message hint (operator-readable)', async () => {
+    const res = await fetch(`${baseUrl}/quotes/NVDA`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('symbol-not-configured');
+    const msg = body.message as string;
+    expect(msg.toLowerCase()).toContain('subscription');
+    expect(msg).not.toContain('\n');
+  });
+});
+
+describe('REST Server — /quotes/:symbol distinguishes with source getter wired', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+  let srcState: SourceStatus;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    srcState = { connected: false, reason: 'etoro-client-not-installed', lastAttachAt: null };
+    app = createServer(cache, { symbols: ['AAPL', 'TSLA'] }, undefined, () => srcState);
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('symbol-not-configured 404 includes source block when getter wired', async () => {
+    cache.clear();
+    const res = await fetch(`${baseUrl}/quotes/BRKB`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('symbol-not-configured');
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(false);
+    expect(src.reason).toBe('etoro-client-not-installed');
+  });
+
+  it('no-quote 404 still includes source block (regression — task 0012 plumbing)', async () => {
+    cache.clear();
+    const res = await fetch(`${baseUrl}/quotes/AAPL`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(404);
+    expect(body.error).toBe('no-quote');
+    expect(body.configured).toBe(true);
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(false);
   });
 });
 

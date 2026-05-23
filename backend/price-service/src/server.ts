@@ -111,6 +111,10 @@ export function createServer(
   const app = express();
   app.disable('x-powered-by');
   const cfg = { ...DEFAULT_CONFIG, ...config };
+  // Built once: per-request membership check is O(1). Uppercase every
+  // entry so deploys with mixed-case `ORACLE_SYMBOLS` still match the
+  // upper-cased request path produced by `normalizeSymbol`.
+  const configuredSet = new Set(cfg.symbols.map((s) => s.toUpperCase()));
 
   app.use((req: Request, res: Response, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -192,11 +196,33 @@ export function createServer(
       });
       return;
     }
+    if (!configuredSet.has(result.symbol)) {
+      // Permanent 404: this symbol will never tick on this deploy
+      // because it isn't in the subscription set. Distinct from the
+      // transient `no-quote` case so polling consumers can give up
+      // and surface a config error instead of retrying forever.
+      const body: Record<string, unknown> = {
+        error: 'symbol-not-configured',
+        message:
+          'symbol is not in the deployed subscription set; ' +
+          'retrying will not help — update ORACLE_SYMBOLS and restart',
+        symbol: result.symbol,
+        configured: false,
+      };
+      if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
+      body.timestamp = Date.now();
+      res.status(404).json(body);
+      return;
+    }
     const entry = cache.get(result.symbol);
     if (!entry) {
       const body: Record<string, unknown> = {
         error: 'no-quote',
+        message:
+          'symbol is configured but the cache holds no fresh tick — ' +
+          'retry once source delivers',
         symbol: result.symbol,
+        configured: true,
       };
       if (sourceStatusGetter) body.source = sanitizeSourceStatus(sourceStatusGetter());
       body.timestamp = Date.now();
