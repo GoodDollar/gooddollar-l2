@@ -360,7 +360,45 @@ describe('HedgeStatusCard', () => {
     expect(empty.contains(toolbar)).toBe(false);
     const csvBtn = screen.getByTestId('hedge-receipts-export-csv-button');
     expect(csvBtn).toBeDisabled();
-    expect(csvBtn.getAttribute('title')).toBe('No receipts to export');
+    expect(csvBtn.getAttribute('title')).toBe(
+      'No receipts to export — nothing has happened yet',
+    );
+  });
+
+  it('export toolbar tooltip says "Engine offline" when the engine is unreachable, matching the empty-state below (#0048)', async () => {
+    mockFetchOnce(
+      {
+        error: 'Hedge engine unreachable',
+        snapshot: null,
+        receipts: [],
+        proof: null,
+      },
+      { status: 503 },
+    );
+    render(<HedgeStatusCard />);
+    const csvBtn = await screen.findByTestId('hedge-receipts-export-csv-button');
+    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle');
+    const expected =
+      'Engine offline — receipts will be exportable once it comes back';
+    expect(csvBtn).toBeDisabled();
+    expect(csvBtn.getAttribute('title')).toBe(expected);
+    expect(toggle.getAttribute('title')).toBe(expected);
+    expect(toggle.getAttribute('aria-label')).toBe(expected);
+    expect(csvBtn.getAttribute('title')).not.toMatch(/^No receipts to export$/);
+  });
+
+  it('export toolbar tooltip says "Receipts source degraded" when degraded.receipts is set (#0048)', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      receipts: [],
+      degraded: { receipts: 'cache miss' },
+    });
+    render(<HedgeStatusCard />);
+    const csvBtn = await screen.findByTestId('hedge-receipts-export-csv-button');
+    const expected =
+      'Receipts source degraded — export disabled until receipts are healthy';
+    expect(csvBtn).toBeDisabled();
+    expect(csvBtn.getAttribute('title')).toBe(expected);
   });
 
   it('shows the canonical "is unreachable" banner when the API rejects with an unknown error (#0034)', async () => {

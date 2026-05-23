@@ -12,6 +12,8 @@ import {
   type HedgeReceiptExportInput,
 } from '@/lib/hedge-receipts-export'
 
+import type { ReceiptsAvailabilityReason } from './receipts-availability'
+
 /**
  * Lane 5 — `Export ▾` split-button for the recent-receipts panel.
  *
@@ -19,13 +21,30 @@ import {
  * downloaded file always matches what the operator sees on screen
  * (task 0042). Stays visible — but disabled with a clear tooltip —
  * when receipts is empty so the affordance is always discoverable.
+ *
+ * The disabled tooltip is resolved from `reason` so the export
+ * toolbar and the sibling empty-state below it tell the same story
+ * (task 0048). The visual treatment (greyed out, `aria-disabled`)
+ * stays identical across reasons.
  */
+
+const DISABLED_COPY: Record<ReceiptsAvailabilityReason, string> = {
+  'no-activity': 'No receipts to export — nothing has happened yet',
+  'engine-offline':
+    'Engine offline — receipts will be exportable once it comes back',
+  'receipts-source-degraded':
+    'Receipts source degraded — export disabled until receipts are healthy',
+}
 
 interface ReceiptsExportToolbarProps {
   receipts: readonly HedgeReceiptExportInput[]
+  reason?: ReceiptsAvailabilityReason
 }
 
-export function ReceiptsExportToolbar({ receipts }: ReceiptsExportToolbarProps) {
+export function ReceiptsExportToolbar({
+  receipts,
+  reason = 'no-activity',
+}: ReceiptsExportToolbarProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const disabled = receipts.length === 0
@@ -64,6 +83,7 @@ export function ReceiptsExportToolbar({ receipts }: ReceiptsExportToolbarProps) 
 
   const baseBtn =
     'text-xs px-2.5 py-1.5 rounded-md border border-dark-50 text-gray-300 hover:bg-dark-50 disabled:opacity-50 disabled:hover:bg-transparent'
+  const disabledCopy = DISABLED_COPY[reason]
 
   return (
     <div
@@ -77,7 +97,8 @@ export function ReceiptsExportToolbar({ receipts }: ReceiptsExportToolbarProps) 
         onClick={handleCsv}
         disabled={disabled}
         aria-disabled={disabled || undefined}
-        title={disabled ? 'No receipts to export' : 'Download CSV'}
+        aria-label={disabled ? disabledCopy : 'Download CSV'}
+        title={disabled ? disabledCopy : 'Download CSV'}
         className={`${baseBtn} border-0 rounded-none rounded-l-md`}
       >
         Export
@@ -90,8 +111,8 @@ export function ReceiptsExportToolbar({ receipts }: ReceiptsExportToolbarProps) 
         aria-disabled={disabled || undefined}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={disabled ? 'No receipts to export' : 'More export options'}
-        title={disabled ? 'No receipts to export' : 'More export options'}
+        aria-label={disabled ? disabledCopy : 'More export options'}
+        title={disabled ? disabledCopy : 'More export options'}
         className={`${baseBtn} border-0 border-l border-dark-50 rounded-none rounded-r-md px-1.5`}
       >
         <span aria-hidden="true">▾</span>

@@ -62,7 +62,63 @@ describe('ReceiptsExportToolbar', () => {
     const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle')
     expect(btn).toBeDisabled()
     expect(toggle).toBeDisabled()
-    expect(btn).toHaveAttribute('title', 'No receipts to export')
+    expect(btn).toHaveAttribute(
+      'title',
+      'No receipts to export — nothing has happened yet',
+    )
+  })
+
+  it('uses the engine-offline tooltip on both buttons when reason="engine-offline"', () => {
+    render(<ReceiptsExportToolbar receipts={[]} reason="engine-offline" />)
+    const expected =
+      'Engine offline — receipts will be exportable once it comes back'
+    const btn = screen.getByTestId('hedge-receipts-export-csv-button')
+    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle')
+    expect(btn).toHaveAttribute('title', expected)
+    expect(btn).toHaveAttribute('aria-label', expected)
+    expect(toggle).toHaveAttribute('title', expected)
+    expect(toggle).toHaveAttribute('aria-label', expected)
+  })
+
+  it('uses the degraded-source tooltip on both buttons when reason="receipts-source-degraded"', () => {
+    render(
+      <ReceiptsExportToolbar receipts={[]} reason="receipts-source-degraded" />,
+    )
+    const expected =
+      'Receipts source degraded — export disabled until receipts are healthy'
+    const btn = screen.getByTestId('hedge-receipts-export-csv-button')
+    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle')
+    expect(btn).toHaveAttribute('title', expected)
+    expect(btn).toHaveAttribute('aria-label', expected)
+    expect(toggle).toHaveAttribute('title', expected)
+    expect(toggle).toHaveAttribute('aria-label', expected)
+  })
+
+  it('uses the no-activity tooltip on both buttons when reason="no-activity"', () => {
+    render(<ReceiptsExportToolbar receipts={[]} reason="no-activity" />)
+    const expected = 'No receipts to export — nothing has happened yet'
+    const btn = screen.getByTestId('hedge-receipts-export-csv-button')
+    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle')
+    expect(btn).toHaveAttribute('title', expected)
+    expect(btn).toHaveAttribute('aria-label', expected)
+    expect(toggle).toHaveAttribute('title', expected)
+    expect(toggle).toHaveAttribute('aria-label', expected)
+  })
+
+  it('keeps enabled-state copy unchanged when receipts are present (regression guard)', () => {
+    render(
+      <ReceiptsExportToolbar
+        receipts={[makeReceipt()]}
+        reason="engine-offline"
+      />,
+    )
+    const btn = screen.getByTestId('hedge-receipts-export-csv-button')
+    const toggle = screen.getByTestId('hedge-receipts-export-menu-toggle')
+    expect(btn).not.toBeDisabled()
+    expect(toggle).not.toBeDisabled()
+    expect(btn).toHaveAttribute('title', 'Download CSV')
+    expect(toggle).toHaveAttribute('title', 'More export options')
+    expect(toggle).toHaveAttribute('aria-label', 'More export options')
   })
 
   it('triggers CSV download with the receipts payload on click', () => {

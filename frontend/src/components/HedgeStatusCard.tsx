@@ -25,6 +25,7 @@ import {
 } from './HedgeStatusCard/icons'
 import { ReceiptRow, type HedgeReceipt } from './HedgeStatusCard/ReceiptRow'
 import { ReceiptsExportToolbar } from './HedgeStatusCard/ReceiptsExportToolbar'
+import { resolveReceiptsAvailabilityReason } from './HedgeStatusCard/receipts-availability'
 
 /**
  * Lane 5 — demo hedge proof surface.
@@ -650,6 +651,11 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const killSwitch = Boolean(data?.killSwitchEngaged)
   const hasSnapshot = Boolean(renderSource?.snapshot)
   const showSkeleton = loading && !data
+  const receiptsReason = resolveReceiptsAvailabilityReason({
+    error,
+    hasSnapshot,
+    degradedReceipts: data?.degraded?.receipts,
+  })
   const engineState = resolveEngineState({
     snapshot: data?.snapshot ?? null,
     error,
@@ -912,7 +918,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               <DegradedHint>receipts source degraded: {data.degraded.receipts}</DegradedHint>
             )}
           </div>
-          <ReceiptsExportToolbar receipts={receipts} />
+          <ReceiptsExportToolbar receipts={receipts} reason={receiptsReason} />
         </div>
         <div
           data-testid="hedge-receipts-reserved"
