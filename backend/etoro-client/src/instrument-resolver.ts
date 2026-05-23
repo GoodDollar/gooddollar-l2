@@ -3,6 +3,7 @@ import { AuditLogger } from './audit-logger';
 import { InstrumentNotFoundError } from './errors';
 import { HttpDispatcher, identityDispatcher } from './rate-limiter';
 import { readListOrAudit, MalformedListSink } from './util/list-envelope';
+import { pickStr, pickStrId } from './util/picker';
 import { LaneInstrument, INSTRUMENT_MAP, isLaneSymbol } from './instruments';
 import { EtoroAssetClass } from './types';
 
@@ -146,8 +147,9 @@ export class InstrumentResolver {
 
     const candidates = raw.map(normalizeSearchHit);
     const exact = candidates.find(
-      (c) => c.symbol.toUpperCase() === symbol
-        || c.internalSymbolFull.toUpperCase() === symbol,
+      (c) => c.instrumentId !== ''
+        && (c.symbol.toUpperCase() === symbol
+          || c.internalSymbolFull.toUpperCase() === symbol),
     );
 
     if (!exact) {
@@ -212,24 +214,15 @@ function mapAssetClass(c: EtoroAssetClass): string {
 
 function normalizeSearchHit(raw: unknown): ResolvedInstrument {
   const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  const instrumentId = pickStr(r, ['instrumentId', 'instrumentID', 'id']) ?? '';
+  const idRes = pickStrId(r, ['instrumentId', 'instrumentID', 'id']);
   return {
     symbol: (pickStr(r, ['symbol', 'ticker']) ?? '').toUpperCase(),
-    instrumentId,
+    instrumentId: idRes.ok ? idRes.value : '',
     internalSymbolFull: pickStr(r, ['internalSymbolFull', 'symbol']) ?? '',
     displayName: pickStr(r, ['displayname', 'displayName', 'description']) ?? '',
     instrumentType: pickStr(r, ['instrumentType', 'type']) ?? '',
     isCurrentlyTradable: pickBool(r, ['isCurrentlyTradable', 'isBuyEnabled']) ?? false,
   };
-}
-
-function pickStr(src: Record<string, unknown>, keys: readonly string[]): string | undefined {
-  for (const k of keys) {
-    const v = src[k];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-    if (typeof v === 'number' && Number.isFinite(v)) return String(v);
-  }
-  return undefined;
 }
 
 function pickBool(src: Record<string, unknown>, keys: readonly string[]): boolean | undefined {

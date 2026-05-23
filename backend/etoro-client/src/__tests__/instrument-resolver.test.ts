@@ -73,6 +73,16 @@ describe('InstrumentResolver — exact-match', () => {
     const resolver = new InstrumentResolver({ http, audit: silentAudit() });
     await expect(resolver.resolve('BTC')).rejects.toBeInstanceOf(InstrumentNotFoundError);
   });
+
+  it('treats a search hit with instrumentId: 0 as not-found', async () => {
+    const http = createMockAxios({
+      search: {
+        BTC: [{ ...SEARCH_HIT_BTC, instrumentId: 0 }],
+      },
+    });
+    const resolver = new InstrumentResolver({ http, audit: silentAudit() });
+    await expect(resolver.resolve('BTC')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+  });
 });
 
 describe('InstrumentResolver — caching', () => {

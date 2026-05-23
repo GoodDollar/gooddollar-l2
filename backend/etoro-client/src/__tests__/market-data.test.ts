@@ -804,6 +804,71 @@ describe('MarketDataModule', () => {
       expect(drops[0].error).toMatch(/ts=future/);
     });
 
+    it('drops a WS frame whose instrumentId is the literal number 0', () => {
+      const { audit, entries } = recordingAudit();
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      mod.handleWsMessage(JSON.stringify({
+        symbol: 'BTC', instrumentId: 0, bid: 100, ask: 101, timestamp: Date.now(),
+      }));
+
+      expect(cb).not.toHaveBeenCalled();
+      expect(mod.getCachedQuote('BTC')).toBeUndefined();
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+      const drops = entries.filter((e) => e.action === 'normalizeQuote-malformed');
+      expect(drops).toHaveLength(1);
+      expect(drops[0].error).toMatch(/id=invalid/);
+    });
+
+    it('still accepts a numeric instrumentId of 1001', () => {
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, silentDeps);
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      mod.handleWsMessage(JSON.stringify({
+        symbol: 'BTC', instrumentId: 1001, bid: 100, ask: 101, timestamp: Date.now(),
+      }));
+
+      expect(cb).toHaveBeenCalledTimes(1);
+      const quote = cb.mock.calls[0][0] as NormalizedQuote;
+      expect(quote.instrumentId).toBe('1001');
+      expect(mod.getMalformedQuoteCount()).toBe(0);
+    });
+
+    it('drops a rates record whose instrumentID is the number 0', async () => {
+      const { audit, entries } = recordingAudit();
+      const http = makeStubHttp({
+        rates: [toRateRecord({ instrumentID: 0 as unknown as string, bid: 100, ask: 101, date: Date.now() })],
+      });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined, resolver: defaultResolver() });
+
+      const result = await mod.getQuotes(['BTC']);
+      expect(result).toEqual([]);
+      expect(mod.getMalformedQuoteCount()).toBe(1);
+      const drops = entries.filter((e) => e.action === 'normalizeQuote-malformed');
+      expect(drops[0].error).toMatch(/id=invalid/);
+    });
+
+    it('still routes a WS frame with no instrumentId field through symbol fallback', () => {
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MarketDataModule(http, undefined, silentDeps);
+      const cb = jest.fn();
+      mod.onQuote(cb);
+
+      mod.handleWsMessage(JSON.stringify({
+        symbol: 'BTC', bid: 100, ask: 101, timestamp: Date.now(),
+      }));
+
+      expect(cb).toHaveBeenCalledTimes(1);
+      const quote = cb.mock.calls[0][0] as NormalizedQuote;
+      expect(quote.instrumentId).toBe('BTC');
+      expect(mod.getMalformedQuoteCount()).toBe(0);
+    });
+
     it('drops a candle with a far-future timestamp and audits candle-ts=future', async () => {
       const { audit, entries } = recordingAudit();
       const http = {

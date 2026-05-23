@@ -3,6 +3,13 @@ import WebSocket from 'ws';
 import { AUDIT_CONSOLE_THROTTLE_MS, AuditLogger, maskTokens } from './audit-logger';
 import { HttpDispatcher, identityDispatcher } from './rate-limiter';
 import { MalformedListSink, readListOrAudit } from './util/list-envelope';
+import {
+  asRecord,
+  pickNum,
+  pickStr,
+  pickStrId,
+  pickTimestamp,
+} from './util/picker';
 import { InstrumentResolver, ResolvedInstrument } from './instrument-resolver';
 import {
   NormalizedQuote,
@@ -115,22 +122,6 @@ export interface MarketDataDeps {
 /** Max instrumentIds per `/market-data/instruments/rates` request. */
 const RATES_BATCH_SIZE = 100;
 const RATES_PATH = '/market-data/instruments/rates';
-
-/**
- * Grace window for quote timestamps that arrive slightly ahead of the
- * local wall clock (NTP drift, upstream skew). A timestamp beyond
- * `now + FUTURE_TIMESTAMP_GRACE_MS` is treated as malformed.
- */
-const FUTURE_TIMESTAMP_GRACE_MS = 30_000;
-
-/**
- * Result of parsing a timestamp field off a raw payload. The discriminated
- * shape lets the caller route the three malformed cases through the same
- * `recordMalformedQuote` channel with operator-readable reason keys.
- */
-type TimestampResult =
-  | { ok: true; ms: number }
-  | { ok: false; reason: 'absent' | 'negative' | 'future' };
 
 export class MarketDataModule {
   private readonly http: AxiosInstance;
@@ -547,18 +538,24 @@ export class MarketDataModule {
 
   private normalizeQuote(raw: unknown): NormalizedQuote | null {
     const src = asRecord(raw);
-    const symbol = pickStr(src, ['symbol', 'ticker', 'instrumentSymbol']);
-    if (symbol === undefined) {
-      this.recordMalformedQuote(src);
+    const symRes = pickStrId(src, ['symbol', 'ticker', 'instrumentSymbol']);
+    if (!symRes.ok) {
+      this.recordMalformedQuote(src, symRes.reason === 'invalid' ? 'symbol=invalid' : undefined);
       return null;
     }
+    const symbol = symRes.value;
     const now = this.clock();
     const ts = pickTimestamp(src, now);
     if (!ts.ok) {
       this.recordMalformedQuote(src, `ts=${ts.reason}`);
       return null;
     }
-    const instrumentId = pickStr(src, ['instrumentId', 'instrumentID', 'instrument_id', 'id']) ?? symbol;
+    const idRes = pickStrId(src, ['instrumentId', 'instrumentID', 'instrument_id', 'id']);
+    if (!idRes.ok && idRes.reason === 'invalid') {
+      this.recordMalformedQuote(src, 'id=invalid');
+      return null;
+    }
+    const instrumentId = idRes.ok ? idRes.value : symbol;
     const bid = pickNum(src, ['bid', 'bidPrice', 'buy']);
     const ask = pickNum(src, ['ask', 'askPrice', 'sell']);
     const last = pickNum(src, ['last', 'lastPrice', 'price', 'currentRate', 'rate']);
@@ -664,11 +661,12 @@ export class MarketDataModule {
     idToSymbol: Map<string, string>,
   ): NormalizedQuote | null {
     const src = asRecord(raw);
-    const instrumentId = pickStr(src, ['instrumentID', 'instrumentId', 'instrument_id']);
-    if (instrumentId === undefined) {
-      this.recordMalformedQuote(src);
+    const idRes = pickStrId(src, ['instrumentID', 'instrumentId', 'instrument_id']);
+    if (!idRes.ok) {
+      this.recordMalformedQuote(src, idRes.reason === 'invalid' ? 'id=invalid' : undefined);
       return null;
     }
+    const instrumentId = idRes.value;
     const symbol = idToSymbol.get(instrumentId) ?? instrumentId;
     const now = this.clock();
     const ts = pickTimestamp(src, now);
@@ -830,56 +828,6 @@ export function computeConfidence(input: {
 }
 
 // --- Helpers ---
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
-}
-
-function pickStr(src: Record<string, unknown>, keys: string[]): string | undefined {
-  for (const k of keys) {
-    const v = src[k];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-    if (typeof v === 'number' && Number.isFinite(v)) return String(v);
-  }
-  return undefined;
-}
-
-function pickNum(src: Record<string, unknown>, keys: string[]): number | undefined {
-  for (const k of keys) {
-    const v = src[k];
-    if (typeof v === 'number' && Number.isFinite(v)) return v;
-    if (typeof v === 'string') {
-      const parsed = Number(v.replace(/,/g, ''));
-      if (Number.isFinite(parsed)) return parsed;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Parse a timestamp field off a raw payload, returning a discriminated
- * result so the caller can route malformed cases through
- * `recordMalformedQuote` with a precise reason key.
- *
- * Rejected as malformed:
- *   - field absent or unparseable                  → reason 'absent'
- *   - negative timestamp                           → reason 'negative'
- *   - timestamp > now + FUTURE_TIMESTAMP_GRACE_MS  → reason 'future'
- */
-function pickTimestamp(src: Record<string, unknown>, now: number): TimestampResult {
-  const raw = src.date ?? src.timestamp ?? src.updatedAt ?? src.time ?? src.lastUpdate;
-  let ms: number | null = null;
-  if (typeof raw === 'number' && Number.isFinite(raw)) {
-    ms = raw > 10_000_000_000 ? raw : raw * 1000;
-  } else if (typeof raw === 'string' && raw.trim()) {
-    const parsed = Date.parse(raw);
-    if (Number.isFinite(parsed)) ms = parsed;
-  }
-  if (ms === null) return { ok: false, reason: 'absent' };
-  if (ms < 0) return { ok: false, reason: 'negative' };
-  if (ms > now + FUTURE_TIMESTAMP_GRACE_MS) return { ok: false, reason: 'future' };
-  return { ok: true, ms };
-}
 
 /**
  * Map a `ResolvedInstrument` from `InstrumentResolver` into the
