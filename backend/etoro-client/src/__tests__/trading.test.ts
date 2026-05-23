@@ -619,11 +619,40 @@ describe('TradingModule — happy paths (demo-trading)', () => {
       expect(result.symbol).toBe('AAPL');
       expect(result.executionPrice).toBe(185.50);
       expect(result.status).toBe('filled');
-      expect(http.post).toHaveBeenCalledWith('/trading/orders', expect.objectContaining({
+      expect(http.post).toHaveBeenCalledWith(
+        '/trading/execution/demo/market-open-orders/by-amount',
+        expect.objectContaining({
+          symbol: 'AAPL',
+          side: 'buy',
+          amount: 10,
+        }),
+      );
+    });
+
+    it('routes to by-units endpoint when order.units is provided', async () => {
+      http.post = jest.fn().mockResolvedValue({
+        status: 200,
+        data: { orderId: 'ORD-U', symbol: 'AAPL', side: 'buy', amount: 10, status: 'filled' },
+      });
+
+      await trading.openPosition({
         symbol: 'AAPL',
+        instrumentId: 'AAPL-US',
         side: 'buy',
-        type: 'market',
-      }));
+        amount: 10,
+        units: 3,
+      });
+
+      expect(http.post).toHaveBeenCalledWith(
+        '/trading/execution/demo/market-open-orders/by-units',
+        expect.objectContaining({
+          symbol: 'AAPL',
+          side: 'buy',
+          units: 3,
+        }),
+      );
+      const body = (http.post as jest.Mock).mock.calls[0][1] as Record<string, unknown>;
+      expect(body.amount).toBeUndefined();
     });
 
     it('handles insufficient margin error', async () => {
@@ -685,11 +714,14 @@ describe('TradingModule — happy paths (demo-trading)', () => {
       const result = await trading.placeLimitOrder(order);
       expect(result.orderId).toBe('ORD-002');
       expect(result.status).toBe('pending');
-      expect(http.post).toHaveBeenCalledWith('/trading/orders', expect.objectContaining({
-        type: 'limit',
-        price: 250.00,
-        timeInForce: 'DAY',
-      }));
+      expect(http.post).toHaveBeenCalledWith(
+        '/trading/execution/demo/limit-orders',
+        expect.objectContaining({
+          type: 'limit',
+          price: 250.00,
+          timeInForce: 'DAY',
+        }),
+      );
     });
   });
 
@@ -711,7 +743,10 @@ describe('TradingModule — happy paths (demo-trading)', () => {
       const result = await trading.closePosition('POS-001');
       expect(result.status).toBe('filled');
       expect(result.executionPrice).toBe(190.00);
-      expect(http.post).toHaveBeenCalledWith('/trading/positions/POS-001/close');
+      expect(http.post).toHaveBeenCalledWith(
+        '/trading/execution/demo/market-close-orders/by-amount',
+        { positionId: 'POS-001' },
+      );
     });
   });
 
@@ -730,7 +765,22 @@ describe('TradingModule — happy paths (demo-trading)', () => {
 
       const result = await trading.partialClose('POS-001', 5);
       expect(result.amount).toBe(5);
-      expect(http.post).toHaveBeenCalledWith('/trading/positions/POS-001/close', { amount: 5 });
+      expect(http.post).toHaveBeenCalledWith(
+        '/trading/execution/demo/market-close-orders/by-amount',
+        { positionId: 'POS-001', amount: 5 },
+      );
+    });
+
+    it('routes by-units when called with { units }', async () => {
+      http.post = jest.fn().mockResolvedValue({
+        status: 200,
+        data: { orderId: 'ORD-005', positionId: 'POS-001', symbol: 'AAPL', amount: 3, status: 'filled' },
+      });
+      await trading.partialClose('POS-001', { units: 3 });
+      expect(http.post).toHaveBeenCalledWith(
+        '/trading/execution/demo/market-close-orders/by-units',
+        { positionId: 'POS-001', units: 3 },
+      );
     });
   });
 
@@ -739,7 +789,7 @@ describe('TradingModule — happy paths (demo-trading)', () => {
       http.delete = jest.fn().mockResolvedValue({ status: 200 });
 
       await trading.cancelOrder('ORD-002');
-      expect(http.delete).toHaveBeenCalledWith('/trading/orders/ORD-002');
+      expect(http.delete).toHaveBeenCalledWith('/trading/info/demo/orders/ORD-002');
     });
 
     it('throws TradingError when order not found', async () => {
@@ -863,7 +913,7 @@ describe('TradingModule — malformed-list response visibility', () => {
     const lines = entries.filter((e) => e.action === 'getOpenPositions-malformed');
     expect(lines).toHaveLength(1);
     expect(lines[0].method).toBe('PARSE');
-    expect(lines[0].path).toBe('/trading/positions');
+    expect(lines[0].path).toBe('/trading/info/demo/positions');
     expect(lines[0].error).toBe(
       'MalformedListResponse: object-no-match keys=[weirdField]',
     );

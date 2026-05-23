@@ -13,11 +13,16 @@ import { DemoCapConfig, EtoroCredentials, EtoroMode } from './types';
 export const REAL_TRADING_ENABLED = false;
 
 /**
- * eToro demo base endpoints. These are the only URLs the SDK is allowed to
- * speak to under the lane-1 contract. Real-account base URLs are deliberately
- * not encoded here.
+ * Official eToro public API base URL — the only HTTPS host the SDK is
+ * allowed to address under the lane-1 contract. Demo and real-disabled
+ * modes both speak here; trading paths are scoped to
+ * `/trading/execution/demo/*`. Real-account base URLs are deliberately
+ * not encoded anywhere in the SDK.
+ *
+ * Replaces the deprecated `api.etoro.com/sapi/demo` internal-wrapper
+ * host (see lane task 0017).
  */
-export const DEMO_BASE_URL_DEFAULT = 'https://api.etoro.com/sapi/demo';
+export const DEMO_BASE_URL_DEFAULT = 'https://public-api.etoro.com/api/v1';
 export const DEMO_WS_URL_DEFAULT = 'wss://streamer.etoro.com/sapi/demo';
 
 const ALL_MODES: readonly EtoroMode[] = [
@@ -33,6 +38,7 @@ const MOCK_WS_URL = 'mock://etoro.local/ws';
 const MOCK_CREDS: EtoroCredentials = {
   apiKey: 'mock-api-key',
   apiSecret: 'mock-api-secret',
+  userKey: 'mock-user-key',
   baseUrl: MOCK_BASE_URL,
   wsUrl: MOCK_WS_URL,
   mode: 'mock',
@@ -99,11 +105,17 @@ export function loadCredentialsFromEnv(
 
   const apiKey = env.ETORO_DEMO_KEY;
   const apiSecret = env.ETORO_DEMO_SECRET;
+  const userKey = mode === 'real-disabled'
+    ? env.ETORO_USER_KEY
+    : env.ETORO_DEMO_USER_KEY;
 
-  if (!apiKey || !apiSecret) {
+  if (!apiKey || !apiSecret || !userKey) {
+    const userKeyVar = mode === 'real-disabled'
+      ? 'ETORO_USER_KEY'
+      : 'ETORO_DEMO_USER_KEY';
     throw new Error(
       `Missing eToro demo credentials for mode "${mode}": ` +
-      `ETORO_DEMO_KEY and ETORO_DEMO_SECRET must be set. ` +
+      `ETORO_DEMO_KEY, ETORO_DEMO_SECRET, and ${userKeyVar} must be set. ` +
       `Use ETORO_MODE=mock to run without credentials.`,
     );
   }
@@ -111,7 +123,7 @@ export function loadCredentialsFromEnv(
   const baseUrl = env.ETORO_DEMO_BASE_URL ?? DEMO_BASE_URL_DEFAULT;
   const wsUrl = env.ETORO_DEMO_WS_URL ?? DEMO_WS_URL_DEFAULT;
 
-  return { apiKey, apiSecret, baseUrl, wsUrl, mode };
+  return { apiKey, apiSecret, userKey, baseUrl, wsUrl, mode };
 }
 
 /**
@@ -142,6 +154,7 @@ export function redactCredentials(creds: EtoroCredentials): Record<string, strin
     wsUrl: creds.wsUrl,
     apiKey: mask(creds.apiKey),
     apiSecret: mask(creds.apiSecret),
+    userKey: mask(creds.userKey),
   };
 }
 

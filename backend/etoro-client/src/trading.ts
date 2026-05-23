@@ -16,6 +16,21 @@ import { AuditLogEntry, EtoroMode, OrderRequest, OrderResult, Position } from '.
 /** Source label for the resolved USD notional, recorded in the audit log. */
 export type NotionalSource = 'sizer' | 'limit-price' | 'live-quote' | 'reference-fallback';
 
+/**
+ * Demo execution paths per the official eToro public API. The lane SDK
+ * routes by-amount vs by-units based on whether `OrderRequest.units`
+ * is set; mock and demo-readonly modes never reach these strings (the
+ * trading fence throws first).
+ */
+export const OPEN_BY_AMOUNT_PATH = '/trading/execution/demo/market-open-orders/by-amount';
+export const OPEN_BY_UNITS_PATH = '/trading/execution/demo/market-open-orders/by-units';
+export const CLOSE_BY_AMOUNT_PATH = '/trading/execution/demo/market-close-orders/by-amount';
+export const CLOSE_BY_UNITS_PATH = '/trading/execution/demo/market-close-orders/by-units';
+const LIMIT_ORDER_PATH = '/trading/execution/demo/limit-orders';
+const DEMO_INFO_POSITIONS = '/trading/info/demo/positions';
+const DEMO_INFO_HISTORY = '/trading/info/demo/history';
+const DEMO_INFO_ORDERS = '/trading/info/demo/orders';
+
 export interface ResolvedNotional {
   usd: number;
   source: NotionalSource;
@@ -198,20 +213,26 @@ export class TradingModule {
     const notional = this.computeNotional(order);
     this.assertCapOk('openPosition', notional.usd);
 
+    const useUnits = typeof order.units === 'number'
+      && Number.isFinite(order.units)
+      && order.units > 0;
+    const path = useUnits ? OPEN_BY_UNITS_PATH : OPEN_BY_AMOUNT_PATH;
+    const body: Record<string, unknown> = {
+      instrumentId: order.instrumentId,
+      symbol: order.symbol,
+      side: order.side,
+      leverage: order.leverage ?? 1,
+      stopLoss: order.stopLoss,
+      takeProfit: order.takeProfit,
+    };
+    if (useUnits) body.units = order.units;
+    else body.amount = order.amount;
+
     return this.runHttp({
       action: 'openPosition',
       method: 'POST',
-      path: '/trading/orders',
-      send: () => this.http.post('/trading/orders', {
-        instrumentId: order.instrumentId,
-        symbol: order.symbol,
-        side: order.side,
-        amount: order.amount,
-        leverage: order.leverage ?? 1,
-        stopLoss: order.stopLoss,
-        takeProfit: order.takeProfit,
-        type: 'market',
-      }),
+      path,
+      send: () => this.http.post(path, body),
       parse: (data) => this.normalizeOrderResult(asRecord(data)),
       auditExtras: {
         resolvedNotionalUsd: notional.usd,
@@ -232,8 +253,8 @@ export class TradingModule {
     return this.runHttp({
       action: 'placeLimitOrder',
       method: 'POST',
-      path: '/trading/orders',
-      send: () => this.http.post('/trading/orders', {
+      path: LIMIT_ORDER_PATH,
+      send: () => this.http.post(LIMIT_ORDER_PATH, {
         instrumentId: order.instrumentId,
         symbol: order.symbol,
         side: order.side,
@@ -259,27 +280,38 @@ export class TradingModule {
     this.validateIdString(positionId, 'positionId', 'closePosition');
     this.assertTradingEnabled('closePosition');
     this.noteCapsDisabledIfActive('closePosition');
-    const endpoint = `/trading/positions/${positionId}/close`;
     return this.runHttp({
       action: 'closePosition',
       method: 'POST',
-      path: endpoint,
-      send: () => this.http.post(endpoint),
+      path: CLOSE_BY_AMOUNT_PATH,
+      send: () => this.http.post(CLOSE_BY_AMOUNT_PATH, { positionId }),
       parse: (data) => this.normalizeOrderResult(asRecord(data)),
     });
   }
 
-  async partialClose(positionId: string, amount: number): Promise<OrderResult> {
+  async partialClose(
+    positionId: string,
+    closeBy: number | { amount: number } | { units: number },
+  ): Promise<OrderResult> {
     this.validateIdString(positionId, 'positionId', 'partialClose');
-    this.validatePositiveAmount(amount, 'amount', 'partialClose');
+    const normalized = typeof closeBy === 'number'
+      ? { kind: 'amount' as const, value: closeBy }
+      : 'units' in closeBy
+        ? { kind: 'units' as const, value: closeBy.units }
+        : { kind: 'amount' as const, value: closeBy.amount };
+    this.validatePositiveAmount(normalized.value, normalized.kind, 'partialClose');
     this.assertTradingEnabled('partialClose');
     this.noteCapsDisabledIfActive('partialClose');
-    const endpoint = `/trading/positions/${positionId}/close`;
+    const path = normalized.kind === 'units' ? CLOSE_BY_UNITS_PATH : CLOSE_BY_AMOUNT_PATH;
+    const body: Record<string, unknown> = {
+      positionId,
+      [normalized.kind]: normalized.value,
+    };
     return this.runHttp({
       action: 'partialClose',
       method: 'POST',
-      path: endpoint,
-      send: () => this.http.post(endpoint, { amount }),
+      path,
+      send: () => this.http.post(path, body),
       parse: (data) => this.normalizeOrderResult(asRecord(data)),
     });
   }
@@ -288,7 +320,7 @@ export class TradingModule {
     this.validateIdString(orderId, 'orderId', 'cancelOrder');
     this.assertTradingEnabled('cancelOrder');
     this.noteCapsDisabledIfActive('cancelOrder');
-    const endpoint = `/trading/orders/${orderId}`;
+    const endpoint = `${DEMO_INFO_ORDERS}/${orderId}`;
     await this.runHttp({
       action: 'cancelOrder',
       method: 'DELETE',
@@ -299,7 +331,7 @@ export class TradingModule {
   }
 
   async getOrderStatus(orderId: string): Promise<OrderResult> {
-    const endpoint = `/trading/orders/${orderId}`;
+    const endpoint = `${DEMO_INFO_ORDERS}/${orderId}`;
     return this.runHttp({
       action: 'getOrderStatus',
       method: 'GET',
@@ -310,7 +342,7 @@ export class TradingModule {
   }
 
   async getOpenPositions(): Promise<Position[]> {
-    const path = '/trading/positions';
+    const path = DEMO_INFO_POSITIONS;
     return this.runHttp({
       action: 'getOpenPositions',
       method: 'GET',
@@ -323,7 +355,7 @@ export class TradingModule {
   }
 
   async getTradeHistory(limit = 50): Promise<TradeHistoryEntry[]> {
-    const path = `/trading/history?limit=${limit}`;
+    const path = `${DEMO_INFO_HISTORY}?limit=${limit}`;
     return this.runHttp({
       action: 'getTradeHistory',
       method: 'GET',

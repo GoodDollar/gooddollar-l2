@@ -31,7 +31,7 @@ describe('LIST_ENVELOPE_KEYS', () => {
   it('is the de-duped, ordered union of the three legacy extractArray copies', () => {
     expect([...LIST_ENVELOPE_KEYS]).toEqual([
       'data', 'items', 'results',
-      'instruments', 'quotes', 'candles',
+      'instruments', 'quotes', 'rates', 'candles',
       'positions', 'orders', 'trades', 'history',
     ]);
   });

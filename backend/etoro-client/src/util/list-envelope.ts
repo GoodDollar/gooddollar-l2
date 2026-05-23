@@ -17,6 +17,7 @@ export const LIST_ENVELOPE_KEYS = [
   'results',
   'instruments',
   'quotes',
+  'rates',
   'candles',
   'positions',
   'orders',

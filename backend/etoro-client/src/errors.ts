@@ -250,6 +250,32 @@ export class MalformedListResponseError extends Error {
   }
 }
 
+/**
+ * Thrown by `InstrumentResolver` when a symbol has no exact match in the
+ * `/market-data/search` response. The eToro public API's search endpoint
+ * returns fuzzy matches (e.g. searching `BTC` yields `BTC`, `BTCEUR`,
+ * `BTCGBP`, …). The resolver explicitly REFUSES to accept the first
+ * fuzzy result per the lane constraint; an unresolvable symbol is a
+ * hard error so the operator notices instead of silently pricing the
+ * wrong instrument.
+ */
+export class InstrumentNotFoundError extends Error {
+  readonly symbol: string;
+  readonly candidates: readonly string[];
+
+  constructor(input: { symbol: string; candidates: readonly string[] }) {
+    super(
+      `No exact match for symbol "${input.symbol}" in /market-data/search response. ` +
+      `Candidates returned: [${input.candidates.join(', ')}]. ` +
+      `Add an exact internalSymbolFull/symbol match or set ETORO_INSTRUMENT_OVERRIDES ` +
+      `to pin the instrumentId manually (see docs/ETORO_GOODCHAIN_ADAPTER.md).`,
+    );
+    this.name = 'InstrumentNotFoundError';
+    this.symbol = input.symbol;
+    this.candidates = input.candidates;
+  }
+}
+
 export class MissingNotionalError extends Error {
   readonly symbol: string;
   readonly attemptedAmount: number;

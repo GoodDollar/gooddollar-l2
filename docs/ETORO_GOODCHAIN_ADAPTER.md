@@ -14,9 +14,9 @@ under the lane-1 contract.
 | Mode            | Market data | Trading            | Account API | Credentials | Base URLs |
 |-----------------|-------------|--------------------|-------------|-------------|-----------|
 | `mock`          | Deterministic in-process fake (`MockEtoroSource`) | Disabled (throws `RealTradingDisabledError`) | Disabled (throws `AccountUnavailableError`) | None | `mock://etoro.local` |
-| `demo-readonly` | Live demo URLs | Disabled (throws `RealTradingDisabledError`) | Live | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET` | `api.etoro.com/sapi/demo` |
-| `demo-trading`  | Live demo URLs | Enabled, capped by `DemoCapEnforcer` | Live | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET` | `api.etoro.com/sapi/demo` |
-| `real-disabled` | Live demo URLs | Disabled by source-level fence | Live | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET` | `api.etoro.com/sapi/demo` |
+| `demo-readonly` | Live demo URLs | Disabled (throws `RealTradingDisabledError`) | Live | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET`, `ETORO_DEMO_USER_KEY` | `public-api.etoro.com/api/v1` |
+| `demo-trading`  | Live demo URLs | Enabled, capped by `DemoCapEnforcer` | Live | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET`, `ETORO_DEMO_USER_KEY` | `public-api.etoro.com/api/v1` |
+| `real-disabled` | Live demo URLs | Disabled by source-level fence | Live | `ETORO_DEMO_KEY`, `ETORO_DEMO_SECRET`, `ETORO_USER_KEY` | `public-api.etoro.com/api/v1` |
 
 `AccountUnavailableError` is the read-side parallel of
 `RealTradingDisabledError`: every `account.*` method (`getBalance`,
@@ -57,10 +57,12 @@ any of the four documented modes — that requires a fifth mode.
 | Variable | Default | Required for | Notes |
 |----------|---------|--------------|-------|
 | `ETORO_MODE` | `mock` | All modes | Unknown values throw `InvalidModeError` at construction. Valid: `mock`, `demo-readonly`, `demo-trading`, `real-disabled`. Leave unset to default to `mock`. |
-| `ETORO_DEMO_KEY` | — | demo-readonly, demo-trading, real-disabled | Demo API key. |
-| `ETORO_DEMO_SECRET` | — | demo-readonly, demo-trading, real-disabled | Demo API secret. |
-| `ETORO_DEMO_BASE_URL` | `https://api.etoro.com/sapi/demo` | optional | REST base URL. |
-| `ETORO_DEMO_WS_URL` | `wss://streamer.etoro.com/sapi/demo` | optional | WebSocket URL. |
+| `ETORO_DEMO_KEY` | — | demo-readonly, demo-trading, real-disabled | Demo API key. Sent on every request as `x-api-key`. |
+| `ETORO_DEMO_SECRET` | — | demo-readonly, demo-trading, real-disabled | Demo API secret. Not transmitted; reserved for signed-trade follow-ups. |
+| `ETORO_DEMO_USER_KEY` | — | demo-readonly, demo-trading | Demo user identifier. Sent on every request as `x-user-key`. For `real-disabled`, the SDK reads `ETORO_USER_KEY` instead. |
+| `ETORO_USER_KEY` | — | real-disabled | Real-account user identifier. Same `x-user-key` semantics as `ETORO_DEMO_USER_KEY` but scoped to the read-only real surface. |
+| `ETORO_DEMO_BASE_URL` | `https://public-api.etoro.com/api/v1` | optional | REST base URL. The default is the official public-api host; override only for staging environments. |
+| `ETORO_DEMO_WS_URL` | `wss://streamer.etoro.com/sapi/demo` | optional | WebSocket URL. WS still uses the legacy streamer host; REST has migrated to `public-api`. |
 | `MAX_DEMO_ORDER_NOTIONAL_USD` | `1000` | demo-trading | Per-order USD cap. |
 | `MAX_DAILY_DEMO_NOTIONAL_USD` | `10000` | demo-trading | Cumulative daily USD cap (UTC bucket). |
 | `ETORO_INSTRUMENT_OVERRIDES` | `{}` | optional | JSON object overriding the lane instrument map. |
@@ -93,29 +95,78 @@ mode's base URL (mock URLs are dev-only sentinels and not actually opened).
 
 ### REST
 
+All paths are relative to `public-api.etoro.com/api/v1`. The SDK is wired
+to the **official eToro public API** per
+`.autobuilder/OFFICIAL_ETORO_API_PRICE_SOURCE.md`; the legacy
+`api.etoro.com/sapi/demo` host is no longer addressed.
+
 | Method | Path | Module | Purpose |
 |--------|------|--------|---------|
-| POST   | `/auth/login` | `index.ts#authenticate` | Bearer-token bootstrap. |
-| GET    | `/api/v1/market-data/instruments` | `MarketDataModule#getInstruments` | Instrument metadata. |
-| GET    | `/api/v1/market-data/quotes` | `MarketDataModule#getQuotes` | Snapshot quotes. |
-| GET    | `/api/v1/market-data/candles` | `MarketDataModule#getCandles` | OHLCV candles. |
-| POST   | `/trading/orders` | `TradingModule#openPosition`, `placeLimitOrder` | New market/limit/stop order. |
-| DELETE | `/trading/orders/:id` | `TradingModule#cancelOrder` | Cancel pending order. |
-| GET    | `/trading/orders/:id` | `TradingModule#getOrderStatus` | Status of single order. |
-| POST   | `/trading/positions/:id/close` | `TradingModule#closePosition`, `partialClose` | Close (or partially close) position. |
-| GET    | `/trading/positions` | `TradingModule#getOpenPositions` | All open positions. |
-| GET    | `/trading/history` | `TradingModule#getTradeHistory` | Filled / cancelled / expired trades. |
+| GET    | `/market-data/search` | `InstrumentResolver#resolve` | Symbol → `instrumentId` lookup. Exact-match by `internalSymbolFull` / `symbol` (uppercase); fuzzy first results are NEVER accepted. 24h in-memory cache per `EtoroClient` instance. |
+| GET    | `/market-data/instruments/rates` | `MarketDataModule#getQuotes` | Live bid/ask/`lastExecution` for a comma-separated `instrumentIds` list. Batched at 100 IDs per request. |
+| GET    | `/market-data/candles` | `MarketDataModule#getCandles` | OHLCV candles. |
+| POST   | `/trading/execution/demo/market-open-orders/by-amount` | `TradingModule#openPosition` (USD path) | Demo market open sized in USD notional. |
+| POST   | `/trading/execution/demo/market-open-orders/by-units` | `TradingModule#openPosition` (units path) | Demo market open sized in unit count. Routed when `OrderRequest.units` is set. |
+| POST   | `/trading/execution/demo/limit-orders` | `TradingModule#placeLimitOrder` | Demo limit/stop order. |
+| POST   | `/trading/execution/demo/market-close-orders/by-amount` | `TradingModule#closePosition`, `partialClose` (USD) | Demo market close sized in USD. |
+| POST   | `/trading/execution/demo/market-close-orders/by-units` | `TradingModule#partialClose` (units) | Demo market close sized in units. |
+| DELETE | `/trading/info/demo/orders/:id` | `TradingModule#cancelOrder` | Cancel pending demo order. |
+| GET    | `/trading/info/demo/orders/:id` | `TradingModule#getOrderStatus` | Status of single demo order. |
+| GET    | `/trading/info/demo/positions` | `TradingModule#getOpenPositions` | All open demo positions. |
+| GET    | `/trading/info/demo/history` | `TradingModule#getTradeHistory` | Filled / cancelled / expired demo trades. |
 | GET    | `/account/balance` | `AccountModule#getBalance` | Equity + free margin. |
 | GET    | `/account/positions` | `AccountModule#getPositions` | Account-side position view. |
 | GET    | `/account/orders/pending` | `AccountModule#getPendingOrders` | Pending orders. |
 | GET    | `/account/pnl` | `AccountModule#getPortfolioPnl` | Realized + unrealized P&L. |
 | GET    | `/account/margin/:instrumentId` | `AccountModule#getMarginInfo` | Per-instrument margin. |
 
+### Required headers
+
+Every outbound request carries three headers via the SDK's axios
+instance (set in `EtoroClient`'s constructor + a request interceptor):
+
+| Header | Source | Notes |
+|--------|--------|-------|
+| `x-api-key` | `EtoroCredentials.apiKey` | Set as a default header at axios instance construction. |
+| `x-user-key` | `EtoroCredentials.userKey` | Set as a default header at axios instance construction. |
+| `x-request-id` | `requestIdFactory()` (defaults to `crypto.randomUUID()`) | Stamped fresh per request via an axios request interceptor; tests pin deterministic IDs by passing `requestIdFactory: () => 'req-N'` to `new EtoroClient(...)`. |
+
+### Authentication
+
+The official public API is header-based — there is no `/auth/login`
+round-trip. `EtoroClient.authenticate()` is a no-op session-token
+populate that returns the literal `'header-auth'` (or `'mock-token'`
+under `mock` mode). It is retained so callers that gate on
+`isAuthenticated()` keep working; outright removal is tracked as a
+follow-up.
+
 Response envelopes are not consistent across eToro responses; the SDK's
 `extractArray` and `pickStr/pickNum/pickTimestamp` helpers tolerate a small
-number of common shapes (`{data: []}`, `{instruments: []}`, etc.). When in
-doubt, the test fixtures in `backend/etoro-client/src/__tests__/` are the
-source of truth for the accepted shapes.
+number of common shapes (`{data: []}`, `{instruments: []}`, `{rates: []}`,
+etc.). When in doubt, the test fixtures in
+`backend/etoro-client/src/__tests__/` are the source of truth for the
+accepted shapes.
+
+### Live-integration tests (opt-in)
+
+`backend/etoro-client/src/__tests__/live-integration.test.ts` is the
+lane's acceptance proof — it issues a real
+`GET /market-data/instruments/rates` for BTC and AAPL and asserts
+non-zero bid/ask after SDK normalization. It is **skipped by default**.
+
+Enable it by setting all three env vars:
+
+```bash
+export ETORO_DEMO_KEY=<your-demo-api-key>
+export ETORO_DEMO_USER_KEY=<your-demo-user-key>
+export ETORO_LIVE_TESTS=1
+cd backend/etoro-client && npm test -- live-integration
+```
+
+CI does not set `ETORO_LIVE_TESTS`, so the suite stays inert there;
+local operators with valid demo credentials use it to confirm the SDK
+reaches the official rates endpoint and produces a positive bid/ask
+through the new normalization pipeline.
 
 ### WebSocket
 

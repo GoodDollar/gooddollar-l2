@@ -3,61 +3,58 @@ import { MarketDataModule, MarketDataDeps, detectUSMarketSession } from '../mark
 import { AuditLogger, AUDIT_CONSOLE_THROTTLE_MS } from '../audit-logger';
 import { RateLimiter } from '../rate-limiter';
 import { AuditLogEntry, EtoroMode, NormalizedQuote, InstrumentMetadata, SessionState } from '../types';
+import { stubResolver, toRateRecord } from './test-helpers';
 
-function createMockAxios(responses: Record<string, unknown> = {}): AxiosInstance {
-  const instance = {
-    get: jest.fn(async (url: string) => {
-      const key = Object.keys(responses).find((k) => url.includes(k));
-      return { data: key ? responses[key] : [] };
-    }),
-  } as unknown as AxiosInstance;
-  return instance;
+const INSTRUMENT_IDS: Record<string, string> = {
+  AAPL: 'INST_1001',
+  TSLA: 'INST_1002',
+  NVDA: 'INST_1003',
+  SPY: 'INST_1004',
+  BTC: 'INST_2001',
+  ETH: 'INST_2002',
+  OLD: 'INST_9001',
+  WIDE: 'INST_9002',
+  UNKNOWN: 'INST_9003',
+  NONEXIST: 'INST_9004',
+};
+
+function defaultResolver() {
+  return stubResolver(INSTRUMENT_IDS);
 }
 
-const MOCK_INSTRUMENTS = [
-  {
-    instrumentId: 'INST_1001',
-    symbol: 'AAPL',
-    displayName: 'Apple Inc.',
-    exchange: 'NASDAQ',
-    currency: 'USD',
-    assetClass: 'equity',
-    minTradeSize: 0.01,
-    maxLeverage: 5,
-  },
-  {
-    instrumentId: 'INST_1002',
-    symbol: 'TSLA',
-    displayName: 'Tesla Inc.',
-    exchange: 'NASDAQ',
-    currency: 'USD',
-    assetClass: 'equity',
-    minTradeSize: 0.01,
-    maxLeverage: 5,
-  },
-];
+function ratesEnvelope(records: unknown[]) {
+  return { rates: records };
+}
 
-const MOCK_QUOTES = [
-  {
-    symbol: 'AAPL',
-    instrumentId: 'INST_1001',
-    bid: 189.50,
-    ask: 189.60,
-    last: 189.55,
-    timestamp: Date.now(),
-    assetClass: 'equity',
-    currency: 'USD',
-  },
-  {
-    symbol: 'TSLA',
-    instrumentId: 'INST_1002',
-    bid: 250.10,
-    ask: 250.30,
-    last: 250.20,
-    timestamp: Date.now(),
-    assetClass: 'equity',
-    currency: 'USD',
-  },
+/**
+ * Lightweight axios stub that maps the SDK's two endpoint families
+ * (`/market-data/instruments/rates`, `/market-data/candles`) to the
+ * provided payloads. Tests that need search-endpoint behaviour stub
+ * the resolver directly via `deps.resolver`.
+ */
+function createMockAxios(responses: {
+  rates?: unknown[];
+  candles?: unknown[];
+  rawByPath?: Record<string, unknown>;
+} = {}): AxiosInstance {
+  const get = jest.fn(async (url: string) => {
+    if (responses.rawByPath && url in responses.rawByPath) {
+      return { data: responses.rawByPath[url], status: 200 };
+    }
+    if (url.includes('/market-data/instruments/rates')) {
+      return { data: ratesEnvelope(responses.rates ?? []), status: 200 };
+    }
+    if (url.includes('/market-data/candles')) {
+      return { data: { candles: responses.candles ?? [] }, status: 200 };
+    }
+    return { data: [], status: 200 };
+  });
+  return { get } as unknown as AxiosInstance;
+}
+
+const MOCK_RATES = [
+  toRateRecord({ symbol: 'AAPL', instrumentID: 'INST_1001', bid: 189.50, ask: 189.60, lastExecution: 189.55, date: Date.now() }),
+  toRateRecord({ symbol: 'TSLA', instrumentID: 'INST_1002', bid: 250.10, ask: 250.30, lastExecution: 250.20, date: Date.now() }),
 ];
 
 const MOCK_CANDLES = [
@@ -65,36 +62,42 @@ const MOCK_CANDLES = [
   { open: 189, high: 191, low: 188, close: 190, volume: 60000, timestamp: Date.now() },
 ];
 
+function makeMod(http: AxiosInstance, config?: ConstructorParameters<typeof MarketDataModule>[1], deps?: MarketDataDeps) {
+  return new MarketDataModule(http, config, { resolver: defaultResolver(), ...deps });
+}
+
 describe('MarketDataModule', () => {
   describe('getInstruments', () => {
-    it('fetches and normalizes instruments', async () => {
-      const http = createMockAxios({ instruments: { instruments: MOCK_INSTRUMENTS } });
-      const mod = new MarketDataModule(http);
+    it('fetches and normalizes instruments via resolver', async () => {
+      const http = createMockAxios({});
+      const mod = makeMod(http);
       const result = await mod.getInstruments(['AAPL', 'TSLA']);
 
       expect(result).toHaveLength(2);
       expect(result[0].symbol).toBe('AAPL');
       expect(result[0].instrumentId).toBe('INST_1001');
-      expect(result[0].exchange).toBe('NASDAQ');
-      expect(result[0].assetClass).toBe('equity');
       expect(result[1].symbol).toBe('TSLA');
     });
 
     it('caches instruments on subsequent calls', async () => {
-      const http = createMockAxios({ instruments: { instruments: MOCK_INSTRUMENTS } });
-      const mod = new MarketDataModule(http);
+      const http = createMockAxios({});
+      const mod = makeMod(http);
 
-      await mod.getInstruments();
-      await mod.getInstruments();
+      await mod.getInstruments(['AAPL', 'TSLA']);
+      const initialResolverCalls = (mod as unknown as { resolver: { resolve: jest.Mock } })
+        .resolver.resolve.mock.calls.length;
+      await mod.getInstruments(['AAPL', 'TSLA']);
+      const finalResolverCalls = (mod as unknown as { resolver: { resolve: jest.Mock } })
+        .resolver.resolve.mock.calls.length;
 
-      expect(http.get).toHaveBeenCalledTimes(1);
+      expect(finalResolverCalls).toBe(initialResolverCalls);
     });
 
     it('returns filtered instruments from cache', async () => {
-      const http = createMockAxios({ instruments: { instruments: MOCK_INSTRUMENTS } });
-      const mod = new MarketDataModule(http);
+      const http = createMockAxios({});
+      const mod = makeMod(http);
 
-      await mod.getInstruments();
+      await mod.getInstruments(['AAPL', 'TSLA']);
       const filtered = await mod.getInstruments(['AAPL']);
 
       expect(filtered).toHaveLength(1);
@@ -103,25 +106,25 @@ describe('MarketDataModule', () => {
   });
 
   describe('getQuotes', () => {
-    it('fetches and normalizes quotes', async () => {
-      const http = createMockAxios({ quotes: { quotes: MOCK_QUOTES } });
-      const mod = new MarketDataModule(http);
+    it('fetches and normalizes quotes from the rates envelope', async () => {
+      const http = createMockAxios({ rates: MOCK_RATES });
+      const mod = makeMod(http);
       const result = await mod.getQuotes(['AAPL', 'TSLA']);
 
       expect(result).toHaveLength(2);
-      expect(result[0].symbol).toBe('AAPL');
-      expect(result[0].bid).toBe(189.50);
-      expect(result[0].ask).toBe(189.60);
-      expect(result[0].mid).toBeCloseTo(189.55, 2);
-      expect(result[0].source).toBe('etoro');
-      expect(result[0].confidence).toBeGreaterThanOrEqual(80);
-      expect(result[0].confidence).toBeLessThanOrEqual(100);
-      expect(result[0].stale).toBe(false);
+      const aapl = result.find((q) => q.symbol === 'AAPL')!;
+      expect(aapl.bid).toBe(189.50);
+      expect(aapl.ask).toBe(189.60);
+      expect(aapl.mid).toBeCloseTo(189.55, 2);
+      expect(aapl.source).toBe('etoro');
+      expect(aapl.confidence).toBeGreaterThanOrEqual(80);
+      expect(aapl.confidence).toBeLessThanOrEqual(100);
+      expect(aapl.stale).toBe(false);
     });
 
     it('caches quotes for getCachedQuote', async () => {
-      const http = createMockAxios({ quotes: { quotes: MOCK_QUOTES } });
-      const mod = new MarketDataModule(http);
+      const http = createMockAxios({ rates: [MOCK_RATES[0]] });
+      const mod = makeMod(http);
       await mod.getQuotes(['AAPL']);
 
       const cached = mod.getCachedQuote('AAPL');
@@ -132,8 +135,8 @@ describe('MarketDataModule', () => {
 
   describe('getQuote', () => {
     it('returns single quote or null', async () => {
-      const http = createMockAxios({ quotes: { quotes: [MOCK_QUOTES[0]] } });
-      const mod = new MarketDataModule(http);
+      const http = createMockAxios({ rates: [MOCK_RATES[0]] });
+      const mod = makeMod(http);
 
       const result = await mod.getQuote('AAPL');
       expect(result).not.toBeNull();
@@ -141,8 +144,8 @@ describe('MarketDataModule', () => {
     });
 
     it('returns null when no quotes returned', async () => {
-      const http = createMockAxios({ quotes: { quotes: [] } });
-      const mod = new MarketDataModule(http);
+      const http = createMockAxios({ rates: [] });
+      const mod = makeMod(http);
 
       const result = await mod.getQuote('NONEXIST');
       expect(result).toBeNull();
@@ -151,8 +154,8 @@ describe('MarketDataModule', () => {
 
   describe('getCandles', () => {
     it('fetches and normalizes candle data', async () => {
-      const http = createMockAxios({ candles: { candles: MOCK_CANDLES } });
-      const mod = new MarketDataModule(http);
+      const http = createMockAxios({ candles: MOCK_CANDLES });
+      const mod = makeMod(http);
       const now = Date.now();
       const result = await mod.getCandles('AAPL', '1h', now - 7 * 86400_000, now);
 
@@ -168,19 +171,19 @@ describe('MarketDataModule', () => {
   describe('confidence scoring (0-100 scale)', () => {
     it('scores high confidence for tight bid/ask spread', async () => {
       const http = createMockAxios({
-        quotes: { quotes: [{ symbol: 'AAPL', bid: 189.50, ask: 189.60, last: 189.55, timestamp: Date.now() }] },
+        rates: [toRateRecord({ instrumentID: 'INST_1001', bid: 189.50, ask: 189.60, lastExecution: 189.55, date: Date.now() })],
       });
-      const mod = new MarketDataModule(http);
+      const mod = makeMod(http);
       const [q] = await mod.getQuotes(['AAPL']);
       expect(q.confidence).toBeGreaterThanOrEqual(90);
       expect(q.confidence).toBeLessThanOrEqual(100);
     });
 
-    it('scores lower confidence when only last price available (no bid/ask)', async () => {
+    it('scores lower confidence when only lastExecution available (no bid/ask)', async () => {
       const http = createMockAxios({
-        quotes: { quotes: [{ symbol: 'SPY', last: 500.00, timestamp: Date.now() }] },
+        rates: [toRateRecord({ instrumentID: 'INST_1004', lastExecution: 500.00, date: Date.now() })],
       });
-      const mod = new MarketDataModule(http);
+      const mod = makeMod(http);
       const [q] = await mod.getQuotes(['SPY']);
       expect(q.confidence).toBeGreaterThanOrEqual(40);
       expect(q.confidence).toBeLessThan(80);
@@ -189,9 +192,9 @@ describe('MarketDataModule', () => {
     it('scores zero confidence for stale quotes', async () => {
       const staleTs = Date.now() - 10 * 60_000;
       const http = createMockAxios({
-        quotes: { quotes: [{ symbol: 'OLD', bid: 100, ask: 101, timestamp: staleTs }] },
+        rates: [toRateRecord({ instrumentID: 'INST_9001', bid: 100, ask: 101, date: staleTs })],
       });
-      const mod = new MarketDataModule(http, { maxQuoteAgeMs: 5 * 60_000 });
+      const mod = makeMod(http, { maxQuoteAgeMs: 5 * 60_000 });
       const [q] = await mod.getQuotes(['OLD']);
       expect(q.confidence).toBe(0);
       expect(q.stale).toBe(true);
@@ -199,17 +202,17 @@ describe('MarketDataModule', () => {
 
     it('degrades confidence for wider spreads', async () => {
       const http = createMockAxios({
-        quotes: { quotes: [{ symbol: 'WIDE', bid: 100, ask: 103, last: 101.5, timestamp: Date.now() }] },
+        rates: [toRateRecord({ instrumentID: 'INST_9002', bid: 100, ask: 103, lastExecution: 101.5, date: Date.now() })],
       });
-      const mod = new MarketDataModule(http);
+      const mod = makeMod(http);
       const [q] = await mod.getQuotes(['WIDE']);
       expect(q.confidence).toBeGreaterThanOrEqual(50);
       expect(q.confidence).toBeLessThan(90);
     });
 
     it('returns integer confidence values', async () => {
-      const http = createMockAxios({ quotes: { quotes: MOCK_QUOTES } });
-      const mod = new MarketDataModule(http);
+      const http = createMockAxios({ rates: MOCK_RATES });
+      const mod = makeMod(http);
       const results = await mod.getQuotes(['AAPL', 'TSLA']);
       for (const q of results) {
         expect(Number.isInteger(q.confidence)).toBe(true);
@@ -220,9 +223,9 @@ describe('MarketDataModule', () => {
   describe('quote normalization edge cases', () => {
     it('handles missing bid/ask gracefully', async () => {
       const http = createMockAxios({
-        quotes: { quotes: [{ symbol: 'SPY', last: 500.00, timestamp: Date.now() }] },
+        rates: [toRateRecord({ instrumentID: 'INST_1004', lastExecution: 500.00, date: Date.now() })],
       });
-      const mod = new MarketDataModule(http);
+      const mod = makeMod(http);
       const result = await mod.getQuotes(['SPY']);
 
       expect(result[0].bid).toBe(0);
@@ -234,37 +237,32 @@ describe('MarketDataModule', () => {
     it('marks stale quotes with maxQuoteAgeMs', async () => {
       const staleTs = Date.now() - 10 * 60_000;
       const http = createMockAxios({
-        quotes: { quotes: [{ symbol: 'OLD', bid: 100, ask: 101, timestamp: staleTs }] },
+        rates: [toRateRecord({ instrumentID: 'INST_9001', bid: 100, ask: 101, date: staleTs })],
       });
-      const mod = new MarketDataModule(http, { maxQuoteAgeMs: 5 * 60_000 });
+      const mod = makeMod(http, { maxQuoteAgeMs: 5 * 60_000 });
       const result = await mod.getQuotes(['OLD']);
 
       expect(result[0].stale).toBe(true);
       expect(result[0].confidence).toBe(0);
     });
 
-    it('handles alternative field names', async () => {
+    it('handles case-insensitive instrumentID (instrumentID and instrumentId both accepted)', async () => {
       const http = createMockAxios({
-        quotes: {
-          quotes: [{
-            ticker: 'nvda',
-            instrumentID: 'I_NVDA',
-            bidPrice: 130.5,
-            askPrice: 131.0,
-            currentRate: 130.75,
-            updatedAt: Date.now(),
-            instrumentType: 'stock',
-          }],
-        },
+        rates: [{
+          instrumentId: 'INST_1003',
+          bid: 130.5,
+          ask: 131.0,
+          lastExecution: 130.75,
+          date: Date.now(),
+        }],
       });
-      const mod = new MarketDataModule(http);
+      const mod = makeMod(http);
       const result = await mod.getQuotes(['NVDA']);
 
       expect(result[0].symbol).toBe('NVDA');
-      expect(result[0].instrumentId).toBe('I_NVDA');
+      expect(result[0].instrumentId).toBe('INST_1003');
       expect(result[0].bid).toBe(130.5);
       expect(result[0].ask).toBe(131.0);
-      expect(result[0].assetClass).toBe('equity');
     });
   });
 
@@ -279,8 +277,8 @@ describe('MarketDataModule', () => {
 
   describe('streaming lifecycle', () => {
     it('starts REST fallback when no wsUrl', () => {
-      const http = createMockAxios({ quotes: { quotes: MOCK_QUOTES } });
-      const mod = new MarketDataModule(http, { restFallbackIntervalMs: 100_000 });
+      const http = createMockAxios({ rates: MOCK_RATES });
+      const mod = makeMod(http, { restFallbackIntervalMs: 100_000 });
 
       mod.subscribe(['AAPL']);
       mod.startStreaming();
@@ -292,7 +290,7 @@ describe('MarketDataModule', () => {
 
     it('registers and unregisters quote listeners', () => {
       const http = createMockAxios({});
-      const mod = new MarketDataModule(http);
+      const mod = makeMod(http);
       const cb = jest.fn();
 
       const unsub = mod.onQuote(cb);
@@ -307,17 +305,13 @@ describe('MarketDataModule', () => {
     }
 
     function freshQuote(symbol: string, overrides: Partial<{ bid: number; ask: number; timestamp: number }> = {}) {
-      return {
-        symbol,
-        instrumentId: `INST_${symbol}`,
-        bid: 100,
-        ask: 101,
-        last: 100.5,
-        timestamp: overrides.timestamp ?? Date.now(),
-        assetClass: 'equity',
-        currency: 'USD',
-        ...overrides,
-      };
+      return toRateRecord({
+        instrumentID: INSTRUMENT_IDS[symbol] ?? `INST_${symbol}`,
+        bid: overrides.bid ?? 100,
+        ask: overrides.ask ?? 101,
+        lastExecution: 100.5,
+        date: overrides.timestamp ?? Date.now(),
+      });
     }
 
     async function tickFallback(intervalMs: number): Promise<void> {
@@ -338,9 +332,9 @@ describe('MarketDataModule', () => {
 
     it('emits exactly one listener call per fresh subscribed quote per tick', async () => {
       const get = jest.fn(async () => ({
-        data: { quotes: [freshQuote('BTC'), freshQuote('ETH')] },
+        data: { rates: [freshQuote('BTC'), freshQuote('ETH')] },
       }));
-      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 });
+      const mod = makeMod(makeStubHttp(get), { restFallbackIntervalMs: 1_000 });
       const cb = jest.fn();
       mod.onQuote(cb);
       mod.subscribe(['BTC', 'ETH']);
@@ -362,11 +356,11 @@ describe('MarketDataModule', () => {
         const tick = calls.length;
         calls.push([]);
         if (tick === 0) {
-          return { data: { quotes: [freshQuote('AAPL'), freshQuote('TSLA'), freshQuote('NVDA')] } };
+          return { data: { rates: [freshQuote('AAPL'), freshQuote('TSLA'), freshQuote('NVDA')] } };
         }
-        return { data: { quotes: [freshQuote('BTC'), freshQuote('ETH')] } };
+        return { data: { rates: [freshQuote('BTC'), freshQuote('ETH')] } };
       });
-      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 });
+      const mod = makeMod(makeStubHttp(get), { restFallbackIntervalMs: 1_000 });
       const cb = jest.fn();
       mod.onQuote(cb);
 
@@ -387,13 +381,13 @@ describe('MarketDataModule', () => {
     it('drops stale quotes from listener fanout', async () => {
       const get = jest.fn(async () => ({
         data: {
-          quotes: [
+          rates: [
             freshQuote('BTC'),
             freshQuote('ETH', { timestamp: Date.now() - 30 * 60_000 }),
           ],
         },
       }));
-      const mod = new MarketDataModule(makeStubHttp(get), {
+      const mod = makeMod(makeStubHttp(get), {
         restFallbackIntervalMs: 1_000,
         maxQuoteAgeMs: 5 * 60_000,
       });
@@ -413,10 +407,10 @@ describe('MarketDataModule', () => {
       let callCount = 0;
       const get = jest.fn(async () => {
         callCount += 1;
-        if (callCount === 1) return { data: { quotes: [freshQuote('BTC')] } };
+        if (callCount === 1) return { data: { rates: [freshQuote('BTC')] } };
         throw new Error('HTTP 500');
       });
-      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 }, {
+      const mod = makeMod(makeStubHttp(get), { restFallbackIntervalMs: 1_000 }, {
         consoleErrorImpl: () => undefined,
       });
 
@@ -436,7 +430,7 @@ describe('MarketDataModule', () => {
 
     it('records rest-fallback failure when getQuotes rejects on a tick', async () => {
       const get = jest.fn(async () => { throw new Error('HTTP 500'); });
-      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 }, {
+      const mod = makeMod(makeStubHttp(get), { restFallbackIntervalMs: 1_000 }, {
         consoleErrorImpl: () => undefined,
       });
       mod.subscribe(['BTC']);
@@ -464,10 +458,10 @@ describe('MarketDataModule', () => {
       return { get: jest.fn(async () => ({ data: payload })) } as unknown as AxiosInstance;
     }
 
-    const silentDeps: MarketDataDeps = { consoleErrorImpl: () => undefined };
+    const silentDeps: MarketDataDeps = { consoleErrorImpl: () => undefined, resolver: defaultResolver() };
 
-    it('returns null for getQuote when payload omits every symbol field', async () => {
-      const http = makeStubHttp({ quotes: [{ bid: 100, ask: 101 }] });
+    it('returns null for getQuote when rate record omits every instrument-id field', async () => {
+      const http = makeStubHttp({ rates: [{ bid: 100, ask: 101 }] });
       const mod = new MarketDataModule(http, undefined, silentDeps);
       const result = await mod.getQuote('BTC');
       expect(result).toBeNull();
@@ -475,10 +469,10 @@ describe('MarketDataModule', () => {
       expect(mod.getMalformedQuoteCount()).toBe(1);
     });
 
-    it('returns [] from getQuotes when every record is malformed and audits each drop', async () => {
+    it('returns [] from getQuotes when every rate record is malformed and audits each drop', async () => {
       const { audit, entries } = recordingAudit();
-      const http = makeStubHttp({ quotes: [{ bid: 100, ask: 101 }, { foo: 'bar' }] });
-      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const http = makeStubHttp({ rates: [{ bid: 100, ask: 101 }, { foo: 'bar' }] });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined, resolver: defaultResolver() });
       const result = await mod.getQuotes(['BTC', 'ETH']);
       expect(result).toEqual([]);
       expect(mod.getMalformedQuoteCount()).toBe(2);
@@ -493,12 +487,12 @@ describe('MarketDataModule', () => {
     it('returns only identifiable records when mixed good + malformed', async () => {
       const { audit, entries } = recordingAudit();
       const http = makeStubHttp({
-        quotes: [
-          { symbol: 'BTC', bid: 100, ask: 101, timestamp: Date.now() },
+        rates: [
+          toRateRecord({ instrumentID: 'INST_2001', bid: 100, ask: 101, date: Date.now() }),
           { bid: 200, ask: 201 },
         ],
       });
-      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined, resolver: defaultResolver() });
       const result = await mod.getQuotes(['BTC', 'ETH']);
       expect(result.map((q) => q.symbol)).toEqual(['BTC']);
       expect(mod.getMalformedQuoteCount()).toBe(1);
@@ -508,8 +502,8 @@ describe('MarketDataModule', () => {
       expect(drops).toHaveLength(1);
     });
 
-    it('exposes sorted keys of the most recently dropped record', async () => {
-      const http = makeStubHttp({ quotes: [{ bid: 100, ask: 101, foo: true }] });
+    it('exposes sorted keys of the most recently dropped rate record', async () => {
+      const http = makeStubHttp({ rates: [{ bid: 100, ask: 101, foo: true }] });
       const mod = new MarketDataModule(http, undefined, silentDeps);
       await mod.getQuotes(['BTC']);
       expect(mod.getLastMalformedKeys()).toEqual(['ask', 'bid', 'foo']);
@@ -570,7 +564,7 @@ describe('MarketDataModule', () => {
           err.response = { status: 429 };
           throw err;
         }
-        return { data: { quotes: [{ symbol: 'BTC', bid: 100, ask: 101, timestamp: Date.now() }] } };
+        return { data: { rates: [toRateRecord({ instrumentID: 'INST_2001', bid: 100, ask: 101, date: Date.now() })] } };
       });
       const limiter = new RateLimiter({
         minBackoffMs: 1, maxBackoffMs: 5, multiplier: 2, maxRetries: 3,
@@ -579,6 +573,7 @@ describe('MarketDataModule', () => {
       const http = { get } as unknown as AxiosInstance;
       const mod = new MarketDataModule(http, undefined, {
         dispatch: (fn) => limiter.executeWithTelemetry(fn),
+        resolver: defaultResolver(),
       });
 
       const quotes = await mod.getQuotes(['BTC']);
@@ -590,7 +585,7 @@ describe('MarketDataModule', () => {
     it('audits + counts when getQuotes receives a 200 with an unrecognized envelope', async () => {
       const { audit, entries } = recordingAudit();
       const http = makeStubHttp({ weirdField: 'x' });
-      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined, resolver: defaultResolver() });
 
       const result = await mod.getQuotes(['BTC']);
       expect(result).toEqual([]);
@@ -599,7 +594,7 @@ describe('MarketDataModule', () => {
       const lines = entries.filter((e) => e.action === 'getQuotes-malformed');
       expect(lines).toHaveLength(1);
       expect(lines[0].method).toBe('PARSE');
-      expect(lines[0].path).toBe('/api/v1/market-data/quotes');
+      expect(lines[0].path).toBe('/market-data/instruments/rates');
       expect(lines[0].error).toBe(
         'MalformedListResponse: object-no-match keys=[weirdField]',
       );
@@ -607,8 +602,8 @@ describe('MarketDataModule', () => {
 
     it('does NOT audit when getQuotes returns a legitimately empty list', async () => {
       const { audit, entries } = recordingAudit();
-      const http = makeStubHttp({ quotes: [] });
-      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const http = makeStubHttp({ rates: [] });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined, resolver: defaultResolver() });
 
       const result = await mod.getQuotes(['BTC']);
       expect(result).toEqual([]);
@@ -616,10 +611,12 @@ describe('MarketDataModule', () => {
       expect(entries.filter((e) => e.action === 'getQuotes-malformed')).toHaveLength(0);
     });
 
-    it('does NOT audit when getQuotes returns a well-formed envelope with one quote', async () => {
+    it('does NOT audit when getQuotes returns a well-formed rates envelope with one rate', async () => {
       const { audit, entries } = recordingAudit();
-      const http = makeStubHttp({ quotes: [{ symbol: 'BTC', bid: 100, ask: 101, timestamp: Date.now() }] });
-      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const http = makeStubHttp({
+        rates: [toRateRecord({ instrumentID: 'INST_2001', bid: 100, ask: 101, date: Date.now() })],
+      });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined, resolver: defaultResolver() });
 
       const result = await mod.getQuotes(['BTC']);
       expect(result).toHaveLength(1);
@@ -627,21 +624,10 @@ describe('MarketDataModule', () => {
       expect(entries.filter((e) => e.action === 'getQuotes-malformed')).toHaveLength(0);
     });
 
-    it('audits + counts when getInstruments receives a malformed envelope', async () => {
-      const { audit, entries } = recordingAudit();
-      const http = makeStubHttp({ wrongKey: [] });
-      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
-
-      const result = await mod.getInstruments(['BTC']);
-      expect(result).toEqual([]);
-      expect(mod.getMalformedListResponseCount('getInstruments')).toBe(1);
-      expect(entries.filter((e) => e.action === 'getInstruments-malformed')).toHaveLength(1);
-    });
-
     it('audits + counts when getCandles receives a malformed envelope', async () => {
       const { audit, entries } = recordingAudit();
       const http = makeStubHttp({ random: 1 });
-      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined, resolver: defaultResolver() });
 
       const result = await mod.getCandles('BTC', '1m', 0, 1);
       expect(result).toEqual([]);
@@ -656,6 +642,7 @@ describe('MarketDataModule', () => {
         audit,
         consoleErrorImpl: () => undefined,
         throwOnMalformedListResponse: true,
+        resolver: defaultResolver(),
       });
 
       await expect(mod.getQuotes(['BTC'])).rejects.toMatchObject({

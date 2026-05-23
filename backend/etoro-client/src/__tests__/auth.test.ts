@@ -83,6 +83,12 @@ describe('loadCredentialsFromEnv', () => {
   const demoEnv = {
     ETORO_DEMO_KEY: 'demo-key-123',
     ETORO_DEMO_SECRET: 'demo-secret-456',
+    ETORO_DEMO_USER_KEY: 'demo-user-789',
+  };
+  const realEnv = {
+    ETORO_DEMO_KEY: 'demo-key-123',
+    ETORO_DEMO_SECRET: 'demo-secret-456',
+    ETORO_USER_KEY: 'real-user-789',
   };
 
   it('returns deterministic mock credentials when ETORO_MODE is unset', () => {
@@ -157,10 +163,34 @@ describe('loadCredentialsFromEnv', () => {
   });
 
   it('loads real-disabled credentials but still uses demo URLs (no real URL exposure)', () => {
-    const creds = loadCredentialsFromEnv({ ETORO_MODE: 'real-disabled', ...demoEnv });
+    const creds = loadCredentialsFromEnv({ ETORO_MODE: 'real-disabled', ...realEnv });
     expect(creds.mode).toBe('real-disabled');
     expect(creds.baseUrl).toBe(DEMO_BASE_URL_DEFAULT);
     expect(creds.wsUrl).toBe(DEMO_WS_URL_DEFAULT);
+    expect(creds.userKey).toBe('real-user-789');
+  });
+
+  it('demo modes read ETORO_DEMO_USER_KEY into credentials.userKey', () => {
+    const creds = loadCredentialsFromEnv({ ETORO_MODE: 'demo-readonly', ...demoEnv });
+    expect(creds.userKey).toBe('demo-user-789');
+  });
+
+  it('throws when demo-readonly is missing ETORO_DEMO_USER_KEY', () => {
+    expect(() =>
+      loadCredentialsFromEnv({
+        ETORO_MODE: 'demo-readonly',
+        ETORO_DEMO_KEY: 'k', ETORO_DEMO_SECRET: 's',
+      }),
+    ).toThrow(/ETORO_DEMO_USER_KEY/);
+  });
+
+  it('throws when real-disabled is missing ETORO_USER_KEY', () => {
+    expect(() =>
+      loadCredentialsFromEnv({
+        ETORO_MODE: 'real-disabled',
+        ETORO_DEMO_KEY: 'k', ETORO_DEMO_SECRET: 's',
+      }),
+    ).toThrow(/ETORO_USER_KEY/);
   });
 
   it('throws when demo-readonly is requested without credentials', () => {
@@ -172,7 +202,7 @@ describe('loadCredentialsFromEnv', () => {
   it('throws when demo-trading is requested without credentials', () => {
     expect(() =>
       loadCredentialsFromEnv({ ETORO_MODE: 'demo-trading', ETORO_DEMO_KEY: 'k' }),
-    ).toThrow(/ETORO_DEMO_KEY and ETORO_DEMO_SECRET/);
+    ).toThrow(/ETORO_DEMO_KEY/);
   });
 
   it('throws when real-disabled is requested without credentials', () => {
@@ -283,12 +313,14 @@ describe('redactCredentials', () => {
     const redacted = redactCredentials({
       apiKey: 'abcdefghijklmnop',
       apiSecret: 'secret1234567890',
+      userKey: 'userkey0123456789',
       baseUrl: DEMO_BASE_URL_DEFAULT,
       wsUrl: DEMO_WS_URL_DEFAULT,
       mode: 'demo-readonly',
     });
     expect(redacted.apiKey).toBe('abc...nop');
     expect(redacted.apiSecret).toBe('sec...890');
+    expect(redacted.userKey).toBe('use...789');
     expect(redacted.mode).toBe('demo-readonly');
     expect(redacted.baseUrl).toBe(DEMO_BASE_URL_DEFAULT);
     expect(redacted.wsUrl).toBe(DEMO_WS_URL_DEFAULT);
@@ -298,18 +330,21 @@ describe('redactCredentials', () => {
     const redacted = redactCredentials({
       apiKey: 'abc',
       apiSecret: '12345',
+      userKey: 'uk',
       baseUrl: DEMO_BASE_URL_DEFAULT,
       wsUrl: DEMO_WS_URL_DEFAULT,
       mode: 'demo-trading',
     });
     expect(redacted.apiKey).toBe('***');
     expect(redacted.apiSecret).toBe('***');
+    expect(redacted.userKey).toBe('***');
   });
 
   it('never exposes raw credential values', () => {
     const redacted = redactCredentials({
       apiKey: 'SUPERSECRETAPIKEY1234',
       apiSecret: 'VERYSECRETAPISECRET5678',
+      userKey: 'SUPERSECRETUSERKEY9999',
       baseUrl: DEMO_BASE_URL_DEFAULT,
       wsUrl: DEMO_WS_URL_DEFAULT,
       mode: 'demo-trading',
@@ -317,5 +352,6 @@ describe('redactCredentials', () => {
     const allValues = Object.values(redacted).join(' ');
     expect(allValues).not.toContain('SUPERSECRETAPIKEY1234');
     expect(allValues).not.toContain('VERYSECRETAPISECRET5678');
+    expect(allValues).not.toContain('SUPERSECRETUSERKEY9999');
   });
 });

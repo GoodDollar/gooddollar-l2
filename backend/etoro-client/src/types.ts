@@ -59,6 +59,14 @@ export type EtoroMode =
 export interface EtoroCredentials {
   apiKey: string;
   apiSecret: string;
+  /**
+   * The per-environment user/account key required by the official eToro
+   * public API on every request as the `x-user-key` header. For mock
+   * mode this is the deterministic literal `'mock-user-key'`; for
+   * `demo-*` modes it is loaded from `ETORO_DEMO_USER_KEY`; for
+   * `real-disabled` from `ETORO_USER_KEY`.
+   */
+  userKey: string;
   baseUrl: string;
   wsUrl: string;
   mode: EtoroMode;
@@ -100,7 +108,18 @@ export interface OrderRequest {
   symbol: string;
   instrumentId: string;
   side: 'buy' | 'sell';
+  /**
+   * USD notional. When set, the SDK routes to
+   * `/trading/execution/demo/market-open-orders/by-amount`. Mutually
+   * exclusive with `units`.
+   */
   amount: number;
+  /**
+   * Unit count (shares / coins). When set, the SDK routes to
+   * `/trading/execution/demo/market-open-orders/by-units`. Mutually
+   * exclusive with `amount`.
+   */
+  units?: number;
   leverage?: number;
   stopLoss?: number;
   takeProfit?: number;

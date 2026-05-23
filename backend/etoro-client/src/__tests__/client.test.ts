@@ -11,7 +11,8 @@ jest.mock('fs', () => ({
 const DEMO_CREDENTIALS: EtoroCredentials = {
   apiKey: 'test-key-12345',
   apiSecret: 'test-secret-67890',
-  baseUrl: 'https://mock.etoro.com/sapi/demo',
+  userKey: 'test-user-key-9999',
+  baseUrl: 'https://mock.etoro.com/api/v1',
   wsUrl: 'wss://mock.etoro.com/sapi/demo',
   mode: 'demo-readonly',
 };
@@ -64,6 +65,7 @@ describe('EtoroClient — construction', () => {
     const mockCreds: EtoroCredentials = {
       apiKey: 'mock-api-key',
       apiSecret: 'mock-api-secret',
+      userKey: 'mock-user-key',
       baseUrl: 'mock://etoro.local',
       wsUrl: 'mock://etoro.local/ws',
       mode: 'mock',
@@ -76,6 +78,7 @@ describe('EtoroClient — construction', () => {
     const mockCreds: EtoroCredentials = {
       apiKey: 'mock-api-key',
       apiSecret: 'mock-api-secret',
+      userKey: 'mock-user-key',
       baseUrl: 'mock://etoro.local',
       wsUrl: 'mock://etoro.local/ws',
       mode: 'mock',
@@ -157,6 +160,7 @@ describe('EtoroClient — account mode-gate wiring', () => {
     const mockCreds: EtoroCredentials = {
       apiKey: 'mock',
       apiSecret: 'mock',
+      userKey: 'mock-user-key',
       baseUrl: 'mock://etoro.local',
       wsUrl: 'mock://etoro.local/ws',
       mode: 'mock',
@@ -174,6 +178,7 @@ describe('EtoroClient — getSummary.malformedQuotes', () => {
     const mockCreds: EtoroCredentials = {
       apiKey: 'mock',
       apiSecret: 'mock',
+      userKey: 'mock-user-key',
       baseUrl: 'mock://etoro.local',
       wsUrl: 'mock://etoro.local/ws',
       mode: 'mock',
@@ -200,6 +205,7 @@ describe('EtoroClient — getSummary.streamFailures', () => {
     const mockCreds: EtoroCredentials = {
       apiKey: 'mock',
       apiSecret: 'mock',
+      userKey: 'mock-user-key',
       baseUrl: 'mock://etoro.local',
       wsUrl: 'mock://etoro.local/ws',
       mode: 'mock',
@@ -221,6 +227,7 @@ describe('EtoroClient — getSummary.malformedListResponses', () => {
     const mockCreds: EtoroCredentials = {
       apiKey: 'mock',
       apiSecret: 'mock',
+      userKey: 'mock-user-key',
       baseUrl: 'mock://etoro.local',
       wsUrl: 'mock://etoro.local/ws',
       mode: 'mock',
@@ -234,6 +241,7 @@ describe('EtoroClient — live-quote wiring through MockEtoroSource', () => {
   const MOCK_CREDENTIALS: EtoroCredentials = {
     apiKey: 'mock-api-key',
     apiSecret: 'mock-api-secret',
+    userKey: 'mock-user-key',
     baseUrl: 'mock://etoro.local',
     wsUrl: 'mock://etoro.local/ws',
     mode: 'mock',

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import {
   loadCredentialsFromEnv,
@@ -13,6 +14,7 @@ import {
   StreamFailureKind,
   formatStreamFailures,
 } from './market-data';
+import { InstrumentResolver } from './instrument-resolver';
 import { TradingModule } from './trading';
 import { AccountModule } from './account';
 import { DemoCapEnforcer } from './cap-enforcer';
@@ -106,6 +108,12 @@ export interface EtoroClientConstructorConfig
    * throw.
    */
   throwOnMalformedListResponse?: boolean;
+  /**
+   * Injectable factory for the `x-request-id` header. Defaults to
+   * `crypto.randomUUID()`. Tests pin a deterministic ID by supplying
+   * `() => 'req-1'`.
+   */
+  requestIdFactory?: () => string;
 }
 
 export class EtoroClient {
@@ -145,7 +153,15 @@ export class EtoroClient {
         'Content-Type': 'application/json',
         'User-Agent': config?.userAgent ?? 'GoodChainEtoroSDK/0.1',
         'x-api-key': this.credentials.apiKey,
+        'x-user-key': this.credentials.userKey,
       },
+    });
+
+    const requestIdFactory = config?.requestIdFactory ?? (() => randomUUID());
+    this.http.interceptors.request.use((req) => {
+      req.headers = req.headers ?? {};
+      req.headers['x-request-id'] = requestIdFactory();
+      return req;
     });
 
     const dispatch: HttpDispatcher = (fn) => this.rateLimiter.executeWithTelemetry(fn);
@@ -156,6 +172,11 @@ export class EtoroClient {
     if (this.credentials.mode === 'mock') {
       this.marketData = new MockEtoroSource();
     } else {
+      const resolver = new InstrumentResolver({
+        http: this.http,
+        audit: this.audit,
+        dispatch,
+      });
       const mdConfig: MarketDataConfig = {
         ...(config?.marketData ?? {}),
         wsUrl: config?.marketData?.wsUrl ?? this.credentials.wsUrl,
@@ -164,6 +185,7 @@ export class EtoroClient {
         audit: this.audit,
         dispatch,
         throwOnMalformedListResponse,
+        resolver,
       });
     }
 
@@ -205,57 +227,30 @@ export class EtoroClient {
     });
   }
 
+  /**
+   * No-op session populate for the official eToro public API: auth is
+   * header-based (x-api-key, x-user-key, x-request-id) per request, so
+   * there is no `/auth/login` round-trip to make. Returns the
+   * deterministic literal `'header-auth'` (or `'mock-token'` in mock
+   * mode) so callers that gate on `isAuthenticated()` keep working.
+   *
+   * The previous `/auth/login` implementation called an internal-API
+   * endpoint that the lane no longer addresses (lane task 0017). It is
+   * scheduled for outright deletion once consumers stop calling
+   * `authenticate()` entirely; see the follow-up task referenced in
+   * `docs/ETORO_GOODCHAIN_ADAPTER.md`.
+   */
   async authenticate(): Promise<string> {
-    if (this.credentials.mode === 'mock') {
-      this.sessionToken = 'mock-token';
-      return this.sessionToken;
-    }
-
-    const start = Date.now();
-    try {
-      const { value: response, attempts, totalBackoffMs } =
-        await this.rateLimiter.executeWithTelemetry(() =>
-          this.http.post('/auth/login', {
-            apiKey: this.credentials.apiKey,
-            apiSecret: this.credentials.apiSecret,
-          }),
-        );
-
-      const token: string =
-        response.data?.accessToken ??
-        response.data?.access_token ??
-        response.data?.token ??
-        '';
-
-      if (!token) {
-        throw new Error('Authentication response missing token');
-      }
-
-      this.sessionToken = token;
-      this.http.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-      this.audit.log({
-        action: 'authenticate',
-        method: 'POST',
-        path: '/auth/login',
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-        attempts,
-        totalBackoffMs,
-      });
-
-      return token;
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.audit.log({
-        action: 'authenticate',
-        method: 'POST',
-        path: '/auth/login',
-        durationMs: Date.now() - start,
-        error: msg,
-      });
-      throw error;
-    }
+    this.sessionToken = this.credentials.mode === 'mock'
+      ? 'mock-token'
+      : 'header-auth';
+    this.audit.log({
+      action: 'authenticate',
+      method: 'INIT',
+      path: '/auth/header-auth',
+      durationMs: 0,
+    });
+    return this.sessionToken;
   }
 
   isAuthenticated(): boolean {
@@ -372,9 +367,12 @@ export {
   InvalidOrderError,
   InvalidCapConfigError,
   InvalidInstrumentOverridesError,
+  InstrumentNotFoundError,
   AccountUnavailableError,
   MalformedListResponseError,
 } from './errors';
+export { InstrumentResolver } from './instrument-resolver';
+export type { ResolvedInstrument, InstrumentResolverDeps } from './instrument-resolver';
 export type { MalformedListResponseShape } from './errors';
 export { LIST_ENVELOPE_KEYS, readListEnvelope } from './util/list-envelope';
 export type { EnvelopeOutcome } from './util/list-envelope';

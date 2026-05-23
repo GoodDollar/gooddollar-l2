@@ -3,6 +3,7 @@ import WebSocket from 'ws';
 import { AUDIT_CONSOLE_THROTTLE_MS, AuditLogger, maskTokens } from './audit-logger';
 import { HttpDispatcher, identityDispatcher } from './rate-limiter';
 import { MalformedListSink, readListOrAudit } from './util/list-envelope';
+import { InstrumentResolver, ResolvedInstrument } from './instrument-resolver';
 import {
   NormalizedQuote,
   InstrumentMetadata,
@@ -101,7 +102,19 @@ export interface MarketDataDeps {
    * audit-log) to preserve back-compat.
    */
   throwOnMalformedListResponse?: boolean;
+  /**
+   * Resolver used to translate lane symbols into eToro instrument IDs
+   * for the `/market-data/instruments/rates` endpoint. Required when the
+   * module is constructed in a mode that talks to the real API; for
+   * test contexts a stub or null-object resolver can be supplied.
+   * Defaults to a resolver wrapping the provided `http` if absent.
+   */
+  resolver?: InstrumentResolver;
 }
+
+/** Max instrumentIds per `/market-data/instruments/rates` request. */
+const RATES_BATCH_SIZE = 100;
+const RATES_PATH = '/market-data/instruments/rates';
 
 export class MarketDataModule {
   private readonly http: AxiosInstance;
@@ -128,6 +141,7 @@ export class MarketDataModule {
   private readonly streamConsoleErrorAt = new Map<StreamFailureKind, number>();
   private lastStreamError: StreamErrorSnapshot | undefined;
   private readonly malformedListSink: MalformedListSink;
+  private readonly resolver: InstrumentResolver;
 
   constructor(http: AxiosInstance, config?: MarketDataConfig, deps?: MarketDataDeps) {
     this.http = http;
@@ -142,37 +156,48 @@ export class MarketDataModule {
       counter: new Map<string, number>(),
       throwOnMalformed: deps?.throwOnMalformedListResponse ?? false,
     };
+    this.resolver = deps?.resolver ?? new InstrumentResolver({
+      http,
+      audit: this.audit,
+      dispatch: this.dispatch,
+      malformedListSink: this.malformedListSink,
+    });
   }
 
   // --- Instrument metadata ---
 
+  /**
+   * Resolves the given symbols via `/market-data/search` (one call per
+   * symbol, cached for 24 h by `InstrumentResolver`) and produces
+   * lane-shaped `InstrumentMetadata` records. When `symbols` is
+   * omitted, returns the in-memory cache contents — the official API
+   * has no "list all" endpoint, so a cold start with no symbols hint
+   * returns `[]`.
+   */
   async getInstruments(symbols?: string[]): Promise<InstrumentMetadata[]> {
-    if (this.instrumentCacheExpiry > Date.now() && this.instrumentCache.size > 0) {
-      if (!symbols) return [...this.instrumentCache.values()];
-      return symbols
-        .map((s) => this.instrumentCache.get(s.toUpperCase()))
-        .filter((v): v is InstrumentMetadata => v !== undefined);
+    if (!symbols?.length) {
+      if (this.instrumentCacheExpiry > Date.now() && this.instrumentCache.size > 0) {
+        return [...this.instrumentCache.values()];
+      }
+      return [];
     }
 
-    const params: Record<string, string> = {};
-    if (symbols?.length) params.symbols = symbols.join(',');
+    const cached = symbols
+      .map((s) => this.instrumentCache.get(s.toUpperCase()))
+      .filter((v): v is InstrumentMetadata => v !== undefined);
+    if (cached.length === symbols.length
+        && this.instrumentCacheExpiry > Date.now()) {
+      return cached;
+    }
 
-    const { value: resp } = await this.dispatch(() =>
-      this.http.get('/api/v1/market-data/instruments', { params }),
-    );
-    const raw = readListOrAudit({
-      data: resp.data,
-      action: 'getInstruments',
-      path: '/api/v1/market-data/instruments',
-      sink: this.malformedListSink,
-    });
-    const results: InstrumentMetadata[] = raw.map((item) => this.normalizeInstrument(item));
-
-    for (const inst of results) {
-      this.instrumentCache.set(inst.symbol, inst);
+    const results: InstrumentMetadata[] = [];
+    for (const sym of symbols) {
+      const resolved = await this.resolver.resolve(sym);
+      const meta = toInstrumentMetadata(resolved);
+      this.instrumentCache.set(meta.symbol, meta);
+      results.push(meta);
     }
     this.instrumentCacheExpiry = Date.now() + 5 * 60_000;
-
     return results;
   }
 
@@ -188,24 +213,41 @@ export class MarketDataModule {
     return quotes[0] ?? null;
   }
 
+  /**
+   * Resolves symbols → instrumentIds via `InstrumentResolver`, batches up
+   * to `RATES_BATCH_SIZE` IDs per `/market-data/instruments/rates`
+   * request, and normalizes the `rates` envelope per the lane's
+   * `OFFICIAL_ETORO_API_PRICE_SOURCE.md` contract.
+   */
   async getQuotes(symbols: string[]): Promise<NormalizedQuote[]> {
-    const { value: resp } = await this.dispatch(() =>
-      this.http.get('/api/v1/market-data/quotes', {
-        params: { symbols: symbols.join(',') },
-      }),
-    );
-    const raw = readListOrAudit({
-      data: resp.data,
-      action: 'getQuotes',
-      path: '/api/v1/market-data/quotes',
-      sink: this.malformedListSink,
-    });
+    if (symbols.length === 0) return [];
+
+    const resolved = await this.resolver.resolveMany(symbols);
+    const idToSymbol = new Map<string, string>();
+    for (const [sym, info] of resolved) idToSymbol.set(info.instrumentId, sym);
+
+    const ids = [...idToSymbol.keys()];
     const quotes: NormalizedQuote[] = [];
-    for (const item of raw) {
-      const quote = this.normalizeQuote(item);
-      if (quote === null) continue;
-      this.quoteCache.set(quote.symbol, quote);
-      quotes.push(quote);
+
+    for (let i = 0; i < ids.length; i += RATES_BATCH_SIZE) {
+      const batch = ids.slice(i, i + RATES_BATCH_SIZE);
+      const { value: resp } = await this.dispatch(() =>
+        this.http.get(RATES_PATH, {
+          params: { instrumentIds: batch.join(',') },
+        }),
+      );
+      const raw = readListOrAudit({
+        data: resp.data,
+        action: 'getQuotes',
+        path: RATES_PATH,
+        sink: this.malformedListSink,
+      });
+      for (const item of raw) {
+        const quote = this.normalizeRate(item, idToSymbol);
+        if (quote === null) continue;
+        this.quoteCache.set(quote.symbol, quote);
+        quotes.push(quote);
+      }
     }
     return quotes;
   }
@@ -270,15 +312,16 @@ export class MarketDataModule {
     from: number,
     to: number,
   ): Promise<CandleData[]> {
+    const path = '/market-data/candles';
     const { value: resp } = await this.dispatch(() =>
-      this.http.get('/api/v1/market-data/candles', {
+      this.http.get(path, {
         params: { symbol, interval, from: String(from), to: String(to) },
       }),
     );
     const raw = readListOrAudit({
       data: resp.data,
       action: 'getCandles',
-      path: '/api/v1/market-data/candles',
+      path,
       sink: this.malformedListSink,
     });
     return raw.map((item) => this.normalizeCandle(item, symbol));
@@ -547,17 +590,54 @@ export class MarketDataModule {
     }
   }
 
-  private normalizeInstrument(raw: unknown): InstrumentMetadata {
+  /**
+   * Normalize one `/market-data/instruments/rates` envelope entry per
+   * the rules in `OFFICIAL_ETORO_API_PRICE_SOURCE.md`:
+   *   - Defensive `instrumentID` ↔ `instrumentId` casing.
+   *   - `bid` / `ask` / `lastExecution` parsed as decimals.
+   *   - Preferred mid: `(bid + ask) / 2` only when BOTH are positive
+   *     finite; otherwise fall back to `lastExecution` with lower
+   *     confidence.
+   *   - Timestamp from rate `date`; rate is marked `stale` if older
+   *     than `maxQuoteAgeMs`.
+   * Records with no recognizable instrument ID are dropped via the
+   * shared malformed-quote channel so an upstream rename surfaces.
+   */
+  private normalizeRate(
+    raw: unknown,
+    idToSymbol: Map<string, string>,
+  ): NormalizedQuote | null {
     const src = asRecord(raw);
+    const instrumentId = pickStr(src, ['instrumentID', 'instrumentId', 'instrument_id']);
+    if (instrumentId === undefined) {
+      this.recordMalformedQuote(src);
+      return null;
+    }
+    const symbol = idToSymbol.get(instrumentId) ?? instrumentId;
+    const bid = pickNum(src, ['bid']);
+    const ask = pickNum(src, ['ask']);
+    const last = pickNum(src, ['lastExecution', 'last']);
+    const bothBidAsk = bid !== undefined && bid > 0 && ask !== undefined && ask > 0;
+    const mid = bothBidAsk ? (bid + ask) / 2 : undefined;
+    const price = mid ?? last ?? 0;
+
+    const timestamp = pickTimestamp(src);
+    const stale = Date.now() - timestamp > this.config.maxQuoteAgeMs;
+    const sessionState = this.detectSessionState(symbol.toUpperCase());
+
     return {
-      instrumentId: pickStr(src, ['instrumentId', 'instrumentID', 'id']) ?? '',
-      symbol: (pickStr(src, ['symbol', 'ticker']) ?? '').toUpperCase(),
-      displayName: pickStr(src, ['displayName', 'display_name', 'description', 'fullName']) ?? '',
-      exchange: pickStr(src, ['exchange', 'exchangeName', 'market']) ?? '',
-      currency: (pickStr(src, ['currency', 'quoteCurrency']) ?? 'USD').toUpperCase(),
-      assetClass: normalizeAssetClass(pickStr(src, ['assetClass', 'instrumentType', 'type'])),
-      minTradeSize: pickNum(src, ['minTradeSize', 'minPositionAmount']) ?? 1,
-      maxLeverage: pickNum(src, ['maxLeverage']) ?? 1,
+      source: 'etoro',
+      symbol: symbol.toUpperCase(),
+      instrumentId,
+      bid: bid ?? 0,
+      ask: ask ?? 0,
+      mid: mid ?? price,
+      last: last ?? price,
+      timestamp,
+      sessionState,
+      confidence: computeConfidence({ bid, ask, mid, price, stale }),
+      currency: pickStr(src, ['currency', 'quoteCurrency']) ?? 'USD',
+      stale,
     };
   }
 
@@ -669,7 +749,7 @@ function pickNum(src: Record<string, unknown>, keys: string[]): number | undefin
 }
 
 function pickTimestamp(src: Record<string, unknown>): number {
-  const raw = src.timestamp ?? src.updatedAt ?? src.time ?? src.lastUpdate;
+  const raw = src.date ?? src.timestamp ?? src.updatedAt ?? src.time ?? src.lastUpdate;
   if (typeof raw === 'number' && Number.isFinite(raw)) {
     return raw > 10_000_000_000 ? raw : raw * 1000;
   }
@@ -678,6 +758,25 @@ function pickTimestamp(src: Record<string, unknown>): number {
     if (Number.isFinite(parsed)) return parsed;
   }
   return Date.now();
+}
+
+/**
+ * Map a `ResolvedInstrument` from `InstrumentResolver` into the
+ * lane-shaped `InstrumentMetadata` consumed by downstream services.
+ * Fields the search endpoint does not return (`exchange`,
+ * `minTradeSize`, `maxLeverage`) default to safe lane values.
+ */
+function toInstrumentMetadata(r: ResolvedInstrument): InstrumentMetadata {
+  return {
+    instrumentId: r.instrumentId,
+    symbol: r.symbol.toUpperCase(),
+    displayName: r.displayName,
+    exchange: '',
+    currency: 'USD',
+    assetClass: normalizeAssetClass(r.instrumentType),
+    minTradeSize: 1,
+    maxLeverage: 1,
+  };
 }
 
 function normalizeAssetClass(raw?: string): EtoroAssetClass {
@@ -690,4 +789,6 @@ function normalizeAssetClass(raw?: string): EtoroAssetClass {
   if (['commodity', 'commodities'].includes(v)) return 'commodity';
   return 'unknown';
 }
+
+export { toInstrumentMetadata };
 
