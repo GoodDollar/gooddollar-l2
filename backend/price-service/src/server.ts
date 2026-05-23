@@ -234,12 +234,16 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     path: '/health',
     methods: ['GET'],
     summary: 'Liveness + readiness for load balancers; 503 when degraded.',
+    // Inner field list is comma-packed (no surrounding spaces) so the
+    // full type-literal annotations (`number|null`, `'ok'|'no-data'`)
+    // can ride alongside the long meta tail within the 240-char cap.
+    // Outer separators keep spaces for readability.
     responseShape:
-      '{ freshQuotes, totalCached, configuredSymbols, symbols[], ' +
-      'status, source?, websocket?, websocketError?, ingested?, ' +
-      'rejected?, acceptanceRatio?:number|null, ' +
-      "acceptanceRatioStatus?:'ok'|'no-data', bootAt*?, uptimeMs?, " +
-      'ts } -- 200/503',
+      "{freshQuotes,totalCached,configuredSymbols,symbols[],status," +
+      "source?,websocket?,websocketError?,ingested?,rejected?," +
+      "acceptanceRatio?:number|null," +
+      "acceptanceRatioStatus?:'ok'|'no-data'," +
+      'bootAt*?,uptimeMs?,timestamp,timestampIso} -- 200/503',
   },
   {
     path: '/quotes',
@@ -248,7 +252,8 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     responseShape:
       '{ totalCached, count (deprecated→totalCached), deprecations, ' +
       'degraded?, message?, quotes: Record<string, NormalizedQuote ' +
-      '& {cacheAge, filterAccepted, filterReason}>, source?, ts }',
+      '& {cacheAge, filterAccepted, filterReason}>, source?, ' +
+      'timestamp, timestampIso }',
   },
   {
     path: '/quotes/fresh/all',
@@ -266,11 +271,15 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'Single symbol; 400 invalid-symbol|invalid-symbol-or-path, ' +
       '404 symbol-not-configured|no-quote, 200 quote envelope.',
     parametric: true,
+    // Inner field lists comma-packed and the meta-tail factored to a
+    // trailing "all end:" suffix so the three sub-envelopes (200/400/404)
+    // can document their full error-code unions within the 240-char cap.
     responseShape:
-      '200: NormalizedQuote & {cacheAge, filterAccepted, filterReason, ' +
-      "source?} | 400: {error: 'invalid-symbol'|'invalid-symbol-or-path', " +
-      'message, didYouMean?, path, method, ts} | 404: {error, message, ' +
-      'symbol, configured, source?, ts}',
+      '200: NormalizedQuote+{cacheAge,filterAccepted,filterReason,source?} | ' +
+      '400: {error:invalid-symbol|invalid-symbol-or-path,' +
+      'message,didYouMean?,path,method} | ' +
+      '404: {error,message,symbol,configured,source?}; ' +
+      'all end: timestamp,timestampIso',
   },
   {
     path: '/status/quotes',
@@ -280,7 +289,8 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     responseShape:
       '{ healthy, freshCount, totalCount, quotes: Array<{symbol, ' +
       'cacheAge, lastUpdateMs (deprecated→cacheAge), sessionState, ' +
-      'confidence}>, deprecations, source?, ts } -- 200/503',
+      'confidence}>, deprecations, source?, timestamp, ' +
+      'timestampIso } -- 200/503',
   },
   {
     path: '/audit/stats',
@@ -292,7 +302,8 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       '{ ingested, rejected, byReason, ' +
       'acceptanceRatio: number|null, ' +
       "acceptanceRatioStatus:'ok'|'no-data', firstAt, firstAtIso, " +
-      'lastAt, lastAtIso, writeErrors, bootAt*?, uptimeMs?, ts }',
+      'lastAt, lastAtIso, writeErrors, bootAt*?, uptimeMs?, ' +
+      'timestamp, timestampIso }',
   },
   {
     path: '/docs/source-reasons',

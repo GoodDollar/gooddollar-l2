@@ -1,5 +1,5 @@
 import express from 'express';
-import { createServer } from '../server';
+import { createServer, ENDPOINT_CATALOG } from '../server';
 import { QuoteCache } from '../quote-cache';
 
 function listen(app: express.Express): Promise<{
@@ -77,6 +77,40 @@ describe('REST Server — endpoint responseShape catalog', () => {
     const s = eps.find((e) => e.path === '/status/quotes');
     expect(s).toBeDefined();
     expect(s!.responseShape as string).toMatch(/degraded|503/);
+  });
+
+  it('no catalog entry advertises a bare ts field on the wire (task 0038)', () => {
+    const offenders = ENDPOINT_CATALOG.filter((e) =>
+      /,\s*ts\s*[}|]/.test(e.responseShape),
+    );
+    expect(offenders.map((e) => e.path)).toEqual([]);
+  });
+
+  it('every responseShape mentioning timestamp also mentions timestampIso (task 0038)', () => {
+    const offenders: string[] = [];
+    for (const e of ENDPOINT_CATALOG) {
+      if (/\btimestamp\b/.test(e.responseShape) && !/\btimestampIso\b/.test(e.responseShape)) {
+        offenders.push(e.path);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('every responseShape mentioning *At anchors pairs with the *AtIso companion (task 0038)', () => {
+    const anchors: ReadonlyArray<{ base: RegExp; iso: RegExp }> = [
+      { base: /\bfirstAt\b/, iso: /\bfirstAtIso\b/ },
+      { base: /\blastAt\b/, iso: /\blastAtIso\b/ },
+      { base: /\bbootAt\*/, iso: /\bbootAtIso\b|bootAt\*/ },
+    ];
+    const offenders: string[] = [];
+    for (const e of ENDPOINT_CATALOG) {
+      for (const { base, iso } of anchors) {
+        if (base.test(e.responseShape) && !iso.test(e.responseShape)) {
+          offenders.push(`${e.path}: ${base}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   it('404 hint list intentionally drops responseShape (task 0027: compact 404)', async () => {
