@@ -205,6 +205,33 @@ The smoke probes (in order):
 
 ### Smoke env contract
 
+The smoke loads lane-local overrides from `LANE7_ENV_FILE` (default
+`.env` at the repo root) **before** the script's parameter-expansion
+defaults resolve, so an operator who follows the "One-time setup"
+block above without a separate `set -a; source .env` step still gets
+the documented ports / RPC / thresholds applied.
+
+**Precedence.** A shell-exported value always wins over a value in
+`.env`. The loader skips its `export` for any key that is already set
+in the shell, matching the convention `dotenv`, `pm2 --env`, and
+`docker-compose env_file` use. CI / one-shot
+`PRICE_SERVICE_PORT=11111 ./internal-smoke.sh` overrides therefore
+keep working unchanged.
+
+**Allowlist.** The loader recognizes `PRICE_SERVICE_PORT`,
+`PRICE_SERVICE_WS_PORT`, `ORACLE_SIGNER_PORT`, `HEDGE_ENGINE_PORT`,
+`STATUS_AGGREGATOR_PORT`, `LANE7_BASE`, `LANE7_RPC`,
+`STALENESS_THRESHOLD_S`, `MIN_FRESH_QUOTES`, `QUOTE_MAX_AGE_S`, the
+four per-service `*_URL` escape hatches, `PRICE_SERVICE_QUOTES_URL`,
+`STOCK_ORACLE_V2_ADDRESS`, `HEALTH_CONTRACT`, `REPORT`, and
+`L2_RPC_URL` (operational keys, exported into the shell), plus
+`REAL_TRADING_ENABLED` and `ETORO_MODE` (safety-fence keys, kept
+presence-only — never exported, so they cannot leak into child
+processes). Any other key in `.env` is collected into a single
+deferred WARN (`.env keys ignored (not in lane-7 allowlist): ...`)
+so typos like `PRICE_SERVICE_PROT=...` surface immediately rather
+than silently disappearing.
+
 `STALENESS_THRESHOLD_S`, `MIN_FRESH_QUOTES`, `QUOTE_MAX_AGE_S`, and
 `*_PORT` overrides must be plain integers (seconds for the thresholds,
 TCP ports `1..65535` for the port vars). Duration suffixes such as
