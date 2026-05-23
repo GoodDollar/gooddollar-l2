@@ -392,14 +392,6 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         </div>
       </header>
 
-      {loading && !data && (
-        <div data-testid="hedge-status-loading" className="space-y-2 animate-pulse">
-          <div className="h-4 bg-dark-50 rounded w-1/3" />
-          <div className="h-4 bg-dark-50 rounded w-2/3" />
-          <div className="h-4 bg-dark-50 rounded w-1/2" />
-        </div>
-      )}
-
       {isThrottled && (
         <div
           data-testid="hedge-status-throttled"
@@ -465,45 +457,57 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         </div>
       )}
 
-      {data && !(error && !data.snapshot) && (
-        (() => {
-          const engineState = resolveEngineState({
-            snapshot: data.snapshot,
-            error,
-            breaker,
-            killSwitch,
-          })
-          const hasSnapshot = Boolean(data.snapshot)
-          return (
-            <div
-              data-testid="hedge-stat-grid"
-              className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4"
-            >
-              <Stat
-                label="Today's notional"
-                value={cap ? formatNotionalUsd(cap.dailyNotionalUsd) : '—'}
-                sub={cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'}
-              />
-              <Stat
-                label="Cycle orders"
-                value={cap ? `${cap.cycleOrders}` : '—'}
-                sub={cap ? `day ${cap.dayKey}` : hasSnapshot ? '' : 'awaiting tick'}
-              />
-              <Stat
-                label="Receipts visible"
-                value={hasSnapshot ? `${receipts.length}` : '—'}
-                sub={hasSnapshot ? 'newest 5' : 'awaiting tick'}
-              />
-              <Stat
-                testId="hedge-engine-stat"
-                label="Engine"
-                value={engineState.label}
-                color={engineState.color}
-              />
-            </div>
-          )
-        })()
-      )}
+      {(() => {
+        const engineState = resolveEngineState({
+          snapshot: data?.snapshot ?? null,
+          error,
+          breaker,
+          killSwitch,
+        })
+        const hasSnapshot = Boolean(data?.snapshot)
+        const showSkeleton = loading && !data
+        return (
+          <div
+            data-testid="hedge-stat-grid"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4"
+          >
+            {showSkeleton ? (
+              <div
+                data-testid="hedge-status-loading"
+                className="col-span-2 sm:col-span-4 space-y-2 animate-pulse"
+              >
+                <div className="h-4 bg-dark-50 rounded w-1/3" />
+                <div className="h-4 bg-dark-50 rounded w-2/3" />
+                <div className="h-4 bg-dark-50 rounded w-1/2" />
+              </div>
+            ) : (
+              <>
+                <Stat
+                  label="Today's notional"
+                  value={cap ? formatNotionalUsd(cap.dailyNotionalUsd) : '—'}
+                  sub={cap ? `${cap.dailyOrders} orders` : hasSnapshot ? 'no caps' : 'awaiting tick'}
+                />
+                <Stat
+                  label="Cycle orders"
+                  value={cap ? `${cap.cycleOrders}` : '—'}
+                  sub={cap ? `day ${cap.dayKey}` : hasSnapshot ? 'no data' : 'awaiting tick'}
+                />
+                <Stat
+                  label="Receipts visible"
+                  value={hasSnapshot ? `${receipts.length}` : '—'}
+                  sub={hasSnapshot ? 'newest 5' : 'awaiting tick'}
+                />
+                <Stat
+                  testId="hedge-engine-stat"
+                  label="Engine"
+                  value={engineState.label}
+                  color={engineState.color}
+                />
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       <div className="bg-dark-50 rounded-lg p-3 overflow-x-auto">
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">

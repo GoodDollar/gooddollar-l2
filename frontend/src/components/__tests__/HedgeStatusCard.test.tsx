@@ -254,7 +254,9 @@ describe('HedgeStatusCard', () => {
     expect(engineStat.className).toContain('text-yellow-400');
   });
 
-  it('engine unreachable: does NOT render the stat grid, only the red banner', async () => {
+  it('engine unreachable: still renders the stat grid with em-dash placeholders + unreachable engine label (#0016)', async () => {
+    // Layout-stability fix: the grid must stay mounted in all states so
+    // the card height does not collapse + reflow as the engine flaps.
     mockFetchOnce(
       {
         error: 'Hedge engine unreachable',
@@ -268,7 +270,29 @@ describe('HedgeStatusCard', () => {
     await waitFor(() => {
       expect(screen.getByTestId('hedge-status-error')).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('hedge-stat-grid')).toBeNull();
+    const grid = screen.getByTestId('hedge-stat-grid');
+    expect(grid).toBeInTheDocument();
+    const engineStat = screen.getByTestId('hedge-engine-stat');
+    expect(engineStat).toHaveTextContent('unreachable');
+    expect(engineStat.className).toContain('text-red-400');
+  });
+
+  it('initial loading: renders the stat grid shell so the card height does not jump on first fetch (#0016)', () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    render(<HedgeStatusCard />);
+    expect(screen.getByTestId('hedge-stat-grid')).toBeInTheDocument();
+    expect(screen.getByTestId('hedge-status-loading')).toBeInTheDocument();
+  });
+
+  it('snapshot present but no cap: stat grid still renders with em-dash + awaiting-tick sub-copy (#0016)', async () => {
+    mockFetchOnce({
+      ...BASE_RESPONSE,
+      capSnapshot: null,
+    });
+    render(<HedgeStatusCard />);
+    const grid = await screen.findByTestId('hedge-stat-grid');
+    expect(grid).toBeInTheDocument();
+    expect(grid).toHaveTextContent('—');
   });
 
   it('latest-proof link points at the markdown route and surfaces the summary chip', async () => {
