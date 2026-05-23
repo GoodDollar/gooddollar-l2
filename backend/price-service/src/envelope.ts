@@ -1,4 +1,5 @@
 import { SanitizedSourceStatus } from './source-status';
+import { isoFromMs } from './iso';
 
 /**
  * The two meta fields that ride on every response, regardless of
@@ -67,16 +68,9 @@ export interface EnvelopeCtx {
   deprecations?: Record<string, string>;
 }
 
-/**
- * Pair every absolute unix-ms timestamp with its ISO 8601 companion so
- * a fresh user reading `1779547903356` doesn't have to reach for
- * `date -d @<secs>` (and remember to divide by 1000) to know when
- * something happened. Null-safe so callers can pass nullable
- * timestamps (`firstAt`/`lastAt`) directly without conditionals.
- */
-export function isoFromMs(ms: number | null): string | null {
-  return ms === null ? null : new Date(ms).toISOString();
-}
+// Re-exported so the existing `server.ts` import surface keeps working
+// without forcing every test file to switch imports.
+export { isoFromMs };
 
 /**
  * Re-anchor a single key at the end of `body`. JavaScript objects keep

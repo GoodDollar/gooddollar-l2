@@ -58,7 +58,14 @@ describe('finalizeEnvelope — canonical meta-tail order', () => {
   it('source < status < bootAt < timestamp', () => {
     const body: Record<string, unknown> = { payload: 'x' };
     finalizeEnvelope(body, NOW, {
-      src: { connected: true, symbols: ['AAPL'], lastAttachAt: 1 },
+      src: {
+        connected: true,
+        symbols: ['AAPL'],
+        lastAttachAtMs: 1,
+        lastAttachAtIso: new Date(1).toISOString(),
+        lastAttachAt: 1,
+        deprecations: { lastAttachAt: 'rename → lastAttachAtMs; will be removed in the next release' },
+      },
       status: 'ok',
       boot: { ms: 0, iso: new Date(0).toISOString(), uptimeMs: NOW },
     });
@@ -85,7 +92,14 @@ describe('finalizeEnvelope — canonical meta-tail order', () => {
       payload: 'mid',
     };
     finalizeEnvelope(body, NOW, {
-      src: { connected: true, symbols: [], lastAttachAt: 1 },
+      src: {
+        connected: true,
+        symbols: [],
+        lastAttachAtMs: 1,
+        lastAttachAtIso: new Date(1).toISOString(),
+        lastAttachAt: 1,
+        deprecations: { lastAttachAt: 'rename → lastAttachAtMs; will be removed in the next release' },
+      },
     });
     const keys = Object.keys(body);
     expect(keys.indexOf('payload')).toBeLessThan(keys.indexOf('source'));

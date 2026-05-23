@@ -70,9 +70,19 @@ describe('redactSourceReason', () => {
 });
 
 describe('sanitizeSourceStatus', () => {
-  it('passes a connected status through unchanged', () => {
-    const status = { connected: true as const, symbols: ['AAPL'], lastAttachAt: 1700000000000 };
-    expect(sanitizeSourceStatus(status)).toEqual(status);
+  it('passes a connected status through, adding the ISO companion + deprecation alias (task 0039)', () => {
+    const lastAttachAt = 1700000000000;
+    const status = { connected: true as const, symbols: ['AAPL'], lastAttachAt };
+    expect(sanitizeSourceStatus(status)).toEqual({
+      connected: true,
+      symbols: ['AAPL'],
+      lastAttachAtMs: lastAttachAt,
+      lastAttachAtIso: new Date(lastAttachAt).toISOString(),
+      lastAttachAt,
+      deprecations: {
+        lastAttachAt: 'rename → lastAttachAtMs; will be removed in the next release',
+      },
+    });
   });
 
   it('redacts a leaky reason on a disconnected status', () => {

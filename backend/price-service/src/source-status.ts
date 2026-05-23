@@ -1,6 +1,21 @@
 import { SourceStatus } from './types';
+import { isoFromMs } from './iso';
 
 export type SourceSeverity = 'info' | 'degraded' | 'critical';
+
+/**
+ * In-band deprecation message attached to the `source` block on every
+ * endpoint so a consumer reading `lastAttachAt` discovers the
+ * `lastAttachAtMs`/`lastAttachAtIso` rename without grepping the
+ * codebase. Mirrors the `/quotes.count` → `totalCached` deprecation
+ * strategy from task 0035.
+ */
+export const LAST_ATTACH_AT_DEPRECATION =
+  'rename → lastAttachAtMs; will be removed in the next release';
+
+export interface SourceDeprecations {
+  lastAttachAt: string;
+}
 
 export interface SourceReasonDoc {
   /** Stable snake-case enum; matches the slugs written by producers. */
@@ -17,9 +32,14 @@ export interface SourceReasonDoc {
  * Sanitized read-site shape of `SourceStatus`. The `connected: false`
  * branch grows the three enrichment fields (`humanReason`, `nextStep`,
  * `severity`) so an operator paged on a degraded alert can act without
- * grepping the codebase. The `connected: true` branch is unchanged —
- * there's no failure to explain. Producers (e.g. `index.ts`) keep
- * writing the minimal `SourceStatus` shape; enrichment happens here.
+ * grepping the codebase.
+ *
+ * Both branches carry the unix-ms / ISO companion pair
+ * (`lastAttachAtMs` + `lastAttachAtIso`) plus the legacy `lastAttachAt`
+ * alias and an in-band `deprecations` note so a consumer reading the
+ * old field name learns about the rename without round-tripping to
+ * docs. Producers (e.g. `index.ts`) keep writing the minimal
+ * `SourceStatus` shape; the ISO companion is computed here.
  */
 export type SanitizedSourceStatus =
   | {
@@ -28,9 +48,19 @@ export type SanitizedSourceStatus =
       humanReason: string;
       nextStep: string;
       severity: SourceSeverity;
+      lastAttachAtMs: number | null;
+      lastAttachAtIso: string | null;
       lastAttachAt: number | null;
+      deprecations: SourceDeprecations;
     }
-  | { connected: true; symbols: string[]; lastAttachAt: number };
+  | {
+      connected: true;
+      symbols: string[];
+      lastAttachAtMs: number;
+      lastAttachAtIso: string;
+      lastAttachAt: number;
+      deprecations: SourceDeprecations;
+    };
 
 /**
  * Operator-facing catalog of stable failure modes. Keep slugs identical
@@ -123,7 +153,19 @@ export function redactSourceReason(err: unknown): string {
  * brand-new operator can act on the alert without grepping the code.
  */
 export function sanitizeSourceStatus(status: SourceStatus): SanitizedSourceStatus {
-  if (status.connected) return status;
+  const deprecations: SourceDeprecations = {
+    lastAttachAt: LAST_ATTACH_AT_DEPRECATION,
+  };
+  if (status.connected) {
+    return {
+      connected: true,
+      symbols: status.symbols,
+      lastAttachAtMs: status.lastAttachAt,
+      lastAttachAtIso: isoFromMs(status.lastAttachAt)!,
+      lastAttachAt: status.lastAttachAt,
+      deprecations,
+    };
+  }
   const safeReason = redactSourceReason(new Error(status.reason));
   const doc = enrichSourceReason(safeReason);
   return {
@@ -132,7 +174,10 @@ export function sanitizeSourceStatus(status: SourceStatus): SanitizedSourceStatu
     humanReason: doc.humanReason,
     nextStep: doc.nextStep,
     severity: doc.severity,
+    lastAttachAtMs: status.lastAttachAt,
+    lastAttachAtIso: isoFromMs(status.lastAttachAt),
     lastAttachAt: status.lastAttachAt,
+    deprecations,
   };
 }
 
