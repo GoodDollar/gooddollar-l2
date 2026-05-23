@@ -39,6 +39,13 @@ type SwapButtonProps = {
    * sandwich risk). Defaults to true so legacy callers behave identically.
    */
   canSubmit?: boolean
+  /**
+   * Optional category of the disable reason. Controls the disabled CTA label
+   * and the helper line beneath it. Defaults to `'dust'` (the existing
+   * sub-floor behaviour). New value `'over-cap'` is used when the user has
+   * typed an amount exceeding the per-symbol sanity cap.
+   */
+  disabledReason?: 'dust' | 'over-cap'
   /** Called when user clicks swap with no amount entered — triggers input shake */
   onInvalidSubmit?: () => void
 }
@@ -66,6 +73,7 @@ export function SwapWalletActions(props: SwapWalletActionsProps) {
       onChainAmountOutMin={props.onChainAmountOutMin}
       pairOnChain={props.pairOnChain}
       canSubmit={props.canSubmit}
+      disabledReason={props.disabledReason}
       onInvalidSubmit={props.onInvalidSubmit}
     />
   )
@@ -87,6 +95,7 @@ function SwapButton({
   onChainAmountOutMin,
   pairOnChain = false,
   canSubmit = true,
+  disabledReason = 'dust',
   onInvalidSubmit,
 }: {
   inputToken: Token
@@ -104,6 +113,7 @@ function SwapButton({
   onChainAmountOutMin?: bigint
   pairOnChain?: boolean
   canSubmit?: boolean
+  disabledReason?: 'dust' | 'over-cap'
   onInvalidSubmit?: () => void
 }) {
   const [showReview, setShowReview] = useState(false)
@@ -180,20 +190,37 @@ function SwapButton({
           </p>
         </>
       ) : !canSubmit ? (
-        <>
-          <button
-            onClick={onInvalidSubmit}
-            className="w-full py-4 rounded-xl font-semibold text-base bg-dark-50 text-gray-400 cursor-not-allowed"
-            data-testid="swap-button-dust-guard"
-            aria-disabled="true"
-          >
-            Amount Too Small
-          </button>
-          <p className="text-xs text-amber-400/90 text-center mt-3">
-            Output rounds to zero. Try a larger amount — sub-dust swaps would
-            waste gas and disable slippage protection.
-          </p>
-        </>
+        disabledReason === 'over-cap' ? (
+          <>
+            <button
+              onClick={onInvalidSubmit}
+              className="w-full py-4 rounded-xl font-semibold text-base bg-dark-50 text-gray-400 cursor-not-allowed"
+              data-testid="swap-button-over-cap"
+              aria-disabled="true"
+              disabled
+            >
+              Amount Too Large
+            </button>
+            <p className="text-xs text-amber-400/90 text-center mt-3">
+              That amount is well above the per-swap cap. Reduce it to continue.
+            </p>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={onInvalidSubmit}
+              className="w-full py-4 rounded-xl font-semibold text-base bg-dark-50 text-gray-400 cursor-not-allowed"
+              data-testid="swap-button-dust-guard"
+              aria-disabled="true"
+            >
+              Amount Too Small
+            </button>
+            <p className="text-xs text-amber-400/90 text-center mt-3">
+              Output rounds to zero. Try a larger amount — sub-dust swaps would
+              waste gas and disable slippage protection.
+            </p>
+          </>
+        )
       ) : (
         <>
           <button

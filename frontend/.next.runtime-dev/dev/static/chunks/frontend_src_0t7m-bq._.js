@@ -2531,15 +2531,16 @@ function SwapWalletActions(props) {
         onChainAmountOutMin: props.onChainAmountOutMin,
         pairOnChain: props.pairOnChain,
         canSubmit: props.canSubmit,
+        disabledReason: props.disabledReason,
         onInvalidSubmit: props.onInvalidSubmit
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/SwapWalletActions.tsx",
-        lineNumber: 53,
+        lineNumber: 60,
         columnNumber: 5
     }, this);
 }
 _c = SwapWalletActions;
-function SwapButton({ inputToken, outputToken, inputAmount, hasAmount, priceImpact = 0, outputAmount = '', inputUsd = '', outputUsd = '', exchangeRate = '', minimumReceived = '', networkFee = '< $0.01', ubiFee = '', onChainAmountOutMin, pairOnChain = false, canSubmit = true, onInvalidSubmit }) {
+function SwapButton({ inputToken, outputToken, inputAmount, hasAmount, priceImpact = 0, outputAmount = '', inputUsd = '', outputUsd = '', exchangeRate = '', minimumReceived = '', networkFee = '< $0.01', ubiFee = '', onChainAmountOutMin, pairOnChain = false, canSubmit = true, disabledReason = 'dust', onInvalidSubmit }) {
     _s();
     const [showReview, setShowReview] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const { swap, phase, error, reset, isConnected } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$useOnChainSwap$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSwapExecute"])();
@@ -2623,7 +2624,7 @@ function SwapButton({ inputToken, outputToken, inputAmount, hasAmount, priceImpa
                         children: "Enter an Amount"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/SwapWalletActions.tsx",
-                        lineNumber: 171,
+                        lineNumber: 181,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2637,11 +2638,34 @@ function SwapButton({ inputToken, outputToken, inputAmount, hasAmount, priceImpa
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/SwapWalletActions.tsx",
-                        lineNumber: 178,
+                        lineNumber: 188,
                         columnNumber: 11
                     }, this)
                 ]
-            }, void 0, true) : !canSubmit ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+            }, void 0, true) : !canSubmit ? disabledReason === 'over-cap' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        onClick: onInvalidSubmit,
+                        className: "w-full py-4 rounded-xl font-semibold text-base bg-dark-50 text-gray-400 cursor-not-allowed",
+                        "data-testid": "swap-button-over-cap",
+                        "aria-disabled": "true",
+                        disabled: true,
+                        children: "Amount Too Large"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/SwapWalletActions.tsx",
+                        lineNumber: 195,
+                        columnNumber: 13
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "text-xs text-amber-400/90 text-center mt-3",
+                        children: "That amount is well above the per-swap cap. Reduce it to continue."
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/SwapWalletActions.tsx",
+                        lineNumber: 204,
+                        columnNumber: 13
+                    }, this)
+                ]
+            }, void 0, true) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                         onClick: onInvalidSubmit,
@@ -2651,16 +2675,16 @@ function SwapButton({ inputToken, outputToken, inputAmount, hasAmount, priceImpa
                         children: "Amount Too Small"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/SwapWalletActions.tsx",
-                        lineNumber: 184,
-                        columnNumber: 11
+                        lineNumber: 210,
+                        columnNumber: 13
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                         className: "text-xs text-amber-400/90 text-center mt-3",
                         children: "Output rounds to zero. Try a larger amount — sub-dust swaps would waste gas and disable slippage protection."
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/SwapWalletActions.tsx",
-                        lineNumber: 192,
-                        columnNumber: 11
+                        lineNumber: 218,
+                        columnNumber: 13
                     }, this)
                 ]
             }, void 0, true) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -2672,7 +2696,7 @@ function SwapButton({ inputToken, outputToken, inputAmount, hasAmount, priceImpa
                     children: buttonLabel()
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/SwapWalletActions.tsx",
-                    lineNumber: 199,
+                    lineNumber: 226,
                     columnNumber: 11
                 }, this)
             }, void 0, false),
@@ -2697,7 +2721,7 @@ function SwapButton({ inputToken, outputToken, inputAmount, hasAmount, priceImpa
                 deadlineMinutes: deadlineMinutes
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/SwapWalletActions.tsx",
-                lineNumber: 215,
+                lineNumber: 242,
                 columnNumber: 7
             }, this)
         ]
@@ -3250,6 +3274,54 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
 }),
+"[project]/frontend/src/lib/swapLimits.ts [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "PER_SYMBOL_MAX_INPUT",
+    ()=>PER_SYMBOL_MAX_INPUT,
+    "getSwapInputCap",
+    ()=>getSwapInputCap,
+    "isAmountWithinCap",
+    ()=>isAmountWithinCap
+]);
+/**
+ * swapLimits — per-symbol sanity caps for the SwapCard input.
+ *
+ * Lane 4 safety gate: the swap quote multiplies the user's input by the
+ * current rate and renders the result. Without a per-symbol cap, a user
+ * can type `99,999,999,999,999` ETH (≈ 800,000× the world's ETH supply)
+ * and watch the UI quote them `19,950,459T G$` (~$2 quadrillion) with a
+ * fully-enabled "Swap" CTA. Even in demo mode this is "pretending a
+ * price is real" in a way the lane-4 spec explicitly forbids.
+ *
+ * The cap table here is the single source of truth. Anything above it
+ * blocks the quote, dashes the output, hides the UBI breakdown, and
+ * disables the swap CTA at the UI layer. The chain still has its own
+ * balance check downstream — this just stops the UI from baiting the
+ * user there.
+ */ const DEFAULT_MAX_INPUT = 1_000_000;
+const PER_SYMBOL_MAX_INPUT = {
+    ETH: 1_000_000,
+    WETH: 1_000_000,
+    WBTC: 100_000,
+    USDC: 100_000_000,
+    USDT: 100_000_000,
+    DAI: 100_000_000,
+    'G$': 1_000_000_000
+};
+function getSwapInputCap(symbol) {
+    return PER_SYMBOL_MAX_INPUT[symbol] ?? DEFAULT_MAX_INPUT;
+}
+function isAmountWithinCap(symbol, amount) {
+    const n = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (!Number.isFinite(n) || n <= 0) return true;
+    return n <= getSwapInputCap(symbol);
+}
+if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
+    __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
+}
+}),
 "[project]/frontend/src/components/SwapCard.tsx [app-client] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
@@ -3279,9 +3351,11 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$us
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$useOnChainSwap$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/useOnChainSwap.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$ui$2f$animated$2d$number$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/ui/animated-number.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$PriceSourceBadge$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/components/PriceSourceBadge.tsx [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$swapLimits$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/frontend/src/lib/swapLimits.ts [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
 'use client';
+;
 ;
 ;
 ;
@@ -3466,6 +3540,20 @@ function SwapCard() {
     // chip appears so they know the cap was hit and double-check the
     // intent before submitting.
     const inputAtCap = inputAmount.length >= MAX_INPUT_LEN;
+    // Sanity cap on the parsed amount itself. The 16-char cap doesn't stop
+    // the trillion-scale pathology (99,999,999,999,999 ETH is only 14 chars)
+    // — this does. When tripped we suppress the quote and disable the CTA.
+    const isOverCap = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
+        "SwapCard.useMemo[isOverCap]": ()=>!(0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$swapLimits$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["isAmountWithinCap"])(inputToken.symbol, inputAmount)
+    }["SwapCard.useMemo[isOverCap]"], [
+        inputAmount,
+        inputToken.symbol
+    ]);
+    const overCapNumeric = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
+        "SwapCard.useMemo[overCapNumeric]": ()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$swapLimits$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getSwapInputCap"])(inputToken.symbol).toLocaleString()
+    }["SwapCard.useMemo[overCapNumeric]"], [
+        inputToken.symbol
+    ]);
     const ubiFee = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
         "SwapCard.useMemo[ubiFee]": ()=>{
             const amt = parseFloat(inputAmount);
@@ -3595,7 +3683,7 @@ function SwapCard() {
     // (rounded to 0 in the UI, or below FLOOR_THRESHOLD) would either revert
     // on-chain (wasted gas) or accept `amountOutMin = 0`, which disables
     // slippage protection and exposes the user to sandwich attacks.
-    const canSubmit = hasAmount && rawOutputAmount > 0 && !isBelowFloor;
+    const canSubmit = hasAmount && rawOutputAmount > 0 && !isBelowFloor && !isOverCap;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         id: "swap-card",
         className: "w-full max-w-[460px]",
@@ -3613,7 +3701,7 @@ function SwapCard() {
                                     children: "Swap"
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 245,
+                                    lineNumber: 257,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3621,24 +3709,24 @@ function SwapCard() {
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$FeeBreakdownBadge$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["FeeBreakdownBadge"], {}, void 0, false, {
                                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                            lineNumber: 247,
+                                            lineNumber: 259,
                                             columnNumber: 15
                                         }, this),
                                         showAdvanced && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$SwapSettings$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SwapSettings"], {}, void 0, false, {
                                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                            lineNumber: 248,
+                                            lineNumber: 260,
                                             columnNumber: 32
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 246,
+                                    lineNumber: 258,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 244,
+                            lineNumber: 256,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3652,31 +3740,31 @@ function SwapCard() {
                                         children: "Advanced"
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                        lineNumber: 259,
+                                        lineNumber: 271,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
                                         className: `w-3 h-3 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                        lineNumber: 260,
+                                        lineNumber: 272,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                lineNumber: 254,
+                                lineNumber: 266,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 253,
+                            lineNumber: 265,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 243,
+                    lineNumber: 255,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$framer$2d$motion$2f$dist$2f$es$2f$render$2f$components$2f$motion$2f$proxy$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["motion"].div, {
@@ -3704,7 +3792,7 @@ function SwapCard() {
                                     children: "You pay"
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 275,
+                                    lineNumber: 287,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$SwapWalletActions$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SwapWalletActions"], {
@@ -3713,13 +3801,13 @@ function SwapCard() {
                                     onSetAmount: setInputAmount
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 276,
+                                    lineNumber: 288,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 274,
+                            lineNumber: 286,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3739,7 +3827,7 @@ function SwapCard() {
                                     className: `flex-1 bg-transparent font-medium text-white outline-none placeholder:text-gray-500 min-w-0 focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:ring-offset-1 focus-visible:ring-offset-dark rounded-lg transition-[font-size] duration-100 ${inputFontSize ? '' : 'text-3xl'}`
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 283,
+                                    lineNumber: 295,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$TokenSelector$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TokenSelector"], {
@@ -3748,13 +3836,13 @@ function SwapCard() {
                                     exclude: outputToken.symbol
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 294,
+                                    lineNumber: 306,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 282,
+                            lineNumber: 294,
                             columnNumber: 11
                         }, this),
                         inputUsd && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3763,23 +3851,39 @@ function SwapCard() {
                             children: inputUsd
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 301,
+                            lineNumber: 313,
                             columnNumber: 13
                         }, this),
-                        inputAtCap && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        inputAtCap && !isOverCap && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                             className: "text-[11px] text-amber-400 mt-1.5",
                             "data-testid": "input-cap-warning",
                             role: "status",
                             children: "Amount is unusually large. Double-check before swapping."
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 304,
+                            lineNumber: 316,
+                            columnNumber: 13
+                        }, this),
+                        isOverCap && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            className: "text-[11px] text-amber-400 mt-1.5",
+                            "data-testid": "swap-amount-over-cap",
+                            role: "alert",
+                            children: [
+                                "Amount exceeds the per-swap cap (",
+                                overCapNumeric,
+                                " ",
+                                inputToken.symbol,
+                                "). Reduce to continue."
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/frontend/src/components/SwapCard.tsx",
+                            lineNumber: 325,
                             columnNumber: 13
                         }, this)
                     ]
                 }, inputShake, true, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 268,
+                    lineNumber: 280,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3795,17 +3899,17 @@ function SwapCard() {
                             }
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 321,
+                            lineNumber: 342,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                        lineNumber: 316,
+                        lineNumber: 337,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 315,
+                    lineNumber: 336,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3818,19 +3922,19 @@ function SwapCard() {
                                 children: "You receive"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                lineNumber: 331,
+                                lineNumber: 352,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 330,
+                            lineNumber: 351,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "flex items-center gap-3",
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                    title: rawOutputAmount ? rawOutputAmount.toString() : '',
+                                    title: isOverCap ? '' : rawOutputAmount ? rawOutputAmount.toString() : '',
                                     className: "flex-1 text-3xl sm:text-3xl font-medium min-w-0 cursor-default select-text",
                                     style: {
                                         fontSize: outputAmount.length > 10 ? 'clamp(1.125rem, 5vw, 1.875rem)' : undefined
@@ -3839,26 +3943,42 @@ function SwapCard() {
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                             className: "text-white sm:hidden",
-                                            children: isBelowFloor ? FLOOR_STR : compactOutputAmount || /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            children: isOverCap ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "text-gray-500",
+                                                "data-testid": "output-overcap",
+                                                children: "—"
+                                            }, void 0, false, {
+                                                fileName: "[project]/frontend/src/components/SwapCard.tsx",
+                                                lineNumber: 364,
+                                                columnNumber: 21
+                                            }, this) : isBelowFloor ? FLOOR_STR : compactOutputAmount || /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 className: "text-gray-600",
                                                 children: "0"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                                lineNumber: 344,
-                                                columnNumber: 45
+                                                lineNumber: 367,
+                                                columnNumber: 47
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                            lineNumber: 341,
+                                            lineNumber: 362,
                                             columnNumber: 15
                                         }, this),
-                                        isBelowFloor ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        isOverCap ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "text-gray-500 hidden sm:inline",
+                                            "data-testid": "output-overcap-desktop",
+                                            children: "—"
+                                        }, void 0, false, {
+                                            fileName: "[project]/frontend/src/components/SwapCard.tsx",
+                                            lineNumber: 375,
+                                            columnNumber: 17
+                                        }, this) : isBelowFloor ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                             className: "text-white hidden sm:inline",
                                             "data-testid": "output-floor",
                                             children: FLOOR_STR
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                            lineNumber: 351,
+                                            lineNumber: 377,
                                             columnNumber: 17
                                         }, this) : integerDigits > 10 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                             className: "text-white hidden sm:inline",
@@ -3866,7 +3986,7 @@ function SwapCard() {
                                             children: compactOutputAmount
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                            lineNumber: 353,
+                                            lineNumber: 379,
                                             columnNumber: 17
                                         }, this) : rawOutputAmount ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$ui$2f$animated$2d$number$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AnimatedNumber"], {
                                             value: rawOutputAmount,
@@ -3874,20 +3994,20 @@ function SwapCard() {
                                             className: "text-white hidden sm:inline"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                            lineNumber: 355,
+                                            lineNumber: 381,
                                             columnNumber: 17
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                             className: "text-gray-600 hidden sm:inline",
                                             children: "0"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                            lineNumber: 357,
+                                            lineNumber: 383,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 334,
+                                    lineNumber: 355,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$TokenSelector$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TokenSelector"], {
@@ -3896,13 +4016,13 @@ function SwapCard() {
                                     exclude: inputToken.symbol
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 360,
+                                    lineNumber: 386,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 333,
+                            lineNumber: 354,
                             columnNumber: 11
                         }, this),
                         outputUsd && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3911,13 +4031,13 @@ function SwapCard() {
                             children: outputUsd
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 367,
+                            lineNumber: 393,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 329,
+                    lineNumber: 350,
                     columnNumber: 9
                 }, this),
                 hasAmount && showAdvanced && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3934,14 +4054,14 @@ function SwapCard() {
                                             className: "w-1.5 h-1.5 rounded-full bg-goodgreen animate-pulse inline-block"
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                            lineNumber: 378,
+                                            lineNumber: 404,
                                             columnNumber: 19
                                         }, this),
                                         "live"
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 377,
+                                    lineNumber: 403,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$PriceSourceBadge$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PriceSourceBadge"], {
@@ -3949,26 +4069,26 @@ function SwapCard() {
                                     size: "sm"
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                                    lineNumber: 382,
+                                    lineNumber: 408,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 374,
+                            lineNumber: 400,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                             children: exchangeRate
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 384,
+                            lineNumber: 410,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 373,
+                    lineNumber: 399,
                     columnNumber: 11
                 }, this),
                 hasAmount && !showAdvanced && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3978,12 +4098,12 @@ function SwapCard() {
                         size: "sm"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                        lineNumber: 392,
+                        lineNumber: 418,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 391,
+                    lineNumber: 417,
                     columnNumber: 11
                 }, this),
                 !isLive && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3992,21 +4112,21 @@ function SwapCard() {
                         variant: "swap"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                        lineNumber: 398,
+                        lineNumber: 424,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 397,
+                    lineNumber: 423,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$UBIBreakdown$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["UBIBreakdown"], {
                     ubiFeeAmount: ubiFee,
                     outputToken: outputToken,
-                    visible: hasAmount
+                    visible: hasAmount && !isOverCap
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 403,
+                    lineNumber: 430,
                     columnNumber: 9
                 }, this),
                 showAdvanced && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -4019,7 +4139,7 @@ function SwapCard() {
                             visible: hasAmount
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 412,
+                            lineNumber: 439,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$PriceImpactWarning$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PriceImpactWarning"], {
@@ -4027,7 +4147,7 @@ function SwapCard() {
                             visible: hasAmount
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 419,
+                            lineNumber: 446,
                             columnNumber: 13
                         }, this),
                         hasAmount && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$SwapRoute$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SwapRoute"], {
@@ -4035,7 +4155,7 @@ function SwapCard() {
                             outputToken: outputToken
                         }, void 0, false, {
                             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                            lineNumber: 420,
+                            lineNumber: 447,
                             columnNumber: 27
                         }, this)
                     ]
@@ -4045,7 +4165,7 @@ function SwapCard() {
                     visible: hasAmount && priceImpact >= 5
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 426,
+                    lineNumber: 453,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4067,30 +4187,31 @@ function SwapCard() {
                         onChainAmountOutMin: onChainAmountOutWei !== undefined && slippage > 0 ? onChainAmountOutWei * BigInt(Math.floor((1 - slippage / 100) * 10000)) / BigInt(10000) : onChainAmountOutWei,
                         pairOnChain: pairOnChain,
                         canSubmit: canSubmit,
+                        disabledReason: isOverCap ? 'over-cap' : 'dust',
                         onInvalidSubmit: ()=>setInputShake((p)=>p + 1)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                        lineNumber: 431,
+                        lineNumber: 458,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/SwapCard.tsx",
-                    lineNumber: 430,
+                    lineNumber: 457,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/frontend/src/components/SwapCard.tsx",
-            lineNumber: 242,
+            lineNumber: 254,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/SwapCard.tsx",
-        lineNumber: 241,
+        lineNumber: 253,
         columnNumber: 5
     }, this);
 }
-_s(SwapCard, "dn3twOcV6eW4kb6is1hjgi6fnwU=", false, function() {
+_s(SwapCard, "bGqUTb4LYoNIUD7pRxyCJeE9KJc=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$useSwapSettings$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSwapSettings"],
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSearchParams"],
@@ -4503,4 +4624,4 @@ __turbopack_context__.n(__turbopack_context__.i("[project]/frontend/src/componen
 }),
 ]);
 
-//# sourceMappingURL=frontend_src_0d5y3s2._.js.map
+//# sourceMappingURL=frontend_src_0t7m-bq._.js.map

@@ -21,6 +21,7 @@ import { useSwapQuote } from '@/lib/useOnChainSwap'
 import { AnimatedNumber } from './ui/animated-number'
 import { PriceSourceBadge } from './PriceSourceBadge'
 import type { PriceSource } from '@/lib/priceSource'
+import { isAmountWithinCap, getSwapInputCap } from '@/lib/swapLimits'
 
 function getLiveRate(prices: Record<string, number>, from: string, to: string): number {
   if (from === to) return 1
@@ -150,6 +151,18 @@ export function SwapCard() {
   // intent before submitting.
   const inputAtCap = inputAmount.length >= MAX_INPUT_LEN
 
+  // Sanity cap on the parsed amount itself. The 16-char cap doesn't stop
+  // the trillion-scale pathology (99,999,999,999,999 ETH is only 14 chars)
+  // — this does. When tripped we suppress the quote and disable the CTA.
+  const isOverCap = useMemo(
+    () => !isAmountWithinCap(inputToken.symbol, inputAmount),
+    [inputAmount, inputToken.symbol],
+  )
+  const overCapNumeric = useMemo(
+    () => getSwapInputCap(inputToken.symbol).toLocaleString(),
+    [inputToken.symbol],
+  )
+
   const ubiFee = useMemo(() => {
     const amt = parseFloat(inputAmount)
     if (!amt || isNaN(amt)) return 0
@@ -234,7 +247,7 @@ export function SwapCard() {
   // (rounded to 0 in the UI, or below FLOOR_THRESHOLD) would either revert
   // on-chain (wasted gas) or accept `amountOutMin = 0`, which disables
   // slippage protection and exposes the user to sandwich attacks.
-  const canSubmit = hasAmount && rawOutputAmount > 0 && !isBelowFloor
+  const canSubmit = hasAmount && rawOutputAmount > 0 && !isBelowFloor && !isOverCap
 
   return (
     <div id="swap-card" className="w-full max-w-[460px]">
@@ -299,13 +312,22 @@ export function SwapCard() {
           {inputUsd && (
             <p className="text-xs text-gray-500 mt-1.5" data-testid="input-usd">{inputUsd}</p>
           )}
-          {inputAtCap && (
+          {inputAtCap && !isOverCap && (
             <p
               className="text-[11px] text-amber-400 mt-1.5"
               data-testid="input-cap-warning"
               role="status"
             >
               Amount is unusually large. Double-check before swapping.
+            </p>
+          )}
+          {isOverCap && (
+            <p
+              className="text-[11px] text-amber-400 mt-1.5"
+              data-testid="swap-amount-over-cap"
+              role="alert"
+            >
+              Amount exceeds the per-swap cap ({overCapNumeric} {inputToken.symbol}). Reduce to continue.
             </p>
           )}
         </motion.div>
@@ -331,22 +353,27 @@ export function SwapCard() {
           </div>
           <div className="flex items-center gap-3">
             <span
-              title={rawOutputAmount ? rawOutputAmount.toString() : ''}
+              title={isOverCap ? '' : (rawOutputAmount ? rawOutputAmount.toString() : '')}
               className="flex-1 text-3xl sm:text-3xl font-medium min-w-0 cursor-default select-text"
               style={{ fontSize: outputAmount.length > 10 ? 'clamp(1.125rem, 5vw, 1.875rem)' : undefined }}
               data-testid="output-amount"
             >
-              {/* Mobile — already uses `compactAmount`, just patch the below-floor case */}
+              {/* Mobile — over-cap and below-floor short-circuit before the compact path. */}
               <span className="text-white sm:hidden">
-                {isBelowFloor
-                  ? FLOOR_STR
-                  : (compactOutputAmount || <span className="text-gray-600">0</span>)}
+                {isOverCap
+                  ? <span className="text-gray-500" data-testid="output-overcap">—</span>
+                  : isBelowFloor
+                    ? FLOOR_STR
+                    : (compactOutputAmount || <span className="text-gray-600">0</span>)}
               </span>
-              {/* Desktop — three paths:
-                  1. Sub-dust output → render the floor literal
-                  2. >10 integer digits → drop AnimatedNumber for compact form to avoid `.toFixed(6)` overflow
-                  3. Normal range → animate as before */}
-              {isBelowFloor ? (
+              {/* Desktop — four paths:
+                  1. Over-cap         → render em-dash literal (no fantasy quote)
+                  2. Sub-dust output  → render the floor literal
+                  3. >10 integer digits → drop AnimatedNumber for compact form to avoid `.toFixed(6)` overflow
+                  4. Normal range     → animate as before */}
+              {isOverCap ? (
+                <span className="text-gray-500 hidden sm:inline" data-testid="output-overcap-desktop">—</span>
+              ) : isBelowFloor ? (
                 <span className="text-white hidden sm:inline" data-testid="output-floor">{FLOOR_STR}</span>
               ) : integerDigits > 10 ? (
                 <span className="text-white hidden sm:inline" data-testid="output-compact">{compactOutputAmount}</span>
@@ -398,11 +425,12 @@ export function SwapCard() {
           </div>
         )}
 
-        {/* UBI - Always show to emphasize mission */}
+        {/* UBI - Always show to emphasize mission, except when we're refusing
+            to quote (over-cap) — otherwise we'd flash a fake 12B G$ UBI line. */}
         <UBIBreakdown
           ubiFeeAmount={ubiFee}
           outputToken={outputToken}
-          visible={hasAmount}
+          visible={hasAmount && !isOverCap}
         />
 
         {/* Advanced Swap Details */}
@@ -446,6 +474,7 @@ export function SwapCard() {
               : onChainAmountOutWei}
             pairOnChain={pairOnChain}
             canSubmit={canSubmit}
+            disabledReason={isOverCap ? 'over-cap' : 'dust'}
             onInvalidSubmit={() => setInputShake(p => p + 1)}
           />
         </div>

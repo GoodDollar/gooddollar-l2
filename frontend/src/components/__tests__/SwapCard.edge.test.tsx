@@ -172,22 +172,26 @@ describe('SwapCard input length cap', () => {
     expect(input.value.length).toBe(16)
   })
 
-  it('shows the amber cap warning when input length reaches 16', () => {
+  it('shows a warning chip when the input length reaches 16', () => {
     render(
       <TestWrapper>
         <SwapCard />
       </TestWrapper>
     )
     const input = screen.getByRole('textbox') as HTMLInputElement
-    // Below cap → no warning
+    // Below cap (and below the over-cap sanity gate) → no warning of either kind.
     fireEvent.change(input, { target: { value: '12345' } })
     expect(screen.queryByTestId('input-cap-warning')).not.toBeInTheDocument()
-    // At cap → warning visible
+    expect(screen.queryByTestId('swap-amount-over-cap')).not.toBeInTheDocument()
+    // 16 characters of "9" — a 10^15-scale number, well above every per-symbol
+    // cap. The newer over-cap chip takes precedence over the legacy length-only
+    // chip; either way a warning is visible.
     fireEvent.change(input, { target: { value: '1234567890123456' } })
-    const warning = screen.getByTestId('input-cap-warning')
+    const warning =
+      screen.queryByTestId('swap-amount-over-cap') ??
+      screen.getByTestId('input-cap-warning')
     expect(warning).toBeInTheDocument()
-    expect(warning).toHaveTextContent(/unusually large/i)
-    expect(warning).toHaveTextContent(/double-check/i)
+    expect(warning.textContent ?? '').toMatch(/(unusually large|exceeds the per-swap cap)/i)
   })
 })
 
