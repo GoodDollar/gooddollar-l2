@@ -4,14 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePriceServiceStatus, getSessionLabel, getDominantSession, type QuoteStatus } from '@/lib/usePriceServiceStatus'
 import { deriveStocksOracleHealth, getStocksKeeperAgeMs, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
 import { formatSessionAsOf } from '@/lib/sessionAnchor'
+import { formatAge } from '@/lib/formatAge'
 import { OracleBadgeFooter } from './OracleBadgeFooter'
-
-function formatAge(ms: number): string {
-  if (ms < 1000) return 'just now'
-  if (ms < 60_000) return `${Math.floor(ms / 1000)}s ago`
-  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`
-  return `${Math.floor(ms / 3_600_000)}h ago`
-}
 
 // User-facing label for the listing-page badge. Keep short, plain English —
 // this is what a trader reads next to the live price, not an internal

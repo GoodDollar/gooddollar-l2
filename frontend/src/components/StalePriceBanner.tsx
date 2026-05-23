@@ -1,7 +1,7 @@
 'use client'
 
 interface StalePriceBannerProps {
-  variant: 'swap' | 'stocks'
+  variant: 'swap' | 'stocks' | 'crypto'
   className?: string
 }
 
@@ -13,6 +13,10 @@ const MESSAGES = {
   stocks: {
     icon: '📡',
     text: 'Oracle offline: showing demo prices. Data may not reflect current market values.',
+  },
+  crypto: {
+    icon: '📡',
+    text: 'Crypto oracle offline: showing demo prices. Mark, 24h stats, funding, and OI may not reflect current market values.',
   },
 } as const
 

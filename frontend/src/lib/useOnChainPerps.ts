@@ -18,17 +18,23 @@ import { useOracleMarkPrices } from './usePerpsHistory'
 import type { PerpPair, AccountSummaryData, OpenPosition } from './perpsData'
 
 // ─── Fallback demo pairs when on-chain data is unavailable ───────────────────
-function derive24hHighLow(markPrice: number, change24h: number): { high24h: number; low24h: number } {
-  const swing = Math.abs(change24h) / 100 * 0.6
-  return { high24h: markPrice * (1 + swing), low24h: markPrice * (1 - swing) }
-}
-
-const FALLBACK_PAIRS: PerpPair[] = [
-  { marketId: 0, symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', markPrice: 84250, indexPrice: 84200, change24h: 2.4, volume24h: 1_250_000_000, fundingRate: 0.0045, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 890_000_000, maxLeverage: 100, ...derive24hHighLow(84250, 2.4) },
-  { marketId: 1, symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', markPrice: 1820, indexPrice: 1818, change24h: -1.2, volume24h: 580_000_000, fundingRate: -0.0012, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 420_000_000, maxLeverage: 50, ...derive24hHighLow(1820, -1.2) },
-  { marketId: 2, symbol: 'SOL-USD', baseAsset: 'SOL', quoteAsset: 'USD', markPrice: 134.5, indexPrice: 134.2, change24h: 5.8, volume24h: 180_000_000, fundingRate: 0.0078, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 95_000_000, maxLeverage: 25, ...derive24hHighLow(134.5, 5.8) },
-  { marketId: 3, symbol: 'BNB-USD', baseAsset: 'BNB', quoteAsset: 'USD', markPrice: 608, indexPrice: 607, change24h: 0.8, volume24h: 45_000_000, fundingRate: 0.0015, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 32_000_000, maxLeverage: 25, ...derive24hHighLow(608, 0.8) },
-  { marketId: 5, symbol: 'ARB-USD', baseAsset: 'ARB', quoteAsset: 'USD', markPrice: 0.82, indexPrice: 0.819, change24h: -3.1, volume24h: 28_000_000, fundingRate: -0.0025, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 18_000_000, maxLeverage: 20, ...derive24hHighLow(0.82, -3.1) },
+//
+// Task 0037: This fallback ships only a sentinel `markPrice` (already
+// labelled by the "Crypto oracle offline" banner the perps page mounts
+// when the crypto rail is down) plus static market metadata. Every
+// quantitative field — change24h, volume24h, fundingRate, openInterest,
+// 24h H/L — MUST stay at the zero sentinel (or equal to markPrice for
+// H/L) so the PairInfoBar renders honest em-dashes instead of painting
+// fabricated stats as if the oracle had reported them. The
+// `useOnChainPerps.fallback` suite locks this shape.
+//
+// Exported for the data-shape regression test.
+export const FALLBACK_PAIRS: PerpPair[] = [
+  { marketId: 0, symbol: 'BTC-USD', baseAsset: 'BTC', quoteAsset: 'USD', markPrice: 84250, indexPrice: 84250, change24h: 0, volume24h: 0, fundingRate: 0, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 0, maxLeverage: 100, high24h: 84250, low24h: 84250 },
+  { marketId: 1, symbol: 'ETH-USD', baseAsset: 'ETH', quoteAsset: 'USD', markPrice: 1820, indexPrice: 1820, change24h: 0, volume24h: 0, fundingRate: 0, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 0, maxLeverage: 50, high24h: 1820, low24h: 1820 },
+  { marketId: 2, symbol: 'SOL-USD', baseAsset: 'SOL', quoteAsset: 'USD', markPrice: 134.5, indexPrice: 134.5, change24h: 0, volume24h: 0, fundingRate: 0, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 0, maxLeverage: 25, high24h: 134.5, low24h: 134.5 },
+  { marketId: 3, symbol: 'BNB-USD', baseAsset: 'BNB', quoteAsset: 'USD', markPrice: 608, indexPrice: 608, change24h: 0, volume24h: 0, fundingRate: 0, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 0, maxLeverage: 25, high24h: 608, low24h: 608 },
+  { marketId: 5, symbol: 'ARB-USD', baseAsset: 'ARB', quoteAsset: 'USD', markPrice: 0.82, indexPrice: 0.82, change24h: 0, volume24h: 0, fundingRate: 0, nextFundingTime: Date.now() + 4 * 3600000, openInterest: 0, maxLeverage: 20, high24h: 0.82, low24h: 0.82 },
 ]
 
 const ENGINE = CONTRACTS.PerpEngine
@@ -124,9 +130,10 @@ export function useOnChainPairs(): { pairs: PerpPair[]; isLoading: boolean; isLi
       const fallbackPair = FALLBACK_PAIRS.find(p => p.symbol === meta.symbol)
       const mark = markPrices[i] && markPrices[i] > 0 ? markPrices[i] : (fallbackPair?.markPrice ?? 0)
       const index = indexPrices[i] && indexPrices[i] > 0 ? indexPrices[i] : (fallbackPair?.indexPrice ?? mark)
-      const change = fallbackPair?.change24h ?? 0
-      const hl = derive24hHighLow(mark, change)
 
+      // Task 0037: no 24h aggregator wired yet — surface honest zeros
+      // and let PairInfoBar render em-dashes rather than fabricating a
+      // swing band from a hardcoded change24h.
       result.push({
         marketId: i,
         symbol: meta.symbol,
@@ -134,14 +141,14 @@ export function useOnChainPairs(): { pairs: PerpPair[]; isLoading: boolean; isLi
         quoteAsset: meta.quoteAsset,
         markPrice: mark,
         indexPrice: index,
-        change24h: change,
-        volume24h: fallbackPair?.volume24h ?? 0,
-        fundingRate: fallbackPair?.fundingRate ?? 0,
+        change24h: 0,
+        volume24h: 0,
+        fundingRate: 0,
         nextFundingTime,
-        openInterest: fallbackPair?.openInterest ?? 0,
+        openInterest: 0,
         maxLeverage: Number(maxLeverage),
-        high24h: hl.high24h,
-        low24h: hl.low24h,
+        high24h: mark,
+        low24h: mark,
       })
     }
     return result
