@@ -61,13 +61,13 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Tab panels ───────────────────────────────────────────────────────────────
 
-function OpenOrdersPanel({ orders }: { orders: HistoryOpenOrder[] }) {
+function OpenOrdersPanel({ orders }: { orders: readonly HistoryOpenOrder[] }) {
   if (orders.length === 0) {
     return (
       <EmptyState
         icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
         title="No open orders"
-        description="Place a limit or stop-limit order to see it here."
+        description="Open limit & stop orders will appear here once the perps on-chain event indexer is wired and orders are placed via the ticket above."
       />
     )
   }
@@ -107,13 +107,13 @@ function OpenOrdersPanel({ orders }: { orders: HistoryOpenOrder[] }) {
   )
 }
 
-function OrderHistoryPanel({ orders }: { orders: OrderHistoryItem[] }) {
+function OrderHistoryPanel({ orders }: { orders: readonly OrderHistoryItem[] }) {
   if (orders.length === 0) {
     return (
       <EmptyState
         icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
         title="No order history"
-        description="Your past orders will appear here."
+        description="Past orders will appear here once on-chain order events are indexed."
       />
     )
   }
@@ -151,13 +151,13 @@ function OrderHistoryPanel({ orders }: { orders: OrderHistoryItem[] }) {
   )
 }
 
-function TradeHistoryPanel({ trades }: { trades: TradeHistoryItem[] }) {
+function TradeHistoryPanel({ trades }: { trades: readonly TradeHistoryItem[] }) {
   if (trades.length === 0) {
     return (
       <EmptyState
         icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>}
         title="No trade history"
-        description="Your executed trades will appear here."
+        description="Executed trades will appear here once on-chain fill events are indexed."
       />
     )
   }
@@ -195,13 +195,13 @@ function TradeHistoryPanel({ trades }: { trades: TradeHistoryItem[] }) {
   )
 }
 
-function FundingHistoryPanel({ payments }: { payments: FundingHistoryItem[] }) {
+function FundingHistoryPanel({ payments }: { payments: readonly FundingHistoryItem[] }) {
   if (payments.length === 0) {
     return (
       <EmptyState
         icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
         title="No funding payments"
-        description="Funding payments accrue every 8 hours on open positions."
+        description="Funding payments will appear here once on-chain funding events are indexed."
       />
     )
   }
@@ -274,11 +274,6 @@ export function PerpsHistoryTabs() {
               }`}
             >
               {tab.label}
-              {tab.id === 'open-orders' && openOrders.length > 0 && (
-                <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-goodgreen/15 text-goodgreen font-semibold">
-                  {openOrders.length}
-                </span>
-              )}
             </button>
           ))}
         </ScrollStrip>
