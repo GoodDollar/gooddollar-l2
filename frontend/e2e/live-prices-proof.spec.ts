@@ -25,6 +25,19 @@ test.describe('Lane 6 — /live-prices-proof', () => {
     await expect(page.getByTestId('live-prices-proof-page')).toBeVisible()
     await expect(page.getByRole('heading', { name: /Live Prices Proof/i })).toBeVisible()
 
+    // Audience-friendly pre-title — the page is read by external auditors
+    // and board members as often as by the autobuilder team, so the
+    // first thing they see must not be project-internal jargon.
+    await expect(page.getByText(/Release gate · GoodChain live-prices pipeline/i)).toBeVisible()
+
+    // Reviewer-context aside sits inside the header so the interpretation
+    // rules are visible above the fold, before the reader scrolls into
+    // any panel.
+    const reviewerContext = page.getByTestId('reviewer-context')
+    await expect(reviewerContext).toBeVisible()
+    const reviewerCopy = (await reviewerContext.textContent()) ?? ''
+    expect(reviewerCopy).toMatch(/If a panel is empty/i)
+
     // Safety banner — either the "Safe" pill or a refusal alert. We only
     // accept the "Safe" path in CI (real-trading must be disabled).
     const safe = page.getByText(/REAL_TRADING_ENABLED = false/i)

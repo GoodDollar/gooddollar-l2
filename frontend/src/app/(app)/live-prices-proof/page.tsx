@@ -18,7 +18,7 @@ export default function LivePricesProofPage() {
     >
       <header className="mb-6">
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-          Lane 6 · release proof
+          Release gate · GoodChain live-prices pipeline
         </p>
         <h1 id="proof-page-heading" className="text-2xl font-semibold text-white sm:text-3xl">
           Live Prices Proof
@@ -29,6 +29,17 @@ export default function LivePricesProofPage() {
           recent <code className="text-accent">PriceUpdated</code> events are observed,
           and the demo-hedge proof artifact reflects the latest hedge run.
         </p>
+        <aside
+          aria-label="How to read this page"
+          data-testid="reviewer-context"
+          className="mt-3 max-w-2xl rounded-lg border border-white/10 bg-white/[0.02] p-3 text-xs text-gray-400"
+        >
+          <span className="font-semibold text-gray-300">How to read this page:</span>{' '}
+          Each panel below is the live output of one service in the live-prices
+          pipeline. If a panel is empty, that service is unreachable. Yellow
+          &ldquo;degraded&rdquo; boxes are inline error states, intentional and not
+          silently swallowed.
+        </aside>
       </header>
 
       <ProofPanelBoundary label="Safety Banner">
@@ -62,10 +73,14 @@ export default function LivePricesProofPage() {
         </ProofPanelBoundary>
       </div>
 
-      <footer className="mt-8 text-xs text-gray-500">
-        Reviewers: this page is the canonical Lane 6 proof artifact. If any panel is
-        empty, the corresponding service is unreachable; degraded states are surfaced
-        inline, not silently swallowed.
+      <footer
+        data-testid="proof-page-footer"
+        className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600"
+      >
+        <span>
+          Canonical artifact for initiative{' '}
+          <code className="text-gray-500">0007f-qa-proof-release</code> (Lane 6).
+        </span>
       </footer>
     </section>
   )

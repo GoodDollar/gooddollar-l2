@@ -65,4 +65,42 @@ describe('LivePricesProofPage', () => {
     expect(pipeline.compareDocumentPosition(flow) & FOLLOWING).toBe(FOLLOWING)
     expect(flow.compareDocumentPosition(firstPanel) & FOLLOWING).toBe(FOLLOWING)
   })
+
+  it('header renders the audience-friendly pre-title', () => {
+    render(<LivePricesProofPage />)
+    expect(
+      screen.getByText(/Release gate · GoodChain live-prices pipeline/i),
+    ).toBeInTheDocument()
+  })
+
+  it('header renders the How to read this page aside with the interpretation rules', () => {
+    render(<LivePricesProofPage />)
+    const aside = screen.getByTestId('reviewer-context')
+    expect(aside.getAttribute('aria-label')).toBe('How to read this page')
+    expect(aside).toHaveTextContent(/If a panel is empty/i)
+    expect(aside).toHaveTextContent(/degraded.*box(?:es)?/i)
+  })
+
+  it('aside is rendered above the safety banner / panel grid', () => {
+    render(<LivePricesProofPage />)
+    const aside = screen.getByTestId('reviewer-context')
+    const safety = screen.getByTestId('mock-safety-banner')
+
+    const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING
+    expect(aside.compareDocumentPosition(safety) & FOLLOWING).toBe(FOLLOWING)
+  })
+
+  it('footer carries the initiative id for team reference', () => {
+    render(<LivePricesProofPage />)
+    expect(screen.getByTestId('proof-page-footer')).toHaveTextContent(
+      /0007f-qa-proof-release/,
+    )
+  })
+
+  it('footer no longer carries the panel-interpretation copy', () => {
+    render(<LivePricesProofPage />)
+    expect(screen.getByTestId('proof-page-footer')).not.toHaveTextContent(
+      /If any panel is empty/i,
+    )
+  })
 })
