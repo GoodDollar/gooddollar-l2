@@ -61,9 +61,39 @@ The full env contract is in
 [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../../docs/ETORO_GOODCHAIN_ADAPTER.md);
 this table is orientation only.
 
+## Operator scripts
+
+### Resolve instrument IDs
+
+When you need a pinned eToro `instrumentId` to populate
+`PROOF_INSTRUMENT_ID` (for the demo-hedge proof) or
+`ETORO_INSTRUMENT_OVERRIDES` / `HEDGE_INSTRUMENT_MAP` (for operator
+pins on lane symbols), the SDK ships a one-shot resolver that uses the
+official `/market-data/search` endpoint:
+
+```bash
+ETORO_MODE=demo-readonly \
+  ETORO_DEMO_KEY=… ETORO_DEMO_SECRET=… ETORO_DEMO_USER_KEY=… \
+  npm run resolve-instrument-id -- AAPL BTC
+```
+
+Output is one TSV row per symbol —
+`<symbol>\t<instrumentId>\t<instrumentType>\t<displayName>`:
+
+```
+AAPL	INST-1001	Stock	Apple Inc.
+BTC	INST-100100	CryptoCurrency	Bitcoin
+```
+
+Mock mode is refused by design (exit 2) — printing deterministic
+placeholders would defeat the lane's purpose. Secrets are never echoed.
+Source: [`scripts/resolve-instrument-id.ts`](scripts/resolve-instrument-id.ts);
+behavior contract: [`src/__tests__/resolve-instrument-id.script.test.ts`](src/__tests__/resolve-instrument-id.script.test.ts).
+
 ## Where to go next
 
 - Full lane contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../../docs/ETORO_GOODCHAIN_ADAPTER.md)
 - Lane scripts: `npm run install:lane1`, `npm run test:lane1`
 - Demo-hedge proof runbook: [`docs/runbooks/lane1-demo-hedge-proof.md`](../../docs/runbooks/lane1-demo-hedge-proof.md)
+- Resolve eToro instrument IDs: `npm run resolve-instrument-id` — see [Operator scripts](#operator-scripts) above.
 - Rotate demo credentials: `./scripts/rotate-etoro-keys.sh demo` (repo root) — refuses any non-demo mode per `REAL_TRADING_ENABLED=false`.

@@ -178,10 +178,16 @@ npm run install:lane1   # idempotent install across the four packages
 npm run test:lane1      # runs all four suites; halts on first failure
 ```
 
-Operator helper: rotate the demo credentials the SDK reads
-(`ETORO_DEMO_KEY` / `ETORO_DEMO_SECRET` / `ETORO_DEMO_USER_KEY`) with
-`./scripts/rotate-etoro-keys.sh demo` — refuses any non-demo mode per
-the lane's `REAL_TRADING_ENABLED=false` stance.
+Operator helpers:
+
+- Resolve eToro instrument IDs for `PROOF_INSTRUMENT_ID` /
+  `ETORO_INSTRUMENT_OVERRIDES`:
+  `(cd backend/etoro-client && npm run resolve-instrument-id -- <SYMBOL>)`
+  — see [`backend/etoro-client/README.md`](backend/etoro-client/README.md#operator-scripts).
+- Rotate the demo credentials the SDK reads (`ETORO_DEMO_KEY` /
+  `ETORO_DEMO_SECRET` / `ETORO_DEMO_USER_KEY`):
+  `./scripts/rotate-etoro-keys.sh demo` — refuses any non-demo mode per
+  the lane's `REAL_TRADING_ENABLED=false` stance.
 
 Full env contract, four-mode safety matrix, endpoint table, and the
 demo-proof runbook live in

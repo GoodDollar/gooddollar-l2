@@ -147,6 +147,12 @@ If the call returns `(0, 0, 0)` the oracle has not been written yet for
 that symbol — wait one `ORACLE_UPDATE_INTERVAL`, or check the signer's
 stdout for a `Submission failed:` line.
 
+> **Operator helper:** to map a non-default `ORACLE_SYMBOLS` symbol to
+> an `ETORO_INSTRUMENT_OVERRIDES` entry, run
+> `(cd backend/etoro-client && npm run resolve-instrument-id -- <SYMBOL>)`.
+> See [`backend/etoro-client/README.md`](../../backend/etoro-client/README.md#operator-scripts)
+> for the full invocation, output shape, and mock-mode safety note.
+
 ## Common failures and fixes
 
 | Symptom | Cause | Fix |
