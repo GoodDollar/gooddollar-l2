@@ -72,6 +72,19 @@ export interface PriceServiceConfig {
   wsPort: number;
 }
 
+/**
+ * Rolling in-memory counters for quote ingestion, surfaced via the
+ * audit logger and exposed by the `/health` and `/audit/stats` endpoints.
+ */
+export interface IngestStats {
+  ingested: number;
+  rejected: number;
+  byReason: Record<string, number>;
+  firstAt: number | null;
+  lastAt: number | null;
+  writeErrors: number;
+}
+
 export const DEFAULT_CONFIG: PriceServiceConfig = {
   symbols: ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'META', 'AMZN', 'GOOGL', 'SPY', 'QQQ', 'AMD'],
   stalenessThresholdMs: 10_000,

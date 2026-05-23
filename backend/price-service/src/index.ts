@@ -3,6 +3,8 @@ export { RiskFilter } from './risk-filter';
 export { WsBroadcaster } from './ws-broadcaster';
 export { createServer } from './server';
 export { connectEtoroSource } from './etoro-source';
+export { AuditLogger } from './audit-logger';
+export type { AuditLoggerOptions, AuditRecordInput } from './audit-logger';
 export type { EtoroSourceConfig, EtoroSourceHandle, MarketDataSource } from './etoro-source';
 export type * from './types';
 
@@ -10,22 +12,40 @@ import { QuoteCache } from './quote-cache';
 import { WsBroadcaster } from './ws-broadcaster';
 import { createServer } from './server';
 import { connectEtoroSource } from './etoro-source';
-import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult } from './types';
+import { AuditLogger } from './audit-logger';
+import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult, IngestStats } from './types';
+
+export interface PriceServiceOptions {
+  /** Optional pre-built audit logger; defaults to one using env defaults. */
+  auditLogger?: AuditLogger;
+}
 
 export class PriceService {
   readonly cache: QuoteCache;
   readonly broadcaster: WsBroadcaster;
+  readonly auditLogger: AuditLogger;
   private readonly config: PriceServiceConfig;
   private httpServer?: ReturnType<typeof import('http').createServer>;
 
-  constructor(config?: Partial<PriceServiceConfig>) {
+  constructor(config?: Partial<PriceServiceConfig>, options?: PriceServiceOptions) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.cache = new QuoteCache(config);
     this.broadcaster = new WsBroadcaster();
+    this.auditLogger = options?.auditLogger ?? new AuditLogger();
   }
 
   ingestQuote(quote: NormalizedQuote): RiskFilterResult {
-    return this.cache.update(quote);
+    const result = this.cache.update(quote);
+    this.auditLogger.record({
+      accepted: result.accepted,
+      reason: result.reason,
+      quote: result.quote,
+    });
+    return result;
+  }
+
+  getIngestStats(): IngestStats {
+    return this.auditLogger.stats();
   }
 
   start(): void {
