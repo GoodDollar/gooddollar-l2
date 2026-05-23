@@ -138,6 +138,32 @@ source of truth for the accepted shapes.
   `normalizeQuote-malformed` audit line; the matching `console.error`
   heartbeat is throttled to ≤ 1 per 60 s.
 
+### Stream-failure visibility
+
+The four silent-swallow points on the streaming path now route through
+a single `recordStreamFailure(kind, err)` pipeline. Each kind has its
+own counter, audit-log action, and 60-second `console.error` throttle
+clock — a parse-failure storm never silences an unrelated socket error.
+
+| Kind              | Emitted from                                  | Audit `action`           |
+| ----------------- | --------------------------------------------- | ------------------------ |
+| `ws-construct`    | `new WebSocket(wsUrl)` throws synchronously   | `ws-construct-failed`    |
+| `ws-parse`        | WS `message` frame is not parseable JSON      | `ws-parse-failed`        |
+| `ws-error-event`  | WS socket emits an `error` event              | `ws-error-event`         |
+| `rest-fallback`   | REST-fallback poll inside `setInterval` rejects | `rest-fallback-failed` |
+
+All four lines use `method: 'PRE-CHECK'`, `path: '/market-data/stream'`,
+and run the embedded error message through `maskTokens` so any long
+ID-shaped substring is redacted before it lands in the audit log.
+
+Operators consume the counters via
+`EtoroClient.getSummary().streamFailures` (compact one-liner:
+`ws-construct=N ws-parse=N ws-error=N rest-fallback=N`),
+`MarketDataModule.getStreamFailureCounts()`, or
+`MarketDataModule.getLastStreamError()` for the most recent failure
+snapshot. The reconnect / `ws.close` / REST-poll cadence at the call
+sites is unchanged — only the visibility is new.
+
 ## Demo cap enforcement
 
 `DemoCapEnforcer` consults two limits before any order leaves the SDK:

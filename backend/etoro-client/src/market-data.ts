@@ -1,6 +1,6 @@
 import { AxiosInstance } from 'axios';
 import WebSocket from 'ws';
-import { AUDIT_CONSOLE_THROTTLE_MS, AuditLogger } from './audit-logger';
+import { AUDIT_CONSOLE_THROTTLE_MS, AuditLogger, maskTokens } from './audit-logger';
 import { HttpDispatcher, identityDispatcher } from './rate-limiter';
 import {
   NormalizedQuote,
@@ -21,6 +21,54 @@ const DEFAULT_CONFIG: Required<MarketDataConfig> = {
   wsReconnectDelayMs: 1_000,
   wsReconnectMaxDelayMs: 30_000,
 };
+
+/**
+ * The four streaming-path failure categories the SDK distinguishes for
+ * operator-visible counters and audit-log lines. Each has its own
+ * throttle clock so a parse-failure storm never silences an
+ * unrelated socket error.
+ */
+export type StreamFailureKind =
+  | 'ws-construct'
+  | 'ws-parse'
+  | 'ws-error-event'
+  | 'rest-fallback';
+
+const STREAM_FAILURE_ACTION: Record<StreamFailureKind, string> = {
+  'ws-construct': 'ws-construct-failed',
+  'ws-parse': 'ws-parse-failed',
+  'ws-error-event': 'ws-error-event',
+  'rest-fallback': 'rest-fallback-failed',
+};
+
+export interface StreamErrorSnapshot {
+  kind: StreamFailureKind;
+  message: string;
+  atMs: number;
+}
+
+export function emptyStreamFailureCounts(): Record<StreamFailureKind, number> {
+  return { 'ws-construct': 0, 'ws-parse': 0, 'ws-error-event': 0, 'rest-fallback': 0 };
+}
+
+/**
+ * Compact one-line representation of the four streaming-path failure
+ * counters, used by `EtoroClient.getSummary()`. Accepts `undefined` so a
+ * source that doesn't implement the optional counter getter still
+ * renders as all-zeros without the caller having to assemble the
+ * defaults itself.
+ */
+export function formatStreamFailures(
+  counts: Record<StreamFailureKind, number> | undefined,
+): string {
+  const c = counts ?? emptyStreamFailureCounts();
+  return (
+    `ws-construct=${c['ws-construct']} ` +
+    `ws-parse=${c['ws-parse']} ` +
+    `ws-error=${c['ws-error-event']} ` +
+    `rest-fallback=${c['rest-fallback']}`
+  );
+}
 
 /**
  * Injectable dependencies for `MarketDataModule`. All optional; defaults
@@ -68,6 +116,9 @@ export class MarketDataModule {
   private malformedQuoteCount = 0;
   private lastMalformedKeys: string[] | undefined;
   private lastMalformedConsoleErrorAt = Number.NEGATIVE_INFINITY;
+  private readonly streamFailureCounts = emptyStreamFailureCounts();
+  private readonly streamConsoleErrorAt = new Map<StreamFailureKind, number>();
+  private lastStreamError: StreamErrorSnapshot | undefined;
 
   constructor(http: AxiosInstance, config?: MarketDataConfig, deps?: MarketDataDeps) {
     this.http = http;
@@ -158,6 +209,21 @@ export class MarketDataModule {
     return this.lastMalformedKeys;
   }
 
+  /** Count of failures observed for one streaming-path failure kind. */
+  getStreamFailureCount(kind: StreamFailureKind): number {
+    return this.streamFailureCounts[kind];
+  }
+
+  /** Snapshot of all four streaming-path failure counters. */
+  getStreamFailureCounts(): Record<StreamFailureKind, number> {
+    return { ...this.streamFailureCounts };
+  }
+
+  /** Most recent streaming-path failure across all kinds (undefined if none). */
+  getLastStreamError(): StreamErrorSnapshot | undefined {
+    return this.lastStreamError;
+  }
+
   // --- Candles ---
 
   async getCandles(
@@ -230,7 +296,8 @@ export class MarketDataModule {
 
     try {
       this.ws = new WebSocket(this.config.wsUrl);
-    } catch {
+    } catch (err: unknown) {
+      this.recordStreamFailure('ws-construct', err);
       this.scheduleReconnect();
       return;
     }
@@ -252,7 +319,8 @@ export class MarketDataModule {
       this.scheduleReconnect();
     });
 
-    this.ws.on('error', () => {
+    this.ws.on('error', (err: Error) => {
+      this.recordStreamFailure('ws-error-event', err);
       this.wsConnected = false;
       this.ws?.close();
     });
@@ -304,7 +372,9 @@ export class MarketDataModule {
             try { listener(quote); } catch { /* listener errors don't crash stream */ }
           }
         }
-      } catch { /* REST fallback best-effort */ }
+      } catch (err: unknown) {
+        this.recordStreamFailure('rest-fallback', err);
+      }
     }, this.config.restFallbackIntervalMs);
   }
 
@@ -329,12 +399,7 @@ export class MarketDataModule {
     try {
       parsed = JSON.parse(typeof data === 'string' ? data : data.toString());
     } catch (err: unknown) {
-      this.audit?.log({
-        action: 'ws-message-parse-failed',
-        method: 'PARSE',
-        path: '/market-data/ws',
-        error: err instanceof Error ? err.message : String(err),
-      });
+      this.recordStreamFailure('ws-parse', err);
       return;
     }
     const quotes = Array.isArray(parsed) ? parsed : [parsed];
@@ -382,6 +447,39 @@ export class MarketDataModule {
       currency: pickStr(src, ['currency', 'quoteCurrency']) ?? 'USD',
       stale,
     };
+  }
+
+  /**
+   * Canonical pipeline for every silent-swallow site on the streaming
+   * path. Increments the per-kind counter, captures the masked error
+   * message + timestamp for `getLastStreamError`, audit-logs one
+   * `PRE-CHECK` line per occurrence, and emits a `console.error`
+   * heartbeat throttled to one per `AUDIT_CONSOLE_THROTTLE_MS` per
+   * kind. Reconnect / close / interval behavior at the call site is
+   * unchanged — only operator visibility is added.
+   */
+  private recordStreamFailure(kind: StreamFailureKind, err: unknown): void {
+    const raw = err instanceof Error ? err.message : String(err);
+    const message = maskTokens(raw);
+    const atMs = this.clock();
+
+    this.streamFailureCounts[kind] += 1;
+    this.lastStreamError = { kind, message, atMs };
+
+    this.audit?.log({
+      action: STREAM_FAILURE_ACTION[kind],
+      method: 'PRE-CHECK',
+      path: '/market-data/stream',
+      error: message,
+    });
+
+    const last = this.streamConsoleErrorAt.get(kind) ?? Number.NEGATIVE_INFINITY;
+    if (atMs - last > AUDIT_CONSOLE_THROTTLE_MS) {
+      this.streamConsoleErrorAt.set(kind, atMs);
+      this.consoleErrorImpl(
+        `[etoro-stream] ${kind} failed (n=${this.streamFailureCounts[kind]}): ${message}`,
+      );
+    }
   }
 
   private recordMalformedQuote(src: Record<string, unknown>): void {

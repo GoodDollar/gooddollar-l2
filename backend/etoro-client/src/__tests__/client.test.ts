@@ -190,6 +190,27 @@ describe('EtoroClient — getSummary.consecutiveThrottles', () => {
   });
 });
 
+describe('EtoroClient — getSummary.streamFailures', () => {
+  it('reports all-zero counters on a fresh client (demo and mock modes)', () => {
+    const demo = new EtoroClient({ credentials: DEMO_CREDENTIALS });
+    expect(demo.getSummary().streamFailures).toBe(
+      'ws-construct=0 ws-parse=0 ws-error=0 rest-fallback=0',
+    );
+
+    const mockCreds: EtoroCredentials = {
+      apiKey: 'mock',
+      apiSecret: 'mock',
+      baseUrl: 'mock://etoro.local',
+      wsUrl: 'mock://etoro.local/ws',
+      mode: 'mock',
+    };
+    const mock = new EtoroClient({ credentials: mockCreds });
+    expect(mock.getSummary().streamFailures).toBe(
+      'ws-construct=0 ws-parse=0 ws-error=0 rest-fallback=0',
+    );
+  });
+});
+
 describe('EtoroClient — live-quote wiring through MockEtoroSource', () => {
   const MOCK_CREDENTIALS: EtoroCredentials = {
     apiKey: 'mock-api-key',

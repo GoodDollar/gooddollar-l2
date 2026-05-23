@@ -416,7 +416,9 @@ describe('MarketDataModule', () => {
         if (callCount === 1) return { data: { quotes: [freshQuote('BTC')] } };
         throw new Error('HTTP 500');
       });
-      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 });
+      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 }, {
+        consoleErrorImpl: () => undefined,
+      });
 
       await mod.getQuotes(['BTC']);
       const before = mod.getCachedQuote('BTC');
@@ -429,6 +431,18 @@ describe('MarketDataModule', () => {
 
       expect(cb).toHaveBeenCalledTimes(0);
       expect(mod.getCachedQuote('BTC')).toEqual(before);
+      mod.stopStreaming();
+    });
+
+    it('records rest-fallback failure when getQuotes rejects on a tick', async () => {
+      const get = jest.fn(async () => { throw new Error('HTTP 500'); });
+      const mod = new MarketDataModule(makeStubHttp(get), { restFallbackIntervalMs: 1_000 }, {
+        consoleErrorImpl: () => undefined,
+      });
+      mod.subscribe(['BTC']);
+      mod.startStreaming();
+      await tickFallback(1_000);
+      expect(mod.getStreamFailureCount('rest-fallback')).toBeGreaterThanOrEqual(1);
       mod.stopStreaming();
     });
   });
@@ -537,13 +551,14 @@ describe('MarketDataModule', () => {
     it('audits unparseable WS frames instead of silently swallowing them', () => {
       const { audit, entries } = recordingAudit();
       const http = { get: jest.fn() } as unknown as AxiosInstance;
-      const mod = new MarketDataModule(http, undefined, { audit });
+      const mod = new MarketDataModule(http, undefined, { audit, consoleErrorImpl: () => undefined });
 
       mod.handleWsMessage('not-json');
 
-      const parseErrors = entries.filter((e) => e.action === 'ws-message-parse-failed');
+      const parseErrors = entries.filter((e) => e.action === 'ws-parse-failed');
       expect(parseErrors).toHaveLength(1);
-      expect(parseErrors[0].method).toBe('PARSE');
+      expect(parseErrors[0].method).toBe('PRE-CHECK');
+      expect(mod.getStreamFailureCount('ws-parse')).toBe(1);
     });
 
     it('getQuotes absorbs a 429 via the injected dispatcher and resolves', async () => {
@@ -572,7 +587,7 @@ describe('MarketDataModule', () => {
       expect(n).toBe(2);
     });
 
-    it('throttles console.error to one per AUDIT_CONSOLE_THROTTLE_MS window across many drops', () => {
+    it('throttles console.error to one per AUDIT_CONSOLE_THROTTLE_MS window across many drops (malformed quote)', () => {
       let now = 1_700_000_000_000;
       const consoleErrorImpl = jest.fn();
       const http = { get: jest.fn() } as unknown as AxiosInstance;
@@ -643,5 +658,130 @@ describe('detectUSMarketSession', () => {
 
   it('returns closed at 3:00 ET on a weekday (before pre-market)', () => {
     expect(detectUSMarketSession(etDate(3, 0, 2))).toBe('closed');
+  });
+});
+
+describe('MarketDataModule — stream-failure visibility', () => {
+  function recordingAudit(): { audit: AuditLogger; entries: AuditLogEntry[] } {
+    const entries: AuditLogEntry[] = [];
+    const mode: EtoroMode = 'demo-readonly';
+    const audit = new AuditLogger(mode, {
+      logPath: '/dev/null',
+      appendImpl: (_p, line) => { entries.push(JSON.parse(line) as AuditLogEntry); },
+      mkdirImpl: () => undefined,
+      consoleErrorImpl: () => undefined,
+    });
+    return { audit, entries };
+  }
+
+  function makeModule(deps: Partial<MarketDataDeps> = {}): {
+    mod: MarketDataModule;
+    audit: AuditLogger;
+    entries: AuditLogEntry[];
+    consoleErrorImpl: jest.Mock;
+  } {
+    const { audit, entries } = recordingAudit();
+    const consoleErrorImpl = jest.fn();
+    const http = { get: jest.fn() } as unknown as AxiosInstance;
+    const mod = new MarketDataModule(http, undefined, {
+      audit,
+      consoleErrorImpl,
+      ...deps,
+    });
+    return { mod, audit, entries, consoleErrorImpl };
+  }
+
+  it('starts with all four counters at zero and no lastStreamError', () => {
+    const { mod } = makeModule();
+    expect(mod.getStreamFailureCounts()).toEqual({
+      'ws-construct': 0,
+      'ws-parse': 0,
+      'ws-error-event': 0,
+      'rest-fallback': 0,
+    });
+    expect(mod.getLastStreamError()).toBeUndefined();
+  });
+
+  it('ws-parse: a non-JSON frame increments ws-parse and audits one PRE-CHECK line', () => {
+    const { mod, entries } = makeModule();
+    mod.handleWsMessage('not-json');
+    expect(mod.getStreamFailureCount('ws-parse')).toBe(1);
+    const snap = mod.getLastStreamError();
+    expect(snap?.kind).toBe('ws-parse');
+    const lines = entries.filter((e) => e.action === 'ws-parse-failed');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].method).toBe('PRE-CHECK');
+    expect(lines[0].path).toBe('/market-data/stream');
+  });
+
+  it('per-kind throttle: 10 ws-parse failures in 60s emit 1 console.error; an unrelated kind emits its own', () => {
+    let now = 1_700_000_000_000;
+    const { mod, consoleErrorImpl } = makeModule({ clock: () => now });
+
+    for (let i = 0; i < 10; i++) {
+      now += 1_000;
+      mod.handleWsMessage('not-json');
+    }
+    expect(mod.getStreamFailureCount('ws-parse')).toBe(10);
+    expect(consoleErrorImpl).toHaveBeenCalledTimes(1);
+
+    // A different kind in the same window still fires its own heartbeat.
+    now += 1_000;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mod as unknown as { recordStreamFailure: (k: string, e: Error) => void })
+      .recordStreamFailure('ws-error-event', new Error('socket reset'));
+    expect(consoleErrorImpl).toHaveBeenCalledTimes(2);
+
+    // After the throttle window elapses, ws-parse fires again.
+    now += AUDIT_CONSOLE_THROTTLE_MS + 1;
+    mod.handleWsMessage('still-not-json');
+    expect(consoleErrorImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('masks long token-shaped substrings in the recorded error string', () => {
+    const { mod, entries } = makeModule();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mod as unknown as { recordStreamFailure: (k: string, e: Error) => void })
+      .recordStreamFailure('rest-fallback', new Error('boom AKIA_thisisalongsecret123 boom'));
+    const lines = entries.filter((e) => e.action === 'rest-fallback-failed');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].error).toContain('[REDACTED]');
+    expect(lines[0].error).not.toContain('AKIA_thisisalongsecret123');
+  });
+
+  it('ws-construct: a WebSocket constructor that throws synchronously increments the counter and audits one PRE-CHECK line', () => {
+    jest.isolateModules(() => {
+      jest.doMock('ws', () => {
+        return {
+          __esModule: true,
+          default: jest.fn(() => { throw new Error('boom'); }),
+          OPEN: 1,
+        };
+      });
+
+      const { MarketDataModule: MD } = require('../market-data') as typeof import('../market-data');
+      const { AuditLogger: AL } = require('../audit-logger') as typeof import('../audit-logger');
+
+      const entries: AuditLogEntry[] = [];
+      const audit = new AL('demo-readonly', {
+        logPath: '/dev/null',
+        appendImpl: (_p: string, line: string) => { entries.push(JSON.parse(line) as AuditLogEntry); },
+        mkdirImpl: () => undefined,
+        consoleErrorImpl: () => undefined,
+      });
+      const http = { get: jest.fn() } as unknown as AxiosInstance;
+      const mod = new MD(http, { wsUrl: 'ws://x' }, { audit, consoleErrorImpl: () => undefined });
+
+      mod.startStreaming();
+      try {
+        expect(mod.getStreamFailureCount('ws-construct')).toBe(1);
+        const lines = entries.filter((e) => e.action === 'ws-construct-failed');
+        expect(lines).toHaveLength(1);
+        expect(lines[0].method).toBe('PRE-CHECK');
+        expect(lines[0].path).toBe('/market-data/stream');
+      } finally {
+        mod.stopStreaming();
+      }
+    });
   });
 });

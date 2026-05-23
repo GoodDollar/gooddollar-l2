@@ -8,7 +8,11 @@ import {
 } from './auth';
 import { HttpDispatcher, RateLimiter, RateLimiterConfig } from './rate-limiter';
 import { AuditLogger } from './audit-logger';
-import { MarketDataModule } from './market-data';
+import {
+  MarketDataModule,
+  StreamFailureKind,
+  formatStreamFailures,
+} from './market-data';
 import { TradingModule } from './trading';
 import { AccountModule } from './account';
 import { DemoCapEnforcer } from './cap-enforcer';
@@ -47,6 +51,13 @@ export interface EtoroMarketDataSource {
    * defaults to `0` when absent.
    */
   getMalformedQuoteCount?(): number;
+  /**
+   * Per-kind counters for streaming-path silent failures (WS construct,
+   * WS parse, WS error events, REST fallback). Optional so mock-mode
+   * sources without a real WS/REST surface can omit it; `getSummary`
+   * defaults to all-zeros.
+   */
+  getStreamFailureCounts?(): Record<StreamFailureKind, number>;
 }
 
 export interface EtoroClientConstructorConfig
@@ -243,6 +254,7 @@ export class EtoroClient {
       auditWriteFailures: String(this.audit.getWriteFailureCount()),
       malformedQuotes: String(this.marketData.getMalformedQuoteCount?.() ?? 0),
       consecutiveThrottles: String(this.rateLimiter.getConsecutiveThrottles()),
+      streamFailures: formatStreamFailures(this.marketData.getStreamFailureCounts?.()),
     };
   }
 
@@ -298,6 +310,7 @@ export {
 export type { HttpDispatcher, RetryTelemetry } from './rate-limiter';
 export { AuditLogger } from './audit-logger';
 export { MarketDataModule, computeConfidence } from './market-data';
+export type { StreamFailureKind, StreamErrorSnapshot, MarketDataDeps } from './market-data';
 export { TradingModule, TradingError } from './trading';
 export { AccountModule } from './account';
 export { DemoCapEnforcer, computeOrderNotionalUsd } from './cap-enforcer';

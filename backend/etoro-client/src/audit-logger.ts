@@ -84,7 +84,12 @@ export interface AuditLoggerOptions {
 
 const KEY_LIKE_TOKEN = /[A-Za-z0-9_-]{16,}/g;
 
-function maskTokens(message: string): string {
+/**
+ * Replace any sequence of 16+ alphanumeric/underscore/dash characters with
+ * `[REDACTED]`. Used wherever the SDK records a free-form error message
+ * that might embed an API key or similar secret-shaped token.
+ */
+export function maskTokens(message: string): string {
   return message.replace(KEY_LIKE_TOKEN, '[REDACTED]');
 }
 
