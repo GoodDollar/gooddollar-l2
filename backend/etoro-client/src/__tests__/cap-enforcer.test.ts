@@ -67,12 +67,20 @@ describe('computeOrderNotionalUsd', () => {
     expect(computeOrderNotionalUsd({ price: 100, amount: 5 })).toBe(500);
   });
 
-  it('falls back to amount as USD-stake when price is missing', () => {
-    expect(computeOrderNotionalUsd({ amount: 250 })).toBe(250);
+  it('returns null when price is missing (no more amount-as-USD fallback)', () => {
+    expect(computeOrderNotionalUsd({ amount: 250 })).toBeNull();
   });
 
-  it('returns 0 for zero or negative amounts', () => {
-    expect(computeOrderNotionalUsd({ amount: 0 })).toBe(0);
-    expect(computeOrderNotionalUsd({ amount: -10 })).toBe(0);
+  it('returns null when price is non-positive or non-finite', () => {
+    expect(computeOrderNotionalUsd({ price: 0, amount: 5 })).toBeNull();
+    expect(computeOrderNotionalUsd({ price: -10, amount: 5 })).toBeNull();
+    expect(computeOrderNotionalUsd({ price: NaN, amount: 5 })).toBeNull();
+  });
+
+  it('returns null for zero or negative amounts even when price is positive', () => {
+    expect(computeOrderNotionalUsd({ price: 100, amount: 0 })).toBeNull();
+    expect(computeOrderNotionalUsd({ price: 100, amount: -1 })).toBeNull();
+    expect(computeOrderNotionalUsd({ amount: 0 })).toBeNull();
+    expect(computeOrderNotionalUsd({ amount: -10 })).toBeNull();
   });
 });

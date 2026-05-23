@@ -162,4 +162,18 @@ export interface AuditLogEntry {
   statusCode?: number;
   durationMs?: number;
   error?: string;
+  /** Resolved USD notional captured at cap-check time (trading actions only). */
+  resolvedNotionalUsd?: number;
+  /** Where the resolved notional came from. */
+  notionalSource?: 'sizer' | 'limit-price' | 'reference';
+  /** Resolved mode label emitted once at EtoroClient construction. */
+  resolvedMode?: EtoroMode;
+  /** Whether the mode was resolved from env or set explicitly. */
+  modeSource?: 'env' | 'explicit';
+  /** Resolved per-order cap (USD) recorded at construction. */
+  capOrderUsd?: number;
+  /** Resolved daily cap (USD) recorded at construction. */
+  capDailyUsd?: number;
+  /** Symbols whose instrument overrides were applied at construction. */
+  instrumentOverridesApplied?: string[];
 }

@@ -17,16 +17,27 @@ function mockAudit(mode: EtoroMode = 'demo-trading') {
   return new AuditLogger(mode, '/dev/null');
 }
 
-function tradingFor(mode: EtoroMode, opts: { capEnforcer?: DemoCapEnforcer; notionalSizer?: (o: OrderRequest) => number } = {}) {
+function tradingFor(
+  mode: EtoroMode,
+  opts: {
+    capEnforcer?: DemoCapEnforcer;
+    notionalSizer?: (o: OrderRequest) => number;
+    symbolReferencePriceUsd?: (s: string) => number | undefined;
+  } = {},
+) {
   const http = mockHttp();
   const audit = mockAudit(mode);
   const trading = new TradingModule(http, audit, {
     mode,
     capEnforcer: opts.capEnforcer,
     notionalSizer: opts.notionalSizer,
+    symbolReferencePriceUsd: opts.symbolReferencePriceUsd,
   });
   return { http, audit, trading };
 }
+
+/** Default sizer for tests: treat `amount` as USD-stake (legacy behavior in test setups). */
+const amountAsUsd = (o: OrderRequest): number => o.amount;
 
 describe('TradingModule — RealTradingDisabledError fence', () => {
   const NON_TRADING_MODES: EtoroMode[] = ['mock', 'demo-readonly', 'real-disabled'];
@@ -76,7 +87,7 @@ describe('TradingModule — RealTradingDisabledError fence', () => {
   }
 
   it('does NOT throw RealTradingDisabledError in demo-trading happy path', async () => {
-    const { http, trading } = tradingFor('demo-trading');
+    const { http, trading } = tradingFor('demo-trading', { notionalSizer: amountAsUsd });
     http.post = jest.fn().mockResolvedValue({
       status: 200,
       data: { orderId: 'ORD', symbol: 'AAPL', side: 'buy', amount: 1, status: 'filled' },
@@ -94,14 +105,17 @@ describe('TradingModule — RealTradingDisabledError fence', () => {
 describe('TradingModule — DemoCapExceededError', () => {
   it('throws when single order exceeds MAX_DEMO_ORDER_NOTIONAL_USD', async () => {
     const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100, maxDailyNotionalUsd: 10_000 });
-    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    const { http, trading } = tradingFor('demo-trading', {
+      capEnforcer: cap,
+      notionalSizer: amountAsUsd,
+    });
     http.post = jest.fn();
 
     await expect(trading.openPosition({
       symbol: 'AAPL',
       instrumentId: 'AAPL-US',
       side: 'buy',
-      amount: 200, // notional in USD-as-stake mode
+      amount: 200, // notionalSizer treats this as USD-as-stake
     })).rejects.toBeInstanceOf(DemoCapExceededError);
 
     expect(http.post).not.toHaveBeenCalled();
@@ -109,7 +123,10 @@ describe('TradingModule — DemoCapExceededError', () => {
 
   it('throws when daily total would exceed MAX_DAILY_DEMO_NOTIONAL_USD', async () => {
     const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 1_000, maxDailyNotionalUsd: 1_500 });
-    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    const { http, trading } = tradingFor('demo-trading', {
+      capEnforcer: cap,
+      notionalSizer: amountAsUsd,
+    });
     http.post = jest.fn().mockResolvedValue({
       status: 200,
       data: { orderId: 'ORD', symbol: 'AAPL', side: 'buy', amount: 1, status: 'filled' },
@@ -125,7 +142,10 @@ describe('TradingModule — DemoCapExceededError', () => {
 
   it('does not record a cap when the HTTP call fails', async () => {
     const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 1_000, maxDailyNotionalUsd: 10_000 });
-    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    const { http, trading } = tradingFor('demo-trading', {
+      capEnforcer: cap,
+      notionalSizer: amountAsUsd,
+    });
     http.post = jest.fn().mockRejectedValue(new Error('500'));
     await expect(trading.openPosition({
       symbol: 'AAPL', instrumentId: 'AAPL-US', side: 'buy', amount: 500,
@@ -134,12 +154,158 @@ describe('TradingModule — DemoCapExceededError', () => {
   });
 });
 
+describe('TradingModule — market-order notional resolution (cap-bypass fix)', () => {
+  const BTC_REF = 60_000;
+  const refs: Record<string, number> = { BTC: BTC_REF, AAPL: 190 };
+  const symbolRef = (s: string) => refs[s];
+
+  it('blocks a 0.1 BTC market order via symbolReferencePriceUsd (≈ $6,000 > $1,000 cap)', async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 1_000, maxDailyNotionalUsd: 10_000 });
+    const { http, trading } = tradingFor('demo-trading', {
+      capEnforcer: cap,
+      symbolReferencePriceUsd: symbolRef,
+    });
+    http.post = jest.fn();
+
+    await expect(trading.openPosition({
+      symbol: 'BTC',
+      instrumentId: 'ETORO-BTC',
+      side: 'buy',
+      amount: 0.1,
+    })).rejects.toBeInstanceOf(DemoCapExceededError);
+    expect(http.post).not.toHaveBeenCalled();
+  });
+
+  it('accepts a 0.01 BTC market order (≈ $600) and records ≈ $600 against the daily total', async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 1_000, maxDailyNotionalUsd: 10_000 });
+    const { http, trading } = tradingFor('demo-trading', {
+      capEnforcer: cap,
+      symbolReferencePriceUsd: symbolRef,
+    });
+    http.post = jest.fn().mockResolvedValue({
+      status: 200,
+      data: { orderId: 'ORD-X', symbol: 'BTC', side: 'buy', amount: 0.01, status: 'filled' },
+    });
+
+    await trading.openPosition({
+      symbol: 'BTC',
+      instrumentId: 'ETORO-BTC',
+      side: 'buy',
+      amount: 0.01,
+    });
+
+    expect(cap.getDailyTotalUsd()).toBeCloseTo(600, 5);
+  });
+
+  it('placeLimitOrder unchanged: price * amount = $2,000 for AAPL', async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 5_000, maxDailyNotionalUsd: 10_000 });
+    const { http, trading } = tradingFor('demo-trading', {
+      capEnforcer: cap,
+      symbolReferencePriceUsd: symbolRef,
+    });
+    http.post = jest.fn().mockResolvedValue({
+      status: 200,
+      data: { orderId: 'ORD-LIM', symbol: 'AAPL', side: 'buy', amount: 10, status: 'pending' },
+    });
+
+    await trading.placeLimitOrder({
+      symbol: 'AAPL',
+      instrumentId: 'AAPL-US',
+      side: 'buy',
+      amount: 10,
+      price: 200,
+      type: 'limit',
+    });
+
+    expect(cap.getDailyTotalUsd()).toBe(2_000);
+  });
+
+  it('throws MissingNotionalError for unknown symbols with no sizer or reference price', async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 1_000, maxDailyNotionalUsd: 10_000 });
+    const { http, trading } = tradingFor('demo-trading', { capEnforcer: cap });
+    http.post = jest.fn();
+
+    const { MissingNotionalError } = await import('../errors');
+    await expect(trading.openPosition({
+      symbol: 'UNKNOWN-XYZ',
+      instrumentId: 'XYZ',
+      side: 'buy',
+      amount: 1,
+    })).rejects.toBeInstanceOf(MissingNotionalError);
+    expect(http.post).not.toHaveBeenCalled();
+  });
+
+  it('notionalSizer wins over reference price when both available', async () => {
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100_000, maxDailyNotionalUsd: 1_000_000 });
+    const { http, trading } = tradingFor('demo-trading', {
+      capEnforcer: cap,
+      notionalSizer: () => 42,
+      symbolReferencePriceUsd: symbolRef,
+    });
+    http.post = jest.fn().mockResolvedValue({
+      status: 200,
+      data: { orderId: 'ORD-S', symbol: 'BTC', side: 'buy', amount: 0.01, status: 'filled' },
+    });
+
+    await trading.openPosition({
+      symbol: 'BTC',
+      instrumentId: 'ETORO-BTC',
+      side: 'buy',
+      amount: 0.01,
+    });
+
+    expect(cap.getDailyTotalUsd()).toBe(42);
+  });
+});
+
+describe('MissingNotionalError export', () => {
+  it('is exported from @goodchain/etoro-client', async () => {
+    const mod = await import('../index');
+    expect(mod.MissingNotionalError).toBeDefined();
+    const err = new mod.MissingNotionalError({ symbol: 'BTC', attemptedAmount: 1, reason: 'test' });
+    expect(err.name).toBe('MissingNotionalError');
+    expect(err.symbol).toBe('BTC');
+  });
+});
+
+describe('TradingModule — audit-log resolvedNotionalUsd + notionalSource', () => {
+  it('records resolved USD notional and source on successful openPosition', async () => {
+    const writes: string[] = [];
+    const fsMock = jest.requireMock('fs') as { appendFileSync: jest.Mock };
+    fsMock.appendFileSync.mockImplementation((_p: string, line: string) => { writes.push(line); });
+
+    const http = mockHttp();
+    const audit = new AuditLogger('demo-trading', '/dev/null');
+    const cap = new DemoCapEnforcer({ maxOrderNotionalUsd: 100_000, maxDailyNotionalUsd: 1_000_000 });
+    const trading = new TradingModule(http, audit, {
+      mode: 'demo-trading',
+      capEnforcer: cap,
+      symbolReferencePriceUsd: () => 60_000,
+    });
+    http.post = jest.fn().mockResolvedValue({
+      status: 200,
+      data: { orderId: 'O', symbol: 'BTC', side: 'buy', amount: 0.01, status: 'filled' },
+    });
+
+    await trading.openPosition({
+      symbol: 'BTC', instrumentId: 'ETORO-BTC', side: 'buy', amount: 0.01,
+    });
+
+    const openLine = writes
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+      .find((e) => e.action === 'openPosition' && e.method === 'POST');
+    expect(openLine).toBeDefined();
+    expect(openLine?.resolvedNotionalUsd).toBeCloseTo(600, 5);
+    expect(openLine?.notionalSource).toBe('reference');
+  });
+});
+
 describe('TradingModule — happy paths (demo-trading)', () => {
   let http: ReturnType<typeof mockHttp>;
   let trading: TradingModule;
 
   beforeEach(() => {
-    const built = tradingFor('demo-trading');
+    const built = tradingFor('demo-trading', { notionalSizer: amountAsUsd });
     http = built.http;
     trading = built.trading;
   });

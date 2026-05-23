@@ -52,3 +52,34 @@ export class DemoCapExceededError extends Error {
     this.currentDailyTotalUsd = input.currentDailyTotalUsd;
   }
 }
+
+/**
+ * Thrown by `TradingModule` when the USD notional of a market order cannot
+ * be resolved. Market orders never carry a `price`, so the SDK needs either
+ * an injected `notionalSizer`, an `INSTRUMENT_MAP.referencePriceUsd` via the
+ * `symbolReferencePriceUsd` hook, or an explicit limit-order `price`. When
+ * none are available we refuse the order rather than letting the cap math
+ * silently treat a unit count as a USD figure.
+ */
+export class MissingNotionalError extends Error {
+  readonly symbol: string;
+  readonly attemptedAmount: number;
+  readonly reason: string;
+
+  constructor(input: {
+    symbol: string;
+    attemptedAmount: number;
+    reason: string;
+  }) {
+    super(
+      `Cannot resolve USD notional for order on symbol "${input.symbol}" ` +
+      `(amount=${input.attemptedAmount}): ${input.reason}. ` +
+      `Provide a limit-order price, a notionalSizer, or a ` +
+      `symbolReferencePriceUsd hook with a reference price for the symbol.`,
+    );
+    this.name = 'MissingNotionalError';
+    this.symbol = input.symbol;
+    this.attemptedAmount = input.attemptedAmount;
+    this.reason = input.reason;
+  }
+}

@@ -12,6 +12,11 @@ import { MarketDataModule } from './market-data';
 import { TradingModule } from './trading';
 import { AccountModule } from './account';
 import { DemoCapEnforcer } from './cap-enforcer';
+import {
+  INSTRUMENT_MAP,
+  applyInstrumentOverrides,
+  loadInstrumentOverrides,
+} from './instruments';
 import { MockEtoroSource } from './mock-source';
 import {
   DemoCapConfig,
@@ -83,9 +88,18 @@ export class EtoroClient {
       this.marketData = new MarketDataModule(this.http, mdConfig);
     }
 
+    const mergedInstruments = applyInstrumentOverrides(
+      INSTRUMENT_MAP,
+      loadInstrumentOverrides(),
+    );
+
     this.trading = new TradingModule(this.http, this.audit, {
       mode: this.credentials.mode,
       capEnforcer: this.capEnforcer,
+      symbolReferencePriceUsd: (symbol) => {
+        const sym = symbol as keyof typeof mergedInstruments;
+        return mergedInstruments[sym]?.referencePriceUsd;
+      },
     });
     this.account = new AccountModule(this.http, this.audit);
   }
@@ -223,5 +237,6 @@ export type { LaneSymbol, LaneInstrument, InstrumentOverrides } from './instrume
 export {
   RealTradingDisabledError,
   DemoCapExceededError,
+  MissingNotionalError,
 } from './errors';
 export type * from './types';

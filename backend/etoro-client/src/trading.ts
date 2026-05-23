@@ -2,8 +2,20 @@ import { AxiosInstance } from 'axios';
 import { AuditLogger } from './audit-logger';
 import { REAL_TRADING_ENABLED } from './auth';
 import { DemoCapEnforcer, computeOrderNotionalUsd } from './cap-enforcer';
-import { DemoCapExceededError, RealTradingDisabledError } from './errors';
+import {
+  DemoCapExceededError,
+  MissingNotionalError,
+  RealTradingDisabledError,
+} from './errors';
 import { EtoroMode, OrderRequest, OrderResult, Position } from './types';
+
+/** Source label for the resolved USD notional, recorded in the audit log. */
+export type NotionalSource = 'sizer' | 'limit-price' | 'reference';
+
+export interface ResolvedNotional {
+  usd: number;
+  source: NotionalSource;
+}
 
 export interface LimitOrderRequest extends OrderRequest {
   type: 'limit' | 'stop';
@@ -29,8 +41,21 @@ export interface TradingModuleOptions {
   mode?: EtoroMode;
   /** Optional cap enforcer; when omitted, a no-cap stub is wired for non-`demo-trading` modes. */
   capEnforcer?: DemoCapEnforcer;
-  /** Tradeable last-prices keyed by symbol, used to size notional for `openPosition` requests when `amount` is unit-count. */
+  /**
+   * Highest-priority hook for computing the USD notional. If it returns a
+   * finite positive number it is used directly (escape hatch for callers
+   * that want live oracle prices or pre-computed sizing).
+   */
   notionalSizer?: (order: OrderRequest) => number;
+  /**
+   * Reference-price hook used for market orders when no `notionalSizer`
+   * yields a value and the order does not carry a `price`. Returning
+   * `undefined` for unknown symbols causes the SDK to throw
+   * `MissingNotionalError` instead of silently treating the unit count as
+   * USD. The default `EtoroClient` wires this to the lane's
+   * `INSTRUMENT_MAP.referencePriceUsd`.
+   */
+  symbolReferencePriceUsd?: (symbol: string) => number | undefined;
 }
 
 /**
@@ -46,6 +71,7 @@ export class TradingModule {
   private readonly mode: EtoroMode;
   private readonly capEnforcer?: DemoCapEnforcer;
   private readonly notionalSizer?: (order: OrderRequest) => number;
+  private readonly symbolReferencePriceUsd?: (symbol: string) => number | undefined;
 
   constructor(http: AxiosInstance, audit: AuditLogger, options: TradingModuleOptions = {}) {
     this.http = http;
@@ -53,6 +79,7 @@ export class TradingModule {
     this.mode = options.mode ?? 'mock';
     this.capEnforcer = options.capEnforcer;
     this.notionalSizer = options.notionalSizer;
+    this.symbolReferencePriceUsd = options.symbolReferencePriceUsd;
   }
 
   getMode(): EtoroMode {
@@ -62,7 +89,7 @@ export class TradingModule {
   async openPosition(order: OrderRequest): Promise<OrderResult> {
     this.assertTradingEnabled('openPosition');
     const notional = this.computeNotional(order);
-    this.assertCapOk('openPosition', notional);
+    this.assertCapOk('openPosition', notional.usd);
 
     const start = Date.now();
     try {
@@ -80,13 +107,15 @@ export class TradingModule {
       const data = asRecord(response.data);
       const result = this.normalizeOrderResult(data);
 
-      this.recordCap(notional);
+      this.recordCap(notional.usd);
       this.audit.log({
         action: 'openPosition',
         method: 'POST',
         path: '/trading/orders',
         statusCode: response.status,
         durationMs: Date.now() - start,
+        resolvedNotionalUsd: notional.usd,
+        notionalSource: notional.source,
       });
 
       return result;
@@ -99,7 +128,7 @@ export class TradingModule {
   async placeLimitOrder(order: LimitOrderRequest): Promise<OrderResult> {
     this.assertTradingEnabled('placeLimitOrder');
     const notional = this.computeNotional(order);
-    this.assertCapOk('placeLimitOrder', notional);
+    this.assertCapOk('placeLimitOrder', notional.usd);
 
     const start = Date.now();
     try {
@@ -119,13 +148,15 @@ export class TradingModule {
       const data = asRecord(response.data);
       const result = this.normalizeOrderResult(data);
 
-      this.recordCap(notional);
+      this.recordCap(notional.usd);
       this.audit.log({
         action: 'placeLimitOrder',
         method: 'POST',
         path: '/trading/orders',
         statusCode: response.status,
         durationMs: Date.now() - start,
+        resolvedNotionalUsd: notional.usd,
+        notionalSource: notional.source,
       });
 
       return result;
@@ -312,13 +343,51 @@ export class TradingModule {
     }
   }
 
-  private computeNotional(order: OrderRequest | LimitOrderRequest): number {
+  /**
+   * Resolution order:
+   *   1. `notionalSizer(order)` if it yields a finite positive USD value.
+   *   2. `order.price * order.amount` for limit/stop orders.
+   *   3. `symbolReferencePriceUsd(order.symbol) * order.amount` for market
+   *      orders on known symbols.
+   *   4. Throw `MissingNotionalError` — never silently treat a unit count
+   *      as USD.
+   */
+  private computeNotional(order: OrderRequest | LimitOrderRequest): ResolvedNotional {
     if (this.notionalSizer) {
       const sized = this.notionalSizer(order);
-      if (Number.isFinite(sized) && sized > 0) return sized;
+      if (Number.isFinite(sized) && sized > 0) {
+        return { usd: sized, source: 'sizer' };
+      }
     }
-    const price = 'price' in order && typeof order.price === 'number' ? order.price : undefined;
-    return computeOrderNotionalUsd({ price, amount: order.amount });
+
+    const hasLimitPrice = 'price' in order
+      && typeof order.price === 'number'
+      && Number.isFinite(order.price)
+      && order.price > 0;
+    if (hasLimitPrice) {
+      const usd = computeOrderNotionalUsd({
+        price: (order as LimitOrderRequest).price,
+        amount: order.amount,
+      });
+      if (usd !== null && usd > 0) {
+        return { usd, source: 'limit-price' };
+      }
+    }
+
+    if (this.symbolReferencePriceUsd && Number.isFinite(order.amount) && order.amount > 0) {
+      const ref = this.symbolReferencePriceUsd(order.symbol);
+      if (typeof ref === 'number' && Number.isFinite(ref) && ref > 0) {
+        return { usd: ref * order.amount, source: 'reference' };
+      }
+    }
+
+    throw new MissingNotionalError({
+      symbol: order.symbol,
+      attemptedAmount: order.amount,
+      reason: hasLimitPrice
+        ? 'price * amount produced a non-positive notional'
+        : 'no notionalSizer match, no order.price, and no symbolReferencePriceUsd for the symbol',
+    });
   }
 
   private normalizeOrderResult(data: Record<string, unknown>): OrderResult {
@@ -379,6 +448,7 @@ export class TradingModule {
   private wrapError(error: unknown, action: string): Error {
     if (error instanceof RealTradingDisabledError) return error;
     if (error instanceof DemoCapExceededError) return error;
+    if (error instanceof MissingNotionalError) return error;
     if (error instanceof Error) {
       const axErr = error as { response?: { data?: { errorCode?: string; message?: string } } };
       const code = axErr.response?.data?.errorCode;

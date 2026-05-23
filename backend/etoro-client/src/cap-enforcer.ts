@@ -102,24 +102,22 @@ export class DemoCapEnforcer {
 
 /**
  * Computes the order's notional in USD given a price and amount. The lane
- * SDK treats `amount` as either a unit count (when price is known) or as a
- * USD-denominated stake (when price is 0/missing). When neither is usable,
- * we conservatively return 0 so the caller can decide whether to require a
- * notional explicitly.
+ * SDK treats `amount` as a unit count of the instrument. To convert a unit
+ * count into a USD notional we MUST have a price; without one we return
+ * `null` so the caller can decide whether to throw, look up a reference
+ * price, or use an injected sizer. The previous behavior — falling back to
+ * amount-as-USD — silently bypassed the cap math for market orders on
+ * high-priced instruments (e.g., 0.1 BTC reported as $0.10), which is why
+ * we no longer accept that fallback here.
  */
 export function computeOrderNotionalUsd(input: {
   price?: number;
   amount: number;
-}): number {
+}): number | null {
   const { price, amount } = input;
-  if (typeof price === 'number' && Number.isFinite(price) && price > 0
-    && Number.isFinite(amount) && amount > 0) {
-    return price * amount;
-  }
-  if (Number.isFinite(amount) && amount > 0) {
-    return amount;
-  }
-  return 0;
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) return null;
+  return price * amount;
 }
 
 function utcDayStart(nowMs: number): number {
