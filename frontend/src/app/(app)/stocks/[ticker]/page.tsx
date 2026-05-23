@@ -6,12 +6,13 @@ import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import Link from 'next/link'
-import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
+import { formatStockPrice, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { hasLiveOracleChange } from '@/lib/oracleHonesty'
+import { AnalysisGrid } from '@/components/stocks/AnalysisGrid'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
@@ -799,24 +800,7 @@ export default function StockDetailPage() {
             </div>
             {analysisExpanded && (
               <div className="mt-4 space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Valuation</div>
-                    <div className="mt-1 text-sm font-medium text-white">P/E {stock.peRatio.toFixed(1)}x</div>
-                  </div>
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Profitability</div>
-                    <div className={`mt-1 text-sm font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>EPS ${stock.eps.toFixed(2)}</div>
-                  </div>
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Income</div>
-                    <div className="mt-1 text-sm font-medium text-white">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}% yield` : 'No dividend'}</div>
-                  </div>
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Liquidity</div>
-                    <div className="mt-1 text-sm font-medium text-white">{formatLargeNumber(stock.avgVolume).replace('$', '')} avg vol</div>
-                  </div>
-                </div>
+                <AnalysisGrid stock={stock} />
 
                 <PeerComparePanel peers={peerCandidates} metric={peerMetric} onMetricChange={setPeerMetric} />
 
