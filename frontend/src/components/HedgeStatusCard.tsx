@@ -162,6 +162,11 @@ interface EngineSubLine {
 
 interface EngineState {
   label: EngineStateLabel
+  // Short single-word presentation label rendered inside the stat tile.
+  // Decoupled from `label` so a long-form internal state (e.g. "unreachable",
+  // "awaiting tick") never overflows the ~121-px mobile tile. The header
+  // pill keeps the long-form copy via `resolveEngineStatePill`.
+  statLabel: string
   color: string
   sub: EngineSubLine
 }
@@ -182,24 +187,28 @@ function resolveEngineState(input: {
     case 'ok':
       return {
         label,
+        statLabel: 'ok',
         color: 'text-goodgreen',
         sub: { text: `last tick ${timeAgo(input.snapshot?.timestamp)}` },
       }
     case 'degraded':
       return {
         label,
+        statLabel: 'degraded',
         color: 'text-yellow-400',
         sub: { text: input.breaker?.reason ?? 'degraded', mono: true },
       }
     case 'halted':
       return {
         label,
+        statLabel: 'halted',
         color: 'text-yellow-400',
         sub: { text: 'kill-switch engaged' },
       }
     case 'unreachable':
       return {
         label,
+        statLabel: 'down',
         color: 'text-red-400',
         sub: {
           text: `auto-retry ${Math.round(input.pollIntervalMs / 1000)}s`,
@@ -209,6 +218,7 @@ function resolveEngineState(input: {
     case 'awaiting tick':
       return {
         label,
+        statLabel: 'awaiting',
         color: 'text-gray-400',
         sub: { text: 'warming up' },
       }
@@ -750,7 +760,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             <Stat
               testId="hedge-engine-stat"
               label="Engine"
-              value={engineState.label}
+              value={engineState.statLabel}
               color={engineState.color}
               sub={engineState.sub.text}
               subColor={engineState.sub.color}

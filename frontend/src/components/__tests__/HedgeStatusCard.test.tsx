@@ -457,7 +457,9 @@ describe('HedgeStatusCard', () => {
     const grid = screen.getByTestId('hedge-stat-grid');
     expect(grid).toBeInTheDocument();
     const engineStat = screen.getByTestId('hedge-engine-stat');
-    expect(engineStat).toHaveTextContent('unreachable');
+    // #0028: stat tile uses short "down" label to avoid mobile overflow;
+    // banner + pill keep the long-form "unreachable" copy.
+    expect(engineStat).toHaveTextContent(/^down$/i);
     expect(engineStat.className).toContain('text-red-400');
   });
 
@@ -754,7 +756,7 @@ describe('HedgeStatusCard', () => {
     expect(countdown).toHaveTextContent('7s');
   });
 
-  it('awaiting tick: snapshot null, no error → grid shows ENGINE: awaiting tick in neutral grey', async () => {
+  it('awaiting tick: snapshot null, no error → grid shows ENGINE: awaiting in neutral grey', async () => {
     mockFetchOnce({
       snapshot: null,
       capSnapshot: null,
@@ -765,7 +767,9 @@ describe('HedgeStatusCard', () => {
     });
     render(<HedgeStatusCard />);
     const engineStat = await screen.findByTestId('hedge-engine-stat');
-    expect(engineStat).toHaveTextContent('awaiting tick');
+    // #0028: stat tile uses short single-word labels; long-form
+    // "awaiting tick" copy is reserved for sub-line / pill, not the value.
+    expect(engineStat).toHaveTextContent(/^awaiting$/i);
     expect(engineStat.className).toContain('text-gray-400');
   });
 
@@ -1073,6 +1077,65 @@ describe('HedgeStatusCard', () => {
       const h2 = card.querySelector('h2');
       expect(h2!.textContent).toBe('Demo hedge proof');
       expect(h2!.className.split(/\s+/)).not.toContain('truncate');
+    });
+  });
+
+  describe('engine stat tile uses short label (#0028)', () => {
+    it('engine unreachable: stat tile reads "down" (not "unreachable") in red', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const engineStat = await screen.findByTestId('hedge-engine-stat');
+      expect(engineStat.textContent ?? '').toMatch(/^\s*down\s*$/i);
+      expect(engineStat.textContent ?? '').not.toMatch(/unreachable/i);
+      expect(engineStat.className).toContain('text-red-400');
+    });
+
+    it('engine ok: stat tile still reads "ok"', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const engineStat = await screen.findByTestId('hedge-engine-stat');
+      expect(engineStat.textContent ?? '').toMatch(/^\s*ok\s*$/i);
+    });
+
+    it('kill switch engaged: stat tile still reads "halted"', async () => {
+      mockFetchOnce({ ...BASE_RESPONSE, killSwitchEngaged: true });
+      render(<HedgeStatusCard />);
+      const engineStat = await screen.findByTestId('hedge-engine-stat');
+      expect(engineStat.textContent ?? '').toMatch(/^\s*halted\s*$/i);
+    });
+
+    it('breaker tripped: stat tile still reads "degraded"', async () => {
+      mockFetchOnce({
+        ...BASE_RESPONSE,
+        breakerState: { tripped: true, reason: 'exposure_stale' },
+      });
+      render(<HedgeStatusCard />);
+      const engineStat = await screen.findByTestId('hedge-engine-stat');
+      expect(engineStat.textContent ?? '').toMatch(/^\s*degraded\s*$/i);
+    });
+
+    it('awaiting tick: stat tile reads short "awaiting" (no second word)', async () => {
+      mockFetchOnce({
+        snapshot: null,
+        capSnapshot: null,
+        breakerState: null,
+        killSwitchEngaged: false,
+        receipts: [],
+        proof: null,
+      });
+      render(<HedgeStatusCard />);
+      const engineStat = await screen.findByTestId('hedge-engine-stat');
+      expect(engineStat.textContent ?? '').toMatch(/^\s*awaiting\s*$/i);
+      expect(engineStat.textContent ?? '').not.toMatch(/awaiting tick/i);
     });
   });
 
