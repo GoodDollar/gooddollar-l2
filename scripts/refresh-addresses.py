@@ -222,6 +222,12 @@ def serialize_addresses_env(
             continue
         lines.append(f"# source: {sources.get(sym, '?')}")
         lines.append(f"{sym}={addr}")
+
+    # Add STABLE_WETH alias for integration tests (should match WETH)
+    if "WETH" in resolved:
+        lines.append("# source: alias for WETH (integration test compatibility)")
+        lines.append(f"STABLE_WETH={resolved['WETH']}")
+
     lines.append("")
     return "\n".join(lines)
 
@@ -435,6 +441,13 @@ def main() -> int:
 # only entries (e.g. POOL_*, STABLE_WETH, G_GDT) are intentionally excluded.
 _SYMBOL_TO_CONTRACT_NAME: dict[str, str] = {sym: cn for cn, sym in SYMBOL_MAP.items()}
 
+# Backward-compatible JSON aliases whose historical keys differ from the
+# broadcast contract name. ``DeployGoodStocks.s.sol`` emits ``PriceOracle``;
+# existing backend/frontend consumers may still read ``StocksPriceOracle``.
+_JSON_CONTRACT_ALIASES: dict[str, list[str]] = {
+    "PriceOracle": ["StocksPriceOracle"],
+}
+
 
 def serialize_op_stack_addresses(
     json_path: Path,
@@ -494,15 +507,16 @@ def serialize_op_stack_addresses(
         cn = _SYMBOL_TO_CONTRACT_NAME.get(sym)
         if not cn:
             continue
-        prev = contracts.get(cn)
-        if prev is None:
-            contracts[cn] = addr
-            added += 1
-        elif (prev or "").lower() != addr.lower():
-            contracts[cn] = addr
-            overwritten += 1
-        # else: already matches — leave existing casing untouched so the
-        # file stays byte-identical run-to-run.
+        for json_key in [cn, *_JSON_CONTRACT_ALIASES.get(cn, [])]:
+            prev = contracts.get(json_key)
+            if prev is None:
+                contracts[json_key] = addr
+                added += 1
+            elif (prev or "").lower() != addr.lower():
+                contracts[json_key] = addr
+                overwritten += 1
+            # else: already matches — leave existing casing untouched so the
+            # file stays byte-identical run-to-run.
 
     if added or overwritten:
         data["_comment"] = (

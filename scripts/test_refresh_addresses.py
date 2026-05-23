@@ -341,6 +341,35 @@ class SerializeOpStackAddressesTests(unittest.TestCase):
             data = json.loads(text)
             self.assertEqual(data["_comment"], original_comment)
 
+    def test_price_oracle_updates_stocks_price_oracle_alias(self) -> None:
+        """DeployGoodStocks emits PriceOracle, but legacy JSON consumers read
+        StocksPriceOracle; both keys must stay in sync."""
+        new = "0xBbbBBBbbBbbbBbbBbBBBBbBBbbBBbBBbBbbBBbBb"
+        old = "0xAaaaaaAAaaAaaAAaAaaAaAaAAaAAAaaAAAaaAAAa"
+        with tempfile.TemporaryDirectory() as td:
+            p = self._write_json(
+                Path(td),
+                {
+                    "chain_id": 42069,
+                    "contracts": {
+                        "PriceOracle": old,
+                        "StocksPriceOracle": old,
+                    },
+                },
+            )
+            text, added, overwritten = refresh.serialize_op_stack_addresses(
+                p,
+                {"PRICE_ORACLE_ADDRESS": new},
+                "http://rpc",
+                42069,
+                "2026-05-17T00:00:00Z",
+            )
+            self.assertIsNotNone(text)
+            self.assertEqual((added, overwritten), (0, 2))
+            data = json.loads(text)
+            self.assertEqual(data["contracts"]["PriceOracle"], new)
+            self.assertEqual(data["contracts"]["StocksPriceOracle"], new)
+
 
 class CheckNoStaleAddressesTests(unittest.TestCase):
     """Tests for the pure helpers in scripts/check_no_stale_addresses.py."""
