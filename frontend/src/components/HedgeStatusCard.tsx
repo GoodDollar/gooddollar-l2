@@ -15,7 +15,6 @@ import { buildHedgeErrorHeadline } from '@/lib/hedge-error'
 import {
   AlertTriangleIcon,
   ArrowPathIcon,
-  CloudOffIcon,
   InboxIcon,
 } from './HedgeStatusCard/icons'
 
@@ -261,25 +260,25 @@ function EmptyReceiptsState({
   error,
   hasSnapshot,
   degradedReceipts,
-  pollIntervalMs,
 }: {
   error: string | null
   hasSnapshot: boolean
   degradedReceipts: string | undefined
-  pollIntervalMs: number
 }) {
   if (error && !hasSnapshot) {
+    // When the top error banner already carries the canonical
+    // "Hedge engine unreachable / retrying" copy, this empty state
+    // reverts to its functional "no receipts" role so the card does not
+    // shout the same incident twice. The 28-px icon + headline/sub
+    // structure from #0025 is preserved.
     return (
       <div
         data-testid="hedge-receipts-empty"
-        className={`${EMPTY_RECEIPTS_BASE_CLASS} text-red-300`}
+        className={`${EMPTY_RECEIPTS_BASE_CLASS} text-gray-500`}
       >
-        <CloudOffIcon size={28} />
-        <div className="font-medium text-sm">Hedge engine unreachable</div>
-        <div className="text-red-300/80">
-          No receipts available. Retrying every{' '}
-          {Math.round(pollIntervalMs / 1000)}s.
-        </div>
+        <InboxIcon size={28} />
+        <div className="font-medium text-sm text-gray-300">No receipts to show</div>
+        <div>Engine offline (see banner above).</div>
       </div>
     )
   }
@@ -790,7 +789,6 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             error={error}
             hasSnapshot={hasSnapshot}
             degradedReceipts={data?.degraded?.receipts}
-            pollIntervalMs={POLL_INTERVAL_MS}
           />
         ) : (
           <table className="w-full text-sm">

@@ -176,7 +176,11 @@ describe('HedgeStatusCard', () => {
     expect(empty).toHaveTextContent(/appear here/i);
   });
 
-  it('receipts empty state honestly says "engine unreachable" when there is an error and no snapshot (#0019)', async () => {
+  it('receipts empty state demotes its message when the error banner already shouts it (#0019 / #0030)', async () => {
+    // After #0030 the empty state no longer repeats "Hedge engine unreachable"
+    // or "Retrying every Ns" — those phrases live only in the top error
+    // banner. The empty state reverts to its functional "no receipts" role
+    // with a soft reference back to the banner.
     mockFetchOnce(
       {
         error: 'Hedge engine unreachable',
@@ -188,8 +192,11 @@ describe('HedgeStatusCard', () => {
     );
     render(<HedgeStatusCard />);
     const empty = await screen.findByTestId('hedge-receipts-empty');
-    expect(empty).toHaveTextContent(/engine unreachable/i);
+    expect(empty).not.toHaveTextContent(/Hedge engine unreachable/i);
+    expect(empty).not.toHaveTextContent(/Retrying every \d+s/i);
     expect(empty).not.toHaveTextContent(/No hedge activity yet/i);
+    expect(empty.textContent ?? '').toMatch(/no receipts to show/i);
+    expect(empty.textContent?.toLowerCase() ?? '').toContain('engine offline');
   });
 
   it('receipts empty state surfaces the degraded reason when receipts source is degraded (#0019)', async () => {
@@ -838,7 +845,11 @@ describe('HedgeStatusCard', () => {
   });
 
   describe('receipts panel reserved height + centered empty state (#0025)', () => {
-    it('empty state engine-down: 28px icon, headline + sub line, red color', async () => {
+    it('empty state engine-down: 28px icon + calm grey demoted copy (#0030)', async () => {
+      // #0030 demotes this empty state because the top error banner already
+      // carries the canonical "Hedge engine unreachable" / "Retrying every
+      // 10s" copy. The 28px icon and reserved-height structure from #0025
+      // stay; only the colour and copy soften.
       mockFetchOnce(
         {
           error: 'Hedge engine unreachable',
@@ -851,13 +862,15 @@ describe('HedgeStatusCard', () => {
       );
       render(<HedgeStatusCard />);
       const empty = await screen.findByTestId('hedge-receipts-empty');
-      expect(empty.textContent).toMatch(/Hedge engine unreachable/i);
-      expect(empty.textContent).toMatch(/No receipts available\./i);
-      expect(empty.textContent).toMatch(/Retrying every 10s\./i);
+      expect(empty.textContent).not.toMatch(/Hedge engine unreachable/i);
+      expect(empty.textContent).not.toMatch(/Retrying every \d+s/i);
+      expect(empty.textContent).toMatch(/No receipts to show/i);
+      expect(empty.textContent?.toLowerCase() ?? '').toContain('engine offline');
       const svg = empty.querySelector('svg');
       expect(svg).not.toBeNull();
       expect(svg!.getAttribute('width')).toBe('28');
-      expect(empty.className).toContain('text-red-300');
+      expect(empty.className).toContain('text-gray-500');
+      expect(empty.className).not.toContain('text-red-300');
     });
 
     it('empty state degraded: 28px yellow icon, two-line copy with reason', async () => {
@@ -1168,6 +1181,49 @@ describe('HedgeStatusCard', () => {
         expect(labelSpan!.className).toMatch(/min-h-\[2lh\]/);
         expect(labelSpan!.className).toMatch(/sm:min-h-0/);
       }
+    });
+  });
+
+  describe('no duplicate engine-down copy in same card (#0030)', () => {
+    it('error path: the "hedge engine ... unreachable" sentence appears exactly once (banner only)', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      const card = await screen.findByTestId('hedge-status-card');
+      const text = card.textContent ?? '';
+      // The banner renders "Hedge engine is unreachable." (via
+      // buildHedgeErrorHeadline). Pre-#0030 the empty state also rendered
+      // "Hedge engine unreachable" verbatim, giving the operator the same
+      // story twice. After #0030 the empty state is demoted and this
+      // sentence appears exactly once.
+      expect(text.match(/hedge engine[^.]*unreachable/gi)?.length ?? 0).toBe(1);
+      // Banner is the only surface that mentions the retry cadence; the
+      // empty state no longer repeats it.
+      expect(text.match(/(retrying|auto-retrying) every \d+s/gi)?.length ?? 0).toBe(1);
+    });
+
+    it('error path: exactly one Retry button surface in the card', async () => {
+      mockFetchOnce(
+        {
+          error: 'Hedge engine unreachable',
+          snapshot: null,
+          mode: null,
+          receipts: [],
+          proof: null,
+        },
+        { status: 503 },
+      );
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-status-error');
+      expect(screen.getAllByTestId('hedge-retry-button').length).toBe(1);
     });
   });
 
