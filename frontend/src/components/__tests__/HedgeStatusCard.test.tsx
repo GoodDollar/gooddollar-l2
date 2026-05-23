@@ -194,6 +194,43 @@ describe('HedgeStatusCard', () => {
     expect(fetchSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('header keeps refresh button anchored to the title row even when no proof block exists (#0017)', async () => {
+    // Mobile-orphan-strip regression guard: with no proof loaded (engine
+    // unreachable case), the refresh button must NOT wrap onto its own
+    // row. Structurally we assert title and refresh button share a parent
+    // that does not contain the conditional metadata row.
+    mockFetchOnce(
+      {
+        error: 'Hedge engine unreachable',
+        snapshot: null,
+        receipts: [],
+        proof: null,
+      },
+      { status: 503 },
+    );
+    render(<HedgeStatusCard />);
+    const refreshBtn = await screen.findByTestId('hedge-header-refresh-button');
+    const modeBadge = await screen.findByTestId('hedge-mode-badge');
+    const titleRow = refreshBtn.closest('[data-testid="hedge-header-row1"]');
+    expect(titleRow).not.toBeNull();
+    expect(titleRow!.contains(modeBadge)).toBe(true);
+    expect(screen.queryByTestId('hedge-proof-link')).toBeNull();
+    expect(screen.queryByTestId('hedge-header-row2')).toBeNull();
+  });
+
+  it('header places proof link in a separate row-2 metadata block when a proof is present (#0017)', async () => {
+    mockFetchOnce(BASE_RESPONSE);
+    render(<HedgeStatusCard />);
+    const refreshBtn = await screen.findByTestId('hedge-header-refresh-button');
+    const proofLink = await screen.findByTestId('hedge-proof-link');
+    const row1 = refreshBtn.closest('[data-testid="hedge-header-row1"]');
+    const row2 = proofLink.closest('[data-testid="hedge-header-row2"]');
+    expect(row1).not.toBeNull();
+    expect(row2).not.toBeNull();
+    expect(row1!.contains(proofLink)).toBe(false);
+    expect(row2!.contains(refreshBtn)).toBe(false);
+  });
+
   it('renders a header refresh button that triggers a refetch on click', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(BASE_RESPONSE), { status: 200, headers: { 'Content-Type': 'application/json' } }),
