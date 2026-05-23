@@ -9,6 +9,7 @@ import { CapEnforcer } from './cap-enforcer';
 import { KillSwitchProbe } from './kill-switch';
 import { CircuitBreakers } from './circuit-breakers';
 import { ReceiptStore } from './receipt-store';
+import { ProofWriter } from './proof-writer';
 import { EtoroClientAdapter, EtoroClientLike } from './etoro-adapter';
 import { InstrumentResolver, MarketDataLike } from './instrument-resolver';
 import { startHedgeStatusServer, ProofPointer } from './hedgeStatusServer';
@@ -32,6 +33,8 @@ export { CircuitBreakers } from './circuit-breakers';
 export type { BreakerState, BreakerReason } from './circuit-breakers';
 export { ReceiptStore } from './receipt-store';
 export type { HedgeReceipt } from './receipt-store';
+export { ProofWriter, formatProofMarkdown } from './proof-writer';
+export type { ProofWriterInput } from './proof-writer';
 export { startHedgeStatusServer } from './hedgeStatusServer';
 export type { HedgeStatusProvider, ProofPointer } from './hedgeStatusServer';
 export { EtoroClientAdapter } from './etoro-adapter';
@@ -217,6 +220,8 @@ async function main(): Promise<void> {
     resolver,
   });
 
+  const proofWriter = new ProofWriter(process.env.HEDGE_PROOF_DIR);
+
   const engine = new HedgeEngine(
     reader,
     calculator,
@@ -227,15 +232,13 @@ async function main(): Promise<void> {
       killSwitch,
       circuitBreakers: breakers,
       receiptStore,
+      proofWriter,
       blockNumberFn: async () => Number(await provider.getBlockNumber()),
     },
   );
 
   // Hedge-specific HTTP surface on its own port. The canonical
   // healthServer above stays unchanged.
-  const proofDir =
-    process.env.HEDGE_PROOF_DIR ??
-    '.autobuilder/initiatives/0007e-hedging-demo/proofs';
   const statusServer = startHedgeStatusServer({
     port: parseInt(process.env.HEDGE_STATUS_PORT ?? '9116', 10),
     provider: {
@@ -244,17 +247,7 @@ async function main(): Promise<void> {
       getBreakerState: () => engine.getBreakerState(),
       isKillSwitchEngaged: () => engine.isKillSwitchEngaged(),
       readReceipts: (limit: number) => receiptStore.readNewestFirst(limit),
-      readLatestProof: async (): Promise<ProofPointer | null> => {
-        const pointer = path.join(proofDir, 'latest.json');
-        if (!fs.existsSync(pointer)) return null;
-        try {
-          const raw = fs.readFileSync(pointer, 'utf8');
-          const parsed = JSON.parse(raw) as ProofPointer;
-          return parsed;
-        } catch {
-          return null;
-        }
-      },
+      readLatestProof: async (): Promise<ProofPointer | null> => proofWriter.readLatestPointer(),
     },
   });
 

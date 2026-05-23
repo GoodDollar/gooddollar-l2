@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import HedgeStatusCard from '@/components/HedgeStatusCard'
 
 /**
  * Iter 27 — Internal analytics dashboard.
@@ -545,6 +546,11 @@ export default function AnalyticsPage() {
           </>
         )}
       </section>
+
+      {/* ── Demo Hedge Proof (lane 5) ────────────────────────────────────── */}
+      <div className="mb-6">
+        <HedgeStatusCard />
+      </div>
 
       {/* ── Protocols panel ──────────────────────────────────────────────── */}
       <section className="mb-6 bg-dark-100/50 rounded-xl p-5">

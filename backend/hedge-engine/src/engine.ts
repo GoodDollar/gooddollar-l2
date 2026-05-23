@@ -5,6 +5,7 @@ import { CapEnforcer, CapSnapshot } from './cap-enforcer';
 import { KillSwitchProbe } from './kill-switch';
 import { CircuitBreakers, BreakerState } from './circuit-breakers';
 import { ReceiptStore, HedgeReceipt } from './receipt-store';
+import { ProofWriter } from './proof-writer';
 import {
   HedgeEngineConfig,
   HedgeResult,
@@ -19,6 +20,7 @@ export interface HedgeEngineDeps {
   killSwitch?: KillSwitchProbe;
   circuitBreakers?: CircuitBreakers;
   receiptStore?: ReceiptStore;
+  proofWriter?: ProofWriter;
   /** Used for "afterExposure" re-read. Defaults to the same provider used at tick start. */
   blockNumberFn?: () => Promise<number>;
 }
@@ -41,10 +43,13 @@ export class HedgeEngine {
   private readonly killSwitch?: KillSwitchProbe;
   private readonly breakers?: CircuitBreakers;
   private readonly receiptStore?: ReceiptStore;
+  private readonly proofWriter?: ProofWriter;
   private readonly blockNumberFn?: () => Promise<number>;
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
   private tickInProgress = false;
+  private firstTickEmittedProof = false;
+  private receiptsThisTick: HedgeReceipt[] = [];
 
   private lastSnapshot: ReconciliationSnapshot | null = null;
   private lastBlockNumber = 0;
@@ -64,6 +69,7 @@ export class HedgeEngine {
     this.killSwitch = deps.killSwitch;
     this.breakers = deps.circuitBreakers;
     this.receiptStore = deps.receiptStore;
+    this.proofWriter = deps.proofWriter;
     this.blockNumberFn = deps.blockNumberFn;
   }
 
@@ -154,6 +160,7 @@ export class HedgeEngine {
       // before/after numbers. Tolerate failures — never crash a tick on
       // an audit-side read error.
       let exposuresAfter: OnChainExposure[] = exposuresBefore;
+      this.receiptsThisTick = [];
       if (this.receiptStore && (orders.length > 0 || breakerTripped)) {
         try {
           exposuresAfter = await this.reader.getAllExposures(this.config.symbols);
@@ -176,10 +183,39 @@ export class HedgeEngine {
       this.lastSnapshot = snapshot;
       this.logSnapshot(snapshot);
 
+      // Proof artifact: always for the first tick of a session (dry-run
+      // baseline), then only when receipts were actually emitted so we
+      // don't pile up identical no-op files.
+      if (this.proofWriter) {
+        const shouldWrite =
+          !this.firstTickEmittedProof || this.receiptsThisTick.length > 0;
+        if (shouldWrite) {
+          try {
+            await this.proofWriter.writeProof({
+              snapshot,
+              capSnapshot: this.getCapSnapshot(),
+              breakerState: this.getBreakerState(),
+              killSwitchEngaged: this.isKillSwitchEngaged(),
+              mode: this.normalizedMode(),
+              dryRun: this.config.dryRun,
+              receipts: this.receiptsThisTick,
+            });
+            this.firstTickEmittedProof = true;
+          } catch (err) {
+            console.warn('[HedgeEngine] failed to write proof artifact', err);
+          }
+        }
+      }
+
       return snapshot;
     } finally {
       this.tickInProgress = false;
     }
+  }
+
+  private normalizedMode(): 'sandbox' | 'real' | 'demo' | 'unknown' {
+    const m = this.config.etoroMode;
+    return m === 'sandbox' || m === 'real' || m === 'demo' ? m : 'unknown';
   }
 
   private async persistReceipts(
@@ -224,6 +260,7 @@ export class HedgeEngine {
       };
       try {
         await this.receiptStore.append(receipt);
+        this.receiptsThisTick.push(receipt);
       } catch (err) {
         console.warn('[HedgeEngine] failed to persist receipt', err);
       }
