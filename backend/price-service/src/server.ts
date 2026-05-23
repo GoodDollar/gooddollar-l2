@@ -320,6 +320,8 @@ export function createServer(
     };
     const ws = buildWsAdvertisement(req);
     if (ws) body.websocket = ws;
+    const { degraded } = computeDegraded(cache, sourceStatusGetter);
+    body.status = degraded ? 'degraded' : 'ok';
     body.timestamp = Date.now();
     res.json(body);
   });
