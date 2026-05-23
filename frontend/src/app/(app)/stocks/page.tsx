@@ -366,7 +366,7 @@ export default function StocksPage() {
         />
       </div>
 
-      {!isLive && (
+      {!isLive && address && (
         <div className="mb-4">
           <StalePriceBanner variant="stocks" />
         </div>
@@ -406,6 +406,7 @@ export default function StocksPage() {
                   </div>
                   <p className="text-xs sm:text-sm text-gray-300 mt-1">The on-chain stocks oracle isn&apos;t live yet. You can preview the trading experience, but orders cannot be placed.</p>
                   <p className="text-[11px] sm:text-xs text-gray-400 mt-2">Preview a stock to see the trade UI. Trading will unlock once the oracle is reachable.</p>
+                  <p className="text-[11px] sm:text-xs text-yellow-300 mt-2">Prices below are illustrative demo values, not live market data.</p>
                 </div>
                 <button
                   onClick={() => pushTickerRoute(data[0]?.ticker || 'AAPL')}
