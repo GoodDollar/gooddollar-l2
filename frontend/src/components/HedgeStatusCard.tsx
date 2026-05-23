@@ -432,6 +432,14 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
     }
   }, [fetchOnce])
 
+  // Drives the "Updated Ns ago" copy in the row-2 metadata block. A 1 s
+  // re-render is cheap for a single card and matches the analytics page-
+  // level Refresh control's cadence.
+  useEffect(() => {
+    const t = setInterval(() => setNowTick((n) => n + 1), 1_000)
+    return () => clearInterval(t)
+  }, [])
+
   // Countdown + auto-retry when throttled. Stores an absolute retryAt so
   // tab-switch / background-throttling don't drift the countdown.
   useEffect(() => {
@@ -455,8 +463,9 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   const throttleRemainingSeconds = throttle
     ? Math.max(0, Math.ceil((throttle.retryAt - Date.now()) / 1000))
     : 0
-  // throttleTick is read so React re-runs the render on every interval tick.
+  // throttleTick / nowTick are read so React re-runs the render on every interval tick.
   void throttleTick
+  void nowTick
   const isThrottled = throttle !== null
   const fetchBusy = isFetching || isThrottled
 
