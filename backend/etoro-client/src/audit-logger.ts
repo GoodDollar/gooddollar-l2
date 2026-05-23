@@ -5,25 +5,18 @@ import { AuditLogEntry, EtoroMode } from './types';
 
 /**
  * Throttle window for the `console.error` heartbeat that fires when audit
- * writes are failing. Exposed for testing so the throttle window doesn't
- * need to be re-derived from clock values inside tests.
+ * writes are failing. Exposed so tests can derive expected boundaries
+ * without re-deriving the constant.
  */
 export const AUDIT_CONSOLE_THROTTLE_MS = 60_000;
 
-interface MkdirImpl {
-  (dir: string, opts: { recursive: boolean }): void;
-}
-
-interface AppendImpl {
-  (filePath: string, data: string, encoding: 'utf8'): void;
-}
+type MkdirImpl = (dir: string, opts: { recursive: boolean }) => void;
+type AppendImpl = (filePath: string, data: string, encoding: 'utf8') => void;
 
 export interface ResolveDefaultLogPathInput {
   env: NodeJS.ProcessEnv;
   cwd: string;
   mode: EtoroMode;
-  /** Module location (typically `__dirname`). Used for diagnostics only. */
-  baseDir?: string;
   /** Injectable for tests. Defaults to `fs.mkdirSync`. */
   fsLike?: { mkdirSync: MkdirImpl };
 }
@@ -34,20 +27,15 @@ export interface ResolveDefaultLogPathInput {
  *
  *   1. `env.ETORO_AUDIT_LOG_PATH`
  *   2. `<cwd>/.etoro-audit/<mode>.log` (skipped if cwd is under any
- *      `node_modules` segment, to avoid writing audit evidence into a
- *      directory that gets wiped on `npm install`)
+ *      `node_modules` segment, to keep audit evidence out of a directory
+ *      that `npm install` will wipe).
  *   3. `<os.tmpdir()>/etoro-audit/<mode>.log`
  *
- * Parent directories are created via `mkdirSync({ recursive: true })`. The
- * function is best-effort — if every mkdir fails it still returns the
- * tmpdir candidate so callers have a stable path string to log.
- *
- * `baseDir` is accepted for forward compatibility (operator-friendly
- * diagnostics about where the SDK was loaded from) but is intentionally
- * NEVER used as a write target. Historically the default path was
- * `path.resolve(__dirname, '..', 'audit.log')`, which landed inside
- * `node_modules` for every downstream consumer and made audit evidence
- * invisible.
+ * Parent directories are best-effort `mkdirSync({ recursive: true })`. The
+ * resolver intentionally ignores where the SDK was loaded from
+ * (`__dirname`) — the prior version used `__dirname`-relative paths and
+ * silently wrote into `node_modules/@goodchain/etoro-client/` for every
+ * downstream consumer.
  */
 export function resolveDefaultLogPath(input: ResolveDefaultLogPathInput): string {
   const fsLike = input.fsLike ?? fs;
@@ -100,20 +88,15 @@ function maskTokens(message: string): string {
   return message.replace(KEY_LIKE_TOKEN, '[REDACTED]');
 }
 
-function normalizeOptions(opts?: string | AuditLoggerOptions): AuditLoggerOptions {
-  if (opts === undefined) return {};
-  if (typeof opts === 'string') return { logPath: opts };
-  return opts;
-}
-
 /**
  * Append-only audit logger for the eToro SDK. Each `log()` call writes one
  * JSON line synchronously. The logger is fail-soft — it never throws — but
  * unlike its previous incarnation it does NOT silently swallow write
  * failures: each failure increments `getWriteFailureCount()`, records the
  * masked error in `getLastWriteError()`, and emits a throttled
- * `console.error` heartbeat (at most one per 60 s) so an operator can spot
- * a wedged disk or read-only mount from stderr alone.
+ * `console.error` heartbeat (at most one per
+ * `AUDIT_CONSOLE_THROTTLE_MS`) so an operator can spot a wedged disk or
+ * read-only mount from stderr alone.
  */
 export class AuditLogger {
   private readonly resolvedLogPath: string;
@@ -126,23 +109,22 @@ export class AuditLogger {
   private lastConsoleErrorAt = Number.NEGATIVE_INFINITY;
 
   constructor(mode: EtoroMode, opts?: string | AuditLoggerOptions) {
-    const options = normalizeOptions(opts);
+    const options: AuditLoggerOptions =
+      typeof opts === 'string' ? { logPath: opts } : opts ?? {};
     this.mode = mode;
     this.clock = options.clock ?? Date.now;
-    this.appendImpl = options.appendImpl ?? defaultAppendImpl;
-    this.consoleErrorImpl = options.consoleErrorImpl ?? defaultConsoleErrorImpl;
+    this.appendImpl = options.appendImpl ?? fs.appendFileSync;
+    this.consoleErrorImpl =
+      options.consoleErrorImpl ?? ((message) => console.error(message));
 
-    if (options.logPath) {
-      this.resolvedLogPath = options.logPath;
-    } else {
-      this.resolvedLogPath = resolveDefaultLogPath({
+    this.resolvedLogPath =
+      options.logPath ??
+      resolveDefaultLogPath({
         env: process.env,
         cwd: process.cwd(),
         mode,
-        baseDir: __dirname,
         fsLike: options.mkdirImpl ? { mkdirSync: options.mkdirImpl } : undefined,
       });
-    }
   }
 
   log(entry: Omit<AuditLogEntry, 'timestamp' | 'mode'>): void {
@@ -186,12 +168,4 @@ export class AuditLogger {
       );
     }
   }
-}
-
-function defaultAppendImpl(filePath: string, data: string, encoding: 'utf8'): void {
-  fs.appendFileSync(filePath, data, encoding);
-}
-
-function defaultConsoleErrorImpl(message: string): void {
-  console.error(message);
 }

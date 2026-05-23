@@ -30,7 +30,6 @@ describe('resolveDefaultLogPath', () => {
       env: { ETORO_AUDIT_LOG_PATH: '/var/log/etoro/audit.log' },
       cwd: '/srv/app',
       mode: MODE,
-      baseDir: '/srv/app/node_modules/@goodchain/etoro-client/dist',
       fsLike,
     });
     expect(resolved).toBe('/var/log/etoro/audit.log');
@@ -43,7 +42,6 @@ describe('resolveDefaultLogPath', () => {
       env: { ETORO_AUDIT_LOG_PATH: '   ' },
       cwd: '/srv/app',
       mode: MODE,
-      baseDir: '/srv/app',
       fsLike,
     });
     expect(resolved).toBe(path.join('/srv/app', '.etoro-audit', `${MODE}.log`));
@@ -55,7 +53,6 @@ describe('resolveDefaultLogPath', () => {
       env: {},
       cwd: '/srv/app',
       mode: MODE,
-      baseDir: '/srv/app',
       fsLike,
     });
     expect(resolved).toBe(path.join('/srv/app', '.etoro-audit', `${MODE}.log`));
@@ -69,7 +66,6 @@ describe('resolveDefaultLogPath', () => {
       env: {},
       cwd: '/srv/app',
       mode: MODE,
-      baseDir: '/srv/app',
       fsLike,
     });
     expect(resolved).toBe(path.join(os.tmpdir(), 'etoro-audit', `${MODE}.log`));
@@ -81,20 +77,24 @@ describe('resolveDefaultLogPath', () => {
       env: {},
       cwd: '/srv/app/node_modules/@goodchain/etoro-client',
       mode: MODE,
-      baseDir: '/srv/app/node_modules/@goodchain/etoro-client/dist',
       fsLike,
     });
     expect(resolved.split(path.sep)).not.toContain('node_modules');
     expect(resolved).toBe(path.join(os.tmpdir(), 'etoro-audit', `${MODE}.log`));
   });
 
-  it('regression: synthetic baseDir inside node_modules does not contaminate the resolved path', () => {
+  it('regression: package loaded from a node_modules layout still resolves under cwd, not __dirname', () => {
+    // Simulates the original bug: previously `DEFAULT_LOG_PATH` was
+    // derived from `__dirname`, so when this package was consumed by a
+    // downstream service the audit log silently landed inside
+    // `node_modules/@goodchain/etoro-client/`. The resolver MUST NOT
+    // care where the package was loaded from — only the operator's cwd
+    // (and the explicit env override) drive the choice.
     const fsLike = makeFakeFs();
     const resolved = resolveDefaultLogPath({
       env: {},
       cwd: '/srv/app',
       mode: MODE,
-      baseDir: '/tmp/x/node_modules/@goodchain/etoro-client/dist',
       fsLike,
     });
     expect(resolved.split(path.sep)).not.toContain('node_modules');
@@ -109,7 +109,6 @@ describe('resolveDefaultLogPath', () => {
       env: {},
       cwd: '/srv/app',
       mode: MODE,
-      baseDir: '/srv/app',
       fsLike,
     });
     expect(resolved).toBe(path.join(os.tmpdir(), 'etoro-audit', `${MODE}.log`));
