@@ -13,6 +13,7 @@ import {
 
 import { formatNotionalUsd } from '@/lib/format-notional'
 import { buildHedgeErrorHeadline } from '@/lib/hedge-error'
+import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
 import {
   AlertTriangleIcon,
   ArrowPathIcon,
@@ -569,17 +570,21 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
     }
   }, [])
 
-  useEffect(() => {
+  // Poll only while the tab is visible so background tabs stop fanning
+  // out hedge-engine snapshot/receipts/proof requests for nobody. Skip
+  // when a fetch is still in flight so a slow upstream doesn't stack
+  // concurrent aborts → re-fetches.
+  const pollOnce = useCallback((): void => {
+    if (inFlightRef.current) return
     void fetchOnce()
-    const t = setInterval(() => {
-      if (inFlightRef.current) return
-      void fetchOnce()
-    }, POLL_INTERVAL_MS)
+  }, [fetchOnce])
+  usePollWhileVisible(pollOnce, POLL_INTERVAL_MS)
+
+  useEffect(() => {
     return () => {
-      clearInterval(t)
       abortRef.current?.abort()
     }
-  }, [fetchOnce])
+  }, [])
 
   useImperativeHandle(ref, () => ({ refresh: () => fetchOnce() }), [fetchOnce])
 

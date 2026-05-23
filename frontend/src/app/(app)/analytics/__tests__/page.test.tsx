@@ -115,3 +115,68 @@ describe('AnalyticsPage refresh', () => {
     expect(btn).toHaveTextContent('Refresh');
   });
 });
+
+describe('AnalyticsPage visibility-gated overview polling (#0033)', () => {
+  let visibilityState: DocumentVisibilityState;
+  let originalDescriptor: PropertyDescriptor | undefined;
+
+  beforeEach(() => {
+    visibilityState = 'visible';
+    originalDescriptor = Object.getOwnPropertyDescriptor(
+      Document.prototype,
+      'visibilityState',
+    );
+    Object.defineProperty(Document.prototype, 'visibilityState', {
+      configurable: true,
+      get: () => visibilityState,
+    });
+  });
+
+  afterEach(() => {
+    if (originalDescriptor) {
+      Object.defineProperty(Document.prototype, 'visibilityState', originalDescriptor);
+    }
+  });
+
+  function setVisibility(state: DocumentVisibilityState): void {
+    visibilityState = state;
+    document.dispatchEvent(new Event('visibilitychange'));
+  }
+
+  it('overview poll stops while the tab is hidden and resumes on return', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(OVERVIEW_BODY), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      render(<AnalyticsPage />);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      const baseline = fetchSpy.mock.calls.length;
+
+      await act(async () => {
+        setVisibility('hidden');
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(fetchSpy.mock.calls.length).toBe(baseline);
+
+      await act(async () => {
+        setVisibility('visible');
+      });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(fetchSpy.mock.calls.length).toBeGreaterThan(baseline);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import HedgeStatusCard, { type HedgeStatusCardHandle } from '@/components/HedgeStatusCard'
+import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
 
 /**
  * Iter 27 — Internal analytics dashboard.
@@ -224,17 +225,10 @@ export default function AnalyticsPage() {
     }
   }, [])
 
-  useEffect(() => {
-    const ctrl = new AbortController()
-    void fetchOverview(ctrl.signal)
-    const interval = setInterval(() => {
-      void fetchOverview()
-    }, POLL_INTERVAL_MS)
-    return () => {
-      clearInterval(interval)
-      ctrl.abort()
-    }
-  }, [fetchOverview])
+  // Pause overview polling when the tab is hidden so idle browser
+  // windows don't keep the address-book + indexer + status-aggregator
+  // fan-out hot for nobody.
+  usePollWhileVisible(fetchOverview, POLL_INTERVAL_MS)
 
   const isInitialLoad = data === null && loadError === null
 

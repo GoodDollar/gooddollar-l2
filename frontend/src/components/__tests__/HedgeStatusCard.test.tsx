@@ -1483,4 +1483,119 @@ describe('HedgeStatusCard', () => {
       expect(htmlSnapshot(after.closest('.bg-dark-50'))).toBe(beforeHtml);
     });
   });
+
+  describe('visibility-gated polling (#0033)', () => {
+    let visibilityState: DocumentVisibilityState;
+    let originalDescriptor: PropertyDescriptor | undefined;
+
+    beforeEach(() => {
+      visibilityState = 'visible';
+      originalDescriptor = Object.getOwnPropertyDescriptor(
+        Document.prototype,
+        'visibilityState',
+      );
+      Object.defineProperty(Document.prototype, 'visibilityState', {
+        configurable: true,
+        get: () => visibilityState,
+      });
+    });
+
+    afterEach(() => {
+      if (originalDescriptor) {
+        Object.defineProperty(Document.prototype, 'visibilityState', originalDescriptor);
+      }
+    });
+
+    function setVisibility(state: DocumentVisibilityState): void {
+      visibilityState = state;
+      document.dispatchEvent(new Event('visibilitychange'));
+    }
+
+    it('stops polling when the tab goes hidden', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+          new Response(JSON.stringify(BASE_RESPONSE), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+        render(<HedgeStatusCard />);
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        expect(fetchSpy.mock.calls.length).toBe(1);
+
+        await act(async () => {
+          setVisibility('hidden');
+        });
+        await act(async () => {
+          vi.advanceTimersByTime(25_000);
+        });
+        // No timer-driven fetches fired while hidden.
+        expect(fetchSpy.mock.calls.length).toBe(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('immediate fetch + restarted interval when the tab returns to visible', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+          new Response(JSON.stringify(BASE_RESPONSE), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+        render(<HedgeStatusCard />);
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        const baseline = fetchSpy.mock.calls.length;
+
+        await act(async () => {
+          setVisibility('hidden');
+        });
+        await act(async () => {
+          vi.advanceTimersByTime(25_000);
+        });
+        expect(fetchSpy.mock.calls.length).toBe(baseline);
+
+        await act(async () => {
+          setVisibility('visible');
+        });
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        // Visible again → immediate fetch fired.
+        expect(fetchSpy.mock.calls.length).toBeGreaterThan(baseline);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('manual Refresh still fires while hidden (only the timer is gated)', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(BASE_RESPONSE), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      render(<HedgeStatusCard />);
+      await screen.findByTestId('hedge-mode-badge');
+      const before = fetchSpy.mock.calls.length;
+      act(() => {
+        setVisibility('hidden');
+      });
+      const btn = screen.getByTestId('hedge-header-refresh-button');
+      fireEvent.click(btn);
+      await waitFor(() => {
+        expect(fetchSpy.mock.calls.length).toBeGreaterThan(before);
+      });
+    });
+  });
 });
