@@ -720,6 +720,14 @@ export function createServer(
 ): express.Express {
   const app = express();
   app.disable('x-powered-by');
+  // Every response body carries a per-millisecond `timestamp` field via
+  // `finalizeTimestamps`, so Express's default weak-ETag (SHA-1 over the
+  // body) NEVER matches a follow-up `If-None-Match`. Emitting a
+  // validator the service structurally cannot honour advertises a
+  // conditional-GET contract that costs CPU + bandwidth and never pays
+  // off. With ETag off the request `If-None-Match` is simply ignored —
+  // the correct behaviour for a server with no validators. See task 0044.
+  app.disable('etag');
   // RFC 9110 §4.2.3 — URL paths are case-sensitive. Default Express
   // matching folds `/HEALTH` onto `/health`, contradicting the discovery
   // catalog which only ships canonical lowercase forms. Flipping this
