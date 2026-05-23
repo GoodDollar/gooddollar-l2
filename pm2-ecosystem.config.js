@@ -2,6 +2,8 @@
 // Usage: pm2 start pm2-ecosystem.config.js && pm2 save && pm2 startup
 //
 // Before running: kill unsupervised GoodSwap PIDs 735615 735627 735628
+const path = require('path');
+
 module.exports = {
   apps: [
     {
@@ -46,6 +48,36 @@ module.exports = {
       restart_delay: 3000,
       max_restarts: 10,
       env: { NODE_ENV: 'production' },
+    },
+    {
+      // goodprice: backend/price-service (Lane 2 of 0007 live-prices).
+      // Normalizes eToro market data, applies risk filters (staleness,
+      // spread, deviation, asset-class session rules), serves quotes via
+      // REST (9300) and WebSocket (9301), and writes a JSONL audit log
+      // for every ingestion event.
+      //
+      // SAFE-BY-DEFAULT. ETORO_MODE=sandbox and REAL_TRADING_ENABLED=false
+      // are hardcoded here so the eToro client cannot accidentally hit a
+      // real-money endpoint. No supported code path enables real trading.
+      //
+      // cwd resolves portably: honor GOODPRICE_CWD, otherwise resolve
+      // relative to this config file. Works from the autobuilder worktree
+      // (~/goodchain-live-prices-lanes/lane2-price-service) and from the
+      // main repo (~/gooddollar-l2) once merged.
+      name: 'goodprice',
+      script: 'dist/index.js',
+      cwd: process.env.GOODPRICE_CWD
+        ?? path.resolve(__dirname, 'backend/price-service'),
+      restart_delay: 3000,
+      max_restarts: 10,
+      kill_timeout: 5000,
+      env: {
+        NODE_ENV: 'production',
+        ETORO_MODE: 'sandbox',
+        REAL_TRADING_ENABLED: 'false',
+        PRICE_SERVICE_PORT: '9300',
+        PRICE_SERVICE_WS_PORT: '9301',
+      },
     },
   ],
 };

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { PriceService, QuoteCache, RiskFilter, WsBroadcaster, createServer, AuditLogger } from '../index';
+import { PriceService, QuoteCache, RiskFilter, WsBroadcaster, createServer, AuditLogger, envPort } from '../index';
 import { NormalizedQuote, computeSpread } from '../types';
 
 function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
@@ -89,6 +89,40 @@ describe('PriceService', () => {
     it('provides a default audit logger when none is supplied', () => {
       const service = new PriceService({ port: 0, wsPort: 0 });
       expect(service.auditLogger).toBeInstanceOf(AuditLogger);
+    });
+  });
+
+  describe('envPort', () => {
+    const ENV_NAME = '__TEST_PRICE_SERVICE_PORT__';
+
+    afterEach(() => {
+      delete process.env[ENV_NAME];
+    });
+
+    it('returns undefined when unset', () => {
+      expect(envPort(ENV_NAME)).toBeUndefined();
+    });
+
+    it('parses a valid port', () => {
+      process.env[ENV_NAME] = '9300';
+      expect(envPort(ENV_NAME)).toBe(9300);
+    });
+
+    it('returns undefined for empty string', () => {
+      process.env[ENV_NAME] = '';
+      expect(envPort(ENV_NAME)).toBeUndefined();
+    });
+
+    it('returns undefined for non-numeric', () => {
+      process.env[ENV_NAME] = 'not-a-port';
+      expect(envPort(ENV_NAME)).toBeUndefined();
+    });
+
+    it('returns undefined for negative or zero ports', () => {
+      process.env[ENV_NAME] = '0';
+      expect(envPort(ENV_NAME)).toBeUndefined();
+      process.env[ENV_NAME] = '-1';
+      expect(envPort(ENV_NAME)).toBeUndefined();
     });
   });
 });

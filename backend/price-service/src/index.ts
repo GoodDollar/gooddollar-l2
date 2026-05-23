@@ -66,8 +66,23 @@ export class PriceService {
   }
 }
 
+/**
+ * Parse a positive integer port from env. Returns undefined for unset,
+ * empty, or non-positive values so callers fall through to defaults
+ * (which is what the test suite expects).
+ */
+export function envPort(name: string): number | undefined {
+  const raw = process.env[name];
+  if (!raw) return undefined;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return n;
+}
+
 if (require.main === module) {
-  const service = new PriceService();
+  const port = envPort('PRICE_SERVICE_PORT') ?? DEFAULT_CONFIG.port;
+  const wsPort = envPort('PRICE_SERVICE_WS_PORT') ?? DEFAULT_CONFIG.wsPort;
+  const service = new PriceService({ port, wsPort });
   service.start();
 
   let sourceHandle: import('./etoro-source').EtoroSourceHandle | undefined;
