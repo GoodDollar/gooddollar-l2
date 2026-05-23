@@ -1,4 +1,9 @@
-import { redactSourceReason, sanitizeSourceStatus } from '../source-status';
+import {
+  redactSourceReason,
+  sanitizeSourceStatus,
+  enrichSourceReason,
+  REASON_CATALOG,
+} from '../source-status';
 
 describe('redactSourceReason', () => {
   it('returns stable code for MODULE_NOT_FOUND errors', () => {
@@ -94,6 +99,89 @@ describe('sanitizeSourceStatus', () => {
     const out = sanitizeSourceStatus(status);
     if (!out.connected) {
       expect(out.reason).toBe('etoro-client-not-installed');
+    }
+  });
+});
+
+describe('REASON_CATALOG and enrichSourceReason', () => {
+  it('catalog covers the three known reason slugs', () => {
+    expect(REASON_CATALOG['not-attached'].severity).toBe('info');
+    expect(REASON_CATALOG['etoro-client-not-installed'].severity).toBe('critical');
+    expect(REASON_CATALOG['source-unavailable'].severity).toBe('degraded');
+  });
+
+  it('every catalog entry has non-empty humanReason and nextStep strings', () => {
+    for (const doc of Object.values(REASON_CATALOG)) {
+      expect(typeof doc.humanReason).toBe('string');
+      expect(doc.humanReason.length).toBeGreaterThan(0);
+      expect(typeof doc.nextStep).toBe('string');
+      expect(doc.nextStep.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('enrichSourceReason returns the catalog entry for a known code', () => {
+    const doc = enrichSourceReason('etoro-client-not-installed');
+    expect(doc.code).toBe('etoro-client-not-installed');
+    expect(doc.severity).toBe('critical');
+  });
+
+  it('enrichSourceReason synthesises a code:"unknown" entry for an unrecognised reason', () => {
+    const doc = enrichSourceReason('connection-refused');
+    expect(doc.code).toBe('unknown');
+    expect(doc.severity).toBe('degraded');
+    expect(doc.humanReason).toContain('connection-refused');
+    expect(doc.nextStep).toMatch(/logs|catalog/i);
+  });
+});
+
+describe('sanitizeSourceStatus — reason catalog enrichment', () => {
+  it('enriches not-attached with humanReason, nextStep, severity:info', () => {
+    const out = sanitizeSourceStatus({
+      connected: false,
+      reason: 'not-attached',
+      lastAttachAt: null,
+    });
+    expect(out.connected).toBe(false);
+    if (!out.connected) {
+      expect(out.reason).toBe('not-attached');
+      expect(out.humanReason).toMatch(/booting|attach/i);
+      expect(out.nextStep).toMatch(/wait|logs/i);
+      expect(out.severity).toBe('info');
+    }
+  });
+
+  it('enriches etoro-client-not-installed with severity:critical', () => {
+    const out = sanitizeSourceStatus({
+      connected: false,
+      reason: 'etoro-client-not-installed',
+      lastAttachAt: null,
+    });
+    if (!out.connected) {
+      expect(out.severity).toBe('critical');
+      expect(out.humanReason).toMatch(/lane-1|etoro-client/);
+      expect(out.nextStep).toMatch(/install|rebuild/i);
+    }
+  });
+
+  it('enriches source-unavailable with severity:degraded', () => {
+    const out = sanitizeSourceStatus({
+      connected: false,
+      reason: 'source-unavailable',
+      lastAttachAt: null,
+    });
+    if (!out.connected) expect(out.severity).toBe('degraded');
+  });
+
+  it('falls back to code:unknown for an unrecognised reason but keeps the message safe', () => {
+    const out = sanitizeSourceStatus({
+      connected: false,
+      reason: 'lost connection',
+      lastAttachAt: null,
+    });
+    if (!out.connected) {
+      expect(out.severity).toBe('degraded');
+      expect(out.humanReason).toContain('lost connection');
+      expect(out.nextStep).toMatch(/logs|catalog/i);
     }
   });
 });

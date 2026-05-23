@@ -1,7 +1,7 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { QuoteCache } from './quote-cache';
 import { NormalizedQuote, RiskFilterResult, SourceStatus } from './types';
-import { sanitizeSourceStatus } from './source-status';
+import { sanitizeSourceStatus, SanitizedSourceStatus } from './source-status';
 
 export type SourceStatusGetter = () => SourceStatus;
 
@@ -10,7 +10,7 @@ interface SnapshotFrame {
   data: NormalizedQuote[];
   count: number;
   timestamp: number;
-  source?: SourceStatus;
+  source?: SanitizedSourceStatus;
 }
 
 export class WsBroadcaster {

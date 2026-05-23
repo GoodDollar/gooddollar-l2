@@ -1,5 +1,94 @@
 import { SourceStatus } from './types';
 
+export type SourceSeverity = 'info' | 'degraded' | 'critical';
+
+export interface SourceReasonDoc {
+  /** Stable snake-case enum; matches the slugs written by producers. */
+  code: string;
+  /** One-sentence plain English explanation of the failure. */
+  humanReason: string;
+  /** One-sentence "what to try first" hint for an operator. */
+  nextStep: string;
+  /** Triage hint: `info` = expected transient, `critical` = needs human. */
+  severity: SourceSeverity;
+}
+
+/**
+ * Sanitized read-site shape of `SourceStatus`. The `connected: false`
+ * branch grows the three enrichment fields (`humanReason`, `nextStep`,
+ * `severity`) so an operator paged on a degraded alert can act without
+ * grepping the codebase. The `connected: true` branch is unchanged —
+ * there's no failure to explain. Producers (e.g. `index.ts`) keep
+ * writing the minimal `SourceStatus` shape; enrichment happens here.
+ */
+export type SanitizedSourceStatus =
+  | {
+      connected: false;
+      reason: string;
+      humanReason: string;
+      nextStep: string;
+      severity: SourceSeverity;
+      lastAttachAt: number | null;
+    }
+  | { connected: true; symbols: string[]; lastAttachAt: number };
+
+/**
+ * Operator-facing catalog of stable failure modes. Keep slugs identical
+ * to what `redactSourceReason` and the producer at `index.ts` emit so
+ * `enrichSourceReason` can look them up by exact match.
+ */
+export const REASON_CATALOG: Readonly<Record<string, SourceReasonDoc>> = Object.freeze({
+  'not-attached': {
+    code: 'not-attached',
+    humanReason:
+      'Service is booting and has not yet attempted to attach to the ' +
+      'upstream market-data source.',
+    nextStep:
+      'Wait ~5s for the boot-time attach. If reason does not change, ' +
+      'check process logs.',
+    severity: 'info',
+  },
+  'etoro-client-not-installed': {
+    code: 'etoro-client-not-installed',
+    humanReason:
+      'The lane-1 @goodchain/etoro-client package could not be loaded ' +
+      '(MODULE_NOT_FOUND).',
+    nextStep:
+      'Install/rebuild lane-1 (backend/etoro-client) and restart the ' +
+      'price-service.',
+    severity: 'critical',
+  },
+  'source-unavailable': {
+    code: 'source-unavailable',
+    humanReason:
+      'The upstream market-data source threw an unrecognized error at ' +
+      'attach time.',
+    nextStep:
+      'Check process logs for the underlying error and the eToro sandbox ' +
+      'status page.',
+    severity: 'degraded',
+  },
+});
+
+/**
+ * Look up a reason slug in the catalog. Unknown slugs (e.g. the
+ * truncated-error-message bucket from `redactSourceReason`) get a
+ * synthesised entry that preserves the original reason in
+ * `humanReason` so no information is dropped on the wire.
+ */
+export function enrichSourceReason(reason: string): SourceReasonDoc {
+  const known = REASON_CATALOG[reason];
+  if (known) return known;
+  return {
+    code: 'unknown',
+    humanReason: `Upstream source attach failed: ${reason}`,
+    nextStep:
+      'Check process logs; this code is not in the catalog. ' +
+      'File an issue if you see it often.',
+    severity: 'degraded',
+  };
+}
+
 /**
  * Convert an arbitrary thrown value (typically the `err` from a failed
  * source attach) into a single-line, path-stripped diagnostic suitable
@@ -29,9 +118,36 @@ export function redactSourceReason(err: unknown): string {
  * Defense-in-depth wrapper applied at the read sites (`/health`,
  * `/status/quotes`, WS snapshot). Keeps the HTTP/WS surface clean
  * even if a future caller bypasses `redactSourceReason` at the
- * write site.
+ * write site, and enriches the disconnected branch with
+ * operator-readable `humanReason` / `nextStep` / `severity` so a
+ * brand-new operator can act on the alert without grepping the code.
  */
-export function sanitizeSourceStatus(status: SourceStatus): SourceStatus {
+export function sanitizeSourceStatus(status: SourceStatus): SanitizedSourceStatus {
   if (status.connected) return status;
-  return { ...status, reason: redactSourceReason(new Error(status.reason)) };
+  const safeReason = redactSourceReason(new Error(status.reason));
+  const doc = enrichSourceReason(safeReason);
+  return {
+    connected: false,
+    reason: safeReason,
+    humanReason: doc.humanReason,
+    nextStep: doc.nextStep,
+    severity: doc.severity,
+    lastAttachAt: status.lastAttachAt,
+  };
 }
+
+/**
+ * Public projection of `REASON_CATALOG` suitable for the discovery
+ * payload. Strips the `code` field (it duplicates the map key) so
+ * the wire shape stays compact.
+ */
+export const SOURCE_REASONS_PUBLIC: Readonly<
+  Record<string, { humanReason: string; nextStep: string; severity: SourceSeverity }>
+> = Object.freeze(
+  Object.fromEntries(
+    Object.values(REASON_CATALOG).map((d) => [
+      d.code,
+      { humanReason: d.humanReason, nextStep: d.nextStep, severity: d.severity },
+    ]),
+  ),
+);

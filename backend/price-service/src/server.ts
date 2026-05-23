@@ -1,7 +1,11 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { QuoteCache } from './quote-cache';
 import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats, SourceStatus } from './types';
-import { sanitizeSourceStatus } from './source-status';
+import {
+  sanitizeSourceStatus,
+  SanitizedSourceStatus,
+  SOURCE_REASONS_PUBLIC,
+} from './source-status';
 
 export type IngestStatsGetter = () => IngestStats;
 export type SourceStatusGetter = () => SourceStatus;
@@ -246,11 +250,11 @@ function computeAcceptanceRatio(stats: IngestStats): number {
 function computeDegraded(
   cache: QuoteCache,
   sourceStatusGetter?: SourceStatusGetter,
-): { degraded: boolean; src?: SourceStatus } {
+): { degraded: boolean; src?: SanitizedSourceStatus } {
   const fresh = cache.getFresh();
   const cacheHealthy = fresh.length > 0 || cache.size === 0;
   let degraded = !cacheHealthy;
-  let src: SourceStatus | undefined;
+  let src: SanitizedSourceStatus | undefined;
   if (sourceStatusGetter) {
     src = sanitizeSourceStatus(sourceStatusGetter());
     if (!src.connected) degraded = true;
@@ -312,6 +316,7 @@ export function createServer(
       docs: DOCS_URL,
       endpoints: buildEndpointIndex(),
       examples: EXAMPLES,
+      sourceReasons: SOURCE_REASONS_PUBLIC,
     };
     const ws = buildWsAdvertisement(req);
     if (ws) body.websocket = ws;
