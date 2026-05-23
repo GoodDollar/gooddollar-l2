@@ -46,6 +46,10 @@ export interface HedgeResult {
   etoroOrderId?: string;
   error?: string;
   timestamp: number;
+  /** USD-equivalent notional of this order (|deltaToHedge|). */
+  notionalUsd?: number;
+  /** Adapter-reported execution price, when available. */
+  executionPrice?: number;
 }
 
 /** Configuration for the hedge engine loop. */

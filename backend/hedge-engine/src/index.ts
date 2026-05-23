@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { ethers } from 'ethers';
 import { ExposureReader } from './exposure-reader';
 import { DeltaCalculator } from './delta-calculator';
@@ -5,8 +7,11 @@ import { HedgeExecutor, EtoroAdapter } from './hedge-executor';
 import { HedgeEngine } from './engine';
 import { CapEnforcer } from './cap-enforcer';
 import { KillSwitchProbe } from './kill-switch';
+import { CircuitBreakers } from './circuit-breakers';
+import { ReceiptStore } from './receipt-store';
 import { EtoroClientAdapter, EtoroClientLike } from './etoro-adapter';
 import { InstrumentResolver, MarketDataLike } from './instrument-resolver';
+import { startHedgeStatusServer, ProofPointer } from './hedgeStatusServer';
 import { HedgeEngineConfig, StockSymbol } from './types';
 import { startHealthServer } from './healthServer';
 import {
@@ -23,6 +28,12 @@ export { HedgeEngine } from './engine';
 export { CapEnforcer } from './cap-enforcer';
 export type { CapEnforcerConfig, CapDecision, CapSnapshot } from './cap-enforcer';
 export { KillSwitchProbe } from './kill-switch';
+export { CircuitBreakers } from './circuit-breakers';
+export type { BreakerState, BreakerReason } from './circuit-breakers';
+export { ReceiptStore } from './receipt-store';
+export type { HedgeReceipt } from './receipt-store';
+export { startHedgeStatusServer } from './hedgeStatusServer';
+export type { HedgeStatusProvider, ProofPointer } from './hedgeStatusServer';
 export { EtoroClientAdapter } from './etoro-adapter';
 export { InstrumentResolver } from './instrument-resolver';
 export {
@@ -191,6 +202,15 @@ async function main(): Promise<void> {
 
   const killSwitch = new KillSwitchProbe(process.env.HEDGE_KILL_SWITCH_FILE);
   const capEnforcer = new CapEnforcer(loadCapConfig());
+  const breakers = new CircuitBreakers({
+    maxExposureAgeMs: Number(getEnvOrDefault('MAX_EXPOSURE_AGE_MS', '15000')),
+    maxRpcLagMs: Number(getEnvOrDefault('MAX_RPC_LAG_MS', '60000')),
+    explorerBlockUrl: process.env.CHAIN_EXPLORER_BLOCK_URL || undefined,
+    maxChainBlockLag: Number(getEnvOrDefault('MAX_CHAIN_BLOCK_LAG', '10')),
+  });
+
+  const receiptStore = new ReceiptStore(process.env.HEDGE_RECEIPT_FILE);
+  await receiptStore.recoverIfCorrupt();
 
   const executor = new HedgeExecutor(adapter, instrumentMap, config.dryRun, {
     killSwitch,
@@ -202,12 +222,46 @@ async function main(): Promise<void> {
     calculator,
     executor,
     config,
-    { capEnforcer, killSwitch },
+    {
+      capEnforcer,
+      killSwitch,
+      circuitBreakers: breakers,
+      receiptStore,
+      blockNumberFn: async () => Number(await provider.getBlockNumber()),
+    },
   );
+
+  // Hedge-specific HTTP surface on its own port. The canonical
+  // healthServer above stays unchanged.
+  const proofDir =
+    process.env.HEDGE_PROOF_DIR ??
+    '.autobuilder/initiatives/0007e-hedging-demo/proofs';
+  const statusServer = startHedgeStatusServer({
+    port: parseInt(process.env.HEDGE_STATUS_PORT ?? '9116', 10),
+    provider: {
+      getLastSnapshot: () => engine.getLastSnapshot(),
+      getCapSnapshot: () => engine.getCapSnapshot(),
+      getBreakerState: () => engine.getBreakerState(),
+      isKillSwitchEngaged: () => engine.isKillSwitchEngaged(),
+      readReceipts: (limit: number) => receiptStore.readNewestFirst(limit),
+      readLatestProof: async (): Promise<ProofPointer | null> => {
+        const pointer = path.join(proofDir, 'latest.json');
+        if (!fs.existsSync(pointer)) return null;
+        try {
+          const raw = fs.readFileSync(pointer, 'utf8');
+          const parsed = JSON.parse(raw) as ProofPointer;
+          return parsed;
+        } catch {
+          return null;
+        }
+      },
+    },
+  });
 
   const shutdown = () => {
     console.log('[HedgeEngine] Shutting down...');
     engine.stop();
+    statusServer.close();
     healthServer.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 3000);
   };
