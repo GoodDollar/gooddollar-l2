@@ -70,7 +70,7 @@ describe('REST Server — ENDPOINT_CATALOG drives /, 404, and 405', () => {
     expect(rootPaths).toEqual(nfPaths);
   });
 
-  it('catalog covers all seven endpoints exposed by the server', async () => {
+  it('catalog covers every endpoint exposed by the server', async () => {
     const res = await fetch(`${baseUrl}/`);
     const body = (await res.json()) as { endpoints: Array<{ path: string }> };
     const paths = body.endpoints.map((e) => e.path).sort();
@@ -78,6 +78,7 @@ describe('REST Server — ENDPOINT_CATALOG drives /, 404, and 405', () => {
       [
         '/',
         '/audit/stats',
+        '/docs/source-reasons',
         '/health',
         '/quotes',
         '/quotes/:symbol',

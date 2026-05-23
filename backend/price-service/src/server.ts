@@ -183,7 +183,33 @@ const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'Ingested vs rejected counts, rejection breakdown, acceptance ratio, ' +
       'uptime.',
   },
+  {
+    path: '/docs/source-reasons',
+    methods: ['GET'],
+    summary:
+      'Reference catalog: enum values that may appear as `source.reason` ' +
+      'on data endpoints (NOT live state).',
+  },
 ];
+
+/**
+ * Pointer object replacing the inline `sourceReasons` block on `GET /`.
+ * Naming the field `sourceReasonCatalog` (singular, with the `Catalog`
+ * suffix) and adding the `description` line stops a fresh user from
+ * mistaking a 3-entry reference table for three concurrent live errors.
+ * The full payload lives at `/docs/source-reasons`; here we ship only
+ * the pointer to keep the discovery body small.
+ */
+const SOURCE_REASON_CATALOG_COUNT = Object.keys(SOURCE_REASONS_PUBLIC).length;
+
+const SOURCE_REASON_CATALOG_POINTER = Object.freeze({
+  description:
+    'Reference catalog: enum values that may appear as `source.reason` ' +
+    'on data endpoints. NOT a live error feed; check `source` on /health ' +
+    'for the current verdict.',
+  url: '/docs/source-reasons',
+  count: SOURCE_REASON_CATALOG_COUNT,
+});
 
 /**
  * Pinned regex for the one parametric route this service exposes today.
@@ -328,7 +354,7 @@ export function createServer(
       docs: DOCS_URL,
       endpoints: buildEndpointIndex(),
       examples: EXAMPLES,
-      sourceReasons: SOURCE_REASONS_PUBLIC,
+      sourceReasonCatalog: SOURCE_REASON_CATALOG_POINTER,
     };
     const ws = buildWsAdvertisement(req);
     if (ws) body.websocket = ws;
@@ -337,6 +363,16 @@ export function createServer(
     body.timestamp = now;
     body.timestampIso = isoFromMs(now)!;
     res.json(body);
+  });
+
+  app.get('/docs/source-reasons', (_req: Request, res: Response) => {
+    const now = Date.now();
+    res.json({
+      reasons: SOURCE_REASONS_PUBLIC,
+      count: SOURCE_REASON_CATALOG_COUNT,
+      timestamp: now,
+      timestampIso: isoFromMs(now)!,
+    });
   });
 
   app.get('/health', (req: Request, res: Response) => {

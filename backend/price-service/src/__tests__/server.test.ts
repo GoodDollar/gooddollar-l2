@@ -1134,6 +1134,7 @@ describe('REST Server — root index and 404 endpoint discovery', () => {
     '/audit/stats',
     '/status/quotes',
     '/quotes/:symbol',
+    '/docs/source-reasons',
   ];
 
   it('GET / returns 200 with service name and endpoint index', async () => {

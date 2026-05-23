@@ -59,10 +59,10 @@ describe('REST Server — source reason enrichment surfaces', () => {
     expect(typeof src.nextStep).toBe('string');
   });
 
-  it('GET / sourceReasons enumerates the full catalog', async () => {
-    const res = await fetch(`${baseUrl}/`);
+  it('GET /docs/source-reasons enumerates the full catalog', async () => {
+    const res = await fetch(`${baseUrl}/docs/source-reasons`);
     const body = (await res.json()) as Record<string, unknown>;
-    const reasons = body.sourceReasons as Record<
+    const reasons = body.reasons as Record<
       string,
       { humanReason: string; nextStep: string; severity: string }
     >;
@@ -77,14 +77,14 @@ describe('REST Server — source reason enrichment surfaces', () => {
     }
   });
 
-  it('GET / sourceReasons present even when no source getter is wired', async () => {
+  it('GET /docs/source-reasons present even when no source getter is wired', async () => {
     const cache = new QuoteCache({ cacheTtlMs: 30_000 });
     const app = createServer(cache, { symbols: ['AAPL'] });
     const { server: s2, baseUrl: u2 } = await listen(app);
     try {
-      const res = await fetch(`${u2}/`);
+      const res = await fetch(`${u2}/docs/source-reasons`);
       const body = (await res.json()) as Record<string, unknown>;
-      const reasons = body.sourceReasons as Record<string, unknown>;
+      const reasons = body.reasons as Record<string, unknown>;
       expect(typeof reasons).toBe('object');
       expect(Object.keys(reasons).length).toBeGreaterThanOrEqual(3);
     } finally {
