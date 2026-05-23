@@ -1102,7 +1102,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                         children: "Live Quotes (price-service)"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                        lineNumber: 172,
+                        lineNumber: 173,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1115,7 +1115,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                 children: displayHost(priceServiceUrl)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                lineNumber: 176,
+                                lineNumber: 177,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1123,7 +1123,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                 children: "·"
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                lineNumber: 183,
+                                lineNumber: 184,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1134,26 +1134,26 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                lineNumber: 184,
+                                lineNumber: 185,
                                 columnNumber: 11
                             }, this),
                             state.status === 'ok' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FreshnessChip, {
                                 summary: computeFreshnessSummary(Object.values(state.data.quotes), stalenessThresholdMs)
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                lineNumber: 185,
+                                lineNumber: 186,
                                 columnNumber: 37
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                        lineNumber: 175,
+                        lineNumber: 176,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                lineNumber: 171,
+                lineNumber: 172,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1172,12 +1172,12 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                 className: "h-7 animate-pulse rounded bg-white/5"
                             }, i, false, {
                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                lineNumber: 195,
+                                lineNumber: 196,
                                 columnNumber: 13
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                        lineNumber: 193,
+                        lineNumber: 194,
                         columnNumber: 9
                     }, this),
                     state.status === 'error' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DegradedBox, {
@@ -1185,7 +1185,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                         host: displayHost(priceServiceUrl)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                        lineNumber: 201,
+                        lineNumber: 202,
                         columnNumber: 9
                     }, this),
                     state.status === 'ok' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1202,7 +1202,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                 children: "Symbol"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                lineNumber: 209,
+                                                lineNumber: 210,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1210,7 +1210,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                 children: "Mid"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                lineNumber: 210,
+                                                lineNumber: 211,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1218,7 +1218,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                 children: "Bid / Ask"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                lineNumber: 211,
+                                                lineNumber: 212,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1226,7 +1226,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                 children: "Spread"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                lineNumber: 212,
+                                                lineNumber: 213,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1234,18 +1234,18 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                 children: "Session"
                                             }, void 0, false, {
                                                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                lineNumber: 213,
+                                                lineNumber: 214,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                        lineNumber: 208,
+                                        lineNumber: 209,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                    lineNumber: 207,
+                                    lineNumber: 208,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1256,12 +1256,12 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                             children: "No quotes returned. price-service may be running but not yet seeded."
                                         }, void 0, false, {
                                             fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                            lineNumber: 219,
+                                            lineNumber: 220,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                        lineNumber: 218,
+                                        lineNumber: 219,
                                         columnNumber: 17
                                     }, this) : Object.values(state.data.quotes).map((q)=>{
                                         const stale = q.cacheAge > stalenessThresholdMs;
@@ -1273,7 +1273,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                     children: q.symbol
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                    lineNumber: 228,
+                                                    lineNumber: 229,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1281,7 +1281,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                     children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$proofFormat$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatProofUsd"])(q.symbol, q.mid)
                                                 }, void 0, false, {
                                                     fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                    lineNumber: 229,
+                                                    lineNumber: 230,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1293,7 +1293,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                    lineNumber: 230,
+                                                    lineNumber: 231,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1304,7 +1304,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                    lineNumber: 233,
+                                                    lineNumber: 234,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1316,7 +1316,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                             children: q.sessionState
                                                         }, void 0, false, {
                                                             fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                            lineNumber: 237,
+                                                            lineNumber: 238,
                                                             columnNumber: 25
                                                         }, this),
                                                         stale && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1328,7 +1328,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                                     "aria-hidden": true
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                                    lineNumber: 248,
+                                                                    lineNumber: 249,
                                                                     columnNumber: 29
                                                                 }, this),
                                                                 "stale ",
@@ -1336,48 +1336,48 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                            lineNumber: 244,
+                                                            lineNumber: 245,
                                                             columnNumber: 27
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                                    lineNumber: 236,
+                                                    lineNumber: 237,
                                                     columnNumber: 23
                                                 }, this)
                                             ]
                                         }, q.symbol, true, {
                                             fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                            lineNumber: 227,
+                                            lineNumber: 228,
                                             columnNumber: 21
                                         }, this);
                                     })
                                 }, void 0, false, {
                                     fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                                    lineNumber: 216,
+                                    lineNumber: 217,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                            lineNumber: 206,
+                            lineNumber: 207,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                        lineNumber: 205,
+                        lineNumber: 206,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                lineNumber: 191,
+                lineNumber: 192,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-        lineNumber: 166,
+        lineNumber: 167,
         columnNumber: 5
     }, this);
 }
@@ -1398,7 +1398,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
         children: host
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-        lineNumber: 279,
+        lineNumber: 280,
         columnNumber: 5
     }, this);
     switch(ctx){
@@ -1411,7 +1411,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                         children: "price-service returned an unexpected payload"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                        lineNumber: 287,
+                        lineNumber: 288,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1423,13 +1423,13 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                        lineNumber: 288,
+                        lineNumber: 289,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                lineNumber: 286,
+                lineNumber: 287,
                 columnNumber: 9
             }, this);
         case 'price-service':
@@ -1441,7 +1441,7 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                         children: "price-service unreachable"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                        lineNumber: 296,
+                        lineNumber: 297,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1453,13 +1453,13 @@ function LiveQuotesPanel({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVI
                         ]
                     }, void 0, true, {
                         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                        lineNumber: 297,
+                        lineNumber: 298,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                lineNumber: 295,
+                lineNumber: 296,
                 columnNumber: 9
             }, this);
     }
@@ -1479,7 +1479,7 @@ function FreshnessChip({ summary }) {
                 "aria-hidden": true
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                lineNumber: 318,
+                lineNumber: 319,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1490,13 +1490,13 @@ function FreshnessChip({ summary }) {
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-                lineNumber: 319,
+                lineNumber: 320,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/LiveQuotesPanel.tsx",
-        lineNumber: 317,
+        lineNumber: 318,
         columnNumber: 5
     }, this);
 }

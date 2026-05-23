@@ -247,6 +247,25 @@ describe('OnChainOraclePanel', () => {
     expect(screen.queryByTestId('oracle-address-text')).not.toBeInTheDocument()
   })
 
+  it('oracle address link reads as a muted mono atom by default and reveals the accent tone on hover (#0042)', () => {
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER', 'https://explorer.example.com')
+    useReadContractsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContracts>)
+
+    render(<OnChainOraclePanel />)
+    const link = screen.getByTestId('oracle-address-link') as HTMLAnchorElement
+    const cls = link.className
+    expect(cls).toMatch(/\bfont-mono\b/)
+    expect(cls).toMatch(/\btext-gray-400\b/)
+    expect(cls).toMatch(/hover:text-accent/)
+    expect(cls).toMatch(/hover:underline/)
+    // The default tone is no longer the standalone accent shout-class.
+    expect(cls).not.toMatch(/(^|\s)text-accent(\s|$)/)
+  })
+
   it('falls back to plain text when no explorer env is set', () => {
     vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER', '')
     vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER_URL', '')

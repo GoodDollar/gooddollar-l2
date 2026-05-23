@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { formatProofUsd } from '@/lib/proofFormat'
 import { sessionPillClass } from './sessionPill'
+import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 
 interface Quote {
   source?: string
@@ -172,16 +173,16 @@ export function LiveQuotesPanel({
         <h2 id="live-quotes-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           Live Quotes (price-service)
         </h2>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-          <span
-            className="font-mono truncate max-w-[55%]"
-            title={displayHost(priceServiceUrl)}
-            data-testid="price-service-url"
-          >
-            {displayHost(priceServiceUrl)}
-          </span>
-          <span aria-hidden>·</span>
-          <span>refreshes every {intervalMs / 1000}s</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <PanelHeaderMeta
+            source={
+              <MonoSourceAtom
+                value={displayHost(priceServiceUrl)}
+                data-testid="price-service-url"
+              />
+            }
+            cadence={<span>refreshes every {intervalMs / 1000}s</span>}
+          />
           {state.status === 'ok' && <FreshnessChip
             summary={computeFreshnessSummary(Object.values(state.data.quotes), stalenessThresholdMs)}
           />}

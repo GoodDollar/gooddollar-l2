@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { type ExposureSnapshot, type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
 import { parseRunId } from '@/lib/parseRunId'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
+import { MonoSourceAtom, PanelHeaderMeta, shortenSourcePath } from './PanelHeaderMeta'
 
 // Shared chip family for the LastDemoHedge header row. All status pills
 // (side, threshold, dry-run flag, real-trading flag) render through this
@@ -202,13 +203,25 @@ export function LastDemoHedgePanel({
       aria-labelledby="last-hedge-heading"
       className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
-      <header className="mb-3 flex items-center justify-between">
+      <header className="mb-3 flex items-center justify-between gap-y-1">
         <h2 id="last-hedge-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           Last Demo Hedge
         </h2>
-        <span className="text-xs text-gray-500">
-          {state.status === 'ok' ? state.data.proof.dryRun ? 'dry-run' : 'demo trade' : '—'}
-        </span>
+        <PanelHeaderMeta
+          source={
+            state.status === 'ok' ? (
+              <MonoSourceAtom
+                value={shortenSourcePath(state.data.source)}
+                title={state.data.source}
+              />
+            ) : undefined
+          }
+          cadence={
+            state.status === 'ok' ? (
+              <span>{state.data.proof.dryRun ? 'dry-run' : 'demo trade'}</span>
+            ) : undefined
+          }
+        />
       </header>
 
       <div className="flex-1">

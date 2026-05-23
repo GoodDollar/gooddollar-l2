@@ -5,6 +5,7 @@ import { useWatchContractEvent } from 'wagmi'
 import { CONTRACTS } from '@/lib/chain'
 import { PriceOracleABI } from '@/lib/abi'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
+import { MonoSourceAtom, PanelHeaderMeta, shortAddress } from './PanelHeaderMeta'
 
 interface UpdateEntry {
   txHash: string
@@ -97,11 +98,18 @@ export function OracleUpdatesPanel() {
       aria-labelledby="oracle-updates-heading"
       className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
-      <header className="mb-3 flex items-center justify-between">
+      <header className="mb-3 flex items-center justify-between gap-y-1">
         <h2 id="oracle-updates-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           Recent Oracle Updates
         </h2>
-        <span className="text-xs text-gray-500">last {MAX_EVENTS} PriceUpdated events</span>
+        <PanelHeaderMeta
+          source={
+            oracleAddress ? (
+              <MonoSourceAtom value={shortAddress(oracleAddress)} title={oracleAddress} />
+            ) : undefined
+          }
+          cadence={<span>last {MAX_EVENTS} PriceUpdated events</span>}
+        />
       </header>
 
       <div className="flex-1">

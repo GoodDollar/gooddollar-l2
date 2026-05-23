@@ -8,6 +8,7 @@ import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { getAllTickers } from '@/lib/stockData'
 import { formatProofUsd } from '@/lib/proofFormat'
 import { sessionPillClass } from './sessionPill'
+import { MonoLinkAtom, MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 
 const SESSION_LABELS: Record<number, string> = {
   0: 'Open',
@@ -168,31 +169,11 @@ export function OnChainOraclePanel() {
       aria-labelledby="onchain-oracle-heading"
       className="flex h-full flex-col rounded-2xl border border-white/10 bg-dark-100/60 p-5"
     >
-      <header className="mb-3 flex items-center justify-between">
+      <header className="mb-3 flex items-center justify-between gap-y-1">
         <h2 id="onchain-oracle-heading" className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           On-chain Oracle (getPriceData)
         </h2>
-        {oracleAddress && explorer ? (
-          <a
-            href={`${explorer.replace(/\/$/, '')}/address/${oracleAddress}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-2 truncate max-w-[40%] font-mono text-xs text-accent hover:text-white transition-colors"
-            data-testid="oracle-address-link"
-            aria-label={`Open ${oracleAddress} on block explorer`}
-            title={oracleAddress}
-          >
-            {oracleAddress} ↗
-          </a>
-        ) : (
-          <span
-            className="ml-2 truncate max-w-[40%] font-mono text-xs text-gray-500"
-            title={oracleAddress || undefined}
-            data-testid="oracle-address-text"
-          >
-            {oracleAddress || '—'}
-          </span>
-        )}
+        <PanelHeaderMeta source={<OracleAddressAtom oracleAddress={oracleAddress} explorer={explorer} />} />
       </header>
 
       <div className="flex-1">
@@ -275,6 +256,40 @@ export function OnChainOraclePanel() {
       )}
       </div>
     </section>
+  )
+}
+
+/**
+ * Pick the right header source atom for the on-chain oracle address.
+ * Renders the explorer link when both pieces are configured, the plain
+ * mono span when only the address is configured, or nothing when no
+ * address is known so the panel-header rail collapses to empty.
+ */
+function OracleAddressAtom({
+  oracleAddress,
+  explorer,
+}: {
+  oracleAddress: string | undefined
+  explorer: string
+}) {
+  if (!oracleAddress) return null
+  if (explorer) {
+    return (
+      <MonoLinkAtom
+        value={oracleAddress}
+        href={`${explorer.replace(/\/$/, '')}/address/${oracleAddress}`}
+        data-testid="oracle-address-link"
+        aria-label={`Open ${oracleAddress} on block explorer`}
+        title={oracleAddress}
+      />
+    )
+  }
+  return (
+    <MonoSourceAtom
+      value={oracleAddress}
+      data-testid="oracle-address-text"
+      title={oracleAddress}
+    />
   )
 }
 

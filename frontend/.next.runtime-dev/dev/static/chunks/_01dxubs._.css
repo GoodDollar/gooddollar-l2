@@ -1622,6 +1622,11 @@ img, video {
   row-gap: .5rem;
 }
 
+.gap-x-2 {
+  -moz-column-gap: .5rem;
+  column-gap: .5rem;
+}
+
 .-space-x-1\.5 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-x-reverse: 0;
   margin-right: calc(-.375rem * var(--tw-space-x-reverse));
