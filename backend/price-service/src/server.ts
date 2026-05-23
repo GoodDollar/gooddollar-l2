@@ -433,6 +433,40 @@ const MALFORMED_URI_EXPECTED = Object.freeze({
 });
 
 /**
+ * Static enrichment shipped on every 405 `method-not-allowed` envelope so
+ * the body rides the same `{error, message, humanReason, severity,
+ * nextStep, …}` contract every other 4xx/5xx on this service follows.
+ * `severity` is pinned to `'info'` (typed against `SourceSeverity` so a
+ * future enum-narrow fails at compile-time): a misrouted client is not
+ * an outage, just a runbook entry an operator wants to be able to
+ * filter out of the critical-alert dashboard. See task 0057.
+ */
+const METHOD_NOT_ALLOWED_HUMAN_REASON =
+  'This path is read-only; only the listed verbs are accepted.';
+
+const METHOD_NOT_ALLOWED_NEXT_STEP =
+  'Replay the request with one of the verbs in `allowed`. ' +
+  'OPTIONS is included for capability discovery.';
+
+const METHOD_NOT_ALLOWED_SEVERITY: SourceSeverity = 'info';
+
+/**
+ * Template the per-request 405 `message` off the offending verb + the
+ * allowed-methods list. Mirrors the `Allow` header shape so an operator
+ * grepping the audit log can match body and header on the same line.
+ */
+function buildMethodNotAllowedMessage(
+  method: string,
+  allowed: readonly string[],
+  path: string,
+): string {
+  return (
+    `Method '${method}' is not allowed on ${path}. ` +
+    `Reissue the request with one of: ${allowed.join(', ')}.`
+  );
+}
+
+/**
  * Derive a "what real route does this single path segment name?" map
  * from `ENDPOINT_CATALOG`. Drift-proof: adding a new endpoint
  * automatically extends the hint map; nothing to hand-edit.
@@ -1304,11 +1338,19 @@ export function createServer(
       // transport verb while the 405 still advertises it.
       const allowed = [...entry.methods, 'OPTIONS'];
       res.setHeader('Allow', allowed.join(', '));
+      // Field order matches the source-block convention so the catalog's
+      // documented responseShape (error → human copy → machine
+      // bookkeeping → meta tail) reads top-to-bottom against the wire
+      // body. `finalizeTimestamps` re-anchors timestamp+timestampIso last.
       const body: Record<string, unknown> = {
         error: 'method-not-allowed',
+        message: buildMethodNotAllowedMessage(req.method, allowed, req.path),
+        humanReason: METHOD_NOT_ALLOWED_HUMAN_REASON,
+        severity: METHOD_NOT_ALLOWED_SEVERITY,
+        nextStep: METHOD_NOT_ALLOWED_NEXT_STEP,
         allowed,
-        path: req.path,
         method: req.method,
+        path: req.path,
       };
       res.status(405).json(finalizeTimestamps(body, now));
       return;
