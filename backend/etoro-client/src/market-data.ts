@@ -191,29 +191,34 @@ export class MarketDataModule {
    * returns `[]`.
    */
   async getInstruments(symbols?: string[]): Promise<InstrumentMetadata[]> {
+    const now = Date.now();
+    const cacheFresh = this.instrumentCacheExpiry > now;
+
     if (!symbols?.length) {
-      if (this.instrumentCacheExpiry > Date.now() && this.instrumentCache.size > 0) {
+      if (cacheFresh && this.instrumentCache.size > 0) {
         return [...this.instrumentCache.values()];
       }
       return [];
     }
 
-    const cached = symbols
-      .map((s) => this.instrumentCache.get(s.toUpperCase()))
-      .filter((v): v is InstrumentMetadata => v !== undefined);
-    if (cached.length === symbols.length
-        && this.instrumentCacheExpiry > Date.now()) {
-      return cached;
-    }
-
+    let resolvedCount = 0;
     const results: InstrumentMetadata[] = [];
     for (const sym of symbols) {
+      const upper = sym.toUpperCase();
+      const cached = cacheFresh ? this.instrumentCache.get(upper) : undefined;
+      if (cached) {
+        results.push(cached);
+        continue;
+      }
       const resolved = await this.resolver.resolve(sym);
       const meta = toInstrumentMetadata(resolved);
       this.instrumentCache.set(meta.symbol, meta);
       results.push(meta);
+      resolvedCount += 1;
     }
-    this.instrumentCacheExpiry = Date.now() + 5 * 60_000;
+    if (resolvedCount > 0) {
+      this.instrumentCacheExpiry = now + 5 * 60_000;
+    }
     return results;
   }
 

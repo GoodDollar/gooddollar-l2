@@ -103,6 +103,49 @@ describe('MarketDataModule', () => {
       expect(filtered).toHaveLength(1);
       expect(filtered[0].symbol).toBe('AAPL');
     });
+
+    it('resolves only the uncached symbols on a partial-cache miss', async () => {
+      const http = createMockAxios({});
+      const mod = makeMod(http);
+      await mod.getInstruments(['AAPL']);
+
+      const resolver = (mod as unknown as { resolver: { resolve: jest.Mock } }).resolver;
+      const before = resolver.resolve.mock.calls.length;
+
+      await mod.getInstruments(['AAPL', 'TSLA']);
+      const after = resolver.resolve.mock.calls.length;
+
+      expect(after - before).toBe(1);
+      expect(resolver.resolve).toHaveBeenLastCalledWith('TSLA');
+    });
+
+    it('re-resolves all symbols after the instrument cache expires', async () => {
+      const http = createMockAxios({});
+      const mod = makeMod(http);
+      await mod.getInstruments(['AAPL']);
+
+      const resolver = (mod as unknown as { resolver: { resolve: jest.Mock } }).resolver;
+      const before = resolver.resolve.mock.calls.length;
+
+      (mod as unknown as { instrumentCacheExpiry: number }).instrumentCacheExpiry = Date.now() - 1;
+
+      await mod.getInstruments(['AAPL']);
+      const after = resolver.resolve.mock.calls.length;
+
+      expect(after - before).toBe(1);
+    });
+
+    it('keeps cache expiry unchanged when every symbol was already cached', async () => {
+      const http = createMockAxios({});
+      const mod = makeMod(http);
+      await mod.getInstruments(['AAPL', 'TSLA']);
+      const expiry = (mod as unknown as { instrumentCacheExpiry: number }).instrumentCacheExpiry;
+
+      await new Promise((r) => setTimeout(r, 5));
+      await mod.getInstruments(['AAPL']);
+
+      expect((mod as unknown as { instrumentCacheExpiry: number }).instrumentCacheExpiry).toBe(expiry);
+    });
   });
 
   describe('getQuotes', () => {
