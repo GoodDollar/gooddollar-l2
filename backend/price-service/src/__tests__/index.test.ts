@@ -92,6 +92,47 @@ describe('PriceService', () => {
     });
   });
 
+  describe('source status', () => {
+    it('default source status is not-attached / disconnected', () => {
+      const svc = new PriceService({ port: 0, wsPort: 0 });
+      expect(svc.getSourceStatus()).toEqual({
+        connected: false,
+        reason: 'not-attached',
+        lastAttachAt: null,
+      });
+    });
+
+    it('setSourceStatus(connected) is observable via getSourceStatus', () => {
+      const svc = new PriceService({ port: 0, wsPort: 0 });
+      svc.setSourceStatus({
+        connected: true,
+        symbols: ['AAPL', 'TSLA'],
+        lastAttachAt: 12345,
+      });
+      const got = svc.getSourceStatus();
+      expect(got.connected).toBe(true);
+      if (got.connected) {
+        expect(got.symbols).toEqual(['AAPL', 'TSLA']);
+        expect(got.lastAttachAt).toBe(12345);
+      }
+    });
+
+    it('setSourceStatus(disconnected) is observable via getSourceStatus', () => {
+      const svc = new PriceService({ port: 0, wsPort: 0 });
+      svc.setSourceStatus({
+        connected: false,
+        reason: 'lost connection',
+        lastAttachAt: 999,
+      });
+      const got = svc.getSourceStatus();
+      expect(got.connected).toBe(false);
+      if (!got.connected) {
+        expect(got.reason).toBe('lost connection');
+        expect(got.lastAttachAt).toBe(999);
+      }
+    });
+  });
+
   describe('envPort', () => {
     const ENV_NAME = '__TEST_PRICE_SERVICE_PORT__';
 

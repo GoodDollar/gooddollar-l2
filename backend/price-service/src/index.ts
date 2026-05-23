@@ -13,7 +13,14 @@ import { WsBroadcaster } from './ws-broadcaster';
 import { createServer } from './server';
 import { connectEtoroSource } from './etoro-source';
 import { AuditLogger } from './audit-logger';
-import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult, IngestStats } from './types';
+import {
+  PriceServiceConfig,
+  DEFAULT_CONFIG,
+  NormalizedQuote,
+  RiskFilterResult,
+  IngestStats,
+  SourceStatus,
+} from './types';
 
 export interface PriceServiceOptions {
   /** Optional pre-built audit logger; defaults to one using env defaults. */
@@ -26,6 +33,11 @@ export class PriceService {
   readonly auditLogger: AuditLogger;
   private readonly config: PriceServiceConfig;
   private httpServer?: ReturnType<typeof import('http').createServer>;
+  private sourceStatus: SourceStatus = {
+    connected: false,
+    reason: 'not-attached',
+    lastAttachAt: null,
+  };
 
   constructor(config?: Partial<PriceServiceConfig>, options?: PriceServiceOptions) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -48,8 +60,21 @@ export class PriceService {
     return this.auditLogger.stats();
   }
 
+  setSourceStatus(status: SourceStatus): void {
+    this.sourceStatus = status;
+  }
+
+  getSourceStatus(): SourceStatus {
+    return this.sourceStatus;
+  }
+
   start(): void {
-    const app = createServer(this.cache, this.config, () => this.getIngestStats());
+    const app = createServer(
+      this.cache,
+      this.config,
+      () => this.getIngestStats(),
+      () => this.getSourceStatus(),
+    );
     this.httpServer = app.listen(this.config.port, () => {
       console.log(`[price-service] REST server listening on port ${this.config.port}`);
     });
@@ -103,11 +128,22 @@ if (require.main === module) {
       marketData: client.marketData,
     });
 
+    service.setSourceStatus({
+      connected: true,
+      symbols,
+      lastAttachAt: Date.now(),
+    });
+
     console.log(`[price-service] Subscribed to ${symbols.length} symbols via eToro: ${symbols.join(', ')}`);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`[price-service] eToro source unavailable: ${msg}`);
     console.warn('[price-service] Running without live quotes — use REST API to ingest manually');
+    service.setSourceStatus({
+      connected: false,
+      reason: msg,
+      lastAttachAt: null,
+    });
   }
 
   const shutdown = () => {

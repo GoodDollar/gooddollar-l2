@@ -1,8 +1,9 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { QuoteCache } from './quote-cache';
-import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats } from './types';
+import { PriceServiceConfig, DEFAULT_CONFIG, IngestStats, SourceStatus } from './types';
 
 export type IngestStatsGetter = () => IngestStats;
+export type SourceStatusGetter = () => SourceStatus;
 
 /**
  * Map of exact known paths to the methods they accept. Keep grep-friendly:
@@ -53,6 +54,7 @@ export function createServer(
   cache: QuoteCache,
   config?: Partial<PriceServiceConfig>,
   statsGetter?: IngestStatsGetter,
+  sourceStatusGetter?: SourceStatusGetter,
 ): express.Express {
   const app = express();
   app.disable('x-powered-by');
@@ -71,7 +73,6 @@ export function createServer(
     const total = cache.size;
     const healthy = fresh.length > 0 || total === 0;
     const body: Record<string, unknown> = {
-      status: healthy ? 'ok' : 'degraded',
       freshQuotes: fresh.length,
       totalCached: total,
       configuredSymbols: cfg.symbols.length,
@@ -83,7 +84,17 @@ export function createServer(
       body.rejected = stats.rejected;
       body.acceptanceRatio = computeAcceptanceRatio(stats);
     }
-    res.status(healthy ? 200 : 503).json(body);
+    let degraded = !healthy;
+    if (sourceStatusGetter) {
+      const src = sourceStatusGetter();
+      body.source = src;
+      // A populated cache + healthy filter is not enough to claim
+      // health if the upstream source is dead — those cached ticks
+      // will go stale and never be refreshed.
+      if (!src.connected) degraded = true;
+    }
+    body.status = degraded ? 'degraded' : 'ok';
+    res.status(degraded ? 503 : 200).json(body);
   });
 
   app.get('/quotes', (_req: Request, res: Response) => {
@@ -185,13 +196,17 @@ export function createServer(
       }
     }
 
-    res.json({
+    const responseBody: Record<string, unknown> = {
       healthy: freshCount > 0 || all.size === 0,
       freshCount,
       totalCount: all.size,
       quotes,
       timestamp: now,
-    });
+    };
+    if (sourceStatusGetter) {
+      responseBody.source = sourceStatusGetter();
+    }
+    res.json(responseBody);
   });
 
   app.all('*', (req: Request, res: Response) => {

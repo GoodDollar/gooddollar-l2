@@ -73,6 +73,16 @@ export interface PriceServiceConfig {
 }
 
 /**
+ * Connection state of the upstream market-data source (eToro).
+ * Surfaced on `/health` and `/status/quotes` so a downstream consumer
+ * (lane-3 oracle-signer) can distinguish "warmup, no ticks yet" from
+ * "source dead at boot, will never tick".
+ */
+export type SourceStatus =
+  | { connected: false; reason: string; lastAttachAt: number | null }
+  | { connected: true; symbols: string[]; lastAttachAt: number };
+
+/**
  * Rolling in-memory counters for quote ingestion, surfaced via the
  * audit logger and exposed by the `/health` and `/audit/stats` endpoints.
  */

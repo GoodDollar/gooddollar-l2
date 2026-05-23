@@ -1,6 +1,6 @@
 import { createServer } from '../server';
 import { QuoteCache } from '../quote-cache';
-import { NormalizedQuote, IngestStats, computeSpread } from '../types';
+import { NormalizedQuote, IngestStats, SourceStatus, computeSpread } from '../types';
 import express from 'express';
 
 function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
@@ -541,5 +541,138 @@ describe('REST Server — GET /quotes/:symbol shape validation', () => {
     const body = (await res.json()) as Record<string, unknown>;
     expect(res.status).toBe(400);
     expect(body.error).toBe('invalid-symbol');
+  });
+});
+
+describe('REST Server — /health and /status/quotes with source status wired', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+  let srcState: SourceStatus;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    srcState = {
+      connected: true,
+      symbols: ['AAPL'],
+      lastAttachAt: 1700000000000,
+    };
+    app = createServer(
+      cache,
+      { symbols: ['AAPL'] },
+      undefined,
+      () => srcState,
+    );
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('connected source + populated cache → 200 with source.connected=true', async () => {
+    cache.clear();
+    cache.update(makeQuote({ symbol: 'AAPL' }));
+    srcState = {
+      connected: true,
+      symbols: ['AAPL'],
+      lastAttachAt: 1700000000000,
+    };
+    const res = await fetch(`${baseUrl}/health`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body.status).toBe('ok');
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(true);
+    expect(src.symbols).toEqual(['AAPL']);
+    expect(src.lastAttachAt).toBe(1700000000000);
+  });
+
+  it('disconnected source → 503 with source.connected=false and reason', async () => {
+    cache.clear();
+    srcState = {
+      connected: false,
+      reason: 'Cannot find module ../../etoro-client/src/index',
+      lastAttachAt: null,
+    };
+    const res = await fetch(`${baseUrl}/health`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(503);
+    expect(body.status).toBe('degraded');
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(false);
+    expect(src.reason).toBe('Cannot find module ../../etoro-client/src/index');
+    expect(src.lastAttachAt).toBeNull();
+  });
+
+  it('connected source + empty cache (warmup) → 200 status ok (not 503)', async () => {
+    cache.clear();
+    srcState = {
+      connected: true,
+      symbols: ['AAPL'],
+      lastAttachAt: 1700000000000,
+    };
+    const res = await fetch(`${baseUrl}/health`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body.status).toBe('ok');
+  });
+
+  it('/status/quotes mirrors /health.source', async () => {
+    srcState = {
+      connected: false,
+      reason: 'Cannot find module …',
+      lastAttachAt: null,
+    };
+    const res = await fetch(`${baseUrl}/status/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    const src = body.source as Record<string, unknown>;
+    expect(src.connected).toBe(false);
+    expect(src.reason).toBe('Cannot find module …');
+  });
+});
+
+describe('REST Server — response shape unchanged when no source getter is wired', () => {
+  let cache: QuoteCache;
+  let app: express.Express;
+  let server: ReturnType<express.Express['listen']>;
+  let baseUrl: string;
+
+  beforeAll((done) => {
+    cache = new QuoteCache({ cacheTtlMs: 30_000 });
+    app = createServer(cache, { symbols: ['AAPL'] });
+    server = app.listen(0, () => {
+      const addr = server.address();
+      if (addr && typeof addr === 'object') {
+        baseUrl = `http://127.0.0.1:${addr.port}`;
+      }
+      done();
+    });
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it('/health has no source field when no getter provided', async () => {
+    const res = await fetch(`${baseUrl}/health`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body.source).toBeUndefined();
+  });
+
+  it('/status/quotes has no source field when no getter provided', async () => {
+    const res = await fetch(`${baseUrl}/status/quotes`);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body.source).toBeUndefined();
   });
 });
