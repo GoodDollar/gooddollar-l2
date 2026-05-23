@@ -153,3 +153,65 @@ describe('OracleStatusBadge layout invariants', () => {
     expect(wrapper).toHaveClass('whitespace-nowrap')
   })
 })
+
+describe('OracleStatusBadge dot size invariant', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    __resetOracleStatusFallbackForTests()
+  })
+
+  it('compact-fallback live render uses 10px (w-2.5 h-2.5) dot with halo ring', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          overall: 'healthy',
+          services: [{ name: 'stocks-keeper', status: 'ok', lastChecked: new Date().toISOString() }],
+        }),
+        { status: 200 },
+      ),
+    )
+
+    const { container } = render(<OracleStatusBadge useStocksFallback />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeInTheDocument())
+    const dot = container.querySelector('span.rounded-full')
+    expect(dot).not.toBeNull()
+    expect(dot).toHaveClass('w-2.5')
+    expect(dot).toHaveClass('h-2.5')
+    expect(dot).toHaveClass('ring-2')
+  })
+
+  it('compact-fallback offline render uses 10px dot', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'))
+
+    const { container } = render(<OracleStatusBadge useStocksFallback />)
+    await waitFor(() => expect(screen.getByText('Oracle offline')).toBeInTheDocument())
+    const dot = container.querySelector('span.rounded-full')
+    expect(dot).not.toBeNull()
+    expect(dot).toHaveClass('w-2.5')
+    expect(dot).toHaveClass('h-2.5')
+  })
+
+  it('loading skeleton uses h-4 (16px) so the badge does not jump on load', () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+    })
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}))
+
+    const { container } = render(<OracleStatusBadge useStocksFallback />)
+    const skeleton = container.querySelector('.animate-pulse')
+    expect(skeleton).toHaveClass('h-4')
+    expect(skeleton).not.toHaveClass('h-5')
+  })
+})

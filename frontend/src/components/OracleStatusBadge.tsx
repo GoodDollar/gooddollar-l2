@@ -11,17 +11,33 @@ function formatAge(ms: number): string {
   return `${Math.floor(ms / 3_600_000)}h ago`
 }
 
+// User-facing label for the listing-page badge. Keep short, plain English —
+// this is what a trader reads next to the live price, not an internal
+// service name. Internal `services[].name === 'stocks-keeper'` lookups in
+// `deriveStocksOracleHealth` remain unchanged; that's a contract identifier.
+const SOURCE_LABEL = 'on-chain feed'
+
+// Status dot tokens — sized to read at a glance from typical viewing distance.
+// Live state uses a halo ring so the green dot reads as a status pill rather
+// than a stray pixel.
+const STATUS_DOT = 'w-2.5 h-2.5 rounded-full'
+const STATUS_DOT_LIVE = `${STATUS_DOT} bg-green-400 animate-pulse ring-2 ring-green-400/20`
+const STATUS_DOT_STALE = `${STATUS_DOT} bg-yellow-400`
+const STATUS_DOT_RED = `${STATUS_DOT} bg-red-400`
+const STATUS_DOT_GRAY = `${STATUS_DOT} bg-gray-500`
+const STATUS_SKELETON = 'animate-pulse h-4 w-28 rounded-full bg-dark-50/30'
+
 function renderDetailRow(quoteStatus: QuoteStatus) {
   const isStale = quoteStatus.lastUpdateMs > 60_000
-  const dotColor = quoteStatus.lastUpdateMs < 15_000
-    ? 'bg-green-400'
+  const dotClass = quoteStatus.lastUpdateMs < 15_000
+    ? STATUS_DOT_LIVE
     : isStale
-      ? 'bg-red-400'
-      : 'bg-yellow-400'
+      ? STATUS_DOT_RED
+      : STATUS_DOT_STALE
 
   return (
     <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs">
-      <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+      <span className={dotClass} />
       <span className="text-gray-400">
         Updated {formatAge(quoteStatus.lastUpdateMs)}
       </span>
@@ -43,12 +59,6 @@ function renderDetailRow(quoteStatus: QuoteStatus) {
 
 type Variant = 'compact' | 'detail'
 type TimeoutPhase = 'loading' | 'slow' | 'timed-out'
-
-// User-facing label for the listing-page badge. Keep short, plain English —
-// this is what a trader reads next to the live price, not an internal
-// service name. Internal `services[].name === 'stocks-keeper'` lookups in
-// `deriveStocksOracleHealth` remain unchanged; that's a contract identifier.
-const SOURCE_LABEL = 'on-chain feed'
 
 interface OracleStatusBadgeProps {
   variant?: Variant
@@ -233,7 +243,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         if (timeoutPhase === 'timed-out') {
           return (
             <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-yellow-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+              <span className={STATUS_DOT_STALE} />
               <span>Price feed unavailable</span>
               <button
                 type="button"
@@ -247,7 +257,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         }
         return (
           <div className="inline-flex items-center gap-1.5 whitespace-nowrap" aria-label={timeoutPhase === 'slow' ? 'Price feed connecting' : 'Checking price feed'}>
-            <div className="animate-pulse h-5 w-24 rounded-full bg-dark-50/30" />
+            <div className={STATUS_SKELETON} />
           </div>
         )
       }
@@ -259,7 +269,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
           }
           return (
             <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <span className={STATUS_DOT_LIVE} />
               <span>Live</span>
               <span className="text-gray-600">·</span>
               <span>no {symbol} feed yet</span>
@@ -268,7 +278,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         }
         return (
           <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            <span className={STATUS_DOT_LIVE} />
             <span>Live</span>
             <span className="text-gray-600">·</span>
             <span>{SOURCE_LABEL}</span>
@@ -278,7 +288,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
       if (fallbackState === 'degraded') {
         return (
           <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+            <span className={STATUS_DOT_STALE} />
             <span>Oracle degraded</span>
           </div>
         )
@@ -286,7 +296,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     }
     return (
       <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500">
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+        <span className={STATUS_DOT_GRAY} />
         <span>Oracle offline</span>
       </div>
     )
@@ -299,7 +309,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     if (!quoteStatus) {
       return (
         <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500">
-          <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+          <span className={STATUS_DOT_GRAY} />
           <span>No oracle data for {symbol}</span>
         </div>
       )
@@ -311,15 +321,15 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
   const dominantSession = getDominantSession(quotes)
   const maxAge = quotes.length > 0 ? Math.max(...quotes.map(q => q.lastUpdateMs)) : 0
   const anyStale = maxAge > 60_000
-  const dotColor = healthy && !anyStale
-    ? 'bg-green-400'
+  const dotClass = healthy && !anyStale
+    ? STATUS_DOT_LIVE
     : healthy && anyStale
-      ? 'bg-yellow-400'
-      : 'bg-red-400'
+      ? STATUS_DOT_STALE
+      : STATUS_DOT_RED
 
   return (
     <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
-      <span className={`w-1.5 h-1.5 rounded-full ${dotColor} ${healthy && !anyStale ? 'animate-pulse' : ''}`} />
+      <span className={dotClass} />
       <span>{freshCount}/{totalCount} feeds</span>
       <span className="text-gray-600">·</span>
       <span>{getSessionLabel(dominantSession)}</span>
