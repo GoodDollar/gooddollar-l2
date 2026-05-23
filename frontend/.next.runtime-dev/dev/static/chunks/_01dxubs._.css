@@ -1743,6 +1743,10 @@ img, video {
   align-self: flex-start;
 }
 
+.self-center {
+  align-self: center;
+}
+
 .overflow-auto {
   overflow: auto;
 }
@@ -3023,6 +3027,10 @@ img, video {
 
 .bg-white\/15 {
   background-color: #ffffff26;
+}
+
+.bg-green-400\/80 {
+  background-color: #4ade80cc;
 }
 
 .bg-gradient-to-br {

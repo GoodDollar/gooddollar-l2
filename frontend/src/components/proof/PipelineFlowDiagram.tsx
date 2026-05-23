@@ -107,6 +107,51 @@ function axisToTone(axis: AxisHealth): Tone {
   }
 }
 
+/**
+ * Visual prominence of each axis state on the pipeline-flow diagram.
+ * Lower values dominate higher ones because the page reads worst-case
+ * tones first (degraded/unknown surfaces before healthy). Used by
+ * `dominantUpstreamTone` to pick the upstream tone the terminal
+ * `demo-hedge` segment should inherit when it would otherwise look
+ * orphaned — see #0047.
+ */
+const TONE_PROMINENCE: Record<AxisHealth, number> = {
+  unknown: 0,
+  degraded: 1,
+  healthy: 2,
+}
+
+function dominantUpstreamTone(quotes: AxisHealth, onChain: AxisHealth): AxisHealth {
+  return TONE_PROMINENCE[quotes] <= TONE_PROMINENCE[onChain] ? quotes : onChain
+}
+
+interface ResolvedAxis {
+  axis: AxisHealth
+  /** True iff the trailing hedge-proof segment inherited an upstream tone instead of its own. */
+  subordinated: boolean
+  /** True iff the underlying hedgeProof axis is healthy (only meaningful for the hedgeProof segment). */
+  ok: boolean
+}
+
+/**
+ * Pick the rendered axis state for a single node/edge segment. The
+ * upstream axes (`quotes`, `onChain`) always paint their own state;
+ * the trailing `hedgeProof` segment subordinates to the dominant
+ * upstream tone when upstream is non-healthy so the terminal node
+ * stays visually connected to the chain. Underlying truth survives
+ * via the `ok` flag, which drives a small indicator dot on the
+ * subordinated node — see #0047.
+ */
+function resolveAxisForSegment(axis: AxisKey, axes: AxisState): ResolvedAxis {
+  if (axis !== 'hedgeProof') {
+    return { axis: axes[axis], subordinated: false, ok: axes[axis] === 'healthy' }
+  }
+  const upstream = dominantUpstreamTone(axes.quotes, axes.onChain)
+  const ok = axes.hedgeProof === 'healthy'
+  if (upstream === 'healthy') return { axis: axes.hedgeProof, subordinated: false, ok }
+  return { axis: upstream, subordinated: true, ok }
+}
+
 interface PipelineFlowDiagramProps {
   priceServiceUrl?: string
   hedgeProofEndpoint?: string
@@ -217,15 +262,20 @@ export function PipelineFlowDiagram({
     >
       <ol className="flex flex-wrap items-center gap-y-2 text-xs">
         {NODES.map((node, idx) => {
-          const nodeTone = axisToTone(axes[node.axis])
+          const resolved = resolveAxisForSegment(node.axis, axes)
           const edge = EDGES[idx]
-          const edgeTone = edge ? axisToTone(axes[edge.axis]) : null
+          const edgeResolved = edge ? resolveAxisForSegment(edge.axis, axes) : null
           return (
             <FlowNode
               key={`node-${node.id}`}
               spec={node}
-              tone={nodeTone}
-              trailingEdge={edge && edgeTone ? { spec: edge, tone: edgeTone } : null}
+              tone={axisToTone(resolved.axis)}
+              showHedgeProofIndicator={node.id === 'demo-hedge' && resolved.subordinated && resolved.ok}
+              trailingEdge={
+                edge && edgeResolved
+                  ? { spec: edge, tone: axisToTone(edgeResolved.axis) }
+                  : null
+              }
             />
           )
         })}
@@ -246,10 +296,12 @@ function FlowNode({
   spec,
   tone,
   trailingEdge,
+  showHedgeProofIndicator,
 }: {
   spec: NodeSpec
   tone: Tone
   trailingEdge: { spec: EdgeSpec; tone: Tone } | null
+  showHedgeProofIndicator: boolean
 }) {
   return (
     <li
@@ -263,6 +315,13 @@ function FlowNode({
         <span className="font-mono uppercase tracking-wider">{spec.label}</span>
         {spec.subtitle && (
           <span className="text-[10px] uppercase tracking-wider text-gray-400">{spec.subtitle}</span>
+        )}
+        {showHedgeProofIndicator && (
+          <span
+            aria-hidden
+            data-testid={`pipeline-node-${spec.id}-indicator`}
+            className="ml-1 inline-block h-1.5 w-1.5 self-center rounded-full bg-green-400/80"
+          />
         )}
       </span>
       {trailingEdge && (

@@ -6742,6 +6742,50 @@ function axisToTone(axis) {
             return 'unknown';
     }
 }
+/**
+ * Visual prominence of each axis state on the pipeline-flow diagram.
+ * Lower values dominate higher ones because the page reads worst-case
+ * tones first (degraded/unknown surfaces before healthy). Used by
+ * `dominantUpstreamTone` to pick the upstream tone the terminal
+ * `demo-hedge` segment should inherit when it would otherwise look
+ * orphaned — see #0047.
+ */ const TONE_PROMINENCE = {
+    unknown: 0,
+    degraded: 1,
+    healthy: 2
+};
+function dominantUpstreamTone(quotes, onChain) {
+    return TONE_PROMINENCE[quotes] <= TONE_PROMINENCE[onChain] ? quotes : onChain;
+}
+/**
+ * Pick the rendered axis state for a single node/edge segment. The
+ * upstream axes (`quotes`, `onChain`) always paint their own state;
+ * the trailing `hedgeProof` segment subordinates to the dominant
+ * upstream tone when upstream is non-healthy so the terminal node
+ * stays visually connected to the chain. Underlying truth survives
+ * via the `ok` flag, which drives a small indicator dot on the
+ * subordinated node — see #0047.
+ */ function resolveAxisForSegment(axis, axes) {
+    if (axis !== 'hedgeProof') {
+        return {
+            axis: axes[axis],
+            subordinated: false,
+            ok: axes[axis] === 'healthy'
+        };
+    }
+    const upstream = dominantUpstreamTone(axes.quotes, axes.onChain);
+    const ok = axes.hedgeProof === 'healthy';
+    if (upstream === 'healthy') return {
+        axis: axes.hedgeProof,
+        subordinated: false,
+        ok
+    };
+    return {
+        axis: upstream,
+        subordinated: true,
+        ok
+    };
+}
 function PipelineFlowDiagram({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? DEFAULT_PRICE_SERVICE_URL, hedgeProofEndpoint = '/api/hedge-proof/latest', intervalMs = DEFAULT_POLL_INTERVAL_MS, stalenessThresholdMs = DEFAULT_STALENESS_THRESHOLD_MS }) {
     const oracleAddress = __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$lib$2f$devnet$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["CONTRACTS"].StocksPriceOracle;
     const probeTicker = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
@@ -6842,25 +6886,26 @@ function PipelineFlowDiagram({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_S
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ol", {
                 className: "flex flex-wrap items-center gap-y-2 text-xs",
                 children: NODES.map((node, idx)=>{
-                    const nodeTone = axisToTone(axes[node.axis]);
+                    const resolved = resolveAxisForSegment(node.axis, axes);
                     const edge = EDGES[idx];
-                    const edgeTone = edge ? axisToTone(axes[edge.axis]) : null;
+                    const edgeResolved = edge ? resolveAxisForSegment(edge.axis, axes) : null;
                     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FlowNode, {
                         spec: node,
-                        tone: nodeTone,
-                        trailingEdge: edge && edgeTone ? {
+                        tone: axisToTone(resolved.axis),
+                        showHedgeProofIndicator: node.id === 'demo-hedge' && resolved.subordinated && resolved.ok,
+                        trailingEdge: edge && edgeResolved ? {
                             spec: edge,
-                            tone: edgeTone
+                            tone: axisToTone(edgeResolved.axis)
                         } : null
                     }, `node-${node.id}`, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 224,
+                        lineNumber: 269,
                         columnNumber: 13
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 218,
+                lineNumber: 263,
                 columnNumber: 7
             }, this),
             failedReasons.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6869,17 +6914,17 @@ function PipelineFlowDiagram({ priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_S
                 children: failedReasons.join(' · ')
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 234,
+                lineNumber: 284,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 213,
+        lineNumber: 258,
         columnNumber: 5
     }, this);
 }
-function FlowNode({ spec, tone, trailingEdge }) {
+function FlowNode({ spec, tone, trailingEdge, showHedgeProofIndicator }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
         "data-testid": `pipeline-node-${spec.id}`,
         "data-tone": tone,
@@ -6893,7 +6938,7 @@ function FlowNode({ spec, tone, trailingEdge }) {
                         children: spec.label
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 263,
+                        lineNumber: 315,
                         columnNumber: 9
                     }, this),
                     spec.subtitle && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6901,13 +6946,22 @@ function FlowNode({ spec, tone, trailingEdge }) {
                         children: spec.subtitle
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 265,
+                        lineNumber: 317,
+                        columnNumber: 11
+                    }, this),
+                    showHedgeProofIndicator && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        "aria-hidden": true,
+                        "data-testid": `pipeline-node-${spec.id}-indicator`,
+                        className: "ml-1 inline-block h-1.5 w-1.5 self-center rounded-full bg-green-400/80"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
+                        lineNumber: 320,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 260,
+                lineNumber: 312,
                 columnNumber: 7
             }, this),
             trailingEdge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6918,13 +6972,13 @@ function FlowNode({ spec, tone, trailingEdge }) {
                 children: "→"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 269,
+                lineNumber: 328,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 255,
+        lineNumber: 307,
         columnNumber: 5
     }, this);
 }

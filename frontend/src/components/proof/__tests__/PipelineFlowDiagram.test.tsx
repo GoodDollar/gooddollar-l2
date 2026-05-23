@@ -315,6 +315,103 @@ describe('PipelineFlowDiagram', () => {
     expect(section.textContent).not.toMatch(/super-secret-host/)
   })
 
+  // #0047 — the trailing demo-hedge node and its frontend→demo-hedge
+  // edge used to paint with their own `hedgeProof` axis tone, which
+  // made the terminal segment look orphaned from the upstream chain
+  // exactly when upstream was non-healthy (the most common dev state:
+  // upstream degraded, hedge-proof artifact already on disk = healthy).
+  // Subordinate the trailing tone to the dominant upstream tone, but
+  // preserve the underlying axis truth via a small indicator dot.
+  describe('demo-hedge terminal subordination (#0047)', () => {
+    it('inherits upstream tone when both upstream axes are degraded and hedgeProof is healthy', async () => {
+      mockOnChainDegraded()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) throw new Error('boom')
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+
+      render(<PipelineFlowDiagram intervalMs={60_000} />)
+
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+          'degraded',
+        )
+      })
+      expect(
+        screen.getByTestId('pipeline-edge-frontend-demo-hedge').getAttribute('data-tone'),
+      ).toBe('degraded')
+      expect(screen.queryByTestId('pipeline-node-demo-hedge-indicator')).not.toBeNull()
+    })
+
+    it('keeps own tone when upstream is fully healthy and hedgeProof is degraded', async () => {
+      mockOnChainHealthy()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: false, status: 500, body: {} }
+        return { ok: false, status: 404, body: {} }
+      })
+
+      render(<PipelineFlowDiagram intervalMs={60_000} />)
+
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+          'degraded',
+        )
+      })
+      // Upstream healthy → no subordination, no indicator dot needed.
+      expect(screen.queryByTestId('pipeline-node-demo-hedge-indicator')).toBeNull()
+    })
+
+    it('inherits upstream tone when one upstream axis is unknown', async () => {
+      mockOnChainUnknown()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+
+      render(<PipelineFlowDiagram intervalMs={60_000} />)
+
+      // Wait for the off-chain fetches to resolve so quotes flips to
+      // healthy and hedgeProof flips to healthy; on-chain stays
+      // unknown (data === undefined). The demo-hedge node should
+      // then inherit the dominant upstream tone (unknown) and reveal
+      // the indicator dot announcing the underlying axis is healthy.
+      await vi.waitFor(() => {
+        const node = screen.getByTestId('pipeline-node-demo-hedge')
+        expect(node.getAttribute('data-tone')).toBe('unknown')
+        expect(screen.getByTestId('pipeline-node-demo-hedge-indicator')).not.toBeNull()
+      })
+      expect(
+        screen.getByTestId('pipeline-edge-frontend-demo-hedge').getAttribute('data-tone'),
+      ).toBe('unknown')
+      expect(screen.getByTestId('pipeline-node-etoro').getAttribute('data-tone')).toBe('healthy')
+    })
+
+    it('keeps own healthy tone (with no indicator) when both upstream and hedgeProof are healthy', async () => {
+      mockOnChainHealthy()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+
+      render(<PipelineFlowDiagram intervalMs={60_000} />)
+
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+          'healthy',
+        )
+      })
+      expect(screen.queryByTestId('pipeline-node-demo-hedge-indicator')).toBeNull()
+    })
+  })
+
   it('eToro pill renders the demo subtitle inline, not stacked (#0041)', () => {
     // Before the fix, only the eToro node carried a `subtitle: 'demo'`
     // and rendered as a 2-row flex-col pill that broke the diagram's
