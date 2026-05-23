@@ -131,14 +131,19 @@ function main() {
     if (isRpcFreshProfile && req.method === 'POST') {
       // Minimal JSON-RPC eth_call handler for the StockOracleV2
       // lastUpdated() selector (0xd0b06f5d). Returns a 32-byte hex
-      // value of `floor(now/1000)-60` so the smoke reports the
-      // oracle as fresh (60 s old).
+      // value of `floor(now/1000) + RPC_LAST_UPDATED_OFFSET`. The
+      // default offset of -60 keeps the oracle 60 s old (the same
+      // value iter06 was captured against). Test drivers can pass
+      // RPC_LAST_UPDATED_OFFSET=86400 (future-dated), 0 (just-now),
+      // or any negative value to drive the smoke through every
+      // freshness branch.
       let raw = '';
       req.on('data', (c) => { raw += c; });
       req.on('end', () => {
         let id = 1;
         try { id = JSON.parse(raw).id; } catch (_) { /* ignore */ }
-        const ts = Math.floor(Date.now() / 1000) - 60;
+        const offset = parseInt(process.env.RPC_LAST_UPDATED_OFFSET || '-60', 10);
+        const ts = Math.floor(Date.now() / 1000) + offset;
         const hex = ts.toString(16).padStart(64, '0');
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ jsonrpc: '2.0', id, result: '0x' + hex }));

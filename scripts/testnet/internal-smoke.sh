@@ -412,7 +412,18 @@ else
         else
           now_s="$(date -u +%s)"
           age_s=$(( now_s - last_updated ))
-          if (( age_s > STALENESS_THRESHOLD_S )); then
+          if (( age_s < 0 )); then
+            # Future-dated lastUpdated() — `age_s > THRESHOLD` would silently
+            # return false on the negative value and print a contradictory
+            # `✅ ... age -86400 s ≤ 600 s` line. Surface the anomaly as a
+            # WARN (matches "no signer data yet" / probe-timeout grading)
+            # so an operator with clock skew on their host can still make
+            # forward progress while spotting the drift. BLOCKER would be
+            # too brittle for a 1 s NTP wobble.
+            future_s=$(( -age_s ))
+            add_summary "⚠️  StockOracleV2.lastUpdated() = $last_updated is ${future_s}s in the future — check signer host clock / NTP"
+            WARNINGS+=("on-chain oracle timestamp is ${future_s}s in the future (LANE7_RPC=$LANE7_RPC)")
+          elif (( age_s > STALENESS_THRESHOLD_S )); then
             add_summary "❌ StockOracleV2.lastUpdated() = $last_updated; age $age_s s > threshold $STALENESS_THRESHOLD_S s"
             BLOCKERS+=("on-chain oracle stale (age ${age_s}s > ${STALENESS_THRESHOLD_S}s)")
           else
