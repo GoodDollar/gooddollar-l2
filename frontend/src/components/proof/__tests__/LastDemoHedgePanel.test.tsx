@@ -153,6 +153,66 @@ describe('LastDemoHedgePanel', () => {
     expect(fetchSpy.mock.calls.length).toBe(fetchCallsBefore)
   })
 
+  // #0053 — RUNID and TIMESTAMP rows live in the same <dl> and each use a
+  // middle-dot separator between two atoms; the dot must render with the
+  // same horizontal padding in both rows. The fix promotes RelativeTimestamp
+  // to the same flex-with-gap-1 pattern that RunIdValue uses (4 px / 4 px
+  // around the dot). These tests pin both call sites to that pattern so a
+  // regression in either component fails fast.
+  describe('RelativeTimestamp dot-spacing parity with RunIdValue (#0053)', () => {
+    it('RelativeTimestamp outer wrapper is a flex container with gap-1 / flex-wrap / items-baseline', async () => {
+      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
+      render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+      const ts = await waitFor(() => screen.getByTestId('hedge-timestamp'))
+      expect(ts.className).toMatch(/\binline-flex\b/)
+      expect(ts.className).toMatch(/\bgap-1\b/)
+      expect(ts.className).toMatch(/\bitems-baseline\b/)
+      expect(ts.className).toMatch(/\bflex-wrap\b/)
+    })
+
+    it('RelativeTimestamp dot is a standalone aria-hidden span — not fused into a text node', async () => {
+      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
+      render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+      const ts = await waitFor(() => screen.getByTestId('hedge-timestamp'))
+      const dotSpans = Array.from(ts.querySelectorAll('span[aria-hidden]')).filter(
+        (n) => (n.textContent ?? '').trim() === '·',
+      )
+      expect(dotSpans).toHaveLength(1)
+      const dot = dotSpans[0]
+      expect(dot.className).not.toMatch(/\bml-1\b/)
+    })
+
+    it('RelativeTimestamp and RunIdValue share the same flex-gap container classes — single typographic rhythm', async () => {
+      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
+      render(<LastDemoHedgePanel intervalMs={60_000} />)
+
+      const ts = await waitFor(() => screen.getByTestId('hedge-timestamp'))
+      const run = screen.getByTestId('hedge-runid')
+      for (const cls of ['inline-flex', 'flex-wrap', 'items-baseline', 'gap-1']) {
+        expect(ts.className, `hedge-timestamp missing ${cls}`).toMatch(new RegExp(`\\b${cls}\\b`))
+        expect(run.className, `hedge-runid missing ${cls}`).toMatch(new RegExp(`\\b${cls}\\b`))
+      }
+    })
+
+    it('RelativeTimestamp still renders the relative phrase + HH:MM:SS UTC text content after the restructure', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      vi.setSystemTime(new Date(T0))
+      mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp: T_PROOF }))
+
+      render(<LastDemoHedgePanel intervalMs={5 * 60_000} />)
+
+      const ts = await vi.waitFor(() => {
+        const el = screen.getByTestId('hedge-timestamp')
+        expect(el.textContent).toMatch(/3m ago/i)
+        return el
+      })
+      expect(ts.textContent).toMatch(/13:47:20 UTC/)
+      expect(ts.getAttribute('title')).toContain('2026-05-23T13:47:20.584Z')
+    })
+  })
+
   it('renders the outer section with the stable jump-target id', () => {
     globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
     const { container } = render(<LastDemoHedgePanel intervalMs={60_000} />)

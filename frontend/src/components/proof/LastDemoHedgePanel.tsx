@@ -148,12 +148,11 @@ function RelativeTimestamp({ ms }: { ms: number }) {
     <span
       data-testid="hedge-timestamp"
       title={`${iso}\n${local}`}
-      className="font-mono break-all"
+      className="inline-flex flex-wrap items-baseline gap-1"
     >
-      {formatRelative(ms)}
-      <span aria-hidden className="ml-1 text-gray-500">
-        · {iso.slice(11, 19)} UTC
-      </span>
+      <span className="font-mono break-all text-gray-200">{formatRelative(ms)}</span>
+      <span aria-hidden className="text-gray-500">·</span>
+      <span className="font-mono text-gray-400">{iso.slice(11, 19)} UTC</span>
     </span>
   )
 }
