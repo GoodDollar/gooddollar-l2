@@ -14,6 +14,11 @@ describe('stocks route bundle budget tooling', () => {
 
     const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8'))
     expect(pkg.scripts['check:stocks-bundles']).toBeTruthy()
-    expect(pkg.scripts['check:perf']).toContain('check:stocks-bundles')
+    expect(pkg.scripts['check:perf']).toContain('check:perf:local')
+    expect(pkg.scripts['check:perf:local']).toContain('check:stocks-bundles')
+    expect(pkg.scripts['check:perf']).not.toContain('check:buildid-sync')
+    expect(pkg.scripts['check:perf:live']).toContain('check:perf:runtime')
+    expect(pkg.scripts['check:perf:runtime']).toContain('check:buildid-sync')
+    expect(pkg.scripts['check:perf:runtime']).toContain('check:served-chunks')
   })
 })
