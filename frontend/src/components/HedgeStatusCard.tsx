@@ -204,6 +204,37 @@ function ThrottleCountdown({
   )
 }
 
+// Engine-tile sub-line for the unreachable state. Owns its own 1 s
+// ticker so the rest of the card reconciles only when a poll resolves
+// (#0031). When `lastPolledAt` is set, surfaces the relative time of
+// the most recent attempt so the operator knows *when* a poll last
+// landed instead of reading the same "auto-retry 10s" cadence the
+// banner already states (#0070). When `lastPolledAt` is null (first
+// fetch in flight) falls back to the cadence copy — there's no
+// relative anchor to surface yet.
+function EngineLastAttemptSub({
+  lastPolledAt,
+  pollIntervalMs,
+}: {
+  lastPolledAt: number | null
+  pollIntervalMs: number
+}) {
+  const [, setTick] = useState(0)
+  useIntervalWhileVisible(() => setTick((n) => n + 1), 1000)
+  const text =
+    lastPolledAt === null
+      ? `auto-retry ${Math.round(pollIntervalMs / 1000)}s`
+      : `last attempt ${timeAgo(lastPolledAt)}`
+  return (
+    <span
+      data-testid="hedge-engine-stat-sub"
+      className="text-xs text-red-300"
+    >
+      {text}
+    </span>
+  )
+}
+
 type EngineStateLabel = 'ok' | 'degraded' | 'halted' | 'unreachable' | 'awaiting tick'
 
 interface EngineSubLine {
@@ -692,6 +723,22 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   // "engine offline" banner above (#0068). Genuine awaiting-tick states
   // (engine reachable, first tick pending) keep the animated pulse.
   const engineUnreachable = engineState.label === 'unreachable'
+  // On the unreachable branch, swap the engine tile's static
+  // "auto-retry 10s" sub for a self-ticking "last attempt Xs ago"
+  // string. Memoise on `lastPolledAt` so the surrounding `Stat` memo
+  // only re-reconciles when a poll resolves; the inner ticker handles
+  // the once-per-second relative-time updates without fanning out
+  // re-renders to the other three tiles (#0031, #0070).
+  const engineSubNode = useMemo(
+    () =>
+      engineUnreachable ? (
+        <EngineLastAttemptSub
+          lastPolledAt={lastPolledAt}
+          pollIntervalMs={POLL_INTERVAL_MS}
+        />
+      ) : undefined,
+    [engineUnreachable, lastPolledAt],
+  )
 
   return (
     <section
@@ -943,6 +990,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               subColor={engineState.sub.color}
               subMono={engineState.sub.mono}
               subTestId="hedge-engine-stat-sub"
+              subNode={engineSubNode}
             />
           </>
         )}
@@ -1078,6 +1126,13 @@ interface StatProps {
   // otherwise three pulsing tiles contradict the explicit "engine
   // offline" banner above (#0068).
   placeholderAnimated?: boolean
+  // Optional escape-hatch for parents that need a self-ticking or
+  // otherwise dynamic sub-line. When provided, replaces the entire
+  // `sub`/`subColor`/`subMono`/`subTestId` rendering — the parent
+  // owns the testid + classes. The engine tile uses this to render
+  // `EngineLastAttemptSub` without forcing the other tiles to
+  // re-render every second (#0070).
+  subNode?: ReactNode
 }
 
 const Stat = memo(function Stat({
@@ -1097,6 +1152,7 @@ const Stat = memo(function Stat({
   sparklineTestId,
   placeholder,
   placeholderAnimated = true,
+  subNode,
 }: StatProps) {
   const subClasses = [
     'text-xs',
@@ -1149,11 +1205,11 @@ const Stat = memo(function Stat({
           />
         </span>
       )}
-      {sub && (
+      {subNode ?? (sub && (
         <span data-testid={subTestId} className={subClasses}>
           {sub}
         </span>
-      )}
+      ))}
     </div>
   )
 })
