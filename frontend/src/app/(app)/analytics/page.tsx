@@ -180,9 +180,6 @@ function PanelError({ message }: { message: string }) {
 
 // ─── Lane-1 price-feed panel (task 0063) ────────────────────────────────────
 
-const LANE1_RUNBOOK_HREF =
-  'https://github.com/yoniassia/gooddollar-l2/blob/main/docs/runbooks/lane1-live-prices-on-chain.md'
-
 function lane1ChipClasses(status: 'ok' | 'degraded' | 'unreachable' | 'unknown'): string {
   switch (status) {
     case 'ok':
@@ -240,7 +237,7 @@ function Lane1PriceFeedPanel({
         <div className="flex items-center gap-2 flex-wrap">
           <Lane1FenceChip mode={priceFeed?.mode} />
           <a
-            href="/lane1"
+            href={LANE1_STATUS_HREF}
             className="text-xs text-goodgreen hover:underline"
             data-testid="lane1-deep-link"
           >
