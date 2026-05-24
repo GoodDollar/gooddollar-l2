@@ -234,4 +234,113 @@ describe('PriceWsClient', () => {
 
     client.connect();
   });
+
+  describe('stream-failure observability', () => {
+    // The closure-bound `ws.on('message', …)` was unaddressable from
+    // a test, so the public `handleMessage(data)` boundary is the
+    // testable seam. These tests drive frames through it directly
+    // without spinning up a live WebSocketServer.
+    it('parse failure increments ws-parse and skips onQuote', () => {
+      const seen: NormalizedQuote[] = [];
+      const client = new PriceWsClient('ws://stub', (q) => seen.push(q));
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      client.handleMessage(Buffer.from('{not-json'));
+
+      expect(client.getStreamFailureCount('ws-parse')).toBe(1);
+      expect(client.getStreamFailureCount('ws-unknown-shape')).toBe(0);
+      expect(client.getStreamFailureCount('ws-error-event')).toBe(0);
+      expect(seen).toEqual([]);
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/ws-parse/));
+      warn.mockRestore();
+    });
+
+    it('unknown envelope shape increments ws-unknown-shape', () => {
+      const seen: NormalizedQuote[] = [];
+      const client = new PriceWsClient('ws://stub', (q) => seen.push(q));
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      client.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'unknown', payload: { foo: 'bar' } })),
+      );
+
+      expect(client.getStreamFailureCount('ws-unknown-shape')).toBe(1);
+      expect(client.getStreamFailureCount('ws-parse')).toBe(0);
+      expect(seen).toEqual([]);
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/ws-unknown-shape/));
+      warn.mockRestore();
+    });
+
+    it('a recognised envelope with finite-mid drop does NOT count as unknown-shape', () => {
+      // {type:'quote', data:{mid:0}} is recognised by extractQuotes
+      // but rejected by the finite-mid validator. We deliberately do
+      // not count this as schema drift — those drops already have
+      // dedicated NaN/zero-guard tests above.
+      const seen: NormalizedQuote[] = [];
+      const client = new PriceWsClient('ws://stub', (q) => seen.push(q));
+
+      client.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'quote', data: makeQuote('BAD', 0) })),
+      );
+
+      expect(client.getStreamFailureCount('ws-unknown-shape')).toBe(0);
+      expect(seen).toEqual([]);
+    });
+
+    it('valid quote still flows through and increments no counters', () => {
+      const seen: NormalizedQuote[] = [];
+      const client = new PriceWsClient('ws://stub', (q) => seen.push(q));
+
+      client.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'quote', data: makeQuote('AAPL', 191.5) })),
+      );
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0].symbol).toBe('AAPL');
+      expect(client.getStreamFailureCounts()).toEqual({
+        'ws-parse': 0,
+        'ws-unknown-shape': 0,
+        'ws-error-event': 0,
+      });
+    });
+
+    it('throttled warn fires at most once per kind per window', () => {
+      const seen: NormalizedQuote[] = [];
+      // Pin the clock so the throttle window is deterministic.
+      let now = 1_000_000;
+      const client = new PriceWsClient('ws://stub', (q) => seen.push(q), {
+        clock: () => now,
+        throttleMs: 60_000,
+      });
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Five malformed frames inside one window.
+      for (let i = 0; i < 5; i++) {
+        client.handleMessage(Buffer.from('{still-bad'));
+      }
+      expect(client.getStreamFailureCount('ws-parse')).toBe(5);
+      expect(warn).toHaveBeenCalledTimes(1);
+
+      // Advance past the window — the next failure should warn again.
+      now += 60_001;
+      client.handleMessage(Buffer.from('{still-bad'));
+      expect(client.getStreamFailureCount('ws-parse')).toBe(6);
+      expect(warn).toHaveBeenCalledTimes(2);
+
+      warn.mockRestore();
+    });
+
+    it('exposes lastStreamError with kind, message, atMs', () => {
+      let now = 5_000;
+      const client = new PriceWsClient('ws://stub', () => {}, { clock: () => now });
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      client.handleMessage(Buffer.from('{nope'));
+      const last = client.getLastStreamError();
+      expect(last).toBeDefined();
+      expect(last?.kind).toBe('ws-parse');
+      expect(last?.atMs).toBe(5_000);
+      expect(typeof last?.message).toBe('string');
+    });
+  });
 });

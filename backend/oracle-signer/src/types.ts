@@ -40,6 +40,13 @@ export interface OracleSignerConfig {
   minDeviationBps: number;
   symbols: string[];
   txTimeoutMs: number;
+  /**
+   * Cumulative malformed/parse-fail/socket-error frame count beyond
+   * which the watchdog flips `SERVICE_HEALTH_STATUS=degraded` with
+   * the `WS_STREAM_REASON_PREFIX` reason. Surfaces silent
+   * price-service ↔ signer schema drift on `/health`.
+   */
+  wsFailureDegradeAt: number;
 }
 
 export interface PendingUpdate {

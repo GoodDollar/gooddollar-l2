@@ -14,6 +14,11 @@ import { startHealthServer } from './healthServer';
 // (e.g. unknown-symbol or RPC-URL fallback set by loadConfig).
 const WATCHDOG_REASON_PREFIX = 'tick stuck >';
 
+// Prefix used when the watchdog flips degraded because cumulative WS
+// stream failures crossed `wsFailureDegradeAt`. Owned by this component
+// the same way `WATCHDOG_REASON_PREFIX` is owned by the stuck-tick path.
+const WS_STREAM_REASON_PREFIX = 'ws-stream:';
+
 export class OracleSignerService {
   private wsClient: PriceWsClient;
   private buffer: QuoteBuffer;
@@ -118,9 +123,27 @@ export class OracleSignerService {
       return;
     }
 
+    // Stream-failure degrade: cumulative malformed-frame count past
+    // the threshold flips degraded so silent schema drift surfaces on
+    // `/health`. We only set if no other source already owns the
+    // degrade reason (first cause wins), and we own clearing under
+    // our own prefix.
+    const wsFailureTotal = Object.values(this.wsClient.getStreamFailureCounts())
+      .reduce((sum, count) => sum + count, 0);
+    if (wsFailureTotal >= this.config.wsFailureDegradeAt) {
+      const reason = process.env.SERVICE_DISABLED_REASON;
+      if (!reason || reason.startsWith(WS_STREAM_REASON_PREFIX)) {
+        process.env.SERVICE_HEALTH_STATUS = 'degraded';
+        process.env.SERVICE_DISABLED_REASON =
+          `${WS_STREAM_REASON_PREFIX} ${wsFailureTotal} malformed/parse-fail frames since boot — schema drift?`;
+      }
+      return;
+    }
+
     // Only clear a degrade marker that the watchdog itself set; never
     // touch another source's degrade reason (e.g. unknown symbols).
-    if (process.env.SERVICE_DISABLED_REASON?.startsWith(WATCHDOG_REASON_PREFIX)) {
+    const reason = process.env.SERVICE_DISABLED_REASON;
+    if (reason?.startsWith(WATCHDOG_REASON_PREFIX) || reason?.startsWith(WS_STREAM_REASON_PREFIX)) {
       delete process.env.SERVICE_HEALTH_STATUS;
       delete process.env.SERVICE_DISABLED_REASON;
     }
@@ -220,6 +243,7 @@ export function loadConfig(
     minDeviationBps: parseInt(env.ORACLE_MIN_DEVIATION || '10', 10),
     txTimeoutMs: parseInt(env.ORACLE_TX_TIMEOUT || '60000', 10),
     symbols,
+    wsFailureDegradeAt: parseInt(env.ORACLE_WS_FAILURE_DEGRADE_AT || '100', 10),
   };
 }
 

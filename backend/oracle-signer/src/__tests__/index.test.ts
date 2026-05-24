@@ -18,13 +18,20 @@ jest.mock('../oracle-submitter', () => {
 });
 
 jest.mock('../price-ws-client', () => {
+  type StreamCounts = { 'ws-parse': number; 'ws-unknown-shape': number; 'ws-error-event': number };
+  const baseCounts: StreamCounts = { 'ws-parse': 0, 'ws-unknown-shape': 0, 'ws-error-event': 0 };
   return {
     PriceWsClient: jest.fn().mockImplementation((_url: string, onQuote: (q: unknown) => void) => {
+      const counts: StreamCounts = { ...baseCounts };
       return {
         connect: jest.fn(),
         close: jest.fn(),
         connected: true,
         _onQuote: onQuote,
+        _setStreamFailureCounts(next: Partial<StreamCounts>) { Object.assign(counts, next); },
+        getStreamFailureCount: jest.fn((kind: keyof StreamCounts) => counts[kind]),
+        getStreamFailureCounts: jest.fn(() => ({ ...counts })),
+        getLastStreamError: jest.fn(() => undefined),
       };
     }),
   };
@@ -40,6 +47,7 @@ function makeConfig(overrides: Partial<OracleSignerConfig> = {}): OracleSignerCo
     minDeviationBps: 0,
     txTimeoutMs: 60000,
     symbols: ['AAPL', 'TSLA'],
+    wsFailureDegradeAt: 100,
     ...overrides,
   };
 }
@@ -408,6 +416,49 @@ describe('OracleSignerService', () => {
       await service.tick();
       await new Promise((r) => setTimeout(r, 50));
       expect(process.env.SERVICE_HEALTH_STATUS).toBeUndefined();
+      service.stop();
+    });
+
+    it('flips degraded with ws-stream prefix when cumulative WS failures cross the threshold', async () => {
+      // Small txTimeoutMs forces the watchdog tick period to its 50ms
+      // floor (Math.max(50, txTimeoutMs/4)).
+      const service = new OracleSignerService(makeConfig({
+        txTimeoutMs: 50,
+        updateIntervalMs: 1_000_000,
+        wsFailureDegradeAt: 100,
+      }));
+
+      const wsClient = (service as unknown as {
+        wsClient: { _setStreamFailureCounts: (counts: Record<string, number>) => void };
+      }).wsClient;
+      wsClient._setStreamFailureCounts({ 'ws-parse': 60, 'ws-unknown-shape': 40 });
+
+      await service.start();
+      await new Promise((r) => setTimeout(r, 200));
+      expect(process.env.SERVICE_HEALTH_STATUS).toBe('degraded');
+      expect(process.env.SERVICE_DISABLED_REASON).toMatch(/^ws-stream:.*100.*schema drift/);
+      service.stop();
+    });
+
+    it('does not clobber an unrelated pre-existing degrade reason on ws-stream watchdog tick', async () => {
+      process.env.SERVICE_HEALTH_STATUS = 'degraded';
+      process.env.SERVICE_DISABLED_REASON = 'Unknown symbols: FOO';
+
+      const service = new OracleSignerService(makeConfig({
+        txTimeoutMs: 50,
+        updateIntervalMs: 1_000_000,
+        wsFailureDegradeAt: 100,
+      }));
+
+      const wsClient = (service as unknown as {
+        wsClient: { _setStreamFailureCounts: (counts: Record<string, number>) => void };
+      }).wsClient;
+      wsClient._setStreamFailureCounts({ 'ws-parse': 200 });
+
+      await service.start();
+      await new Promise((r) => setTimeout(r, 200));
+      expect(process.env.SERVICE_HEALTH_STATUS).toBe('degraded');
+      expect(process.env.SERVICE_DISABLED_REASON).toBe('Unknown symbols: FOO');
       service.stop();
     });
 
