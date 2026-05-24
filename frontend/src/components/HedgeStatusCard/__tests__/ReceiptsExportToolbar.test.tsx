@@ -200,4 +200,23 @@ describe('ReceiptsExportToolbar', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByTestId('hedge-receipts-export-menu')).toBeNull()
   })
+
+  it('uses an outline that is not the same dark-50 token as the receipts panel background (#0069)', () => {
+    // The disabled Export button sits inside a `bg-dark-50` panel. If the
+    // wrapper border is also `border-dark-50` the outline reads as
+    // invisible and the disabled button collapses to ghost text.
+    // Lock the wrapper to `border-white/10`, the idiomatic
+    // outline-on-dark token used elsewhere in the dashboard.
+    render(<ReceiptsExportToolbar receipts={[]} reason="engine-offline" />)
+    const wrapper = screen.getByTestId('hedge-receipts-export-toolbar')
+    expect(wrapper.className).toContain('border-white/10')
+    expect(wrapper.className).not.toMatch(/\bborder-dark-50\b/)
+  })
+
+  it('keeps the wrapper outline visible against the panel even when receipts are present (#0069)', () => {
+    render(<ReceiptsExportToolbar receipts={[makeReceipt()]} />)
+    const wrapper = screen.getByTestId('hedge-receipts-export-toolbar')
+    expect(wrapper.className).toContain('border-white/10')
+    expect(wrapper.className).not.toMatch(/\bborder-dark-50\b/)
+  })
 })

@@ -89,7 +89,7 @@ export function ReceiptsExportToolbar({
     <div
       ref={containerRef}
       data-testid="hedge-receipts-export-toolbar"
-      className="relative inline-flex items-stretch rounded-md border border-dark-50 overflow-hidden"
+      className="relative inline-flex items-stretch rounded-md border border-white/10 overflow-hidden"
     >
       {/*
         When `disabled`, the chevron toggle is suppressed entirely
