@@ -1,7 +1,7 @@
-'use client'
+import ProofAliasClient from './ProofAliasClient'
 
-import LivePricesProofPage from '../live-prices-proof/page'
+export const dynamic = 'force-dynamic'
 
-export default function ProofAliasPage() {
-  return <LivePricesProofPage />
+export default function ProofAliasPage(props: any) {
+  return <ProofAliasClient {...props} />
 }

@@ -34,7 +34,22 @@ describe('GET /api/status', () => {
     expect(data.services).toHaveLength(2)
   })
 
-  it('returns 502 when aggregator returns non-OK status', async () => {
+  it('passes through parseable status bodies even when aggregator returns 503', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ ...MOCK_STATUS, overall: 'down' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const res = await GET(dummyReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.overall).toBe('down')
+    expect(data.services).toHaveLength(2)
+  })
+
+  it('returns 502 when aggregator returns non-OK status without a status body', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response('Internal Server Error', { status: 500 }),
     )
@@ -42,7 +57,7 @@ describe('GET /api/status', () => {
     const res = await GET(dummyReq)
     expect(res.status).toBe(502)
     const data = await res.json()
-    expect(data.error).toContain('error')
+    expect(data.error).toContain('unparseable')
   })
 
   it('returns 503 when aggregator is unreachable', async () => {

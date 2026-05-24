@@ -13,24 +13,50 @@ async function handleGet(_req: NextRequest) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    const res = await fetch(STATUS_URL, { signal: controller.signal, cache: 'no-store' });
-    clearTimeout(timer);
+    let res: Response;
+    try {
+      res = await fetch(STATUS_URL, { signal: controller.signal, cache: 'no-store' });
+    } finally {
+      clearTimeout(timer);
+    }
 
-    if (!res.ok) {
+    const data = await readJson(res);
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Status aggregator returned an unparseable response', httpStatus: res.status },
+        { status: 502 },
+      );
+    }
+
+    if (!res.ok && !hasServices(data)) {
       return NextResponse.json(
         { error: 'Status aggregator returned an error', httpStatus: res.status },
         { status: 502 },
       );
     }
 
-    const data = await res.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, { status: res.status });
   } catch {
     return NextResponse.json(
       { error: 'Status aggregator unreachable', overall: 'unknown', services: [] },
       { status: 503 },
     );
   }
+}
+
+async function readJson(res: Response): Promise<Record<string, unknown> | null> {
+  try {
+    const data = await res.json();
+    return data && typeof data === 'object' && !Array.isArray(data)
+      ? data as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function hasServices(data: Record<string, unknown>): boolean {
+  return Array.isArray(data.services);
 }
 
 export const GET = withApiRateLimit(handleGet);

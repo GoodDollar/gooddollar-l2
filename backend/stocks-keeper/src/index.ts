@@ -261,16 +261,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function runCycle(updater: OracleUpdater, v2Updater: OracleV2Updater | null): Promise<void> {
+async function runCycle(updater: OracleUpdater | null, v2Updater: OracleV2Updater | null): Promise<void> {
   logger.info('Starting price update cycle');
 
   const quotes = await fetchPrices(TICKERS);
   logger.info({ fetched: quotes.length, total: TICKERS.length }, 'Prices fetched');
 
   let updated = 0;
-  for (const quote of quotes) {
-    const didUpdate = await updater.updatePrice(quote);
-    if (didUpdate) updated++;
+  if (updater) {
+    for (const quote of quotes) {
+      const didUpdate = await updater.updatePrice(quote);
+      if (didUpdate) updated++;
+    }
   }
 
   if (v2Updater && quotes.length > 0) {
@@ -278,7 +280,7 @@ async function runCycle(updater: OracleUpdater, v2Updater: OracleV2Updater | nul
     logger.info({ v2Updated }, 'StockOracleV2 batch complete');
   }
 
-  logger.info({ updated, skipped: quotes.length - updated }, 'Cycle complete');
+  logger.info({ updated, skipped: updater ? quotes.length - updated : 0, legacyEnabled: Boolean(updater) }, 'Cycle complete');
 }
 
 async function main(): Promise<void> {
@@ -294,8 +296,8 @@ async function main(): Promise<void> {
     logger.error('OPERATOR_PRIVATE_KEY not set');
     process.exit(1);
   }
-  if (!ORACLE_ADDRESS) {
-    logger.error('PRICE_ORACLE_ADDRESS not set');
+  if (!ORACLE_ADDRESS && !ORACLE_V2_ADDRESS) {
+    logger.error('Set PRICE_ORACLE_ADDRESS or STOCK_ORACLE_V2_ADDRESS');
     process.exit(1);
   }
 
@@ -306,14 +308,19 @@ async function main(): Promise<void> {
     chainCheck: async () => Number(await provider.getBlockNumber()),
   });
 
-  const updater = new OracleUpdater(RPC_URL, OPERATOR_KEY, ORACLE_ADDRESS);
-  try {
-    await updater.init();
-  } catch (err) {
-    process.env.SERVICE_HEALTH_STATUS = 'degraded';
-    process.env.SERVICE_DISABLED_REASON = `StocksPriceOracle unavailable at ${ORACLE_ADDRESS}`;
-    logger.error({ err, oracle: ORACLE_ADDRESS }, 'Stocks keeper loop disabled; health endpoint remains online');
-    return;
+  let updater: OracleUpdater | null = null;
+  if (ORACLE_ADDRESS) {
+    updater = new OracleUpdater(RPC_URL, OPERATOR_KEY, ORACLE_ADDRESS);
+    try {
+      await updater.init();
+    } catch (err) {
+      process.env.SERVICE_HEALTH_STATUS = 'degraded';
+      process.env.SERVICE_DISABLED_REASON = `StocksPriceOracle unavailable at ${ORACLE_ADDRESS}`;
+      logger.error({ err, oracle: ORACLE_ADDRESS }, 'Stocks keeper loop disabled; health endpoint remains online');
+      return;
+    }
+  } else {
+    logger.warn({ oracleV2: ORACLE_V2_ADDRESS }, 'PRICE_ORACLE_ADDRESS unset; running StockOracleV2-only mode');
   }
 
   let v2Updater: OracleV2Updater | null = null;

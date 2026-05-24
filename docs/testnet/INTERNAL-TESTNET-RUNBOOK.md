@@ -75,9 +75,17 @@ on the lane-7 worktree?"
    excludes it; `.env.example` itself is gitignore-allowlisted so
    rewrites land cleanly.
 
-2. **Addresses source of truth.** Lane-7 reads contract addresses from
-   `op-stack/addresses.json` (canonical) → `.autobuilder/addresses.env`
-   → root `.env` → process env. Refresh after a devnet redeploy:
+2. **Addresses source of truth.** For long-lived deployments,
+   `op-stack/addresses.json` and `.autobuilder/addresses.env` are the
+   generated artifacts. For a lane-local Anvil reset, the live
+   `oracle-signer-lane7` `STOCK_ORACLE_V2_ADDRESS` is authoritative for
+   the stock-oracle freshness probe because it is the address receiving
+   signer writes. The smoke resolves `STOCK_ORACLE_V2_ADDRESS` from the
+   shell / `.env` first, then from `oracle-signer-lane7`'s PM2 env, and
+   only then falls back to `op-stack/addresses.json`. It also checks
+   `eth_getCode` before calling `lastUpdated()` so stale artifacts fail
+   clearly instead of looking like "no signer data yet." Refresh generated
+   artifacts after a full devnet redeploy:
 
    ```bash
    python3 scripts/refresh-addresses.py   # if present on this checkout
@@ -268,6 +276,13 @@ Operators running behind a reverse proxy with non-default routes
 should set this variable explicitly; doing so also bypasses the
 auto-skip heuristic that fires when the price-service `/health`
 response doesn't contain the expected `freshQuotes` field.
+
+`STOCK_ORACLE_V2_ADDRESS` is an operational override, not a secret. Set
+it whenever the lane-local signer targets a contract that differs from
+`op-stack/addresses.json`. This is expected after isolated Anvil resets:
+the generated artifact may still point at a broadcast address with no
+bytecode, while `oracle-signer-lane7` is writing to the fresh local
+`StockOracleV2` deployment.
 
 `LANE7_BASE` is **host-only** (e.g. `http://localhost`,
 `http://127.0.0.1`). The default URL templates concatenate

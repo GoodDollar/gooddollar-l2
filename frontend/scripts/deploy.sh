@@ -34,6 +34,14 @@ NEXT_LIVE_URL="${NEXT_LIVE_URL:-http://localhost:3100/}"
 SKIP_CI="${FRONTEND_DEPLOY_SKIP_CI:-0}"
 SKIP_BUILD="${FRONTEND_DEPLOY_SKIP_BUILD:-0}"
 
+# Lane-7 live-prices defaults. These are intentionally exported before build
+# and `pm2 reload --update-env` so the server routes keep pointing at the
+# demo lane after a deploy even when the caller's shell is otherwise empty.
+export PRICE_SERVICE_URL="${PRICE_SERVICE_URL:-http://127.0.0.1:49300/status/quotes}"
+export NEXT_PUBLIC_PRICE_SERVICE_URL="${NEXT_PUBLIC_PRICE_SERVICE_URL:-http://127.0.0.1:49300}"
+export ORACLE_SIGNER_URL="${ORACLE_SIGNER_URL:-http://127.0.0.1:49107/proof}"
+export STATUS_AGGREGATOR_URL="${STATUS_AGGREGATOR_URL:-http://127.0.0.1:49200/status.json}"
+
 cd "$(dirname "$0")/.."   # frontend/
 
 log() { printf '\033[1;34m[deploy]\033[0m %s\n' "$*"; }

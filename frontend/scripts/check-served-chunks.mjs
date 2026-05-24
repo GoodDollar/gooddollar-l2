@@ -105,6 +105,14 @@ async function probeOne({ origin, pagePath, alreadyProbed, fetchImpl }) {
     // Strip JSON-escape artifacts that can leak in from RSC payloads, e.g.
     // `/_next/static/chunks/foo.js\\` → `/_next/static/chunks/foo.js`.
     const clean = m.replace(/\\+$/, '')
+
+    // Next 16/Turbopack may split a long RSC string literal across adjacent
+    // `<script>self.__next_f.push(...)` tags. A naive regex then sees partial
+    // prefixes such as `/_next/static/chunks/0` or `/_next/sta`, which are not
+    // real asset URLs and should not be probed. Keep only complete static
+    // asset references with an expected extension.
+    if (!/\.(?:js|css|woff2?|png|jpe?g|webp|svg|ico)(?:[?#].*)?$/.test(clean)) continue
+
     seenHere.add(clean)
   }
 

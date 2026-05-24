@@ -5,7 +5,7 @@
  *   GET /status.json — aggregated health of all services
  *   GET /health      — own health
  *
- * Each service entry reports: status (ok|degraded|error|timeout), uptime, chainBlock, latencyMs.
+ * Each service entry reports: status (ok|degraded|health-only|error|timeout), uptime, chainBlock, latencyMs.
  */
 
 import * as http from 'http';
@@ -21,7 +21,7 @@ const startedAt = Date.now();
 async function pollAll(): Promise<void> {
   const statuses = await Promise.all(SERVICES.map((svc) => checkService(svc)));
   updateStatuses(statuses);
-  const operational = statuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
+  const operational = statuses.filter(s => s.status === 'ok' || s.status === 'degraded' || s.status === 'health-only').length;
   console.log(
     `[status] ${operational}/${SERVICES.length} services operational @ ${new Date().toISOString()}`,
   );

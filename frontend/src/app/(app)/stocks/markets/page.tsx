@@ -1,5 +1,7 @@
-import { redirect } from 'next/navigation'
+import StocksClient from '../StocksClient'
 
-export default function StocksMarketsRedirect() {
-  redirect('/stocks')
+export const dynamic = 'force-dynamic'
+
+export default function StocksMarketsPage(props: any) {
+  return <StocksClient {...props} />
 }

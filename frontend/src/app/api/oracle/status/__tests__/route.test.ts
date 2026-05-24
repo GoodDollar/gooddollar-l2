@@ -414,6 +414,26 @@ describe('GET /api/oracle/status — service block (task 0010)', () => {
     expect(data.degraded).toBe(true)
   })
 
+  it('forwards service:{status:health-only,reason} as a degraded health-only warning', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(
+        JSON.stringify({
+          ...proofBody,
+          service: { status: 'health-only', reason: 'signer key not provisioned' },
+        }),
+        { status: 200 },
+      ),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.service).toEqual({ status: 'health-only', reason: 'signer key not provisioned' })
+    expect(data.healthy).toBe(false)
+    expect(data.degraded).toBe(true)
+  })
+
   it('forwards service:{status:ok} from a healthy upstream', async () => {
     fetchMockTwo({
       '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),

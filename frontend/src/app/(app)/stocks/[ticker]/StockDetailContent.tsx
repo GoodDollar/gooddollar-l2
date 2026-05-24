@@ -459,7 +459,7 @@ export function StockDetailContent() {
   const syntheticHeader = useSyntheticStockHeader()
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
-  const { isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
+  const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const chartMounted = useMounted()
@@ -592,7 +592,7 @@ export function StockDetailContent() {
             </div>
           )}
 
-          <DeferredAnalystOutlookCard isLoading={false} />
+          <DeferredAnalystOutlookCard currentPrice={stock.price} outlook={null} isLoading={false} />
 
           <div className="relative bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
             <DemoChartOverlay isLive={isLive} />
@@ -700,6 +700,7 @@ export function StockDetailContent() {
             ticker={stock.ticker}
             isLoading={newsLoading}
             error={newsError}
+            items={newsItems}
           />
         </div>
 
@@ -793,7 +794,6 @@ export function StockDetailContent() {
             currentTicker={stock.ticker}
             related={relatedSymbols}
             movers={topMovers}
-            railLive={oracleGuard.health === 'live'}
           />
 
           {hasPosition ? (

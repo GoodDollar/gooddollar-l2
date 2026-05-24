@@ -114,6 +114,26 @@ function pickAny(keys, fallback) {
   return fallback;
 }
 
+function pickRuntimeAny(keys, fallback) {
+  // Runtime lane wiring such as StockOracleV2 may intentionally diverge from
+  // generated deployment artifacts after a lane-local Anvil reset. Let the
+  // operator's exported env/.env win for those keys, then fall back to
+  // address artifacts.
+  for (const key of keys) {
+    const value = process.env[key] || ROOT_ENV[key] || ADDR_JSON_ENV[key] || ADDR_ENV[key];
+    if (value) return value;
+  }
+  return fallback;
+}
+
+function pickOperatorAny(keys, fallback) {
+  for (const key of keys) {
+    const value = process.env[key] || ROOT_ENV[key];
+    if (value) return value;
+  }
+  return fallback;
+}
+
 const BASE_ENV = {
   L2_RPC_URL: pickAny(['L2_RPC_URL', 'RPC'], 'http://localhost:8545'),
   OPERATOR_PRIVATE_KEY: pick(
@@ -167,8 +187,8 @@ module.exports = {
       script: 'stocks-keeper/dist/index.js',
       env: {
         ...BASE_ENV,
-        PRICE_ORACLE_ADDRESS: pick('PRICE_ORACLE_ADDRESS', '0x20d7b364e8ed1f4260b5b90c41c2dec3c1f6d367'),
-        STOCK_ORACLE_V2_ADDRESS: pickAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], '0xF357118EBd576f3C812c7875B1A1651a7f140E9C'),
+        PRICE_ORACLE_ADDRESS: pickOperatorAny(['PRICE_ORACLE_ADDRESS'], ''),
+        STOCK_ORACLE_V2_ADDRESS: pickRuntimeAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], '0xF357118EBd576f3C812c7875B1A1651a7f140E9C'),
         SYNTHETIC_FACTORY: pickAny(['SYNTHETIC_FACTORY', 'STOCKS'], '0x4b6ab5f819a515382b0deb6935d793817bb4af28'),
         COLLATERAL_VAULT: pick('COLLATERAL_VAULT', '0xcace1b78160ae76398f486c8a18044da0d66d86d'),
         UPDATE_INTERVAL_MS: pick('STOCKS_KEEPER_UPDATE_INTERVAL_MS', '900000'),
@@ -297,7 +317,7 @@ module.exports = {
       env: {
         ...BASE_ENV,
         PRICE_SERVICE_URL: pick('PRICE_SERVICE_URL', 'ws://localhost:4001'),
-        STOCK_ORACLE_V2_ADDRESS: pickAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], '0xF357118EBd576f3C812c7875B1A1651a7f140E9C'),
+        STOCK_ORACLE_V2_ADDRESS: pickRuntimeAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], '0xF357118EBd576f3C812c7875B1A1651a7f140E9C'),
         // ORACLE_SIGNER_KEY intentionally defaults to '' when not provisioned.
         // The service starts in health-only mode (submission loop disabled) until
         // this is set, so the health port (9107) stays bound and the
@@ -337,6 +357,11 @@ module.exports = {
           'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY',
           '',
         ),
+        PRICE_SERVICE_URL: pickRuntimeAny(['PRICE_SERVICE_URL'], 'http://127.0.0.1:49300/status/quotes'),
+        NEXT_PUBLIC_PRICE_SERVICE_URL: pickRuntimeAny(['NEXT_PUBLIC_PRICE_SERVICE_URL', 'PRICE_SERVICE_URL'], 'http://127.0.0.1:49300'),
+        ORACLE_SIGNER_URL: pickRuntimeAny(['ORACLE_SIGNER_URL'], 'http://127.0.0.1:49107/proof'),
+        STATUS_AGGREGATOR_URL: pickRuntimeAny(['STATUS_AGGREGATOR_URL'], 'http://127.0.0.1:49200/status.json'),
+        NEXT_PUBLIC_STOCK_ORACLE_V2_ADDRESS: pickOperatorAny(['NEXT_PUBLIC_STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], ''),
       },
     }),
   ],

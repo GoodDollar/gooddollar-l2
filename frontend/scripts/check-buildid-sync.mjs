@@ -35,13 +35,13 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Two formats appear in live Next.js HTML depending on router:
-//   - Pages Router (legacy): `"buildId":"<id>"` inside a literal __NEXT_DATA__
-//     <script> tag.
-//   - App Router (Next 13+): the same field appears JSON-escaped inside the
-//     React Server Component payload, e.g. `buildId\":\"<id>\"`.
-// We match either. The captured group is the BUILD_ID.
-const BUILD_ID_REGEX = /(?:"buildId":"|buildId\\":\\")([^"\\]+)/
+// Formats seen in live Next.js HTML depending on router/version:
+//   - Pages Router (legacy): `"buildId":"<id>"` inside __NEXT_DATA__.
+//   - App Router (Next 13+): `buildId\":\"<id>\"` in the RSC payload.
+//   - App Router (Next 16/Turbopack): compact RSC root key `"b":"<id>"`
+//     (or JSON-escaped `b\":\"<id>\"`).
+// We match all known variants. The captured group is the BUILD_ID.
+const BUILD_ID_REGEX = /(?:"buildId":"|buildId\\":\\"|,"b":"|b\\":\\")([^"\\]+)/
 
 export async function checkBuildIdSync({
   cwd = process.cwd(),
@@ -111,8 +111,8 @@ export async function checkBuildIdSync({
       message: [
         '[check-buildid-sync] FAIL: no buildId in live HTML.',
         `  url: ${liveUrl}`,
-        '  expected either Pages Router `"buildId":"..."` (in __NEXT_DATA__)',
-        '  or App Router `buildId\\":\\"..."` (in the RSC payload).',
+        '  expected Pages Router `"buildId":"..."`, App Router `buildId\\":\\"..."`,',
+        '  or Next 16/Turbopack App Router compact `"b":"..."` in the RSC payload.',
         '  the live response does not look like a Next.js page —',
         '  is the wrong process bound to that port?',
         '',

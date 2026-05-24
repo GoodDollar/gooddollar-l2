@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 
 const SECTIONS = [
   { href: '/', label: 'Swap' },
@@ -25,11 +24,12 @@ export default function NotFound() {
         The page you&apos;re looking for doesn&apos;t exist or has been moved.
       </p>
 
-      <Button asChild size="lg">
-        <Link href="/">
-          Back to Swap
-        </Link>
-      </Button>
+      <Link
+        href="/"
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-goodgreen px-6 text-base font-semibold text-dark transition-colors hover:bg-goodgreen-600 active:bg-goodgreen-700"
+      >
+        Back to Swap
+      </Link>
 
       <div className="mt-6 flex flex-col items-center gap-2">
         <span className="text-xs text-gray-500">Or try:</span>

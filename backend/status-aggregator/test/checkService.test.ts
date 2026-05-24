@@ -79,6 +79,16 @@ test('200 with {status:"error", error:"boom"} surfaces as error with the upstrea
   assert.equal(result.error, 'boom');
 });
 
+test('200 with {status:"health-only"} surfaces as health-only with the upstream reason', async () => {
+  const fetchFn = async () => jsonResponse(
+    { status: 'health-only', reason: 'signer key not provisioned' },
+    200,
+  );
+  const result = await checkService(SVC, { fetchFn, timeoutMs: 1000 });
+  assert.equal(result.status, 'health-only');
+  assert.equal(result.error, 'signer key not provisioned');
+});
+
 test('AbortError from fetch maps to status:timeout', async () => {
   const fetchFn = async () => {
     const err: Error & { name: string } = new Error('timeout');

@@ -66,6 +66,7 @@ function normalizeStatus(raw: string | undefined): LaneServiceStatus {
       return 'ok'
     case 'degraded':
     case 'starting':
+    case 'health-only':
       return 'degraded'
     case 'error':
     case 'unreachable':

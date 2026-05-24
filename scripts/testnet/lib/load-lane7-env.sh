@@ -7,8 +7,9 @@
 # get a chance to populate the environment before `${VAR:-default}`
 # resolves. Without this hoist, an operator who put the runbook's
 # 16-key block in `.env` and ran the smoke directly (no `set -a`)
-# would silently fall through to production-reserved ports
-# (4000 / 9106 / 9107 / 9200) and chase four phantom-outage
+# would silently fall through to the smoke's built-in lane-local ports
+# (49300 / 49106 / 49107 / 49200) instead of the operator's explicit values,
+# causing phantom-outage
 # BLOCKERs caused by one missing env-load step.
 #
 # Precedence: shell-exported values WIN over `.env`. The

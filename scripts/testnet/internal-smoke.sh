@@ -29,10 +29,10 @@
 #
 # Override env (all optional):
 #   LANE7_BASE                default http://localhost
-#   PRICE_SERVICE_PORT        default 4000           (integer, 1..65535)
-#   ORACLE_SIGNER_PORT        default 9107           (integer, 1..65535)
-#   HEDGE_ENGINE_PORT         default 9106           (integer, 1..65535)
-#   STATUS_AGGREGATOR_PORT    default 9200           (integer, 1..65535)
+#   PRICE_SERVICE_PORT        default 49300          (integer, 1..65535)
+#   ORACLE_SIGNER_PORT        default 49107          (integer, 1..65535)
+#   HEDGE_ENGINE_PORT         default 49106          (integer, 1..65535)
+#   STATUS_AGGREGATOR_PORT    default 49200          (integer, 1..65535)
 #   PRICE_SERVICE_URL         override the price-service /health URL
 #   ORACLE_SIGNER_URL         override the oracle-signer /health URL
 #   HEDGE_ENGINE_URL          override the hedge-engine /health URL
@@ -121,10 +121,10 @@ LANE7_ENV_FILE="${LANE7_ENV_FILE:-$REPO_ROOT/.env}"
 . "$(dirname "$0")/lib/load-lane7-env.sh"
 
 LANE7_BASE="${LANE7_BASE:-http://localhost}"
-PRICE_SERVICE_PORT="${PRICE_SERVICE_PORT:-4000}"
-ORACLE_SIGNER_PORT="${ORACLE_SIGNER_PORT:-9107}"
-HEDGE_ENGINE_PORT="${HEDGE_ENGINE_PORT:-9106}"
-STATUS_AGGREGATOR_PORT="${STATUS_AGGREGATOR_PORT:-9200}"
+PRICE_SERVICE_PORT="${PRICE_SERVICE_PORT:-49300}"
+ORACLE_SIGNER_PORT="${ORACLE_SIGNER_PORT:-49107}"
+HEDGE_ENGINE_PORT="${HEDGE_ENGINE_PORT:-49106}"
+STATUS_AGGREGATOR_PORT="${STATUS_AGGREGATOR_PORT:-49200}"
 
 # LANE7_BASE shape preflight. The default URL templates below
 # concatenate `:$PORT/health` (or `/status.json`) onto $LANE7_BASE,
@@ -718,6 +718,28 @@ else
       ;;
     *)
       stock_oracle="${STOCK_ORACLE_V2_ADDRESS:-}"
+      stock_oracle_source="STOCK_ORACLE_V2_ADDRESS"
+      if [[ -z "$stock_oracle" ]] && command -v pm2 >/dev/null 2>&1; then
+        # Prefer the live lane7 signer target over stale address artifacts.
+        # The lane7 devnet can be reset independently from op-stack/addresses.json,
+        # and the signer env is the source of truth for the on-chain writer.
+        oracle_pm_id="$(pm2 jlist 2>/dev/null | node -e '
+          let raw=""; process.stdin.on("data", d => raw += d);
+          process.stdin.on("end", () => {
+            try {
+              const app = JSON.parse(raw).find(p => p.name === "oracle-signer-lane7");
+              if (app) console.log(app.pm_id);
+            } catch (_) {}
+          });
+        ' 2>/dev/null)"
+        if [[ -n "$oracle_pm_id" ]]; then
+          stock_oracle="$(pm2 env "$oracle_pm_id" 2>/dev/null | awk -F': *' '$1=="STOCK_ORACLE_V2_ADDRESS" {print $2; exit}')"
+          if [[ -n "$stock_oracle" ]]; then
+            stock_oracle_source="oracle-signer-lane7 PM2 env"
+          fi
+        fi
+      fi
+
       if [[ -z "$stock_oracle" ]]; then
         addr_json="$REPO_ROOT/op-stack/addresses.json"
         if [[ -f "$addr_json" ]]; then
@@ -729,6 +751,9 @@ else
               console.log(c.StockOracleV2 || "");
             } catch (_) {}
           ' "$addr_json" 2>/dev/null)"
+          if [[ -n "$stock_oracle" ]]; then
+            stock_oracle_source="op-stack/addresses.json"
+          fi
         fi
       fi
 
@@ -763,7 +788,78 @@ else
         add_summary "⚠️  StockOracleV2 address unknown — set STOCK_ORACLE_V2_ADDRESS or populate op-stack/addresses.json"
         WARNINGS+=("StockOracleV2 address unresolved — freshness probe skipped")
       else
-        # Pure node + JSON-RPC eth_call (selector for lastUpdated() =
+        artifact_stock_oracle=""
+        addr_json="$REPO_ROOT/op-stack/addresses.json"
+        if [[ -f "$addr_json" ]]; then
+          artifact_stock_oracle="$(node -e '
+            const fs=require("fs");
+            try {
+              const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+              const c=j.contracts||{};
+              console.log(c.StockOracleV2 || "");
+            } catch (_) {}
+          ' "$addr_json" 2>/dev/null)"
+        fi
+        if [[ -n "$artifact_stock_oracle" && "$artifact_stock_oracle" != "$stock_oracle" ]]; then
+          add_summary "⚠️  StockOracleV2 artifact mismatch — using \`$stock_oracle\` from $stock_oracle_source; op-stack has \`$artifact_stock_oracle\`"
+          WARNINGS+=("StockOracleV2 artifact mismatch — using $stock_oracle_source target $stock_oracle instead of op-stack/addresses.json $artifact_stock_oracle")
+        else
+          add_summary "ℹ️  StockOracleV2 address \`$stock_oracle\` resolved from $stock_oracle_source"
+        fi
+
+        code_probe="$(node -e '
+          const http = process.argv[1].startsWith("https://") ? require("https") : require("http");
+          let url;
+          try { url = new URL(process.argv[1]); }
+          catch (_) { console.log("BADURL"); process.exit(0); }
+          const data = JSON.stringify({
+            jsonrpc: "2.0", id: 1, method: "eth_getCode",
+            params: [process.argv[2], "latest"],
+          });
+          const req = http.request({
+            method: "POST", hostname: url.hostname, port: url.port,
+            path: url.pathname + url.search,
+            headers: { "content-type": "application/json", "content-length": Buffer.byteLength(data) },
+          }, (res) => {
+            let raw = "";
+            res.on("data", c => raw += c);
+            res.on("end", () => {
+              try {
+                const j = JSON.parse(raw);
+                if (j && j.error) {
+                  const code = (j.error.code === undefined) ? "?" : String(j.error.code);
+                  const msg = String(j.error.message || "").replace(/[\r\n\t]/g, " ").slice(0, 160);
+                  console.log("RPCERR:" + code + ":" + msg);
+                  return;
+                }
+                if (typeof j.result === "string") {
+                  console.log(j.result === "0x" ? "NOCODE" : "CODE");
+                  return;
+                }
+                console.log("NORESULT");
+              } catch (_) { console.log("PARSEFAIL"); }
+            });
+          });
+          req.on("error", () => { console.log("RPCERR:?:request failed"); process.exit(0); });
+          req.setTimeout(10000, () => {
+            req.destroy();
+            console.log("TIMEOUT");
+            process.exit(0);
+          });
+          req.write(data); req.end();
+        ' "$LANE7_RPC" "$stock_oracle" 2>/dev/null)"
+        code_probe="${code_probe:-NORESULT}"
+        rpc_redacted="$(redact_url_secrets "$LANE7_RPC")"
+        if [[ "$code_probe" == "NOCODE" ]]; then
+          add_summary "❌ StockOracleV2 address \`$stock_oracle\` from $stock_oracle_source has no bytecode on \`LANE7_RPC=$rpc_redacted\`"
+          BLOCKERS+=("StockOracleV2 address from $stock_oracle_source has no bytecode on LANE7_RPC")
+        else
+          if [[ "$code_probe" != "CODE" ]]; then
+            add_summary "⚠️  StockOracleV2 bytecode probe returned \`$code_probe\` — continuing to lastUpdated() probe"
+            WARNINGS+=("StockOracleV2 bytecode probe returned $code_probe")
+          fi
+
+          # Pure node + JSON-RPC eth_call (selector for lastUpdated() =
         # cast sig "lastUpdated()" = 0xd0b06f5d). Bound by a 10s socket
         # timeout that mirrors the curl `--max-time 10` policy elsewhere
         # in the script — a paused/silent RPC must not freeze the smoke
@@ -830,7 +926,6 @@ else
         ' "$LANE7_RPC" "$stock_oracle" 2>/dev/null)"
 
         last_updated="${last_updated:-0}"
-        rpc_redacted="$(redact_url_secrets "$LANE7_RPC")"
         if [[ "$last_updated" == "BADURL" ]]; then
           add_summary "⚠️  \`LANE7_RPC=$rpc_redacted\` failed URL parsing in node — on-chain freshness skipped"
           WARNINGS+=("LANE7_RPC failed URL parsing (LANE7_RPC=$rpc_redacted)")
@@ -877,6 +972,7 @@ else
           else
             add_summary "✅ StockOracleV2.lastUpdated() = $last_updated; age $age_s s ≤ $STALENESS_THRESHOLD_S s"
           fi
+        fi
         fi
       fi
       ;;

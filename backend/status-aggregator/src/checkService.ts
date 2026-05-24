@@ -116,8 +116,14 @@ function pickErrorMessage(
       return undefined;
     case 'degraded':
       return firstString(body.reason, body.error);
+    case 'health-only':
+      return firstString(body.reason, body.error);
     case 'error':
       return firstString(body.error, body.reason) ?? `HTTP ${httpStatus}`;
+    default: {
+      const _exhaustive: never = svcStatus;
+      return _exhaustive;
+    }
   }
 }
 

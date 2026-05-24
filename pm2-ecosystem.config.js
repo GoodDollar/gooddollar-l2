@@ -4,6 +4,10 @@
 // Before running: kill unsupervised GoodSwap PIDs 735615 735627 735628
 const path = require('path');
 
+function pickEnv(key, fallback = '') {
+  return process.env[key] || fallback;
+}
+
 module.exports = {
   apps: [
     {
@@ -31,7 +35,17 @@ module.exports = {
       restart_delay: 3000,
       max_restarts: 10,
       kill_timeout: 5000,
-      env: { NODE_ENV: 'production' },
+      env: {
+        NODE_ENV: 'production',
+        PRICE_SERVICE_URL: pickEnv('PRICE_SERVICE_URL', 'http://127.0.0.1:49300/status/quotes'),
+        NEXT_PUBLIC_PRICE_SERVICE_URL: pickEnv('NEXT_PUBLIC_PRICE_SERVICE_URL', 'http://127.0.0.1:49300'),
+        ORACLE_SIGNER_URL: pickEnv('ORACLE_SIGNER_URL', 'http://127.0.0.1:49107/proof'),
+        ORACLE_SIGNER_PROOF_URL: pickEnv('ORACLE_SIGNER_PROOF_URL'),
+        NEXT_PUBLIC_STOCK_ORACLE_V2_ADDRESS: pickEnv(
+          'NEXT_PUBLIC_STOCK_ORACLE_V2_ADDRESS',
+          process.env.STOCK_ORACLE_V2_ADDRESS || process.env.STOCK_ORACLE_V2 || '',
+        ),
+      },
     },
     {
       name: 'goodperps',
