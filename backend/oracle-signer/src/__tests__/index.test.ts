@@ -267,6 +267,25 @@ describe('OracleSignerService', () => {
       expect(result).not.toBeNull();
     });
 
+    it('skips markSubmitted on a reverted submitBatch so the next tick retries the same symbols', async () => {
+      const service = new OracleSignerService(makeConfig({ minDeviationBps: 10 }));
+      const submit = service.getSubmitter().submitBatch as unknown as jest.Mock;
+      submit.mockRejectedValueOnce(
+        new Error('Transaction reverted on-chain (tx: 0xrev, status: 0, ...)'),
+      );
+
+      primeBuffer(service);
+      await expect(service.tick()).rejects.toThrow(/reverted on-chain/);
+
+      // After a revert the deviation gate must still consider the
+      // symbol pending, because the on-chain price never moved. If
+      // markSubmitted had been called, the freshly-anchored mid would
+      // make `getPendingUpdates` return [] and the symbol would silently
+      // fall behind on chain.
+      const stillPending = service.getBuffer().getPendingUpdates();
+      expect(stillPending.map((u) => u.symbol)).toContain('AAPL');
+    });
+
     it('overlappedTicks stays at 0 when ticks do not overlap', async () => {
       const service = new OracleSignerService(makeConfig());
       primeBuffer(service);
