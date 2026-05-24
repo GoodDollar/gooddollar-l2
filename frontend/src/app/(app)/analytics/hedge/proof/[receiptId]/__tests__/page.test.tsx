@@ -267,6 +267,15 @@ describe('HedgeProofViewerPerReceiptPage — page header receipt id (#0075)', ()
     expect(subLine.getAttribute('title')).toBe('r-2026-001')
     expect(subLine.getAttribute('aria-label')).toBe('Receipt r-2026-001')
   })
+
+  it('renders the Copy link button (#0077) alongside the receipt id on the per-receipt page', async () => {
+    mockJson({ status: 'no_proof' }, { status: 404 })
+    renderPage('r-2026-001')
+    await screen.findByTestId('hedge-proof-page-receipt-id')
+    expect(
+      screen.getByTestId('hedge-proof-copy-link-button'),
+    ).toBeInTheDocument()
+  })
 })
 
 describe('HedgeProofViewerPerReceiptPage — invalid_id Retry suppression (#0072)', () => {

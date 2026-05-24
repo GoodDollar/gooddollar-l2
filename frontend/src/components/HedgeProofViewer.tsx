@@ -283,26 +283,133 @@ function PageHeader({
   // to the visible id so screen readers always read the available id.
   const fullId = receiptIdTooltip ?? receiptId
   return (
-    <header className="mb-6">
-      <Link
-        data-testid="hedge-proof-back-link"
-        href="/analytics"
-        className="text-xs text-gray-400 hover:text-white inline-flex items-center gap-1"
-      >
-        <span aria-hidden="true">←</span> Back to dashboard
-      </Link>
-      <h1 className="mt-2 text-2xl font-semibold text-white">Hedge proof</h1>
-      {receiptId && (
-        <p
-          data-testid="hedge-proof-page-receipt-id"
-          className="mt-1 text-sm text-gray-400 font-mono"
-          title={fullId}
-          aria-label={`Receipt ${fullId}`}
+    <header className="mb-6 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <Link
+          data-testid="hedge-proof-back-link"
+          href="/analytics"
+          className="text-xs text-gray-400 hover:text-white inline-flex items-center gap-1"
         >
-          Receipt {receiptId}
-        </p>
-      )}
+          <span aria-hidden="true">←</span> Back to dashboard
+        </Link>
+        <h1 className="mt-2 text-2xl font-semibold text-white">Hedge proof</h1>
+        {receiptId && (
+          <p
+            data-testid="hedge-proof-page-receipt-id"
+            className="mt-1 text-sm text-gray-400 font-mono"
+            title={fullId}
+            aria-label={`Receipt ${fullId}`}
+          >
+            Receipt {receiptId}
+          </p>
+        )}
+      </div>
+      <CopyLinkButton />
     </header>
+  )
+}
+
+/**
+ * Hands the canonical proof URL to clipboard in one click so an operator
+ * can paste it into a Slack thread / audit ticket without fumbling for
+ * the address bar (especially on mobile where browser chrome auto-hides)
+ * (#0077). Always copies `window.location.href` so the action stays
+ * correct across `/latest`, `/[receiptId]`, hash fragments, and query
+ * state without per-surface wiring.
+ *
+ * State machine:
+ *   - `idle`     — default; label reads "Copy link".
+ *   - `copied`   — `writeText` resolved; label reads "Copied" for
+ *                  COPIED_REVERT_MS, then auto-reverts to `idle`.
+ *   - `fallback` — `navigator.clipboard` is unavailable or `writeText`
+ *                  rejected (insecure context, denied permission, older
+ *                  iframe). Renders a focusable read-only `<input>`
+ *                  pre-selected with the URL plus a "Press ⌘C / Ctrl+C
+ *                  to copy" hint so the user can keyboard-copy.
+ *
+ * SSR-safe: returns `null` until the first client paint confirms
+ * `navigator` exists, avoiding a hydration mismatch.
+ */
+const COPIED_REVERT_MS = 1500
+
+function CopyLinkButton() {
+  const [mounted, setMounted] = useState(false)
+  const [state, setState] = useState<'idle' | 'copied' | 'fallback'>('idle')
+  const revertRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fallbackInputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => {
+      if (revertRef.current) clearTimeout(revertRef.current)
+    }
+  }, [])
+
+  // Auto-select the fallback input as soon as it mounts so the user can
+  // immediately hit ⌘C / Ctrl+C without an extra click into the field.
+  useEffect(() => {
+    if (state === 'fallback' && fallbackInputRef.current) {
+      fallbackInputRef.current.focus()
+      fallbackInputRef.current.select()
+    }
+  }, [state])
+
+  if (!mounted) return null
+
+  const handleClick = async () => {
+    const href = window.location.href
+    const clipboard = navigator.clipboard
+    if (!clipboard || typeof clipboard.writeText !== 'function') {
+      setState('fallback')
+      return
+    }
+    try {
+      await clipboard.writeText(href)
+    } catch {
+      setState('fallback')
+      return
+    }
+    setState('copied')
+    if (revertRef.current) clearTimeout(revertRef.current)
+    revertRef.current = setTimeout(() => setState('idle'), COPIED_REVERT_MS)
+  }
+
+  const label = state === 'copied' ? 'Copied' : 'Copy link'
+
+  return (
+    <div className="flex flex-col items-end gap-1 shrink-0">
+      <button
+        type="button"
+        data-testid="hedge-proof-copy-link-button"
+        aria-label="Copy proof page link"
+        onClick={handleClick}
+        className="text-xs text-gray-400 hover:text-white inline-flex items-center gap-1 transition-colors"
+      >
+        <span aria-hidden="true">🔗</span>
+        <span aria-live="polite">{label}</span>
+      </button>
+      {state === 'fallback' && (
+        <>
+          <input
+            ref={fallbackInputRef}
+            data-testid="hedge-proof-copy-link-fallback-input"
+            type="text"
+            readOnly
+            value={window.location.href}
+            tabIndex={0}
+            aria-label="Proof page URL — copy with keyboard"
+            className="text-xs text-gray-200 bg-dark-100 border border-dark-50 rounded px-2 py-1 font-mono w-56 max-w-full"
+          />
+          <span
+            data-testid="hedge-proof-copy-link-fallback-hint"
+            aria-live="polite"
+            className="text-[10px] text-gray-500"
+          >
+            Press ⌘C / Ctrl+C to copy
+          </span>
+        </>
+      )}
+    </div>
   )
 }
 

@@ -73,6 +73,11 @@ describe('HedgeProofViewerPage', () => {
     // latest viewer's header is unchanged so the implicit "latest"
     // target reads correctly without a stray receipt id label.
     expect(screen.queryByTestId('hedge-proof-page-receipt-id')).toBeNull();
+    // #0077 — the Copy link button is present on /latest so an
+    // operator handing off a proof URL gets one-click clipboard.
+    expect(
+      screen.getByTestId('hedge-proof-copy-link-button'),
+    ).toBeInTheDocument();
   });
 
   it('shows a branded engine-down state with Retry + back link when the JSON route reports engine_down', async () => {
