@@ -157,20 +157,19 @@ describe('SafetyBanner', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it('clears the interval on unmount', async () => {
+  it('clears the recovery interval on unmount when still in error state (#0071)', async () => {
+    // After #0071, the steady-state SAFE branch cancels its interval as
+    // soon as the first safe response lands — there's nothing left to
+    // clear at unmount. Cleanup only matters when the recovery
+    // interval is still alive (error/unsafe state). Pin that contract.
     vi.useFakeTimers()
     const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval')
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({ realTradingEnabled: false, etoroMode: 'sandbox', version: 1 }),
-      } as Response),
-    )
+    globalThis.fetch = vi.fn(() => Promise.reject(new Error('Failed to fetch')))
 
     const { unmount } = render(<SafetyBanner intervalMs={5_000} />)
-    await vi.waitFor(() => expect(screen.getByText(/Safe/i)).toBeInTheDocument())
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/Safety state unverified/i),
+    )
 
     const callsBefore = clearIntervalSpy.mock.calls.length
     unmount()
@@ -241,5 +240,153 @@ describe('SafetyBanner', () => {
 
     expect(screen.queryByLabelText(/Loading safety state/i)).not.toBeInTheDocument()
     expect(screen.getByText(/Safe/i)).toBeInTheDocument()
+  })
+
+  // Task #0071 — stop polling /api/safety-state once a safe response
+  // lands. The two fields the banner reads are server-side build/boot
+  // constants and cannot change without restarting the process; the
+  // 240 requests/hour the previous 15s cadence emitted were pure waste.
+  describe('cadence after first safe response (#0071)', () => {
+    function setHidden(hidden: boolean) {
+      Object.defineProperty(document, 'hidden', {
+        value: hidden,
+        configurable: true,
+        writable: true,
+      })
+      Object.defineProperty(document, 'visibilityState', {
+        value: hidden ? 'hidden' : 'visible',
+        configurable: true,
+        writable: true,
+      })
+    }
+
+    it('stops polling after the first safe ok — no extra fetches over multiple intervals', async () => {
+      vi.useFakeTimers()
+      const fetchMock = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({ realTradingEnabled: false, etoroMode: 'sandbox', version: 1 }),
+        } as Response),
+      )
+      globalThis.fetch = fetchMock as typeof globalThis.fetch
+
+      render(<SafetyBanner intervalMs={1_000} />)
+
+      await vi.waitFor(() => expect(screen.getByText(/Safe/i)).toBeInTheDocument())
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(screen.getByText(/Safe/i)).toBeInTheDocument()
+    })
+
+    it('re-fetches once on visibilitychange after the first safe ok', async () => {
+      vi.useFakeTimers()
+      const fetchMock = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({ realTradingEnabled: false, etoroMode: 'sandbox', version: 1 }),
+        } as Response),
+      )
+      globalThis.fetch = fetchMock as typeof globalThis.fetch
+
+      render(<SafetyBanner intervalMs={1_000} />)
+      await vi.waitFor(() => expect(screen.getByText(/Safe/i)).toBeInTheDocument())
+
+      // Simulate the user hiding the tab — no extra fetch.
+      await act(async () => {
+        setHidden(true)
+        document.dispatchEvent(new Event('visibilitychange'))
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+
+      // Tab regains focus — exactly one recheck.
+      await act(async () => {
+        setHidden(false)
+        document.dispatchEvent(new Event('visibilitychange'))
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+
+      // Subsequent intervals should not recur — still no recurring poll
+      // once both responses are safe.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('keeps polling on a first-fetch error so the page can recover from a transient outage', async () => {
+      vi.useFakeTimers()
+      let call = 0
+      const fetchMock = vi.fn(() => {
+        call++
+        if (call === 1) return Promise.reject(new Error('Failed to fetch'))
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({ realTradingEnabled: false, etoroMode: 'sandbox', version: 1 }),
+        } as Response)
+      })
+      globalThis.fetch = fetchMock as typeof globalThis.fetch
+
+      render(<SafetyBanner intervalMs={1_000} />)
+
+      await vi.waitFor(() =>
+        expect(screen.getByRole('alert')).toHaveTextContent(/Safety state unverified/i),
+      )
+
+      // The recovery interval keeps firing — 1s tick → first recovery
+      // fetch, which now resolves safe and silences the timer.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      await vi.waitFor(() => expect(screen.getByText(/Safe/i)).toBeInTheDocument())
+      expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+
+      // Now-safe state cancels recurring polls.
+      const settled = fetchMock.mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      expect(fetchMock.mock.calls.length).toBe(settled)
+    })
+
+    it('keeps polling while the response is unsafe (REFUSAL state can recover via env restart)', async () => {
+      vi.useFakeTimers()
+      let call = 0
+      const fetchMock = vi.fn(() => {
+        call++
+        const body =
+          call <= 2
+            ? { realTradingEnabled: true, etoroMode: 'real', version: 1 }
+            : { realTradingEnabled: false, etoroMode: 'sandbox', version: 1 }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(body),
+        } as Response)
+      })
+      globalThis.fetch = fetchMock as typeof globalThis.fetch
+
+      render(<SafetyBanner intervalMs={1_000} />)
+      await vi.waitFor(() =>
+        expect(screen.getByRole('alert')).toHaveTextContent(/REFUSAL/i),
+      )
+
+      // Recovery interval keeps polling through the unsafe response.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2_000)
+      })
+      expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+    })
   })
 })

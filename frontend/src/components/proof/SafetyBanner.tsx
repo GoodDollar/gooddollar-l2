@@ -22,6 +22,40 @@ interface SafetyBannerProps {
   intervalMs?: number
 }
 
+/**
+ * Whether the current `/api/safety-state` payload is the "safe" branch:
+ * server reports real-trading off, the build-time mirror agrees, and
+ * the configured `ETORO_MODE` is in the allow-list. Promoted out of the
+ * render body so the polling effect and the renderer share one
+ * definition (#0071).
+ */
+function computeSafe(data: SafetyStateResponse): boolean {
+  return (
+    data.realTradingEnabled === false &&
+    REAL_TRADING_ENABLED === false &&
+    isEtoroModeAllowed(data.etoroMode)
+  )
+}
+
+/**
+ * Renders the proof-page safety banner and verifies the safety flag.
+ *
+ * Polling cadence (#0071): the two fields the banner reads
+ * (`realTradingEnabled`, `etoroMode`) are server-side build/boot-time
+ * constants that cannot change without restarting the Next.js process.
+ * The banner therefore polls `/api/safety-state` on three triggers:
+ *
+ *   1. Once on mount.
+ *   2. Once whenever the document transitions from hidden → visible
+ *      (covers "I came back after closing the laptop for an hour").
+ *   3. Every `intervalMs` ONLY while the last response was unsafe or
+ *      a network/HTTP error (recovery cadence).
+ *
+ * Once a safe response lands, the recurring interval is cancelled until
+ * the page is reloaded or visibility regains. Verified-unsafe and
+ * verified-error states keep the original cadence so the page can
+ * recover from a transient first-load failure without manual reload.
+ */
 export function SafetyBanner({
   endpoint = '/api/safety-state',
   intervalMs = POLL_INTERVAL_MS,
@@ -30,24 +64,56 @@ export function SafetyBanner({
 
   useEffect(() => {
     let cancelled = false
+    let timer: ReturnType<typeof setInterval> | null = null
+    let lastSafe = false
+
+    const cancelInterval = () => {
+      if (timer !== null) {
+        clearInterval(timer)
+        timer = null
+      }
+    }
+
+    const armRecoveryInterval = () => {
+      if (timer !== null) return
+      timer = setInterval(() => void load(), intervalMs)
+    }
 
     const load = async () => {
       try {
         const res = await fetch(endpoint, { cache: 'no-store' })
         if (!res.ok) throw new Error(`safety-state returned ${res.status}`)
         const data = (await res.json()) as SafetyStateResponse
-        if (!cancelled) setState({ status: 'ok', data })
+        if (cancelled) return
+        setState({ status: 'ok', data })
+        if (computeSafe(data)) {
+          lastSafe = true
+          cancelInterval()
+        } else {
+          lastSafe = false
+          armRecoveryInterval()
+        }
       } catch (err: unknown) {
         console.error('[safety-banner] fetch failed', err)
-        if (!cancelled) setState({ status: 'error' })
+        if (cancelled) return
+        setState({ status: 'error' })
+        lastSafe = false
+        armRecoveryInterval()
       }
     }
 
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      if (!lastSafe) return
+      void load()
+    }
+
     void load()
-    const timer = setInterval(() => void load(), intervalMs)
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
       cancelled = true
-      clearInterval(timer)
+      cancelInterval()
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [endpoint, intervalMs])
 
@@ -80,12 +146,12 @@ export function SafetyBanner({
     )
   }
 
-  const apiOk = state.data.realTradingEnabled === false
-  const frontendOk = REAL_TRADING_ENABLED === false
-  const modeOk = isEtoroModeAllowed(state.data.etoroMode)
-  const safe = apiOk && frontendOk && modeOk
+  const safe = computeSafe(state.data)
 
   if (!safe) {
+    const apiOk = state.data.realTradingEnabled === false
+    const frontendOk = REAL_TRADING_ENABLED === false
+    const modeOk = isEtoroModeAllowed(state.data.etoroMode)
     const realTradingTripped = !apiOk || !frontendOk
     const headline = realTradingTripped
       ? 'REFUSAL: real trading flag tripped. This release is NOT safe to ship.'
