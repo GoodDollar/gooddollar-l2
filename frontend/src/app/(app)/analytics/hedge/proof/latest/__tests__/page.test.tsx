@@ -69,6 +69,10 @@ describe('HedgeProofViewerPage', () => {
     // Back-to-dashboard link is mandatory on every state.
     const back = screen.getByTestId('hedge-proof-back-link');
     expect(back.getAttribute('href')).toBe('/analytics');
+    // #0075 — the per-receipt sub-line must NOT render on /latest; the
+    // latest viewer's header is unchanged so the implicit "latest"
+    // target reads correctly without a stray receipt id label.
+    expect(screen.queryByTestId('hedge-proof-page-receipt-id')).toBeNull();
   });
 
   it('shows a branded engine-down state with Retry + back link when the JSON route reports engine_down', async () => {

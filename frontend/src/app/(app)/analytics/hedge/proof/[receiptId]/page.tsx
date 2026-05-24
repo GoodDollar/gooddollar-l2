@@ -48,6 +48,8 @@ export function PerReceiptProofView({ receiptId }: { receiptId: string }) {
       notFoundDetail="The hedge engine has no proof artifact for this receipt id. It may have been pruned or the id may belong to a different engine instance."
       notFoundTitleTooltip={truncated ? receiptId : undefined}
       surface="receipt"
+      receiptId={headlineId}
+      receiptIdTooltip={truncated ? receiptId : undefined}
     />
   )
 }

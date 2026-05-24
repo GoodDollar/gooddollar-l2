@@ -186,6 +186,89 @@ describe('HedgeProofViewerPerReceiptPage — recap line truncation for long rece
   })
 })
 
+describe('HedgeProofViewerPerReceiptPage — page header receipt id (#0075)', () => {
+  it('renders the receipt id sub-line synchronously during the loading state', async () => {
+    // First fetch never resolves so the viewer stays in `loading`. The
+    // receipt id is known from the route param and must render in the
+    // page header immediately so a shared/bookmarked link confirms
+    // *which* receipt is loading.
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}))
+    renderPage('r-2026-001')
+    const subLine = await screen.findByTestId('hedge-proof-page-receipt-id')
+    expect(subLine.textContent).toBe('Receipt r-2026-001')
+    expect(screen.getByTestId('hedge-proof-loading')).toBeInTheDocument()
+  })
+
+  it('renders the receipt id sub-line on the ok branch', async () => {
+    mockJson({
+      status: 'ok',
+      markdown: '# ok\n',
+      pointer: {
+        path: 'x',
+        timestamp: 1700000000000,
+        summary: 'demo',
+      },
+    })
+    renderPage('r-2026-001')
+    await screen.findByTestId('hedge-proof-body')
+    expect(
+      screen.getByTestId('hedge-proof-page-receipt-id').textContent,
+    ).toBe('Receipt r-2026-001')
+  })
+
+  it('renders the receipt id sub-line on the no_proof branch', async () => {
+    mockJson({ status: 'no_proof' }, { status: 404 })
+    renderPage('r-2026-001')
+    await screen.findByTestId('hedge-proof-error')
+    expect(
+      screen.getByTestId('hedge-proof-page-receipt-id').textContent,
+    ).toBe('Receipt r-2026-001')
+  })
+
+  it('renders the receipt id sub-line on the engine_down branch', async () => {
+    mockJson(
+      { status: 'engine_down', reason: 'Hedge engine unreachable' },
+      { status: 502 },
+    )
+    renderPage('r-2026-001')
+    await screen.findByTestId('hedge-proof-error')
+    expect(
+      screen.getByTestId('hedge-proof-page-receipt-id').textContent,
+    ).toBe('Receipt r-2026-001')
+  })
+
+  it('renders the receipt id sub-line on the network_error branch', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+      new TypeError('Failed to fetch'),
+    )
+    renderPage('r-2026-001')
+    await screen.findByTestId('hedge-proof-error')
+    expect(
+      screen.getByTestId('hedge-proof-page-receipt-id').textContent,
+    ).toBe('Receipt r-2026-001')
+  })
+
+  it('truncates long receipt ids in the visible sub-line but exposes the full id via title / aria-label', async () => {
+    mockJson({ status: 'no_proof' }, { status: 404 })
+    const longId = 'a'.repeat(200)
+    renderPage(longId)
+    const subLine = await screen.findByTestId('hedge-proof-page-receipt-id')
+    expect(subLine.textContent).toBe(
+      `Receipt ${'a'.repeat(12)}…${'a'.repeat(8)}`,
+    )
+    expect(subLine.getAttribute('title')).toBe(longId)
+    expect(subLine.getAttribute('aria-label')).toBe(`Receipt ${longId}`)
+  })
+
+  it('exposes the visible id via title / aria-label for short ids (no truncation)', async () => {
+    mockJson({ status: 'no_proof' }, { status: 404 })
+    renderPage('r-2026-001')
+    const subLine = await screen.findByTestId('hedge-proof-page-receipt-id')
+    expect(subLine.getAttribute('title')).toBe('r-2026-001')
+    expect(subLine.getAttribute('aria-label')).toBe('Receipt r-2026-001')
+  })
+})
+
 describe('HedgeProofViewerPerReceiptPage — invalid_id Retry suppression (#0072)', () => {
   it('omits the Retry button on invalid_id and renders an Open receipts table link', async () => {
     mockJson(

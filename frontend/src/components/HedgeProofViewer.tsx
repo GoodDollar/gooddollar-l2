@@ -99,6 +99,19 @@ export interface HedgeProofViewerProps {
    * for backwards-compatibility with the existing latest viewer.
    */
   surface?: ProofSurface
+  /**
+   * Receipt id rendered as a sub-line below `<h1>Hedge proof</h1>` so a
+   * shared / bookmarked per-receipt URL gives the visitor immediate
+   * confirmation of *which* receipt they are looking at — in every view
+   * state (loading / ok / no_proof / engine_down / network_error) (#0075).
+   *
+   * Opt-in: the `/latest` viewer omits this so its header is unchanged.
+   * The visible string should already be truncated via `truncateReceiptId`
+   * by the caller; pass the full untruncated id via `receiptIdTooltip`
+   * when truncation occurred so hover / a11y still expose it.
+   */
+  receiptId?: string
+  receiptIdTooltip?: string
 }
 
 const DEFAULT_NOT_FOUND_TITLE = 'No hedge proof yet'
@@ -112,6 +125,8 @@ export default function HedgeProofViewer({
   notFoundTitleTooltip,
   rawMarkdownHref,
   surface = 'latest',
+  receiptId,
+  receiptIdTooltip,
 }: HedgeProofViewerProps) {
   const [view, setView] = useState<ViewState>({ kind: 'loading' })
 
@@ -194,7 +209,7 @@ export default function HedgeProofViewer({
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 py-6">
-      <PageHeader />
+      <PageHeader receiptId={receiptId} receiptIdTooltip={receiptIdTooltip} />
       {view.kind === 'loading' && <LoadingState />}
       {view.kind === 'ok' && (
         <OkState data={view.data} rawMarkdownHref={rawMarkdownHref} />
@@ -256,7 +271,17 @@ export default function HedgeProofViewer({
   )
 }
 
-function PageHeader() {
+function PageHeader({
+  receiptId,
+  receiptIdTooltip,
+}: {
+  receiptId?: string
+  receiptIdTooltip?: string
+}) {
+  // The full id stays accessible via `title=` and `aria-label=` whether
+  // or not the visible string was truncated by the caller. We fall back
+  // to the visible id so screen readers always read the available id.
+  const fullId = receiptIdTooltip ?? receiptId
   return (
     <header className="mb-6">
       <Link
@@ -267,6 +292,16 @@ function PageHeader() {
         <span aria-hidden="true">←</span> Back to dashboard
       </Link>
       <h1 className="mt-2 text-2xl font-semibold text-white">Hedge proof</h1>
+      {receiptId && (
+        <p
+          data-testid="hedge-proof-page-receipt-id"
+          className="mt-1 text-sm text-gray-400 font-mono"
+          title={fullId}
+          aria-label={`Receipt ${fullId}`}
+        >
+          Receipt {receiptId}
+        </p>
+      )}
     </header>
   )
 }
