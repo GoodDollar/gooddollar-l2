@@ -329,9 +329,8 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     path: '/quotes/:symbol',
     methods: ['GET'],
     summary:
-      'Single symbol; 400 invalid-symbol|invalid-symbol-or-path|' +
-      'invalid-max-age-ms, 404 symbol-not-configured|no-quote, ' +
-      '503 stale-cache (?maxAgeMs= gate), 200 quote envelope.',
+      'Single symbol (+ ?maxAgeMs= freshness gate); 400 invalid-*, ' +
+      '404 symbol-not-configured|no-quote, 503 stale-cache, 200 env.',
     parametric: true,
     // The three sub-envelopes (200/400/404) plus the meta tail blow past
     // the 240-char cap when every field is named. 200's inner field
