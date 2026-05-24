@@ -31,24 +31,33 @@ Canonical network metadata: [`op-stack/addresses.json`](op-stack/addresses.json)
 
 ## Release status — 2026-05-24
 
-_Last refreshed after merging live-prices lanes 1–7 into `main`. Supersedes older status rows where they conflict._
+_Last refreshed 2026-05-24 12:20 UTC after lane7 proof/status fixes, frontend deploy, and push-prep. Supersedes older status rows where they conflict._
+
+### Latest demo checkpoint — 2026-05-24 12:20 UTC
+
+- **Live frontend:** `goodswap` is deployed and serving BUILD_ID `tDSHfi4rQnym103Jy7G3l` on https://goodswap.goodclaw.org.
+- **Public proof routes:** `/live-prices-proof`, `/api/status`, `/api/oracle/status`, and `/api/status/quotes` all return HTTP `200` locally and publicly.
+- **Oracle status:** `/api/oracle/status` reports `healthy: true`, `degraded: false`, fresh `TSLA`/`NVDA` quotes, `StockOracleV2` `0x5FbDB2315678afecb367f032d93F642f64180aa3`, and a live lane7 `/proof` payload with no stock submission failures.
+- **Gates:** strict BUILD_ID sync and served chunk checks pass; `./scripts/testnet/health-gate.sh` and `scripts/testnet/internal-smoke.sh` both report **GREEN-with-warnings** with `0` blockers.
+- **Warning semantics:** `/api/status` can still show `overall: "degraded"` because excluded/health-only services are surfaced honestly as warnings. This is not a demo blocker for the live-prices/proof path.
+- **Fix commits:** main repo `8edd26ff` + `b9ebf156`; lane7 source repo `4085bf36`.
 
 ### Live-prices lane integration (merged into local `main`)
 
 - **HEAD includes lanes 1–7:** eToro connectivity, price-service, oracle publishing, app integration, hedging demo, QA proof/release, and internal testnet smoke.
 - **Local merge commits on `main`:** lane1 `d3e3b3fa`, lane2 `ccee9ee8`, lane3 `ac651865`, lane4 `fecfb3c9`, lane5 `784dd7d6`, lane6 `9d2d0e11`, lane7 `272fccf3`.
 - **Lane proof commits included:** lane1 `2ea6ee37`, lane2 `e41d4e46`, lane4 `eb5dcdfe`, lane5 `08a85a72`, lane6 `76d9dbff`, lane7 `32844221` plus lane7 source fix `ae153c6c`.
-- **Lane7 internal smoke:** `scripts/testnet/internal-smoke.sh` reports **GREEN-with-warnings**, exit code `0`, blockers `0`.
-- **Remaining warnings before public promotion:** `oracle-signer` and `hedge-engine` are intentionally allowed to run **health-only / excluded** when signing keys or risk-engine addresses are absent. They must be explicitly accepted or configured before broad public testnet promotion.
+- **Lane7 internal smoke:** `scripts/testnet/internal-smoke.sh` reports **GREEN-with-warnings**, exit code `0`, blockers `0`; default ports now target lane7 (`49300`, `49107`, `49106`, `49200`).
+- **Remaining warnings before public promotion:** `hedge-engine` is intentionally allowed to run **health-only / excluded** when risk-engine addresses are absent. The lane7 `oracle-signer` proof endpoint is live; any excluded signer warning must be explicitly accepted or configured before broad public testnet promotion.
 
 
 ### Post-merge validation baseline (2026-05-24 UTC)
 
-- `main` now contains the local merge commits for lanes 1–7; no remote push was performed by this checkpoint.
+- `main` now contains the local merge commits for lanes 1–7 plus the lane7 proof/status deploy-gate fixes. This README checkpoint accompanies the remote push of the accumulated main history.
 - `npm run test:lane1` passes end-to-end across `backend/etoro-client`, `backend/price-service`, `backend/oracle-signer`, and `backend/hedge-engine`.
 - `backend/hedge-engine` specifically is green after reconciliation of lane-5/6/7 API drift: **22 suites / 153 tests passed**.
 - Safety defaults remain fenced in operator-copy env: `REAL_TRADING_ENABLED=false`, `ETORO_MODE=mock`, `HEDGE_DRY_RUN=true`; demo trading still requires explicit demo mode and explicit hedge-trading enablement.
-- The expected lane7 status remains **GREEN-with-warnings**: unkeyed `oracle-signer` and unconfigured `hedge-engine` are surfaced as health-only/excluded warnings, not hidden as success.
+- The expected lane7 status remains **GREEN-with-warnings**: unconfigured `hedge-engine` and any explicitly excluded services are surfaced as health-only/excluded warnings, not hidden as success.
 
 ### What works now across the app suite
 
@@ -59,7 +68,7 @@ _Last refreshed after merging live-prices lanes 1–7 into `main`. Supersedes ol
 | GoodStocks | `/stocks`, `/stocks/[ticker]`, `/stocks/watchlist`, and stock cards render source/provenance, oracle freshness, watchlist controls, no-data honesty, and status panels. | Synthetic stock trading still depends on deployed oracle/collateral addresses and wallet availability. |
 | GoodPerps | `/perps` keeps the demo/synthetic perps UI, crypto oracle surfaces, history panels, funding/order-book components, and wallet guards. | Perps matching/settlement remain devnet/demo until backend and contracts are promoted together. |
 | Hedging demo | `hedge-engine` maps GoodChain exposure into capped demo hedge intents and has a `hedge:demo` proof path plus UI receipt/export surfaces. | Health-only unless `RISK_ENGINE_ADDRESS` and demo credentials are configured; real-money hedging is not enabled. |
-| Status/observability | `/api/status`, `/status`, `/api/status/quotes`, `/api/oracle/status`, and status-aggregator understand operational, degraded, health-only, and excluded service states. | Public status must keep showing exclusions honestly; do not hide red/yellow states in demos. |
+| Status/observability | `/api/status`, `/status`, `/api/status/quotes`, `/api/oracle/status`, and status-aggregator understand operational, degraded, health-only, and excluded service states. `/api/oracle/status` merges price-service quotes with signer proof (`service`, `chain`, `rails`, `failures`, `counts`, `ingest`). | Public status must keep showing exclusions honestly; do not hide red/yellow states in demos. |
 | Testnet smoke | Lane7 scripts bring up local RPC/price fixture/status checks and validate the live-price pipeline contract. | Public promotion still needs explicit signer/hedge acceptance and a fresh production frontend build/deploy. |
 
 ### RC integration (merged)
@@ -195,7 +204,7 @@ The merged live-prices work is now a full internal pipeline: market data → nor
 |-------------------|------|------|
 | `@goodchain/etoro-client` | [`backend/etoro-client/`](backend/etoro-client/) | TypeScript SDK with mode resolution, demo/read-only fences, symbol/instrument helpers, quote/trading tests. |
 | `@goodchain/price-service` | [`backend/price-service/`](backend/price-service/) | Normalizes quotes, risk-filters stale/outlier data, serves REST `:9300` + WS `:9301`, and exposes source/audit health. |
-| `oracle-signer` | [`backend/oracle-signer/`](backend/oracle-signer/) | Consumes price-service quotes and publishes signed batches to `StockOracleV2`; health-only when unkeyed. |
+| `oracle-signer` | [`backend/oracle-signer/`](backend/oracle-signer/) | Consumes price-service quotes and publishes signed batches to `StockOracleV2`; lane7 exposes `GET /proof` with canonical `service`/`rails`/`stocks`/`failures`/`counts` shape. |
 | `@goodchain/hedge-engine` | [`backend/hedge-engine/`](backend/hedge-engine/) | Maps GoodChain exposure to capped demo hedge intents and proof receipts; health-only when risk engine is unset. |
 | Frontend status/proof | [`frontend/src/app/(app)/status/`](frontend/src/app/%28app%29/status/), [`frontend/src/app/api/status/quotes/`](frontend/src/app/api/status/quotes/) | Shows quote freshness, oracle provenance, service health, exclusions, and live-prices proof. |
 | Internal smoke | [`scripts/testnet/internal-smoke.sh`](scripts/testnet/internal-smoke.sh) | Verifies the lane7 contract and reports GREEN-with-warnings when only accepted exclusions remain. |
@@ -209,7 +218,7 @@ npm run test:lane1      # backend lane suites
 ./scripts/testnet/internal-smoke.sh     # lane7 internal smoke
 ```
 
-Current smoke baseline: **GREEN-with-warnings**. Warnings are expected until `ORACLE_SIGNER_KEY` and `RISK_ENGINE_ADDRESS` are configured or explicitly accepted as excluded for the target testnet stage.
+Current smoke baseline: **GREEN-with-warnings**. Warnings are expected until `RISK_ENGINE_ADDRESS` and any intentionally excluded services are configured or explicitly accepted for the target testnet stage.
 
 Operator references:
 
