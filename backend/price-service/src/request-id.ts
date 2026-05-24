@@ -17,17 +17,11 @@ declare global {
 }
 
 /**
- * Default fixed Allow-Headers set used by the CORS preflight response
- * when the client didn't send `Access-Control-Request-Headers`. Shared
- * with task 0079's `cors.ts` — kept here for now so task 0078 can wire
- * `X-Request-Id` into the preflight without a second module. Task 0079
- * folds this constant under `cors.ts` and extends with the broader
- * client header set (`Authorization`, `Cache-Control`, `Accept`, …).
+ * Default Allow-Headers list — canonical home is `./cors`. Re-exported
+ * here for back-compat with `server.ts` callers that imported it from
+ * `request-id.ts` before task 0079 introduced the broader CORS module.
  */
-export const DEFAULT_CORS_ALLOW_HEADERS: readonly string[] = Object.freeze([
-  'Content-Type',
-  'X-Request-Id',
-]);
+export { DEFAULT_CORS_ALLOW_HEADERS } from './cors';
 
 /**
  * Safe character class for echoing a client-supplied request ID back

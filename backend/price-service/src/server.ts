@@ -35,11 +35,8 @@ import {
   type NormalizeSymbolResult,
 } from './symbol-normalize';
 import { MAX_REQUESTED_SYMBOLS, parseSymbolsQuery } from './symbols-query';
-import {
-  DEFAULT_CORS_ALLOW_HEADERS,
-  REQUEST_ID_REGEX,
-  requestIdMiddleware,
-} from './request-id';
+import { REQUEST_ID_REGEX, requestIdMiddleware } from './request-id';
+import { parseAllowedHeaders } from './cors';
 
 // Re-export the quickstart + WS types and helpers off `./server` so
 // existing test imports (`from '../server'`) keep compiling. The
@@ -421,6 +418,15 @@ const SUPPORT_BLOCK = Object.freeze({
       'server-side otherwise. Include this header value in any bug ' +
       'report so on-call can grep audit.log + process logs for the ' +
       'same correlation key.',
+  }),
+  // Task 0079 — advertise the reflect-then-default policy so a
+  // frontend that wants to send a custom header knows it can ask via
+  // preflight without needing the server to ship a static list.
+  cors: Object.freeze({
+    preflight: 'reflects safe Access-Control-Request-Headers tokens',
+    defaultAllowedHeaders:
+      'Content-Type, Authorization, X-Request-Id, Cache-Control, Accept, Prefer',
+    exposed: 'X-Request-Id, Retry-After',
   }),
 });
 
@@ -1208,10 +1214,13 @@ export function createServer(
     // every response so a `response.headers.get('x-request-id')` call
     // resolves from cross-origin fetches without preflight gymnastics.
     res.setHeader('Access-Control-Expose-Headers', 'X-Request-Id, Retry-After');
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      DEFAULT_CORS_ALLOW_HEADERS.join(', '),
-    );
+    // `Access-Control-Allow-Headers` is preflight-only per the Fetch
+    // spec (task 0079); the OPTIONS branch below sets it after the
+    // `Allow` / `Allow-Methods` setters using `parseAllowedHeaders`,
+    // which echoes the client's safe `Access-Control-Request-Headers`
+    // tokens or falls back to the broad `DEFAULT_CORS_ALLOW_HEADERS`
+    // list. Non-OPTIONS responses no longer ship the header — it has
+    // no defined meaning outside preflight.
     res.setHeader('Access-Control-Max-Age', '600');
     // RFC 9111 §5.2.2.5 — `no-store` forbids any storage of the
     // response, including by browser BFCache and CDN edge caches.
@@ -1232,6 +1241,17 @@ export function createServer(
       const allowList = allowedMethodsForPath(req.path).join(', ');
       res.setHeader('Allow', allowList);
       res.setHeader('Access-Control-Allow-Methods', allowList);
+      // Task 0079 — `Access-Control-Allow-Headers` is preflight-only:
+      // reflect the client's safe `Access-Control-Request-Headers`
+      // tokens (Polygon/Stripe pattern) so any reasonable custom header
+      // sails through preflight; fall back to the broad default list
+      // (`Content-Type, Authorization, X-Request-Id, Cache-Control,
+      // Accept, Prefer`) when the client doesn't ask. Unsafe tokens
+      // (whitespace, colon, control chars) are silently dropped.
+      const reflected = parseAllowedHeaders(
+        req.headers['access-control-request-headers'],
+      );
+      res.setHeader('Access-Control-Allow-Headers', reflected.join(', '));
       res.status(204).end();
       return;
     }

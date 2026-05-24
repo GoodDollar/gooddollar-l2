@@ -1103,11 +1103,11 @@ describe('REST Server — CORS preflight', () => {
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-origin')).toBe('*');
     expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
-    // task 0078: the default Allow-Headers list grows to include
-    // X-Request-Id so a browser fetch() supplying a correlation key
-    // passes preflight.
+    // task 0079: the default Allow-Headers list (when the client
+    // doesn't ask via Access-Control-Request-Headers) ships the broad
+    // browser-fetch set — Polygon/Stripe convention.
     expect(res.headers.get('access-control-allow-headers')).toBe(
-      'Content-Type, X-Request-Id',
+      'Content-Type, Authorization, X-Request-Id, Cache-Control, Accept, Prefer',
     );
     expect(res.headers.get('access-control-max-age')).toBe('600');
     const text = await res.text();
