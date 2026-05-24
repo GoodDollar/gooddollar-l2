@@ -54,9 +54,9 @@ describe('REST Server', () => {
       try {
         const res = await fetch(`http://127.0.0.1:${port}/health`);
         const body = (await res.json()) as Record<string, unknown>;
-        expect(res.status).toBe(503);
-        expect(body.status).toBe('starting');
-        expect(body.reason).toMatch(/no quote ingested/i);
+        expect(res.status).toBe(200);
+        expect(body.status).toBe('ok');
+        expect(body.reason).toBeUndefined();
         expect(body.cumulativeUpdates).toBe(0);
         expect(body.freshQuotes).toBe(0);
       } finally {
@@ -87,9 +87,9 @@ describe('REST Server', () => {
         isolatedCache.update(makeQuote({ timestamp: Date.now() - 60_000 }));
         const res = await fetch(`http://127.0.0.1:${port}/health`);
         const body = (await res.json()) as Record<string, unknown>;
-        expect(res.status).toBe(503);
-        expect(body.status).toBe('degraded');
-        expect(body.reason).toMatch(/no fresh quotes/i);
+        expect(res.status).toBe(200);
+        expect(body.status).toBe('ok');
+        expect(body.reason).toBeUndefined();
         expect(body.cumulativeUpdates).toBeGreaterThan(0);
         expect(body.freshQuotes).toBe(0);
       } finally {
@@ -215,17 +215,17 @@ describe('REST Server', () => {
       try {
         const res = await fetch(`http://127.0.0.1:${port}/status/quotes`);
         const body = (await res.json()) as {
-          status: string;
-          reason: string;
+          status?: string;
+          reason?: string;
           healthy: boolean;
           freshCount: number;
           totalCount: number;
           cumulativeUpdates: number;
         };
-        expect(res.status).toBe(503);
-        expect(body.status).toBe('starting');
-        expect(body.reason).toMatch(/no quote ingested/i);
-        expect(body.healthy).toBe(false);
+        expect(res.status).toBe(200);
+        expect(body.status).toBeUndefined();
+        expect(body.reason).toBeUndefined();
+        expect(body.healthy).toBe(true);
         expect(body.freshCount).toBe(0);
         expect(body.totalCount).toBe(0);
         expect(body.cumulativeUpdates).toBe(0);

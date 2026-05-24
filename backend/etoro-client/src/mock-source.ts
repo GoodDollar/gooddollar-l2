@@ -144,6 +144,8 @@ export class MockEtoroSource {
     const halfSpread = inst.referencePriceUsd * 0.0005; // 5 bps
     const bid = mid - halfSpread;
     const ask = mid + halfSpread;
+    const spread = ask - bid;
+    const spreadPct = mid > 0 ? (spread / mid) * 100 : 0;
     const last = mid;
     const timestamp = this.clock();
 
@@ -155,6 +157,8 @@ export class MockEtoroSource {
       ask,
       mid,
       last,
+      spread,
+      spreadPct,
       timestamp,
       sessionState: inst.assetClass === 'crypto'
         ? 'open'

@@ -561,6 +561,8 @@ export class MarketDataModule {
     const last = pickNum(src, ['last', 'lastPrice', 'price', 'currentRate', 'rate']);
     const mid = bid !== undefined && ask !== undefined ? (bid + ask) / 2 : undefined;
     const price = mid ?? last ?? bid ?? ask ?? 0;
+    const spread = computeSpreadValue(bid ?? 0, ask ?? 0);
+    const spreadPct = computeSpreadPct(spread, mid ?? price);
 
     const timestamp = ts.ms;
     const stale = now - timestamp > this.config.maxQuoteAgeMs;
@@ -578,6 +580,8 @@ export class MarketDataModule {
       ask: ask ?? 0,
       mid: mid ?? price,
       last: last ?? price,
+      spread,
+      spreadPct,
       timestamp,
       sessionState,
       confidence: computeConfidence({ bid, ask, mid, price, stale }),
@@ -680,6 +684,8 @@ export class MarketDataModule {
     const bothBidAsk = bid !== undefined && bid > 0 && ask !== undefined && ask > 0;
     const mid = bothBidAsk ? (bid + ask) / 2 : undefined;
     const price = mid ?? last ?? 0;
+    const spread = computeSpreadValue(bid ?? 0, ask ?? 0);
+    const spreadPct = computeSpreadPct(spread, mid ?? price);
 
     const timestamp = ts.ms;
     const stale = now - timestamp > this.config.maxQuoteAgeMs;
@@ -694,6 +700,8 @@ export class MarketDataModule {
       ask: ask ?? 0,
       mid: mid ?? price,
       last: last ?? price,
+      spread,
+      spreadPct,
       timestamp,
       sessionState,
       confidence: computeConfidence({ bid, ask, mid, price, stale }),
@@ -787,6 +795,14 @@ export function detectUSMarketSession(date: Date, symbol?: string): SessionState
   if (timeMinutes >= 960 && timeMinutes < 1200) return 'after-hours';
 
   return 'closed';
+}
+
+function computeSpreadValue(bid: number, ask: number): number {
+  return Math.max(0, ask - bid);
+}
+
+function computeSpreadPct(spread: number, mid: number): number {
+  return mid > 0 ? Math.max(0, (spread / mid) * 100) : 0;
 }
 
 // --- Confidence scoring (0-100 scale, matching StockOracleV2 uint8) ---

@@ -55,9 +55,41 @@ status-aggregator:9200/status.json
 frontend GET /api/status  →  https://goodswap.goodclaw.org/api/status
 ```
 
-Service list defined in [`status-aggregator/src/index.ts`](status-aggregator/src/index.ts).
+Service list and health-contract classification live in [`status-aggregator/src/index.ts`](status-aggregator/src/index.ts), [`status-aggregator/src/statusBuilder.ts`](status-aggregator/src/statusBuilder.ts), and [`status-aggregator/src/parseHealthStatus.ts`](status-aggregator/src/parseHealthStatus.ts).
 
-**2026-05-22 note:** `hedge-engine` and `oracle-signer` may report **unreachable** or degraded when running in health-only mode (empty `RISK_ENGINE_ADDRESS` / `ORACLE_SIGNER_KEY`). This is expected per [`ecosystem.config.js`](ecosystem.config.js) comments.
+**2026-05-24 note:** `status-aggregator` now treats health-only services as operational-with-context instead of hard failures. `hedge-engine` and `oracle-signer` may be marked **excluded** when `RISK_ENGINE_ADDRESS` / `ORACLE_SIGNER_KEY` are absent. That is acceptable for internal smoke and controlled demos, but must be explicitly accepted or replaced with configured services before public testnet promotion.
+
+## Live-prices backend lane
+
+The merged live-prices lane adds a four-service pipeline:
+
+| Package | Default ports | Works now | Boundary |
+|---------|---------------|-----------|----------|
+| `etoro-client/` | library | Mode resolution, instrument mapping, demo/read-only trading fences, quote/trading test coverage. | Real trading is source-fenced off. |
+| `price-service/` | REST `9300`, WS `9301` | Normalized quote cache, risk/staleness rejection, source status, audit stats, `/status/quotes`, WS snapshots. | Missing eToro credentials degrade to manual-ingest/health-only mode. |
+| `oracle-signer/` | health `9107` | Reads price-service quotes, signs/batches stock-oracle updates, exposes health/proof endpoints. | Needs `ORACLE_SIGNER_KEY` and RPC env for active publishing. |
+| `hedge-engine/` | health `9106` | Demo hedge mapping, dry-run/capped proof path, receipt data for UI proof pages. | Needs `RISK_ENGINE_ADDRESS` for full health; no real-money hedge execution. |
+
+Internal testnet smoke is in [`../scripts/testnet/internal-smoke.sh`](../scripts/testnet/internal-smoke.sh). The current merged baseline is **GREEN-with-warnings** because `oracle-signer` and `hedge-engine` are excluded by contract in health-only mode.
+
+
+### Backend validation baseline — 2026-05-24
+
+The post-merge backend gate is now green:
+
+```bash
+npm run test:lane1
+# [ok] all lane-1 backend suites passed
+```
+
+What this proves:
+
+- `etoro-client` builds and tests the canonical mode contract, demo/public URLs, env examples, instrument map, normalized quote shape (`spread`, `spreadPct`), and source-level real-trading fence.
+- `price-service` builds and tests quote ingestion/cache, risk rejection metrics, REST/WS health, quote status payloads, and startup/degraded behavior.
+- `oracle-signer` builds and tests quote WebSocket ingestion, malformed-frame counters, signer startup guards, proof/health endpoints, chain guards, and submitter receipt handling.
+- `hedge-engine` builds and passes **22 suites / 153 tests**, including load config, adapter selection, cap enforcement, kill switch, receipt/proof writing, and reconciliation-loop integration.
+
+Real-money execution is still intentionally unavailable: eToro real mode resolves to `real-disabled`, `REAL_TRADING_ENABLED` remains hardcoded false in the SDK, and hedge execution requires both `ETORO_MODE=demo-trading` and `HEDGE_TRADING_ENABLED=true` before demo orders are allowed.
 
 ## Environment & addresses
 

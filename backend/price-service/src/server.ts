@@ -1490,6 +1490,7 @@ export function createServer(
       totalCached: cache.size,
       configuredSymbols: cfg.symbols.length,
       symbols: cfg.symbols,
+      cumulativeUpdates: cache.cumulativeUpdates,
     };
     // Runtime block (task 0055) rides on /health too — load-balancer
     // probes typically only call /health, so without this the safety
@@ -2166,6 +2167,7 @@ export function createServer(
       requestId: req.requestId,
       freshCount,
       totalCount: all.size,
+      cumulativeUpdates: cache.cumulativeUpdates,
       quotes,
     };
     // `degraded:boolean` is now the canonical field across every

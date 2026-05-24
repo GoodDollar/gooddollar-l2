@@ -3,7 +3,9 @@ import { ExposureReader } from './exposure-reader';
 import { DeltaCalculator } from './delta-calculator';
 import { HedgeExecutor, EtoroAdapter } from './hedge-executor';
 import { HedgeEngine } from './engine';
+import { DEFAULT_LANE_SYMBOLS, EtoroClient, EtoroMode, INSTRUMENT_MAP } from '@goodchain/etoro-client';
 import { HedgeEngineConfig, StockSymbol } from './types';
+import { selectAdapter } from './select-adapter';
 import { startHealthServer } from './healthServer';
 
 export { ExposureReader } from './exposure-reader';
@@ -17,31 +19,62 @@ export { createEtoroAdapter } from './etoro-adapter';
 export type { EtoroClientLike, CreateEtoroAdapterOpts } from './etoro-adapter';
 export type * from './types';
 
-function getEnvOrDefault(key: string, fallback: string): string {
-  return process.env[key] ?? fallback;
+function getEnvOrDefault(env: NodeJS.ProcessEnv, key: string, fallback: string): string {
+  return env[key] ?? fallback;
 }
 
-function loadConfig(): HedgeEngineConfig {
-  const symbolsRaw = getEnvOrDefault('HEDGE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ');
+export interface HedgeRuntimeConfig extends HedgeEngineConfig {
+  /** Canonical lane-1 eToro mode. */
+  mode: EtoroMode;
+  /** True only for ETORO_MODE=demo-trading with explicit HEDGE_TRADING_ENABLED=true. */
+  tradingEnabled: boolean;
+}
+
+const KNOWN_MODES: readonly EtoroMode[] = ['mock', 'demo-readonly', 'demo-trading', 'real-disabled'];
+
+function resolveEtoroMode(raw: string | undefined): EtoroMode {
+  if (!raw) return 'mock';
+  if ((KNOWN_MODES as readonly string[]).includes(raw)) return raw as EtoroMode;
+  return 'mock';
+}
+
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): HedgeRuntimeConfig {
+  const mode = resolveEtoroMode(env.ETORO_MODE);
+  const symbolsRaw = env.HEDGE_SYMBOLS;
+  const requestedSymbols = symbolsRaw
+    ? symbolsRaw.split(',').map((sym) => sym.trim()).filter(Boolean)
+    : [...DEFAULT_LANE_SYMBOLS];
+  const symbols = requestedSymbols.filter((sym): sym is StockSymbol => sym in INSTRUMENT_MAP);
+  const unknownSymbols = requestedSymbols.filter((sym) => !(sym in INSTRUMENT_MAP));
+  if (unknownSymbols.length > 0) {
+    env.SERVICE_HEALTH_STATUS = 'degraded';
+    env.SERVICE_DISABLED_REASON = `Unknown symbols: ${unknownSymbols.join(',')}`;
+  }
+
   return {
-    rpcUrl: getEnvOrDefault('RPC_URL', 'http://localhost:8545'),
-    riskEngineAddress: getEnvOrDefault('RISK_ENGINE_ADDRESS', ''),
-    symbols: symbolsRaw.split(',').map((s) => s.trim()).filter(Boolean),
-    deltaThresholdUsd: Number(getEnvOrDefault('HEDGE_DELTA_THRESHOLD_USD', '5000')),
-    deltaThresholdPct: Number(getEnvOrDefault('HEDGE_DELTA_THRESHOLD_PCT', '2')),
-    pollIntervalMs: Number(getEnvOrDefault('HEDGE_POLL_INTERVAL_MS', '30000')),
-    dryRun: getEnvOrDefault('HEDGE_DRY_RUN', 'true') === 'true',
+    rpcUrl: getEnvOrDefault(env, 'RPC_URL', 'http://localhost:8545'),
+    riskEngineAddress: getEnvOrDefault(env, 'RISK_ENGINE_ADDRESS', ''),
+    symbols,
+    deltaThresholdUsd: Number(getEnvOrDefault(env, 'HEDGE_DELTA_THRESHOLD_USD', '5000')),
+    deltaThresholdPct: Number(getEnvOrDefault(env, 'HEDGE_DELTA_THRESHOLD_PCT', '2')),
+    pollIntervalMs: Number(getEnvOrDefault(env, 'HEDGE_POLL_INTERVAL_MS', '30000')),
+    dryRun: getEnvOrDefault(env, 'HEDGE_DRY_RUN', 'true') === 'true',
+    mode,
+    tradingEnabled: mode === 'demo-trading' && env.HEDGE_TRADING_ENABLED === 'true',
   };
 }
 
 /** Instrument ID map — in production would come from etoro-client.marketData */
-function loadInstrumentMap(): Map<StockSymbol, string> {
-  const raw = getEnvOrDefault('HEDGE_INSTRUMENT_MAP', '');
+function loadInstrumentMap(env: NodeJS.ProcessEnv = process.env): Map<StockSymbol, string> {
   const map = new Map<StockSymbol, string>();
+  for (const [sym, meta] of Object.entries(INSTRUMENT_MAP)) {
+    map.set(sym, meta.etoroInstrumentId);
+  }
+  const raw = getEnvOrDefault(env, 'HEDGE_INSTRUMENT_MAP', '');
   if (raw) {
     for (const pair of raw.split(',')) {
       const [sym, id] = pair.split(':');
-      if (sym && id) map.set(sym.trim(), id.trim());
+      if (sym && id && sym in INSTRUMENT_MAP) map.set(sym.trim(), id.trim());
     }
   }
   return map;
@@ -122,10 +155,18 @@ async function main(): Promise<void> {
   const reader = new ExposureReader(config.rpcUrl, config.riskEngineAddress);
   const calculator = new DeltaCalculator(config);
   const instrumentMap = loadInstrumentMap();
-  const adapter = createAdapterFromEnv() ?? createPlaceholderAdapter();
-  const executor = new HedgeExecutor(adapter, instrumentMap, {
-    dryRun: config.dryRun,
-    safetyMode: (process.env.ETORO_MODE === 'real' ? 'real' : 'sandbox'),
+  const selection = selectAdapter({
+    mode: config.mode,
+    tradingEnabled: config.tradingEnabled,
+    clientFactory: () => new EtoroClient(),
+  });
+  if (selection.readOnly) {
+    process.env.SERVICE_HEALTH_STATUS = 'degraded';
+    process.env.SERVICE_DISABLED_REASON = selection.reason;
+  }
+  const executor = new HedgeExecutor(selection.adapter, instrumentMap, {
+    dryRun: config.dryRun || selection.readOnly,
+    safetyMode: config.mode === 'real-disabled' ? 'real' : 'sandbox',
   });
 
   const engine = new HedgeEngine(reader, calculator, executor, config);

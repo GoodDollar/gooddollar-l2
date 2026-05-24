@@ -25,13 +25,42 @@ User or agent activity → protocol transaction → protocol fee
 | Status API | https://goodswap.goodclaw.org/api/status | Aggregates backend `/health` |
 | Public RPC | https://rpc.goodclaw.org | JSON-RPC POST only; `eth_chainId = 0xa455` |
 | Explorer | https://explorer.goodclaw.org | Blockscout |
-| Agents dashboard | https://paperclip.goodclaw.org | Paperclip control plane |
+| Agents dashboard | `paperclip.goodclaw.org` | Paperclip control plane (operator surface; availability is not a GoodSwap release gate) |
 
 Canonical network metadata: [`op-stack/addresses.json`](op-stack/addresses.json).
 
-## Release status — 2026-05-22
+## Release status — 2026-05-24
 
-_Last refreshed for RC merge on `main`. Supersedes older status rows where they conflict._
+_Last refreshed after merging live-prices lanes 1–7 into `main`. Supersedes older status rows where they conflict._
+
+### Live-prices lane integration (merged into local `main`)
+
+- **HEAD includes lanes 1–7:** eToro connectivity, price-service, oracle publishing, app integration, hedging demo, QA proof/release, and internal testnet smoke.
+- **Local merge commits on `main`:** lane1 `d3e3b3fa`, lane2 `ccee9ee8`, lane3 `ac651865`, lane4 `fecfb3c9`, lane5 `784dd7d6`, lane6 `9d2d0e11`, lane7 `272fccf3`.
+- **Lane proof commits included:** lane1 `2ea6ee37`, lane2 `e41d4e46`, lane4 `eb5dcdfe`, lane5 `08a85a72`, lane6 `76d9dbff`, lane7 `32844221` plus lane7 source fix `ae153c6c`.
+- **Lane7 internal smoke:** `scripts/testnet/internal-smoke.sh` reports **GREEN-with-warnings**, exit code `0`, blockers `0`.
+- **Remaining warnings before public promotion:** `oracle-signer` and `hedge-engine` are intentionally allowed to run **health-only / excluded** when signing keys or risk-engine addresses are absent. They must be explicitly accepted or configured before broad public testnet promotion.
+
+
+### Post-merge validation baseline (2026-05-24 UTC)
+
+- `main` now contains the local merge commits for lanes 1–7; no remote push was performed by this checkpoint.
+- `npm run test:lane1` passes end-to-end across `backend/etoro-client`, `backend/price-service`, `backend/oracle-signer`, and `backend/hedge-engine`.
+- `backend/hedge-engine` specifically is green after reconciliation of lane-5/6/7 API drift: **22 suites / 153 tests passed**.
+- Safety defaults remain fenced in operator-copy env: `REAL_TRADING_ENABLED=false`, `ETORO_MODE=mock`, `HEDGE_DRY_RUN=true`; demo trading still requires explicit demo mode and explicit hedge-trading enablement.
+- The expected lane7 status remains **GREEN-with-warnings**: unkeyed `oracle-signer` and unconfigured `hedge-engine` are surfaced as health-only/excluded warnings, not hidden as success.
+
+### What works now across the app suite
+
+| Area | What works now | Current boundary |
+|------|----------------|------------------|
+| Live prices | `@goodchain/etoro-client` can feed `price-service`; `price-service` exposes normalized REST `/status/quotes` and WS `:9301`; frontend status hooks normalize public/proxy URLs. | Real trading remains fenced off. Missing credentials degrade to health-only/manual-ingest instead of pretending to be live. |
+| Oracle publishing | `oracle-signer` reads price-service quotes and submits to `StockOracleV2`; `StockOracleV2.lastUpdated()` has fallback freshness support used by smoke tests. | Requires `ORACLE_SIGNER_KEY` and RPC env for active publishing; otherwise health-only/excluded is non-blocking but visible. |
+| GoodStocks | `/stocks`, `/stocks/[ticker]`, `/stocks/watchlist`, and stock cards render source/provenance, oracle freshness, watchlist controls, no-data honesty, and status panels. | Synthetic stock trading still depends on deployed oracle/collateral addresses and wallet availability. |
+| GoodPerps | `/perps` keeps the demo/synthetic perps UI, crypto oracle surfaces, history panels, funding/order-book components, and wallet guards. | Perps matching/settlement remain devnet/demo until backend and contracts are promoted together. |
+| Hedging demo | `hedge-engine` maps GoodChain exposure into capped demo hedge intents and has a `hedge:demo` proof path plus UI receipt/export surfaces. | Health-only unless `RISK_ENGINE_ADDRESS` and demo credentials are configured; real-money hedging is not enabled. |
+| Status/observability | `/api/status`, `/status`, `/api/status/quotes`, `/api/oracle/status`, and status-aggregator understand operational, degraded, health-only, and excluded service states. | Public status must keep showing exclusions honestly; do not hide red/yellow states in demos. |
+| Testnet smoke | Lane7 scripts bring up local RPC/price fixture/status checks and validate the live-price pipeline contract. | Public promotion still needs explicit signer/hedge acceptance and a fresh production frontend build/deploy. |
 
 ### RC integration (merged)
 
@@ -158,46 +187,38 @@ Full catalog: [`backend/README.md`](backend/README.md)
 
 Configs: [`backend/ecosystem.config.js`](backend/ecosystem.config.js), [`pm2-ecosystem.config.js`](pm2-ecosystem.config.js)
 
-## Lane 1 — eToro live prices & demo hedging
+## Live-prices lanes 1–7 — eToro prices, oracle publishing, UI proof, demo hedging
 
-Lane 1 is the active initiative `0007a-etoro-connectivity`. It pipes eToro/demo
-market data into on-chain price oracles and produces a capped demo-hedge proof
-from `hedge-engine`. **Demo only** — `REAL_TRADING_ENABLED` is a source-level
-`const` fence in [`backend/etoro-client/src/auth.ts`](backend/etoro-client/src/auth.ts);
-no real-money path exists.
+The merged live-prices work is now a full internal pipeline: market data → normalized quote service → oracle signer → `StockOracleV2` → app/status surfaces → demo hedge proof → lane7 smoke. **Demo/testnet only** — real-money trading and real-money hedging remain fenced off.
 
-| Package | Path | Role |
-|---------|------|------|
-| `@goodchain/etoro-client` | [`backend/etoro-client/`](backend/etoro-client/) | TypeScript SDK — REST + WS client, four-mode safety (`mock` / `demo-readonly` / `demo-trading` / `real-disabled`), demo cap enforcer |
-| `@goodchain/price-service` | [`backend/price-service/`](backend/price-service/) | Normalizes SDK quotes for downstream consumers (REST `:9300`, WS `:9301`) |
-| `oracle-signer` | [`backend/oracle-signer/`](backend/oracle-signer/) | Signs and publishes prices on-chain (`:9107`) |
-| `@goodchain/hedge-engine` | [`backend/hedge-engine/`](backend/hedge-engine/) | Maps GoodChain exposure to capped demo eToro hedges (`:9106`); ships the demo-proof script |
+| Package / surface | Path | Role |
+|-------------------|------|------|
+| `@goodchain/etoro-client` | [`backend/etoro-client/`](backend/etoro-client/) | TypeScript SDK with mode resolution, demo/read-only fences, symbol/instrument helpers, quote/trading tests. |
+| `@goodchain/price-service` | [`backend/price-service/`](backend/price-service/) | Normalizes quotes, risk-filters stale/outlier data, serves REST `:9300` + WS `:9301`, and exposes source/audit health. |
+| `oracle-signer` | [`backend/oracle-signer/`](backend/oracle-signer/) | Consumes price-service quotes and publishes signed batches to `StockOracleV2`; health-only when unkeyed. |
+| `@goodchain/hedge-engine` | [`backend/hedge-engine/`](backend/hedge-engine/) | Maps GoodChain exposure to capped demo hedge intents and proof receipts; health-only when risk engine is unset. |
+| Frontend status/proof | [`frontend/src/app/(app)/status/`](frontend/src/app/%28app%29/status/), [`frontend/src/app/api/status/quotes/`](frontend/src/app/api/status/quotes/) | Shows quote freshness, oracle provenance, service health, exclusions, and live-prices proof. |
+| Internal smoke | [`scripts/testnet/internal-smoke.sh`](scripts/testnet/internal-smoke.sh) | Verifies the lane7 contract and reports GREEN-with-warnings when only accepted exclusions remain. |
+
+Operator gates:
 
 ```bash
-npm run install:lane1   # idempotent install across the four packages
-npm run test:lane1      # runs all four suites; halts on first failure
+npm run install:lane1   # idempotent install across eToro/price/oracle/hedge packages
+npm run test:lane1      # backend lane suites
+./scripts/release/lane6-qa-gate.sh      # proof bundle, when env is configured
+./scripts/testnet/internal-smoke.sh     # lane7 internal smoke
 ```
 
-Operator helpers:
+Current smoke baseline: **GREEN-with-warnings**. Warnings are expected until `ORACLE_SIGNER_KEY` and `RISK_ENGINE_ADDRESS` are configured or explicitly accepted as excluded for the target testnet stage.
 
-- Resolve eToro instrument IDs for `PROOF_INSTRUMENT_ID` /
-  `ETORO_INSTRUMENT_OVERRIDES`:
-  `(cd backend/etoro-client && npm run resolve-instrument-id -- <SYMBOL>)`
-  — see [`backend/etoro-client/README.md`](backend/etoro-client/README.md#operator-scripts).
-- Rotate the demo credentials the SDK reads (`ETORO_DEMO_KEY` /
-  `ETORO_DEMO_SECRET` / `ETORO_DEMO_USER_KEY`):
-  `./scripts/rotate-etoro-keys.sh demo` — refuses any non-demo mode per
-  the lane's `REAL_TRADING_ENABLED=false` stance.
+Operator references:
 
-Full env contract, four-mode safety matrix, endpoint table, and the
-demo-proof runbook live in
-[`docs/ETORO_GOODCHAIN_ADAPTER.md`](docs/ETORO_GOODCHAIN_ADAPTER.md).
-Two operator runbooks cover the lane's two DoD halves:
+- Live-prices proof: [`docs/runbooks/lane1-live-prices-on-chain.md`](docs/runbooks/lane1-live-prices-on-chain.md).
+- Demo-hedge proof: [`docs/runbooks/lane1-demo-hedge-proof.md`](docs/runbooks/lane1-demo-hedge-proof.md).
+- eToro adapter contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](docs/ETORO_GOODCHAIN_ADAPTER.md).
+- Lane3 oracle runbook: [`docs/lane3-oracle-publishing-runbook.md`](docs/lane3-oracle-publishing-runbook.md).
+- Lane6 QA checklist: [`docs/release/lane6-qa-gate-checklist.md`](docs/release/lane6-qa-gate-checklist.md).
 
-- Live-prices proof (eToro → price-service → oracle-signer → on-chain):
-  [`docs/runbooks/lane1-live-prices-on-chain.md`](docs/runbooks/lane1-live-prices-on-chain.md).
-- Demo-hedge proof (one capped demo open):
-  [`docs/runbooks/lane1-demo-hedge-proof.md`](docs/runbooks/lane1-demo-hedge-proof.md).
 
 ## Repository layout
 
@@ -304,7 +325,7 @@ A single command exercises the full live-prices pipeline (eToro → price-servic
 ```
 
 The reviewer checklist lives at [`docs/release/lane6-qa-gate-checklist.md`](docs/release/lane6-qa-gate-checklist.md);
-the visible artifact is the [`/live-prices-proof`](frontend/src/app/(app)/live-prices-proof/page.tsx)
+the visible artifact is the [`/live-prices-proof`](frontend/src/app/%28app%29/live-prices-proof/page.tsx)
 page (`/proof` alias) — open it in the running app to verify the safety
 banner, on-chain oracle reads, recent tx hashes, and the latest demo hedge.
 

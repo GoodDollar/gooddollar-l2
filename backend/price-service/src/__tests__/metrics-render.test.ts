@@ -161,6 +161,7 @@ describe('renderMetrics — populated snapshot', () => {
   it('overlays observed counts onto the zero-baseline rows in sorted-key order', () => {
     const matches = body.match(/^price_service_rejected_total\{reason="[^"]+"\} \d+$/gm);
     expect(matches).toEqual([
+      'price_service_rejected_total{reason="crossed"} 0',
       'price_service_rejected_total{reason="deviation"} 0',
       'price_service_rejected_total{reason="halted"} 0',
       'price_service_rejected_total{reason="invalid"} 0',

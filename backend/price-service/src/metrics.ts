@@ -40,6 +40,7 @@ export const METRICS_CONTENT_TYPE =
  * insertion order.
  */
 export const KNOWN_REJECTION_REASONS: readonly string[] = [
+  'crossed',
   'deviation',
   'halted',
   'invalid',

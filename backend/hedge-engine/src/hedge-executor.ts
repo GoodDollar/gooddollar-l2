@@ -80,6 +80,7 @@ export class HedgeExecutor {
     adapter: EtoroAdapter,
     instrumentMap: Map<StockSymbol, string>,
     dryRunOrOpts: boolean | HedgeExecutorOptions = false,
+    _legacyOpts?: unknown,
   ) {
     this.adapter = adapter;
     this.instrumentMap = instrumentMap;

@@ -314,16 +314,20 @@ export class OracleSignerService {
     if (updates.length === 0) return null;
 
     const symbols = updates.map(u => u.symbol);
+    const submittedAnchors: Array<{ symbol: string; mid: number }> = [];
     const mids: Record<string, number> = {};
     for (const u of updates) {
       const q = this.buffer.getLatestQuote(u.symbol);
-      if (q) mids[u.symbol] = q.mid;
+      if (q) {
+        mids[u.symbol] = q.mid;
+        submittedAnchors.push({ symbol: u.symbol, mid: q.mid });
+      }
     }
 
     const submittedAtMs = Date.now();
     try {
       const result = await this.submitter.submitBatch(updates);
-      this.buffer.markSubmitted(symbols);
+      this.buffer.markSubmitted(submittedAnchors);
       this.stocksUpdateCount++;
 
       this.proofStore.record('stocks', {

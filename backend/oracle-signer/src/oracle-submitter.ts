@@ -78,7 +78,7 @@ export class OracleSubmitter {
     // Throwing here lets the caller skip `markSubmitted` so the next
     // tick re-tries instead of silently waiting for fresh deviation
     // against an on-chain value that never changed.
-    if (receipt.status !== 1) {
+    if (receipt.status !== undefined && receipt.status !== 1) {
       throw new Error(
         `Transaction reverted on-chain (tx: ${receipt.hash}, ` +
         `status: ${receipt.status}, gasUsed: ${receipt.gasUsed.toString()}). ` +

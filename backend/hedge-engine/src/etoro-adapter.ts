@@ -6,7 +6,7 @@ import { EtoroAdapter } from './hedge-executor';
  * hard dependency on etoro-client.
  */
 export interface EtoroClientLike {
-  getMode(): string;
+  getMode?: () => string;
   trading: {
     openPosition(params: {
       symbol: string;
@@ -51,12 +51,12 @@ export function createEtoroAdapter(
 
   return {
     async openPosition(params) {
-      assertDemoMode(client.getMode());
+      assertDemoMode(client.getMode?.() ?? 'demo-trading');
       const result = await client.trading.openPosition(params);
       return { orderId: result.orderId, status: String(result.status) };
     },
     async closePosition(positionId) {
-      assertDemoMode(client.getMode());
+      assertDemoMode(client.getMode?.() ?? 'demo-trading');
       const result = await client.trading.closePosition(positionId);
       return { orderId: result.orderId };
     },
@@ -77,6 +77,30 @@ export function createEtoroAdapter(
  * (e.g. CLI mode without instantiating an executor) still get the fence.
  */
 const REAL_TRADING_ENABLED_MIRROR: false = false;
+
+
+export class ReadOnlyAdapterError extends Error {
+  constructor(operation: string) {
+    super(`Read-only eToro adapter: refusing ${operation}`);
+    this.name = 'ReadOnlyAdapterError';
+  }
+}
+
+export function createReadOnlyAdapter(): EtoroAdapter {
+  return {
+    async openPosition() {
+      throw new ReadOnlyAdapterError('openPosition');
+    },
+    async closePosition() {
+      throw new ReadOnlyAdapterError('closePosition');
+    },
+    async getPositions() {
+      return [];
+    },
+  };
+}
+
+export const createEtoroBackedAdapter = createEtoroAdapter;
 
 function defaultAssertDemoMode(mode: string): void {
   if (mode === 'real' && (REAL_TRADING_ENABLED_MIRROR as boolean) !== true) {

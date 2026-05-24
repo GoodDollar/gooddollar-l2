@@ -1,6 +1,6 @@
 # GoodDollar L2 Architecture
 
-_Last updated: 2026-05-18 10:35 UTC (iter 30 / 50 — README/doc checkpoint 6). Adds the analytics + feedback pipeline that landed in iter 26–29 and was restored to the public app by the iter 30 stale-build redeploy._
+_Last updated: 2026-05-24 UTC after merging live-prices lanes 1–7 into `main`. This checkpoint adds the eToro → price-service → oracle → app/status → hedge/testnet-smoke architecture on top of the prior analytics + feedback pipeline._
 
 GoodDollar L2 is the Good Chain: an OP Stack-style EVM chain where useful app activity routes protocol fees into UBI funding.
 
@@ -9,7 +9,7 @@ GoodDollar L2 is the Good Chain: an OP Stack-style EVM chain where useful app ac
 - App: https://goodswap.goodclaw.org
 - RPC: https://rpc.goodclaw.org
 - Explorer: https://explorer.goodclaw.org
-- Agent / dashboard: https://paperclip.goodclaw.org
+- Agent / dashboard: `paperclip.goodclaw.org` (operator surface; not a GoodSwap release gate)
 - Testnet guide: `docs/TESTNET_README.md`
 - Readiness plan: `docs/TESTNET-READINESS-50-ITERATIONS.md`
 
@@ -113,6 +113,52 @@ flowchart TB
   Revenue --> ChainRPC
   Monitor --> ChainRPC
 ```
+
+## Live Price, Oracle, Hedge, and Smoke Pipeline (lanes 1–7)
+
+The 2026-05-24 lane merge adds a concrete live-prices data plane. The goal is not to enable real-money trading; it is to make every visible price/status claim traceable and testable from source feed through chain and UI.
+
+```mermaid
+flowchart LR
+  Etoro[eToro / demo market data
+@goodchain/etoro-client] --> PriceService[price-service
+REST :9300 / WS :9301]
+  PriceService --> FrontendQuotes[/api/status/quotes
+frontend proxy]
+  PriceService --> OracleSigner[oracle-signer
+health :9107]
+  OracleSigner --> StockOracle[StockOracleV2
+lastUpdated fallback]
+  StockOracle --> StocksUI[GoodStocks
+/stocks + /stocks/[ticker]]
+  StockOracle --> PerpsUI[GoodPerps
+/perps crypto oracle surfaces]
+  FrontendQuotes --> StatusUI[/status + badges + banners]
+  StatusAggregator[status-aggregator
+:9200/status.json] --> StatusUI
+  HedgeEngine[hedge-engine
+health :9106] --> HedgeProof[demo hedge receipts
+/live-prices-proof]
+  StockOracle --> HedgeEngine
+  Smoke[scripts/testnet/internal-smoke.sh] --> PriceService
+  Smoke --> OracleSigner
+  Smoke --> HedgeEngine
+  Smoke --> StatusAggregator
+  Smoke --> StockOracle
+```
+
+**Working contracts and runtime behavior.**
+
+- `price-service` normalizes symbols, rejects stale/risky quotes, exposes health/source metadata, serves REST and WebSocket consumers, and can run without live eToro credentials via explicit degraded/manual-ingest mode.
+- `oracle-signer` consumes price-service data and can publish to `StockOracleV2`; without `ORACLE_SIGNER_KEY` it reports health-only/excluded instead of silently faking writes.
+- `StockOracleV2.lastUpdated()` now has fallback freshness behavior so the on-chain smoke can prove recent data without relying on one narrow timestamp field.
+- `hedge-engine` maps GoodChain exposure to capped demo hedge intents and exposes demo proof/receipt surfaces; without `RISK_ENGINE_ADDRESS` it is health-only rather than failed.
+- `status-aggregator` classifies `operational`, `degraded`, `health-only`, and `excluded` states so `/api/status` can distinguish real blockers from accepted testnet exclusions.
+- Frontend status URLs are normalized through `resolvePriceServiceStatusUrl` / `resolvePriceStatusEndpoint`, preventing double-path or localhost-only assumptions when deployed behind GoodSwap proxies.
+
+**Promotion rule.** Lane7 smoke is green-with-warnings, not silent green. Before broad public testnet promotion, explicitly configure or accept the `oracle-signer` and `hedge-engine` exclusions.
+
+**Validation contract after merge.** The merged `main` lane gate is `npm run test:lane1`, which exercises the eToro SDK, price-service, oracle-signer, and hedge-engine packages together. As of the 2026-05-24 checkpoint this gate passes locally. The hedge-engine now resolves canonical `ETORO_MODE` values (`mock`, `demo-readonly`, `demo-trading`, `real-disabled`), filters unknown hedge symbols against `INSTRUMENT_MAP`, supports read-only adapter branches, and enforces cap/kill-switch checks inside the reconciliation loop before any demo hedge order can leave the process.
 
 ## Analytics + Feedback Pipeline (iter 26–29)
 

@@ -2,6 +2,8 @@ import { ExposureReader } from './exposure-reader';
 import { DeltaCalculator } from './delta-calculator';
 import { HedgeExecutor } from './hedge-executor';
 import { HedgeProof, HedgeProofRecorder, NO_OP_ORDER_ID, newProofRunId } from './hedge-proof';
+import { CapEnforcer } from './cap-enforcer';
+import { KillSwitchProbe } from './kill-switch';
 import {
   HedgeEngineConfig,
   HedgeOrder,
@@ -19,6 +21,11 @@ import {
  * 4. Execute hedge orders that breach threshold
  * 5. Log reconciliation snapshot
  */
+export interface HedgeEngineOptions {
+  capEnforcer?: CapEnforcer;
+  killSwitch?: KillSwitchProbe;
+}
+
 export class HedgeEngine {
   private readonly reader: ExposureReader;
   private readonly calculator: DeltaCalculator;
@@ -27,6 +34,8 @@ export class HedgeEngine {
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
   private tickInProgress = false;
+  private readonly opts: HedgeEngineOptions;
+  private killSwitchEngaged = false;
 
   private lastSnapshot: ReconciliationSnapshot | null = null;
 
@@ -35,11 +44,13 @@ export class HedgeEngine {
     calculator: DeltaCalculator,
     executor: HedgeExecutor,
     config: HedgeEngineConfig,
+    opts: HedgeEngineOptions = {},
   ) {
     this.reader = reader;
     this.calculator = calculator;
     this.executor = executor;
     this.config = config;
+    this.opts = opts;
   }
 
   async tick(): Promise<ReconciliationSnapshot | null> {
@@ -55,7 +66,7 @@ export class HedgeEngine {
 
       const orders = this.calculator.calculate(exposures, etoroPositions);
       const hedgesExecuted: HedgeResult[] = orders.length
-        ? await this.executor.executeAll(orders)
+        ? await this.executeOrdersWithSafety(orders)
         : [];
 
       const residuals = this.calculator.getResiduals(exposures, etoroPositions);
@@ -112,6 +123,51 @@ export class HedgeEngine {
 
   getLastSnapshot(): ReconciliationSnapshot | null {
     return this.lastSnapshot;
+  }
+
+  isKillSwitchEngaged(): boolean {
+    return this.killSwitchEngaged;
+  }
+
+  private async executeOrdersWithSafety(orders: HedgeOrder[]): Promise<HedgeResult[]> {
+    const capEnforcer = this.opts.capEnforcer;
+    const killSwitch = this.opts.killSwitch;
+    if (!capEnforcer && !killSwitch) {
+      return this.executor.executeAll(orders);
+    }
+
+    capEnforcer?.startCycle();
+    this.killSwitchEngaged = killSwitch?.isEngaged() ?? false;
+
+    const results: HedgeResult[] = [];
+    for (const order of orders) {
+      if (this.killSwitchEngaged || killSwitch?.isEngaged()) {
+        this.killSwitchEngaged = true;
+        results.push(this.rejectedResult(order, 'kill_switch'));
+        continue;
+      }
+
+      const cap = capEnforcer?.evaluate(order);
+      if (cap && !cap.approved) {
+        results.push(this.rejectedResult(order, cap.reason ?? 'cap_rejected'));
+        continue;
+      }
+
+      const result = await this.executor.execute(order);
+      if (result.success) capEnforcer?.recordFill(order);
+      results.push(result);
+    }
+    return results;
+  }
+
+  private rejectedResult(order: HedgeOrder, error: string): HedgeResult {
+    return {
+      order,
+      success: false,
+      error,
+      timestamp: Date.now(),
+      notionalUsd: Math.abs(order.deltaToHedge),
+    };
   }
 
   /**

@@ -72,7 +72,7 @@ export interface HedgeEngineConfig {
    * eToro trading mode. The safety fence (`safety.ts`) only allows
    * non-dry-run trading when this is exactly `'demo'`.
    */
-  etoroMode: 'sandbox' | 'real' | 'demo';
+  etoroMode?: 'sandbox' | 'real' | 'demo';
 }
 
 /** Snapshot of a full reconciliation cycle. */

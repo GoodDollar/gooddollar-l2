@@ -3,6 +3,22 @@ import { NormalizedQuote } from './types';
 
 export type QuoteCallback = (quote: NormalizedQuote) => void;
 
+export type LegacyStreamFailureKind =
+  | 'ws-parse'
+  | 'ws-unknown-shape'
+  | 'ws-error-event';
+
+export interface LastStreamError {
+  kind: LegacyStreamFailureKind;
+  message: string;
+  atMs: number;
+}
+
+export interface PriceWsClientOptions {
+  clock?: () => number;
+  throttleMs?: number;
+}
+
 /**
  * Per-reason bookkeeping for WS messages reaching the signer's ingest path.
  * Counters are cumulative since process start; `lastDropped*` fields capture
@@ -21,6 +37,13 @@ export interface IngestStats {
 }
 
 type DropReason = 'droppedJsonParse' | 'droppedShape' | 'droppedInvalidMid' | 'droppedMissingSymbol';
+
+const LEGACY_KIND_BY_REASON: Record<DropReason, LegacyStreamFailureKind | undefined> = {
+  droppedJsonParse: 'ws-parse',
+  droppedShape: 'ws-unknown-shape',
+  droppedInvalidMid: undefined,
+  droppedMissingSymbol: undefined,
+};
 
 const SNIPPET_MAX_LEN = 80;
 const WARN_THROTTLE_MS = 60_000;
@@ -61,13 +84,23 @@ export class PriceWsClient {
   private closing = false;
   private onQuote: QuoteCallback;
   private readonly url: string;
+  private readonly clock: () => number;
+  private readonly throttleMs: number;
 
   private readonly stats: IngestStats = emptyIngestStats();
   private readonly lastWarnAtMsByReason = new Map<DropReason, number>();
+  private readonly streamFailureCounts: Record<LegacyStreamFailureKind, number> = {
+    'ws-parse': 0,
+    'ws-unknown-shape': 0,
+    'ws-error-event': 0,
+  };
+  private lastStreamError?: LastStreamError;
 
-  constructor(url: string, onQuote: QuoteCallback) {
+  constructor(url: string, onQuote: QuoteCallback, options: PriceWsClientOptions = {}) {
     this.url = url;
     this.onQuote = onQuote;
+    this.clock = options.clock ?? Date.now;
+    this.throttleMs = options.throttleMs ?? WARN_THROTTLE_MS;
   }
 
   connect(): void {
@@ -110,26 +143,34 @@ export class PriceWsClient {
    * ingest path without standing up a real WS server. Pure: same input
    * always lands in the same counter bucket.
    */
-  handleMessage(raw: string): void {
+  handleMessage(raw: string | WebSocket.Data): void {
+    const rawText = raw.toString();
     let parsed: unknown;
     try {
-      parsed = JSON.parse(raw);
+      parsed = JSON.parse(rawText);
     } catch (err) {
-      this.recordDrop('droppedJsonParse', raw, err);
+      this.recordDrop('droppedJsonParse', rawText, err);
       return;
     }
 
-    const quote = this.extractQuote(parsed);
-    if (!quote) {
-      this.recordDrop('droppedShape', raw, new Error('not a quote envelope'));
+    const quotes = this.extractQuotes(parsed);
+    if (!quotes) {
+      this.recordDrop('droppedShape', rawText, new Error('not a quote envelope'));
       return;
     }
+
+    for (const quote of quotes) {
+      this.acceptOrDropQuote(quote, rawText);
+    }
+  }
+
+  private acceptOrDropQuote(quote: NormalizedQuote, rawText: string): void {
     if (!quote.symbol || typeof quote.symbol !== 'string') {
-      this.recordDrop('droppedMissingSymbol', raw, new Error('missing symbol'));
+      this.recordDrop('droppedMissingSymbol', rawText, new Error('missing symbol'));
       return;
     }
     if (!Number.isFinite(quote.mid) || quote.mid <= 0) {
-      this.recordDrop('droppedInvalidMid', raw, new Error(`invalid mid: ${String(quote.mid)}`));
+      this.recordDrop('droppedInvalidMid', rawText, new Error(`invalid mid: ${String(quote.mid)}`));
       return;
     }
 
@@ -139,23 +180,34 @@ export class PriceWsClient {
 
   private recordDrop(reason: DropReason, raw: string, err: unknown): void {
     this.stats[reason] += 1;
+    const legacyKind = LEGACY_KIND_BY_REASON[reason];
+    if (legacyKind) this.streamFailureCounts[legacyKind] += 1;
     const snippet = redactSnippet(raw);
     const reasonText = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-    this.stats.lastDroppedAtMs = Date.now();
+    const atMs = this.clock();
+    this.stats.lastDroppedAtMs = atMs;
     this.stats.lastDroppedReason = reasonText.length > SNIPPET_MAX_LEN
       ? reasonText.slice(0, SNIPPET_MAX_LEN)
       : reasonText;
     this.stats.lastDroppedSnippet = snippet;
-    this.maybeWarn(reason, snippet, reasonText);
+    if (legacyKind) {
+      this.lastStreamError = { kind: legacyKind, message: this.stats.lastDroppedReason, atMs };
+    }
+    this.maybeWarn(reason, legacyKind, snippet, reasonText);
   }
 
-  private maybeWarn(reason: DropReason, snippet: string, reasonText: string): void {
-    const now = Date.now();
+  private maybeWarn(
+    reason: DropReason,
+    legacyKind: LegacyStreamFailureKind | undefined,
+    snippet: string,
+    reasonText: string,
+  ): void {
+    const now = this.clock();
     const last = this.lastWarnAtMsByReason.get(reason) ?? 0;
-    if (now - last < WARN_THROTTLE_MS) return;
+    if (now - last < this.throttleMs) return;
     this.lastWarnAtMsByReason.set(reason, now);
     console.warn(
-      `[oracle-signer:ingest] ${reason} (${reasonText}) — snippet: ${snippet}`,
+      `[oracle-signer:ingest] ${reason}${legacyKind ? `/${legacyKind}` : ''} (${reasonText}) — snippet: ${snippet}`,
     );
   }
 
@@ -168,16 +220,22 @@ export class PriceWsClient {
    * Handles both the WsBroadcaster envelope format ({ type: 'quote', data: NormalizedQuote })
    * and raw NormalizedQuote messages for backward compatibility.
    */
-  private extractQuote(parsed: unknown): NormalizedQuote | null {
+  private extractQuotes(parsed: unknown): NormalizedQuote[] | null {
     if (!parsed || typeof parsed !== 'object') return null;
     const msg = parsed as Record<string, unknown>;
 
+    if (msg.type === 'snapshot' && Array.isArray(msg.data)) {
+      return msg.data.filter((entry): entry is NormalizedQuote => {
+        return Boolean(entry && typeof entry === 'object');
+      }) as NormalizedQuote[];
+    }
+
     if (msg.type === 'quote' && msg.data && typeof msg.data === 'object') {
-      return msg.data as NormalizedQuote;
+      return [msg.data as NormalizedQuote];
     }
 
     if ('symbol' in msg && 'mid' in msg) {
-      return msg as unknown as NormalizedQuote;
+      return [msg as unknown as NormalizedQuote];
     }
 
     return null;
@@ -199,5 +257,18 @@ export class PriceWsClient {
    *  mutate internal state. */
   getStats(): IngestStats {
     return { ...this.stats };
+  }
+
+  /** Back-compat failure counters retained for lane6 tests and older callers. */
+  getStreamFailureCount(kind: LegacyStreamFailureKind): number {
+    return this.streamFailureCounts[kind] ?? 0;
+  }
+
+  getStreamFailureCounts(): Record<LegacyStreamFailureKind, number> {
+    return { ...this.streamFailureCounts };
+  }
+
+  getLastStreamError(): LastStreamError | undefined {
+    return this.lastStreamError ? { ...this.lastStreamError } : undefined;
   }
 }
