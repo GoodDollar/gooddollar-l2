@@ -687,6 +687,11 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
     killSwitch,
     pollIntervalMs: POLL_INTERVAL_MS,
   })
+  // When the engine is unreachable the data tiles freeze their
+  // placeholder shimmer so the row stops contradicting the explicit
+  // "engine offline" banner above (#0068). Genuine awaiting-tick states
+  // (engine reachable, first tick pending) keep the animated pulse.
+  const engineUnreachable = engineState.label === 'unreachable'
 
   return (
     <section
@@ -881,6 +886,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
                   : '—'
               }
               placeholder={!cap}
+              placeholderAnimated={!engineUnreachable}
               valueColor={notionalCrossedCap ? 'text-red-400' : undefined}
               sub={
                 cap
@@ -900,6 +906,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               label="Cycle orders"
               value={cap ? `${cap.cycleOrders}` : '—'}
               placeholder={!cap}
+              placeholderAnimated={!engineUnreachable}
               valueColor={ordersCrossedCap ? 'text-red-400' : undefined}
               sub={
                 cap
@@ -919,6 +926,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               label="Receipts visible"
               value={hasSnapshot ? `${receipts.length}` : '—'}
               placeholder={!hasSnapshot}
+              placeholderAnimated={!engineUnreachable}
               sub={
                 hasSnapshot
                   ? `newest 5${isStale ? ' · stale' : ''}`
@@ -1057,13 +1065,19 @@ interface StatProps {
   // color" while a separate, narrower prop can drive the headline value
   // color independently (red on cap breach, default white otherwise).
   valueColor?: string
-  // When true the value-slot renders a small animate-pulse shimmer bar
-  // instead of the raw `value` text. Used by the cap-driven tiles
-  // (notional / cycle orders) and the receipts-visible tile while the
-  // engine is unreachable, so the row reads as "awaiting first tick"
-  // rather than three half-empty em-dashes next to a bold red ENGINE
-  // tile (#0056). Boolean keeps the memo shallow-compare safe.
+  // When true the value-slot renders a small shimmer bar instead of the
+  // raw `value` text. Used by the cap-driven tiles (notional / cycle
+  // orders) and the receipts-visible tile while data is missing so the
+  // row reads as "awaiting first tick" rather than three half-empty
+  // em-dashes next to a bold red ENGINE tile (#0056). Boolean keeps the
+  // memo shallow-compare safe.
   placeholder?: boolean
+  // Controls whether the placeholder bar animates. We keep the pulse
+  // for genuine awaiting-first-tick states (engine reachable, cap not
+  // yet arrived) but suppress it when the engine is unreachable —
+  // otherwise three pulsing tiles contradict the explicit "engine
+  // offline" banner above (#0068).
+  placeholderAnimated?: boolean
 }
 
 const Stat = memo(function Stat({
@@ -1082,6 +1096,7 @@ const Stat = memo(function Stat({
   crossedCap,
   sparklineTestId,
   placeholder,
+  placeholderAnimated = true,
 }: StatProps) {
   const subClasses = [
     'text-xs',
@@ -1099,6 +1114,12 @@ const Stat = memo(function Stat({
   const valueClasses = `text-2xl font-bold ${valueColor ?? color ?? 'text-white'} ${
     placeholder ? 'inline-flex items-center' : ''
   }`.trim()
+  const placeholderClasses = [
+    'h-6 w-16 bg-dark-100 rounded inline-block',
+    placeholderAnimated ? 'animate-pulse' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
   return (
     <div className={containerClasses}>
       <span className="text-xs text-gray-400 uppercase tracking-wide min-h-[2lh] sm:min-h-0">{label}</span>
@@ -1108,7 +1129,7 @@ const Stat = memo(function Stat({
             <span
               data-testid="hedge-stat-placeholder"
               aria-hidden="true"
-              className="h-6 w-16 bg-dark-100 rounded animate-pulse inline-block"
+              className={placeholderClasses}
             />
             <span className="sr-only">{value}</span>
           </>

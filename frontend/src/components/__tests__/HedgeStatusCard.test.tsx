@@ -659,12 +659,16 @@ describe('HedgeStatusCard', () => {
     expect(engineStat.className).toContain('text-yellow-400');
   });
 
-  it('engine unreachable: still renders the stat grid with shimmer placeholders + unreachable engine label (#0016, #0056)', async () => {
+  it('engine unreachable: still renders the stat grid with static placeholders + unreachable engine label (#0016, #0056, #0068)', async () => {
     // Layout-stability fix: the grid must stay mounted in all states so
     // the card height does not collapse + reflow as the engine flaps.
-    // After #0056 the three data tiles render an animate-pulse bar
-    // instead of a bare em-dash so the row reads as "awaiting tick"
-    // rather than "broken render" next to the bold red ENGINE tile.
+    // After #0056 the three data tiles render a placeholder bar instead
+    // of a bare em-dash so the row reads as "awaiting tick" rather than
+    // "broken render" next to the bold red ENGINE tile. After #0068 the
+    // bar no longer animates while the engine is unreachable, because
+    // a pulsing "loading" idiom contradicts the explicit "engine
+    // offline" banner above; static placeholders read as "blocked" not
+    // "in flight".
     mockFetchOnce(
       {
         error: 'Hedge engine unreachable',
@@ -680,16 +684,21 @@ describe('HedgeStatusCard', () => {
     });
     const grid = screen.getByTestId('hedge-stat-grid');
     expect(grid).toBeInTheDocument();
-    // Three shimmer-bar placeholders, one per data tile (notional /
-    // cycle orders / receipts visible). The ENGINE tile is intentionally
+    // Three placeholder bars, one per data tile (notional / cycle
+    // orders / receipts visible). The ENGINE tile is intentionally
     // unaffected — it always carries a live state label.
     const placeholders = screen.getAllByTestId('hedge-stat-placeholder');
     expect(placeholders.length).toBe(3);
     for (const bar of placeholders) {
-      expect(bar.className).toContain('animate-pulse');
+      // #0068: no animate-pulse while the engine is unreachable.
+      expect(bar.className).not.toMatch(/animate-pulse/);
       // Slightly darker than the tile's `bg-dark-50` chrome so the bar
-      // reads as a subtle shimmer rather than blending into the tile.
+      // reads as a subtle quiet slot rather than blending into the tile.
       expect(bar.className).toContain('bg-dark-100');
+      // Layout-byte-identical: same h-6 w-16 slot the original shimmer
+      // used, so freezing the animation does not shift tile height.
+      expect(bar.className).toContain('h-6');
+      expect(bar.className).toContain('w-16');
       expect(bar.getAttribute('aria-hidden')).toBe('true');
     }
     const engineStat = screen.getByTestId('hedge-engine-stat');
@@ -706,7 +715,7 @@ describe('HedgeStatusCard', () => {
     expect(screen.getByTestId('hedge-status-loading')).toBeInTheDocument();
   });
 
-  it('snapshot present but no cap: stat grid still renders with shimmer placeholders for the two cap tiles, real value on receipts-visible (#0016, #0056)', async () => {
+  it('snapshot present but no cap: stat grid still renders with shimmer placeholders for the two cap tiles, real value on receipts-visible (#0016, #0056, #0068)', async () => {
     mockFetchOnce({
       ...BASE_RESPONSE,
       capSnapshot: null,
@@ -719,6 +728,12 @@ describe('HedgeStatusCard', () => {
     // visible tile still has a snapshot, so it shows its real value (1).
     const placeholders = screen.getAllByTestId('hedge-stat-placeholder');
     expect(placeholders.length).toBe(2);
+    // #0068: when the engine IS reachable but the first cap tick has
+    // not arrived, the placeholder is a genuine loading affordance —
+    // keep the pulse so the operator reads the slot as "in flight".
+    for (const bar of placeholders) {
+      expect(bar.className).toContain('animate-pulse');
+    }
     expect(grid).toHaveTextContent(/no caps/);
     expect(grid).toHaveTextContent(/no data/);
     expect(screen.getByTestId('hedge-receipts-visible-stat')).toHaveTextContent(
