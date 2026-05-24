@@ -5,9 +5,11 @@ jest.mock('ethers', () => {
   const mockReceipt = {
     hash: '0xabc123',
     gasUsed: BigInt(150000),
+    status: 1,
   };
 
   const mockTx = {
+    hash: '0xabc123',
     wait: jest.fn().mockResolvedValue(mockReceipt),
   };
 
@@ -83,6 +85,43 @@ describe('OracleSubmitter', () => {
     await expect(submitter.submitBatch(makeSampleUpdates())).rejects.toThrow(
       'Transaction dropped or replaced',
     );
+  });
+
+  it('throws when receipt.status === 0 (reverted on-chain)', async () => {
+    // ethers v6 resolves tx.wait with a populated receipt even when the
+    // tx reverts on chain — only `status: 0` distinguishes the failure
+    // from a successful inclusion. Without this branch the reverted tx
+    // is treated as success and the submitter mis-anchors the deviation
+    // gate (sibling task 0058).
+    __mockTx.wait.mockResolvedValueOnce({
+      hash: '0xrevert',
+      gasUsed: BigInt(75000),
+      status: 0,
+    });
+
+    await expect(submitter.submitBatch(makeSampleUpdates())).rejects.toThrow(
+      /reverted.*0xrevert/,
+    );
+  });
+
+  it('error message for reverted tx includes status, gasUsed, and symbol list', async () => {
+    __mockTx.wait.mockResolvedValueOnce({
+      hash: '0xrevert',
+      gasUsed: BigInt(75000),
+      status: 0,
+    });
+
+    await expect(submitter.submitBatch(makeSampleUpdates())).rejects.toThrow(
+      /status: 0.*gasUsed: 75000.*AAPL, TSLA/s,
+    );
+  });
+
+  it('returns UpdateResult when receipt.status === 1 (back-compat)', async () => {
+    const updates = makeSampleUpdates();
+    const result = await submitter.submitBatch(updates);
+    expect(result.txHash).toBe('0xabc123');
+    expect(result.gasUsed).toBe(BigInt(150000));
+    expect(result.symbolCount).toBe(2);
   });
 
   it('passes timeout to tx.wait()', async () => {
