@@ -811,7 +811,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             data-testid="hedge-status-error-icon"
             className="text-red-400 shrink-0"
           >
-            <ExclamationCircleIcon size={20} />
+            <ExclamationCircleIcon size={20} aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
             <span className="font-medium">{buildHedgeErrorHeadline(error)}</span>

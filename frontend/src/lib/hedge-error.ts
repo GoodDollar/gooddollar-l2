@@ -1,42 +1,64 @@
 /**
- * Hedge error handling utilities
+ * Hedge error handling utilities.
+ *
+ * The component owns the subject ("Hedge engine …") in one place so backend
+ * envelopes can send concise reasons without causing duplicated copy like
+ * "Hedge engine Hedge engine unreachable".
  */
+export function normalizeHedgeError(error: string | null | undefined): string {
+  const raw = typeof error === 'string' ? error.trim() : ''
+  if (!raw) return 'unreachable'
 
-export function buildHedgeErrorHeadline(error: string): string {
-  if (!error) return 'Unknown error'
-  
-  // Clean up common error patterns
-  if (error.includes('ECONNREFUSED')) {
-    return 'Hedge engine unreachable'
+  const stripped = raw
+    .replace(/^hedge engine(?:\s*[:\-—])?\s*/i, '')
+    .trim()
+
+  return stripped || 'unreachable'
+}
+
+function sentence(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed) return trimmed
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
+}
+
+export function buildHedgeErrorHeadline(error: string | null | undefined): string {
+  const reason = normalizeHedgeError(error)
+  const lower = reason.toLowerCase()
+
+  if (lower === 'unreachable') return 'Hedge engine is unreachable.'
+  if (lower === 'no network connection') {
+    return 'Hedge engine is unreachable: no network connection.'
   }
-  if (error.includes('timeout')) {
-    return 'Hedge engine timeout'
+  if (lower === 'unreadable response') {
+    return 'Hedge engine returned an unreadable response.'
   }
-  if (error.includes('503')) {
-    return 'Hedge engine unavailable'
+  if (lower.startsWith('is ')) return sentence(`Hedge engine ${reason}`)
+  if (/^(returned|returning|timed out|timeout|unavailable|offline|failed|refused)\b/i.test(reason)) {
+    return sentence(`Hedge engine ${reason}`)
   }
-  if (error.includes('502')) {
-    return 'Hedge engine error'
-  }
-  
-  // Return the error message, truncated if too long
-  return error.length > 80 ? `${error.substring(0, 77)}...` : error
+
+  // Preserve unrelated subjects verbatim: HTTP 500, upstream error (HTTP 500), etc.
+  return sentence(reason)
 }
 
 export function classifyClientError(err: unknown): string {
   if (err instanceof Error) {
-    if (err.name === 'AbortError') {
-      return 'Request cancelled'
+    if (err.name === 'AbortError') return 'request cancelled'
+    if (err instanceof SyntaxError || /unexpected token|json|parse/i.test(err.message)) {
+      return 'unreadable response'
     }
-    if (err.name === 'TypeError' && err.message.includes('fetch')) {
-      return 'Network error'
+    if (
+      err.name === 'TypeError' &&
+      /failed to fetch|networkerror|network error|fetch failed/i.test(err.message)
+    ) {
+      return 'no network connection'
     }
-    return err.message
+    if (/econnrefused|econnreset|enotfound|etimedout|unreachable/i.test(err.message)) {
+      return 'unreachable'
+    }
+    return normalizeHedgeError(err.message)
   }
-  
-  return 'Unknown error'
-}
 
-export function normalizeHedgeError(error: string): string {
-  return buildHedgeErrorHeadline(error)
+  return 'unreachable'
 }

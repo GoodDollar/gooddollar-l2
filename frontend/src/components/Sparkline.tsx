@@ -11,6 +11,12 @@ interface SparklineProps {
   width?: number
   height?: number
   positive?: boolean
+  /** Draw the polyline in the alert colour when the current value crossed a cap. */
+  crossedCap?: boolean
+  /** Optional horizontal cap marker. */
+  capLine?: number
+  /** Test id for dashboard assertions. */
+  testId?: string
   /** Tooltip / a11y label shown when data is unavailable. */
   unavailableLabel?: string
 }
@@ -20,6 +26,9 @@ export const Sparkline = memo(function Sparkline({
   width = 80,
   height = 32,
   positive = true,
+  crossedCap = false,
+  capLine,
+  testId,
   unavailableLabel = 'Price history unavailable',
 }: SparklineProps) {
   // Unavailable data — render a faint dashed baseline placeholder.
@@ -27,6 +36,7 @@ export const Sparkline = memo(function Sparkline({
     const midY = height / 2
     return (
       <svg
+        data-testid={testId}
         width={width}
         height={height}
         viewBox={`0 0 ${width} ${height}`}
@@ -50,29 +60,44 @@ export const Sparkline = memo(function Sparkline({
     )
   }
 
-  const min = Math.min(...data)
-  const max = Math.max(...data)
+  const min = Math.min(...data, Number.isFinite(capLine) ? (capLine as number) : data[0])
+  const max = Math.max(...data, Number.isFinite(capLine) ? (capLine as number) : data[0])
   const range = max - min || 1
   const pad = 2
 
+  const yFor = (v: number) => pad + (1 - (v - min) / range) * (height - pad * 2)
+
   const points = data
     .map((v, i) => {
-      const x = pad + (i / (data.length - 1)) * (width - pad * 2)
-      const y = pad + (1 - (v - min) / range) * (height - pad * 2)
+      const x = pad + (i / Math.max(1, data.length - 1)) * (width - pad * 2)
+      const y = yFor(v)
       return `${x},${y}`
     })
     .join(' ')
 
-  const color = positive ? '#4ade80' : '#f87171'
+  const color = crossedCap ? '#f87171' : positive ? '#4ade80' : '#f87171'
 
   return (
     <svg
+      data-testid={testId}
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       className="inline-block"
       aria-hidden="true"
     >
+      {Number.isFinite(capLine) && (
+        <line
+          x1={pad}
+          y1={yFor(capLine as number)}
+          x2={width - pad}
+          y2={yFor(capLine as number)}
+          stroke="currentColor"
+          strokeOpacity={0.35}
+          strokeWidth={1}
+          strokeDasharray="3 3"
+        />
+      )}
       <polyline
         points={points}
         fill="none"

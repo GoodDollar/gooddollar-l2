@@ -1,5 +1,5 @@
 /**
- * Summarize hedge receipts for totals display
+ * Summarize hedge receipts for totals display.
  */
 
 export interface ReceiptsSummary {
@@ -11,7 +11,7 @@ export interface ReceiptsSummary {
 }
 
 export interface HedgeReceipt {
-  side: 'buy' | 'sell'
+  side: 'buy' | 'sell' | string
   notionalUsd: number
   beforeExposure: number
   afterExposure: number
@@ -19,51 +19,44 @@ export interface HedgeReceipt {
   [key: string]: unknown
 }
 
+function finiteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function roundCents(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
 export function summarizeReceipts(receipts: HedgeReceipt[]): ReceiptsSummary | null {
-  if (!receipts || receipts.length === 0) {
-    return null
-  }
-  
+  if (!receipts || receipts.length === 0) return null
+
   let notionalTotalUsd = 0
   let exposureNetDelta = 0
   let successCount = 0
   let buyCount = 0
   let sellCount = 0
-  
+
   for (const receipt of receipts) {
-    notionalTotalUsd += receipt.notionalUsd || 0
-    
-    const delta = (receipt.afterExposure || 0) - (receipt.beforeExposure || 0)
-    exposureNetDelta += delta
-    
-    if (receipt.success) {
-      successCount++
+    notionalTotalUsd += finiteNumber(receipt.notionalUsd) ?? 0
+
+    const before = finiteNumber(receipt.beforeExposure)
+    const after = finiteNumber(receipt.afterExposure)
+    if (before !== null && after !== null) {
+      exposureNetDelta += after - before
     }
-    
-    if (receipt.side === 'buy') {
-      buyCount++
-    } else if (receipt.side === 'sell') {
-      sellCount++
-    }
+
+    if (receipt.success) successCount++
+    if (receipt.side === 'buy') buyCount++
+    if (receipt.side === 'sell') sellCount++
   }
-  
-  const sideCaption = buyCount === sellCount 
-    ? 'mixed'
-    : buyCount > sellCount 
-    ? `${buyCount} buy, ${sellCount} sell`
-    : `${sellCount} sell, ${buyCount} buy`
-  
-  const statusCaption = successCount === receipts.length 
-    ? 'all success'
-    : successCount === 0
-    ? 'all failed'
-    : `${successCount}/${receipts.length} success`
-  
+
+  const failedCount = receipts.length - successCount
+
   return {
     count: receipts.length,
-    notionalTotalUsd,
-    exposureNetDelta,
-    sideCaption,
-    statusCaption
+    notionalTotalUsd: roundCents(notionalTotalUsd),
+    exposureNetDelta: roundCents(exposureNetDelta),
+    sideCaption: `${buyCount} buy · ${sellCount} sell`,
+    statusCaption: `${successCount} ok · ${failedCount} failed`,
   }
 }
