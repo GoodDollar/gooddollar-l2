@@ -69,7 +69,8 @@ npx tsc --noEmit
 npx vitest run
 npm run test:e2e              # app-regression registry (chromium)
 npm run test:e2e:all            # full suite (E2E_PROD_SERVER=1)
-npm run check:perf              # bundle + BUILD_ID + chunk probes
+npm run check:perf              # local/static perf checks
+npm run check:perf:live         # local/static checks + strict BUILD_ID/chunk probes
 ```
 
 Key E2E journeys: `e2e/perps-journey.spec.ts`, `e2e/predict-journey.spec.ts`, `e2e/portfolio-journey.spec.ts`, `e2e/faucet-reliability.spec.ts`, `e2e/analytics.spec.ts`.
