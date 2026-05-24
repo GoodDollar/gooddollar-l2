@@ -76,7 +76,7 @@ export interface WsErrorBlock {
 const WS_FRAME_DOCS = {
   snapshot:
     "sent on connect; { type:'snapshot', data: NormalizedQuote[], " +
-    'count, source?, timestamp, timestampIso }',
+    'count, source?, degraded?, message?, timestamp, timestampIso }',
   quote:
     "broadcast per accepted tick; " +
     "{ type:'quote', data: NormalizedQuote, timestamp, timestampIso }",
