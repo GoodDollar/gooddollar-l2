@@ -731,21 +731,9 @@ export default function StockDetailPage() {
           {activeTab === 'events' && (
             <section className="rounded-2xl border border-gray-700/20 bg-dark-100 p-5">
               <h2 className="mb-3 text-sm font-semibold text-white">Events</h2>
-              {eventTimeline.length === 0 ? (
-                <p className="text-xs text-gray-500">No event data available right now.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {eventTimeline.map((event) => (
-                    <li key={event.id} className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-white">{event.label}</span>
-                        <span className="text-[10px] text-gray-500">{event.status}</span>
-                      </div>
-                      <p className="text-xs text-gray-400">{event.date}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <p className="text-xs leading-relaxed text-gray-400">
+                Events feed coming soon — Earnings reports, ex-dividend dates, and other corporate-action events will appear here once a real calendar is connected. None of this is fabricated.
+              </p>
             </section>
           )}
 
