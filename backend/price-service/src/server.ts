@@ -668,6 +668,37 @@ const SYMBOL_NOT_CONFIGURED_SEVERITY: SourceSeverity =
   ERROR_REASONS_PUBLIC['symbol-not-configured']!.severity;
 
 /**
+ * 400-family enrichment shipped on the three input-validation
+ * envelopes (`invalid-symbol`, `invalid-symbol-or-path`,
+ * `malformed-uri`). All three pin severity to `'info'` —
+ * integrator-side programming errors, not service outages — so a
+ * dashboard can filter them out of the critical-alert lane that
+ * `source.severity:'critical'` feeds. Triplets source from
+ * `ERROR_REASONS_PUBLIC` so the live body and the docs catalog at
+ * `/docs/source-reasons.errorReasons` cannot drift. See task 0073.
+ */
+const INVALID_SYMBOL_HUMAN_REASON =
+  ERROR_REASONS_PUBLIC['invalid-symbol']!.humanReason;
+const INVALID_SYMBOL_NEXT_STEP =
+  ERROR_REASONS_PUBLIC['invalid-symbol']!.nextStep;
+const INVALID_SYMBOL_SEVERITY: SourceSeverity =
+  ERROR_REASONS_PUBLIC['invalid-symbol']!.severity;
+
+const INVALID_SYMBOL_OR_PATH_HUMAN_REASON =
+  ERROR_REASONS_PUBLIC['invalid-symbol-or-path']!.humanReason;
+const INVALID_SYMBOL_OR_PATH_NEXT_STEP =
+  ERROR_REASONS_PUBLIC['invalid-symbol-or-path']!.nextStep;
+const INVALID_SYMBOL_OR_PATH_SEVERITY: SourceSeverity =
+  ERROR_REASONS_PUBLIC['invalid-symbol-or-path']!.severity;
+
+const MALFORMED_URI_HUMAN_REASON =
+  ERROR_REASONS_PUBLIC['malformed-uri']!.humanReason;
+const MALFORMED_URI_NEXT_STEP =
+  ERROR_REASONS_PUBLIC['malformed-uri']!.nextStep;
+const MALFORMED_URI_SEVERITY: SourceSeverity =
+  ERROR_REASONS_PUBLIC['malformed-uri']!.severity;
+
+/**
  * Per-request `message` for the catch-all 404. Names the offending verb
  * and the bounded `path` echo so the audit log line answers
  * "what did this caller try?" without a second lookup.
@@ -1500,9 +1531,16 @@ export function createServer(
       // fields (pathTruncated/pathOriginalLength/pathPrefixLength) so
       // a 5 KB hostile symbol still ships a ~150 B path field with full
       // forensic metadata. See task 0058.
+      // Field order mirrors the 405 / catch-all 404 / per-symbol 404:
+      // error → message → humanReason → severity → nextStep →
+      // existing tail. Triplet sources from
+      // `ERROR_REASONS_PUBLIC['invalid-symbol']`. See task 0073.
       const body: Record<string, unknown> = {
         error: 'invalid-symbol',
         message,
+        humanReason: INVALID_SYMBOL_HUMAN_REASON,
+        severity: INVALID_SYMBOL_SEVERITY,
+        nextStep: INVALID_SYMBOL_NEXT_STEP,
         expected: INVALID_SYMBOL_EXPECTED,
         deprecations: INVALID_SYMBOL_DEPRECATIONS,
         ...echoPath(req.path),
@@ -1521,11 +1559,18 @@ export function createServer(
     const lowered = result.symbol.toLowerCase();
     const hint = ROUTE_HINTS.get(lowered);
     if (hint) {
+      // Field order mirrors the other 4xx envelopes: error → message
+      // → humanReason → severity → nextStep → existing tail. Triplet
+      // sources from `ERROR_REASONS_PUBLIC['invalid-symbol-or-path']`.
+      // See task 0073.
       const body: Record<string, unknown> = {
         error: 'invalid-symbol-or-path',
         message:
           `the path segment '${lowered}' is a known sibling-route ` +
           `prefix; did you mean ${hint}?`,
+        humanReason: INVALID_SYMBOL_OR_PATH_HUMAN_REASON,
+        severity: INVALID_SYMBOL_OR_PATH_SEVERITY,
+        nextStep: INVALID_SYMBOL_OR_PATH_NEXT_STEP,
         didYouMean: hint,
         ...echoPath(req.path),
         method: req.method,
@@ -1808,9 +1853,17 @@ export function createServer(
       // 404 (typo recovery). See task 0061.
       const didYouMean = suggestCleanedPath(req.path);
       const echoed = echoPath(req.path);
+      // Field order mirrors the other 4xx envelopes: error → message
+      // → humanReason → severity → nextStep → expected →
+      // didYouMean? → ...echoPath → method → discovery. Triplet
+      // sources from `ERROR_REASONS_PUBLIC['malformed-uri']`.
+      // See task 0073.
       const body: Record<string, unknown> = {
         error: 'malformed-uri',
         message: MALFORMED_URI_MESSAGE,
+        humanReason: MALFORMED_URI_HUMAN_REASON,
+        severity: MALFORMED_URI_SEVERITY,
+        nextStep: MALFORMED_URI_NEXT_STEP,
         expected: MALFORMED_URI_EXPECTED,
       };
       if (didYouMean !== undefined) body.didYouMean = didYouMean;

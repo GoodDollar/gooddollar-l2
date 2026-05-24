@@ -805,15 +805,17 @@ describe('REST Server — GET /quotes/:symbol shape validation', () => {
     expect(res.status).toBe(400);
     expect(body.error).toBe('invalid-symbol');
     // Bound fits the reflected (truncated) path, the timestampIso
-    // companion, the honest-regex message (~130 bytes), the machine-
-    // readable `expected` block (~180 bytes including the legacy
-    // `patternShape` alias from task 0047), the in-band `deprecations`
-    // note (~110 bytes from task 0047), and the three truncation-
-    // metadata fields (pathTruncated/pathOriginalLength/pathPrefixLength,
-    // ~70 bytes from task 0058). What matters is that the body does
-    // NOT scale with the 5000-char input — every variable-size
-    // component is bounded by the MAX_ECHOED_PATH_BYTES cap.
-    expect(text.length).toBeLessThan(950);
+    // companion, the honest-regex message (~130 bytes), the
+    // `humanReason/severity/nextStep` triplet (~200 bytes; task 0073),
+    // the machine-readable `expected` block (~180 bytes including
+    // the legacy `patternShape` alias from task 0047), the in-band
+    // `deprecations` note (~110 bytes from task 0047), and the three
+    // truncation-metadata fields (pathTruncated/pathOriginalLength/
+    // pathPrefixLength, ~70 bytes from task 0058). What matters is
+    // that the body does NOT scale with the 5000-char input — every
+    // variable-size component is bounded by the
+    // MAX_ECHOED_PATH_BYTES cap.
+    expect(text.length).toBeLessThan(1200);
   });
 
   it('rejects NUL byte in symbol with no NUL in body', async () => {

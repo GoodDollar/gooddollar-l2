@@ -312,12 +312,12 @@ export const SOURCE_REASONS_PUBLIC: Readonly<
 
 /**
  * Operator-facing catalog of stable error-envelope slugs that ride on the
- * service's HTTP error paths (404 catch-all + per-symbol 404 today;
- * 400/405 fold in via separate tasks — 405 currently inlines its triplet
- * as module-level constants in `server.ts`). Distinct namespace from
- * `REASON_CATALOG` / `SOURCE_REASONS_PUBLIC` because those catalogs
- * describe upstream-source state, while these describe HTTP-level
- * input-handling state — mixing the two pollutes the
+ * service's HTTP error paths (404 catch-all + per-symbol 404 + the
+ * 400 family today; 405 still inlines its triplet as module-level
+ * constants in `server.ts`, slated for a separate consolidation pass).
+ * Distinct namespace from `REASON_CATALOG` / `SOURCE_REASONS_PUBLIC`
+ * because those catalogs describe upstream-source state, while these
+ * describe HTTP-level input-handling state — mixing the two pollutes the
  * `/docs/source-reasons` semantics.
  *
  * Inner shape is identical to `SOURCE_REASONS_PUBLIC` so a consumer
@@ -326,8 +326,9 @@ export const SOURCE_REASONS_PUBLIC: Readonly<
  * (task 0063) — same endpoint, no new route.
  *
  * Severity bucketing:
- * - `info` — transient/expected; retry should succeed (`no-quote`,
- *   catch-all `not-found`).
+ * - `info` — transient/expected or client-side programming error;
+ *   retry (with a fixed input) should succeed (`no-quote`, catch-all
+ *   `not-found`, every 400-family slug).
  * - `critical` — permanent; operator action required
  *   (`symbol-not-configured` — caller must update `ORACLE_SYMBOLS`).
  */
@@ -355,6 +356,25 @@ export const ERROR_REASONS_PUBLIC: Readonly<
       'Update `ORACLE_SYMBOLS` and restart the price-service. ' +
       'Try `didYouMean` first if present.',
     severity: 'critical',
+  },
+  'invalid-symbol': {
+    humanReason: 'Path segment is not a valid symbol ticker.',
+    nextStep:
+      'Replay with a value matching `expected.pattern`; ' +
+      'consult `expected` for the full shape contract.',
+    severity: 'info',
+  },
+  'invalid-symbol-or-path': {
+    humanReason: 'Path segment names a sibling route, not a symbol.',
+    nextStep: 'Retry the route in `didYouMean`.',
+    severity: 'info',
+  },
+  'malformed-uri': {
+    humanReason: 'URL contains invalid percent-encoding.',
+    nextStep:
+      'Replay with valid UTF-8 percent-encoded bytes; ' +
+      'consult `expected` for the encoding contract.',
+    severity: 'info',
   },
 });
 

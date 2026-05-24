@@ -93,9 +93,11 @@ describe('GET /quotes/<malformed-percent> → 400 malformed-uri', () => {
       // malformed-uri responses — the actionable diagnostic is the
       // `expected.percentEncoding` block, not a catalog dump.
       expect('endpoints' in body).toBe(false);
-      // Body-size cap: with `endpoints[]` removed, the slim envelope
-      // fits comfortably under 400 B (was ~745 B in the regressed shape).
-      expect(Buffer.byteLength(res.body, 'utf8')).toBeLessThan(400);
+      // Body-size cap: with `endpoints[]` removed and the
+      // `humanReason/severity/nextStep` triplet folded in (task 0073),
+      // the slim envelope fits comfortably under 700 B (was ~745 B
+      // in the regressed shape with `endpoints[]`; ~600 B today).
+      expect(Buffer.byteLength(res.body, 'utf8')).toBeLessThan(700);
       expect(typeof body.timestamp).toBe('number');
       expect(typeof body.timestampIso).toBe('string');
       const keys = Object.keys(body);
