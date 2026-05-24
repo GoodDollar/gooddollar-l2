@@ -1,16 +1,8 @@
 /**
  * Minimal HTTP health check server for daemon-style backend services.
  *
- * CANONICAL SOURCE — copied into each service's src/healthServer.ts.
- * After editing, run: bash backend/scripts/check-health-server-sync.sh
- * to verify all copies match.
- *
- * Usage:
- *   import { startHealthServer } from './healthServer';
- *   startHealthServer({ name: 'swap-oracle', port: 9100 });
- *
  * GET /health → 200 { status, service, uptime, timestamp, chain? }
- * If chainCheck returns a rejected promise, responds 503.
+ * GET /proof  → proof-store snapshot when proofProvider is wired.
  */
 
 import * as http from 'http';
@@ -19,14 +11,43 @@ export interface HealthServerOptions {
   name: string;
   port: number;
   chainCheck?: () => Promise<number>; // resolves with latest block number
+  proofProvider?: () => unknown;
+  proofStatusProvider?: () => { status: 'ok' | 'degraded'; reason?: string };
 }
 
 const startedAt = Date.now();
 
 export function startHealthServer(opts: HealthServerOptions): http.Server {
-  const { name, port, chainCheck } = opts;
+  const { name, port, chainCheck, proofProvider, proofStatusProvider } = opts;
 
   const server = http.createServer(async (req, res) => {
+    if (req.url === '/proof' && req.method === 'GET') {
+      if (!proofProvider) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Not found' }));
+        return;
+      }
+      try {
+        const raw = proofProvider();
+        const status = proofStatusProvider ? proofStatusProvider() : { status: 'ok' as const };
+        const serviceBlock: { status: 'ok' | 'degraded'; reason?: string } = { status: status.status };
+        if (status.status === 'degraded' && typeof status.reason === 'string') {
+          serviceBlock.reason = status.reason;
+        }
+        const base: Record<string, unknown> = raw && typeof raw === 'object'
+          ? { ...(raw as Record<string, unknown>) }
+          : { raw };
+        base.service = serviceBlock;
+        const httpStatus = status.status === 'degraded' ? 503 : 200;
+        res.writeHead(httpStatus, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(base));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', service: name, error: String(err) }));
+      }
+      return;
+    }
+
     if (req.url !== '/health' || req.method !== 'GET') {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));

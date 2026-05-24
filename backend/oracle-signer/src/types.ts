@@ -55,4 +55,5 @@ export interface UpdateResult {
   gasUsed: bigint;
   symbolCount: number;
   roundTripMs: number;
+  blockNumber?: number;
 }

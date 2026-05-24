@@ -3,6 +3,13 @@ import { QuoteBuffer } from './quote-buffer';
 import { OracleSubmitter } from './oracle-submitter';
 import { OracleSignerConfig, UpdateResult } from './types';
 import { startHealthServer } from './healthServer';
+import { ProofStore, ProofSnapshot, DEFAULT_PROOF_CAPACITY, canonicalEmptyProofSnapshot, redactProofReason, redactRpcEndpoint } from './proof-store';
+
+function readErrorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== 'object') return undefined;
+  const code = (err as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
+}
 
 export class OracleSignerService {
   private wsClient: PriceWsClient;
@@ -10,6 +17,7 @@ export class OracleSignerService {
   private submitter: OracleSubmitter;
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private readonly config: OracleSignerConfig;
+  private readonly proofStore: ProofStore;
   private running = false;
   private updateCount = 0;
 
@@ -17,6 +25,16 @@ export class OracleSignerService {
     this.config = config;
     this.buffer = new QuoteBuffer(config.minDeviationBps);
     this.submitter = new OracleSubmitter(config.rpcUrl, config.oracleAddress, config.signerKey, config.txTimeoutMs);
+    this.proofStore = new ProofStore(
+      parseInt(process.env.ORACLE_PROOF_CAPACITY || String(DEFAULT_PROOF_CAPACITY), 10),
+    );
+    this.proofStore.setRailEnabled('stocks', Boolean(config.oracleAddress));
+    this.proofStore.setRailEnabled('crypto', false);
+    this.proofStore.setChainInfo({
+      rpcEndpoint: redactRpcEndpoint(config.rpcUrl),
+      signerAddress: this.submitter.signerAddress,
+      oracleAddresses: { stocks: config.oracleAddress || null, crypto: null },
+    });
     this.wsClient = new PriceWsClient(config.priceServiceUrl, (quote) => {
       if (config.symbols.length === 0 || config.symbols.includes(quote.symbol)) {
         this.buffer.update(quote);
@@ -45,10 +63,27 @@ export class OracleSignerService {
     const updates = this.buffer.getPendingUpdates();
     if (updates.length === 0) return null;
 
+    const symbols = updates.map(u => u.symbol);
+    const mids: Record<string, number> = {};
+    for (const update of updates) {
+      const quote = this.buffer.getLatestQuote(update.symbol);
+      if (quote) mids[update.symbol] = quote.mid;
+    }
+    const submittedAtMs = Date.now();
+
     try {
       const result = await this.submitter.submitBatch(updates);
       this.buffer.markSubmitted(updates.map(u => u.symbol));
       this.updateCount++;
+      this.proofStore.record('stocks', {
+        txHash: result.txHash,
+        blockNumber: result.blockNumber ?? 0,
+        gasUsed: result.gasUsed.toString(),
+        symbols,
+        roundTripMs: result.roundTripMs,
+        submittedAtMs,
+        mids,
+      });
 
       console.log(
         `[oracle-signer] Update #${this.updateCount}: ${result.symbolCount} symbols, ` +
@@ -60,6 +95,12 @@ export class OracleSignerService {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[oracle-signer] Submission failed: ${msg}`);
+      this.proofStore.recordFailure('stocks', {
+        reason: redactProofReason(err),
+        errorClass: readErrorCode(err),
+        symbols,
+        attemptedAtMs: submittedAtMs,
+      });
       throw err;
     }
   }
@@ -72,6 +113,21 @@ export class OracleSignerService {
     }
     this.wsClient.close();
     console.log(`[oracle-signer] Stopped after ${this.updateCount} updates`);
+  }
+
+  getProofSnapshot(): ProofSnapshot {
+    return this.proofStore.snapshot();
+  }
+
+  serviceStatus(): { status: 'ok' | 'degraded'; reason?: string } {
+    const requestedStatus = process.env.SERVICE_HEALTH_STATUS;
+    if (requestedStatus === 'degraded' || requestedStatus === 'health-only') {
+      return {
+        status: 'degraded',
+        reason: redactProofReason(process.env.SERVICE_DISABLED_REASON ?? 'service loop disabled'),
+      };
+    }
+    return { status: 'ok' };
   }
 
   get isRunning(): boolean {
@@ -123,23 +179,35 @@ async function main(): Promise<void> {
   // port — even if the service cannot start due to missing config (e.g. no
   // ORACLE_SIGNER_KEY). PM2 will not restart-loop the process and the
   // status-aggregator will see "ok" instead of "unreachable".
+  let proofRef: () => ProofSnapshot = canonicalEmptyProofSnapshot;
+  let proofStatusRef: () => { status: 'ok' | 'degraded'; reason?: string } = () => ({ status: 'ok' });
+
   const healthServer = startHealthServer({
     name: 'oracle-signer',
     port: parseInt(process.env.HEALTH_PORT ?? process.env.ORACLE_SIGNER_PORT ?? '9107', 10),
+    proofProvider: () => proofRef(),
+    proofStatusProvider: () => proofStatusRef(),
   });
 
   let config: OracleSignerConfig;
   try {
     config = loadConfig();
   } catch (err) {
+    const reason = 'ORACLE_SIGNER_KEY is not set; signer loop disabled';
     process.env.SERVICE_HEALTH_STATUS = 'degraded';
-    process.env.SERVICE_DISABLED_REASON = 'ORACLE_SIGNER_KEY is not set; signer loop disabled';
+    process.env.SERVICE_DISABLED_REASON = reason;
+    proofStatusRef = () => ({
+      status: 'degraded',
+      reason: redactProofReason(process.env.SERVICE_DISABLED_REASON ?? reason),
+    });
     console.warn('[oracle-signer] Config error — service loop disabled, health server running on port', process.env.ORACLE_SIGNER_PORT ?? '9107', ':', err instanceof Error ? err.message : String(err));
     // Return without exiting: the http.Server above keeps the event loop alive.
     return;
   }
 
   const service = new OracleSignerService(config);
+  proofRef = () => service.getProofSnapshot();
+  proofStatusRef = () => service.serviceStatus();
 
   const shutdown = () => {
     service.stop();
