@@ -34,6 +34,7 @@ import { ERC20ABI, GoodPoolABI, GoodLendPriceOracleABI } from './abi'
 import type { TokenMarketData } from './marketData'
 import { generateSeededSparkline } from './sparklineSeed'
 import type { PriceSource } from './priceSource'
+import { useAttributedPrices } from './useAttributedPrice'
 import {
   computeSpotPrice,
   formatPoolAmount,
@@ -41,6 +42,15 @@ import {
   SPOT_MAX,
   getPool,
 } from './useGoodPool'
+
+/**
+ * Symbols that have a canonical resolver via `useAttributedPrices`. Task 0044
+ * extends task 0021's BTC/WBTC + ETH/WETH equivalence classes to /explore so
+ * the same dollar value the /perps top strip shows for BTC-USD also shows up
+ * in /explore's WBTC row. Adding a new entry here is the only change needed
+ * to bring a new symbol family into cross-page lockstep.
+ */
+const CANONICAL_SYMBOLS = ['BTC', 'WBTC', 'ETH', 'WETH'] as const
 
 // ─── Token descriptions (static metadata) ────────────────────────────────────
 
@@ -143,6 +153,19 @@ export function deriveGdUsdPriceFromReserves(
  * Returns live token market data.
  * On-chain contract state is the source of truth; CoinGecko prices are fallback.
  */
+/**
+ * Cross-page divergence info for a single symbol. Task 0044 — when the
+ * chain oracle and CoinGecko both have a value for a canonical asset and
+ * they disagree by more than `DIVERGENCE_THRESHOLD`, callers should
+ * render a small chip surfacing the rejected number ("Source disagrees:
+ * $76,531"). Symbols with no divergence (matching prices, or only one
+ * feed has a value) carry a `null` entry — never `undefined`, so the
+ * consumer can render a stable React subtree.
+ */
+export interface DivergenceInfo {
+  otherUsd: number
+}
+
 export function useOnChainMarketData(): {
   tokens: TokenMarketData[]
   isLive: boolean
@@ -153,6 +176,12 @@ export function useOnChainMarketData(): {
    * per symbol without re-deriving "did chain win or did CG?" themselves.
    */
   sources: Record<string, PriceSource>
+  /**
+   * Per-symbol divergence record. `null` (or absent) means no chip; an
+   * object means the winning source and the other source disagreed by
+   * more than 0.5% — surface a small "Source disagrees: $X" chip.
+   */
+  divergence: Record<string, DivergenceInfo | null>
 } {
   const {
     prices: cgPrices,
@@ -161,14 +190,23 @@ export function useOnChainMarketData(): {
     sources: cgSources,
   } = usePriceFeeds(ALL_SYMBOLS)
 
+  // Task 0044: route canonical assets through the same resolver /perps,
+  // /activity, /portfolio, /analytics already use. This is the single
+  // change that brings /explore into cross-page lockstep on BTC/WBTC
+  // and ETH/WETH. The hook is itself a thin `useMemo` over the same
+  // upstream feeds we're already reading, so this is one extra map
+  // allocation per refresh tick, not a new network subscription.
+  const canonicalAttributed = useAttributedPrices([...CANONICAL_SYMBOLS])
+
   const { data: onChainData, isLoading: isOnChainLoading } = useReadContracts({
     contracts: ON_CHAIN_CONTRACTS,
     query: { refetchInterval: 30_000 },
   })
 
-  const { tokens, sources } = useMemo<{
+  const { tokens, sources, divergence } = useMemo<{
     tokens: TokenMarketData[]
     sources: Record<string, PriceSource>
+    divergence: Record<string, DivergenceInfo | null>
   }>(() => {
     // ── Parse on-chain results (undefined on failure — falls back to CoinGecko) ─
     const gdTotalSupplyRaw = onChainData?.[0]?.status === 'success'
@@ -232,6 +270,24 @@ export function useOnChainMarketData(): {
       sourcesOut['USDC'] = 'chain-oracle'
     }
 
+    // ── Canonical-symbol override (task 0044) ─────────────────────────
+    // The attributed resolver already considered the chain mark, CoinGecko,
+    // the fallback table, and any session-state overlay; trust its
+    // verdict for the canonical equivalence classes so /explore reports
+    // the same dollar value the /perps strip reports for BTC-USD /
+    // ETH-USD. Skip when the resolver itself is `unknown` — there's no
+    // signal to apply.
+    const divergenceOut: Record<string, DivergenceInfo | null> = {}
+    for (const sym of CANONICAL_SYMBOLS) {
+      const attr = canonicalAttributed[sym]
+      if (!attr || attr.source === 'unknown') continue
+      if (attr.priceUsd > 0) prices[sym] = attr.priceUsd
+      sourcesOut[sym] = attr.source
+      divergenceOut[sym] = attr.divergent && attr.divergenceOtherUsd != null
+        ? { otherUsd: attr.divergenceOtherUsd }
+        : null
+    }
+
     // ── Build token market data ───────────────────────────────────────────────
     const builtTokens = TOKENS
       .filter(t => prices[t.symbol] !== undefined || FALLBACK_PRICES[t.symbol] !== undefined)
@@ -282,13 +338,13 @@ export function useOnChainMarketData(): {
       }
     }
 
-    return { tokens: builtTokens, sources: sourcesOut }
-  }, [cgPrices, cgQuotes, cgSources, onChainData])
+    return { tokens: builtTokens, sources: sourcesOut, divergence: divergenceOut }
+  }, [cgPrices, cgQuotes, cgSources, onChainData, canonicalAttributed])
 
   const hasOnChainSuccess = onChainData?.some(d => d?.status === 'success') ?? false
   const isLive = isCgLive || hasOnChainSuccess
 
-  return { tokens, isLive, isLoading: isOnChainLoading, sources }
+  return { tokens, isLive, isLoading: isOnChainLoading, sources, divergence }
 }
 
 export { TOKEN_COLORS }
