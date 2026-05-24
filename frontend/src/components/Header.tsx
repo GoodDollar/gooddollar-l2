@@ -38,6 +38,7 @@ export function Header() {
   const isFaucet = pathname?.startsWith('/faucet')
   const isInvite = pathname?.startsWith('/invite')
   const isPortfolio = pathname === '/portfolio'
+  const isProof = pathname?.startsWith('/live-prices-proof') || pathname?.startsWith('/proof')
   // Internal QA dashboard link is hidden in production. Devs/QA can enable
   // it locally with NEXT_PUBLIC_SHOW_DEV_NAV=1. The /test-dashboard route
   // itself remains reachable via direct URL. See task 0070.
@@ -117,6 +118,7 @@ export function Header() {
           <span className="w-px h-4 bg-white/10" />
           <Link prefetch={false} href="/faucet" className={isFaucet ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Faucet</Link>
           <Link prefetch={false} href="/testnet-guide" className={isTestnetGuide ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Guide</Link>
+          <Link prefetch={false} href="/live-prices-proof" className={isProof ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'} data-testid="nav-proof">Proof</Link>
           <Link prefetch={false} href="/invite" className={isInvite ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Invite</Link>
         </nav>
 
@@ -166,6 +168,7 @@ export function Header() {
               <div className="border-t border-dark-50/50 my-1" />
               <Link prefetch={false} href="/faucet" className={`block px-3 py-2 rounded-lg ${isFaucet ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Faucet</Link>
               <Link prefetch={false} href="/testnet-guide" className={`block px-3 py-2 rounded-lg ${isTestnetGuide ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Guide</Link>
+              <Link prefetch={false} href="/live-prices-proof" className={`block px-3 py-2 rounded-lg ${isProof ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Proof</Link>
               <Link prefetch={false} href="/invite" className={`block px-3 py-2 rounded-lg ${isInvite ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Invite</Link>
             </div>
           </details>

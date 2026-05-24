@@ -134,3 +134,21 @@ input[type="number"] {
 .page-enter {
   animation: page-enter 180ms ease-out both;
 }
+
+/* Proof-page panel jump-link target flash (task 0024).
+ * When a reviewer clicks a degraded-reason chip in the pipeline status
+ * banner, the browser jumps to `#panel-<slug>`. A short box-shadow pulse
+ * draws the eye to the panel that the chip pointed at. Wrapped in
+ * `prefers-reduced-motion: no-preference` so users who opted out of
+ * non-essential motion get the jump but not the animation. */
+@keyframes flashTarget {
+  0%   { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.55); }
+  60%  { box-shadow: 0 0 0 6px rgba(250, 204, 21, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  section[id^="panel-"]:target {
+    animation: flashTarget 1.5s ease-out 1;
+  }
+}

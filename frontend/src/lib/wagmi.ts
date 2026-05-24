@@ -9,7 +9,6 @@ import {
 import { createConfig } from 'wagmi'
 import { http } from 'viem'
 import { gooddollarL2 } from './chain'
-import { installRpcBackoff } from './rpcBackoff'
 import { validateWcProjectId } from './wagmi-helpers'
 import { isWalletConnectConfigured, validatedWcProjectId } from './walletConnectConfig'
 
@@ -87,15 +86,6 @@ function installReownConsoleFilter(): void {
 
 installReownConsoleFilter()
 
-// Install the /api/rpc exponential-backoff fetch wrapper exactly once
-// per page lifetime. When devnet is unreachable the proxy returns 502
-// with a -32000 envelope; without this wrapper wagmi/React Query keeps
-// firing the configured refetchInterval (15/30/60 s) waves of 8–12
-// batches forever. The wrapper short-circuits those waves with a
-// synthetic 502 during the cooldown so the proxy isn't hammered. See
-// task 0050 and `./rpcBackoff.ts`.
-installRpcBackoff()
-
 if (typeof window !== 'undefined' && !isValidWcProjectId) {
   const w = window as unknown as { __wagmiMissingProjectIdWarned?: boolean }
   if (!w.__wagmiMissingProjectIdWarned) {
@@ -121,14 +111,27 @@ export { validateWcProjectId } from './wagmi-helpers'
 // `useReadContracts` (raw `useReadContract`, `getBlockNumber`, ENS
 // lookups, balance reads). See task 0059.
 //
-// Bump `batch.wait` above viem's default 0 ms so concurrent wagmi hook
-// reads scheduled on different microtasks collapse into one /api/rpc
-// POST instead of 2–3. 10 ms is below the 60 fps frame budget so the
-// extra flush latency is imperceptible. See task 0052 for the
-// network-capture evidence (3-POST bursts within 1 ms on /perps cold
-// load → 1 batched POST per refetch tick after the change).
+// `wait` controls the coalescing window (ms) — viem queues calls for
+// `wait` ms before flushing them as a single batched payload. The
+// `batch: true` shorthand expands to `wait: 0`, which coalesces only
+// calls that hit the queue inside the same microtask; intermediate
+// React/wagmi work (query-key hashing, block-number lookups, commits)
+// pushes the per-contract `eth_call`s from a single `useReadContracts`
+// across microtask boundaries, fragmenting a 12-contract refresh into
+// ~7 separate POSTs on the proof page.
+//
+// 16 ms (one ~60 fps animation frame) is small enough that `Retry now`
+// still feels instantaneous and large enough that all calls fired by a
+// single React commit land in the same batched POST. See task
+// lane6-rpc-batch-wait-zero-fragments-onchain-multicall-fanout (0065).
+export const RPC_BATCH_WAIT_MS = 16
+export const RPC_BATCH_SIZE = 1_000
+export const RPC_BATCH_CONFIG = {
+  batchSize: RPC_BATCH_SIZE,
+  wait: RPC_BATCH_WAIT_MS,
+} as const
 const transports = {
-  [gooddollarL2.id]: http('/api/rpc', { batch: { wait: 10 } }),
+  [gooddollarL2.id]: http('/api/rpc', { batch: RPC_BATCH_CONFIG }),
 } as const
 
 // Branch on whether we have a real, 32-char-hex WalletConnect project

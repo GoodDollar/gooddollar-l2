@@ -694,6 +694,49 @@ export const PriceOracleABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  // StockOracleV2 tuple read — used by the Lane 6 proof page (live-prices-proof).
+  {
+    inputs: [{ name: 'symbol', type: 'string' }],
+    name: 'getPriceData',
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          { name: 'price8', type: 'uint256' },
+          { name: 'timestamp', type: 'uint256' },
+          { name: 'session', type: 'uint8' },
+          { name: 'confidence', type: 'uint8' },
+          { name: 'signerCount', type: 'uint8' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  // StockOracleV2 events — used by the Oracle Updates panel.
+  {
+    type: 'event',
+    name: 'PriceUpdated',
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'symbolHash', type: 'bytes32' },
+      { indexed: false, name: 'symbol', type: 'string' },
+      { indexed: false, name: 'price8', type: 'uint256' },
+      { indexed: false, name: 'timestamp', type: 'uint256' },
+      { indexed: false, name: 'signerCount', type: 'uint8' },
+      { indexed: false, name: 'session', type: 'uint8' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'BatchPriceUpdate',
+    anonymous: false,
+    inputs: [
+      { indexed: false, name: 'count', type: 'uint256' },
+      { indexed: false, name: 'timestamp', type: 'uint256' },
+    ],
+  },
 ] as const
 
 // ─── GoodStable — VaultManager ────────────────────────────────────────────────

@@ -11,7 +11,8 @@
     "dev": "ts-node src/index.ts",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "hedge:demo": "ts-node src/cli-demo.ts"
   },
   "dependencies": {
     "@goodchain/etoro-client": "file:../etoro-client",

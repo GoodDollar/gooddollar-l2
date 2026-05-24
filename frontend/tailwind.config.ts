@@ -27,6 +27,12 @@ const config: Config = {
           800: '#005A52',
           900: '#003A35',
         },
+        // Brand accent alias — matches goodgreen.500 and the hard-coded
+        // #00B0A0 in globals.css :focus-visible. Without this key the
+        // text-accent / bg-accent / border-accent / ring-accent utilities
+        // (and their slash-opacity variants) silently fall through to
+        // currentColor / transparent across the proof page.
+        accent: '#00B0A0',
         gray: {
           500: '#9ca3af',
           600: '#9ca3af',

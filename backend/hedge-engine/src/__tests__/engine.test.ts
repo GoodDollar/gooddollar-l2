@@ -160,4 +160,82 @@ describe('HedgeEngine', () => {
     const snap = await engine.tick();
     expect(snap).not.toBeNull();
   });
+
+  describe('runOnce', () => {
+    it('returns a hedge proof with non-empty orderId in dry-run mode', async () => {
+      const fs = require('fs') as typeof import('fs');
+      const os = require('os') as typeof import('os');
+      const path = require('path') as typeof import('path');
+      const { HedgeProofRecorder } = require('../hedge-proof') as typeof import('../hedge-proof');
+
+      mockReader.getExposure = jest.fn()
+        .mockResolvedValueOnce(makeExposure('AAPL', 10_000))
+        .mockResolvedValueOnce(makeExposure('AAPL', 0));
+
+      mockExecutor.fetchPositions.mockResolvedValue([]);
+      mockExecutor.execute = jest.fn().mockResolvedValue({
+        order: { symbol: 'AAPL', deltaToHedge: -10_000, reason: 'new_symbol' },
+        success: true,
+        etoroOrderId: 'dry-run',
+        timestamp: Date.now(),
+      });
+
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-runonce-'));
+      try {
+        const recorder = new HedgeProofRecorder(tmp);
+        const engine = new HedgeEngine(mockReader, calculator, mockExecutor, makeConfig());
+
+        const proof = await engine.runOnce('AAPL', { recorder, etoroMode: 'sandbox' });
+
+        expect(proof.orderId).toBe('dry-run');
+        expect(proof.symbol).toBe('AAPL');
+        expect(proof.beforeExposure.netDelta).toBe(10_000);
+        expect(proof.afterExposure.netDelta).toBe(0);
+        expect(proof.dryRun).toBe(true);
+        expect(proof.realTradingEnabled).toBe(false);
+
+        const latestPath = path.join(tmp, 'latest.json');
+        expect(fs.existsSync(latestPath)).toBe(true);
+        const parsed = JSON.parse(fs.readFileSync(latestPath, 'utf8'));
+        expect(parsed.orderId).toBe('dry-run');
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('produces a no-op proof when the delta is below threshold', async () => {
+      const fs = require('fs') as typeof import('fs');
+      const os = require('os') as typeof import('os');
+      const path = require('path') as typeof import('path');
+      const { HedgeProofRecorder } = require('../hedge-proof') as typeof import('../hedge-proof');
+
+      // netDelta=50 vs absExposure=100_000 → neither USD nor pct threshold breached.
+      const tinyExposure = {
+        symbol: 'AAPL',
+        netDelta: 50,
+        absExposure: 100_000,
+        blockNumber: 100,
+        readTimestamp: Date.now(),
+      };
+      mockReader.getExposure = jest.fn()
+        .mockResolvedValueOnce(tinyExposure)
+        .mockResolvedValueOnce(tinyExposure);
+
+      mockExecutor.fetchPositions.mockResolvedValue([]);
+      mockExecutor.execute = jest.fn();
+
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-runonce-noop-'));
+      try {
+        const recorder = new HedgeProofRecorder(tmp);
+        const engine = new HedgeEngine(mockReader, calculator, mockExecutor, makeConfig());
+        const proof = await engine.runOnce('AAPL', { recorder });
+
+        expect(proof.orderId).toBe('no-op');
+        expect(proof.notionalUsd).toBe(0);
+        expect(mockExecutor.execute).not.toHaveBeenCalled();
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+  });
 });

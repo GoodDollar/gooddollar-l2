@@ -1,94 +1,72 @@
-import { EtoroClientAdapter } from '../etoro-adapter';
+import { createEtoroAdapter, EtoroClientLike } from '../etoro-adapter';
 
-interface MinimalEtoroClient {
-  trading: {
-    openPosition: jest.Mock;
-    closePosition: jest.Mock;
-    getOpenPositions: jest.Mock;
-  };
-  getMode: () => string;
-}
-
-function mockClient(overrides?: Partial<MinimalEtoroClient>): MinimalEtoroClient {
+function makeClient(mode: 'sandbox' | 'real'): EtoroClientLike {
+  const openPosition = jest.fn().mockResolvedValue({ orderId: 'ORD-1', status: 'filled' });
+  const closePosition = jest.fn().mockResolvedValue({ orderId: 'ORD-CLOSE-1' });
+  const getOpenPositions = jest.fn().mockResolvedValue([
+    { positionId: 'P1', symbol: 'AAPL', side: 'buy' as const, amount: 5 },
+  ]);
   return {
-    trading: {
-      openPosition: jest.fn().mockResolvedValue({
-        orderId: 'etoro-order-1',
-        positionId: 'pos-1',
-        symbol: 'AAPL',
-        side: 'buy',
-        amount: 50,
-        executionPrice: 200,
-        timestamp: 1700000000000,
-        status: 'filled',
-      }),
-      closePosition: jest.fn().mockResolvedValue({
-        orderId: 'etoro-order-close-1',
-      }),
-      getOpenPositions: jest.fn().mockResolvedValue([
-        {
-          positionId: 'pos-1',
-          instrumentId: '1001',
-          symbol: 'AAPL',
-          side: 'buy',
-          amount: 50,
-          openPrice: 195,
-          currentPrice: 200,
-          pnl: 250,
-          leverage: 1,
-          openTimestamp: 1700000000000,
-        },
-      ]),
-    },
-    getMode: () => 'demo',
-    ...overrides,
+    getMode: () => mode,
+    trading: { openPosition, closePosition, getOpenPositions },
   };
 }
 
-describe('EtoroClientAdapter', () => {
-  it('exposes the wrapped client mode', () => {
-    const client = mockClient();
-    const adapter = new EtoroClientAdapter(client as unknown as never);
-    expect(adapter.getMode()).toBe('demo');
-  });
-
-  it('openPosition forwards { symbol, instrumentId, side, amount } unchanged', async () => {
-    const client = mockClient();
-    const adapter = new EtoroClientAdapter(client as unknown as never);
+describe('createEtoroAdapter', () => {
+  it('openPosition forwards args and returns { orderId, status }', async () => {
+    const client = makeClient('sandbox');
+    const adapter = createEtoroAdapter(client);
 
     const result = await adapter.openPosition({
       symbol: 'AAPL',
-      instrumentId: '1001',
+      instrumentId: 'INST-AAPL',
       side: 'buy',
-      amount: 50,
+      amount: 7,
     });
 
+    expect(result).toEqual({ orderId: 'ORD-1', status: 'filled' });
     expect(client.trading.openPosition).toHaveBeenCalledWith({
       symbol: 'AAPL',
-      instrumentId: '1001',
+      instrumentId: 'INST-AAPL',
       side: 'buy',
-      amount: 50,
+      amount: 7,
     });
-    expect(result.orderId).toBe('etoro-order-1');
-    expect(result.status).toBe('filled');
   });
 
-  it('getPositions maps Position[] to adapter shape { positionId, symbol, side, amount }', async () => {
-    const client = mockClient();
-    const adapter = new EtoroClientAdapter(client as unknown as never);
+  it('calls assertDemoMode BEFORE openPosition', async () => {
+    const client = makeClient('sandbox');
+    const assertDemoMode = jest.fn();
+    const adapter = createEtoroAdapter(client, { assertDemoMode });
+    await adapter.openPosition({ symbol: 'AAPL', instrumentId: 'INST-AAPL', side: 'buy', amount: 1 });
+    expect(assertDemoMode).toHaveBeenCalledWith('sandbox');
+    expect(assertDemoMode).toHaveBeenCalled();
+  });
 
+  it('rejects when assertDemoMode throws (real mode default)', async () => {
+    const client = makeClient('real');
+    const adapter = createEtoroAdapter(client);
+
+    await expect(
+      adapter.openPosition({ symbol: 'AAPL', instrumentId: 'INST-AAPL', side: 'buy', amount: 1 }),
+    ).rejects.toThrow(/REAL_TRADING_ENABLED|Refusing real-mode/);
+
+    expect(client.trading.openPosition).not.toHaveBeenCalled();
+  });
+
+  it('getPositions maps the underlying shape', async () => {
+    const client = makeClient('sandbox');
+    const adapter = createEtoroAdapter(client);
     const positions = await adapter.getPositions();
     expect(positions).toEqual([
-      { positionId: 'pos-1', symbol: 'AAPL', side: 'buy', amount: 50 },
+      { positionId: 'P1', symbol: 'AAPL', side: 'buy', amount: 5 },
     ]);
   });
 
-  it('closePosition forwards positionId and surfaces orderId', async () => {
-    const client = mockClient();
-    const adapter = new EtoroClientAdapter(client as unknown as never);
-
-    const result = await adapter.closePosition('pos-1');
-    expect(client.trading.closePosition).toHaveBeenCalledWith('pos-1');
-    expect(result.orderId).toBe('etoro-order-close-1');
+  it('closePosition forwards positionId', async () => {
+    const client = makeClient('sandbox');
+    const adapter = createEtoroAdapter(client);
+    const r = await adapter.closePosition('P1');
+    expect(r.orderId).toBe('ORD-CLOSE-1');
+    expect(client.trading.closePosition).toHaveBeenCalledWith('P1');
   });
 });

@@ -1,56 +1,21 @@
-import { AxiosInstance, AxiosResponse } from 'axios';
+import { AxiosInstance } from 'axios';
 import { AuditLogger } from './audit-logger';
-import { REAL_TRADING_ENABLED } from './auth';
-import { DemoCapEnforcer, computeOrderNotionalUsd } from './cap-enforcer';
-import {
-  DemoCapExceededError,
-  InvalidOrderError,
-  MalformedListResponseError,
-  MissingNotionalError,
-  RealTradingDisabledError,
-} from './errors';
-import { HttpDispatcher, identityDispatcher } from './rate-limiter';
-import { MalformedListSink, readListOrAudit } from './util/list-envelope';
-import { AuditLogEntry, EtoroMode, OrderRequest, OrderResult, Position } from './types';
-
-/** Source label for the resolved USD notional, recorded in the audit log. */
-export type NotionalSource = 'sizer' | 'limit-price' | 'live-quote' | 'reference-fallback';
-
-/**
- * Demo execution paths per the official eToro public API. The lane SDK
- * routes by-amount vs by-units based on whether `OrderRequest.units`
- * is set; mock and demo-readonly modes never reach these strings (the
- * trading fence throws first).
- */
-export const OPEN_BY_AMOUNT_PATH = '/trading/execution/demo/market-open-orders/by-amount';
-export const OPEN_BY_UNITS_PATH = '/trading/execution/demo/market-open-orders/by-units';
-export const CLOSE_BY_AMOUNT_PATH = '/trading/execution/demo/market-close-orders/by-amount';
-export const CLOSE_BY_UNITS_PATH = '/trading/execution/demo/market-close-orders/by-units';
-const LIMIT_ORDER_PATH = '/trading/execution/demo/limit-orders';
-const DEMO_INFO_POSITIONS = '/trading/info/demo/positions';
-const DEMO_INFO_HISTORY = '/trading/info/demo/history';
-const DEMO_INFO_ORDERS = '/trading/info/demo/orders';
-
-export interface ResolvedNotional {
-  usd: number;
-  source: NotionalSource;
-  /** Age in ms of the live quote used (only when `source === 'live-quote'`). */
-  quoteAgeMs?: number;
-}
-
-/** Default freshness window for live quotes used in notional resolution. */
-export const DEFAULT_MAX_QUOTE_AGE_MS = 60_000;
-
-export interface LiveQuoteSnapshot {
-  mid: number;
-  timestamp: number;
-}
+import { DemoCapEnforcer, computeNotionalUsd } from './demo-cap-enforcer';
+import { assertDemoModeOrThrow } from './safety';
+import { EtoroMode, OrderRequest, OrderResult, Position } from './types';
 
 export interface LimitOrderRequest extends OrderRequest {
   type: 'limit' | 'stop';
   price: number;
   /** Time-in-force: 'GTC' (default), 'DAY', 'IOC' */
   timeInForce?: 'GTC' | 'DAY' | 'IOC';
+}
+
+export interface TradingModuleOptions {
+  /** Active eToro mode — gates the source-level safety fence. */
+  mode?: EtoroMode;
+  /** Optional cap enforcer; constructed from env defaults if omitted. */
+  capEnforcer?: DemoCapEnforcer;
 }
 
 export interface TradeHistoryEntry {
@@ -65,196 +30,89 @@ export interface TradeHistoryEntry {
   status: 'filled' | 'cancelled' | 'expired';
 }
 
-export interface TradingModuleOptions {
-  /** SDK mode the module is operating in. Defaults to `mock`. */
-  mode?: EtoroMode;
-  /**
-   * Demo cap enforcer. REQUIRED for `demo-trading` mode unless the test-only
-   * escape hatch `disableCapsForTestsOnly` is set; for read-only or mock
-   * modes the field is optional.
-   */
-  capEnforcer?: DemoCapEnforcer;
-  /**
-   * Highest-priority hook for computing the USD notional. If it returns a
-   * finite positive number it is used directly (escape hatch for callers
-   * that want live oracle prices or pre-computed sizing).
-   */
-  notionalSizer?: (order: OrderRequest) => number;
-  /**
-   * Reference-price hook used as a degraded fallback for market orders
-   * when no `notionalSizer` yields a value, the order does not carry a
-   * `price`, AND no fresh `liveQuoteSource` snapshot is available.
-   * Returning `undefined` for unknown symbols causes the SDK to throw
-   * `MissingNotionalError` instead of silently treating the unit count as
-   * USD. The default `EtoroClient` wires this to the lane's
-   * `INSTRUMENT_MAP.referencePriceUsd` constants — which are frozen
-   * literals and therefore inherently stale; prefer `liveQuoteSource`.
-   */
-  symbolReferencePriceUsd?: (symbol: string) => number | undefined;
-  /**
-   * Live-quote hook consulted ahead of the reference-price fallback. If
-   * it returns `{ mid, timestamp }` with `mid > 0` and the timestamp is
-   * within `maxQuoteAgeMs` of `Date.now()`, market-order notionals are
-   * sized as `mid * amount` and audit-logged with
-   * `notionalSource: 'live-quote'` plus a numeric `quoteAgeMs`.
-   *
-   * The default `EtoroClient` wires this to `marketData.getCachedQuote`
-   * so the SDK's most recently observed quote drives sizing instead of
-   * the hardcoded reference price.
-   */
-  liveQuoteSource?: (symbol: string) => LiveQuoteSnapshot | undefined;
-  /**
-   * Freshness window (ms) for `liveQuoteSource` snapshots. Quotes older
-   * than this fall through to the reference fallback. Default 60 s.
-   */
-  maxQuoteAgeMs?: number;
-  /**
-   * Optional guardrail: when set, a market order is rejected with
-   * `DemoCapExceededError({ cap: 'reference-drift' })` whenever the live
-   * quote and the reference price diverge by more than this ratio
-   * (absolute, `|live - ref| / ref`). Unset means "no drift check".
-   */
-  maxReferenceDriftRatio?: number;
-  /**
-   * Test-only escape hatch. When set, allows constructing a
-   * `TradingModule` in `demo-trading` mode without a `DemoCapEnforcer`.
-   * Every mutating call audit-logs a `caps-disabled` warning line so the
-   * choice is visible at every order, not just at startup. NEVER set by
-   * `EtoroClient`; NEVER readable from env. Reserved for unit tests that
-   * intentionally test trading-fence or HTTP behavior without caps.
-   *
-   * See `docs/ETORO_GOODCHAIN_ADAPTER.md` for the operator-facing rule.
-   */
-  disableCapsForTestsOnly?: boolean;
-  /**
-   * HTTP dispatcher (typically `EtoroClient.withRateLimit`) so trading
-   * calls share the SDK's single rate-limit bucket and absorb eToro 429s
-   * with structured `attempts` / `totalBackoffMs` audit telemetry.
-   * Defaults to a no-retry pass-through for standalone construction.
-   */
-  dispatch?: HttpDispatcher;
-  /**
-   * If `true`, list-returning read methods (`getOpenPositions`,
-   * `getTradeHistory`) throw `MalformedListResponseError` on an
-   * unrecognized envelope shape instead of returning `[]`. Defaults to
-   * `false` (preserve back-compat); the audit-log line and counter
-   * still fire either way.
-   */
-  throwOnMalformedListResponse?: boolean;
-}
-
-/**
- * Canonical error message used by both the constructor-time check and the
- * runtime `assertCapOk` belt-and-suspenders guard. Kept as an export so
- * operators can grep audit logs / stack traces for a single string.
- */
-export const DEMO_CAP_ENFORCER_REQUIRED_MSG =
-  'DemoCapEnforcer required for demo-trading mode. ' +
-  'Pass `capEnforcer` when constructing TradingModule, or use EtoroClient ' +
-  'which wires one automatically. The `disableCapsForTestsOnly` flag is ' +
-  'reserved for unit tests only.';
-
-/**
- * TradingModule owns the source-level real-trading fence and the demo cap
- * enforcement. Every mutating method is gated by `assertTradingEnabled()`,
- * which throws `RealTradingDisabledError` for any mode that is not
- * `demo-trading`. In `demo-trading` mode, `assertCapOk()` consults the
- * `DemoCapEnforcer` and throws `DemoCapExceededError` before any HTTP call.
- */
 export class TradingModule {
   private readonly http: AxiosInstance;
   private readonly audit: AuditLogger;
   private readonly mode: EtoroMode;
-  private readonly capEnforcer?: DemoCapEnforcer;
-  private readonly notionalSizer?: (order: OrderRequest) => number;
-  private readonly symbolReferencePriceUsd?: (symbol: string) => number | undefined;
-  private readonly liveQuoteSource?: (symbol: string) => LiveQuoteSnapshot | undefined;
-  private readonly maxQuoteAgeMs: number;
-  private readonly maxReferenceDriftRatio?: number;
-  private readonly disableCapsForTestsOnly: boolean;
-  private readonly dispatch: HttpDispatcher;
-  private readonly malformedListSink: MalformedListSink;
+  private readonly capEnforcer: DemoCapEnforcer;
 
-  constructor(http: AxiosInstance, audit: AuditLogger, options: TradingModuleOptions = {}) {
-    const mode = options.mode ?? 'mock';
-    const disableCapsForTestsOnly = options.disableCapsForTestsOnly === true;
-
-    // Loud refusal: caps cannot be silently omitted in demo-trading mode.
-    if (mode === 'demo-trading' && !options.capEnforcer && !disableCapsForTestsOnly) {
-      throw new Error(DEMO_CAP_ENFORCER_REQUIRED_MSG);
-    }
-
+  constructor(http: AxiosInstance, audit: AuditLogger, opts: TradingModuleOptions = {}) {
     this.http = http;
     this.audit = audit;
-    this.mode = mode;
-    this.capEnforcer = options.capEnforcer;
-    this.notionalSizer = options.notionalSizer;
-    this.symbolReferencePriceUsd = options.symbolReferencePriceUsd;
-    this.liveQuoteSource = options.liveQuoteSource;
-    this.maxQuoteAgeMs = options.maxQuoteAgeMs ?? DEFAULT_MAX_QUOTE_AGE_MS;
-    this.maxReferenceDriftRatio = options.maxReferenceDriftRatio;
-    this.disableCapsForTestsOnly = disableCapsForTestsOnly;
-    this.dispatch = options.dispatch ?? identityDispatcher;
-    this.malformedListSink = {
-      audit: this.audit,
-      counter: new Map<string, number>(),
-      throwOnMalformed: options.throwOnMalformedListResponse ?? false,
-    };
+    this.mode = opts.mode ?? 'sandbox';
+    this.capEnforcer = opts.capEnforcer ?? new DemoCapEnforcer();
   }
 
-  getMode(): EtoroMode {
-    return this.mode;
+  /** Exposed for proof reporting; not for cap logic. */
+  getCapState(): ReturnType<DemoCapEnforcer['getState']> {
+    return this.capEnforcer.getState();
+  }
+
+  private enforcePreTrade(action: string, notional: number): void {
+    assertDemoModeOrThrow(this.mode);
+    try {
+      this.capEnforcer.check(notional, action);
+    } catch (err) {
+      const baseMsg = err instanceof Error ? err.message : String(err);
+      const code = (err as { code?: string }).code;
+      this.audit.log({
+        action,
+        method: 'POST',
+        path: '/trading/orders',
+        durationMs: 0,
+        error: code ? `[${code}] ${baseMsg}` : baseMsg,
+      });
+      throw err;
+    }
   }
 
   async openPosition(order: OrderRequest): Promise<OrderResult> {
-    this.validateOrder(order, { kind: 'market', action: 'openPosition' });
-    this.assertTradingEnabled('openPosition');
-    this.noteCapsDisabledIfActive('openPosition');
-    const notional = this.computeNotional(order);
-    this.assertCapOk('openPosition', notional.usd);
-
-    const useUnits = typeof order.units === 'number'
-      && Number.isFinite(order.units)
-      && order.units > 0;
-    const path = useUnits ? OPEN_BY_UNITS_PATH : OPEN_BY_AMOUNT_PATH;
-    const body: Record<string, unknown> = {
-      instrumentId: order.instrumentId,
-      symbol: order.symbol,
-      side: order.side,
-      leverage: order.leverage ?? 1,
-      stopLoss: order.stopLoss,
-      takeProfit: order.takeProfit,
-    };
-    if (useUnits) body.units = order.units;
-    else body.amount = order.amount;
-
-    return this.runHttp({
-      action: 'openPosition',
-      method: 'POST',
-      path,
-      send: () => this.http.post(path, body),
-      parse: (data) => this.normalizeOrderResult(asRecord(data)),
-      auditExtras: {
-        resolvedNotionalUsd: notional.usd,
-        notionalSource: notional.source,
-        quoteAgeMs: notional.quoteAgeMs,
-      },
-      onSuccess: () => this.recordCap(notional.usd),
+    const start = Date.now();
+    const notional = computeNotionalUsd({
+      amount: order.amount,
+      leverage: order.leverage,
     });
+    this.enforcePreTrade('openPosition', notional);
+    try {
+      const response = await this.http.post('/trading/orders', {
+        instrumentId: order.instrumentId,
+        symbol: order.symbol,
+        side: order.side,
+        amount: order.amount,
+        leverage: order.leverage ?? 1,
+        stopLoss: order.stopLoss,
+        takeProfit: order.takeProfit,
+        type: 'market',
+      });
+
+      const data = asRecord(response.data);
+      const result = this.normalizeOrderResult(data);
+
+      this.audit.log({
+        action: 'openPosition',
+        method: 'POST',
+        path: '/trading/orders',
+        statusCode: response.status,
+        durationMs: Date.now() - start,
+      });
+
+      return result;
+    } catch (error) {
+      this.logError('openPosition', 'POST', '/trading/orders', start, error);
+      throw this.wrapError(error, 'openPosition');
+    }
   }
 
   async placeLimitOrder(order: LimitOrderRequest): Promise<OrderResult> {
-    this.validateOrder(order, { kind: 'limit', action: 'placeLimitOrder' });
-    this.assertTradingEnabled('placeLimitOrder');
-    this.noteCapsDisabledIfActive('placeLimitOrder');
-    const notional = this.computeNotional(order);
-    this.assertCapOk('placeLimitOrder', notional.usd);
-
-    return this.runHttp({
-      action: 'placeLimitOrder',
-      method: 'POST',
-      path: LIMIT_ORDER_PATH,
-      send: () => this.http.post(LIMIT_ORDER_PATH, {
+    const start = Date.now();
+    const notional = computeNotionalUsd({
+      amount: order.amount,
+      price: order.price,
+      leverage: order.leverage,
+    });
+    this.enforcePreTrade('placeLimitOrder', notional);
+    try {
+      const response = await this.http.post('/trading/orders', {
         instrumentId: order.instrumentId,
         symbol: order.symbol,
         side: order.side,
@@ -265,441 +123,158 @@ export class TradingModule {
         type: order.type,
         price: order.price,
         timeInForce: order.timeInForce ?? 'GTC',
-      }),
-      parse: (data) => this.normalizeOrderResult(asRecord(data)),
-      auditExtras: {
-        resolvedNotionalUsd: notional.usd,
-        notionalSource: notional.source,
-        quoteAgeMs: notional.quoteAgeMs,
-      },
-      onSuccess: () => this.recordCap(notional.usd),
-    });
+      });
+
+      const data = asRecord(response.data);
+      const result = this.normalizeOrderResult(data);
+
+      this.audit.log({
+        action: 'placeLimitOrder',
+        method: 'POST',
+        path: '/trading/orders',
+        statusCode: response.status,
+        durationMs: Date.now() - start,
+      });
+
+      return result;
+    } catch (error) {
+      this.logError('placeLimitOrder', 'POST', '/trading/orders', start, error);
+      throw this.wrapError(error, 'placeLimitOrder');
+    }
   }
 
   async closePosition(positionId: string): Promise<OrderResult> {
-    this.validateIdString(positionId, 'positionId', 'closePosition');
-    this.assertTradingEnabled('closePosition');
-    this.noteCapsDisabledIfActive('closePosition');
-    return this.runHttp({
-      action: 'closePosition',
-      method: 'POST',
-      path: CLOSE_BY_AMOUNT_PATH,
-      send: () => this.http.post(CLOSE_BY_AMOUNT_PATH, { positionId }),
-      parse: (data) => this.normalizeOrderResult(asRecord(data)),
-    });
+    const start = Date.now();
+    const endpoint = `/trading/positions/${positionId}/close`;
+    try {
+      const response = await this.http.post(endpoint);
+      const data = asRecord(response.data);
+      const result = this.normalizeOrderResult(data);
+
+      this.audit.log({
+        action: 'closePosition',
+        method: 'POST',
+        path: endpoint,
+        statusCode: response.status,
+        durationMs: Date.now() - start,
+      });
+
+      return result;
+    } catch (error) {
+      this.logError('closePosition', 'POST', endpoint, start, error);
+      throw this.wrapError(error, 'closePosition');
+    }
   }
 
-  async partialClose(
-    positionId: string,
-    closeBy: number | { amount: number } | { units: number },
-  ): Promise<OrderResult> {
-    this.validateIdString(positionId, 'positionId', 'partialClose');
-    const normalized = typeof closeBy === 'number'
-      ? { kind: 'amount' as const, value: closeBy }
-      : 'units' in closeBy
-        ? { kind: 'units' as const, value: closeBy.units }
-        : { kind: 'amount' as const, value: closeBy.amount };
-    this.validatePositiveAmount(normalized.value, normalized.kind, 'partialClose');
-    this.assertTradingEnabled('partialClose');
-    this.noteCapsDisabledIfActive('partialClose');
-    const path = normalized.kind === 'units' ? CLOSE_BY_UNITS_PATH : CLOSE_BY_AMOUNT_PATH;
-    const body: Record<string, unknown> = {
-      positionId,
-      [normalized.kind]: normalized.value,
-    };
-    return this.runHttp({
-      action: 'partialClose',
-      method: 'POST',
-      path,
-      send: () => this.http.post(path, body),
-      parse: (data) => this.normalizeOrderResult(asRecord(data)),
-    });
+  async partialClose(positionId: string, amount: number): Promise<OrderResult> {
+    const start = Date.now();
+    const endpoint = `/trading/positions/${positionId}/close`;
+    try {
+      const response = await this.http.post(endpoint, { amount });
+      const data = asRecord(response.data);
+      const result = this.normalizeOrderResult(data);
+
+      this.audit.log({
+        action: 'partialClose',
+        method: 'POST',
+        path: endpoint,
+        statusCode: response.status,
+        durationMs: Date.now() - start,
+      });
+
+      return result;
+    } catch (error) {
+      this.logError('partialClose', 'POST', endpoint, start, error);
+      throw this.wrapError(error, 'partialClose');
+    }
   }
 
   async cancelOrder(orderId: string): Promise<void> {
-    this.validateIdString(orderId, 'orderId', 'cancelOrder');
-    this.assertTradingEnabled('cancelOrder');
-    this.noteCapsDisabledIfActive('cancelOrder');
-    const endpoint = `${DEMO_INFO_ORDERS}/${orderId}`;
-    await this.runHttp({
-      action: 'cancelOrder',
-      method: 'DELETE',
-      path: endpoint,
-      send: () => this.http.delete(endpoint),
-      parse: () => undefined,
-    });
+    const start = Date.now();
+    const endpoint = `/trading/orders/${orderId}`;
+    try {
+      const response = await this.http.delete(endpoint);
+
+      this.audit.log({
+        action: 'cancelOrder',
+        method: 'DELETE',
+        path: endpoint,
+        statusCode: response.status,
+        durationMs: Date.now() - start,
+      });
+    } catch (error) {
+      this.logError('cancelOrder', 'DELETE', endpoint, start, error);
+      throw this.wrapError(error, 'cancelOrder');
+    }
   }
 
   async getOrderStatus(orderId: string): Promise<OrderResult> {
-    const endpoint = `${DEMO_INFO_ORDERS}/${orderId}`;
-    return this.runHttp({
-      action: 'getOrderStatus',
-      method: 'GET',
-      path: endpoint,
-      send: () => this.http.get(endpoint),
-      parse: (data) => this.normalizeOrderResult(asRecord(data)),
-    });
+    const start = Date.now();
+    const endpoint = `/trading/orders/${orderId}`;
+    try {
+      const response = await this.http.get(endpoint);
+      const data = asRecord(response.data);
+      const result = this.normalizeOrderResult(data);
+
+      this.audit.log({
+        action: 'getOrderStatus',
+        method: 'GET',
+        path: endpoint,
+        statusCode: response.status,
+        durationMs: Date.now() - start,
+      });
+
+      return result;
+    } catch (error) {
+      this.logError('getOrderStatus', 'GET', endpoint, start, error);
+      throw this.wrapError(error, 'getOrderStatus');
+    }
   }
 
   async getOpenPositions(): Promise<Position[]> {
-    const path = DEMO_INFO_POSITIONS;
-    return this.runHttp({
-      action: 'getOpenPositions',
-      method: 'GET',
-      path,
-      send: () => this.http.get(path),
-      parse: (data) => readListOrAudit({
-        data, action: 'getOpenPositions', path, sink: this.malformedListSink,
-      }).map((r) => this.normalizePosition(asRecord(r))),
-    });
+    const start = Date.now();
+    const endpoint = '/trading/positions';
+    try {
+      const response = await this.http.get(endpoint);
+      const items = extractArray(response.data);
+      const positions = items.map((r) => this.normalizePosition(asRecord(r)));
+
+      this.audit.log({
+        action: 'getOpenPositions',
+        method: 'GET',
+        path: endpoint,
+        statusCode: response.status,
+        durationMs: Date.now() - start,
+      });
+
+      return positions;
+    } catch (error) {
+      this.logError('getOpenPositions', 'GET', endpoint, start, error);
+      throw this.wrapError(error, 'getOpenPositions');
+    }
   }
 
   async getTradeHistory(limit = 50): Promise<TradeHistoryEntry[]> {
-    const path = `${DEMO_INFO_HISTORY}?limit=${limit}`;
-    return this.runHttp({
-      action: 'getTradeHistory',
-      method: 'GET',
-      path,
-      send: () => this.http.get(path),
-      parse: (data) => readListOrAudit({
-        data, action: 'getTradeHistory', path, sink: this.malformedListSink,
-      }).map((r) => this.normalizeTradeHistory(asRecord(r))),
-    });
-  }
-
-  /**
-   * Count of 200-OK responses that returned an unrecognized envelope
-   * shape for one of `TradingModule`'s list-returning methods.
-   * Aggregated into `EtoroClient.getSummary().malformedListResponses`.
-   */
-  getMalformedListResponseCount(action: string): number {
-    return this.malformedListSink.counter.get(action) ?? 0;
-  }
-
-  /** Snapshot of all malformed-list counters keyed by action. */
-  getMalformedListResponseCounts(): Record<string, number> {
-    return Object.fromEntries(this.malformedListSink.counter);
-  }
-
-  /**
-   * Common HTTP/audit/error pipeline shared by every public method.
-   *
-   *   1. Run `send` through the rate-limited dispatcher.
-   *   2. On success: parse the response, run `onSuccess` (cap recording
-   *      etc.), emit one success audit-log line carrying retry telemetry
-   *      and the caller-supplied `auditExtras`.
-   *   3. On failure: emit one error audit-log line, then rethrow via
-   *      `wrapError` so callers receive a typed `TradingError` (or one of
-   *      the precise typed errors that flow through unchanged).
-   */
-  private async runHttp<T>(input: {
-    action: string;
-    method: 'GET' | 'POST' | 'DELETE';
-    path: string;
-    send: () => Promise<AxiosResponse>;
-    parse: (data: unknown) => T;
-    auditExtras?: Pick<AuditLogEntry, 'resolvedNotionalUsd' | 'notionalSource' | 'quoteAgeMs'>;
-    onSuccess?: () => void;
-  }): Promise<T> {
     const start = Date.now();
+    const endpoint = `/trading/history?limit=${limit}`;
     try {
-      const { value: response, attempts, totalBackoffMs } = await this.dispatch(input.send);
-      const result = input.parse(response.data);
-      input.onSuccess?.();
+      const response = await this.http.get(endpoint);
+      const items = extractArray(response.data);
+      const trades = items.map((r) => this.normalizeTradeHistory(asRecord(r)));
+
       this.audit.log({
-        action: input.action,
-        method: input.method,
-        path: input.path,
+        action: 'getTradeHistory',
+        method: 'GET',
+        path: endpoint,
         statusCode: response.status,
         durationMs: Date.now() - start,
-        attempts,
-        totalBackoffMs,
-        ...input.auditExtras,
       });
-      return result;
+
+      return trades;
     } catch (error) {
-      this.audit.log({
-        action: input.action,
-        method: input.method,
-        path: input.path,
-        durationMs: Date.now() - start,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw this.wrapError(error, input.action);
+      this.logError('getTradeHistory', 'GET', endpoint, start, error);
+      throw this.wrapError(error, 'getTradeHistory');
     }
-  }
-
-  /**
-   * Source-level fence. Trading is permitted only when:
-   *   - mode === 'demo-trading' (the only mode that addresses the demo
-   *     trading endpoint), AND
-   *   - REAL_TRADING_ENABLED === false (which is hardcoded). The check is
-   *     phrased so that a future flip to true on real-disabled would still
-   *     refuse demo-trading without code change here.
-   *
-   * Every other mode (`mock`, `demo-readonly`, `real-disabled`) throws.
-   */
-  private assertTradingEnabled(action: string): void {
-    if (this.mode === 'demo-trading' && REAL_TRADING_ENABLED === false) {
-      return;
-    }
-    throw new RealTradingDisabledError(action, this.mode);
-  }
-
-  /**
-   * Hand-written validator. Runs BEFORE the trading fence and cap check so
-   * caller-fixable errors take precedence over environmental ones; the
-   * trading fence still catches anything that bypasses this method.
-   *
-   * Audit log carries only the field name and a short primitive reason —
-   * never the raw request body — so secrets cannot leak via PRE-CHECK lines.
-   */
-  private validateOrder(
-    order: OrderRequest | LimitOrderRequest,
-    ctx: { kind: 'market' | 'limit'; action: string },
-  ): void {
-    const fail = (field: string, reason: string): never => {
-      this.audit.log({
-        action: ctx.action,
-        method: 'PRE-CHECK',
-        path: '/validation',
-        error: `InvalidOrderError: field=${field} reason=${reason}`,
-      });
-      throw new InvalidOrderError({ field, reason });
-    };
-
-    if (typeof order.symbol !== 'string' || order.symbol.trim() === '') {
-      fail('symbol', 'must be a non-empty string');
-    }
-    if (typeof order.instrumentId !== 'string' || order.instrumentId.trim() === '') {
-      fail('instrumentId', 'must be a non-empty string');
-    }
-    if (order.side !== 'buy' && order.side !== 'sell') {
-      fail('side', "must be 'buy' or 'sell'");
-    }
-    if (!Number.isFinite(order.amount) || order.amount <= 0) {
-      fail('amount', 'must be a finite number > 0');
-    }
-    if (order.leverage !== undefined
-      && (!Number.isFinite(order.leverage) || order.leverage <= 0)) {
-      fail('leverage', 'must be a finite number > 0 when provided');
-    }
-    if (order.stopLoss !== undefined
-      && (!Number.isFinite(order.stopLoss) || order.stopLoss <= 0)) {
-      fail('stopLoss', 'must be a finite number > 0 when provided');
-    }
-    if (order.takeProfit !== undefined
-      && (!Number.isFinite(order.takeProfit) || order.takeProfit <= 0)) {
-      fail('takeProfit', 'must be a finite number > 0 when provided');
-    }
-
-    if (ctx.kind === 'limit') {
-      const lim = order as LimitOrderRequest;
-      if (typeof lim.price !== 'number' || !Number.isFinite(lim.price) || lim.price <= 0) {
-        fail('price', 'must be a finite number > 0 for limit/stop orders');
-      }
-      if (lim.type !== 'limit' && lim.type !== 'stop') {
-        fail('type', "must be 'limit' or 'stop'");
-      }
-      if (lim.timeInForce !== undefined
-        && lim.timeInForce !== 'GTC'
-        && lim.timeInForce !== 'DAY'
-        && lim.timeInForce !== 'IOC') {
-        fail('timeInForce', "must be 'GTC', 'DAY', or 'IOC'");
-      }
-    }
-  }
-
-  private validateIdString(value: string, field: string, action: string): void {
-    if (typeof value !== 'string' || value.trim() === '') {
-      this.audit.log({
-        action,
-        method: 'PRE-CHECK',
-        path: '/validation',
-        error: `InvalidOrderError: field=${field} reason=must be a non-empty string`,
-      });
-      throw new InvalidOrderError({
-        field,
-        reason: 'must be a non-empty string',
-      });
-    }
-  }
-
-  private validatePositiveAmount(value: number, field: string, action: string): void {
-    if (!Number.isFinite(value) || value <= 0) {
-      this.audit.log({
-        action,
-        method: 'PRE-CHECK',
-        path: '/validation',
-        error: `InvalidOrderError: field=${field} reason=must be a finite number > 0`,
-      });
-      throw new InvalidOrderError({
-        field,
-        reason: 'must be a finite number > 0',
-      });
-    }
-  }
-
-  private assertCapOk(action: string, notional: number): void {
-    if (!this.capEnforcer) {
-      // Belt-and-suspenders: constructor already guards this in
-      // demo-trading mode, but if a future refactor strips that throw the
-      // runtime path still refuses to send orders without caps.
-      if (this.mode === 'demo-trading' && !this.disableCapsForTestsOnly) {
-        throw new Error(DEMO_CAP_ENFORCER_REQUIRED_MSG);
-      }
-      return;
-    }
-    const err = this.capEnforcer.wouldExceed(notional);
-    if (err) {
-      this.audit.log({
-        action,
-        method: 'PRE-CHECK',
-        path: '/cap-enforcer',
-        error: `${err.name}: cap=${err.cap} limit=${err.capLimitUsd} attempt=${err.attemptedNotionalUsd}`,
-      });
-      throw err;
-    }
-  }
-
-  /**
-   * Audit-log one `caps-disabled` line per mutating call when the test-only
-   * escape hatch is active. Makes the choice visible at every order, not
-   * just at construction.
-   */
-  private noteCapsDisabledIfActive(action: string): void {
-    if (this.disableCapsForTestsOnly) {
-      this.audit.log({
-        action,
-        method: 'PRE-CHECK',
-        path: '/cap-enforcer',
-        error: 'caps-disabled: disableCapsForTestsOnly=true — cap check skipped',
-      });
-    }
-  }
-
-  private recordCap(notional: number): void {
-    if (this.capEnforcer && notional > 0) {
-      this.capEnforcer.recordOrder(notional);
-    }
-  }
-
-  /**
-   * Resolution order (5 tiers, highest priority first):
-   *   1. `notionalSizer(order)` if it yields a finite positive USD value.
-   *   2. `order.price * order.amount` for limit/stop orders.
-   *   3. `liveQuoteSource(symbol).mid * order.amount` when the snapshot
-   *      is fresher than `maxQuoteAgeMs`. Tagged `'live-quote'`.
-   *   4. `symbolReferencePriceUsd(order.symbol) * order.amount` as a
-   *      degraded fallback. Tagged `'reference-fallback'`.
-   *   5. Throw `MissingNotionalError` — never silently treat a unit count
-   *      as USD.
-   *
-   * When `maxReferenceDriftRatio` is set AND both a fresh live quote and
-   * a reference price exist, divergence beyond the ratio aborts the order
-   * with `DemoCapExceededError({ cap: 'reference-drift' })` regardless of
-   * the USD caps — the divergence is treated as a safety signal that the
-   * SDK is operating on an unreliable view of the market.
-   */
-  private computeNotional(order: OrderRequest | LimitOrderRequest): ResolvedNotional {
-    if (this.notionalSizer) {
-      const sized = this.notionalSizer(order);
-      if (Number.isFinite(sized) && sized > 0) {
-        return { usd: sized, source: 'sizer' };
-      }
-    }
-
-    const hasLimitPrice = 'price' in order
-      && typeof order.price === 'number'
-      && Number.isFinite(order.price)
-      && order.price > 0;
-    if (hasLimitPrice) {
-      const usd = computeOrderNotionalUsd({
-        price: (order as LimitOrderRequest).price,
-        amount: order.amount,
-      });
-      if (usd !== null && usd > 0) {
-        return { usd, source: 'limit-price' };
-      }
-    }
-
-    const reference = this.resolveReferencePrice(order.symbol);
-    const liveQuote = this.resolveFreshLiveQuote(order.symbol);
-
-    if (liveQuote) {
-      this.assertReferenceDriftWithinBounds({
-        symbol: order.symbol,
-        amount: order.amount,
-        live: liveQuote.mid,
-        reference,
-      });
-      return {
-        usd: liveQuote.mid * order.amount,
-        source: 'live-quote',
-        quoteAgeMs: liveQuote.ageMs,
-      };
-    }
-
-    if (reference !== undefined && Number.isFinite(order.amount) && order.amount > 0) {
-      return { usd: reference * order.amount, source: 'reference-fallback' };
-    }
-
-    throw new MissingNotionalError({
-      symbol: order.symbol,
-      attemptedAmount: order.amount,
-      reason: hasLimitPrice
-        ? 'price * amount produced a non-positive notional'
-        : 'no notionalSizer match, no order.price, no fresh liveQuoteSource snapshot, and no symbolReferencePriceUsd for the symbol',
-    });
-  }
-
-  private resolveReferencePrice(symbol: string): number | undefined {
-    if (!this.symbolReferencePriceUsd) return undefined;
-    const ref = this.symbolReferencePriceUsd(symbol);
-    return typeof ref === 'number' && Number.isFinite(ref) && ref > 0 ? ref : undefined;
-  }
-
-  private resolveFreshLiveQuote(
-    symbol: string,
-  ): { mid: number; ageMs: number } | undefined {
-    if (!this.liveQuoteSource) return undefined;
-    const snapshot = this.liveQuoteSource(symbol);
-    if (!snapshot) return undefined;
-    if (!Number.isFinite(snapshot.mid) || snapshot.mid <= 0) return undefined;
-    if (!Number.isFinite(snapshot.timestamp)) return undefined;
-    const ageMs = Date.now() - snapshot.timestamp;
-    if (ageMs > this.maxQuoteAgeMs) return undefined;
-    return { mid: snapshot.mid, ageMs: Math.max(0, ageMs) };
-  }
-
-  private assertReferenceDriftWithinBounds(input: {
-    symbol: string;
-    amount: number;
-    live: number;
-    reference: number | undefined;
-  }): void {
-    const ratio = this.maxReferenceDriftRatio;
-    if (ratio === undefined || !Number.isFinite(ratio) || ratio <= 0) return;
-    if (input.reference === undefined) return;
-
-    const drift = Math.abs(input.live - input.reference) / input.reference;
-    if (drift <= ratio) return;
-
-    const err = new DemoCapExceededError({
-      cap: 'reference-drift',
-      capLimitUsd: ratio,
-      attemptedNotionalUsd: input.live * input.amount,
-      currentDailyTotalUsd: this.capEnforcer?.getDailyTotalUsd() ?? 0,
-    });
-    this.audit.log({
-      action: 'computeNotional',
-      method: 'PRE-CHECK',
-      path: '/cap-enforcer',
-      error:
-        `${err.name}: cap=reference-drift symbol=${input.symbol} ` +
-        `live=${input.live} reference=${input.reference} drift=${drift.toFixed(4)} ratio=${ratio}`,
-    });
-    throw err;
   }
 
   private normalizeOrderResult(data: Record<string, unknown>): OrderResult {
@@ -752,12 +327,12 @@ export class TradingModule {
     };
   }
 
+  private logError(action: string, method: string, path: string, start: number, error: unknown): void {
+    const msg = error instanceof Error ? error.message : String(error);
+    this.audit.log({ action, method, path, durationMs: Date.now() - start, error: msg });
+  }
+
   private wrapError(error: unknown, action: string): Error {
-    if (error instanceof RealTradingDisabledError) return error;
-    if (error instanceof DemoCapExceededError) return error;
-    if (error instanceof MissingNotionalError) return error;
-    if (error instanceof InvalidOrderError) return error;
-    if (error instanceof MalformedListResponseError) return error;
     if (error instanceof Error) {
       const axErr = error as { response?: { data?: { errorCode?: string; message?: string } } };
       const code = axErr.response?.data?.errorCode;
@@ -814,6 +389,17 @@ function pickTimestamp(obj: Record<string, unknown>, ...extra: string[]): number
     if (typeof v === 'string') { const d = Date.parse(v); if (!isNaN(d)) return d; }
   }
   return Date.now();
+}
+
+function extractArray(data: unknown): unknown[] {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    for (const key of ['data', 'items', 'positions', 'trades', 'results', 'orders', 'history']) {
+      if (Array.isArray(obj[key])) return obj[key] as unknown[];
+    }
+  }
+  return [];
 }
 
 function normalizeStatus(s: string): 'filled' | 'pending' | 'rejected' {
