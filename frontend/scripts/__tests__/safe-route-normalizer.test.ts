@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  normalizeMalformedHedgeProofApiPath,
   normalizeMalformedHedgeProofPath,
   normalizeMalformedStocksPath,
 } from '../safe-route-normalizer.mjs'
@@ -84,5 +85,71 @@ describe('normalizeMalformedHedgeProofPath', () => {
     expect(normalizeMalformedHedgeProofPath('/analytics/%E0%80')).toBe(
       '/analytics/%E0%80',
     )
+  })
+})
+
+describe('normalizeMalformedHedgeProofApiPath', () => {
+  it('keeps valid api routes unchanged', () => {
+    expect(
+      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/abc123'),
+    ).toBe('/api/hedge/proof/abc123')
+  })
+
+  it('keeps well-formed percent-encoded ids unchanged', () => {
+    expect(
+      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/%2541'),
+    ).toBe('/api/hedge/proof/%2541')
+    expect(
+      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/%E2%9C%93'),
+    ).toBe('/api/hedge/proof/%E2%9C%93')
+  })
+
+  it('rewrites malformed %ZZ to _invalid_url', () => {
+    expect(
+      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/abc%ZZ'),
+    ).toBe('/api/hedge/proof/_invalid_url')
+  })
+
+  it('rewrites trailing lonely % to _invalid_url', () => {
+    expect(
+      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/abc%'),
+    ).toBe('/api/hedge/proof/_invalid_url')
+  })
+
+  it('rewrites truncated multibyte to _invalid_url', () => {
+    expect(
+      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/foo%E0%80'),
+    ).toBe('/api/hedge/proof/_invalid_url')
+    expect(
+      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/%C0'),
+    ).toBe('/api/hedge/proof/_invalid_url')
+  })
+
+  it('preserves query string on rewrite', () => {
+    expect(
+      normalizeMalformedHedgeProofApiPath(
+        '/api/hedge/proof/abc%ZZ?ref=qa&mode=debug',
+      ),
+    ).toBe('/api/hedge/proof/_invalid_url?ref=qa&mode=debug')
+  })
+
+  it('does not rewrite the static latest endpoint', () => {
+    expect(
+      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/latest'),
+    ).toBe('/api/hedge/proof/latest')
+  })
+
+  it('does not rewrite the static latest.json endpoint', () => {
+    expect(
+      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/latest.json'),
+    ).toBe('/api/hedge/proof/latest.json')
+  })
+
+  it('does not rewrite paths outside /api/hedge/proof/', () => {
+    expect(normalizeMalformedHedgeProofApiPath('/api/stocks/%2')).toBe(
+      '/api/stocks/%2',
+    )
+    expect(normalizeMalformedHedgeProofApiPath('/analytics/hedge/proof/foo%E0%80'))
+      .toBe('/analytics/hedge/proof/foo%E0%80')
   })
 })

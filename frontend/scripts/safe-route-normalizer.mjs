@@ -3,6 +3,9 @@ const MAX_DECODE_PASSES = 3
 const STOCKS_ROUTE_PREFIX = '/stocks/'
 const HEDGE_PROOF_ROUTE_PREFIX = '/analytics/hedge/proof/'
 const HEDGE_PROOF_INVALID_PATH = `${HEDGE_PROOF_ROUTE_PREFIX}invalid`
+const HEDGE_PROOF_API_PREFIX = '/api/hedge/proof/'
+const HEDGE_PROOF_API_INVALID_PATH = `${HEDGE_PROOF_API_PREFIX}_invalid_url`
+const HEDGE_PROOF_API_STATIC_SIBLINGS = new Set(['latest', 'latest.json'])
 const REPLACEMENT_CHAR_PATTERN = /\uFFFD/
 
 function splitUrl(rawUrl) {
@@ -74,5 +77,29 @@ export function normalizeMalformedHedgeProofPath(rawUrl = '/') {
     return url
   } catch {
     return toHedgeProofInvalid(query)
+  }
+}
+
+// API-surface sibling of `normalizeMalformedHedgeProofPath` (task 0074):
+// Next.js's framework-level pathname decoder rejects malformed-percent
+// URLs (`/api/hedge/proof/abc%ZZ`, lonely `%`, truncated multibyte) with
+// its built-in HTML 400 page BEFORE any route handler runs — violating
+// the API's JSON-only contract that ops scripts and the dashboard client
+// both depend on. Rewriting to the synthesised `_invalid_url` route
+// (registered as a static sibling, so Next.js picks it over the dynamic
+// `[receiptId]` handler) returns the canonical `ProofResponse` envelope
+// at HTTP 400 with `Content-Type: application/json`. The static
+// `latest` / `latest.json` endpoints are explicitly excluded so they
+// continue serving their existing payloads unchanged.
+export function normalizeMalformedHedgeProofApiPath(rawUrl = '/') {
+  const { url, path, query } = splitUrl(rawUrl)
+  if (!path.startsWith(HEDGE_PROOF_API_PREFIX)) return url
+  const rest = path.slice(HEDGE_PROOF_API_PREFIX.length)
+  if (HEDGE_PROOF_API_STATIC_SIBLINGS.has(rest)) return url
+  try {
+    decodeURIComponent(path)
+    return url
+  } catch {
+    return `${HEDGE_PROOF_API_INVALID_PATH}${query}`
   }
 }

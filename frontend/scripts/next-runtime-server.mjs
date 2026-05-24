@@ -6,6 +6,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import next from 'next'
 import {
+  normalizeMalformedHedgeProofApiPath,
   normalizeMalformedHedgeProofPath,
   normalizeMalformedStocksPath,
 } from './safe-route-normalizer.mjs'
@@ -57,8 +58,10 @@ export function createNextRuntimeServer({ argv = process.argv.slice(2), env = pr
     .then(() => {
       createServer((req, res) => {
         const incomingUrl = req.url || '/'
-        const normalizedUrl = normalizeMalformedHedgeProofPath(
-          normalizeMalformedStocksPath(incomingUrl),
+        const normalizedUrl = normalizeMalformedHedgeProofApiPath(
+          normalizeMalformedHedgeProofPath(
+            normalizeMalformedStocksPath(incomingUrl),
+          ),
         )
         if (normalizedUrl !== incomingUrl) {
           req.url = normalizedUrl
