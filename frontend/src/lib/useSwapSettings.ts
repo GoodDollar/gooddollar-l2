@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { sanitizeNumericInput } from './format'
 
 const STORAGE_KEY = 'goodswap-settings'
 const HISTORY_KEY = 'goodswap-transaction-history'
@@ -110,6 +111,59 @@ function analyzeUserPreferences(history: TransactionRecord[]): { recommendedSlip
 
 function clampSlippage(val: number): number {
   return Math.max(0, Math.min(50, val))
+}
+
+// ─── Slippage input classification (task 0049) ───────────────────────────────
+//
+// The custom slippage input previously had three silent failure modes:
+// `0`, blank, and garbage all skipped `setSlippage` without telling the user
+// the typed value was discarded. Visible value ≠ stored value, no warning.
+// This tagged-union classifier replaces the ad-hoc if-chain so every input
+// class has an explicit decision and the renderer is a pure dispatch on
+// `decision.kind`.
+//
+// Boundaries:
+//   - MIN_USEFUL_SLIPPAGE  (0.05%)  — below this almost every trade will
+//     fail to settle. Yellow warning, but the value IS accepted.
+//   - HIGH_SLIPPAGE_THRESHOLD (5%) — above this the existing high-risk
+//     copy fires. Yellow warning, value accepted.
+//   - MAX_SLIPPAGE  (50%)         — clamped to 50, orange warning.
+
+export const MIN_USEFUL_SLIPPAGE = 0.05
+export const HIGH_SLIPPAGE_THRESHOLD = 5
+export const MAX_SLIPPAGE = 50
+
+export type SlippageDecision =
+  | { kind: 'blank' }
+  | { kind: 'invalid-zero' }
+  | { kind: 'low'; value: number }
+  | { kind: 'ok'; value: number }
+  | { kind: 'high-risk'; value: number }
+  | { kind: 'clamped-max' }
+
+/**
+ * Pure classifier — given a raw input string from the slippage textbox,
+ * return the single source of truth for what the input "means". Renderer
+ * branches off `decision.kind` so visible value, border colour, warning
+ * text, and `setSlippage(value)` all stay consistent.
+ *
+ * This file's contract is: NEVER emit a decision whose stored slippage
+ * differs from what the visible input value says, without also signalling
+ * that mismatch via an explicit `kind` (e.g. `clamped-max`, `invalid-zero`).
+ */
+export function classifySlippageInput(raw: string): SlippageDecision {
+  const trimmed = raw.trim()
+  if (!trimmed || trimmed === '.') return { kind: 'blank' }
+  if (trimmed.startsWith('-')) return { kind: 'invalid-zero' }
+  const cleaned = sanitizeNumericInput(raw).trim()
+  if (!cleaned || cleaned === '.') return { kind: 'blank' }
+  const num = parseFloat(cleaned)
+  if (!Number.isFinite(num)) return { kind: 'blank' }
+  if (num <= 0) return { kind: 'invalid-zero' }
+  if (num > MAX_SLIPPAGE) return { kind: 'clamped-max' }
+  if (num < MIN_USEFUL_SLIPPAGE) return { kind: 'low', value: num }
+  if (num > HIGH_SLIPPAGE_THRESHOLD) return { kind: 'high-risk', value: num }
+  return { kind: 'ok', value: num }
 }
 
 export function useSwapSettings() {
