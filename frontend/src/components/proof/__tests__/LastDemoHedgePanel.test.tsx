@@ -1,8 +1,38 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LastDemoHedgePanel } from '../LastDemoHedgePanel'
+import {
+  ProofPipelineAxesProvider,
+  TestProofPipelineAxesProvider,
+} from '../ProofPipelineAxesProvider'
+import { ProofPanelActionsProvider } from '../ProofPanelActionsProvider'
+import {
+  type HedgeProofFetchStatus,
+  type ProofPipelineAxesState,
+} from '../useProofPipelineAxes'
 import { NO_OP_ORDER_ID, type HedgeProof } from '@/lib/hedgeProof'
 import { parseRunId } from '@/lib/parseRunId'
+
+// The panel never reads on-chain state. Keep a quiet wagmi mock around in
+// case any future composite test mounts `ProofPipelineAxesProvider`
+// directly (e.g. the integrated retry test below).
+vi.mock('wagmi', () => ({
+  useReadContract: vi.fn(),
+}))
+
+vi.mock('@/lib/stockData', () => ({
+  getAllTickers: () => ['AAPL'],
+}))
+
+vi.mock('@/lib/chain', () => ({
+  CONTRACTS: {
+    StocksPriceOracle: '0x1111111111111111111111111111111111111111',
+  },
+}))
+
+vi.mock('@/lib/abi', () => ({
+  PriceOracleABI: [],
+}))
 
 const T0 = new Date('2026-05-23T13:50:20.584Z').getTime()
 const T_PROOF = T0 - 3 * 60_000
@@ -55,14 +85,63 @@ const PROOF_LIVE: HedgeProof = {
   realTradingEnabled: false,
 }
 
-function mockFetchOk(body: unknown) {
-  globalThis.fetch = vi.fn(() =>
-    Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(body),
-    } as Response),
+const BASE_AXES_VALUE: ProofPipelineAxesState = {
+  axes: { quotes: 'healthy', onChain: 'healthy', hedgeProof: 'healthy' },
+  verdict: 'green',
+  partialVerdict: 'green',
+  resolvedAxisCount: 3,
+  lastFullyAliveAt: null,
+  lastQuotesPayload: null,
+  lastQuotesAt: null,
+  lastQuotesStatus: 'ok',
+  lastHedgeProofPayload: null,
+  lastHedgeProofAt: null,
+  lastHedgeProofStatus: 'loading',
+  cadenceMs: 5_000,
+  priceServiceUrl: 'http://localhost:9300',
+  hedgeProofEndpoint: '/api/hedge-proof/latest',
+  stalenessThresholdMs: 30_000,
+  retryQuotes: () => Promise.resolve(),
+  retryHedgeProof: () => Promise.resolve(),
+}
+
+interface RenderOpts {
+  payload?: unknown
+  status?: HedgeProofFetchStatus
+  hedgeProofEndpoint?: string
+  cadenceMs?: number
+  lastHedgeProofAt?: number | null
+  retryHedgeProof?: () => Promise<void>
+}
+
+/**
+ * Drop the panel into a `TestProofPipelineAxesProvider` with hand-crafted
+ * hedge-proof axes state. Mirrors the pattern `LiveQuotesPanel.test.tsx`
+ * adopted in #0051 — the panel no longer owns its fetch, so tests drive
+ * its render contract by handing it the desired payload/status directly.
+ */
+function renderPanel(opts: RenderOpts = {}) {
+  const value: ProofPipelineAxesState = {
+    ...BASE_AXES_VALUE,
+    lastHedgeProofPayload: opts.payload ?? null,
+    lastHedgeProofStatus: opts.status ?? (opts.payload !== undefined ? 'ok' : 'loading'),
+    lastHedgeProofAt: opts.lastHedgeProofAt ?? null,
+    cadenceMs: opts.cadenceMs ?? BASE_AXES_VALUE.cadenceMs,
+    hedgeProofEndpoint: opts.hedgeProofEndpoint ?? BASE_AXES_VALUE.hedgeProofEndpoint,
+    retryHedgeProof: opts.retryHedgeProof ?? BASE_AXES_VALUE.retryHedgeProof,
+  }
+  return render(
+    <TestProofPipelineAxesProvider value={value}>
+      <ProofPanelActionsProvider>
+        <LastDemoHedgePanel />
+      </ProofPanelActionsProvider>
+    </TestProofPipelineAxesProvider>,
   )
+}
+
+/** Sugar for the most common case — the panel renders an ok envelope. */
+function renderWithProof(proof: HedgeProof, source: string = RELATIVE_SOURCE) {
+  return renderPanel({ payload: { proof, source }, status: 'ok' })
 }
 
 describe('LastDemoHedgePanel', () => {
@@ -80,9 +159,8 @@ describe('LastDemoHedgePanel', () => {
   it('renders the hedge timestamp as a humanised relative phrase plus HH:MM:SS UTC', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date(T0))
-    mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp: T_PROOF }))
 
-    render(<LastDemoHedgePanel intervalMs={5 * 60_000} />)
+    renderWithProof({ ...PROOF_NO_OP, timestamp: T_PROOF })
 
     const ts = await vi.waitFor(() => {
       const el = screen.getByTestId('hedge-timestamp')
@@ -95,9 +173,8 @@ describe('LastDemoHedgePanel', () => {
   it('exposes the full ISO and local-time wall clock on the title attribute', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date(T0))
-    mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp: T_PROOF }))
 
-    render(<LastDemoHedgePanel intervalMs={5 * 60_000} />)
+    renderWithProof({ ...PROOF_NO_OP, timestamp: T_PROOF })
 
     const title = await vi.waitFor(() => {
       const t = screen.getByTestId('hedge-timestamp').getAttribute('title') ?? ''
@@ -112,9 +189,7 @@ describe('LastDemoHedgePanel', () => {
     ['zero', 0],
     ['NaN', Number.NaN],
   ])('renders — when timestamp is %s', async (_label, timestamp) => {
-    mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp }))
-
-    render(<LastDemoHedgePanel intervalMs={5 * 60_000} />)
+    renderWithProof({ ...PROOF_NO_OP, timestamp })
 
     await waitFor(() => {
       expect(screen.getByTestId('hedge-timestamp')).toBeInTheDocument()
@@ -125,9 +200,12 @@ describe('LastDemoHedgePanel', () => {
   it('relative phrase updates at the 30s ticker without a fresh fetch', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date(T0))
-    mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp: T_PROOF }))
+    // After #0062 the panel does not own a fetch — guard regression by
+    // asserting global fetch is never invoked while we drive the 30s tick.
+    const fetchSpy = vi.fn()
+    globalThis.fetch = fetchSpy as unknown as typeof globalThis.fetch
 
-    render(<LastDemoHedgePanel intervalMs={10 * 60_000} />)
+    renderWithProof({ ...PROOF_NO_OP, timestamp: T_PROOF })
 
     const initial = await vi.waitFor(() => {
       const t = screen.getByTestId('hedge-timestamp').textContent ?? ''
@@ -138,9 +216,6 @@ describe('LastDemoHedgePanel', () => {
     expect(initialMatch).not.toBeNull()
     const initialMinutes = Number(initialMatch![1])
 
-    const fetchSpy = globalThis.fetch as ReturnType<typeof vi.fn>
-    const fetchCallsBefore = fetchSpy.mock.calls.length
-
     await act(async () => {
       await vi.advanceTimersByTimeAsync(120_000)
     })
@@ -150,7 +225,7 @@ describe('LastDemoHedgePanel', () => {
     expect(afterMatch).not.toBeNull()
     const afterMinutes = Number(afterMatch![1])
     expect(afterMinutes).toBeGreaterThan(initialMinutes)
-    expect(fetchSpy.mock.calls.length).toBe(fetchCallsBefore)
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   // #0053 — RUNID and TIMESTAMP rows live in the same <dl> and each use a
@@ -161,8 +236,7 @@ describe('LastDemoHedgePanel', () => {
   // regression in either component fails fast.
   describe('RelativeTimestamp dot-spacing parity with RunIdValue (#0053)', () => {
     it('RelativeTimestamp outer wrapper is a flex container with gap-1 / flex-wrap / items-baseline', async () => {
-      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
-      render(<LastDemoHedgePanel intervalMs={60_000} />)
+      renderWithProof({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' })
 
       const ts = await waitFor(() => screen.getByTestId('hedge-timestamp'))
       expect(ts.className).toMatch(/\binline-flex\b/)
@@ -172,8 +246,7 @@ describe('LastDemoHedgePanel', () => {
     })
 
     it('RelativeTimestamp dot is a standalone aria-hidden span — not fused into a text node', async () => {
-      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
-      render(<LastDemoHedgePanel intervalMs={60_000} />)
+      renderWithProof({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' })
 
       const ts = await waitFor(() => screen.getByTestId('hedge-timestamp'))
       const dotSpans = Array.from(ts.querySelectorAll('span[aria-hidden]')).filter(
@@ -185,8 +258,7 @@ describe('LastDemoHedgePanel', () => {
     })
 
     it('RelativeTimestamp and RunIdValue share the same flex-gap container classes — single typographic rhythm', async () => {
-      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
-      render(<LastDemoHedgePanel intervalMs={60_000} />)
+      renderWithProof({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' })
 
       const ts = await waitFor(() => screen.getByTestId('hedge-timestamp'))
       const run = screen.getByTestId('hedge-runid')
@@ -199,9 +271,8 @@ describe('LastDemoHedgePanel', () => {
     it('RelativeTimestamp still renders the relative phrase + HH:MM:SS UTC text content after the restructure', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       vi.setSystemTime(new Date(T0))
-      mockFetchOk(envelope({ ...PROOF_NO_OP, timestamp: T_PROOF }))
 
-      render(<LastDemoHedgePanel intervalMs={5 * 60_000} />)
+      renderWithProof({ ...PROOF_NO_OP, timestamp: T_PROOF })
 
       const ts = await vi.waitFor(() => {
         const el = screen.getByTestId('hedge-timestamp')
@@ -214,14 +285,12 @@ describe('LastDemoHedgePanel', () => {
   })
 
   it('renders the outer section with the stable jump-target id', () => {
-    globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
-    const { container } = render(<LastDemoHedgePanel intervalMs={60_000} />)
+    const { container } = renderPanel()
     expect(container.querySelector('section[id="panel-last-hedge"]')).not.toBeNull()
   })
 
   it('outer section uses flex flex-col h-full so it fills its grid cell row height (#0039)', () => {
-    globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof globalThis.fetch
-    const { container } = render(<LastDemoHedgePanel intervalMs={60_000} />)
+    const { container } = renderPanel()
     const section = container.querySelector('section[id="panel-last-hedge"]') as HTMLElement
     expect(section).not.toBeNull()
     expect(section.className).toMatch(/\bh-full\b/)
@@ -232,9 +301,7 @@ describe('LastDemoHedgePanel', () => {
   })
 
   it('renders the no-op sentinel as a "below-threshold tick" card without a BUY badge', async () => {
-    mockFetchOk(envelope(PROOF_NO_OP))
-
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    renderWithProof(PROOF_NO_OP)
 
     await waitFor(() => {
       expect(screen.getByText(/Below-threshold tick/i)).toBeInTheDocument()
@@ -252,9 +319,7 @@ describe('LastDemoHedgePanel', () => {
   })
 
   it('renders a dry-run demo hedge with the green BUY badge, notional and DRY-RUN chip', async () => {
-    mockFetchOk(envelope(PROOF_DRY_RUN))
-
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    renderWithProof(PROOF_DRY_RUN)
 
     await waitFor(() => {
       expect(screen.getByText('TSLA')).toBeInTheDocument()
@@ -270,9 +335,7 @@ describe('LastDemoHedgePanel', () => {
   })
 
   it('renders a live demo hedge with the side badge but no DRY-RUN chip', async () => {
-    mockFetchOk(envelope(PROOF_LIVE))
-
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    renderWithProof(PROOF_LIVE)
 
     await waitFor(() => {
       expect(screen.getByText('NVDA')).toBeInTheDocument()
@@ -285,8 +348,7 @@ describe('LastDemoHedgePanel', () => {
 
   // #0040 — uniform chip family on the LastDemoHedge header row.
   it('NoOpCard chip-row: below-threshold, DRY-RUN, real trading: false share the StatusPill base classes', async () => {
-    mockFetchOk(envelope(PROOF_NO_OP))
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    renderWithProof(PROOF_NO_OP)
 
     const threshold = await screen.findByText(/Below-threshold tick/i)
     const dryRun = screen.getByText(/^DRY-RUN$/)
@@ -309,8 +371,7 @@ describe('LastDemoHedgePanel', () => {
   })
 
   it('HedgeCard chip-row: side, DRY-RUN, real trading: false share the StatusPill base classes and tone', async () => {
-    mockFetchOk(envelope(PROOF_DRY_RUN))
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    renderWithProof(PROOF_DRY_RUN)
 
     const side = await screen.findByText(/^buy$/i)
     const dryRun = screen.getByText(/^DRY-RUN$/)
@@ -339,8 +400,7 @@ describe('LastDemoHedgePanel', () => {
   // font-semibold text-white` span is replaced with a `StatusPill
   // tone="symbol"` whose chrome matches the rest of the row.
   it('SymbolLabel: symbol renders inside a StatusPill with the symbol tone (#0044)', async () => {
-    mockFetchOk(envelope(PROOF_NO_OP))
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    renderWithProof(PROOF_NO_OP)
 
     const symbol = await screen.findByText('AAPL')
     const cls = symbol.className
@@ -360,8 +420,7 @@ describe('LastDemoHedgePanel', () => {
   })
 
   it('SymbolLabel: notionalUsd value renders at text-xs not text-sm so it baseline-aligns with the pill row (#0044)', async () => {
-    mockFetchOk(envelope(PROOF_DRY_RUN))
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    renderWithProof(PROOF_DRY_RUN)
 
     const dollar = await screen.findByText('$250.00')
     const cls = dollar.className
@@ -378,8 +437,7 @@ describe('LastDemoHedgePanel', () => {
   // family, the footer became a redundant duplicate. Delete it; the
   // header rail's `title=` tooltip remains the path to the full string.
   it('renders the source path once — in the header rail only, with no SourceFooter caption (#0045)', async () => {
-    mockFetchOk(envelope(PROOF_NO_OP))
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    renderWithProof(PROOF_NO_OP)
 
     const headerMeta = await screen.findByTestId('panel-header-meta')
     expect(headerMeta.textContent).toContain('hedges/latest.json')
@@ -401,16 +459,8 @@ describe('LastDemoHedgePanel', () => {
     expect(fullPathOccurrences).toHaveLength(0)
   })
 
-  it('renders the missing-proof state on a 404', async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: false,
-        status: 404,
-        json: () => Promise.resolve({ error: 'no_proof' }),
-      } as Response),
-    )
-
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+  it('renders the missing-proof state when the hedge-proof axis is missing (404)', async () => {
+    renderPanel({ status: 'missing' })
 
     await waitFor(() => {
       expect(screen.getByText(/No proof yet/i)).toBeInTheDocument()
@@ -418,55 +468,35 @@ describe('LastDemoHedgePanel', () => {
     expect(screen.getByText(/hedge:demo/)).toBeInTheDocument()
   })
 
-  it('renders the canned sanitised message from a 500 body without leaking debug strings', async () => {
-    const cannedMessage = 'Hedge proof file is present but unreadable.'
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: false,
-        status: 500,
-        json: () =>
-          Promise.resolve({
-            error: 'read_failed',
-            code: 'PROOF_UNREADABLE',
-            message: cannedMessage,
-          }),
-      } as Response),
-    )
+  it('missing-proof state links to the configured hedge-proof endpoint', async () => {
+    renderPanel({ status: 'missing', hedgeProofEndpoint: '/api/hedge-proof/latest' })
 
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    const link = await screen.findByTestId('hedge-proof-url-link')
+    expect(link.getAttribute('href')).toBe('/api/hedge-proof/latest')
+    expect(link.getAttribute('target')).toBe('_blank')
+  })
+
+  it('renders the canonical sanitised message when the axis reports error, without leaking debug strings', async () => {
+    renderPanel({ status: 'error' })
 
     await waitFor(() => {
       expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
     })
-    expect(screen.getByText(cannedMessage)).toBeInTheDocument()
+    expect(screen.getByText(/Hedge proof endpoint is unreachable/i)).toBeInTheDocument()
     expect(screen.queryByText(/JSON/)).not.toBeInTheDocument()
     expect(screen.queryByText(/parse/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/\/home\//)).not.toBeInTheDocument()
     expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument()
-  })
+    expect(screen.queryByText(/HTTP \d/)).not.toBeInTheDocument()
 
-  it('falls back to a generic HTTP message when the 500 body is not JSON', async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: false,
-        status: 502,
-        json: () => Promise.reject(new Error('not json')),
-      } as Response),
+    const tagged = consoleErrorSpy.mock.calls.find(
+      (c: unknown[]) => c[0] === '[proof-panel]' && c[1] === 'hedge-proof',
     )
-
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
-
-    await waitFor(() => {
-      expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
-    })
-    expect(screen.getByText(/HTTP 502/)).toBeInTheDocument()
-    expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument()
+    expect(tagged).toBeDefined()
   })
 
   it('renders the canned shape-mismatch message when the 200 body has no proof field', async () => {
-    mockFetchOk({ source: RELATIVE_SOURCE })
-
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    renderPanel({ payload: { source: RELATIVE_SOURCE }, status: 'ok' })
 
     await waitFor(() => {
       expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
@@ -486,22 +516,23 @@ describe('LastDemoHedgePanel', () => {
   })
 
   it('renders the canned shape-mismatch message when the 200 body has proof but no beforeExposure', async () => {
-    mockFetchOk({
-      proof: {
-        runId: 'r',
-        orderId: 'x',
-        symbol: 'AAPL',
-        side: 'buy',
-        notionalUsd: 0,
-        timestamp: 0,
-        dryRun: true,
-        etoroMode: 'sandbox',
-        realTradingEnabled: false,
+    renderPanel({
+      payload: {
+        proof: {
+          runId: 'r',
+          orderId: 'x',
+          symbol: 'AAPL',
+          side: 'buy',
+          notionalUsd: 0,
+          timestamp: 0,
+          dryRun: true,
+          etoroMode: 'sandbox',
+          realTradingEnabled: false,
+        },
+        source: RELATIVE_SOURCE,
       },
-      source: RELATIVE_SOURCE,
+      status: 'ok',
     })
-
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
 
     await waitFor(() => {
       expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
@@ -517,21 +548,76 @@ describe('LastDemoHedgePanel', () => {
     expect(tagged).toBeDefined()
   })
 
-  it('renders the canned unreachable message when fetch itself rejects', async () => {
-    globalThis.fetch = vi.fn(() => Promise.reject(new Error('Failed to fetch')))
+  it('error branch links to the configured hedge-proof endpoint', async () => {
+    renderPanel({ status: 'error' })
 
-    render(<LastDemoHedgePanel intervalMs={60_000} />)
+    const link = await screen.findByTestId('hedge-proof-url-link')
+    expect(link.getAttribute('href')).toBe('/api/hedge-proof/latest')
+    expect(link.getAttribute('target')).toBe('_blank')
+  })
+
+  it('Retry now button fires retryHedgeProof from the provider', async () => {
+    const retryHedgeProof = vi.fn(() => Promise.resolve())
+    renderPanel({ status: 'ok', payload: envelope(PROOF_NO_OP), retryHedgeProof })
+
+    const button = await screen.findByTestId('last-hedge-retry')
+    await act(async () => {
+      fireEvent.click(button)
+    })
+    expect(retryHedgeProof).toHaveBeenCalledTimes(1)
+  })
+
+  // Integrated coverage — confirm the panel and the rest of the proof-page
+  // axes provider stay in sync when both are driven by the same hook. The
+  // hook itself owns the single `/api/hedge-proof/latest` poller (#0062),
+  // so the panel under the real provider must reflect whatever the hook
+  // last fetched without making a second request of its own.
+  it('integrated provider drives the panel via the shared hedge-proof axis', async () => {
+    // The hook also mounts a wagmi useReadContract probe for the on-chain
+    // axis; quiet that so the test focuses on the hedge-proof path.
+    const { useReadContract } = await import('wagmi')
+    vi.mocked(useReadContract).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    } as unknown as ReturnType<typeof useReadContract>)
+
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
+      const url = String(input)
+      if (url.includes('/api/hedge-proof/latest')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => envelope(PROOF_DRY_RUN),
+        } as Response
+      }
+      return {
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      } as Response
+    })
+    globalThis.fetch = fetchSpy as unknown as typeof globalThis.fetch
+
+    render(
+      <ProofPipelineAxesProvider offChainIntervalMs={60_000}>
+        <ProofPanelActionsProvider>
+          <LastDemoHedgePanel />
+        </ProofPanelActionsProvider>
+      </ProofPipelineAxesProvider>,
+    )
 
     await waitFor(() => {
-      expect(screen.getByText(/Hedge proof unavailable/i)).toBeInTheDocument()
+      expect(screen.getByText('TSLA')).toBeInTheDocument()
     })
-    expect(screen.getByText(/Hedge proof endpoint is unreachable/i)).toBeInTheDocument()
-    expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument()
-
-    const tagged = consoleErrorSpy.mock.calls.find(
-      (c: unknown[]) => c[0] === '[proof-panel]' && c[1] === 'hedge-proof',
+    expect(screen.getByText(/^buy$/i)).toBeInTheDocument()
+    // ONE poll per cycle — task #0062 collapses a previously-duplicated
+    // 15s panel poller into the hook's 60s axis cadence in this test.
+    const hedgeCalls = fetchSpy.mock.calls.filter((c) =>
+      String(c[0]).includes('/api/hedge-proof/latest'),
     )
-    expect(tagged).toBeDefined()
+    expect(hedgeCalls.length).toBeGreaterThanOrEqual(1)
+    expect(hedgeCalls.length).toBeLessThanOrEqual(2)
   })
 
   // Task lane6-last-demo-hedge-runid-renders-as-dash-encoded-iso-hash:
@@ -560,9 +646,7 @@ describe('LastDemoHedgePanel', () => {
     })
 
     it('runId field renders the wallclock and tag instead of the raw composite when input matches', async () => {
-      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
-
-      render(<LastDemoHedgePanel intervalMs={60_000} />)
+      renderWithProof({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' })
 
       const el = await waitFor(() => screen.getByTestId('hedge-runid'))
       expect(el.textContent).toMatch(/2026-05-23 13:47:20 UTC/)
@@ -571,9 +655,7 @@ describe('LastDemoHedgePanel', () => {
     })
 
     it('runId field renders the raw string when input does not match the canonical pattern', async () => {
-      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: 'legacy-run-id' }))
-
-      render(<LastDemoHedgePanel intervalMs={60_000} />)
+      renderWithProof({ ...PROOF_NO_OP, runId: 'legacy-run-id' })
 
       const el = await waitFor(() => screen.getByTestId('hedge-runid'))
       expect(el.textContent).toBe('legacy-run-id')
@@ -585,9 +667,7 @@ describe('LastDemoHedgePanel', () => {
     ])(
       'runId field surfaces the raw value (%s) as the title tooltip in both branches',
       async (_label, raw) => {
-        mockFetchOk(envelope({ ...PROOF_NO_OP, runId: raw }))
-
-        render(<LastDemoHedgePanel intervalMs={60_000} />)
+        renderWithProof({ ...PROOF_NO_OP, runId: raw })
 
         const el = await waitFor(() => screen.getByTestId('hedge-runid'))
         expect(el.getAttribute('title')).toBe(raw)
@@ -603,9 +683,7 @@ describe('LastDemoHedgePanel', () => {
       })
 
       const raw = '2026-05-23T13-47-20-583-96c7b2'
-      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: raw }))
-
-      render(<LastDemoHedgePanel intervalMs={60_000} />)
+      renderWithProof({ ...PROOF_NO_OP, runId: raw })
 
       const button = await waitFor(() => screen.getByTestId('hedge-runid-copy'))
       expect(button.tagName).toBe('BUTTON')
@@ -632,9 +710,7 @@ describe('LastDemoHedgePanel', () => {
         writable: true,
       })
 
-      mockFetchOk(envelope({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' }))
-
-      render(<LastDemoHedgePanel intervalMs={60_000} />)
+      renderWithProof({ ...PROOF_NO_OP, runId: '2026-05-23T13-47-20-583-96c7b2' })
 
       const button = await waitFor(() => screen.getByTestId('hedge-runid-copy'))
       await act(async () => {

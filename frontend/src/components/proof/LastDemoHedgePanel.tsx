@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { type ExposureSnapshot, type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
 import { parseRunId } from '@/lib/parseRunId'
@@ -8,6 +8,7 @@ import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
 import { usePanelRetry } from './ProofPanelActionsProvider'
+import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 import { shortenSourcePath } from './panelHeaderMetaUtils'
 
 // Shared chip family for the LastDemoHedge header row. All status pills
@@ -93,23 +94,6 @@ type FetchState =
   | { status: 'missing'; message: string }
   | { status: 'error'; message: string }
 
-interface LastDemoHedgePanelProps {
-  endpoint?: string
-  intervalMs?: number
-}
-
-async function readSanitisedMessage(res: Response): Promise<string> {
-  try {
-    const body = (await res.json()) as { message?: unknown }
-    if (typeof body?.message === 'string' && body.message.length > 0) {
-      return body.message
-    }
-  } catch {
-    // body wasn't JSON; fall through to the generic status message.
-  }
-  return `HTTP ${res.status}`
-}
-
 function formatUsd(n: number): string {
   if (!Number.isFinite(n)) return '—'
   return n.toLocaleString('en-US', {
@@ -159,55 +143,48 @@ function RelativeTimestamp({ ms }: { ms: number }) {
   )
 }
 
-export function LastDemoHedgePanel({
-  endpoint = '/api/hedge-proof/latest',
-  intervalMs = 15_000,
-}: LastDemoHedgePanelProps) {
-  const [state, setState] = useState<FetchState>({ status: 'loading' })
-  const [lastPollAt, setLastPollAt] = useState<number | null>(null)
-  const cancelledRef = useRef(false)
+/**
+ * Render the last-demo-hedge card. Reads `{ lastHedgeProofPayload,
+ * lastHedgeProofStatus, lastHedgeProofAt, cadenceMs, hedgeProofEndpoint,
+ * retryHedgeProof }` from `ProofPipelineAxesProvider` so the panel
+ * freshness, the rollup chip, and the flow diagram never disagree on
+ * whether a proof is recorded in the same render frame. The shape
+ * validation (`isProofEnvelope`) stays local because the hook hands the
+ * panel raw payload bytes — a malformed-but-200 response surfaces as a
+ * distinct error branch here (with the canonical sanitised string),
+ * mirroring the contract `LiveQuotesPanel` adopted in #0051. See task
+ * lane6-hedge-proof-duplicate-poller-collapse-to-axes-provider (#0062).
+ */
+export function LastDemoHedgePanel() {
+  const {
+    lastHedgeProofPayload,
+    lastHedgeProofStatus,
+    lastHedgeProofAt,
+    cadenceMs,
+    hedgeProofEndpoint,
+    retryHedgeProof,
+  } = useProofPipelineAxesContext()
+  const { busy, fire: handleRetry } = usePanelRetry('hedgeProof', retryHedgeProof)
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(endpoint, { cache: 'no-store' })
-      if (res.status === 404) {
-        if (!cancelledRef.current) {
-          setState({ status: 'missing', message: 'No hedge proof recorded yet.' })
-        }
-        return
-      }
-      if (!res.ok) {
-        const sanitisedMessage = await readSanitisedMessage(res)
-        if (!cancelledRef.current) setState({ status: 'error', message: sanitisedMessage })
-        return
-      }
-      const raw = (await res.json()) as unknown
-      if (!isProofEnvelope(raw)) throw new Error(SHAPE_MISMATCH)
-      if (!cancelledRef.current) setState({ status: 'ok', data: raw })
-    } catch (err) {
-      if (!cancelledRef.current) {
-        const ctx =
-          err instanceof Error && err.message === SHAPE_MISMATCH
-            ? 'hedge-proof-shape'
-            : 'hedge-proof'
-        setState({ status: 'error', message: sanitiseClientError(ctx, err) })
-      }
-    } finally {
-      if (!cancelledRef.current) setLastPollAt(Date.now())
+  const state: FetchState = useMemo(() => {
+    if (lastHedgeProofStatus === 'loading') return { status: 'loading' }
+    if (lastHedgeProofStatus === 'missing') {
+      return { status: 'missing', message: 'No hedge proof recorded yet.' }
     }
-  }, [endpoint])
-
-  useEffect(() => {
-    cancelledRef.current = false
-    void load()
-    const timer = setInterval(() => void load(), intervalMs)
-    return () => {
-      cancelledRef.current = true
-      clearInterval(timer)
+    if (lastHedgeProofStatus === 'error') {
+      return {
+        status: 'error',
+        message: sanitiseClientError('hedge-proof', new Error('hedge-proof fetch failed')),
+      }
     }
-  }, [load, intervalMs])
-
-  const { busy, fire: handleRetry } = usePanelRetry('hedgeProof', load)
+    if (!isProofEnvelope(lastHedgeProofPayload)) {
+      return {
+        status: 'error',
+        message: sanitiseClientError('hedge-proof-shape', new Error(SHAPE_MISMATCH)),
+      }
+    }
+    return { status: 'ok', data: lastHedgeProofPayload }
+  }, [lastHedgeProofStatus, lastHedgeProofPayload])
 
   return (
     <section
@@ -231,8 +208,8 @@ export function LastDemoHedgePanel({
             }
             cadence={
               <NextPollCountdown
-                lastPollAt={lastPollAt}
-                intervalMs={intervalMs}
+                lastPollAt={lastHedgeProofAt}
+                intervalMs={cadenceMs}
                 busy={busy}
                 testId="last-hedge-countdown"
               />
@@ -260,13 +237,13 @@ export function LastDemoHedgePanel({
             <code className="text-accent"> backend/hedge-engine</code> to generate one.
           </div>
           <a
-            href={endpoint}
+            href={hedgeProofEndpoint}
             target="_blank"
             rel="noopener noreferrer"
             data-testid="hedge-proof-url-link"
             className="mt-2 inline-flex items-center gap-1 font-mono text-xs text-gray-400 underline-offset-2 hover:text-accent hover:underline"
           >
-            {endpoint} <span aria-hidden>↗</span>
+            {hedgeProofEndpoint} <span aria-hidden>↗</span>
           </a>
         </div>
       )}
@@ -276,13 +253,13 @@ export function LastDemoHedgePanel({
           <div className="font-semibold">Hedge proof unavailable</div>
           <div className="mt-1 text-yellow-300/80">{state.message}</div>
           <a
-            href={endpoint}
+            href={hedgeProofEndpoint}
             target="_blank"
             rel="noopener noreferrer"
             data-testid="hedge-proof-url-link"
             className="mt-2 inline-flex items-center gap-1 font-mono text-xs text-yellow-100 underline-offset-2 hover:underline"
           >
-            {endpoint} <span aria-hidden>↗</span>
+            {hedgeProofEndpoint} <span aria-hidden>↗</span>
           </a>
         </div>
       )}

@@ -67,7 +67,7 @@ function renderProofPanels() {
       <LiveQuotesPanel />
       <OnChainOraclePanel />
       <OracleUpdatesPanel />
-      <LastDemoHedgePanel intervalMs={60_000} />
+      <LastDemoHedgePanel />
     </PROOF_PAGE_PROVIDERS>,
   )
 }
