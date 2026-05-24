@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup, within } from '@testing-library/react'
+import { render, screen, cleanup } from '@testing-library/react'
 
 vi.mock('wagmi', () => ({
-  useReadContracts: vi.fn(),
+  useReadContract: vi.fn(),
 }))
 
 vi.mock('@/lib/stockData', () => ({
@@ -19,38 +19,10 @@ vi.mock('@/lib/abi', () => ({
   PriceOracleABI: [],
 }))
 
-import { useReadContracts } from 'wagmi'
+import { useReadContract } from 'wagmi'
 import { PipelineFlowDiagram } from '../PipelineFlowDiagram'
-import {
-  ProofPipelineAxesProvider,
-  type ProofPipelineAxesProviderProps,
-} from '../ProofPipelineAxesProvider'
 
-const useReadContractsMock = vi.mocked(useReadContracts)
-
-function renderFlow(opts: Omit<ProofPipelineAxesProviderProps, 'children'> = {}) {
-  return render(
-    <ProofPipelineAxesProvider {...opts}>
-      <PipelineFlowDiagram />
-    </ProofPipelineAxesProvider>,
-  )
-}
-
-/**
- * #0074 — the flow strip now renders two `<ol>` containers (desktop +
- * mobile), so the previous `desktopFlow().getByTestId('pipeline-node-…')` queries
- * resolve to multiple elements. Scope every per-node assertion through
- * one of these helpers so the test is explicit about which variant it
- * exercises and the strict-mode `getBy` semantics keep biting on real
- * regressions.
- */
-function desktopFlow(): ReturnType<typeof within> {
-  return within(screen.getByTestId('pipeline-flow-desktop'))
-}
-
-function mobileFlow(): ReturnType<typeof within> {
-  return within(screen.getByTestId('pipeline-flow-mobile'))
-}
+const useReadContractMock = vi.mocked(useReadContract)
 
 const QUOTES_OK = {
   quotes: {
@@ -87,52 +59,39 @@ function installFetchMock(handler: FetchMockHandler) {
 }
 
 function mockOnChainHealthy() {
-  useReadContractsMock.mockReturnValue({
-    data: [
-      {
-        status: 'success',
-        result: {
-          price8: 17_860_000_000n,
-          timestamp: BigInt(Math.floor(Date.now() / 1000)),
-          session: 0,
-          confidence: 95,
-          signerCount: 1,
-        },
-      },
-    ],
+  useReadContractMock.mockReturnValue({
+    data: {
+      price8: 17_860_000_000n,
+      timestamp: BigInt(Math.floor(Date.now() / 1000)),
+      session: 0,
+      confidence: 95,
+      signerCount: 1,
+    },
     isLoading: false,
     error: null,
-    refetch: () => Promise.resolve({ data: undefined } as never),
-  } as unknown as ReturnType<typeof useReadContracts>)
+  } as unknown as ReturnType<typeof useReadContract>)
 }
 
 function mockOnChainDegraded() {
-  useReadContractsMock.mockReturnValue({
-    data: [
-      {
-        status: 'success',
-        result: {
-          price8: 0n,
-          timestamp: 0n,
-          session: 3,
-          confidence: 0,
-          signerCount: 0,
-        },
-      },
-    ],
+  useReadContractMock.mockReturnValue({
+    data: {
+      price8: 0n,
+      timestamp: 0n,
+      session: 3,
+      confidence: 0,
+      signerCount: 0,
+    },
     isLoading: false,
     error: null,
-    refetch: () => Promise.resolve({ data: undefined } as never),
-  } as unknown as ReturnType<typeof useReadContracts>)
+  } as unknown as ReturnType<typeof useReadContract>)
 }
 
 function mockOnChainUnknown() {
-  useReadContractsMock.mockReturnValue({
+  useReadContractMock.mockReturnValue({
     data: undefined,
     isLoading: true,
     error: null,
-    refetch: () => Promise.resolve({ data: undefined } as never),
-  } as unknown as ReturnType<typeof useReadContracts>)
+  } as unknown as ReturnType<typeof useReadContract>)
 }
 
 const ALL_NODE_IDS = [
@@ -147,7 +106,7 @@ const ALL_NODE_IDS = [
 describe('PipelineFlowDiagram', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    useReadContractsMock.mockReset()
+    useReadContractMock.mockReset()
   })
 
   afterEach(() => {
@@ -160,33 +119,32 @@ describe('PipelineFlowDiagram', () => {
     mockOnChainUnknown()
     installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
 
-    renderFlow({ offChainIntervalMs: 60_000 })
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
 
     const section = screen.getByTestId('pipeline-flow-diagram')
     expect(section).toBeInTheDocument()
     expect(section.getAttribute('aria-label')).toBe('Pipeline flow')
 
     for (const id of ALL_NODE_IDS) {
-      const node = desktopFlow().getByTestId(`pipeline-node-${id}`)
+      const node = screen.getByTestId(`pipeline-node-${id}`)
       expect(node).toBeInTheDocument()
     }
-    const desktop = desktopFlow()
-    expect(desktop.getByText(/eToro/i)).toBeInTheDocument()
-    expect(desktop.getByText(/price-service/i)).toBeInTheDocument()
-    expect(desktop.getByText(/oracle-signer/i)).toBeInTheDocument()
-    expect(desktop.getByText('chain')).toBeInTheDocument()
-    expect(desktop.getByText('frontend')).toBeInTheDocument()
-    expect(desktop.getByText(/demo hedge/i)).toBeInTheDocument()
+    expect(screen.getByText(/eToro/i)).toBeInTheDocument()
+    expect(screen.getByText(/price-service/i)).toBeInTheDocument()
+    expect(screen.getByText(/oracle-signer/i)).toBeInTheDocument()
+    expect(screen.getByText('chain')).toBeInTheDocument()
+    expect(screen.getByText('frontend')).toBeInTheDocument()
+    expect(screen.getByText(/demo hedge/i)).toBeInTheDocument()
   })
 
   it('tone="unknown" on first render before any fetch resolves', () => {
     mockOnChainUnknown()
     installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
 
-    renderFlow({ offChainIntervalMs: 60_000 })
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
 
     for (const id of ALL_NODE_IDS) {
-      const node = desktopFlow().getByTestId(`pipeline-node-${id}`)
+      const node = screen.getByTestId(`pipeline-node-${id}`)
       expect(node.getAttribute('data-tone')).toBe('unknown')
     }
   })
@@ -200,18 +158,16 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ offChainIntervalMs: 60_000 })
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
 
     await vi.waitFor(() => {
       for (const id of ALL_NODE_IDS) {
-        const node = desktopFlow().getByTestId(`pipeline-node-${id}`)
+        const node = screen.getByTestId(`pipeline-node-${id}`)
         expect(node.getAttribute('data-tone')).toBe('healthy')
       }
     })
 
-    const edges = screen
-      .getByTestId('pipeline-flow-desktop')
-      .querySelectorAll('[data-testid^="pipeline-edge-"]')
+    const edges = document.querySelectorAll('[data-testid^="pipeline-edge-"]')
     expect(edges.length).toBeGreaterThanOrEqual(5)
     edges.forEach((edge) => {
       expect(edge.getAttribute('data-tone')).toBe('healthy')
@@ -229,21 +185,21 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ offChainIntervalMs: 60_000 })
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
 
     await vi.waitFor(() => {
-      expect(desktopFlow().getByTestId('pipeline-node-oracle-signer').getAttribute('data-tone')).toBe(
+      expect(screen.getByTestId('pipeline-node-oracle-signer').getAttribute('data-tone')).toBe(
         'degraded',
       )
-      expect(desktopFlow().getByTestId('pipeline-node-etoro').getAttribute('data-tone')).toBe('healthy')
+      expect(screen.getByTestId('pipeline-node-etoro').getAttribute('data-tone')).toBe('healthy')
     })
-    expect(desktopFlow().getByTestId('pipeline-node-chain').getAttribute('data-tone')).toBe('degraded')
-    expect(desktopFlow().getByTestId('pipeline-node-frontend').getAttribute('data-tone')).toBe('degraded')
-    expect(desktopFlow().getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
+    expect(screen.getByTestId('pipeline-node-chain').getAttribute('data-tone')).toBe('degraded')
+    expect(screen.getByTestId('pipeline-node-frontend').getAttribute('data-tone')).toBe('degraded')
+    expect(screen.getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
       'healthy',
     )
 
-    const onChainEdge = desktopFlow().getByTestId('pipeline-edge-oracle-signer-chain')
+    const onChainEdge = screen.getByTestId('pipeline-edge-oracle-signer-chain')
     expect(onChainEdge.getAttribute('data-tone')).toBe('degraded')
   })
 
@@ -256,24 +212,20 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ offChainIntervalMs: 60_000 })
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
 
     await vi.waitFor(() => {
-      expect(desktopFlow().getByTestId('pipeline-node-etoro').getAttribute('data-tone')).toBe('degraded')
+      expect(screen.getByTestId('pipeline-node-etoro').getAttribute('data-tone')).toBe('degraded')
     })
-    expect(desktopFlow().getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
+    expect(screen.getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
       'degraded',
     )
 
-    const upstreamEdge = desktopFlow().getByTestId('pipeline-edge-etoro-price-service')
+    const upstreamEdge = screen.getByTestId('pipeline-edge-etoro-price-service')
     expect(upstreamEdge.getAttribute('data-tone')).toBe('degraded')
   })
 
-  it('does NOT render a trailing degradation paragraph when axes are degraded — the rollup chip row above is the single authority (#0052)', async () => {
-    // Before #0052 the flow band trailed a `<p data-testid="pipeline-
-    // flow-degradation">` paragraph that re-stated the same failing
-    // axes already covered by the AlivenessRollup chips. Deleted in
-    // favour of a single source of truth (the chip row).
+  it('surfaces REASON_BY_AXIS strings below the diagram when any axis is degraded', async () => {
     mockOnChainDegraded()
     installFetchMock((url) => {
       if (url.includes('/quotes')) throw new Error('boom')
@@ -282,14 +234,15 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ offChainIntervalMs: 60_000 })
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
 
     await vi.waitFor(() => {
-      expect(desktopFlow().getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
-        'degraded',
-      )
+      const el = screen.getByTestId('pipeline-flow-degradation')
+      const text = el.textContent ?? ''
+      expect(text).toContain('price-service unreachable')
+      expect(text).toContain('no on-chain prices')
+      expect(text).toContain('hedge-proof missing')
     })
-    expect(screen.queryByTestId('pipeline-flow-degradation')).toBeNull()
   })
 
   it('renders no standalone edge `<li>` past the last node — every edge sits inside a node `<li>`', async () => {
@@ -301,26 +254,22 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ offChainIntervalMs: 60_000 })
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
 
     await vi.waitFor(() => {
-      expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+      expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
         'healthy',
       )
     })
 
     // The last node has no trailing arrow — it terminates the chain.
-    const lastNode = desktopFlow().getByTestId('pipeline-node-demo-hedge')
+    const lastNode = screen.getByTestId('pipeline-node-demo-hedge')
     expect(lastNode.querySelector('[data-testid^="pipeline-edge-"]')).toBeNull()
 
-    // Every rendered edge in the desktop variant lives inside the LI
-    // of the node that precedes it, so flex-wrap can never strand an
-    // edge in empty space at the end of a wrapped row (#0031). The
-    // mobile variant uses standalone chevron <li>s and is exercised
-    // separately by the "mobile vertical variant" suite.
-    const edges = screen
-      .getByTestId('pipeline-flow-desktop')
-      .querySelectorAll('[data-testid^="pipeline-edge-"]')
+    // Every rendered edge lives inside the LI of the node that precedes it,
+    // so flex-wrap can never strand an edge in empty space at the end of a
+    // wrapped row.
+    const edges = document.querySelectorAll('[data-testid^="pipeline-edge-"]')
     expect(edges).toHaveLength(5)
     edges.forEach((edge) => {
       const parentLi = edge.closest('li[data-testid^="pipeline-node-"]')
@@ -337,10 +286,10 @@ describe('PipelineFlowDiagram', () => {
       return { ok: false, status: 404, body: {} }
     })
 
-    renderFlow({ offChainIntervalMs: 60_000 })
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
 
     await vi.waitFor(() => {
-      const onChainEdge = desktopFlow().getByTestId('pipeline-edge-oracle-signer-chain')
+      const onChainEdge = screen.getByTestId('pipeline-edge-oracle-signer-chain')
       expect(onChainEdge.getAttribute('data-tone')).toBe('degraded')
       expect(onChainEdge.className).toMatch(/text-yellow/)
     })
@@ -352,882 +301,17 @@ describe('PipelineFlowDiagram', () => {
       throw new Error('ECONNREFUSED 10.0.0.42 super-secret-host')
     })
 
-    renderFlow({ offChainIntervalMs: 60_000 })
+    render(<PipelineFlowDiagram intervalMs={60_000} />)
 
     const section = await vi.waitFor(() => {
       const el = screen.getByTestId('pipeline-flow-diagram')
       expect(
-        desktopFlow().getByTestId('pipeline-node-etoro').getAttribute('data-tone'),
+        screen.getByTestId('pipeline-node-etoro').getAttribute('data-tone'),
       ).toBe('degraded')
       return el
     })
     expect(section.textContent).not.toMatch(/ECONNREFUSED/)
     expect(section.textContent).not.toMatch(/10\.0\.0\.42/)
     expect(section.textContent).not.toMatch(/super-secret-host/)
-  })
-
-  // #0047 — the trailing demo-hedge node and its frontend→demo-hedge
-  // edge used to paint with their own `hedgeProof` axis tone, which
-  // made the terminal segment look orphaned from the upstream chain
-  // exactly when upstream was non-healthy (the most common dev state:
-  // upstream degraded, hedge-proof artifact already on disk = healthy).
-  // Subordinate the trailing tone to the dominant upstream tone, but
-  // preserve the underlying axis truth via a small indicator dot.
-  describe('demo-hedge terminal subordination (#0047)', () => {
-    it('inherits upstream tone when both upstream axes are degraded and hedgeProof is healthy', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) throw new Error('boom')
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
-          'degraded',
-        )
-      })
-      expect(
-        desktopFlow().getByTestId('pipeline-edge-frontend-demo-hedge').getAttribute('data-tone'),
-      ).toBe('degraded')
-      expect(desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')).not.toBeNull()
-    })
-
-    it('keeps own tone when upstream is fully healthy and hedgeProof is degraded', async () => {
-      mockOnChainHealthy()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: false, status: 500, body: {} }
-        return { ok: false, status: 404, body: {} }
-      })
-
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
-          'degraded',
-        )
-      })
-      // Upstream healthy → no subordination, no indicator dot needed.
-      expect(desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')).toBeNull()
-    })
-
-    it('inherits upstream tone when one upstream axis is unknown', async () => {
-      mockOnChainUnknown()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      // Wait for the off-chain fetches to resolve so quotes flips to
-      // healthy and hedgeProof flips to healthy; on-chain stays
-      // unknown (data === undefined). The demo-hedge node should
-      // then inherit the dominant upstream tone (unknown) and reveal
-      // the indicator dot announcing the underlying axis is healthy.
-      await vi.waitFor(() => {
-        const node = desktopFlow().getByTestId('pipeline-node-demo-hedge')
-        expect(node.getAttribute('data-tone')).toBe('unknown')
-        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge-indicator')).not.toBeNull()
-      })
-      expect(
-        desktopFlow().getByTestId('pipeline-edge-frontend-demo-hedge').getAttribute('data-tone'),
-      ).toBe('unknown')
-      expect(desktopFlow().getByTestId('pipeline-node-etoro').getAttribute('data-tone')).toBe('healthy')
-    })
-
-    it('keeps own healthy tone (with no indicator) when both upstream and hedgeProof are healthy', async () => {
-      mockOnChainHealthy()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
-          'healthy',
-        )
-      })
-      expect(desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')).toBeNull()
-    })
-  })
-
-  // #0058 — the small green indicator dot that the demo-hedge pill renders
-  // when the hedgeProof axis is healthy but upstream is degraded had no
-  // surrounding caption, no title, no legend entry. A reviewer would see
-  // a "random green speck" with no on-page hint what it means. The fix
-  // adds (a) a `title` on the dot, and (b) a dedicated legend entry
-  // sharing the same 1.5×1.5 swatch size as the dot itself.
-  describe('subordinated demo-hedge indicator legend + tooltip (#0058)', () => {
-    it('indicator dot carries a title attribute explaining the subordinated state', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) throw new Error('boom')
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        const dot = desktopFlow().getByTestId('pipeline-node-demo-hedge-indicator')
-        expect(dot.getAttribute('title')).toBe(
-          'hedge-proof axis healthy — pill colour mirrors upstream tone',
-        )
-      })
-    })
-
-    // #0075 — the subordinated case (hedgeProof healthy + at least one
-    // upstream axis non-healthy) is the ONLY state where the indicator
-    // dot renders, and now also the only state where the 4th legend
-    // entry renders. Use the same fixtures as the #0047 subordination
-    // suite above so the boolean stays linked.
-    it('legend contains a hedge-subordinated entry as the last item when the indicator is on screen', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) throw new Error('boom')
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')).not.toBeNull()
-      })
-
-      const legend = screen.getByTestId('pipeline-flow-legend')
-      const entries = legend.querySelectorAll('[data-testid^="pipeline-legend-"]')
-      expect(entries).toHaveLength(4)
-      expect(entries[3].getAttribute('data-testid')).toBe(
-        'pipeline-legend-hedge-subordinated',
-      )
-
-      const text = (entries[3].textContent ?? '').toLowerCase()
-      expect(text).toMatch(/hedge-proof healthy/)
-      expect(text).toMatch(/mirroring upstream tone/)
-    })
-
-    it('hedge-subordinated legend swatch matches the indicator dot size (h-1.5 w-1.5)', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) throw new Error('boom')
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const entry = await vi.waitFor(() =>
-        screen.getByTestId('pipeline-legend-hedge-subordinated'),
-      )
-      const swatch = entry.querySelector('[aria-hidden]') as HTMLElement | null
-      expect(swatch).not.toBeNull()
-      const cls = swatch?.className ?? ''
-      expect(cls).toMatch(/\bh-1\.5\b/)
-      expect(cls).toMatch(/\bw-1\.5\b/)
-    })
-
-    it('indicator dot AND legend entry both hide when the demo-hedge pill is not subordinated (#0075)', async () => {
-      mockOnChainHealthy()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
-          'healthy',
-        )
-      })
-      expect(desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')).toBeNull()
-      // #0075 — the 4th legend entry is gated on the same boolean as the
-      // indicator dot; with all axes healthy there is no indicator on
-      // screen, so the legend entry must not be present either.
-      expect(screen.queryByTestId('pipeline-legend-hedge-subordinated')).toBeNull()
-    })
-  })
-
-  // #0075 — gate the 4th legend entry on the same `hedgeIndicatorVisible`
-  // predicate that drives the indicator dot. The legend's job is to
-  // describe glyphs ON THIS DIAGRAM, RIGHT NOW; showing an entry for a
-  // glyph that isn't on the page makes a reviewer search for something
-  // that doesn't exist.
-  describe('hedge-subordinated legend gating (#0075)', () => {
-    function expectIndicatorAndLegendAgree(): void {
-      const indicator = desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')
-      const legendEntry = screen.queryByTestId('pipeline-legend-hedge-subordinated')
-      expect(Boolean(legendEntry), 'legend entry presence').toBe(Boolean(indicator))
-    }
-
-    it('all axes healthy: legend has exactly 3 entries; no indicator', async () => {
-      mockOnChainHealthy()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
-          'healthy',
-        )
-      })
-      const entries = screen
-        .getByTestId('pipeline-flow-legend')
-        .querySelectorAll('[data-testid^="pipeline-legend-"]')
-      expect(entries).toHaveLength(3)
-      expectIndicatorAndLegendAgree()
-    })
-
-    it('all axes degraded (cold/red): legend has exactly 3 entries; no indicator', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) throw new Error('boom')
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: false, status: 500, body: {} }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
-          'degraded',
-        )
-      })
-      const entries = screen
-        .getByTestId('pipeline-flow-legend')
-        .querySelectorAll('[data-testid^="pipeline-legend-"]')
-      expect(entries).toHaveLength(3)
-      expectIndicatorAndLegendAgree()
-    })
-
-    it('first paint (unknown): legend has exactly 3 entries; no indicator', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const entries = screen
-        .getByTestId('pipeline-flow-legend')
-        .querySelectorAll('[data-testid^="pipeline-legend-"]')
-      expect(entries).toHaveLength(3)
-      expectIndicatorAndLegendAgree()
-    })
-
-    it('subordinated (hedgeProof healthy + upstream degraded): legend has 4 entries; indicator present', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) throw new Error('boom')
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')).not.toBeNull()
-      })
-      const entries = screen
-        .getByTestId('pipeline-flow-legend')
-        .querySelectorAll('[data-testid^="pipeline-legend-"]')
-      expect(entries).toHaveLength(4)
-      expectIndicatorAndLegendAgree()
-    })
-
-    it('hedge-proof degraded + upstream healthy: indicator absent, legend back to 3 entries', async () => {
-      mockOnChainHealthy()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: false, status: 500, body: {} }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
-          'degraded',
-        )
-      })
-      const entries = screen
-        .getByTestId('pipeline-flow-legend')
-        .querySelectorAll('[data-testid^="pipeline-legend-"]')
-      expect(entries).toHaveLength(3)
-      expectIndicatorAndLegendAgree()
-    })
-  })
-
-  // #0057 — diagram paints three tones (green/yellow/gray) but carried no
-  // legend mapping tone → meaning. A reviewer who sees a yellow pill +
-  // three gray pills had no on-page key to decode the colour signal.
-  describe('inline tone legend (#0057)', () => {
-    it('renders a three-entry tone legend after the node strip', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const legend = screen.getByTestId('pipeline-flow-legend')
-      expect(legend).toBeInTheDocument()
-      expect(legend.tagName).toBe('UL')
-      expect(legend.getAttribute('aria-label')).toBe('Pipeline tone legend')
-
-      // Three tone-family entries from #0057 plus the hedge-subordinated
-      // entry from #0058 — see the #0058 describe block below for the
-      // assertions specific to the fourth entry.
-      const entries = legend.querySelectorAll('[data-testid^="pipeline-legend-"]')
-      expect(entries.length).toBeGreaterThanOrEqual(3)
-      const ids = Array.from(entries).map((e) => e.getAttribute('data-testid'))
-      expect(ids.slice(0, 3)).toEqual([
-        'pipeline-legend-healthy',
-        'pipeline-legend-degraded',
-        'pipeline-legend-loading',
-      ])
-
-      // The legend sits AFTER the node strip — top-to-bottom reading order
-      // is node row, then legend.
-      const section = screen.getByTestId('pipeline-flow-diagram')
-      const nodes = section.querySelector('ol')
-      expect(nodes).not.toBeNull()
-      const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING
-      expect((nodes as HTMLElement).compareDocumentPosition(legend) & FOLLOWING).toBe(FOLLOWING)
-    })
-
-    it('each legend entry pairs an aria-hidden swatch with its word', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const expectations: Array<[string, RegExp]> = [
-        ['pipeline-legend-healthy', /^healthy$/],
-        ['pipeline-legend-degraded', /^degraded$/],
-        ['pipeline-legend-loading', /^loading$/],
-      ]
-      for (const [testid, wordRegex] of expectations) {
-        const entry = screen.getByTestId(testid)
-        const swatch = entry.querySelector('[aria-hidden]')
-        expect(swatch, `${testid} swatch`).not.toBeNull()
-        const label = entry.querySelector('span:not([aria-hidden])')
-        expect(label, `${testid} label`).not.toBeNull()
-        expect((label?.textContent ?? '').trim()).toMatch(wordRegex)
-      }
-    })
-
-    it('legend stays present regardless of axis state', async () => {
-      // Render once with all-unknown.
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-      expect(screen.getByTestId('pipeline-flow-legend')).toBeInTheDocument()
-      cleanup()
-
-      // All-healthy.
-      mockOnChainHealthy()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
-          'healthy',
-        )
-      })
-      expect(screen.getByTestId('pipeline-flow-legend')).toBeInTheDocument()
-      cleanup()
-
-      // Mixed — quotes degraded, on-chain healthy.
-      mockOnChainHealthy()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) throw new Error('boom')
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
-          'degraded',
-        )
-      })
-      expect(screen.getByTestId('pipeline-flow-legend')).toBeInTheDocument()
-    })
-  })
-
-  // #0055 — flow nodes used to communicate axis state via colour alone, so a
-  // reviewer hovering a gray pulsing pill could not tell "still loading"
-  // from "no signal yet" without DevTools. Each pill now carries a
-  // native browser tooltip (`title=`) AND an accessible name
-  // (`aria-label=`) naming the literal axis state.
-  describe('per-node tooltip + aria-label with axis status (#0055)', () => {
-    it('healthy axes: each pill\'s title ends with ": healthy"', async () => {
-      mockOnChainHealthy()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        for (const id of ALL_NODE_IDS) {
-          const pill = (desktopFlow().getByTestId(`pipeline-node-${id}`).firstElementChild) as HTMLElement
-          expect(pill, `node ${id} pill`).not.toBeNull()
-          expect(pill.getAttribute('title'), `node ${id} title`).toMatch(/: healthy$/)
-        }
-      })
-    })
-
-    it('degraded quotes: price-service title ends with the canonical reason', async () => {
-      mockOnChainHealthy()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) throw new Error('boom')
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        const pill = desktopFlow().getByTestId('pipeline-node-price-service').firstElementChild as HTMLElement
-        expect(pill.getAttribute('title')).toBe('price-service: degraded — price-service unreachable')
-      })
-    })
-
-    it('degraded onChain: oracle-signer / chain / frontend titles all end with "no on-chain prices"', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        for (const id of ['oracle-signer', 'chain', 'frontend']) {
-          const pill = desktopFlow().getByTestId(`pipeline-node-${id}`).firstElementChild as HTMLElement
-          expect(pill.getAttribute('title'), `node ${id} title`).toMatch(
-            /degraded — no on-chain prices$/,
-          )
-        }
-      })
-    })
-
-    it('unknown onChain: oracle-signer / chain / frontend titles all end with "loading first read"', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      for (const id of ['oracle-signer', 'chain', 'frontend']) {
-        const pill = desktopFlow().getByTestId(`pipeline-node-${id}`).firstElementChild as HTMLElement
-        expect(pill.getAttribute('title'), `node ${id} title`).toMatch(/loading first read$/)
-      }
-    })
-
-    it('subordinated demo-hedge (upstream degraded, hedgeProof healthy): title says "mirroring upstream tone"', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) throw new Error('boom')
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        const pill = desktopFlow().getByTestId('pipeline-node-demo-hedge').firstElementChild as HTMLElement
-        const title = pill.getAttribute('title') ?? ''
-        expect(title).toMatch(/mirroring upstream tone/i)
-        expect(title).toMatch(/healthy/)
-      })
-    })
-
-    it('linked pill aria-label composes axis state + jump intent', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const link = desktopFlow().getByTestId('pipeline-node-price-service-link')
-      const aria = link.getAttribute('aria-label') ?? ''
-      expect(aria).toMatch(/^price-service:/)
-      expect(aria).toMatch(/jump to live quotes panel/i)
-    })
-
-    it('eToro inert pill carries title and aria-label (announces the axis state without the jump suffix)', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const etoroPill = desktopFlow().getByTestId('pipeline-node-etoro').firstElementChild as HTMLElement
-      expect(etoroPill.getAttribute('title')).toMatch(/^eToro:/)
-      expect(etoroPill.getAttribute('aria-label')).toMatch(/^eToro:/)
-      expect(etoroPill.getAttribute('aria-label')).not.toMatch(/jump/i)
-    })
-  })
-
-  // #0054 — flow nodes used to be inert <li>s (no role/href/onClick), so the
-  // larger and more eye-catching status surface on the proof page was a
-  // dead-end for the reviewer. The five axis-bound nodes now render as
-  // <a href="#panel-…"> anchors mirroring the rollup chip-row jump pattern;
-  // the upstream `eToro` pill remains a non-interactive <span> because it
-  // has no panel target.
-  describe('flow nodes as jump-links to panels (#0054)', () => {
-    it('price-service node renders as <a> with href="#panel-live-quotes"', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const link = desktopFlow().getByTestId('pipeline-node-price-service-link') as HTMLAnchorElement
-      expect(link.tagName).toBe('A')
-      expect(link.getAttribute('href')).toBe('#panel-live-quotes')
-    })
-
-    // #0073 — `oracle-signer` is the WRITE side (keeper emits PriceUpdated)
-    // so it now jumps to the OracleUpdatesPanel (`#panel-oracle-updates`).
-    // `chain` and `frontend` are READ-side stages and keep linking to the
-    // OnChainOraclePanel (`#panel-onchain-oracle`).
-    it('oracle-signer node links to #panel-oracle-updates (write-side) (#0073)', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const link = desktopFlow().getByTestId('pipeline-node-oracle-signer-link') as HTMLAnchorElement
-      expect(link.tagName).toBe('A')
-      expect(link.getAttribute('href')).toBe('#panel-oracle-updates')
-    })
-
-    it('chain and frontend nodes both link to #panel-onchain-oracle (read-side)', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      for (const id of ['chain', 'frontend']) {
-        const link = desktopFlow().getByTestId(`pipeline-node-${id}-link`) as HTMLAnchorElement
-        expect(link.tagName).toBe('A')
-        expect(link.getAttribute('href')).toBe('#panel-onchain-oracle')
-      }
-    })
-
-    // #0073 — every node's href must resolve to a panel section that
-    // actually exists on the proof page. Pin the known anchor ids here
-    // so a future re-target that points at a non-existent panel surfaces
-    // immediately. The four data-panel sections render with these ids:
-    // see LiveQuotesPanel / OnChainOraclePanel / OracleUpdatesPanel /
-    // LastDemoHedgePanel.
-    it('every node href resolves to a known panel section id (#0073)', () => {
-      const KNOWN_PANEL_IDS = new Set([
-        'panel-live-quotes',
-        'panel-onchain-oracle',
-        'panel-oracle-updates',
-        'panel-last-hedge',
-      ])
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      // Inspect every link across BOTH the desktop and mobile variants —
-      // either variant pointing at an unknown panel anchor is a
-      // navigation dead-end at that breakpoint (#0073, #0074).
-      const links = document.querySelectorAll(
-        '[data-testid^="pipeline-node-"][data-testid$="-link"]',
-      )
-      expect(links.length).toBeGreaterThan(0)
-      links.forEach((a) => {
-        const href = a.getAttribute('href') ?? ''
-        expect(href.startsWith('#')).toBe(true)
-        expect(KNOWN_PANEL_IDS.has(href.slice(1))).toBe(true)
-      })
-    })
-
-    it('demo-hedge node links to #panel-last-hedge', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const link = desktopFlow().getByTestId('pipeline-node-demo-hedge-link') as HTMLAnchorElement
-      expect(link.tagName).toBe('A')
-      expect(link.getAttribute('href')).toBe('#panel-last-hedge')
-    })
-
-    it('eToro node stays a non-interactive span (no href, no role=link)', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      expect(desktopFlow().queryByTestId('pipeline-node-etoro-link')).toBeNull()
-      const etoroLi = desktopFlow().getByTestId('pipeline-node-etoro')
-      const pill = etoroLi.querySelector(':scope > span:first-child') as HTMLElement
-      expect(pill).not.toBeNull()
-      expect(pill.tagName).toBe('SPAN')
-      expect(pill.getAttribute('href')).toBeNull()
-    })
-
-    it('each linked node carries an aria-label naming the target panel', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      // #0073 — `oracle-signer` aria-label names the OracleUpdatesPanel
-      // ("recent oracle updates") because that's where its writes
-      // surface. `chain` and `frontend` continue to name the
-      // OnChainOraclePanel because that's the read-side they exercise.
-      const expectations: Record<string, RegExp> = {
-        'price-service': /live quotes/i,
-        'oracle-signer': /recent oracle updates/i,
-        chain: /on-chain oracle/i,
-        frontend: /on-chain oracle/i,
-        'demo-hedge': /last demo hedge/i,
-      }
-      for (const [id, panelPattern] of Object.entries(expectations)) {
-        const link = desktopFlow().getByTestId(`pipeline-node-${id}-link`)
-        const aria = link.getAttribute('aria-label') ?? ''
-        expect(aria, `node ${id} aria-label: ${aria}`).toMatch(panelPattern)
-        expect(aria, `node ${id} aria-label: ${aria}`).toMatch(/jump/i)
-      }
-    })
-
-    it('tone="unknown" links still render as anchors with the same href', () => {
-      // The diagram is interactive once mounted — the loading affordance
-      // must not hide the jump-link, or a reviewer who lands during a
-      // slow first paint loses the navigation.
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const node = desktopFlow().getByTestId('pipeline-node-price-service')
-      expect(node.getAttribute('data-tone')).toBe('unknown')
-      const link = desktopFlow().getByTestId('pipeline-node-price-service-link') as HTMLAnchorElement
-      expect(link.tagName).toBe('A')
-      expect(link.getAttribute('href')).toBe('#panel-live-quotes')
-    })
-
-    it('linked pill carries hover + focus-visible affordances; per-tone border colour is preserved', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const link = desktopFlow().getByTestId('pipeline-node-price-service-link')
-      const cls = link.className
-      expect(cls).toMatch(/hover:bg-white\/5/)
-      expect(cls).toMatch(/focus-visible:ring/)
-      // Per-tone border class for the `unknown` tone — preserved on the anchor.
-      expect(cls).toMatch(/border-white\/10/)
-    })
-  })
-
-  it('eToro pill renders the demo subtitle inline, not stacked (#0041)', () => {
-    // Before the fix, only the eToro node carried a `subtitle: 'demo'`
-    // and rendered as a 2-row flex-col pill that broke the diagram's
-    // shared baseline. The fix puts the subtitle inline on the same row
-    // as the label so all six pipeline pills share one pill height.
-    mockOnChainUnknown()
-    installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-    renderFlow({ offChainIntervalMs: 60_000 })
-
-    const etoroLi = desktopFlow().getByTestId('pipeline-node-etoro')
-    // The first child of the <li> is the pill element. For the eToro node
-    // this is still a <span> (it has no first-class panel target so #0054
-    // keeps it non-interactive); for axis-bound nodes the pill became an
-    // <a> in #0054.
-    const pill = etoroLi.firstElementChild as HTMLElement
-    expect(pill).not.toBeNull()
-    expect(pill.className).toMatch(/\bitems-baseline\b/)
-    expect(pill.className).not.toMatch(/\bflex-col\b/)
-
-    const labelSpans = pill.querySelectorAll(':scope > span')
-    expect(labelSpans.length).toBeGreaterThanOrEqual(2)
-    const labelTexts = Array.from(labelSpans).map((s) => s.textContent?.trim())
-    expect(labelTexts).toEqual(expect.arrayContaining(['eToro', 'demo']))
-
-    const priceServicePill = desktopFlow()
-      .getByTestId('pipeline-node-price-service')
-      .firstElementChild as HTMLElement
-    expect(priceServicePill).not.toBeNull()
-    expect(priceServicePill.className).toMatch(/\bitems-baseline\b/)
-    expect(priceServicePill.className).not.toMatch(/\bflex-col\b/)
-  })
-
-  // #0074 — at viewports below the `sm:` (640px) breakpoint, the
-  // horizontal flex layout could strand the inline `→` glyph at the
-  // end of a wrapped row with nothing on its right, reading as a
-  // broken connection. The fix renders a second `<ol>` that stacks
-  // each node vertically with standalone `↓` chevron <li>s between
-  // them; the desktop and mobile variants co-exist in the DOM and
-  // CSS picks the right one for the active viewport.
-  describe('mobile vertical variant (#0074)', () => {
-    it('renders a mobile container alongside the desktop container', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const mobile = screen.getByTestId('pipeline-flow-mobile')
-      const desktop = screen.getByTestId('pipeline-flow-desktop')
-      expect(mobile).toBeInTheDocument()
-      expect(desktop).toBeInTheDocument()
-      expect(mobile.getAttribute('data-variant')).toBe('mobile')
-      expect(desktop.getAttribute('data-variant')).toBe('desktop')
-    })
-
-    it('mobile container is hidden above sm: and desktop is hidden below sm:', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const mobile = screen.getByTestId('pipeline-flow-mobile')
-      const desktop = screen.getByTestId('pipeline-flow-desktop')
-      // Mobile: visible until sm:, hidden at sm: and above.
-      expect(mobile.className).toMatch(/\bsm:hidden\b/)
-      // Desktop: hidden below sm:, visible at sm: and above.
-      expect(desktop.className).toMatch(/(^|\s)hidden(\s|$)/)
-      expect(desktop.className).toMatch(/\bsm:flex\b/)
-    })
-
-    it('mobile container is a flex column stack', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const mobile = screen.getByTestId('pipeline-flow-mobile')
-      expect(mobile.className).toMatch(/\bflex\b/)
-      expect(mobile.className).toMatch(/\bflex-col\b/)
-    })
-
-    it('mobile container holds the same six nodes in order', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const m = mobileFlow()
-      for (const id of ALL_NODE_IDS) {
-        expect(m.getByTestId(`pipeline-node-${id}`)).toBeInTheDocument()
-      }
-      // Only the direct <li> children of the mobile <ol> are the node
-      // rows; the inner `pipeline-node-<id>-link` anchors and any
-      // indicator dots live nested below.
-      const renderedOrder = Array.from(
-        screen.getByTestId('pipeline-flow-mobile').children,
-      )
-        .filter((el) =>
-          /^pipeline-node-[a-z-]+$/.test(el.getAttribute('data-testid') ?? ''),
-        )
-        .map((el) => el.getAttribute('data-testid'))
-      expect(renderedOrder).toEqual(ALL_NODE_IDS.map((id) => `pipeline-node-${id}`))
-    })
-
-    it('mobile container has five ↓ chevrons between consecutive nodes; none after the last', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const mobile = screen.getByTestId('pipeline-flow-mobile')
-      const chevrons = mobile.querySelectorAll('[data-testid^="pipeline-edge-"]')
-      expect(chevrons).toHaveLength(5)
-      chevrons.forEach((c) => {
-        expect(c.textContent?.trim()).toBe('↓')
-      })
-
-      // The last child of the mobile container is the demo-hedge node;
-      // no chevron lives after it.
-      const children = Array.from(mobile.children)
-      const last = children[children.length - 1] as HTMLElement
-      expect(last.getAttribute('data-testid')).toBe('pipeline-node-demo-hedge')
-    })
-
-    it('mobile chevrons mirror the resolved tone of their axis (degraded on-chain)', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        const edge = mobileFlow().getByTestId('pipeline-edge-oracle-signer-chain')
-        expect(edge.getAttribute('data-tone')).toBe('degraded')
-        expect(edge.className).toMatch(/text-yellow/)
-      })
-    })
-
-    it('mobile variant carries no inline → glyph — every chevron is a standalone <li> ↓', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const mobile = screen.getByTestId('pipeline-flow-mobile')
-      // No node <li> in the mobile branch should contain a nested
-      // chevron — orphans-at-row-end is structurally impossible.
-      const nodeLis = mobile.querySelectorAll(
-        ':scope > li[data-testid^="pipeline-node-"]',
-      )
-      nodeLis.forEach((li) => {
-        expect(li.querySelector('[data-testid^="pipeline-edge-"]')).toBeNull()
-      })
-      expect(mobile.textContent ?? '').not.toMatch(/→/)
-    })
-
-    it('mobile node jump targets match the desktop targets (same href per node id)', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      const m = mobileFlow()
-      const d = desktopFlow()
-      // eToro is non-interactive in both variants.
-      expect(m.queryByTestId('pipeline-node-etoro-link')).toBeNull()
-      expect(d.queryByTestId('pipeline-node-etoro-link')).toBeNull()
-
-      for (const id of ['price-service', 'oracle-signer', 'chain', 'frontend', 'demo-hedge']) {
-        const mobileHref = (m.getByTestId(`pipeline-node-${id}-link`) as HTMLAnchorElement).getAttribute('href')
-        const desktopHref = (d.getByTestId(`pipeline-node-${id}-link`) as HTMLAnchorElement).getAttribute('href')
-        expect(mobileHref).toBe(desktopHref)
-      }
-    })
-
-    it('mobile node tones mirror the desktop tones (degraded on-chain example)', async () => {
-      mockOnChainDegraded()
-      installFetchMock((url) => {
-        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
-        if (url.includes('/api/hedge-proof/latest'))
-          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
-        return { ok: false, status: 404, body: {} }
-      })
-      renderFlow({ offChainIntervalMs: 60_000 })
-
-      await vi.waitFor(() => {
-        expect(desktopFlow().getByTestId('pipeline-node-chain').getAttribute('data-tone')).toBe(
-          'degraded',
-        )
-      })
-
-      for (const id of ALL_NODE_IDS) {
-        const mobileTone = mobileFlow().getByTestId(`pipeline-node-${id}`).getAttribute('data-tone')
-        const desktopTone = desktopFlow()
-          .getByTestId(`pipeline-node-${id}`)
-          .getAttribute('data-tone')
-        expect(mobileTone, `node ${id}`).toBe(desktopTone)
-      }
-    })
   })
 })

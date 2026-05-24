@@ -12,33 +12,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /**
- * Lane-1 default symbol set sourced from the eToro SDK's exported
- * `DEFAULT_LANE_SYMBOLS` (`backend/etoro-client/src/instruments.ts`).
- * PM2 reads this file before any package is built, so the require is
- * defensive: on a fresh clone where `etoro-client/dist/` is not yet
- * built we fall back to the same eight-symbol literal the SDK
- * publishes. The literal here MUST mirror `INSTRUMENT_SYMBOLS` in the
- * SDK and exists only as a build-ordering hedge — it is not a separate
- * source of truth, and the per-lane smoke check in
- * `scripts/check-pm2-ecosystem.js` partitions the resolved env value
- * through `partitionLaneSymbols` to catch any drift.
- */
-function loadLaneSymbolsCsv() {
-  try {
-    const sdk = require('./etoro-client/dist/instruments');
-    const symbols = sdk && Array.isArray(sdk.DEFAULT_LANE_SYMBOLS)
-      ? sdk.DEFAULT_LANE_SYMBOLS
-      : null;
-    if (symbols && symbols.length > 0) return symbols.join(',');
-  } catch (_err) {
-    // dist/ not built yet — fall through to the literal.
-  }
-  return 'BTC,ETH,SOL,AAPL,TSLA,NVDA,META,SPY';
-}
-
-const LANE_SYMBOLS_CSV = loadLaneSymbolsCsv();
-
-/**
  * Minimal .env-file parser (no extra dependency). Precedence is applied by
  * pick(): generated deployment address artifacts first, then root .env, then
  * process.env as the final operator override/backstop.
@@ -293,7 +266,7 @@ module.exports = {
         HEDGE_ENGINE_PORT: pick('HEDGE_ENGINE_PORT', '9106'),
         HEDGE_DRY_RUN: pick('HEDGE_DRY_RUN', 'true'),
         HEDGE_POLL_INTERVAL_MS: pick('HEDGE_POLL_INTERVAL_MS', '30000'),
-        HEDGE_SYMBOLS: pick('HEDGE_SYMBOLS', LANE_SYMBOLS_CSV),
+        HEDGE_SYMBOLS: pick('HEDGE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ'),
         HEDGE_DELTA_THRESHOLD_USD: pick('HEDGE_DELTA_THRESHOLD_USD', '5000'),
         HEDGE_DELTA_THRESHOLD_PCT: pick('HEDGE_DELTA_THRESHOLD_PCT', '2'),
       },
@@ -303,18 +276,19 @@ module.exports = {
     // oracle-signer entry below points its PRICE_SERVICE_URL at this
     // service's WS broadcaster (9301). Set ETORO_MODE (and demo creds)
     // via the host's environment to switch to live demo.
+    //
+    // Lane-7 (0007g/0004) fence: REAL_TRADING_ENABLED defaults to 'false'
+    // so the price producer cannot issue real eToro execution calls until
+    // the operator explicitly opts in via the host environment. Lane-7's
+    // initiative spec mandates this default for any testnet host.
     app({
       name: 'price-service',
       script: 'price-service/dist/index.js',
       env: {
         ...BASE_ENV,
         ETORO_MODE: pick('ETORO_MODE', 'mock'),
-        ORACLE_SYMBOLS: pick('ORACLE_SYMBOLS', LANE_SYMBOLS_CSV),
-        // Bind ports — must match the status-aggregator probe and the
-        // oracle-signer's PRICE_SERVICE_URL below. price-service reads
-        // both via parseEnvPort() at boot and fails loud on garbage.
-        PRICE_SERVICE_PORT: pick('PRICE_SERVICE_PORT', '9300'),
-        PRICE_SERVICE_WS_PORT: pick('PRICE_SERVICE_WS_PORT', '9301'),
+        REAL_TRADING_ENABLED: pick('REAL_TRADING_ENABLED', 'false'),
+        ORACLE_SYMBOLS: pick('ORACLE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ,NFLX'),
       },
     }),
     app({
@@ -322,7 +296,7 @@ module.exports = {
       script: 'oracle-signer/dist/index.js',
       env: {
         ...BASE_ENV,
-        PRICE_SERVICE_URL: pick('PRICE_SERVICE_URL', 'ws://localhost:9301'),
+        PRICE_SERVICE_URL: pick('PRICE_SERVICE_URL', 'ws://localhost:4001'),
         STOCK_ORACLE_V2_ADDRESS: pickAny(['STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], '0xF357118EBd576f3C812c7875B1A1651a7f140E9C'),
         // ORACLE_SIGNER_KEY intentionally defaults to '' when not provisioned.
         // The service starts in health-only mode (submission loop disabled) until
@@ -332,7 +306,7 @@ module.exports = {
         ORACLE_SIGNER_PORT: pick('ORACLE_SIGNER_PORT', '9107'),
         ORACLE_UPDATE_INTERVAL: pick('ORACLE_UPDATE_INTERVAL', '5000'),
         ORACLE_MIN_DEVIATION: pick('ORACLE_MIN_DEVIATION', '10'),
-        ORACLE_SYMBOLS: pick('ORACLE_SYMBOLS', LANE_SYMBOLS_CSV),
+        ORACLE_SYMBOLS: pick('ORACLE_SYMBOLS', 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ,NFLX'),
       },
     }),
     // Iter 3 (testnet-readiness-gate): adopt the goodswap Next.js frontend

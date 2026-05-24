@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { resolvePriceServiceStatusUrl } from '@/lib/priceServiceStatusUrl'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
 
-const QUOTE_STATUS_URL = process.env.PRICE_SERVICE_URL ?? 'http://localhost:9300/status/quotes'
+const QUOTE_STATUS_URL = resolvePriceServiceStatusUrl(process.env.PRICE_SERVICE_URL)
 const TIMEOUT_MS = 5000
 const APPROX_BLOCK_MS = 12_000
 

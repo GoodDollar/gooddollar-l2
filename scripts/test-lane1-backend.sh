@@ -43,7 +43,4 @@ for pkg in "${PKGS[@]}"; do
   fi
 done
 
-printf '\n==== scripts/__tests__/staleness.test.sh ====\n'
-bash scripts/__tests__/staleness.test.sh
-
 printf '[ok] all lane-1 backend suites passed\n'

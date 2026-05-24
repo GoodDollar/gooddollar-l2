@@ -52,6 +52,13 @@ contract StockOracleV2 {
     /// @notice symbol hash → price data
     mapping(bytes32 => PriceData) public prices;
 
+    /// @notice Unix timestamp of the latest successful signer/admin oracle write.
+    /// @dev Lane-7 internal smoke probes this as the coarse freshness signal before
+    ///      reading symbol-specific data. It intentionally mirrors the stored
+    ///      quote timestamp, not block.timestamp, so off-chain quote freshness is
+    ///      what gets verified end-to-end.
+    uint256 public lastUpdated;
+
     /// @notice symbol hash → per-symbol config
     mapping(bytes32 => SymbolConfig) public symbolConfigs;
 
@@ -242,6 +249,8 @@ contract StockOracleV2 {
             signerCount: 0
         });
 
+        lastUpdated = block.timestamp;
+
         emit PriceUpdated(h, symbol, price8, block.timestamp, 0, session);
     }
 
@@ -394,6 +403,7 @@ contract StockOracleV2 {
         pd.session = session;
         pd.confidence = confidence;
         pd.signerCount = _signerCount;
+        lastUpdated = timestamp;
 
         emit PriceUpdated(h, symbol, price8, timestamp, _signerCount, session);
     }

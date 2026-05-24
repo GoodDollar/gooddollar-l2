@@ -133,7 +133,3 @@ frontend/*.png
 .autobuilder/active-initiative
 .autobuilder/config.yaml
 **/review-screenshots/
-
-# Lane 6 / qa-proof — local evidence (run artifacts, not source)
-qa-proof/
-**/qa-proof/
