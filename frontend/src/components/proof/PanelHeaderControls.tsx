@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { describeNextPoll } from './panelCountdown'
+import { useProofNow } from './ProofNowProvider'
 
 /**
  * Shared "Retry now" button used in every proof data panel header. Pulled
@@ -90,10 +91,12 @@ interface NextPollCountdownProps {
  * see at a glance when the panel will refresh next, and so the retry
  * countdown immediately resets after a manual click.
  *
- * Keeps the per-panel timer behaviour the existing
- * {@link RelativeTimestamp} already uses — no shared "now" hook, no
- * cascading state — because the proof page only mounts at most four
- * countdown captions at once.
+ * The `now` value comes from the page-scoped {@link ProofNowProvider}
+ * so every countdown caption on the proof page ticks in the same React
+ * commit driven by one shared `setInterval`. When rendered outside the
+ * provider (isolated unit tests) `useProofNow` falls back to a static
+ * `Date.now()` captured on first call — see task lane6-next-poll-
+ * countdown-mounts-independent-1s-setintervals-per-panel (0066).
  */
 export function NextPollCountdown({
   lastPollAt,
@@ -101,12 +104,7 @@ export function NextPollCountdown({
   testId,
   busy = false,
 }: NextPollCountdownProps) {
-  const [now, setNow] = useState<number>(() => Date.now())
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1_000)
-    return () => clearInterval(id)
-  }, [])
+  const now = useProofNow()
 
   const text = useMemo(
     () => describeNextPoll({ lastPollAt, intervalMs, now, busy }),
