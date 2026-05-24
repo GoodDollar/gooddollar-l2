@@ -42,6 +42,14 @@ describe('QuoteCache', () => {
       expect(cache.size).toBe(0);
     });
 
+    it('does not store a crossed quote (bid > ask)', () => {
+      const result = cache.update(makeQuote({ bid: 101, ask: 100, mid: 100.5 }));
+      expect(result.accepted).toBe(false);
+      expect(result.reason).toMatch(/^crossed:/);
+      expect(cache.size).toBe(0);
+      expect(cache.get('AAPL')).toBeUndefined();
+    });
+
     it('updates existing quote', () => {
       cache.update(makeQuote({ last: 100 }));
       cache.update(makeQuote({ last: 105 }));
@@ -128,6 +136,23 @@ describe('QuoteCache', () => {
       cache.update(makeQuote({ symbol: 'TSLA' }));
       expect(received).toEqual(['AAPL']);
     });
+
+    // Regression: a single throwing listener used to propagate up out
+    // of `update`, breaking the upstream ingest path (etoro-source →
+    // PriceService.ingestQuote) and silencing every later listener
+    // for the same tick. Mirrors the defensive pattern in
+    // etoro-client/src/market-data.ts.
+    it('isolates a throwing listener so update returns and later listeners still fire', () => {
+      const received: string[] = [];
+      cache.onUpdate(() => { throw new Error('downstream blew up'); });
+      cache.onUpdate((symbol) => received.push(symbol));
+
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      expect(() => cache.update(makeQuote({ symbol: 'AAPL' }))).not.toThrow();
+      expect(received).toEqual(['AAPL']);
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/cache listener threw/));
+      warn.mockRestore();
+    });
   });
 
   describe('clear', () => {
@@ -144,6 +169,43 @@ describe('QuoteCache', () => {
       cache.update(makeQuote({ symbol: 'TSLA' }));
       cache.clear();
       expect(cache.size).toBe(0);
+    });
+  });
+
+  describe('cumulativeUpdates', () => {
+    it('starts at 0 on a fresh cache', () => {
+      expect(cache.cumulativeUpdates).toBe(0);
+    });
+
+    it('increments on accepted quote', () => {
+      cache.update(makeQuote());
+      expect(cache.cumulativeUpdates).toBe(1);
+    });
+
+    it('increments on rejected quote (e.g. halted session)', () => {
+      cache.update(makeQuote({ sessionState: 'halted' }));
+      expect(cache.cumulativeUpdates).toBe(1);
+      expect(cache.size).toBe(0);
+    });
+
+    it('increments on rejected (stale) quote', () => {
+      cache.update(makeQuote({ timestamp: Date.now() - 60_000 }));
+      expect(cache.cumulativeUpdates).toBe(1);
+      expect(cache.size).toBe(0);
+    });
+
+    it('accumulates across many updates regardless of acceptance', () => {
+      cache.update(makeQuote({ symbol: 'AAPL' }));
+      cache.update(makeQuote({ symbol: 'TSLA', sessionState: 'halted' }));
+      cache.update(makeQuote({ symbol: 'MSFT' }));
+      expect(cache.cumulativeUpdates).toBe(3);
+    });
+
+    it('is not reset by clear()', () => {
+      cache.update(makeQuote({ symbol: 'AAPL' }));
+      cache.update(makeQuote({ symbol: 'TSLA' }));
+      cache.clear();
+      expect(cache.cumulativeUpdates).toBe(2);
     });
   });
 });

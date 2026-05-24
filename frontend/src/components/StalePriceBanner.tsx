@@ -1,8 +1,17 @@
 'use client'
 
+import { LANE1_STATUS_HREF } from '@/lib/lane1Links'
+
 interface StalePriceBannerProps {
   variant: 'swap' | 'stocks'
   className?: string
+  /**
+   * Override the "See pipeline status →" anchor target. Defaults to the
+   * Lane-1 proof page (`/lane1`). Pass `null` to suppress the link
+   * entirely — useful in tests or in contexts where the banner is shown
+   * before the proof page has been mounted.
+   */
+  linkHref?: string | null
 }
 
 const MESSAGES = {
@@ -16,7 +25,11 @@ const MESSAGES = {
   },
 } as const
 
-export function StalePriceBanner({ variant, className = '' }: StalePriceBannerProps) {
+export function StalePriceBanner({
+  variant,
+  className = '',
+  linkHref = LANE1_STATUS_HREF,
+}: StalePriceBannerProps) {
   const { icon, text } = MESSAGES[variant]
 
   return (
@@ -27,6 +40,15 @@ export function StalePriceBanner({ variant, className = '' }: StalePriceBannerPr
     >
       <span className="text-sm shrink-0">{icon}</span>
       <span>{text}</span>
+      {linkHref && (
+        <a
+          href={linkHref}
+          className="ml-auto underline hover:text-yellow-300 transition-colors shrink-0"
+          data-testid="stale-price-banner-link"
+        >
+          See pipeline status →
+        </a>
+      )}
     </div>
   )
 }

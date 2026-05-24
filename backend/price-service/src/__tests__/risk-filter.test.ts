@@ -67,6 +67,31 @@ describe('RiskFilter', () => {
       expect(result.accepted).toBe(false);
       expect(result.reason).toContain('invalid');
     });
+
+    it('rejects a crossed quote where bid > ask', () => {
+      const result = filter.apply(makeQuote({ bid: 101, ask: 100, mid: 100.5 }));
+      expect(result.accepted).toBe(false);
+      expect(result.reason).toMatch(/^crossed: bid 101 > ask 100/);
+      expect(result.quote.confidence).toBe(0);
+    });
+
+    it('still accepts an equal bid/ask zero-spread quote', () => {
+      const result = filter.apply(makeQuote({ bid: 100, ask: 100, mid: 100 }));
+      expect(result.accepted).toBe(true);
+    });
+
+    it('does not contaminate the TWAP window with a rejected crossed quote', () => {
+      // Seed a clean TWAP first so any mutation by the crossed quote is visible.
+      for (let i = 0; i < 5; i++) {
+        filter.apply(makeQuote({ bid: 99.95, ask: 100.05, mid: 100 }));
+      }
+      const before = (filter as unknown as { twapWindow: Map<string, number[]> })
+        .twapWindow.get('AAPL')?.length ?? 0;
+      filter.apply(makeQuote({ bid: 200, ask: 50, mid: 125 }));
+      const after = (filter as unknown as { twapWindow: Map<string, number[]> })
+        .twapWindow.get('AAPL')?.length ?? 0;
+      expect(after).toBe(before);
+    });
   });
 
   describe('session check', () => {

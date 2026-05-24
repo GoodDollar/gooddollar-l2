@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
 
 import { OracleStatusBadge, __resetOracleStatusFallbackForTests } from '../OracleStatusBadge'
 
@@ -7,6 +7,7 @@ vi.mock('@/lib/usePriceServiceStatus', () => ({
   usePriceServiceStatus: vi.fn(),
   getSessionLabel: vi.fn(() => 'Market Open'),
   getDominantSession: vi.fn(() => 'open'),
+  resolvePriceStatusEndpoint: vi.fn(() => '/api/status/quotes'),
 }))
 
 const { usePriceServiceStatus } = await import('@/lib/usePriceServiceStatus')
@@ -81,6 +82,57 @@ describe('OracleStatusBadge stocks fallback', () => {
 
     await waitFor(() => expect(screen.getAllByText('Live').length).toBeGreaterThan(0))
     expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders the why? link to /lane1 in the offline branch (task 0064)', () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'Status endpoint returned 503',
+      nextRetryAt: null,
+    })
+
+    render(<OracleStatusBadge />)
+    const offline = screen.getByTestId('oracle-status-offline')
+    expect(offline).toBeInTheDocument()
+    const why = screen.getByTestId('oracle-status-offline-why')
+    expect(why.getAttribute('href')).toBe('/lane1')
+  })
+
+  it('reveals upstream URL and error string when the offline chip is clicked (task 0064)', () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'Status endpoint returned 503',
+      nextRetryAt: null,
+    })
+
+    render(<OracleStatusBadge />)
+    expect(screen.queryByTestId('oracle-status-offline-popover')).toBeNull()
+    fireEvent.click(screen.getByTestId('oracle-status-offline-toggle'))
+    const popover = screen.getByTestId('oracle-status-offline-popover')
+    expect(popover.textContent).toContain('Status endpoint returned 503')
+    expect(popover.textContent).toContain('/api/status/quotes')
+  })
+
+  it('renders "See pipeline status →" link in the timed-out fallback branch (task 0064)', async () => {
+    vi.useFakeTimers()
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+      nextRetryAt: null,
+    })
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}))
+
+    render(<OracleStatusBadge useStocksFallback />)
+    await act(async () => {
+      vi.advanceTimersByTime(16_000)
+    })
+    vi.useRealTimers()
+
+    await waitFor(() => expect(screen.getByText('Price feed unavailable')).toBeInTheDocument())
+    expect(screen.getByTestId('oracle-status-pipeline-link').getAttribute('href')).toBe('/lane1')
   })
 
   it('shows animated skeleton pill instead of plain text while checking oracle', () => {

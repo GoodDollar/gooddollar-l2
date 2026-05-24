@@ -7,13 +7,49 @@ export interface RateLimiterConfig {
   maxBackoffMs?: number;
   multiplier?: number;
   maxRetries?: number;
+  /**
+   * Injectable sleep implementation (for tests that need to drive
+   * backoff deterministically without real timers). Defaults to
+   * `setTimeout`-based sleep.
+   */
+  sleepImpl?: (ms: number) => Promise<void>;
 }
+
+/**
+ * Per-call retry telemetry returned by `executeWithTelemetry`. Surfaced
+ * into every audit-log line for HTTP calls so operators can see whether
+ * the SDK absorbed a 429 or not.
+ */
+export interface RetryTelemetry {
+  /** `1` = no retry; `N` = `N-1` backoffs absorbed. */
+  attempts: number;
+  /** Sum (ms) of slept-for delays across this call's retries. */
+  totalBackoffMs: number;
+}
+
+/**
+ * Canonical dispatcher signature used by every HTTP-issuing module
+ * (`AccountModule`, `TradingModule`, `MarketDataModule`) so the
+ * `EtoroClient` rate-limiter is the single chokepoint for eToro 429s.
+ * Modules that are constructed directly (without `EtoroClient`) get an
+ * identity dispatcher by default — see `identityDispatcher`.
+ */
+export type HttpDispatcher = <T>(
+  fn: () => Promise<T>,
+) => Promise<{ value: T } & RetryTelemetry>;
+
+/** No-retry dispatcher used as the default when modules are constructed standalone. */
+export const identityDispatcher: HttpDispatcher = async <T>(fn: () => Promise<T>) => {
+  const value = await fn();
+  return { value, attempts: 1, totalBackoffMs: 0 };
+};
 
 export class RateLimiter {
   private readonly minBackoff: number;
   private readonly maxBackoff: number;
   private readonly multiplier: number;
   private readonly maxRetries: number;
+  private readonly sleepImpl: (ms: number) => Promise<void>;
   private currentBackoff: number;
   private consecutiveThrottles = 0;
 
@@ -22,30 +58,47 @@ export class RateLimiter {
     this.maxBackoff = config.maxBackoffMs ?? MAX_BACKOFF_MS;
     this.multiplier = config.multiplier ?? BACKOFF_MULTIPLIER;
     this.maxRetries = config.maxRetries ?? 5;
+    this.sleepImpl = config.sleepImpl ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
     this.currentBackoff = this.minBackoff;
   }
 
-  async executeWithRetry<T>(fn: () => Promise<T>): Promise<T> {
+  /**
+   * Run `fn` with the limiter's retry/backoff policy and return the
+   * value along with retry telemetry. On exhaustion, rethrows the last
+   * error.
+   */
+  async executeWithTelemetry<T>(fn: () => Promise<T>): Promise<{ value: T } & RetryTelemetry> {
     let lastError: Error | undefined;
+    let totalBackoffMs = 0;
 
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+    for (let i = 0; i <= this.maxRetries; i++) {
+      const attempts = i + 1;
       try {
-        const result = await fn();
+        const value = await fn();
         this.onSuccess();
-        return result;
+        return { value, attempts, totalBackoffMs };
       } catch (error: unknown) {
         lastError = error instanceof Error ? error : new Error(String(error));
-
-        if (!this.isThrottleError(error) || attempt === this.maxRetries) {
+        if (!this.isThrottleError(error)) {
           throw lastError;
         }
-
+        // Count every detected throttle, including the last failing one,
+        // so `getConsecutiveThrottles()` reflects real upstream pressure.
         const delay = this.onThrottle();
-        await this.sleep(delay);
+        if (i === this.maxRetries) {
+          throw lastError;
+        }
+        totalBackoffMs += delay;
+        await this.sleepImpl(delay);
       }
     }
-
     throw lastError ?? new Error('Rate limiter exhausted retries');
+  }
+
+  /** Thin back-compat wrapper. New callers should prefer `executeWithTelemetry`. */
+  async executeWithRetry<T>(fn: () => Promise<T>): Promise<T> {
+    const { value } = await this.executeWithTelemetry(fn);
+    return value;
   }
 
   getBackoffMs(): number {
@@ -85,9 +138,5 @@ export class RateLimiter {
     if (typeof e.message === 'string' && e.message.includes('429')) return true;
 
     return false;
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

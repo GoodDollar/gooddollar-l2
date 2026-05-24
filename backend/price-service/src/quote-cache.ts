@@ -6,6 +6,10 @@ export class QuoteCache {
   private readonly filter: RiskFilter;
   private readonly config: PriceServiceConfig;
   private readonly listeners: Array<(symbol: string, result: RiskFilterResult) => void> = [];
+  // Monotonic counter of ingest attempts (accepted or rejected). Used by the
+  // health endpoints to distinguish "boot has not yet received any quote"
+  // (`starting`) from "cache emptied or all quotes stale" (`degraded`).
+  private cumulativeUpdatesCount = 0;
 
   constructor(config?: Partial<PriceServiceConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -13,6 +17,7 @@ export class QuoteCache {
   }
 
   update(quote: NormalizedQuote): RiskFilterResult {
+    this.cumulativeUpdatesCount++;
     const result = this.filter.apply(quote);
     const now = Date.now();
 
@@ -24,8 +29,20 @@ export class QuoteCache {
       });
     }
 
+    // Mirror the etoro-client market-data listener loop: a single
+    // throwing listener (e.g. WsBroadcaster client.send race) must not
+    // silence later listeners on the same tick or unwind into the
+    // upstream ingest path.
     for (const listener of this.listeners) {
-      listener(quote.symbol, result);
+      try {
+        listener(quote.symbol, result);
+      } catch (err) {
+        console.warn(
+          `[price-service] cache listener threw — skipping. ` +
+          `symbol=${quote.symbol} ` +
+          `err=${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
     return result;
@@ -90,5 +107,9 @@ export class QuoteCache {
 
   get size(): number {
     return this.cache.size;
+  }
+
+  get cumulativeUpdates(): number {
+    return this.cumulativeUpdatesCount;
   }
 }

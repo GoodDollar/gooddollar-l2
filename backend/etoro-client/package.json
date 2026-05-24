@@ -9,7 +9,9 @@
     "build": "tsc",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "resolve-instrument-id": "node -r ts-node/register scripts/resolve-instrument-id.ts",
+    "verify-credentials": "node -r ts-node/register scripts/verify-credentials.ts"
   },
   "dependencies": {
     "axios": "^1.7.0",
@@ -21,6 +23,7 @@
     "@types/ws": "^8.5.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.0"
   }
 }

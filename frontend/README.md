@@ -54,7 +54,6 @@ All pages live under `src/app/`. Protocol routes use the `(app)` route group.
 | `/api/faucet` | POST | Testnet faucet claims |
 | `/api/prices` | GET | Price helper |
 | `/api/rpc` | POST | RPC proxy (rate-limited) |
-| `/api/oracle/status` | GET | Oracle health |
 | `/api/predict/comments` | * | Predict comment proxy |
 
 ## Configuration

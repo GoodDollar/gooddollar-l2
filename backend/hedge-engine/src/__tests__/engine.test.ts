@@ -15,6 +15,8 @@ function makeConfig(overrides?: Partial<HedgeEngineConfig>): HedgeEngineConfig {
     deltaThresholdPct: 2,
     pollIntervalMs: 10000,
     dryRun: true,
+    mode: 'mock',
+    tradingEnabled: false,
     ...overrides,
   };
 }

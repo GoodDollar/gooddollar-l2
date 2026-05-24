@@ -12,8 +12,9 @@ import {
   type TestResult,
   type ContractStats,
 } from '@/lib/useTestRegistry'
-import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
+import { usePriceServiceStatus, type OracleStatusState } from '@/lib/usePriceServiceStatus'
 import { deriveDriftRows, type DriftHealth } from '@/lib/driftDashboard'
+import { LANE1_STATUS_HREF } from '@/lib/lane1Links'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -231,12 +232,46 @@ function driftLabel(health: DriftHealth): string {
   return 'Stopped'
 }
 
-function DriftDashboardPanel({ rows, loading }: { rows: ReturnType<typeof deriveDriftRows>; loading: boolean }) {
+function DriftDashboardPanel({
+  rows,
+  loading,
+  oracleStatus,
+}: {
+  rows: ReturnType<typeof deriveDriftRows>
+  loading: boolean
+  oracleStatus: OracleStatusState
+}) {
   if (loading) {
     return <div className="h-24 bg-dark-100 rounded animate-pulse" />
   }
+  if (oracleStatus.error && !oracleStatus.status) {
+    return (
+      <div
+        className="text-xs text-gray-300 py-4 text-center"
+        data-testid="drift-dashboard-error"
+      >
+        <p className="font-medium text-white">Price-service is unreachable.</p>
+        <p className="mt-2">
+          <a
+            href={LANE1_STATUS_HREF}
+            className="underline hover:text-white text-goodgreen"
+            data-testid="drift-dashboard-pipeline-link"
+          >
+            See pipeline status →
+          </a>
+        </p>
+        <p className="mt-1 text-gray-500">
+          Error: <code className="font-mono text-gray-300">{oracleStatus.error}</code>
+        </p>
+      </div>
+    )
+  }
   if (rows.length === 0) {
-    return <p className="text-gray-500 text-sm py-4 text-center">No symbol drift data yet.</p>
+    return (
+      <p className="text-gray-500 text-sm py-4 text-center">
+        No symbol drift data yet — waiting for first quote.
+      </p>
+    )
   }
 
   return (
@@ -287,7 +322,8 @@ export default function TestDashboardPage() {
   const [filterTester, setFilterTester] = useState<string>('')
 
   const { results, isLoading } = useTestResults(200)
-  const { status: quoteStatus, isLoading: quoteLoading } = usePriceServiceStatus()
+  const oracleStatus = usePriceServiceStatus()
+  const { status: quoteStatus, isLoading: quoteLoading } = oracleStatus
   const recentResults = useRecentResults(results)
   const coverageStats = useContractCoverage(results)
   const testerStats = useTesterActivity(results)
@@ -377,7 +413,7 @@ export default function TestDashboardPage() {
 
             <div className="bg-dark-50 rounded-xl p-4">
               <h2 className="text-sm font-medium text-gray-300 mb-3">Stock Drift Dashboard</h2>
-              <DriftDashboardPanel rows={driftRows} loading={quoteLoading} />
+              <DriftDashboardPanel rows={driftRows} loading={quoteLoading} oracleStatus={oracleStatus} />
               <p className="text-xs text-gray-500 mt-2">
                 P0 stop states: divergence &gt; 0.5%, stale propagation, or lagging product sync block.
               </p>

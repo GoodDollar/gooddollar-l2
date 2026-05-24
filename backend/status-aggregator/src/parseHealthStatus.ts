@@ -15,6 +15,10 @@ export function parseHealthStatus(body: Record<string, unknown>): HealthStatus {
   if (body.status === 'ok') return 'ok';
   if (body.status === 'degraded') return 'degraded';
   if (body.status === 'error') return 'error';
+  // `starting` is the price-service's pre-first-quote state. Demote it
+  // to `degraded` (amber) so the proof UI doesn't light green on a
+  // booting pipeline that has never received a tick.
+  if (body.status === 'starting') return 'degraded';
 
   if (body.ok === true) return 'ok';
   if (body.ok === false) return 'error';

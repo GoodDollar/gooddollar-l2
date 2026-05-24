@@ -20,14 +20,34 @@ export function createServer(
   app.get('/health', (_req: Request, res: Response) => {
     const fresh = cache.getFresh();
     const total = cache.size;
-    const healthy = fresh.length > 0 || total === 0;
-    res.status(healthy ? 200 : 503).json({
-      status: healthy ? 'ok' : 'degraded',
+    const everReceived = cache.cumulativeUpdates;
+    const base = {
       freshQuotes: fresh.length,
       totalCached: total,
+      cumulativeUpdates: everReceived,
       configuredSymbols: cfg.symbols.length,
       timestamp: Date.now(),
-    });
+    };
+
+    if (everReceived === 0) {
+      res.status(503).json({
+        status: 'starting',
+        reason: 'no quote ingested yet',
+        ...base,
+      });
+      return;
+    }
+
+    if (fresh.length === 0) {
+      res.status(503).json({
+        status: 'degraded',
+        reason: 'no fresh quotes (cache stale or all rejected)',
+        ...base,
+      });
+      return;
+    }
+
+    res.status(200).json({ status: 'ok', ...base });
   });
 
   app.get('/quotes', (_req: Request, res: Response) => {
@@ -67,6 +87,7 @@ export function createServer(
   app.get('/status/quotes', (_req: Request, res: Response) => {
     const now = Date.now();
     const all = cache.getAll();
+    const everReceived = cache.cumulativeUpdates;
     const quotes: Array<{
       symbol: string;
       lastUpdateMs: number;
@@ -88,10 +109,28 @@ export function createServer(
       }
     }
 
-    res.json({
-      healthy: freshCount > 0 || all.size === 0,
+    if (everReceived === 0) {
+      res.status(503).json({
+        status: 'starting',
+        reason: 'no quote ingested yet',
+        healthy: false,
+        freshCount: 0,
+        totalCount: all.size,
+        cumulativeUpdates: 0,
+        quotes,
+        timestamp: now,
+      });
+      return;
+    }
+
+    const healthy = freshCount > 0;
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'ok' : 'degraded',
+      reason: healthy ? undefined : 'no fresh quotes (cache stale or all rejected)',
+      healthy,
       freshCount,
       totalCount: all.size,
+      cumulativeUpdates: everReceived,
       quotes,
       timestamp: now,
     });

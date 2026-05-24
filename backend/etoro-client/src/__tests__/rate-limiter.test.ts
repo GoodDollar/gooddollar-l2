@@ -115,3 +115,66 @@ describe('RateLimiter', () => {
     expect(result).toBe('ok');
   });
 });
+
+describe('RateLimiter.executeWithTelemetry', () => {
+  function makeLimiter(overrides: Partial<{
+    minBackoffMs: number;
+    maxBackoffMs: number;
+    multiplier: number;
+    maxRetries: number;
+  }> = {}, recordedSleeps?: number[]) {
+    return new RateLimiter({
+      minBackoffMs: 10,
+      maxBackoffMs: 100,
+      multiplier: 2,
+      maxRetries: 3,
+      sleepImpl: async (ms) => { recordedSleeps?.push(ms); },
+      ...overrides,
+    });
+  }
+
+  it('happy path returns attempts=1 and totalBackoffMs=0', async () => {
+    const limiter = makeLimiter();
+    const result = await limiter.executeWithTelemetry(async () => 'ok');
+    expect(result).toEqual({ value: 'ok', attempts: 1, totalBackoffMs: 0 });
+  });
+
+  it('one 429 then 200 reports attempts=2 and the minBackoff delay', async () => {
+    const sleeps: number[] = [];
+    const limiter = makeLimiter({}, sleeps);
+    let n = 0;
+    const result = await limiter.executeWithTelemetry(async () => {
+      n++;
+      if (n === 1) throw new ThrottleError();
+      return 42;
+    });
+    expect(result.value).toBe(42);
+    expect(result.attempts).toBe(2);
+    expect(result.totalBackoffMs).toBe(10);
+    expect(sleeps).toEqual([10]);
+  });
+
+  it('429 → 429 → 200 sums backoffs across retries', async () => {
+    const sleeps: number[] = [];
+    const limiter = makeLimiter({}, sleeps);
+    let n = 0;
+    const result = await limiter.executeWithTelemetry(async () => {
+      n++;
+      if (n <= 2) throw new ThrottleError();
+      return 'ok';
+    });
+    expect(result.attempts).toBe(3);
+    expect(result.totalBackoffMs).toBe(10 + 20);
+    expect(sleeps).toEqual([10, 20]);
+  });
+
+  it('5 consecutive 429s exhaust and rethrow, consecutiveThrottles=5', async () => {
+    const sleeps: number[] = [];
+    const limiter = makeLimiter({ maxRetries: 4 }, sleeps);
+    await expect(limiter.executeWithTelemetry(async () => {
+      throw new ThrottleError();
+    })).rejects.toThrow('Rate limited');
+    expect(limiter.getConsecutiveThrottles()).toBe(5);
+    expect(sleeps).toHaveLength(4);
+  });
+});

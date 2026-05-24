@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { usePriceServiceStatus, getSessionLabel, getDominantSession } from '@/lib/usePriceServiceStatus'
+import { usePriceServiceStatus, getSessionLabel, getDominantSession, resolvePriceStatusEndpoint } from '@/lib/usePriceServiceStatus'
 import { deriveStocksOracleHealth, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
+import { LANE1_STATUS_HREF } from '@/lib/lane1Links'
 
 function formatAge(ms: number): string {
   if (ms < 1000) return 'just now'
@@ -61,6 +62,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
   const [fallbackReady, setFallbackReady] = useState(false)
   const [timeoutPhase, setTimeoutPhase] = useState<TimeoutPhase>('loading')
   const [retryCount, setRetryCount] = useState(0)
+  const [showDetails, setShowDetails] = useState(false)
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timedOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -125,6 +127,14 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
               >
                 Retry
               </button>
+              <span className="text-gray-600">·</span>
+              <a
+                href={LANE1_STATUS_HREF}
+                className="underline hover:text-yellow-300 transition-colors"
+                data-testid="oracle-status-pipeline-link"
+              >
+                See pipeline status →
+              </a>
             </div>
           )
         }
@@ -153,10 +163,54 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
         )
       }
     }
+    const upstream = resolvePriceStatusEndpoint()
     return (
-      <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-        <span>Oracle offline</span>
+      <div
+        className="relative inline-flex flex-col items-start gap-1 text-xs text-gray-400"
+        data-testid="oracle-status-offline"
+      >
+        <div className="inline-flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+            aria-expanded={showDetails}
+            aria-controls="oracle-offline-popover"
+            data-testid="oracle-status-offline-toggle"
+            title="Click to see why the oracle is offline"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+            <span>Oracle offline</span>
+          </button>
+          <span className="text-gray-600">·</span>
+          <a
+            href={LANE1_STATUS_HREF}
+            className="underline hover:text-white transition-colors"
+            data-testid="oracle-status-offline-why"
+          >
+            why?
+          </a>
+        </div>
+        {showDetails && (
+          <div
+            id="oracle-offline-popover"
+            role="tooltip"
+            data-testid="oracle-status-offline-popover"
+            className="bg-dark-100 border border-dark-50 rounded-md p-2 text-xs text-gray-300 max-w-[280px] mt-1"
+          >
+            <div className="font-medium text-white">
+              {error ?? 'Price service unreachable'}
+            </div>
+            <div className="mt-1 text-gray-400">
+              Upstream: <code className="font-mono text-gray-200">{upstream}</code>
+            </div>
+            <div className="mt-2">
+              <a href={LANE1_STATUS_HREF} className="underline hover:text-white">
+                See pipeline status →
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

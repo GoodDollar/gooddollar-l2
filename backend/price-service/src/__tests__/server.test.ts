@@ -43,19 +43,56 @@ describe('REST Server', () => {
   });
 
   describe('GET /health', () => {
-    it('returns ok when empty cache', async () => {
-      const res = await fetch(`${baseUrl}/health`);
-      const body = (await res.json()) as Record<string, unknown>;
-      expect(res.status).toBe(200);
-      expect(body.status).toBe('ok');
+    it('returns 503 starting when no quote has ever been ingested', async () => {
+      const isolatedCache = new QuoteCache({ cacheTtlMs: 30_000 });
+      const isolatedApp = createServer(isolatedCache, { symbols: ['AAPL'] });
+      const handle = isolatedApp.listen(0);
+      const addr = handle.address();
+      const port = addr && typeof addr === 'object' ? addr.port : 0;
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/health`);
+        const body = (await res.json()) as Record<string, unknown>;
+        expect(res.status).toBe(503);
+        expect(body.status).toBe('starting');
+        expect(body.reason).toMatch(/no quote ingested/i);
+        expect(body.cumulativeUpdates).toBe(0);
+        expect(body.freshQuotes).toBe(0);
+      } finally {
+        await new Promise<void>((resolve) => handle.close(() => resolve()));
+      }
     });
 
-    it('returns ok with fresh quotes', async () => {
+    it('returns 200 ok with fresh quotes', async () => {
       cache.update(makeQuote());
       const res = await fetch(`${baseUrl}/health`);
       const body = (await res.json()) as Record<string, unknown>;
       expect(res.status).toBe(200);
+      expect(body.status).toBe('ok');
       expect(body.freshQuotes).toBeGreaterThan(0);
+      expect(body.cumulativeUpdates).toBeGreaterThanOrEqual(1);
+    });
+
+    it('returns 503 degraded when the cache has only stale (rejected) entries', async () => {
+      const isolatedCache = new QuoteCache({
+        stalenessThresholdMs: 100,
+        cacheTtlMs: 30_000,
+      });
+      const isolatedApp = createServer(isolatedCache, { symbols: ['AAPL'] });
+      const handle = isolatedApp.listen(0);
+      const addr = handle.address();
+      const port = addr && typeof addr === 'object' ? addr.port : 0;
+      try {
+        isolatedCache.update(makeQuote({ timestamp: Date.now() - 60_000 }));
+        const res = await fetch(`http://127.0.0.1:${port}/health`);
+        const body = (await res.json()) as Record<string, unknown>;
+        expect(res.status).toBe(503);
+        expect(body.status).toBe('degraded');
+        expect(body.reason).toMatch(/no fresh quotes/i);
+        expect(body.cumulativeUpdates).toBeGreaterThan(0);
+        expect(body.freshQuotes).toBe(0);
+      } finally {
+        await new Promise<void>((resolve) => handle.close(() => resolve()));
+      }
     });
   });
 
@@ -134,14 +171,32 @@ describe('REST Server', () => {
       expect(body.timestamp).toBeGreaterThan(0);
     });
 
-    it('returns healthy when cache is empty', async () => {
-      cache.clear();
-      const res = await fetch(`${baseUrl}/status/quotes`);
-      const body = (await res.json()) as { healthy: boolean; freshCount: number; totalCount: number };
-      expect(res.status).toBe(200);
-      expect(body.healthy).toBe(true);
-      expect(body.freshCount).toBe(0);
-      expect(body.totalCount).toBe(0);
+    it('returns 503 starting when no quote has ever been ingested', async () => {
+      const isolatedCache = new QuoteCache({ cacheTtlMs: 30_000 });
+      const isolatedApp = createServer(isolatedCache, { symbols: ['AAPL'] });
+      const handle = isolatedApp.listen(0);
+      const addr = handle.address();
+      const port = addr && typeof addr === 'object' ? addr.port : 0;
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/status/quotes`);
+        const body = (await res.json()) as {
+          status: string;
+          reason: string;
+          healthy: boolean;
+          freshCount: number;
+          totalCount: number;
+          cumulativeUpdates: number;
+        };
+        expect(res.status).toBe(503);
+        expect(body.status).toBe('starting');
+        expect(body.reason).toMatch(/no quote ingested/i);
+        expect(body.healthy).toBe(false);
+        expect(body.freshCount).toBe(0);
+        expect(body.totalCount).toBe(0);
+        expect(body.cumulativeUpdates).toBe(0);
+      } finally {
+        await new Promise<void>((resolve) => handle.close(() => resolve()));
+      }
     });
 
     it('includes CORS headers', async () => {

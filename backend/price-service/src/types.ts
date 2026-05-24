@@ -43,6 +43,8 @@ export interface CachedQuote {
   filterResult: RiskFilterResult;
 }
 
+import { DEFAULT_LANE_SYMBOLS } from '@goodchain/etoro-client';
+
 export interface PriceServiceConfig {
   symbols: string[];
   stalenessThresholdMs: number;
@@ -55,7 +57,7 @@ export interface PriceServiceConfig {
 }
 
 export const DEFAULT_CONFIG: PriceServiceConfig = {
-  symbols: ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'META', 'AMZN', 'GOOGL', 'SPY', 'QQQ', 'AMD'],
+  symbols: [...DEFAULT_LANE_SYMBOLS],
   stalenessThresholdMs: 10_000,
   maxDeviationPct: 5,
   maxSpreadPct: 2,

@@ -1,0 +1,263 @@
+import { InvalidInstrumentOverridesError } from './errors';
+import { EtoroAssetClass } from './types';
+
+/**
+ * Lane-1 instrument map. The eight symbols shipped here are the v0
+ * coverage for the price-service → oracle-signer → on-chain → apps lane:
+ * three liquid crypto names + five US equity/ETF names that are easy to
+ * cross-check against open free data sources.
+ *
+ * `etoroInstrumentId` is a placeholder ("ETORO-<symbol>") until the lane
+ * wiring confirms the partner-API IDs. To swap in real IDs without a code
+ * change, set `ETORO_INSTRUMENT_OVERRIDES` to a JSON object mapping
+ * symbol → instrumentId; `loadInstrumentOverrides` parses it safely and
+ * `applyInstrumentOverrides` produces the merged map.
+ */
+
+export const INSTRUMENT_SYMBOLS = [
+  'BTC',
+  'ETH',
+  'SOL',
+  'AAPL',
+  'TSLA',
+  'NVDA',
+  'META',
+  'SPY',
+] as const;
+
+export type LaneSymbol = typeof INSTRUMENT_SYMBOLS[number];
+
+/**
+ * Mutable copy of `INSTRUMENT_SYMBOLS` typed as `LaneSymbol[]` so downstream
+ * services (`price-service`, `oracle-signer`, `hedge-engine`) can spread it
+ * into their default symbol lists without losing the readonly guarantees of
+ * the source array. The returned array is a fresh copy on import; callers
+ * can mutate it without affecting the SDK's source-of-truth.
+ *
+ * This is the single, canonical default symbol list for the lane. Every
+ * downstream `symbols:` default must be `[...DEFAULT_LANE_SYMBOLS]` (or
+ * `DEFAULT_LANE_SYMBOLS.join(',')` for env-var fallbacks).
+ */
+export const DEFAULT_LANE_SYMBOLS: LaneSymbol[] = [...INSTRUMENT_SYMBOLS];
+
+/**
+ * Documentation-only list of supplementary stock symbols named in
+ * `OFFICIAL_ETORO_API_PRICE_SOURCE.md`'s "when available" list. These are
+ * NOT in `INSTRUMENT_MAP` today and therefore CANNOT be priced or resolved
+ * by the SDK. Downstream consumers MUST NOT include them in defaults until
+ * an entry is added to `INSTRUMENT_MAP`. The constant exists to document
+ * intent and to provide a single grep point for the eventual extension.
+ */
+export const SUPPLEMENTARY_STOCK_SYMBOLS = [
+  'MSFT',
+  'AMZN',
+  'GOOGL',
+  'QQQ',
+  'AMD',
+] as const;
+
+export type SupplementaryStockSymbol = typeof SUPPLEMENTARY_STOCK_SYMBOLS[number];
+
+export interface LaneInstrument {
+  symbol: LaneSymbol;
+  etoroInstrumentId: string;
+  assetClass: EtoroAssetClass;
+  displayName: string;
+  /** Reference price in USD used by mock-source seeding and notional sanity checks. */
+  referencePriceUsd: number;
+}
+
+export const INSTRUMENT_MAP: Readonly<Record<LaneSymbol, LaneInstrument>> = Object.freeze({
+  BTC: {
+    symbol: 'BTC',
+    etoroInstrumentId: 'ETORO-BTC',
+    assetClass: 'crypto',
+    displayName: 'Bitcoin',
+    referencePriceUsd: 60_000,
+  },
+  ETH: {
+    symbol: 'ETH',
+    etoroInstrumentId: 'ETORO-ETH',
+    assetClass: 'crypto',
+    displayName: 'Ethereum',
+    referencePriceUsd: 3_000,
+  },
+  SOL: {
+    symbol: 'SOL',
+    etoroInstrumentId: 'ETORO-SOL',
+    assetClass: 'crypto',
+    displayName: 'Solana',
+    referencePriceUsd: 150,
+  },
+  AAPL: {
+    symbol: 'AAPL',
+    etoroInstrumentId: 'ETORO-AAPL',
+    assetClass: 'equity',
+    displayName: 'Apple Inc.',
+    referencePriceUsd: 190,
+  },
+  TSLA: {
+    symbol: 'TSLA',
+    etoroInstrumentId: 'ETORO-TSLA',
+    assetClass: 'equity',
+    displayName: 'Tesla, Inc.',
+    referencePriceUsd: 250,
+  },
+  NVDA: {
+    symbol: 'NVDA',
+    etoroInstrumentId: 'ETORO-NVDA',
+    assetClass: 'equity',
+    displayName: 'NVIDIA Corporation',
+    referencePriceUsd: 900,
+  },
+  META: {
+    symbol: 'META',
+    etoroInstrumentId: 'ETORO-META',
+    assetClass: 'equity',
+    displayName: 'Meta Platforms, Inc.',
+    referencePriceUsd: 480,
+  },
+  SPY: {
+    symbol: 'SPY',
+    etoroInstrumentId: 'ETORO-SPY',
+    assetClass: 'etf',
+    displayName: 'SPDR S&P 500 ETF',
+    referencePriceUsd: 540,
+  },
+});
+
+export type InstrumentOverrides = Partial<
+  Record<LaneSymbol, Partial<Pick<LaneInstrument, 'etoroInstrumentId' | 'displayName' | 'referencePriceUsd'>>>
+>;
+
+export function isLaneSymbol(value: string): value is LaneSymbol {
+  return (INSTRUMENT_SYMBOLS as readonly string[]).includes(value);
+}
+
+export function getInstrument(symbol: string): LaneInstrument | null {
+  if (!isLaneSymbol(symbol)) return null;
+  return INSTRUMENT_MAP[symbol];
+}
+
+/**
+ * Partition a caller-supplied symbol list into `{ valid, unknown }` against
+ * `INSTRUMENT_SYMBOLS`. Used by every downstream service
+ * (`price-service`, `oracle-signer`, `hedge-engine`) at startup to filter
+ * env-var-supplied symbol lists down to the SDK-resolvable subset and to
+ * surface unknown symbols as operator-visible degraded-health signals.
+ *
+ * Pure helper with no env-var side effects. Callers decide whether to
+ * fail-hard, degrade, or just log on `unknown.length > 0`.
+ */
+export function partitionLaneSymbols(input: readonly string[]): {
+  valid: LaneSymbol[];
+  unknown: string[];
+} {
+  const valid: LaneSymbol[] = [];
+  const unknown: string[] = [];
+  for (const sym of input) {
+    if (isLaneSymbol(sym)) valid.push(sym);
+    else unknown.push(sym);
+  }
+  return { valid, unknown };
+}
+
+/**
+ * Reads `ETORO_INSTRUMENT_OVERRIDES` (JSON string) from env. Returns `{}`
+ * when the env var is unset. Throws `InvalidInstrumentOverridesError` for
+ * any malformed input — JSON parse errors, wrong shape (non-object root,
+ * array, bare string), unknown symbols, or per-symbol slices with empty
+ * string IDs / display names or non-positive reference prices. Operators
+ * notice the misconfig at deploy time instead of after the first hedge
+ * silently uses the placeholder IDs.
+ */
+export function loadInstrumentOverrides(
+  env: Record<string, string | undefined> = process.env,
+): InstrumentOverrides {
+  const raw = env.ETORO_INSTRUMENT_OVERRIDES;
+  if (raw === undefined || raw === '') return {};
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    throw new InvalidInstrumentOverridesError({
+      field: 'json',
+      reason: `JSON.parse failed (${e instanceof Error ? e.message : String(e)})`,
+    });
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new InvalidInstrumentOverridesError({
+      field: 'shape',
+      reason: 'top-level value must be a JSON object',
+    });
+  }
+
+  const out: InstrumentOverrides = {};
+  for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+    if (!isLaneSymbol(key)) {
+      throw new InvalidInstrumentOverridesError({
+        field: 'symbol',
+        offendingKey: key,
+        reason: `unknown symbol "${key}"; valid symbols are ${INSTRUMENT_SYMBOLS.join(', ')}`,
+      });
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new InvalidInstrumentOverridesError({
+        field: 'shape',
+        offendingKey: key,
+        reason: `entry for "${key}" must be an object`,
+      });
+    }
+    const v = value as Record<string, unknown>;
+    const slice: InstrumentOverrides[LaneSymbol] = {};
+    if (v.etoroInstrumentId !== undefined) {
+      if (typeof v.etoroInstrumentId !== 'string' || v.etoroInstrumentId.trim() === '') {
+        throw new InvalidInstrumentOverridesError({
+          field: 'shape',
+          offendingKey: key,
+          reason: `etoroInstrumentId for "${key}" must be a non-empty string`,
+        });
+      }
+      slice.etoroInstrumentId = v.etoroInstrumentId.trim();
+    }
+    if (v.displayName !== undefined) {
+      if (typeof v.displayName !== 'string' || v.displayName.trim() === '') {
+        throw new InvalidInstrumentOverridesError({
+          field: 'shape',
+          offendingKey: key,
+          reason: `displayName for "${key}" must be a non-empty string`,
+        });
+      }
+      slice.displayName = v.displayName.trim();
+    }
+    if (v.referencePriceUsd !== undefined) {
+      if (typeof v.referencePriceUsd !== 'number'
+        || !Number.isFinite(v.referencePriceUsd)
+        || v.referencePriceUsd <= 0) {
+        throw new InvalidInstrumentOverridesError({
+          field: 'shape',
+          offendingKey: key,
+          reason: `referencePriceUsd for "${key}" must be a finite number > 0`,
+        });
+      }
+      slice.referencePriceUsd = v.referencePriceUsd;
+    }
+    if (Object.keys(slice).length > 0) {
+      out[key] = slice;
+    }
+  }
+  return out;
+}
+
+export function applyInstrumentOverrides(
+  base: Readonly<Record<LaneSymbol, LaneInstrument>>,
+  overrides: InstrumentOverrides,
+): Record<LaneSymbol, LaneInstrument> {
+  const merged = {} as Record<LaneSymbol, LaneInstrument>;
+  for (const sym of INSTRUMENT_SYMBOLS) {
+    merged[sym] = { ...base[sym], ...(overrides[sym] ?? {}) };
+  }
+  return merged;
+}

@@ -1,6 +1,9 @@
 import { AxiosInstance } from 'axios';
 import { AuditLogger } from './audit-logger';
-import { AccountBalance, Position } from './types';
+import { AccountUnavailableError } from './errors';
+import { HttpDispatcher, identityDispatcher } from './rate-limiter';
+import { MalformedListSink, readListOrAudit } from './util/list-envelope';
+import { AccountBalance, EtoroMode, Position } from './types';
 
 export interface PendingOrder {
   orderId: string;
@@ -28,158 +31,172 @@ export interface PortfolioPnl {
   dividends: number;
 }
 
+export interface AccountModuleOptions {
+  mode: EtoroMode;
+  /**
+   * HTTP dispatcher (typically `EtoroClient.withRateLimit`) so account
+   * reads share the SDK's single rate-limit bucket. Defaults to a
+   * no-retry pass-through for standalone unit-test construction.
+   */
+  dispatch?: HttpDispatcher;
+  /**
+   * If `true`, list-returning read methods (`getPositions`,
+   * `getPendingOrders`) throw `MalformedListResponseError` on an
+   * unrecognized envelope shape instead of returning `[]`. Defaults to
+   * `false`; the audit-log line and counter still fire either way.
+   */
+  throwOnMalformedListResponse?: boolean;
+}
+
 export class AccountModule {
   private readonly http: AxiosInstance;
   private readonly audit: AuditLogger;
+  private readonly mode: EtoroMode;
+  private readonly dispatch: HttpDispatcher;
+  private readonly malformedListSink: MalformedListSink;
 
-  constructor(http: AxiosInstance, audit: AuditLogger) {
+  constructor(http: AxiosInstance, audit: AuditLogger, options: AccountModuleOptions) {
     this.http = http;
     this.audit = audit;
+    this.mode = options.mode;
+    this.dispatch = options.dispatch ?? identityDispatcher;
+    this.malformedListSink = {
+      audit: this.audit,
+      counter: new Map<string, number>(),
+      throwOnMalformed: options.throwOnMalformedListResponse ?? false,
+    };
   }
 
   async getBalance(): Promise<AccountBalance> {
-    const start = Date.now();
-    const endpoint = '/account/balance';
-    try {
-      const response = await this.http.get(endpoint);
-      const data = asRecord(response.data);
-
+    return this.runRead('getBalance', '/account/balance', (data) => {
+      const record = asRecord(data);
       const balance: AccountBalance = {
-        totalEquity: pickNum(data, 'totalEquity', 'total_equity', 'equity'),
-        availableCash: pickNum(data, 'availableCash', 'available_cash', 'cash', 'available'),
-        usedMargin: pickNum(data, 'usedMargin', 'used_margin', 'margin'),
-        freeMargin: pickNum(data, 'freeMargin', 'free_margin'),
-        currency: pickStr(data, 'currency') || 'USD',
+        totalEquity: pickNum(record, 'totalEquity', 'total_equity', 'equity'),
+        availableCash: pickNum(record, 'availableCash', 'available_cash', 'cash', 'available'),
+        usedMargin: pickNum(record, 'usedMargin', 'used_margin', 'margin'),
+        freeMargin: pickNum(record, 'freeMargin', 'free_margin'),
+        currency: pickStr(record, 'currency') || 'USD',
       };
-
       if (balance.freeMargin === 0 && balance.totalEquity > 0) {
         balance.freeMargin = balance.totalEquity - balance.usedMargin;
       }
-
-      this.audit.log({
-        action: 'getBalance',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
       return balance;
-    } catch (error) {
-      this.logError('getBalance', 'GET', endpoint, start, error);
-      throw error;
-    }
+    });
   }
 
   async getPositions(): Promise<Position[]> {
-    const start = Date.now();
-    const endpoint = '/account/positions';
-    try {
-      const response = await this.http.get(endpoint);
-      const items = extractArray(response.data);
-      const positions = items.map((r) => normalizePosition(asRecord(r)));
-
-      this.audit.log({
-        action: 'getPositions',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
-      return positions;
-    } catch (error) {
-      this.logError('getPositions', 'GET', endpoint, start, error);
-      throw error;
-    }
+    const path = '/account/positions';
+    return this.runRead('getPositions', path, (data) =>
+      readListOrAudit({ data, action: 'getPositions', path, sink: this.malformedListSink })
+        .map((r) => normalizePosition(asRecord(r))),
+    );
   }
 
   async getPendingOrders(): Promise<PendingOrder[]> {
-    const start = Date.now();
-    const endpoint = '/account/orders/pending';
-    try {
-      const response = await this.http.get(endpoint);
-      const items = extractArray(response.data);
-      const orders = items.map((r) => normalizePendingOrder(asRecord(r)));
+    const path = '/account/orders/pending';
+    return this.runRead('getPendingOrders', path, (data) =>
+      readListOrAudit({ data, action: 'getPendingOrders', path, sink: this.malformedListSink })
+        .map((r) => normalizePendingOrder(asRecord(r))),
+    );
+  }
 
-      this.audit.log({
-        action: 'getPendingOrders',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
+  /**
+   * Count of 200-OK responses that returned an unrecognized envelope
+   * shape for one of `AccountModule`'s list-returning methods.
+   * Aggregated into `EtoroClient.getSummary().malformedListResponses`.
+   */
+  getMalformedListResponseCount(action: string): number {
+    return this.malformedListSink.counter.get(action) ?? 0;
+  }
 
-      return orders;
-    } catch (error) {
-      this.logError('getPendingOrders', 'GET', endpoint, start, error);
-      throw error;
-    }
+  /** Snapshot of all malformed-list counters keyed by action. */
+  getMalformedListResponseCounts(): Record<string, number> {
+    return Object.fromEntries(this.malformedListSink.counter);
   }
 
   async getPortfolioPnl(): Promise<PortfolioPnl> {
-    const start = Date.now();
-    const endpoint = '/account/pnl';
-    try {
-      const response = await this.http.get(endpoint);
-      const data = asRecord(response.data);
-
-      const pnl: PortfolioPnl = {
-        realized: pickNum(data, 'realized', 'realizedPnl', 'realized_pnl'),
-        unrealized: pickNum(data, 'unrealized', 'unrealizedPnl', 'unrealized_pnl'),
-        fees: pickNum(data, 'fees', 'totalFees', 'total_fees'),
-        overnightFees: pickNum(data, 'overnightFees', 'overnight_fees', 'swapFees'),
-        dividends: pickNum(data, 'dividends', 'totalDividends'),
+    return this.runRead('getPortfolioPnl', '/account/pnl', (data) => {
+      const record = asRecord(data);
+      return {
+        realized: pickNum(record, 'realized', 'realizedPnl', 'realized_pnl'),
+        unrealized: pickNum(record, 'unrealized', 'unrealizedPnl', 'unrealized_pnl'),
+        fees: pickNum(record, 'fees', 'totalFees', 'total_fees'),
+        overnightFees: pickNum(record, 'overnightFees', 'overnight_fees', 'swapFees'),
+        dividends: pickNum(record, 'dividends', 'totalDividends'),
       };
-
-      this.audit.log({
-        action: 'getPortfolioPnl',
-        method: 'GET',
-        path: endpoint,
-        statusCode: response.status,
-        durationMs: Date.now() - start,
-      });
-
-      return pnl;
-    } catch (error) {
-      this.logError('getPortfolioPnl', 'GET', endpoint, start, error);
-      throw error;
-    }
+    });
   }
 
   async getMarginInfo(instrumentId: string): Promise<MarginInfo> {
-    const start = Date.now();
-    const endpoint = `/account/margin/${instrumentId}`;
-    try {
-      const response = await this.http.get(endpoint);
-      const data = asRecord(response.data);
-
-      const info: MarginInfo = {
+    return this.runRead('getMarginInfo', `/account/margin/${instrumentId}`, (data) => {
+      const record = asRecord(data);
+      return {
         instrumentId,
-        symbol: pickStr(data, 'symbol', 'ticker') || '',
-        maxLeverage: pickNum(data, 'maxLeverage', 'max_leverage') || 1,
-        marginRequired: pickNum(data, 'marginRequired', 'margin_required', 'initialMargin'),
-        maintenanceMargin: pickNum(data, 'maintenanceMargin', 'maintenance_margin', 'mmr'),
+        symbol: pickStr(record, 'symbol', 'ticker') || '',
+        maxLeverage: pickNum(record, 'maxLeverage', 'max_leverage') || 1,
+        marginRequired: pickNum(record, 'marginRequired', 'margin_required', 'initialMargin'),
+        maintenanceMargin: pickNum(record, 'maintenanceMargin', 'maintenance_margin', 'mmr'),
       };
+    });
+  }
 
+  /**
+   * Single read-pipeline that every public method funnels through. Order
+   * of operations is intentional:
+   *   1. Mode-gate refusal (PRE-CHECK audit + typed error, no HTTP).
+   *   2. Rate-limited HTTP via the injected dispatcher.
+   *   3. Success audit (GET/200 + duration + retry telemetry).
+   *   4. On failure: error audit (GET/duration + masked error message),
+   *      rethrow.
+   */
+  private async runRead<T>(
+    action: string,
+    endpoint: string,
+    parse: (data: unknown) => T,
+  ): Promise<T> {
+    this.assertAccountReachable(action);
+    const start = Date.now();
+    try {
+      const { value: response, attempts, totalBackoffMs } =
+        await this.dispatch(() => this.http.get(endpoint));
+      const value = parse(response.data);
       this.audit.log({
-        action: 'getMarginInfo',
+        action,
         method: 'GET',
         path: endpoint,
         statusCode: response.status,
         durationMs: Date.now() - start,
+        attempts,
+        totalBackoffMs,
       });
-
-      return info;
+      return value;
     } catch (error) {
-      this.logError('getMarginInfo', 'GET', endpoint, start, error);
+      const msg = error instanceof Error ? error.message : String(error);
+      this.audit.log({
+        action,
+        method: 'GET',
+        path: endpoint,
+        durationMs: Date.now() - start,
+        error: msg,
+      });
       throw error;
     }
   }
 
-  private logError(action: string, method: string, path: string, start: number, error: unknown): void {
-    const msg = error instanceof Error ? error.message : String(error);
-    this.audit.log({ action, method, path, durationMs: Date.now() - start, error: msg });
+  private assertAccountReachable(action: string): void {
+    if (this.mode !== 'mock') return;
+    const error = new AccountUnavailableError({
+      action,
+      mode: this.mode,
+      reason: 'Account API has no demo HTTP base in mock mode',
+    });
+    this.audit.log({
+      action,
+      method: 'PRE-CHECK',
+      path: '/mode-gate',
+      error: `AccountUnavailableError: ${error.message}`,
+    });
+    throw error;
   }
 }
 
@@ -213,17 +230,6 @@ function pickTimestamp(obj: Record<string, unknown>, ...extra: string[]): number
     if (typeof v === 'string') { const d = Date.parse(v); if (!isNaN(d)) return d; }
   }
   return Date.now();
-}
-
-function extractArray(data: unknown): unknown[] {
-  if (Array.isArray(data)) return data;
-  if (data && typeof data === 'object') {
-    const obj = data as Record<string, unknown>;
-    for (const key of ['data', 'items', 'positions', 'orders', 'results']) {
-      if (Array.isArray(obj[key])) return obj[key] as unknown[];
-    }
-  }
-  return [];
 }
 
 function normalizePosition(data: Record<string, unknown>): Position {

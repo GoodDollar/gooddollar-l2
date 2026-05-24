@@ -1,22 +1,65 @@
+import type { Server } from 'http';
+import { QuoteCache } from './quote-cache';
+import { WsBroadcaster } from './ws-broadcaster';
+import { createServer } from './server';
+import { bootstrapEtoroSource } from './bootstrap';
+import type { EtoroSourceHandle } from './etoro-source';
+import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult } from './types';
+
 export { QuoteCache } from './quote-cache';
 export { RiskFilter } from './risk-filter';
 export { WsBroadcaster } from './ws-broadcaster';
 export { createServer } from './server';
 export { connectEtoroSource } from './etoro-source';
 export type { EtoroSourceConfig, EtoroSourceHandle, MarketDataSource } from './etoro-source';
+export {
+  bootstrapEtoroSource,
+  defaultBootstrapDeps,
+} from './bootstrap';
+export type { BootstrapDeps, BootstrapResult } from './bootstrap';
 export type * from './types';
 
-import { QuoteCache } from './quote-cache';
-import { WsBroadcaster } from './ws-broadcaster';
-import { createServer } from './server';
-import { connectEtoroSource } from './etoro-source';
-import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult } from './types';
+/**
+ * Parse a TCP port from an env var with loud-fail semantics.
+ *
+ * - Unset / empty → `defaultPort` (operator opted out, use the
+ *   service default unchanged).
+ * - Anything else MUST be a base-10 integer in `1..65535`. Trailing
+ *   whitespace is tolerated (`'9410 '`); embedded non-digits
+ *   (`'9410abc'`) and out-of-range values (`'0'`, `'99999'`,
+ *   `'-1'`) throw with the var name and the valid range, so a
+ *   typo fails loud at boot rather than silently binding the
+ *   default.
+ *
+ * Exported so the unit suite (`__tests__/parse-env-port.test.ts`)
+ * can pin the contract without having to spawn the service.
+ */
+export function parseEnvPort(
+  value: string | undefined,
+  defaultPort: number,
+  name: string,
+): number {
+  if (value === undefined || value === '') return defaultPort;
+  const trimmed = value.trim();
+  const n = Number.parseInt(trimmed, 10);
+  if (
+    !Number.isInteger(n) ||
+    String(n) !== trimmed ||
+    n < 1 ||
+    n > 65535
+  ) {
+    throw new Error(
+      `[price-service] Invalid ${name}="${value}" — must be 1..65535`,
+    );
+  }
+  return n;
+}
 
 export class PriceService {
   readonly cache: QuoteCache;
   readonly broadcaster: WsBroadcaster;
-  private readonly config: PriceServiceConfig;
-  private httpServer?: ReturnType<typeof import('http').createServer>;
+  readonly config: PriceServiceConfig;
+  private httpServer?: Server;
 
   constructor(config?: Partial<PriceServiceConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -47,32 +90,29 @@ export class PriceService {
 }
 
 if (require.main === module) {
-  const service = new PriceService();
+  const service = new PriceService({
+    port: parseEnvPort(
+      process.env.PRICE_SERVICE_PORT,
+      DEFAULT_CONFIG.port,
+      'PRICE_SERVICE_PORT',
+    ),
+    wsPort: parseEnvPort(
+      process.env.PRICE_SERVICE_WS_PORT,
+      DEFAULT_CONFIG.wsPort,
+      'PRICE_SERVICE_WS_PORT',
+    ),
+  });
   service.start();
 
-  let sourceHandle: import('./etoro-source').EtoroSourceHandle | undefined;
+  let sourceHandle: EtoroSourceHandle | undefined;
 
   try {
-    const { EtoroClient } = require('../../etoro-client/src/index') as {
-      EtoroClient: new (config?: unknown) => { marketData: import('./etoro-source').MarketDataSource };
-    };
-
-    const mode = process.env.ETORO_MODE ?? 'sandbox';
-    console.log(`[price-service] Connecting to eToro in ${mode} mode...`);
-
-    const client = new EtoroClient();
-    const symbols = (process.env.ORACLE_SYMBOLS ?? service['config'].symbols.join(',')).split(',').map(s => s.trim()).filter(Boolean);
-
-    sourceHandle = connectEtoroSource(service, {
-      symbols,
-      marketData: client.marketData,
-    });
-
-    console.log(`[price-service] Subscribed to ${symbols.length} symbols via eToro: ${symbols.join(', ')}`);
-  } catch (err: unknown) {
+    const result = bootstrapEtoroSource(service);
+    sourceHandle = result.handle;
+  } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[price-service] eToro source unavailable: ${msg}`);
-    console.warn('[price-service] Running without live quotes — use REST API to ingest manually');
+    console.error(`[price-service] fatal: ${msg}`);
+    process.exit(1);
   }
 
   const shutdown = () => {

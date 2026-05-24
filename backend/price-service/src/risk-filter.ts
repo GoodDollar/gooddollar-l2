@@ -47,6 +47,17 @@ export class RiskFilter {
         quote: { ...quote, confidence: 0 },
       };
     }
+    // Reject crossed/inverted books (bid > ask) before the signed
+    // spread-pct math. A negative `(ask - bid)/mid * 100` would otherwise
+    // sail past the `> maxSpreadPct` gate; treat the cross as a hard
+    // defect that must never reach the on-chain oracle.
+    if (quote.bid > quote.ask) {
+      return {
+        accepted: false,
+        reason: `crossed: bid ${quote.bid} > ask ${quote.ask}`,
+        quote: { ...quote, confidence: 0 },
+      };
+    }
     const spreadPct = ((quote.ask - quote.bid) / quote.mid) * 100;
     if (spreadPct > this.config.maxSpreadPct) {
       return {

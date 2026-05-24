@@ -41,7 +41,7 @@ Synthetic stock assets backed by oracles and collateral vaults. 24/7 equity trad
 ## Frontend source
 
 - `frontend/src/app/(app)/stocks/` (pages, portfolio diagnostics, screener state)
-- Oracle status: `frontend/src/app/api/oracle/status/route.ts`
+- Oracle / price-service status: `frontend/src/app/api/status/quotes/route.ts` (consumed by `usePriceServiceStatus`)
 - Rebalance: `frontend/src/app/api/stocks/rebalance-status/route.ts`
 
 ## Tests & evidence

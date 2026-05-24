@@ -158,6 +158,47 @@ Full catalog: [`backend/README.md`](backend/README.md)
 
 Configs: [`backend/ecosystem.config.js`](backend/ecosystem.config.js), [`pm2-ecosystem.config.js`](pm2-ecosystem.config.js)
 
+## Lane 1 — eToro live prices & demo hedging
+
+Lane 1 is the active initiative `0007a-etoro-connectivity`. It pipes eToro/demo
+market data into on-chain price oracles and produces a capped demo-hedge proof
+from `hedge-engine`. **Demo only** — `REAL_TRADING_ENABLED` is a source-level
+`const` fence in [`backend/etoro-client/src/auth.ts`](backend/etoro-client/src/auth.ts);
+no real-money path exists.
+
+| Package | Path | Role |
+|---------|------|------|
+| `@goodchain/etoro-client` | [`backend/etoro-client/`](backend/etoro-client/) | TypeScript SDK — REST + WS client, four-mode safety (`mock` / `demo-readonly` / `demo-trading` / `real-disabled`), demo cap enforcer |
+| `@goodchain/price-service` | [`backend/price-service/`](backend/price-service/) | Normalizes SDK quotes for downstream consumers (REST `:9300`, WS `:9301`) |
+| `oracle-signer` | [`backend/oracle-signer/`](backend/oracle-signer/) | Signs and publishes prices on-chain (`:9107`) |
+| `@goodchain/hedge-engine` | [`backend/hedge-engine/`](backend/hedge-engine/) | Maps GoodChain exposure to capped demo eToro hedges (`:9106`); ships the demo-proof script |
+
+```bash
+npm run install:lane1   # idempotent install across the four packages
+npm run test:lane1      # runs all four suites; halts on first failure
+```
+
+Operator helpers:
+
+- Resolve eToro instrument IDs for `PROOF_INSTRUMENT_ID` /
+  `ETORO_INSTRUMENT_OVERRIDES`:
+  `(cd backend/etoro-client && npm run resolve-instrument-id -- <SYMBOL>)`
+  — see [`backend/etoro-client/README.md`](backend/etoro-client/README.md#operator-scripts).
+- Rotate the demo credentials the SDK reads (`ETORO_DEMO_KEY` /
+  `ETORO_DEMO_SECRET` / `ETORO_DEMO_USER_KEY`):
+  `./scripts/rotate-etoro-keys.sh demo` — refuses any non-demo mode per
+  the lane's `REAL_TRADING_ENABLED=false` stance.
+
+Full env contract, four-mode safety matrix, endpoint table, and the
+demo-proof runbook live in
+[`docs/ETORO_GOODCHAIN_ADAPTER.md`](docs/ETORO_GOODCHAIN_ADAPTER.md).
+Two operator runbooks cover the lane's two DoD halves:
+
+- Live-prices proof (eToro → price-service → oracle-signer → on-chain):
+  [`docs/runbooks/lane1-live-prices-on-chain.md`](docs/runbooks/lane1-live-prices-on-chain.md).
+- Demo-hedge proof (one capped demo open):
+  [`docs/runbooks/lane1-demo-hedge-proof.md`](docs/runbooks/lane1-demo-hedge-proof.md).
+
 ## Repository layout
 
 ```text
@@ -194,6 +235,8 @@ npm run build:sdk          # cd sdk && npm run build
 npm run health             # scripts/health-check.sh
 npm run test:e2e           # frontend app-regression
 npm run tests:publish      # publish /tests page data
+npm run install:lane1      # install lane 1 backend packages (eToro live prices / demo hedging)
+npm run test:lane1         # test lane 1 backend packages
 ```
 
 ### Local frontend

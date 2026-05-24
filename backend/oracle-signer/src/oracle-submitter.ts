@@ -47,6 +47,20 @@ export class OracleSubmitter {
       );
     }
 
+    // ethers v6 resolves tx.wait with a populated receipt even when the
+    // on-chain call reverts; only `status === 1` indicates success.
+    // Throwing here lets the caller skip `markSubmitted` so the next
+    // tick re-tries instead of silently waiting for fresh deviation
+    // against an on-chain value that never changed.
+    if (receipt.status !== 1) {
+      throw new Error(
+        `Transaction reverted on-chain (tx: ${receipt.hash}, ` +
+        `status: ${receipt.status}, gasUsed: ${receipt.gasUsed.toString()}). ` +
+        `Batch contained ${updates.length} symbol(s): ${symbols.join(', ')}. ` +
+        `Inspect with: cast tx ${receipt.hash} --rpc-url $L2_RPC_URL`,
+      );
+    }
+
     return {
       txHash: receipt.hash,
       gasUsed: receipt.gasUsed,

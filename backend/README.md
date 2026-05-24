@@ -36,13 +36,41 @@ Canonical PM2 configs:
 | `revenue-tracker` | `revenue-tracker/` | `9104` | UBI revenue tracking |
 | `rpc-balancer` | `rpc-balancer/` | `8546`–`8547` | RPC proxy/balancer |
 | `status-aggregator` | `status-aggregator/` | `9200` | Polls all `/health` → `/status.json` |
-| `hedge-engine` | `hedge-engine/` | `9106` | Risk hedging (disabled until `RISK_ENGINE_ADDRESS` set) |
-| `oracle-signer` | `oracle-signer/` | `9107` | Oracle submission (disabled until `ORACLE_SIGNER_KEY` set) |
+| `hedge-engine` | `hedge-engine/` | `9106` | Risk hedging (disabled until `RISK_ENGINE_ADDRESS` set — see Lane 1 section) |
+| `price-service` | `price-service/` | `9300` REST · `9301` WS | Lane-1 price broadcaster — defaults to `ETORO_MODE=mock` (see Lane 1 section) |
+| `oracle-signer` | `oracle-signer/` | `9107` | Oracle submission (disabled until `ORACLE_SIGNER_KEY` set — see Lane 1 section) |
 | `goodswap` | `../frontend/` | `3100` | Next.js production app |
 | `perps` / `goodperps` | `perps/` | `8082` | Perps order book API — see package |
 | `predict` / `goodpredict` | `predict/` | `3040` | Predict CLOB — [`predict/README.md`](predict/README.md) |
 
-Additional packages (not always in PM2 ecosystem): `price-service/`, `trading-bot/`, `etoro-client/`.
+Additional packages (not always in PM2 ecosystem): `trading-bot/`, `etoro-client/`.
+
+## Lane 1 — live prices & demo hedging
+
+The four packages below together implement the active initiative
+`0007a-etoro-connectivity`: eToro/demo market data → price-service →
+oracle-signer → on-chain → apps, plus a capped demo-hedge proof from
+`hedge-engine`. Lane 1 is **demo-only by source-level fence**
+(`REAL_TRADING_ENABLED` const in
+[`etoro-client/src/auth.ts`](etoro-client/src/auth.ts)).
+
+| Package | Path | Port | Role | Links |
+|---------|------|------|------|-------|
+| `@goodchain/etoro-client` | `etoro-client/` | n/a (SDK) | REST + WS client, four-mode safety, demo cap enforcer | [README](etoro-client/README.md) · [contract](../docs/ETORO_GOODCHAIN_ADAPTER.md) |
+| `@goodchain/price-service` | `price-service/` | `9300` REST · `9301` WS | Normalizes SDK quotes for downstream consumers | [README](price-service/README.md) |
+| `oracle-signer` | `oracle-signer/` | `9107` | Signs and publishes prices on-chain | (see ecosystem.config.js) |
+| `@goodchain/hedge-engine` | `hedge-engine/` | `9106` | Maps GoodChain exposure to capped demo eToro hedges; ships demo-proof script | [README](hedge-engine/README.md) · [proof runbook](../docs/runbooks/lane1-demo-hedge-proof.md) |
+
+Install, build, and test the lane in one shot from the repo root:
+
+```bash
+npm run install:lane1   # installs deps AND builds tsc → dist/ for all four packages
+npm run test:lane1
+# After editing source, rebuild without re-installing:
+npm run build:lane1     # pass --force to rebuild even when dist/index.js already exists
+```
+
+Deep contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../docs/ETORO_GOODCHAIN_ADAPTER.md).
 
 ## Status aggregation
 
@@ -56,7 +84,7 @@ frontend GET /api/status  →  https://goodswap.goodclaw.org/api/status
 
 Service list defined in [`status-aggregator/src/index.ts`](status-aggregator/src/index.ts).
 
-**2026-05-22 note:** `hedge-engine` and `oracle-signer` may report **unreachable** or degraded when running in health-only mode (empty `RISK_ENGINE_ADDRESS` / `ORACLE_SIGNER_KEY`). This is expected per [`ecosystem.config.js`](ecosystem.config.js) comments.
+**2026-05-22 note:** `hedge-engine` and `oracle-signer` may report **unreachable** or degraded when running in health-only mode (empty `RISK_ENGINE_ADDRESS` / `ORACLE_SIGNER_KEY`). This is expected per [`ecosystem.config.js`](ecosystem.config.js) comments. `price-service` may report **degraded** when no fresh quotes have flowed for ≥10s (e.g. demo credentials expired or the eToro upstream is unreachable) — see [`price-service/README.md`](price-service/README.md) for the health contract.
 
 ## Environment & addresses
 

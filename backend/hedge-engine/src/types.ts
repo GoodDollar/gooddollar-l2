@@ -1,3 +1,5 @@
+import type { EtoroMode } from '@goodchain/etoro-client';
+
 /** Symbols tracked for hedging (matches on-chain oracle keys). */
 export type StockSymbol = string;
 
@@ -64,6 +66,18 @@ export interface HedgeEngineConfig {
   pollIntervalMs: number;
   /** If true, log actions but don't execute real eToro trades. */
   dryRun: boolean;
+  /**
+   * Resolved eToro safety mode (`mock | demo-readonly | demo-trading |
+   * real-disabled`). Drives adapter selection — see `selectAdapter`.
+   */
+  mode: EtoroMode;
+  /**
+   * Two-step trading gate. `true` only when `mode === 'demo-trading'`
+   * AND `HEDGE_TRADING_ENABLED === 'true'`. Either-or fails closed —
+   * `false` means the engine runs in read-only mode via the read-only
+   * sentinel adapter.
+   */
+  tradingEnabled: boolean;
 }
 
 /** Snapshot of a full reconciliation cycle. */

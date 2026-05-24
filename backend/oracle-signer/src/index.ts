@@ -1,17 +1,36 @@
+import {
+  DEFAULT_LANE_SYMBOLS,
+  INSTRUMENT_SYMBOLS,
+  partitionLaneSymbols,
+} from '@goodchain/etoro-client';
 import { PriceWsClient } from './price-ws-client';
 import { QuoteBuffer } from './quote-buffer';
 import { OracleSubmitter } from './oracle-submitter';
 import { OracleSignerConfig, UpdateResult } from './types';
 import { startHealthServer } from './healthServer';
 
+// Prefix used by the stuck-tick watchdog when it owns the degrade state.
+// Matched on clear so we never clobber another component's degrade reason
+// (e.g. unknown-symbol or RPC-URL fallback set by loadConfig).
+const WATCHDOG_REASON_PREFIX = 'tick stuck >';
+
+// Prefix used when the watchdog flips degraded because cumulative WS
+// stream failures crossed `wsFailureDegradeAt`. Owned by this component
+// the same way `WATCHDOG_REASON_PREFIX` is owned by the stuck-tick path.
+const WS_STREAM_REASON_PREFIX = 'ws-stream:';
+
 export class OracleSignerService {
   private wsClient: PriceWsClient;
   private buffer: QuoteBuffer;
   private submitter: OracleSubmitter;
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
+  private watchdogHandle: ReturnType<typeof setInterval> | null = null;
   private readonly config: OracleSignerConfig;
   private running = false;
   private updateCount = 0;
+  private tickInFlight = false;
+  private overlappedTickCount = 0;
+  private lastTickStartedAtMs: number | null = null;
 
   constructor(config: OracleSignerConfig) {
     this.config = config;
@@ -39,15 +58,40 @@ export class OracleSignerService {
         console.error('[oracle-signer] tick error:', err.message);
       });
     }, this.config.updateIntervalMs);
+
+    // Watchdog: a tick that runs longer than 2x the tx timeout almost
+    // certainly means the underlying tx is wedged. Surface it through
+    // the canonical degrade env vars so /health turns amber.
+    const watchdogPeriodMs = Math.max(50, Math.floor(this.config.txTimeoutMs / 4));
+    this.watchdogHandle = setInterval(() => this.runWatchdog(), watchdogPeriodMs);
   }
 
   async tick(): Promise<UpdateResult | null> {
+    if (this.tickInFlight) {
+      this.overlappedTickCount++;
+      const ageMs = Date.now() - (this.lastTickStartedAtMs ?? 0);
+      console.warn(
+        `[oracle-signer] Skipping tick — previous submitBatch still in flight ` +
+        `(started ${ageMs}ms ago, overlapped ${this.overlappedTickCount}x)`,
+      );
+      return null;
+    }
+
     const updates = this.buffer.getPendingUpdates();
     if (updates.length === 0) return null;
 
+    // Capture the actually-submitted mids before awaiting confirmation
+    // so the deviation gate is anchored to the on-chain price even if
+    // WS pushes mutate latestQuotes during the in-flight tx.
+    const submittedMids = updates.map((u) => ({
+      symbol: u.symbol,
+      mid: Number(u.price8) / 1e8,
+    }));
+    this.tickInFlight = true;
+    this.lastTickStartedAtMs = Date.now();
     try {
       const result = await this.submitter.submitBatch(updates);
-      this.buffer.markSubmitted(updates.map(u => u.symbol));
+      this.buffer.markSubmitted(submittedMids);
       this.updateCount++;
 
       console.log(
@@ -61,6 +105,47 @@ export class OracleSignerService {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[oracle-signer] Submission failed: ${msg}`);
       throw err;
+    } finally {
+      this.tickInFlight = false;
+    }
+  }
+
+  private runWatchdog(): void {
+    const stuckThresholdMs = this.config.txTimeoutMs * 2;
+    const startedAt = this.lastTickStartedAtMs;
+    const elapsed = startedAt === null ? 0 : Date.now() - startedAt;
+    const isStuck = this.tickInFlight && elapsed > stuckThresholdMs;
+
+    if (isStuck) {
+      process.env.SERVICE_HEALTH_STATUS = 'degraded';
+      process.env.SERVICE_DISABLED_REASON =
+        `${WATCHDOG_REASON_PREFIX}${elapsed}ms — tx timeout exceeded twice`;
+      return;
+    }
+
+    // Stream-failure degrade: cumulative malformed-frame count past
+    // the threshold flips degraded so silent schema drift surfaces on
+    // `/health`. We only set if no other source already owns the
+    // degrade reason (first cause wins), and we own clearing under
+    // our own prefix.
+    const wsFailureTotal = Object.values(this.wsClient.getStreamFailureCounts())
+      .reduce((sum, count) => sum + count, 0);
+    if (wsFailureTotal >= this.config.wsFailureDegradeAt) {
+      const reason = process.env.SERVICE_DISABLED_REASON;
+      if (!reason || reason.startsWith(WS_STREAM_REASON_PREFIX)) {
+        process.env.SERVICE_HEALTH_STATUS = 'degraded';
+        process.env.SERVICE_DISABLED_REASON =
+          `${WS_STREAM_REASON_PREFIX} ${wsFailureTotal} malformed/parse-fail frames since boot — schema drift?`;
+      }
+      return;
+    }
+
+    // Only clear a degrade marker that the watchdog itself set; never
+    // touch another source's degrade reason (e.g. unknown symbols).
+    const reason = process.env.SERVICE_DISABLED_REASON;
+    if (reason?.startsWith(WATCHDOG_REASON_PREFIX) || reason?.startsWith(WS_STREAM_REASON_PREFIX)) {
+      delete process.env.SERVICE_HEALTH_STATUS;
+      delete process.env.SERVICE_DISABLED_REASON;
     }
   }
 
@@ -70,8 +155,24 @@ export class OracleSignerService {
       clearInterval(this.intervalHandle);
       this.intervalHandle = null;
     }
+    if (this.watchdogHandle) {
+      clearInterval(this.watchdogHandle);
+      this.watchdogHandle = null;
+    }
     this.wsClient.close();
     console.log(`[oracle-signer] Stopped after ${this.updateCount} updates`);
+  }
+
+  get inFlight(): boolean {
+    return this.tickInFlight;
+  }
+
+  get overlappedTicks(): number {
+    return this.overlappedTickCount;
+  }
+
+  get lastTickStartedAt(): number | null {
+    return this.lastTickStartedAtMs;
   }
 
   get isRunning(): boolean {
@@ -97,24 +198,52 @@ export class OracleSignerService {
   }
 }
 
-function loadConfig(): OracleSignerConfig {
-  const signerKey = process.env.ORACLE_SIGNER_KEY;
+export function loadConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): OracleSignerConfig {
+  const signerKey = env.ORACLE_SIGNER_KEY;
   if (!signerKey) {
     throw new Error('ORACLE_SIGNER_KEY env var required');
   }
 
+  const rawSymbols = (env.ORACLE_SYMBOLS ?? DEFAULT_LANE_SYMBOLS.join(','))
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const { valid: symbols, unknown } = partitionLaneSymbols(rawSymbols);
+  if (unknown.length > 0) {
+    console.error(
+      `[oracle-signer] Unknown symbols: ${unknown.join(', ')}. ` +
+      `Valid: ${INSTRUMENT_SYMBOLS.join(', ')}`,
+    );
+    env.SERVICE_HEALTH_STATUS = 'degraded';
+    env.SERVICE_DISABLED_REASON = `Unknown symbols: ${unknown.join(',')}`;
+  }
+
+  // RPC alias chain. `.env.example` documents L2_RPC_URL as an alias
+  // for RPC_URL — honor both. The legacy `env.RPC` (no `_URL`) read
+  // was an undocumented typo and is no longer accepted. Mark the
+  // service degraded when neither is set so the silent-localhost
+  // fallback surfaces on `/health` instead of looking like a working
+  // boot pointed at a non-existent local Anvil. Don't clobber an
+  // earlier degrade reason (e.g. unknown symbols) — first cause wins.
+  const rpcUrl = env.L2_RPC_URL || env.RPC_URL || 'http://localhost:8545';
+  if (!env.L2_RPC_URL && !env.RPC_URL && !env.SERVICE_DISABLED_REASON) {
+    env.SERVICE_HEALTH_STATUS = 'degraded';
+    env.SERVICE_DISABLED_REASON =
+      'L2_RPC_URL/RPC_URL not set; signer points at default localhost:8545';
+  }
+
   return {
-    priceServiceUrl: process.env.PRICE_SERVICE_URL || 'ws://localhost:4001',
-    rpcUrl: process.env.L2_RPC_URL || process.env.RPC || 'http://localhost:8545',
-    oracleAddress: process.env.STOCK_ORACLE_V2_ADDRESS || '',
+    priceServiceUrl: env.PRICE_SERVICE_URL || 'ws://localhost:9301',
+    rpcUrl,
+    oracleAddress: env.STOCK_ORACLE_V2_ADDRESS || '',
     signerKey,
-    updateIntervalMs: parseInt(process.env.ORACLE_UPDATE_INTERVAL || '5000', 10),
-    minDeviationBps: parseInt(process.env.ORACLE_MIN_DEVIATION || '10', 10),
-    txTimeoutMs: parseInt(process.env.ORACLE_TX_TIMEOUT || '60000', 10),
-    symbols: (process.env.ORACLE_SYMBOLS || 'AAPL,TSLA,NVDA,MSFT,META,AMZN,GOOGL,SPY,QQQ,NFLX')
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean),
+    updateIntervalMs: parseInt(env.ORACLE_UPDATE_INTERVAL || '5000', 10),
+    minDeviationBps: parseInt(env.ORACLE_MIN_DEVIATION || '10', 10),
+    txTimeoutMs: parseInt(env.ORACLE_TX_TIMEOUT || '60000', 10),
+    symbols,
+    wsFailureDegradeAt: parseInt(env.ORACLE_WS_FAILURE_DEGRADE_AT || '100', 10),
   };
 }
 

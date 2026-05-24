@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { LANE1_RUNBOOK_HREF, LANE1_STATUS_HREF } from '@/lib/lane1Links'
+
 /**
  * Iter 27 — Internal analytics dashboard.
  *
@@ -95,6 +97,25 @@ interface ProtocolSummary {
   count: number
   sampleContracts: { address: string; name: string }[]
 }
+interface PriceFeedBlock {
+  ok: boolean
+  mode?: string
+  freshQuotes?: number
+  totalSymbols?: number
+  medianDivergenceBps?: number | null
+  lastUpdateMs?: number
+  status?: string
+  error?: string
+}
+interface OracleSubmitterBlock {
+  ok: boolean
+  status: 'ok' | 'degraded' | 'unreachable'
+  mode?: string
+  reason?: string
+  lastUpdateMs?: number
+  configuredSymbols?: number
+  error?: string
+}
 interface OverviewResponse {
   ok: true
   summary: {
@@ -107,6 +128,8 @@ interface OverviewResponse {
   status: StatusBlock
   indexer: IndexerBlock
   chain: ChainBlock
+  priceFeed?: PriceFeedBlock
+  oracleSubmitter?: OracleSubmitterBlock
   ubi: UbiBlock
   protocols: ProtocolSummary[]
 }
@@ -152,6 +175,156 @@ function PanelError({ message }: { message: string }) {
     <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300">
       <span className="font-medium">Source unavailable:</span> {message}
     </div>
+  )
+}
+
+// ─── Lane-1 price-feed panel (task 0063) ────────────────────────────────────
+
+function lane1ChipClasses(status: 'ok' | 'degraded' | 'unreachable' | 'unknown'): string {
+  switch (status) {
+    case 'ok':
+      return 'bg-green-500/15 text-green-300 border-green-500/30'
+    case 'degraded':
+      return 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30'
+    case 'unreachable':
+      return 'bg-red-500/15 text-red-300 border-red-500/30'
+    case 'unknown':
+      return 'bg-gray-500/15 text-gray-300 border-gray-500/30'
+  }
+}
+
+function Lane1FenceChip({ mode }: { mode: string | undefined }) {
+  const fenced = mode !== 'demo-trading'
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+        fenced
+          ? 'bg-green-500/15 text-green-300 border-green-500/30'
+          : 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30'
+      }`}
+      data-testid="lane1-fence-chip"
+    >
+      Real trading: {fenced ? 'FENCED ✓' : 'demo-trading'}
+    </span>
+  )
+}
+
+function Lane1PriceFeedPanel({
+  priceFeed,
+  oracleSubmitter,
+  chain,
+}: {
+  priceFeed: PriceFeedBlock | undefined
+  oracleSubmitter: OracleSubmitterBlock | undefined
+  chain: ChainBlock
+}) {
+  const producerStatus: 'ok' | 'degraded' | 'unreachable' | 'unknown' = priceFeed
+    ? priceFeed.ok
+      ? 'ok'
+      : 'unreachable'
+    : 'unknown'
+  const submitterStatus = oracleSubmitter?.status ?? 'unknown'
+
+  return (
+    <section
+      className="mb-6 bg-dark-100/50 rounded-xl p-5"
+      data-testid="lane1-price-feed-panel"
+    >
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h2 className="text-lg font-semibold text-white">
+          Lane 1 — eToro live prices
+        </h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Lane1FenceChip mode={priceFeed?.mode} />
+          <a
+            href={LANE1_STATUS_HREF}
+            className="text-xs text-goodgreen hover:underline"
+            data-testid="lane1-deep-link"
+          >
+            See pipeline status →
+          </a>
+        </div>
+      </div>
+
+      {priceFeed && !priceFeed.ok ? (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-200 mb-3">
+          <span aria-hidden>⚠ </span>
+          <span className="font-medium">price-service unavailable:</span>{' '}
+          <span className="font-mono">{priceFeed.error ?? priceFeed.status ?? 'unknown'}</span>
+          <span className="ml-2">
+            <a
+              href={LANE1_RUNBOOK_HREF}
+              className="underline hover:text-yellow-100"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Runbook →
+            </a>
+          </span>
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Producer */}
+        <div
+          className={`bg-dark-50 rounded-lg p-4 border ${lane1ChipClasses(producerStatus)}`}
+          data-testid="lane1-producer-card"
+        >
+          <div className="text-xs uppercase tracking-wide text-gray-400 mb-1">
+            Producer · price-service
+          </div>
+          <div className="text-sm text-white font-mono">
+            {priceFeed?.freshQuotes ?? '—'}/{priceFeed?.totalSymbols ?? '—'} fresh
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            Mode: <span className="font-mono text-gray-200">{priceFeed?.mode ?? '—'}</span>
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5">:9300 · {producerStatus}</div>
+        </div>
+
+        {/* Submitter */}
+        <div
+          className={`bg-dark-50 rounded-lg p-4 border ${lane1ChipClasses(submitterStatus)}`}
+          data-testid="lane1-submitter-card"
+        >
+          <div className="text-xs uppercase tracking-wide text-gray-400 mb-1">
+            Submitter · oracle-signer
+          </div>
+          <div className="text-sm text-white">{submitterStatus}</div>
+          {oracleSubmitter?.reason ? (
+            <div className="text-xs text-gray-400 mt-1 break-words">
+              {oracleSubmitter.reason}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-500 mt-1">
+              mode: <span className="font-mono text-gray-300">{oracleSubmitter?.mode ?? '—'}</span>
+            </div>
+          )}
+          <div className="text-xs text-gray-500 mt-0.5">:9107</div>
+        </div>
+
+        {/* Chain */}
+        <div
+          className={`bg-dark-50 rounded-lg p-4 border ${lane1ChipClasses(chain.ok ? 'ok' : 'unreachable')}`}
+          data-testid="lane1-chain-card"
+        >
+          <div className="text-xs uppercase tracking-wide text-gray-400 mb-1">
+            Chain · StockOracleV2
+          </div>
+          <div className="text-sm text-white">
+            {chain.ok && typeof chain.blockNumber === 'number'
+              ? `block ${chain.blockNumber.toLocaleString()}`
+              : 'unreachable'}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            Median div:{' '}
+            <span className="font-mono text-gray-200">
+              {priceFeed?.medianDivergenceBps == null ? '—' : `${priceFeed.medianDivergenceBps} bps`}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -239,6 +412,8 @@ export default function AnalyticsPage() {
   const status = data?.status
   const indexer = data?.indexer
   const chain = data?.chain
+  const priceFeed = data?.priceFeed
+  const oracleSubmitter = data?.oracleSubmitter
   const ubi = data?.ubi
   const protocols = data?.protocols ?? []
 
@@ -289,7 +464,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* Summary row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
         <StatCard
           label="Protocols"
           value={summary?.totalProtocols ?? (isInitialLoad ? '…' : 0)}
@@ -326,7 +501,7 @@ export default function AnalyticsPage() {
               ? `${status.healthy}/${status.total}`
               : '—'
           }
-          sub={status?.overall ?? 'aggregator offline'}
+          sub={`${status?.overall ?? 'aggregator offline'} · → Lane 1`}
           color={
             status?.overall === 'healthy'
               ? 'text-goodgreen'
@@ -335,6 +510,22 @@ export default function AnalyticsPage() {
                 : status?.overall === 'down'
                   ? 'text-red-400'
                   : 'text-white'
+          }
+        />
+        <StatCard
+          label="Price feed"
+          value={
+            priceFeed?.ok && typeof priceFeed.freshQuotes === 'number'
+              ? `${priceFeed.freshQuotes}/${priceFeed.totalSymbols ?? '?'}`
+              : '—'
+          }
+          sub={priceFeed?.ok ? priceFeed.mode ?? 'unknown mode' : 'price-service offline'}
+          color={
+            priceFeed?.ok
+              ? 'text-goodgreen'
+              : priceFeed
+                ? 'text-red-400'
+                : 'text-white'
           }
         />
       </div>
@@ -366,6 +557,15 @@ export default function AnalyticsPage() {
           <PanelError message={status?.error ?? 'status aggregator unreachable'} />
         )}
       </section>
+
+      {/* ── Lane 1 — eToro live prices panel (task 0063) ──────────────────── */}
+      {chain && (
+        <Lane1PriceFeedPanel
+          priceFeed={priceFeed}
+          oracleSubmitter={oracleSubmitter}
+          chain={chain}
+        />
+      )}
 
       {/* ── Chain & Indexer Activity panel ───────────────────────────────── */}
       <section className="mb-6 bg-dark-100/50 rounded-xl p-5">
