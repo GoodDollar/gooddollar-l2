@@ -1603,6 +1603,42 @@ export function createServer(
       res.status(400).json(finalizeTimestamps(body, now));
       return;
     }
+    // task 0082 — `?maxAgeMs=` is request-syntax validation; per RFC
+    // 9110 §15.5 / industry convention (Polygon, Stripe, Twilio,
+    // Cloudflare, Square), 4xx-class shape errors report BEFORE
+    // resource-state gates (configured-set, cache lookup). Running
+    // the parse here means a malformed query against a cold cache or
+    // an unconfigured symbol surfaces the fixable error first instead
+    // of being swallowed by a 404 the caller can't act on. The
+    // absent/ok branches are no-ops at this slot — only `invalid`
+    // short-circuits; the 503 stale-cache check below still owns the
+    // `ok + age > value` comparison because that needs the cache entry.
+    const parsedMaxAge = parseMaxAgeMs(req.query.maxAgeMs);
+    if (parsedMaxAge.kind === 'invalid') {
+      const body: Record<string, unknown> = {
+        error: 'invalid-max-age-ms',
+        message:
+          `the ?maxAgeMs= query value is not a positive base-10 ` +
+          `integer of up to 11 digits (saw ${
+            parsedMaxAge.reason === 'type'
+              ? 'a non-string'
+              : 'an unparseable string'
+          })`,
+        humanReason: INVALID_MAX_AGE_MS_HUMAN_REASON,
+        severity: INVALID_MAX_AGE_MS_SEVERITY,
+        nextStep: INVALID_MAX_AGE_MS_NEXT_STEP,
+        expected: {
+          parameter: 'maxAgeMs',
+          pattern: MAX_AGE_MS_REGEX.source,
+          example: '30000',
+        },
+        symbol: result.symbol,
+        ...echoPath(req.path),
+        method: req.method,
+      };
+      res.status(400).json(finalizeTimestamps(body, now));
+      return;
+    }
     if (!configuredSet.has(result.symbol)) {
       // Permanent 404: this symbol will never tick on this deploy
       // because it isn't in the subscription set. Distinct from the
@@ -1677,39 +1713,11 @@ export function createServer(
     }
     const age = now - entry.cachedAt;
     // task 0081 — optional `?maxAgeMs=<positive-integer>` server-side
-    // freshness gate. Absent ⇒ unchanged (backwards-compat 200).
-    // Invalid ⇒ 400 with the canonical triplet. Present + entry too
-    // old ⇒ 503 stale-cache. Present + fresh enough ⇒ 200 (body
-    // byte-identical to the no-query path; the gate is policy, not
-    // payload). Runs strictly AFTER the entry-exists check so 404
-    // branches (`symbol-not-configured`, `no-quote`) keep their
-    // existing contract.
-    const parsedMaxAge = parseMaxAgeMs(req.query.maxAgeMs);
-    if (parsedMaxAge.kind === 'invalid') {
-      const body: Record<string, unknown> = {
-        error: 'invalid-max-age-ms',
-        message:
-          `the ?maxAgeMs= query value is not a positive base-10 ` +
-          `integer of up to 11 digits (saw ${
-            parsedMaxAge.reason === 'type'
-              ? 'a non-string'
-              : 'an unparseable string'
-          })`,
-        humanReason: INVALID_MAX_AGE_MS_HUMAN_REASON,
-        severity: INVALID_MAX_AGE_MS_SEVERITY,
-        nextStep: INVALID_MAX_AGE_MS_NEXT_STEP,
-        expected: {
-          parameter: 'maxAgeMs',
-          pattern: MAX_AGE_MS_REGEX.source,
-          example: '30000',
-        },
-        symbol: result.symbol,
-        ...echoPath(req.path),
-        method: req.method,
-      };
-      res.status(400).json(finalizeTimestamps(body, now));
-      return;
-    }
+    // freshness gate. The parse itself ran above (task 0082) so the
+    // `invalid` branch already short-circuited; this comparison only
+    // fires when an `ok` budget actually exceeds the cached entry's
+    // age. Absent ⇒ no gate, fall through to 200. Present + entry
+    // too old ⇒ 503 stale-cache.
     if (parsedMaxAge.kind === 'ok' && age > parsedMaxAge.value) {
       const src = sanitizedSource();
       const retryAfter =
