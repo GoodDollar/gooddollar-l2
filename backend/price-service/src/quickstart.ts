@@ -66,6 +66,14 @@ export const STATIC_QUICKSTART: readonly QuickstartStep[] = Object.freeze([
       '200 with quotes for only the requested set; ' +
       'unmatched symbols listed in body.unmatched',
   }),
+  Object.freeze({
+    step: 5,
+    goal: 'Wire into Grafana via a standard Prometheus scrape',
+    request: 'GET /metrics',
+    expect:
+      '200 text/plain (version=0.0.4) with price_service_* series ' +
+      '(info, uptime_seconds, cache_size, ingest_total, source_connected, ws_*)',
+  }),
 ]) as readonly QuickstartStep[];
 
 const WS_QUICKSTART_GOAL = 'Subscribe to live ticks';

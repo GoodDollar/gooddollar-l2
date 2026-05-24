@@ -1405,6 +1405,7 @@ describe('REST Server — root index and 404 endpoint discovery', () => {
     '/status/quotes',
     '/quotes/:symbol',
     '/docs/source-reasons',
+    '/metrics',
   ];
 
   it('GET / returns 200 with service name and endpoint index', async () => {
@@ -1510,16 +1511,17 @@ describe('REST Server — 404 hint list is compact (task 0027)', () => {
 
   const COMPACT_404_PATHS = ['/favicon.ico', '/nope', '/quotes//x'];
 
-  // Cap was raised from 700 → 760 by task 0078 to absorb the
-  // mandatory `requestId` correlation field (~30 bytes per body).
-  // The 404 surface is still strictly compact: catalog summaries and
-  // responseShape strings stay off the wire here.
+  // Cap evolution: 700 → 760 (task 0078 added `requestId`) → 800
+  // (task 0080 added `/metrics` to the catalog index that ships on
+  // 404 hint bodies, ~30 bytes per entry). The 404 surface is still
+  // strictly compact — catalog summaries and responseShape strings
+  // stay off the wire here.
   for (const p of COMPACT_404_PATHS) {
-    it(`GET ${p} 404 body ≤ 760 bytes`, async () => {
+    it(`GET ${p} 404 body ≤ 800 bytes`, async () => {
       const r = await fetch(`${baseUrl}${p}`);
       expect(r.status).toBe(404);
       const buf = Buffer.from(await r.arrayBuffer());
-      expect(buf.byteLength).toBeLessThanOrEqual(760);
+      expect(buf.byteLength).toBeLessThanOrEqual(800);
     });
   }
 

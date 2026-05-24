@@ -82,6 +82,7 @@ describe('REST Server — ENDPOINT_CATALOG drives /, 404, and 405', () => {
         '/audit/stats',
         '/docs/source-reasons',
         '/health',
+        '/metrics',
         '/quotes',
         '/quotes/:symbol',
         '/quotes/fresh/all',

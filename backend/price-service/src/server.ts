@@ -35,6 +35,12 @@ import {
   type NormalizeSymbolResult,
 } from './symbol-normalize';
 import { MAX_REQUESTED_SYMBOLS, parseSymbolsQuery } from './symbols-query';
+import {
+  METRICS_CONTENT_TYPE,
+  MetricsSnapshot,
+  renderMetrics,
+  renderMinimalMetrics,
+} from './metrics';
 import { REQUEST_ID_REGEX, requestIdMiddleware } from './request-id';
 import { parseAllowedHeaders } from './cors';
 
@@ -230,6 +236,20 @@ export function readPackageVersion(
 const PACKAGE_VERSION = readPackageVersion();
 
 /**
+ * Fallback runtime shape for the `/metrics` snapshot when no
+ * `runtimeGetter` was wired (e.g. a barebones test fixture). Mirrors
+ * `resolveRuntime`'s `sandbox/testnet` defaults so a probe against
+ * the empty server still emits a parse-clean `price_service_info`
+ * gauge. See task 0080.
+ */
+const DEFAULT_METRICS_RUNTIME = Object.freeze({
+  etoroMode: 'sandbox',
+  network: 'testnet',
+  fixtureOnly: true,
+  realTradingEnabled: false,
+});
+
+/**
  * Single source of truth for every endpoint the service exposes. The
  * discovery payload (`GET /`), the 404 hint list, and the 405 method
  * dispatch all read off this one array — there's no second place to
@@ -369,6 +389,18 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       '{ reasons: Record<string, {humanReason, nextStep, ' +
       "severity:'ok'|'info'|'degraded'|'critical'}>, count, timestamp, " +
       'timestampIso }',
+  },
+  {
+    path: '/metrics',
+    methods: ['GET'],
+    summary:
+      'Prometheus text-exposition format; scrape target for operator ' +
+      'dashboards. Always 200 (degraded is observable in metrics).',
+    responseShape:
+      'text/plain;v=0.0.4;utf-8 — price_service_{info,uptime_seconds,' +
+      'cache_{size,fresh_size,age_seconds{symbol}},{ingest,accepted,' +
+      'rejected{reason}}_total,source_connected{reason},' +
+      'ws_{listening,clients},audit_{write_errors,buffered_drops}_total}',
   },
 ];
 
@@ -1067,6 +1099,15 @@ function applyRetryAfterHeader(
   res.setHeader('Retry-After', String(seconds));
 }
 
+/**
+ * Tiny accessor passed to `createServer` so the Prometheus `/metrics`
+ * handler can read the current WS client count without folding the
+ * counter into the broader `WsStatus` shape (which would invalidate
+ * the on-the-wire equality tests in `ws-bind-failure.test.ts`). See
+ * task 0080.
+ */
+export type WsClientCountGetter = () => number;
+
 export function createServer(
   cache: QuoteCache,
   config?: Partial<PriceServiceConfig>,
@@ -1076,6 +1117,7 @@ export function createServer(
   wsAddressGetter?: WsAddressGetter,
   wsStatusGetter?: WsStatusGetter,
   runtimeGetter?: RuntimeGetter,
+  wsClientCountGetter?: WsClientCountGetter,
 ): express.Express {
   const app = express();
   app.disable('x-powered-by');
@@ -1686,6 +1728,78 @@ export function createServer(
       finalizeEnvelope(body, now, { boot: buildBootBlock(now), deprecations }),
     );
   });
+
+  app.get('/metrics', (_req: Request, res: Response) => {
+    // Prometheus scrape — text/plain only. Always 200, even when the
+    // upstream source is dead: degraded is observable through the
+    // metrics themselves; a 503 here would blank the dashboard
+    // exactly when the operator most needs the trace. See task 0080.
+    const rt = runtimeGetter
+      ? runtimeGetter()
+      : DEFAULT_METRICS_RUNTIME;
+    let body: string;
+    try {
+      body = renderMetrics(snapshotMetrics());
+    } catch (err) {
+      // Defence-in-depth: ship at minimum the `info` line plus an
+      // `# UNAVAILABLE` comment so scrape parsing succeeds (the
+      // "never 5xx" acceptance criterion).
+      const reason = err instanceof Error ? err.message : String(err);
+      body = renderMinimalMetrics(rt, PACKAGE_VERSION, reason);
+    }
+    // Bypass Express's `res.send` MIME parameter re-serialisation
+    // (which reorders `version` after `charset`) by writing the
+    // raw response. Prometheus parsers are strict about the
+    // canonical order `text/plain; version=0.0.4; charset=utf-8`.
+    res.status(200);
+    res.setHeader('Content-Type', METRICS_CONTENT_TYPE);
+    res.setHeader('Content-Length', Buffer.byteLength(body, 'utf-8'));
+    res.end(body);
+  });
+
+  function snapshotMetrics(): MetricsSnapshot {
+    const now = Date.now();
+    const stats: IngestStats = statsGetter
+      ? statsGetter()
+      : {
+          ingested: 0,
+          rejected: 0,
+          byReason: {},
+          firstAtMs: null,
+          lastAtMs: null,
+          writeErrors: 0,
+          bufferedDrops: 0,
+        };
+    const all = cache.getAll();
+    const cacheAges: Array<{ symbol: string; ageSeconds: number }> = [];
+    for (const [symbol, entry] of all) {
+      cacheAges.push({
+        symbol,
+        ageSeconds: Math.max(0, (now - entry.cachedAt) / 1000),
+      });
+    }
+    cacheAges.sort((a, b) => (a.symbol < b.symbol ? -1 : a.symbol > b.symbol ? 1 : 0));
+    const fresh = cache.getFresh();
+    const src = sanitizedSource();
+    const ws = wsStatusGetter ? wsStatusGetter() : { listening: false };
+    return {
+      version: PACKAGE_VERSION,
+      uptimeSeconds: Math.round(process.uptime() * 1000) / 1000,
+      runtime: runtimeGetter ? runtimeGetter() : DEFAULT_METRICS_RUNTIME,
+      cacheSize: cache.size,
+      cacheFreshSize: fresh.length,
+      cacheAges,
+      ingestTotal: stats.ingested + stats.rejected,
+      acceptedTotal: stats.ingested,
+      rejectedTotalByReason: stats.byReason,
+      sourceReason: src ? src.reason : 'unknown',
+      sourceConnected: src ? src.connected : false,
+      wsListening: ws.listening === true,
+      wsClients: wsClientCountGetter ? wsClientCountGetter() : 0,
+      auditWriteErrorsTotal: stats.writeErrors,
+      auditBufferedDropsTotal: stats.bufferedDrops,
+    };
+  }
 
   app.get('/status/quotes', (_req: Request, res: Response) => {
     const now = Date.now();
