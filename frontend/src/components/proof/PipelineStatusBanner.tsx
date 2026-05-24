@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import {
   AxisKey,
   AxisState,
@@ -9,6 +8,7 @@ import {
   TOTAL_AXIS_COUNT,
   Verdict,
 } from './proofAxes'
+import { useProofNow } from './ProofNowProvider'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 /**
@@ -55,27 +55,12 @@ function bannerOuterClass(verdict: Verdict): string {
 export function PipelineStatusBanner() {
   const { axes, partialVerdict, resolvedAxisCount, lastFullyAliveAt } =
     useProofPipelineAxesContext()
-
-  /**
-   * Drives the 1s "Xs ago" tick under the degraded/red verdict line.
-   * Pure presentation — does not own the underlying timestamp.
-   */
-  const [now, setNow] = useState<number>(() => Date.now())
-  useEffect(() => {
-    if (lastFullyAliveAt === null) return
-    if (partialVerdict === 'green' || partialVerdict === 'loading') return
-    setNow(Date.now())
-    const id = setInterval(() => setNow(Date.now()), 1_000)
-    return () => clearInterval(id)
-  }, [lastFullyAliveAt, partialVerdict])
-
   return (
     <PipelineStatusView
       axes={axes}
       verdict={partialVerdict}
       resolvedAxisCount={resolvedAxisCount}
       lastFullyAliveAt={lastFullyAliveAt}
-      now={now}
     />
   )
 }
@@ -85,7 +70,6 @@ interface PipelineStatusViewProps {
   verdict: Verdict
   resolvedAxisCount: number
   lastFullyAliveAt: number | null
-  now: number
 }
 
 function PipelineStatusView({
@@ -93,7 +77,6 @@ function PipelineStatusView({
   verdict,
   resolvedAxisCount,
   lastFullyAliveAt,
-  now,
 }: PipelineStatusViewProps) {
   if (verdict === 'loading') {
     return (
@@ -129,7 +112,7 @@ function PipelineStatusView({
             Live quotes fresh · on-chain oracle returning data · hedge-proof artifact present
           </span>
         </div>
-        <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} now={now} />
+        <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} />
       </section>
     )
   }
@@ -158,7 +141,7 @@ function PipelineStatusView({
           </div>
           <ReasonChips entries={degradedEntries} tone="red" />
           <RollupProgress resolvedAxisCount={resolvedAxisCount} />
-          <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} now={now} />
+          <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} />
         </div>
       </section>
     )
@@ -183,7 +166,7 @@ function PipelineStatusView({
         </div>
         <ReasonChips entries={degradedEntries} tone="amber" />
         <RollupProgress resolvedAxisCount={resolvedAxisCount} />
-        <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} now={now} />
+        <LastAliveLine verdict={verdict} lastFullyAliveAt={lastFullyAliveAt} />
       </div>
     </section>
   )
@@ -211,15 +194,22 @@ const LAST_ALIVE_TONE_CLASS: Record<'amber' | 'red', string> = {
   red: 'mt-1 text-[11px] text-red-200/70',
 }
 
+/**
+ * Leaf component for the "Last fully alive" caption. Pulls the page-
+ * scoped 1s tick from `useProofNow()` so the "Xs ago" value updates in
+ * lockstep with the panel-header countdowns and only this leaf re-
+ * renders per second — siblings (chip row, ReasonChips, RollupProgress)
+ * stay stable across ticks. See task lane6-pipeline-status-banner-runs-
+ * its-own-setinterval-1s-duplicate-of-proofnowprovider (#0068).
+ */
 function LastAliveLine({
   verdict,
   lastFullyAliveAt,
-  now,
 }: {
   verdict: Verdict
   lastFullyAliveAt: number | null
-  now: number
 }) {
+  const now = useProofNow()
   switch (verdict) {
     case 'loading':
       return null

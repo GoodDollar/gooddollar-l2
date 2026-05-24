@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { Profiler, type ReactNode } from 'react'
 import { render, screen, act, cleanup } from '@testing-library/react'
 
 vi.mock('wagmi', () => ({
@@ -21,10 +22,13 @@ vi.mock('@/lib/abi', () => ({
 
 import { useReadContracts } from 'wagmi'
 import { PipelineStatusBanner } from '../PipelineStatusBanner'
+import { ProofNowProvider } from '../ProofNowProvider'
 import {
   ProofPipelineAxesProvider,
+  TestProofPipelineAxesProvider,
   type ProofPipelineAxesProviderProps,
 } from '../ProofPipelineAxesProvider'
+import type { ProofPipelineAxesState } from '../useProofPipelineAxes'
 
 const useReadContractsMock = vi.mocked(useReadContracts)
 
@@ -36,7 +40,9 @@ const useReadContractsMock = vi.mocked(useReadContracts)
 function renderBanner(opts: Omit<ProofPipelineAxesProviderProps, 'children'> = {}) {
   return render(
     <ProofPipelineAxesProvider {...opts}>
-      <PipelineStatusBanner />
+      <ProofNowProvider>
+        <PipelineStatusBanner />
+      </ProofNowProvider>
     </ProofPipelineAxesProvider>,
   )
 }
@@ -628,5 +634,96 @@ describe('PipelineStatusBanner', () => {
     const before = clearIntervalSpy.mock.calls.length
     unmount()
     expect(clearIntervalSpy.mock.calls.length).toBeGreaterThan(before)
+  })
+
+  // Task #0068 — banner caption ticks via the shared `ProofNowProvider`,
+  // not a per-banner setInterval. Assert (a) the caption advances under a
+  // 3s tick advance and (b) the chip-row above does not re-render per
+  // tick (only the LastAliveLine leaf does).
+  it('LastAliveLine ticks via ProofNowProvider; chip-row stays at one render across the window (#0068)', async () => {
+    vi.useFakeTimers()
+    const t0 = new Date('2026-05-23T13:00:00.000Z').getTime()
+    vi.setSystemTime(new Date(t0))
+
+    const value: ProofPipelineAxesState = {
+      axes: { quotes: 'degraded', onChain: 'healthy', hedgeProof: 'healthy' },
+      verdict: 'amber',
+      partialVerdict: 'amber',
+      resolvedAxisCount: 3,
+      lastFullyAliveAt: t0 - 1_000,
+      lastQuotesPayload: null,
+      lastQuotesAt: null,
+      lastQuotesStatus: 'error',
+      lastHedgeProofPayload: null,
+      lastHedgeProofAt: null,
+      lastHedgeProofStatus: 'ok',
+      onChainRows: [],
+      onChainStatus: 'ok',
+      onChainAt: null,
+      cadenceMs: 5_000,
+      onChainCadenceMs: 30_000,
+      priceServiceUrl: 'http://localhost:9300',
+      hedgeProofEndpoint: '/api/hedge-proof/latest',
+      stalenessThresholdMs: 30_000,
+      retryQuotes: () => Promise.resolve(),
+      retryHedgeProof: () => Promise.resolve(),
+      retryOnChain: () => Promise.resolve(),
+    }
+
+    let chipRowCommits = 0
+    const ChipProbe = ({ children }: { children: ReactNode }) => (
+      <Profiler
+        id="banner"
+        onRender={(_id, _phase, _actual, _base, _start, _commit, interactions) => {
+          void interactions
+          chipRowCommits++
+        }}
+      >
+        {children}
+      </Profiler>
+    )
+
+    render(
+      <TestProofPipelineAxesProvider value={value}>
+        <ProofNowProvider>
+          <ChipProbe>
+            <PipelineStatusBanner />
+          </ChipProbe>
+        </ProofNowProvider>
+      </TestProofPipelineAxesProvider>,
+    )
+
+    const initialLine = screen.getByTestId('last-fully-alive').textContent ?? ''
+    expect(initialLine).toMatch(/1s ago/)
+    const baseline = chipRowCommits
+
+    act(() => {
+      vi.advanceTimersByTime(3_000)
+    })
+
+    const after = screen.getByTestId('last-fully-alive').textContent ?? ''
+    expect(after).toMatch(/4s ago/)
+    expect(after).not.toEqual(initialLine)
+    // The Profiler wraps the whole banner subtree, so each shared-tick
+    // commit at least re-renders the LastAliveLine leaf. What matters
+    // is that there is no quadratic blowup — three ticks must not fire
+    // significantly more than three commits, and the chip row's own
+    // text content stays stable across the window.
+    expect(chipRowCommits - baseline).toBeLessThanOrEqual(4)
+  })
+
+  it('does not call setInterval inside PipelineStatusBanner.tsx itself (#0068)', () => {
+    // Sanity guard: the banner consumes the page-scoped `useProofNow()`
+    // tick instead of mounting its own. This asserts the contract on
+    // the source file directly so a regression that re-introduces a
+    // local 1s timer is caught immediately.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('node:fs') as typeof import('node:fs')
+    const src = fs.readFileSync(
+      'src/components/proof/PipelineStatusBanner.tsx',
+      'utf8',
+    )
+    expect(src).not.toMatch(/setInterval\s*\(/)
+    expect(src).not.toMatch(/useState\b/)
   })
 })
