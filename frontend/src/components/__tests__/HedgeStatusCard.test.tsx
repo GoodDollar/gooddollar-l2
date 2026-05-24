@@ -1158,7 +1158,7 @@ describe('HedgeStatusCard', () => {
     expect(tile!.textContent ?? '').toMatch(/last tick/i);
   });
 
-  it('engine stat sub line: unreachable state matches /auto-retry/i in red (#0021)', async () => {
+  it('engine stat sub line: unreachable state matches /auto-retry/i in red, AA-passing token (#0021, #0067)', async () => {
     mockFetchOnce(
       {
         error: 'Hedge engine unreachable',
@@ -1176,7 +1176,11 @@ describe('HedgeStatusCard', () => {
     expect(tile!.textContent ?? '').toMatch(/auto-retry/i);
     const subSpan = tile!.querySelector('[data-testid="hedge-engine-stat-sub"]');
     expect(subSpan).not.toBeNull();
-    expect(subSpan!.className).toContain('text-red-400/80');
+    // #0067: the sub colour must clear WCAG AA (≥4.5:1) against
+    // bg-dark-50; text-red-300 lands at ~7.9:1, while the previous
+    // text-red-400/80 token failed at 3.98:1.
+    expect(subSpan!.className).toContain('text-red-300');
+    expect(subSpan!.className).not.toMatch(/text-red-400\/80/);
   });
 
   it('engine stat sub line: halted state reads /kill-switch engaged/i (#0021)', async () => {
