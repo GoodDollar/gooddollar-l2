@@ -6,11 +6,27 @@ import { SearchX } from 'lucide-react'
 import { TokenIcon } from '@/components/TokenIcon'
 import { Sparkline } from '@/components/Sparkline'
 import { PercentageChange } from '@/components/ui/percentage-change'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
 import { formatPrice, formatVolume, formatMarketCap, selectTopGainers, type TokenMarketData } from '@/lib/marketData'
 import { TOKEN_CATEGORIES, type TokenCategory, resolveCategory } from '@/lib/tokens'
 import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
+import type { PriceSource } from '@/lib/priceSource'
 import { ScrollStrip } from '@/components/ScrollStrip'
 import ExploreLoading from './loading'
+
+/**
+ * Task 0041 — sources whose underlying value is honest "live" data and
+ * therefore belongs in the headline aggregate / Trending / Top Gainers
+ * cards. Everything else (`fallback`, `unknown`, `stale`, `closed`,
+ * `etoro-demo`) is rendered honestly per-row but excluded from totals.
+ */
+const LIVE_SOURCES: ReadonlySet<PriceSource> = new Set<PriceSource>([
+  'chain-oracle', 'coingecko',
+])
+
+function isLiveSource(source: PriceSource | undefined): boolean {
+  return source !== undefined && LIVE_SOURCES.has(source)
+}
 
 type SortField = 'price' | 'change1h' | 'change24h' | 'change7d' | 'volume24h' | 'marketCap'
 type SortDir = 'asc' | 'desc'
@@ -23,11 +39,30 @@ function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
 interface TokenRowProps {
   token: TokenMarketData
   idx: number
+  /**
+   * Per-row price source (task 0041). When undefined we treat it as
+   * `'unknown'` — same honest-collapse behaviour as `'fallback'` so the
+   * row never claims live data without attribution.
+   */
+  source?: PriceSource
   onRowClick: (symbol: string) => void
   onSwapClick: (symbol: string) => void
 }
 
-const TokenRow = memo(function TokenRow({ token, idx, onRowClick, onSwapClick }: TokenRowProps) {
+const TokenRow = memo(function TokenRow({ token, idx, source = 'unknown', onRowClick, onSwapClick }: TokenRowProps) {
+  // When the price did not come from a live feed we render only the
+  // numeric price (which the static fallback at least pins to a known
+  // ballpark) and collapse every other column to an em-dash placeholder.
+  // The sparkline cell renders the dashed unavailable baseline instead of
+  // a seeded random walk.
+  const live = isLiveSource(source)
+  const change1h = live ? token.change1h : null
+  const change24h = live ? token.change24h : null
+  const change7d = live ? token.change7d : null
+  const volume24h = live ? token.volume24h : null
+  const marketCap = live ? token.marketCap : 0
+  const sparkline = live ? token.sparkline7d : null
+
   return (
     <tr
       onClick={() => onRowClick(token.symbol)}
@@ -39,9 +74,12 @@ const TokenRow = memo(function TokenRow({ token, idx, onRowClick, onSwapClick }:
       <td className="py-3 px-3">
         <div className="flex items-center gap-2.5">
           <TokenIcon symbol={token.symbol} size={28} />
-          <div>
-            <span className="font-semibold text-white">{token.symbol}</span>
-            <span className="text-gray-500 ml-1.5 hidden sm:inline text-xs">{token.name}</span>
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-semibold text-white">{token.symbol}</span>
+              <span className="text-gray-500 hidden sm:inline text-xs truncate">{token.name}</span>
+            </div>
+            <PriceSourceBadge source={source} size="sm" className="mt-0.5" />
           </div>
         </div>
       </td>
@@ -49,20 +87,20 @@ const TokenRow = memo(function TokenRow({ token, idx, onRowClick, onSwapClick }:
         {formatPrice(token.price)}
       </td>
       <td className="py-3 px-2 text-right font-medium hidden lg:table-cell">
-        <PercentageChange value={token.change1h} decimals={1} size="xs" />
+        <PercentageChange value={change1h} decimals={1} size="xs" />
       </td>
       <td className="py-3 px-3 text-right font-medium">
-        <PercentageChange value={token.change24h} decimals={2} size="sm" />
+        <PercentageChange value={change24h} decimals={2} size="sm" />
       </td>
       <td className="py-3 px-2 text-right font-medium hidden lg:table-cell">
-        <PercentageChange value={token.change7d} decimals={1} size="xs" />
+        <PercentageChange value={change7d} decimals={1} size="xs" />
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden sm:table-cell">
-        {formatVolume(token.volume24h)}
+        {formatVolume(volume24h)}
       </td>
       <td className="py-3 px-3 text-right text-gray-300 hidden md:table-cell">
-        {token.marketCap > 0 ? (
-          formatMarketCap(token.marketCap)
+        {marketCap > 0 ? (
+          formatMarketCap(marketCap)
         ) : (
           <span className="text-gray-500" title="Market cap unavailable">—</span>
         )}
@@ -70,14 +108,14 @@ const TokenRow = memo(function TokenRow({ token, idx, onRowClick, onSwapClick }:
       <td
         className="py-3 px-2 hidden lg:table-cell"
         aria-label={
-          token.change7d === null
+          change7d === null
             ? '7-day trend: unavailable'
-            : `7-day trend: ${token.change7d >= 0 ? 'up' : 'down'} ${Math.abs(token.change7d).toFixed(1)}%`
+            : `7-day trend: ${change7d >= 0 ? 'up' : 'down'} ${Math.abs(change7d).toFixed(1)}%`
         }
       >
         <Sparkline
-          data={token.sparkline7d}
-          positive={(token.change24h ?? 0) >= 0}
+          data={sparkline}
+          positive={(change24h ?? 0) >= 0}
         />
       </td>
       <td className="py-3 px-1 text-right w-16 sm:w-20">
@@ -160,18 +198,35 @@ function MarketCapSparkline({ value, positive }: { value: number; positive: bool
  */
 const MAX_PLAUSIBLE_MARKET_CAP = 5e12 // USD 5 trillion
 
-function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
+interface MarketStatsBarProps {
+  tokens: TokenMarketData[]
+  /**
+   * Per-symbol price provenance (task 0041). Tokens whose source isn't
+   * a live feed (`chain-oracle` / `coingecko`) are excluded from the
+   * Total Market Cap, weightedChange, Trending, and Top Gainers
+   * aggregates — so the headline never claims "$803B trending up" when
+   * the data underneath is mostly seeded constants.
+   */
+  sources: Record<string, PriceSource>
+}
+
+function MarketStatsBar({ tokens, sources }: MarketStatsBarProps) {
 
   const stats = useMemo(() => {
+    // Only tokens with a live price source contribute to the headline
+    // aggregates. Static FALLBACK_PRICES / unknown rows are still shown
+    // in the table below (per-row), but pretending they roll up into a
+    // $803B headline is exactly the failure mode task 0041 removes.
+    const liveTokens = tokens.filter(t => isLiveSource(sources[t.symbol]))
     // Exclude implausibly large market caps from the headline sum so a
     // single misbehaving token doesn't print "$1,000,000,000.81T" and
     // overwhelm the whole page. We still keep those tokens in `tokens`
     // (and therefore in the table below) — they'll render their own row
     // with the bad value, which is at least less misleading than a
     // 13-digit "total".
-    const tokensInBounds = tokens.filter(t => t.marketCap <= MAX_PLAUSIBLE_MARKET_CAP)
+    const tokensInBounds = liveTokens.filter(t => t.marketCap <= MAX_PLAUSIBLE_MARKET_CAP)
     const totalMarketCap = tokensInBounds.reduce((s, t) => s + t.marketCap, 0)
-    const excludedCount = tokens.length - tokensInBounds.length
+    const excludedCount = liveTokens.length - tokensInBounds.length
     // No token reports a positive market cap → treat the index as
     // "unavailable" rather than rendering "$0" with a misleading
     // sparkline. Mirrors how `change24h === null` flows through the same
@@ -185,7 +240,7 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
     const weightedChange = weightedMarketCap > 0
       ? tokensWithChange.reduce((s, t) => s + (t.change24h ?? 0) * t.marketCap, 0) / weightedMarketCap
       : null
-    const trending = [...tokens]
+    const trending = [...liveTokens]
       .filter(t => t.volume24h !== null && t.volume24h > 0)
       .sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0))
       .slice(0, 3)
@@ -193,7 +248,7 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
     // 24h change actually renders as a non-zero percent (task 0052). The
     // old inline `change24h > 0` filter let DAI through at +0.02%, which
     // displayed as a contradictory "▲0.0% gainer".
-    const gainers = selectTopGainers(tokens, 3)
+    const gainers = selectTopGainers(liveTokens, 3)
     return {
       totalMarketCap,
       hasAnyMarketCap,
@@ -202,7 +257,7 @@ function MarketStatsBar({ tokens }: { tokens: TokenMarketData[] }) {
       gainers,
       excludedCount,
     }
-  }, [tokens])
+  }, [tokens, sources])
 
   const cards = [
     {
@@ -400,7 +455,7 @@ function ExplorePageContent() {
   })
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const { tokens: data } = useOnChainMarketData()
+  const { tokens: data, sources } = useOnChainMarketData()
 
   // Canonicalise the URL if the user arrived with a typo or unknown
   // category. We use router.replace (not push) so the back button still
@@ -487,7 +542,7 @@ function ExplorePageContent() {
         <p className="text-sm text-gray-400">Browse token prices, volume, and market data on GoodDollar L2</p>
       </div>
 
-      <MarketStatsBar tokens={data} />
+      <MarketStatsBar tokens={data} sources={sources} />
 
       <div className="mb-4">
         <input
@@ -655,7 +710,14 @@ function ExplorePageContent() {
                 </tr>
               ) : (
                 filtered.map((token, idx) => (
-                  <TokenRow key={token.symbol} token={token} idx={idx} onRowClick={handleRowClick} onSwapClick={handleSwapClick} />
+                  <TokenRow
+                    key={token.symbol}
+                    token={token}
+                    idx={idx}
+                    source={sources[token.symbol]}
+                    onRowClick={handleRowClick}
+                    onSwapClick={handleSwapClick}
+                  />
                 ))
               )}
             </tbody>
@@ -664,7 +726,8 @@ function ExplorePageContent() {
       </div>
 
       <p className="text-xs text-gray-600 text-center mt-4">
-        Prices shown are illustrative. Real-time data coming soon.
+        Each row carries its own price source. Chain-oracle and CoinGecko
+        rows update live; fallback rows show a static reference price.
       </p>
     </div>
   )
