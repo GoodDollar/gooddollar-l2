@@ -52,6 +52,20 @@ const DEFAULT_OFF_CHAIN_INTERVAL_MS = 5_000
  * (#0063 collapsed the previous 15s AAPL probe onto this poll).
  */
 const DEFAULT_CHAIN_PANEL_INTERVAL_MS = 30_000
+/**
+ * Per-watcher polling cadence (5s) for `useWatchContractEvent` in
+ * `OracleUpdatesPanel`. The proof page uses an HTTP-only wagmi
+ * transport, so viem falls back to polling `eth_blockNumber` to
+ * discover new blocks behind every active watcher; with no explicit
+ * cap each watcher inherits viem's 4s default and they fan out into
+ * ~1.5s aggregate poll cadence. Pinning the watcher to 5s aligns it
+ * with the off-chain poll cadence and the oracle keeper's actual
+ * write rate — see task lane6-watch-contract-event-block-poll-rate-
+ * uncapped (0064). Exported so `OracleUpdatesPanel` imports the same
+ * constant and the page has one source-of-truth for "5s = canonical
+ * proof-page poll cadence".
+ */
+export const DEFAULT_ORACLE_EVENT_POLLING_INTERVAL_MS = 5_000
 
 export interface UseProofPipelineAxesOptions {
   /** Price-service base URL — defaults to `NEXT_PUBLIC_PRICE_SERVICE_URL`. */

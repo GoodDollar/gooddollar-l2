@@ -9,6 +9,9 @@ import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { RetryButton } from './PanelHeaderControls'
 import { usePanelRetry } from './ProofPanelActionsProvider'
 import { shortAddress } from './panelHeaderMetaUtils'
+import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
+import { DEFAULT_ORACLE_EVENT_POLLING_INTERVAL_MS } from './useProofPipelineAxes'
+import type { AxisHealth } from './proofAxes'
 
 interface UpdateEntry {
   txHash: string
@@ -56,6 +59,15 @@ export function OracleUpdatesPanel() {
     process.env.NEXT_PUBLIC_BLOCK_EXPLORER ??
     process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL ??
     ''
+  const { axes } = useProofPipelineAxesContext()
+  // Gate the watcher on the on-chain axis: when the axis is degraded
+  // or unknown, no keeper writes can reach the chain anyway, so
+  // polling the empty filter is pure waste — see task lane6-watch-
+  // contract-event-block-poll-rate-uncapped (0064). The yellow
+  // "subscription degraded" notice stays reserved for real wagmi
+  // `onError` callbacks; an axis-paused state is communicated by the
+  // header cadence caption only.
+  const subscriptionEnabled = Boolean(oracleAddress) && axes.onChain === 'healthy'
   const [events, setEvents] = useState<UpdateEntry[]>([])
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null)
   const [subscriptionEpoch, setSubscriptionEpoch] = useState(0)
@@ -103,6 +115,8 @@ export function OracleUpdatesPanel() {
       <OracleEventSubscription
         key={subscriptionEpoch}
         oracleAddress={oracleAddress}
+        enabled={subscriptionEnabled}
+        pollingInterval={DEFAULT_ORACLE_EVENT_POLLING_INTERVAL_MS}
         onLogs={onLogs}
         onError={onError}
       />
@@ -119,9 +133,11 @@ export function OracleUpdatesPanel() {
             }
             cadence={
               <span data-testid="oracle-updates-status">
-                {subscriptionError
-                  ? 'subscription degraded'
-                  : `live · last ${MAX_EVENTS} PriceUpdated events`}
+                {cadenceCaption({
+                  subscriptionError,
+                  subscriptionEnabled,
+                  onChainAxis: axes.onChain,
+                })}
               </span>
             }
           />
@@ -207,12 +223,40 @@ export function OracleUpdatesPanel() {
  * filter/RPC connection is fully torn down and a fresh subscription
  * is opened — no manual `enabled: false → true` toggle required.
  */
+/**
+ * Map the watcher's resolved state into the cadence-slot caption.
+ * Four mutually-exclusive branches in priority order:
+ *  1. `subscriptionError` — wagmi raised `onError`. Reserved for real
+ *     subscription failures; communicated by the yellow banner too.
+ *  2. `subscriptionEnabled` — watcher is armed and polling.
+ *  3. `onChainAxis === 'unknown'` — first paint, axis not resolved.
+ *  4. Otherwise — axis is `'degraded'`; no keeper writes can land.
+ */
+function cadenceCaption({
+  subscriptionError,
+  subscriptionEnabled,
+  onChainAxis,
+}: {
+  subscriptionError: string | null
+  subscriptionEnabled: boolean
+  onChainAxis: AxisHealth
+}): string {
+  if (subscriptionError) return 'subscription degraded'
+  if (subscriptionEnabled) return `live · last ${MAX_EVENTS} PriceUpdated events`
+  if (onChainAxis === 'unknown') return 'subscription paused · awaiting on-chain axis'
+  return 'subscription paused · on-chain axis degraded'
+}
+
 function OracleEventSubscription({
   oracleAddress,
+  enabled,
+  pollingInterval,
   onLogs,
   onError,
 }: {
   oracleAddress: `0x${string}` | undefined
+  enabled: boolean
+  pollingInterval: number
   onLogs: (logs: readonly unknown[]) => void
   onError: (err: Error) => void
 }) {
@@ -222,7 +266,8 @@ function OracleEventSubscription({
     eventName: 'PriceUpdated',
     onLogs,
     onError,
-    enabled: Boolean(oracleAddress),
+    enabled,
+    pollingInterval,
   })
   return null
 }
