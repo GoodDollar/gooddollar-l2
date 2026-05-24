@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { useCryptoRailHealth, type CryptoRailHealth } from '@/lib/useCryptoRailHealth'
 import { formatAge } from '@/lib/formatAge'
 
@@ -48,24 +50,30 @@ export function CryptoOracleStatusBadge() {
   }
 
   return (
-    <span
-      data-testid="crypto-oracle-status-badge"
-      data-status={health}
-      className="inline-flex items-center gap-1.5 text-xs whitespace-nowrap"
-      title="Crypto oracle rail health, sourced from /api/oracle/status.rails.crypto"
+    <Link
+      href="/status"
+      aria-label="Open oracle status page"
+      className="inline-flex items-center gap-1.5 text-xs whitespace-nowrap hover:opacity-80 transition-opacity"
     >
-      <span className={dotClass(health)} />
-      <span className={health === 'live' ? 'text-green-400' : health === 'degraded' ? 'text-yellow-300' : 'text-red-300'}>
-        {LABELS[health]}
+      <span
+        data-testid="crypto-oracle-status-badge"
+        data-status={health}
+        className="inline-flex items-center gap-1.5"
+        title="Crypto oracle rail health, sourced from /api/oracle/status.rails.crypto"
+      >
+        <span className={dotClass(health)} />
+        <span className={health === 'live' ? 'text-green-400' : health === 'degraded' ? 'text-yellow-300' : 'text-red-300'}>
+          {LABELS[health]}
+        </span>
+        <span className="text-gray-600">·</span>
+        <span className="text-gray-500">on-chain crypto feed</span>
+        {ageMs !== null && (
+          <>
+            <span className="text-gray-600">·</span>
+            <span className="text-gray-500">Updated {formatAge(ageMs)}</span>
+          </>
+        )}
       </span>
-      <span className="text-gray-600">·</span>
-      <span className="text-gray-500">on-chain crypto feed</span>
-      {ageMs !== null && (
-        <>
-          <span className="text-gray-600">·</span>
-          <span className="text-gray-500">Updated {formatAge(ageMs)}</span>
-        </>
-      )}
-    </span>
+    </Link>
   )
 }

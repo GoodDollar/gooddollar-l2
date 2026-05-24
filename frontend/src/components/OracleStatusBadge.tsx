@@ -1,11 +1,35 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { usePriceServiceStatus, getSessionLabel, getDominantSession, type QuoteStatus } from '@/lib/usePriceServiceStatus'
 import { deriveStocksOracleHealth, getStocksKeeperAgeMs, type StocksOracleHealth } from '@/lib/stocksOracleHealth'
 import { formatSessionAsOf } from '@/lib/sessionAnchor'
 import { formatAge } from '@/lib/formatAge'
 import { OracleBadgeFooter } from './OracleBadgeFooter'
+
+/**
+ * StatusLink — wraps the badge's primary pill in a click-through to
+ * `/status`. Always an `<a>` element so the pill itself is the canonical
+ * route into the oracle dashboard (task 0059). Loading/skeleton branches
+ * intentionally do NOT use this wrapper; they stay non-interactive.
+ *
+ * The `className` flows directly onto the anchor so `whitespace-nowrap`
+ * (and all the badge's existing visual classes) keep applying to the
+ * outermost DOM element — matching the long-standing
+ * `container.firstChild.toHaveClass('whitespace-nowrap')` test contract.
+ */
+function StatusLink({ className, children }: { className: string; children: ReactNode }) {
+  return (
+    <Link
+      href="/status"
+      aria-label="Open oracle status page"
+      className={`${className} hover:opacity-80 transition-opacity`}
+    >
+      {children}
+    </Link>
+  )
+}
 
 // User-facing label for the listing-page badge. Keep short, plain English —
 // this is what a trader reads next to the live price, not an internal
@@ -47,7 +71,7 @@ function renderDetailRow(quoteStatus: QuoteStatus) {
       : STATUS_DOT_STALE
 
   return (
-    <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs">
+    <StatusLink className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs">
       <span className={dotClass} />
       <span className="text-gray-400">
         Updated {formatAge(quoteStatus.lastUpdateMs)}
@@ -64,7 +88,7 @@ function renderDetailRow(quoteStatus: QuoteStatus) {
           </span>
         </>
       )}
-    </div>
+    </StatusLink>
   )
 }
 
@@ -304,19 +328,19 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
           }
           return (
             <>
-              <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
+              <StatusLink className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
                 <span className={STATUS_DOT_LIVE} />
                 <span>Live</span>
                 <span className="text-gray-600">·</span>
                 <span>no {symbol} feed yet</span>
-              </div>
+              </StatusLink>
               {cachedFooterNode}
             </>
           )
         }
         return (
           <>
-            <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
+            <StatusLink className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
               <span className={STATUS_DOT_LIVE} />
               <span>Live</span>
               {fallbackState.ageMs !== null && Number.isFinite(fallbackState.ageMs) && (
@@ -327,25 +351,25 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
               )}
               <span className="text-gray-600">·</span>
               <span>{SOURCE_LABEL}</span>
-            </div>
+            </StatusLink>
             {cachedFooterNode}
           </>
         )
       }
       if (fallbackState.health === 'degraded') {
         return (
-          <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
+          <StatusLink className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
             <span className={STATUS_DOT_STALE} />
             <span>Oracle degraded</span>
-          </div>
+          </StatusLink>
         )
       }
     }
     return (
-      <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500">
+      <StatusLink className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500">
         <span className={STATUS_DOT_GRAY} />
         <span>Oracle offline</span>
-      </div>
+      </StatusLink>
     )
   }
 
@@ -355,10 +379,10 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
     const quoteStatus = quotes.find(q => q.symbol === symbol)
     if (!quoteStatus) {
       return (
-        <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500">
+        <StatusLink className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500">
           <span className={STATUS_DOT_GRAY} />
           <span>No oracle data for {symbol}</span>
-        </div>
+        </StatusLink>
       )
     }
 
@@ -381,7 +405,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
 
   return (
     <>
-    <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
+    <StatusLink className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
       <span className={dotClass} />
       <span>{freshCount}/{totalCount} feeds</span>
       {Number.isFinite(maxAge) && maxAge > 0 && quotes.length > 0 && (
@@ -398,7 +422,7 @@ export function OracleStatusBadge({ variant = 'compact', symbol, useStocksFallba
           <span className="text-yellow-400">delayed</span>
         </>
       )}
-    </div>
+    </StatusLink>
     {footerNode}
     </>
   )

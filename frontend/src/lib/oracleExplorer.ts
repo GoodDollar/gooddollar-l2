@@ -17,14 +17,30 @@ export const EXPLORER_BY_CHAIN: Record<number, string> = {
   [DEVNET_CHAIN_ID]: DEVNET_EXPLORER_URL,
 }
 
+function explorerBase(chainId: number | null | undefined): string | null {
+  if (chainId == null) return null
+  const base = EXPLORER_BY_CHAIN[chainId]
+  return base ? base.replace(/\/+$/, '') : null
+}
+
+function isHexAddress(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.startsWith('0x')
+}
+
 export function buildOracleTxLink(
   chainId: number | null | undefined,
   txHash: string | null | undefined,
 ): string | null {
-  if (chainId == null) return null
-  if (!txHash || typeof txHash !== 'string') return null
-  if (!txHash.startsWith('0x')) return null
-  const base = EXPLORER_BY_CHAIN[chainId]
-  if (!base) return null
-  return `${base.replace(/\/+$/, '')}/tx/${txHash}`
+  if (!isHexAddress(txHash)) return null
+  const base = explorerBase(chainId)
+  return base ? `${base}/tx/${txHash}` : null
+}
+
+export function buildOracleAddressLink(
+  chainId: number | null | undefined,
+  address: string | null | undefined,
+): string | null {
+  if (!isHexAddress(address)) return null
+  const base = explorerBase(chainId)
+  return base ? `${base}/address/${address}` : null
 }

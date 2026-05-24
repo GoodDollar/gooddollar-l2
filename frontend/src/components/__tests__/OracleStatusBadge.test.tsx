@@ -545,8 +545,13 @@ describe('OracleStatusBadge provenance footer', () => {
 
     render(<OracleStatusBadge variant="detail" symbol="AAPL" />)
     await waitFor(() => expect(screen.getByText(/awaiting chain/)).toBeInTheDocument())
-    // Even if a stocks proof exists, with chainId=null no link is produced.
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    // Even if a stocks proof exists, with chainId=null no EXPLORER link is
+    // produced. The badge itself routes to /status (task 0059) — that's a
+    // separate concern, asserted by the `aria-label` filter below.
+    const explorerLinks = screen
+      .queryAllByRole('link')
+      .filter((el) => el.getAttribute('aria-label') !== 'Open oracle status page')
+    expect(explorerLinks).toHaveLength(0)
   })
 
   it('renders both stocks + crypto block-N links on the listing variant', async () => {
