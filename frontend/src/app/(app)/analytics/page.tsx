@@ -1,10 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AnalyticsPriceStrip } from '@/components/AnalyticsPriceStrip'
-import { OracleStatusBadge } from '@/components/OracleStatusBadge'
-
-import { LANE1_RUNBOOK_HREF, LANE1_STATUS_HREF } from '@/lib/lane1Links'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import HedgeStatusCard, { type HedgeStatusCardHandle } from '@/components/HedgeStatusCard'
+import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
 
 /**
  * Iter 27 — Internal analytics dashboard.
@@ -99,25 +97,6 @@ interface ProtocolSummary {
   count: number
   sampleContracts: { address: string; name: string }[]
 }
-interface PriceFeedBlock {
-  ok: boolean
-  mode?: string
-  freshQuotes?: number
-  totalSymbols?: number
-  medianDivergenceBps?: number | null
-  lastUpdateMs?: number
-  status?: string
-  error?: string
-}
-interface OracleSubmitterBlock {
-  ok: boolean
-  status: 'ok' | 'degraded' | 'unreachable'
-  mode?: string
-  reason?: string
-  lastUpdateMs?: number
-  configuredSymbols?: number
-  error?: string
-}
 interface OverviewResponse {
   ok: true
   summary: {
@@ -130,8 +109,6 @@ interface OverviewResponse {
   status: StatusBlock
   indexer: IndexerBlock
   chain: ChainBlock
-  priceFeed?: PriceFeedBlock
-  oracleSubmitter?: OracleSubmitterBlock
   ubi: UbiBlock
   protocols: ProtocolSummary[]
 }
@@ -180,156 +157,6 @@ function PanelError({ message }: { message: string }) {
   )
 }
 
-// ─── Lane-1 price-feed panel (task 0063) ────────────────────────────────────
-
-function lane1ChipClasses(status: 'ok' | 'degraded' | 'unreachable' | 'unknown'): string {
-  switch (status) {
-    case 'ok':
-      return 'bg-green-500/15 text-green-300 border-green-500/30'
-    case 'degraded':
-      return 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30'
-    case 'unreachable':
-      return 'bg-red-500/15 text-red-300 border-red-500/30'
-    case 'unknown':
-      return 'bg-gray-500/15 text-gray-300 border-gray-500/30'
-  }
-}
-
-function Lane1FenceChip({ mode }: { mode: string | undefined }) {
-  const fenced = mode !== 'demo-trading'
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-        fenced
-          ? 'bg-green-500/15 text-green-300 border-green-500/30'
-          : 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30'
-      }`}
-      data-testid="lane1-fence-chip"
-    >
-      Real trading: {fenced ? 'FENCED ✓' : 'demo-trading'}
-    </span>
-  )
-}
-
-function Lane1PriceFeedPanel({
-  priceFeed,
-  oracleSubmitter,
-  chain,
-}: {
-  priceFeed: PriceFeedBlock | undefined
-  oracleSubmitter: OracleSubmitterBlock | undefined
-  chain: ChainBlock
-}) {
-  const producerStatus: 'ok' | 'degraded' | 'unreachable' | 'unknown' = priceFeed
-    ? priceFeed.ok
-      ? 'ok'
-      : 'unreachable'
-    : 'unknown'
-  const submitterStatus = oracleSubmitter?.status ?? 'unknown'
-
-  return (
-    <section
-      className="mb-6 bg-dark-100/50 rounded-xl p-5"
-      data-testid="lane1-price-feed-panel"
-    >
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h2 className="text-lg font-semibold text-white">
-          Lane 1 — eToro live prices
-        </h2>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Lane1FenceChip mode={priceFeed?.mode} />
-          <a
-            href={LANE1_STATUS_HREF}
-            className="text-xs text-goodgreen hover:underline"
-            data-testid="lane1-deep-link"
-          >
-            See pipeline status →
-          </a>
-        </div>
-      </div>
-
-      {priceFeed && !priceFeed.ok ? (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-200 mb-3">
-          <span aria-hidden>⚠ </span>
-          <span className="font-medium">price-service unavailable:</span>{' '}
-          <span className="font-mono">{priceFeed.error ?? priceFeed.status ?? 'unknown'}</span>
-          <span className="ml-2">
-            <a
-              href={LANE1_RUNBOOK_HREF}
-              className="underline hover:text-yellow-100"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Runbook →
-            </a>
-          </span>
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Producer */}
-        <div
-          className={`bg-dark-50 rounded-lg p-4 border ${lane1ChipClasses(producerStatus)}`}
-          data-testid="lane1-producer-card"
-        >
-          <div className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-            Producer · price-service
-          </div>
-          <div className="text-sm text-white font-mono">
-            {priceFeed?.freshQuotes ?? '—'}/{priceFeed?.totalSymbols ?? '—'} fresh
-          </div>
-          <div className="text-xs text-gray-400 mt-1">
-            Mode: <span className="font-mono text-gray-200">{priceFeed?.mode ?? '—'}</span>
-          </div>
-          <div className="text-xs text-gray-500 mt-0.5">:9300 · {producerStatus}</div>
-        </div>
-
-        {/* Submitter */}
-        <div
-          className={`bg-dark-50 rounded-lg p-4 border ${lane1ChipClasses(submitterStatus)}`}
-          data-testid="lane1-submitter-card"
-        >
-          <div className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-            Submitter · oracle-signer
-          </div>
-          <div className="text-sm text-white">{submitterStatus}</div>
-          {oracleSubmitter?.reason ? (
-            <div className="text-xs text-gray-400 mt-1 break-words">
-              {oracleSubmitter.reason}
-            </div>
-          ) : (
-            <div className="text-xs text-gray-500 mt-1">
-              mode: <span className="font-mono text-gray-300">{oracleSubmitter?.mode ?? '—'}</span>
-            </div>
-          )}
-          <div className="text-xs text-gray-500 mt-0.5">:9107</div>
-        </div>
-
-        {/* Chain */}
-        <div
-          className={`bg-dark-50 rounded-lg p-4 border ${lane1ChipClasses(chain.ok ? 'ok' : 'unreachable')}`}
-          data-testid="lane1-chain-card"
-        >
-          <div className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-            Chain · StockOracleV2
-          </div>
-          <div className="text-sm text-white">
-            {chain.ok && typeof chain.blockNumber === 'number'
-              ? `block ${chain.blockNumber.toLocaleString()}`
-              : 'unreachable'}
-          </div>
-          <div className="text-xs text-gray-400 mt-1">
-            Median div:{' '}
-            <span className="font-mono text-gray-200">
-              {priceFeed?.medianDivergenceBps == null ? '—' : `${priceFeed.medianDivergenceBps} bps`}
-            </span>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 function FreshnessBadge({
   status,
   lagBlocks,
@@ -365,14 +192,33 @@ function FreshnessBadge({
 
 const POLL_INTERVAL_MS = 30_000
 
+/**
+ * In-page section nav anchors (#0078). Order mirrors the on-page section
+ * order so the chip strip reads top→bottom. Each `href` matches the
+ * `id` of a section in the JSX below. The hedge anchor (`#hedge-status-card`)
+ * lives inside the `HedgeStatusCard` component itself (where the wrapping
+ * `<section>` carries the id) — the strip just points at it.
+ */
+const ANALYTICS_SECTIONS: readonly { href: string; label: string }[] = [
+  { href: '#service-health', label: 'Service health' },
+  { href: '#chain-indexer-activity', label: 'Chain activity' },
+  { href: '#ubi-fee-landscape', label: 'UBI fees' },
+  { href: '#hedge-status-card', label: 'Hedge proof' },
+  { href: '#protocols', label: 'Protocols' },
+]
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<OverviewResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [lastFetched, setLastFetched] = useState<number | null>(null)
   const [isRefetching, setIsRefetching] = useState(false)
+  const hedgeCardRef = useRef<HedgeStatusCardHandle>(null)
 
+  // NB: `isRefetching` is owned by the page-level Refresh button click
+  // handler so it can reflect combined in-flight state across the overview
+  // and the hedge card. Toggling it from inside `fetchOverview` would race
+  // the outer button promise and clear the flag mid-flight.
   const fetchOverview = useCallback(async (signal?: AbortSignal) => {
-    setIsRefetching(true)
     try {
       const res = await fetch('/api/analytics/overview', {
         cache: 'no-store',
@@ -391,22 +237,13 @@ export default function AnalyticsPage() {
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       setLoadError(err instanceof Error ? err.message : 'unknown')
-    } finally {
-      setIsRefetching(false)
     }
   }, [])
 
-  useEffect(() => {
-    const ctrl = new AbortController()
-    void fetchOverview(ctrl.signal)
-    const interval = setInterval(() => {
-      void fetchOverview()
-    }, POLL_INTERVAL_MS)
-    return () => {
-      clearInterval(interval)
-      ctrl.abort()
-    }
-  }, [fetchOverview])
+  // Pause overview polling when the tab is hidden so idle browser
+  // windows don't keep the address-book + indexer + status-aggregator
+  // fan-out hot for nobody.
+  usePollWhileVisible(fetchOverview, POLL_INTERVAL_MS)
 
   const isInitialLoad = data === null && loadError === null
 
@@ -414,8 +251,6 @@ export default function AnalyticsPage() {
   const status = data?.status
   const indexer = data?.indexer
   const chain = data?.chain
-  const priceFeed = data?.priceFeed
-  const oracleSubmitter = data?.oracleSubmitter
   const ubi = data?.ubi
   const protocols = data?.protocols ?? []
 
@@ -427,11 +262,6 @@ export default function AnalyticsPage() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6">
-      {/* Lane 4: live-price source strip + aggregate oracle health */}
-      <div className="mb-5 flex flex-col gap-3">
-        <AnalyticsPriceStrip />
-      </div>
-
       {/* Header */}
       <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
@@ -446,9 +276,6 @@ export default function AnalyticsPage() {
               /api/status
             </a>
           </p>
-          <div className="mt-2">
-            <OracleStatusBadge />
-          </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-500">
@@ -458,7 +285,18 @@ export default function AnalyticsPage() {
           </span>
           <button
             type="button"
-            onClick={() => void fetchOverview()}
+            data-testid="analytics-refresh-button"
+            onClick={async () => {
+              setIsRefetching(true)
+              try {
+                await Promise.allSettled([
+                  fetchOverview(),
+                  hedgeCardRef.current?.refresh() ?? Promise.resolve(),
+                ])
+              } finally {
+                setIsRefetching(false)
+              }
+            }}
             disabled={isRefetching}
             className="text-xs px-3 py-1 rounded-md border border-dark-50 text-gray-300 hover:bg-dark-50 disabled:opacity-50"
           >
@@ -467,6 +305,39 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/*
+        In-page section nav (#0078). The hedge proof section sits ~1587px
+        down on desktop / 2726px on mobile, three full screens past
+        Service Health + Chain & Indexer Activity + the giant UBI Fee
+        Landscape table. A repeat-visitor watching the hedge engine
+        should not have to scroll past those every visit — one click
+        jumps them directly to the section anchor. Chips wrap on narrow
+        viewports via `flex-wrap`. `aria-current` highlighting is an
+        explicit follow-up (out-of-scope per task spec).
+      */}
+      <nav
+        aria-label="Analytics sections"
+        data-testid="analytics-section-nav"
+        className="mb-5 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm"
+      >
+        {ANALYTICS_SECTIONS.map((s, i) => (
+          <span key={s.href} className="contents">
+            {i > 0 && (
+              <span aria-hidden="true" className="text-gray-600">
+                ·
+              </span>
+            )}
+            <a
+              href={s.href}
+              data-testid={`analytics-section-nav-${s.href.slice(1)}`}
+              className="text-gray-400 hover:text-white transition-colors px-1.5 py-0.5 rounded"
+            >
+              {s.label}
+            </a>
+          </span>
+        ))}
+      </nav>
+
       {loadError && (
         <div className="mb-4">
           <PanelError message={loadError} />
@@ -474,7 +345,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* Summary row */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <StatCard
           label="Protocols"
           value={summary?.totalProtocols ?? (isInitialLoad ? '…' : 0)}
@@ -511,7 +382,7 @@ export default function AnalyticsPage() {
               ? `${status.healthy}/${status.total}`
               : '—'
           }
-          sub={`${status?.overall ?? 'aggregator offline'} · → Lane 1`}
+          sub={status?.overall ?? 'aggregator offline'}
           color={
             status?.overall === 'healthy'
               ? 'text-goodgreen'
@@ -522,26 +393,13 @@ export default function AnalyticsPage() {
                   : 'text-white'
           }
         />
-        <StatCard
-          label="Price feed"
-          value={
-            priceFeed?.ok && typeof priceFeed.freshQuotes === 'number'
-              ? `${priceFeed.freshQuotes}/${priceFeed.totalSymbols ?? '?'}`
-              : '—'
-          }
-          sub={priceFeed?.ok ? priceFeed.mode ?? 'unknown mode' : 'price-service offline'}
-          color={
-            priceFeed?.ok
-              ? 'text-goodgreen'
-              : priceFeed
-                ? 'text-red-400'
-                : 'text-white'
-          }
-        />
       </div>
 
       {/* ── Service Health panel ─────────────────────────────────────────── */}
-      <section className="mb-6 bg-dark-100/50 rounded-xl p-5">
+      <section
+        id="service-health"
+        className="scroll-mt-20 mb-6 bg-dark-100/50 rounded-xl p-5"
+      >
         <h2 className="text-lg font-semibold text-white mb-3">Service Health</h2>
         {!data && isInitialLoad ? (
           <p className="text-sm text-gray-500">Loading…</p>
@@ -568,17 +426,11 @@ export default function AnalyticsPage() {
         )}
       </section>
 
-      {/* ── Lane 1 — eToro live prices panel (task 0063) ──────────────────── */}
-      {chain && (
-        <Lane1PriceFeedPanel
-          priceFeed={priceFeed}
-          oracleSubmitter={oracleSubmitter}
-          chain={chain}
-        />
-      )}
-
       {/* ── Chain & Indexer Activity panel ───────────────────────────────── */}
-      <section className="mb-6 bg-dark-100/50 rounded-xl p-5">
+      <section
+        id="chain-indexer-activity"
+        className="scroll-mt-20 mb-6 bg-dark-100/50 rounded-xl p-5"
+      >
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h2 className="text-lg font-semibold text-white">Chain &amp; Indexer Activity</h2>
           {indexer && (
@@ -662,7 +514,10 @@ export default function AnalyticsPage() {
       </section>
 
       {/* ── UBI Fee Landscape panel ──────────────────────────────────────── */}
-      <section className="mb-6 bg-dark-100/50 rounded-xl p-5">
+      <section
+        id="ubi-fee-landscape"
+        className="scroll-mt-20 mb-6 bg-dark-100/50 rounded-xl p-5"
+      >
         <h2 className="text-lg font-semibold text-white mb-3">UBI Fee Landscape</h2>
 
         {!ubi && isInitialLoad && <p className="text-sm text-gray-500">Loading…</p>}
@@ -756,8 +611,16 @@ export default function AnalyticsPage() {
         )}
       </section>
 
+      {/* ── Demo Hedge Proof (lane 5) ────────────────────────────────────── */}
+      <div className="mb-6">
+        <HedgeStatusCard ref={hedgeCardRef} />
+      </div>
+
       {/* ── Protocols panel ──────────────────────────────────────────────── */}
-      <section className="mb-6 bg-dark-100/50 rounded-xl p-5">
+      <section
+        id="protocols"
+        className="scroll-mt-20 mb-6 bg-dark-100/50 rounded-xl p-5"
+      >
         <h2 className="text-lg font-semibold text-white mb-3">Protocols</h2>
         {protocols.length === 0 ? (
           <p className="text-sm text-gray-500">No protocols loaded.</p>

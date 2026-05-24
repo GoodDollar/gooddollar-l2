@@ -11,14 +11,25 @@ interface SparklineProps {
   width?: number
   height?: number
   positive?: boolean
-  /** Draw the polyline in the alert colour when the current value crossed a cap. */
-  crossedCap?: boolean
-  /** Optional horizontal cap marker. */
-  capLine?: number
-  /** Test id for dashboard assertions. */
-  testId?: string
   /** Tooltip / a11y label shown when data is unavailable. */
   unavailableLabel?: string
+  /**
+   * Optional horizontal reference line, rendered as a faint dashed line
+   * across the chart at the cap's y-coordinate. Used by the hedge stat
+   * tiles to show the daily cap (task 0044). The line is included in the
+   * polyline's y-scale so the cap is always in-view even when today's
+   * value is much smaller.
+   */
+  capLine?: number
+  /**
+   * When true, the polyline is drawn in red instead of green even if
+   * `positive` is true. Used by the caller to communicate that the
+   * latest point crosses the cap — keeps the color decision local to
+   * the caller, who knows what the cap means.
+   */
+  crossedCap?: boolean
+  /** Optional test id attached to the `<svg>` so callers can locate it. */
+  testId?: string
 }
 
 export const Sparkline = memo(function Sparkline({
@@ -26,27 +37,22 @@ export const Sparkline = memo(function Sparkline({
   width = 80,
   height = 32,
   positive = true,
-  crossedCap = false,
-  capLine,
-  testId,
   unavailableLabel = 'Price history unavailable',
+  capLine,
+  crossedCap,
+  testId,
 }: SparklineProps) {
-  // Unavailable data — render a faint dashed baseline placeholder.
-  // An all-equal series (incl. all-zero) is also treated as unavailable so a
-  // flat line of dashes doesn't read as "we measured a constant price".
-  const seriesIsUnavailable =
-    data === null || data === undefined || data.length === 0 || new Set(data).size <= 1
-  if (seriesIsUnavailable) {
+  if (data === null || data === undefined || data.length === 0) {
     const midY = height / 2
     return (
       <svg
-        data-testid={testId}
         width={width}
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         className="inline-block"
         role="img"
         aria-label={unavailableLabel}
+        data-testid={testId}
       >
         <title>{unavailableLabel}</title>
         <line
@@ -64,42 +70,49 @@ export const Sparkline = memo(function Sparkline({
     )
   }
 
-  const min = Math.min(...data, Number.isFinite(capLine) ? (capLine as number) : data[0])
-  const max = Math.max(...data, Number.isFinite(capLine) ? (capLine as number) : data[0])
+  const candidates = Number.isFinite(capLine)
+    ? [...data, capLine as number]
+    : data
+  const min = Math.min(...candidates)
+  const max = Math.max(...candidates)
   const range = max - min || 1
   const pad = 2
 
-  const yFor = (v: number) => pad + (1 - (v - min) / range) * (height - pad * 2)
+  const yFor = (v: number): number =>
+    pad + (1 - (v - min) / range) * (height - pad * 2)
 
-  const points = data
-    .map((v, i) => {
-      const x = pad + (i / Math.max(1, data.length - 1)) * (width - pad * 2)
-      const y = yFor(v)
-      return `${x},${y}`
-    })
-    .join(' ')
+  const points =
+    data.length === 1
+      ? `${pad},${yFor(data[0])} ${width - pad},${yFor(data[0])}`
+      : data
+          .map((v, i) => {
+            const x = pad + (i / (data.length - 1)) * (width - pad * 2)
+            return `${x},${yFor(v)}`
+          })
+          .join(' ')
 
-  const color = crossedCap ? '#f87171' : positive ? '#4ade80' : '#f87171'
+  const color = !positive || crossedCap ? '#f87171' : '#4ade80'
 
   return (
     <svg
-      data-testid={testId}
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       className="inline-block"
       aria-hidden="true"
+      data-testid={testId}
     >
       {Number.isFinite(capLine) && (
         <line
+          data-testid={testId ? `${testId}-cap` : undefined}
           x1={pad}
           y1={yFor(capLine as number)}
           x2={width - pad}
           y2={yFor(capLine as number)}
           stroke="currentColor"
-          strokeOpacity={0.35}
+          strokeOpacity={0.45}
           strokeWidth={1}
-          strokeDasharray="3 3"
+          strokeDasharray="2 3"
         />
       )}
       <polyline

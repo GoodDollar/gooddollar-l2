@@ -1,191 +1,202 @@
-/**
- * Receipt row component for hedge status table.
- */
-import { memo, type KeyboardEvent, type MouseEvent } from 'react'
+'use client'
+
+import { memo, useCallback, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
+
+import { formatExposureDelta } from '@/lib/format-exposure-delta'
 import { formatNotionalUsd } from '@/lib/format-notional'
+import {
+  formatClockTimeUtc,
+  formatIsoTitle,
+  formatRelativeTime,
+} from '@/lib/format-receipt-time'
+import { CopyIdButton } from './CopyIdButton'
+import { InstrumentBadge } from './InstrumentBadge'
+
+/**
+ * Lane 5 — receipts table row.
+ *
+ * Each row is the proof artifact for a single hedge order. It carries
+ * the internal hedge id (truncated to 8 chars, click-to-copy in full),
+ * the eToro order id (truncated to 10ch + click-to-copy), the symbol /
+ * side / notional, the before→after exposure delta, and the
+ * ok/failed status. The row is itself a `role="link"` that navigates
+ * to the per-receipt proof page on click or Enter/Space (task 0045);
+ * in-row copy buttons stopPropagation so they never double-fire.
+ */
 
 export interface HedgeReceipt {
   v: number
   id: string
   timestamp: number
   symbol: string
-  side: 'buy' | 'sell' | 'noop' | string
+  side: 'buy' | 'sell' | 'noop'
   notionalUsd: number
   success: boolean
+  error?: string
   etoroOrderId?: string
   beforeExposure: number
   afterExposure: number
   dryRun: boolean
-  mode: string
-  error?: string
+  mode: 'sandbox' | 'real' | 'demo' | 'unknown'
 }
 
-function finiteNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
+function shortId(id: string): string {
+  if (!id) return '—'
+  return id.length <= 8 ? id : id.slice(0, 8)
 }
 
-function timeAgo(ms: number | null): string {
-  if (!ms) return '—'
-  const diff = Math.max(0, Math.floor((Date.now() - ms) / 1000))
-  if (diff < 60) return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return `${Math.floor(diff / 86400)}d ago`
-}
-
-function formatUtcClock(ms: number | null): string {
-  if (!ms) return ''
-  return new Date(ms).toISOString().slice(11, 19) + ' UTC'
-}
-
-function exposureText(beforeValue: unknown, afterValue: unknown): string {
-  const before = finiteNumber(beforeValue)
-  const after = finiteNumber(afterValue)
-  const beforeText = before === null ? '—' : formatNotionalUsd(before)
-  const afterText = after === null ? '—' : formatNotionalUsd(after)
-  if (before === null || after === null) return `${beforeText} → ${afterText}(—)`
-
-  const delta = Math.round((after - before) * 100) / 100
-  if (Math.abs(delta) < 0.01) return `${beforeText} → ${afterText}(—)`
-  const sign = delta > 0 ? '+' : '−'
-  return `${beforeText} → ${afterText}(${sign}${formatNotionalUsd(Math.abs(delta))})`
-}
-
-function getSideColor(side: string): string {
-  if (side === 'buy') return 'text-goodgreen'
-  if (side === 'sell') return 'text-red-300'
-  return 'text-gray-400'
-}
-
-function getInstrumentClass(symbol: string): string {
-  if (
-    symbol === 'BTC' ||
-    symbol === 'ETH' ||
-    (symbol.endsWith('USD') && (symbol.startsWith('BTC') || symbol.startsWith('ETH')))
-  ) {
-    return 'crypto'
+// Color the SIDE cell using the same goodgreen / red-300 / gray
+// tokens the exposure column uses — every trading UI in existence
+// (eToro, every CEX, every brokerage audit trail) colors buy green
+// and sell red, and the engine's `'buy' | 'sell' | 'noop'` union is
+// the most semantically obvious column for the convention (task
+// 0052). Exhaustive switch so a future side variant fails tsc.
+function sideClassName(side: HedgeReceipt['side']): string {
+  switch (side) {
+    case 'buy':
+      return 'text-goodgreen font-semibold'
+    case 'sell':
+      return 'text-red-300 font-semibold'
+    case 'noop':
+      return 'text-gray-400 font-medium'
+    default: {
+      const _exhaustive: never = side
+      void _exhaustive
+      return 'text-gray-400'
+    }
   }
-  if (symbol.length === 6 && symbol.includes('USD')) return 'fx'
-  return 'stock'
 }
 
-function shortId(value: string, chars: number): string {
-  return value.length > chars ? value.slice(0, chars) : value
-}
-
-function CopyButton({
-  value,
-  label,
-  testId,
-  className,
-  children,
-}: {
-  value: string
-  label: string
-  testId: string
-  className: string
-  children: string
-}) {
-  const copy = (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    void navigator.clipboard?.writeText(value)
-  }
+// Receipt rows come from a fresh JSON parse on every poll, so object
+// identity is never stable. Compare on the exact subset of fields the
+// row JSX reads so a byte-identical receipt skips re-render entirely.
+// NB: extending the row's JSX requires adding any new field here too.
+function areReceiptPropsEqual(
+  a: Readonly<{ receipt: HedgeReceipt }>,
+  b: Readonly<{ receipt: HedgeReceipt }>,
+): boolean {
+  const x = a.receipt
+  const y = b.receipt
   return (
-    <button
-      type="button"
-      data-testid={testId}
-      aria-label={label}
-      title={value}
-      onClick={copy}
-      className={className}
-    >
-      {children}
-    </button>
+    x.id === y.id &&
+    x.timestamp === y.timestamp &&
+    x.success === y.success &&
+    x.notionalUsd === y.notionalUsd &&
+    x.beforeExposure === y.beforeExposure &&
+    x.afterExposure === y.afterExposure &&
+    x.etoroOrderId === y.etoroOrderId &&
+    x.symbol === y.symbol &&
+    x.side === y.side &&
+    x.error === y.error
   )
 }
 
-export const ReceiptRow = memo(function ReceiptRow({ receipt }: { receipt: HedgeReceipt }) {
+export const ReceiptRow = memo(function ReceiptRow({
+  receipt: r,
+}: {
+  receipt: HedgeReceipt
+}) {
+  const delta = formatExposureDelta(r.beforeExposure, r.afterExposure)
   const router = useRouter()
-  const statusColor = receipt.success ? 'text-green-400' : 'text-red-400'
-  const sideColor = getSideColor(receipt.side)
-  const timestamp = receipt.timestamp > 0 ? receipt.timestamp : null
-  const proofHref = `/analytics/hedge/proof/${receipt.id}`
-
-  const navigate = () => router.push(proofHref)
-  const onKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      navigate()
-    }
-  }
-
+  const target = `/analytics/hedge/proof/${encodeURIComponent(r.id)}`
+  const handleNavigate = useCallback(() => {
+    router.push(target)
+  }, [router, target])
+  const handleKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLTableRowElement>) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        handleNavigate()
+      }
+    },
+    [handleNavigate],
+  )
   return (
     <tr
       data-testid="hedge-receipt-row"
-      title={receipt.id}
+      title={r.id}
       role="link"
       tabIndex={0}
-      onClick={navigate}
-      onKeyDown={onKeyDown}
-      className="text-gray-300 hover:bg-dark-100/30 font-mono cursor-pointer focus:outline-none focus:ring-1 focus:ring-goodgreen/60"
+      onClick={handleNavigate}
+      onKeyDown={handleKeyDown}
+      aria-label={`Open proof for receipt ${r.id}`}
+      className="border-t border-dark-100 font-mono cursor-pointer hover:bg-dark-100/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-goodgreen/60"
     >
-      <td className="py-1.5 pr-2 text-xs font-mono" title={timestamp ? new Date(timestamp).toISOString() : undefined}>
-        <span className="flex flex-col leading-tight">
-          <span data-testid="hedge-receipt-time-relative">{timeAgo(timestamp)}</span>
-          <span data-testid="hedge-receipt-time-clock" className="text-[10px] text-gray-500">
-            {formatUtcClock(timestamp)}
+      <td
+        className="py-1.5 pr-2 text-xs text-gray-300"
+        title={formatIsoTitle(r.timestamp)}
+      >
+        <div>
+          <span data-testid="hedge-receipt-time-relative">
+            {formatRelativeTime(r.timestamp)}
           </span>
-        </span>
-      </td>
-      <td className="py-1.5 pr-2 text-xs font-mono">
-        <span className="flex flex-col gap-0.5 min-w-0">
-          <CopyButton
-            value={receipt.id}
-            label={`Copy hedge id ${receipt.id}`}
-            testId="hedge-receipt-internal-id-copy"
-            className="text-left truncate max-w-[8ch] inline-block hover:text-goodgreen"
+        </div>
+        <div>
+          <span
+            data-testid="hedge-receipt-time-clock"
+            className="text-gray-500 text-[10px]"
           >
-            {shortId(receipt.id, 8)}
-          </CopyButton>
-          <span data-testid="hedge-receipt-etoro-id" className="text-gray-400 min-w-0">
-            {receipt.etoroOrderId ? (
-              <CopyButton
-                value={receipt.etoroOrderId}
-                label={`Copy eToro order id ${receipt.etoroOrderId}`}
-                testId="hedge-receipt-etoro-id-copy"
-                className="text-left truncate max-w-[10ch] inline-block hover:text-goodgreen"
-              >
-                {receipt.etoroOrderId}
-              </CopyButton>
-            ) : (
-              <span>—</span>
-            )}
+            {formatClockTimeUtc(r.timestamp)}
           </span>
+        </div>
+      </td>
+      <td className="py-1.5 pr-2 text-xs text-gray-300">
+        <div>
+          <CopyIdButton
+            value={r.id}
+            label={shortId(r.id)}
+            ariaLabel={`Copy hedge id ${r.id}`}
+            testId="hedge-receipt-internal-id-copy"
+          />
+        </div>
+        <div data-testid="hedge-receipt-etoro-id" className="text-gray-500">
+          eToro:{' '}
+          {/* eToro order ids are opaque ~48-char identifiers. The fixed
+              10ch cap (task 0039) keeps column geometry stable across
+              viewports; the title attribute restores full text on
+              hover/long-press. CopyIdButton wraps the truncated span so
+              an operator can copy the FULL id with one tap (task 0043).
+          */}
+          <CopyIdButton
+            value={r.etoroOrderId}
+            label={r.etoroOrderId}
+            ariaLabel={r.etoroOrderId ? `Copy eToro order id ${r.etoroOrderId}` : ''}
+            visibleClassName="text-gray-400 inline-block max-w-[10ch] truncate align-bottom"
+            placeholder={<span className="text-gray-400">—</span>}
+            testId="hedge-receipt-etoro-id-copy"
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-2 text-white">
+        <span className="inline-flex items-center gap-1.5">
+          <InstrumentBadge ticker={r.symbol} testId="hedge-receipt-instrument-badge" />
+          <span>{r.symbol}</span>
         </span>
       </td>
-      <td className="py-1.5 pr-2 text-xs font-mono">
-        {receipt.symbol}
-        <span
-          data-testid="hedge-receipt-instrument-badge"
-          data-instrument-class={getInstrumentClass(receipt.symbol)}
-          aria-hidden="true"
-          className="ml-1 text-xs opacity-60"
-        />
+      <td
+        data-testid="hedge-receipt-side"
+        className={`py-1.5 pr-2 text-xs uppercase ${sideClassName(r.side)}`}
+      >
+        {r.side}
       </td>
-      <td className={`py-1.5 pr-2 text-xs font-semibold uppercase ${sideColor}`} data-testid="hedge-receipt-side">
-        {receipt.side}
+      <td className="py-1.5 pr-2 text-right text-gray-200">
+        {formatNotionalUsd(r.notionalUsd)}
       </td>
-      <td className="py-1.5 pr-2 text-right text-xs">
-        {formatNotionalUsd(receipt.notionalUsd)}
+      <td
+        data-testid="hedge-receipt-exposure-delta"
+        className="py-1.5 pr-2 text-xs text-gray-300"
+      >
+        <div>{delta.display}</div>
+        <div className={delta.deltaClass}>({delta.deltaSigned})</div>
       </td>
-      <td className="py-1.5 pr-2 text-xs" data-testid="hedge-receipt-exposure-delta">
-        {exposureText(receipt.beforeExposure, receipt.afterExposure)}
-      </td>
-      <td className={`py-1.5 text-xs ${statusColor}`}>
-        {receipt.success ? 'success' : 'failed'}
+      <td className="py-1.5 text-xs">
+        {r.success ? (
+          <span className="text-goodgreen">ok</span>
+        ) : (
+          <span className="text-yellow-400">{r.error ?? 'failed'}</span>
+        )}
       </td>
     </tr>
   )
-})
+}, areReceiptPropsEqual)

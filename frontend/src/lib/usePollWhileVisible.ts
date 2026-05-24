@@ -1,52 +1,78 @@
-/**
- * Hook that polls while the page is visible.
- *
- * Uses visibilityState instead of document.hidden so tests and non-browser
- * environments that override the standards property behave correctly.
- */
+'use client'
+
 import { useEffect, useRef } from 'react'
 
-function isDocumentVisible(): boolean {
-  return typeof document === 'undefined' || document.visibilityState !== 'hidden'
+/**
+ * Run `callback` immediately on mount and every `intervalMs` while
+ * `document.visibilityState === 'visible'`. Pause the timer when the
+ * tab goes hidden; on return to visible run `callback` once and
+ * restart the interval. SSR-safe.
+ *
+ * The callback identity may change between renders without
+ * re-creating the timer — the latest function is captured via a ref.
+ *
+ * Used to stop background tabs from fanning out hedge-engine and
+ * analytics requests for nobody. See task 0033.
+ */
+interface Options {
+  enabled?: boolean
 }
 
-export function usePollWhileVisible(callback: () => void, intervalMs: number) {
-  const callbackRef = useRef(callback)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  callbackRef.current = callback
+export function usePollWhileVisible(
+  callback: () => void | Promise<void>,
+  intervalMs: number,
+  options: Options = {},
+): void {
+  const { enabled = true } = options
+  const cbRef = useRef(callback)
+  useEffect(() => {
+    cbRef.current = callback
+  }, [callback])
 
   useEffect(() => {
-    const stopPolling = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
+    if (!enabled) return
+    if (typeof document === 'undefined') return
+
+    let timer: ReturnType<typeof setInterval> | null = null
+    let mounted = true
+
+    const run = (): void => {
+      if (!mounted) return
+      void cbRef.current()
     }
 
-    const startPolling = () => {
-      if (!isDocumentVisible()) return
-      callbackRef.current()
-      if (intervalRef.current) return
-      intervalRef.current = setInterval(() => {
-        if (isDocumentVisible()) callbackRef.current()
-      }, intervalMs)
+    const startInterval = (): void => {
+      if (timer !== null) return
+      timer = setInterval(run, intervalMs)
     }
 
-    const handleVisibilityChange = () => {
-      if (isDocumentVisible()) {
-        startPolling()
+    const stopInterval = (): void => {
+      if (timer === null) return
+      clearInterval(timer)
+      timer = null
+    }
+
+    const onVisibility = (): void => {
+      if (!mounted) return
+      if (document.visibilityState === 'visible') {
+        run()
+        stopInterval()
+        startInterval()
       } else {
-        stopPolling()
+        stopInterval()
       }
     }
 
-    if (isDocumentVisible()) startPolling()
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+    if (document.visibilityState === 'visible') {
+      run()
+      startInterval()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
-      stopPolling()
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      mounted = false
+      stopInterval()
+      document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [intervalMs])
+  }, [enabled, intervalMs])
 }

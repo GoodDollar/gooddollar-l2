@@ -19,6 +19,9 @@ import {
   summarizeReceipts,
   type ReceiptsSummary,
 } from '@/lib/hedge-receipts-summary'
+import {
+  HEDGE_POLL_INTERVAL_MS as POLL_INTERVAL_MS,
+} from '@/lib/hedgePollInterval'
 import { useIntervalWhileVisible } from '@/lib/useIntervalWhileVisible'
 import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
 import { Sparkline } from './Sparkline'
@@ -93,8 +96,6 @@ interface HedgeStatusResponse {
   proof: ProofPointer | null
   degraded?: DegradedFlags
 }
-
-const POLL_INTERVAL_MS = 10_000
 
 function timeAgo(ms: number | undefined): string {
   if (!ms) return '—'
@@ -200,6 +201,37 @@ function ThrottleCountdown({
   return (
     <span data-testid="hedge-throttle-countdown" className="font-mono">
       {remaining}s
+    </span>
+  )
+}
+
+// Engine-tile sub-line for the unreachable state. Owns its own 1 s
+// ticker so the rest of the card reconciles only when a poll resolves
+// (#0031). When `lastPolledAt` is set, surfaces the relative time of
+// the most recent attempt so the operator knows *when* a poll last
+// landed instead of reading the same "auto-retry 10s" cadence the
+// banner already states (#0070). When `lastPolledAt` is null (first
+// fetch in flight) falls back to the cadence copy — there's no
+// relative anchor to surface yet.
+function EngineLastAttemptSub({
+  lastPolledAt,
+  pollIntervalMs,
+}: {
+  lastPolledAt: number | null
+  pollIntervalMs: number
+}) {
+  const [, setTick] = useState(0)
+  useIntervalWhileVisible(() => setTick((n) => n + 1), 1000)
+  const text =
+    lastPolledAt === null
+      ? `auto-retry ${Math.round(pollIntervalMs / 1000)}s`
+      : `last attempt ${timeAgo(lastPolledAt)}`
+  return (
+    <span
+      data-testid="hedge-engine-stat-sub"
+      className="text-xs text-red-300"
+    >
+      {text}
     </span>
   )
 }
@@ -692,11 +724,28 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
   // "engine offline" banner above (#0068). Genuine awaiting-tick states
   // (engine reachable, first tick pending) keep the animated pulse.
   const engineUnreachable = engineState.label === 'unreachable'
+  // On the unreachable branch, swap the engine tile's static
+  // "auto-retry 10s" sub for a self-ticking "last attempt Xs ago"
+  // string. Memoise on `lastPolledAt` so the surrounding `Stat` memo
+  // only re-reconciles when a poll resolves; the inner ticker handles
+  // the once-per-second relative-time updates without fanning out
+  // re-renders to the other three tiles (#0031, #0070).
+  const engineSubNode = useMemo(
+    () =>
+      engineUnreachable ? (
+        <EngineLastAttemptSub
+          lastPolledAt={lastPolledAt}
+          pollIntervalMs={POLL_INTERVAL_MS}
+        />
+      ) : undefined,
+    [engineUnreachable, lastPolledAt],
+  )
 
   return (
     <section
+      id="hedge-status-card"
       data-testid="hedge-status-card"
-      className="bg-dark-100/50 rounded-xl border border-dark-50 p-5"
+      className="scroll-mt-20 bg-dark-100/50 rounded-xl border border-dark-50 p-5"
     >
       <header className="mb-3">
         <div
@@ -811,7 +860,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
             data-testid="hedge-status-error-icon"
             className="text-red-400 shrink-0"
           >
-            <ExclamationCircleIcon size={20} aria-hidden="true" />
+            <ExclamationCircleIcon size={20} />
           </span>
           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
             <span className="font-medium">{buildHedgeErrorHeadline(error)}</span>
@@ -943,12 +992,27 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
               subColor={engineState.sub.color}
               subMono={engineState.sub.mono}
               subTestId="hedge-engine-stat-sub"
+              subNode={engineSubNode}
             />
           </>
         )}
       </div>
 
-      <div className="bg-dark-50 rounded-lg p-3 overflow-x-auto">
+      {/*
+        `id="hedge-recent-receipts"` is the precise anchor used by the
+        hedge-proof recovery row's "Jump to receipts table ↓" link and
+        the invalid_id primary "Open receipts table" action (#0076).
+        The outer `<section id="hedge-status-card">` stays in place for
+        the analytics section nav (#0078); this is a more specific
+        landing target so the user lands on the receipts panel itself
+        rather than the top of the hedge card. `scroll-mt-20` (80px)
+        clears the `h-16` sticky site header.
+      */}
+      <div
+        id="hedge-recent-receipts"
+        data-testid="hedge-recent-receipts"
+        className="scroll-mt-20 bg-dark-50 rounded-lg p-3 overflow-x-auto"
+      >
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-sm font-medium text-gray-300">Recent receipts</h3>
@@ -1072,12 +1136,19 @@ interface StatProps {
   // em-dashes next to a bold red ENGINE tile (#0056). Boolean keeps the
   // memo shallow-compare safe.
   placeholder?: boolean
-  // When the placeholder is rendered, this controls whether the bar
-  // animates. Animation is the universal "data is loading" idiom, so
-  // we keep it for genuine awaiting-first-tick states but suppress it
-  // when the engine is unreachable — otherwise three pulsing tiles
-  // contradict the explicit "engine offline" banner above (#0068).
+  // Controls whether the placeholder bar animates. We keep the pulse
+  // for genuine awaiting-first-tick states (engine reachable, cap not
+  // yet arrived) but suppress it when the engine is unreachable —
+  // otherwise three pulsing tiles contradict the explicit "engine
+  // offline" banner above (#0068).
   placeholderAnimated?: boolean
+  // Optional escape-hatch for parents that need a self-ticking or
+  // otherwise dynamic sub-line. When provided, replaces the entire
+  // `sub`/`subColor`/`subMono`/`subTestId` rendering — the parent
+  // owns the testid + classes. The engine tile uses this to render
+  // `EngineLastAttemptSub` without forcing the other tiles to
+  // re-render every second (#0070).
+  subNode?: ReactNode
 }
 
 const Stat = memo(function Stat({
@@ -1097,13 +1168,8 @@ const Stat = memo(function Stat({
   sparklineTestId,
   placeholder,
   placeholderAnimated = true,
+  subNode,
 }: StatProps) {
-  const placeholderClasses = [
-    'h-6 w-16 bg-dark-100 rounded inline-block',
-    placeholderAnimated ? 'animate-pulse' : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
   const subClasses = [
     'text-xs',
     subColor ?? 'text-gray-500',
@@ -1120,6 +1186,12 @@ const Stat = memo(function Stat({
   const valueClasses = `text-2xl font-bold ${valueColor ?? color ?? 'text-white'} ${
     placeholder ? 'inline-flex items-center' : ''
   }`.trim()
+  const placeholderClasses = [
+    'h-6 w-16 bg-dark-100 rounded inline-block',
+    placeholderAnimated ? 'animate-pulse' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
   return (
     <div className={containerClasses}>
       <span className="text-xs text-gray-400 uppercase tracking-wide min-h-[2lh] sm:min-h-0">{label}</span>
@@ -1149,11 +1221,11 @@ const Stat = memo(function Stat({
           />
         </span>
       )}
-      {sub && (
+      {subNode ?? (sub && (
         <span data-testid={subTestId} className={subClasses}>
           {sub}
         </span>
-      )}
+      ))}
     </div>
   )
 })

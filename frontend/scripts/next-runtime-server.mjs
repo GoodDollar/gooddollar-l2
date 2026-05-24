@@ -5,7 +5,29 @@ import { parse } from 'node:url'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import next from 'next'
-import { normalizeMalformedStocksPath } from './safe-route-normalizer.mjs'
+import {
+  isMalformedHedgeProofApiPath,
+  normalizeMalformedHedgeProofPath,
+  normalizeMalformedStocksPath,
+} from './safe-route-normalizer.mjs'
+
+// Canonical JSON envelope returned for malformed-percent-encoded
+// /api/hedge/proof/<id> URLs (task 0074). Constructed once because the
+// body and headers are invariant; Next.js's framework decoder would
+// otherwise serve its built-in HTML 400, breaking the route's JSON-only
+// contract.
+export const HEDGE_PROOF_MALFORMED_URL_BODY = JSON.stringify({
+  status: 'invalid_id',
+  reason: 'Receipt id has malformed URL encoding',
+})
+
+export function writeHedgeProofMalformedUrlResponse(res) {
+  res.writeHead(400, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+  })
+  res.end(HEDGE_PROOF_MALFORMED_URL_BODY)
+}
 
 export function parseCliArgs(argv) {
   let dev = false
@@ -54,7 +76,16 @@ export function createNextRuntimeServer({ argv = process.argv.slice(2), env = pr
     .then(() => {
       createServer((req, res) => {
         const incomingUrl = req.url || '/'
-        const normalizedUrl = normalizeMalformedStocksPath(incomingUrl)
+        if (isMalformedHedgeProofApiPath(incomingUrl)) {
+          // Short-circuit before Next.js's pathname decoder runs.
+          // Returning JSON here preserves the /api/hedge/proof/* JSON-only
+          // contract (task 0074).
+          writeHedgeProofMalformedUrlResponse(res)
+          return
+        }
+        const normalizedUrl = normalizeMalformedHedgeProofPath(
+          normalizeMalformedStocksPath(incomingUrl),
+        )
         if (normalizedUrl !== incomingUrl) {
           req.url = normalizedUrl
         }

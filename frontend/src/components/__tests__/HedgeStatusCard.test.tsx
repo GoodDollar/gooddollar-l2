@@ -1173,7 +1173,12 @@ describe('HedgeStatusCard', () => {
     expect(tile!.textContent ?? '').toMatch(/last tick/i);
   });
 
-  it('engine stat sub line: unreachable state matches /auto-retry/i in red, AA-passing token (#0021, #0067)', async () => {
+  it('engine stat sub line: unreachable state surfaces /last attempt \\d+[smhd] ago/i once a poll has resolved, in red AA-passing token (#0021, #0067, #0070)', async () => {
+    // Once at least one poll has resolved (success or error) the ENGINE
+    // tile sub specialises away from the banner-duplicating
+    // "auto-retry 10s" copy and shows when the most recent attempt
+    // landed instead — sourced from the same `lastPolledAt` that
+    // drives FreshnessLabel.
     mockFetchOnce(
       {
         error: 'Hedge engine unreachable',
@@ -1185,17 +1190,53 @@ describe('HedgeStatusCard', () => {
       { status: 503 },
     );
     render(<HedgeStatusCard />);
-    const engineStat = await screen.findByTestId('hedge-engine-stat');
-    const tile = engineStat.closest('div');
-    expect(tile).not.toBeNull();
-    expect(tile!.textContent ?? '').toMatch(/auto-retry/i);
-    const subSpan = tile!.querySelector('[data-testid="hedge-engine-stat-sub"]');
-    expect(subSpan).not.toBeNull();
+    const subSpan = await screen.findByTestId('hedge-engine-stat-sub');
+    await waitFor(() => {
+      expect(subSpan.textContent ?? '').toMatch(/last attempt \d+[smhd] ago/i);
+    });
+    expect(subSpan.textContent ?? '').not.toMatch(/auto-retry/i);
     // #0067: the sub colour must clear WCAG AA (≥4.5:1) against
     // bg-dark-50; text-red-300 lands at ~7.9:1, while the previous
     // text-red-400/80 token failed at 3.98:1.
-    expect(subSpan!.className).toContain('text-red-300');
-    expect(subSpan!.className).not.toMatch(/text-red-400\/80/);
+    expect(subSpan.className).toContain('text-red-300');
+    expect(subSpan.className).not.toMatch(/text-red-400\/80/);
+  });
+
+  it('engine stat sub line: unreachable + no poll has resolved yet falls back to /auto-retry/i (#0070)', async () => {
+    // When the very first fetch fails before `setLastPolledAt` runs
+    // (network error path — `fetch` throws), the relative-time copy
+    // has no anchor; the sub renders the existing cadence string so
+    // we never render "last attempt — ago".
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+      new TypeError('Failed to fetch'),
+    );
+    render(<HedgeStatusCard />);
+    const subSpan = await screen.findByTestId('hedge-engine-stat-sub');
+    expect(subSpan.textContent ?? '').toMatch(/auto-retry \d+s/i);
+    expect(subSpan.textContent ?? '').not.toMatch(/last attempt/i);
+    expect(subSpan.className).toContain('text-red-300');
+  });
+
+  it('engine-down card no longer repeats the 10s retry cadence on the engine tile sub (#0070)', async () => {
+    mockFetchOnce(
+      {
+        error: 'Hedge engine unreachable',
+        snapshot: null,
+        mode: null,
+        receipts: [],
+        proof: null,
+      },
+      { status: 503 },
+    );
+    render(<HedgeStatusCard />);
+    const card = await screen.findByTestId('hedge-status-card');
+    await screen.findByTestId('hedge-engine-stat-sub');
+    await waitFor(() => {
+      const text = card.textContent ?? '';
+      // Banner sub keeps "Auto-retrying every 10s." — a single mention.
+      // Engine tile no longer says "auto-retry 10s".
+      expect((text.match(/10\s*s/gi) ?? []).length).toBe(1);
+    });
   });
 
   it('engine stat sub line: halted state reads /kill-switch engaged/i (#0021)', async () => {
@@ -2835,6 +2876,30 @@ describe('HedgeStatusCard', () => {
       // screen readers see `'buy'`; CSS `uppercase` handles the visual.
       expect(cell.textContent).toBe('buy');
       expect(cell.className.split(/\s+/)).toContain('uppercase');
+    });
+  });
+
+  describe('recent-receipts anchor (#0076)', () => {
+    it('exposes #hedge-recent-receipts on the receipts panel so proof-page jump links land on Recent receipts, not the top of the hedge card', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const panel = await screen.findByTestId('hedge-recent-receipts');
+      expect(panel.id).toBe('hedge-recent-receipts');
+      // The anchor must sit inside the outer hedge-card section so the
+      // section-level `#hedge-status-card` anchor (analytics section
+      // nav) still works alongside the new, more specific anchor.
+      const section = screen.getByTestId('hedge-status-card');
+      expect(section.contains(panel)).toBe(true);
+      // `scroll-mt-20` keeps the panel heading clear of the `h-16`
+      // sticky site header when the browser scrolls to the anchor.
+      expect(panel.className.split(/\s+/)).toContain('scroll-mt-20');
+    });
+
+    it('outer hedge-status-card section also carries scroll-mt-20 so the analytics section-nav (#0078) jump lands cleanly under the sticky header', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const section = await screen.findByTestId('hedge-status-card');
+      expect(section.className.split(/\s+/)).toContain('scroll-mt-20');
     });
   });
 });

@@ -1,6 +1,27 @@
 import { describe, expect, it } from 'vitest'
 
-import { applyRuntimeDistDir, parseCliArgs } from '../next-runtime-server.mjs'
+import {
+  HEDGE_PROOF_MALFORMED_URL_BODY,
+  applyRuntimeDistDir,
+  parseCliArgs,
+  writeHedgeProofMalformedUrlResponse,
+} from '../next-runtime-server.mjs'
+
+function makeMockResponse() {
+  let headWriteArgs = null
+  let endArg = null
+  return {
+    writeHead(status, headers) {
+      headWriteArgs = { status, headers }
+    },
+    end(body) {
+      endArg = body
+    },
+    inspect() {
+      return { headWriteArgs, endArg }
+    },
+  }
+}
 
 describe('next-runtime-server', () => {
   it('parses dev mode and explicit port', () => {
@@ -36,5 +57,31 @@ describe('next-runtime-server', () => {
     const distDir = applyRuntimeDistDir({ dev: false, env })
     expect(distDir).toBeNull()
     expect(env.NEXT_DIST_DIR).toBeUndefined()
+  })
+})
+
+describe('writeHedgeProofMalformedUrlResponse (#0074)', () => {
+  it('writes HTTP 400 with application/json content-type and no-store cache', () => {
+    const res = makeMockResponse()
+    writeHedgeProofMalformedUrlResponse(res)
+    const { headWriteArgs } = res.inspect()
+    expect(headWriteArgs.status).toBe(400)
+    expect(headWriteArgs.headers['Content-Type']).toMatch(/application\/json/)
+    expect(headWriteArgs.headers['Cache-Control']).toBe('no-store')
+  })
+
+  it('writes the canonical invalid_id envelope body', () => {
+    const res = makeMockResponse()
+    writeHedgeProofMalformedUrlResponse(res)
+    const { endArg } = res.inspect()
+    const body = JSON.parse(endArg)
+    expect(body.status).toBe('invalid_id')
+    expect(body.reason).toMatch(/malformed.*url|url.*encoding/i)
+  })
+
+  it('exports the same JSON body constant used for the response', () => {
+    const parsed = JSON.parse(HEDGE_PROOF_MALFORMED_URL_BODY)
+    expect(parsed.status).toBe('invalid_id')
+    expect(typeof parsed.reason).toBe('string')
   })
 })

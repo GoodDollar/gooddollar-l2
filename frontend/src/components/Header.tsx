@@ -29,6 +29,10 @@ export function Header() {
   const isUBIImpact = pathname?.startsWith('/ubi-impact')
   const isAgents = pathname?.startsWith('/agents')
   const isActivity = pathname?.startsWith('/activity')
+  // `/analytics` and any descendant route (e.g. `/analytics/hedge/proof/*`)
+  // light up the same nav entry so a user on a sub-route still sees the
+  // active section (#0079). Mirrors the existing `isStocks` pattern.
+  const isAnalytics = pathname?.startsWith('/analytics')
   const isTestDashboard = pathname?.startsWith('/test-dashboard')
   const isTestnetGuide = pathname?.startsWith('/testnet-guide')
   const isFaucet = pathname?.startsWith('/faucet')
@@ -102,6 +106,14 @@ export function Header() {
               Activity
             </span>
           </Link>
+          <Link
+            prefetch={false}
+            href="/analytics"
+            aria-current={isAnalytics ? 'page' : undefined}
+            className={isAnalytics ? 'text-white font-medium' : 'hover:text-white transition-colors'}
+          >
+            Analytics
+          </Link>
           <span className="w-px h-4 bg-white/10" />
           <Link prefetch={false} href="/faucet" className={isFaucet ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Faucet</Link>
           <Link prefetch={false} href="/testnet-guide" className={isTestnetGuide ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Guide</Link>
@@ -114,6 +126,14 @@ export function Header() {
           <Link prefetch={false} href="/perps" className={isPerps ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Perps</Link>
           <Link prefetch={false} href="/predict" className={isPredict ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Predict</Link>
           <Link prefetch={false} href="/lend" className={isLend ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Lend</Link>
+          <Link
+            prefetch={false}
+            href="/analytics"
+            aria-current={isAnalytics ? 'page' : undefined}
+            className={isAnalytics ? 'text-white font-medium' : 'hover:text-white transition-colors'}
+          >
+            Analytics
+          </Link>
           <details className="relative group">
             <summary className="list-none cursor-pointer flex items-center gap-1 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none rounded-md px-1">
               More
@@ -135,6 +155,14 @@ export function Header() {
               <Link prefetch={false} href="/agents" className={`block px-3 py-2 rounded-lg ${isAgents ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Agents</Link>
               <Link prefetch={false} href="/ubi-impact" className={`block px-3 py-2 rounded-lg ${isUBIImpact ? 'text-green-400 bg-dark-50/50 font-medium' : 'text-green-300 hover:text-green-400 hover:bg-dark-50/50'}`}>UBI</Link>
               <Link prefetch={false} href="/activity" className={`block px-3 py-2 rounded-lg ${isActivity ? 'text-goodgreen bg-dark-50/50 font-medium' : 'text-goodgreen/80 hover:text-goodgreen hover:bg-dark-50/50'}`}>Activity</Link>
+              <Link
+                prefetch={false}
+                href="/analytics"
+                aria-current={isAnalytics ? 'page' : undefined}
+                className={`block px-3 py-2 rounded-lg ${isAnalytics ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}
+              >
+                Analytics
+              </Link>
               <div className="border-t border-dark-50/50 my-1" />
               <Link prefetch={false} href="/faucet" className={`block px-3 py-2 rounded-lg ${isFaucet ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Faucet</Link>
               <Link prefetch={false} href="/testnet-guide" className={`block px-3 py-2 rounded-lg ${isTestnetGuide ? 'text-accent bg-accent/10 font-medium' : 'text-accent/70 hover:text-accent hover:bg-dark-50/50'}`}>Guide</Link>
@@ -272,6 +300,13 @@ export function Header() {
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-goodgreen animate-pulse" />
                 Activity
               </span>
+            </Link>
+            <Link prefetch={false} href="/analytics"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-current={isAnalytics ? 'page' : undefined}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isAnalytics ? 'text-white font-medium bg-dark-50/50' : 'text-gray-400 hover:text-white'}`}
+            >
+              Analytics
             </Link>
             {showDevNav && (
               <Link prefetch={false} href="/test-dashboard"

@@ -41,14 +41,58 @@ export interface ButtonProps
   asChild?: boolean
 }
 
+// Combines two refs into one so the parent's forwarded ref and the child's
+// own ref both receive the rendered DOM node when `asChild` is used.
+function mergeRefs<T>(
+  ...refs: Array<React.Ref<T> | undefined>
+): React.RefCallback<T> {
+  return (node) => {
+    for (const ref of refs) {
+      if (!ref) continue
+      if (typeof ref === 'function') ref(node)
+      else (ref as React.MutableRefObject<T | null>).current = node
+    }
+  }
+}
+
+// `asChild` lets a caller render its own element (e.g. `<Link/>`) with the
+// button's variant classes applied, instead of being wrapped in a `<button>`.
+// We implement it inline with `cloneElement` rather than importing Radix's
+// `Slot` so `button.tsx` does not pin a `@radix-ui/react-slot` chunk; the
+// Turbopack dev server evicts that factory whenever new routes are added,
+// which used to crash every page with a stale-module-factory error (#0083).
+// Before this prop was wired the original implementation also leaked
+// `aschild=""` to the DOM and produced nested `<button><a/></button>` trees
+// (#0066) — both of those regressions are guarded by the tests in
+// `__tests__/button.test.tsx`.
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+    const variantClassName = cn(buttonVariants({ variant, size, className }))
+
+    if (asChild) {
+      const child = React.Children.only(children) as React.ReactElement<{
+        className?: string
+        ref?: React.Ref<HTMLElement>
+      }>
+      const childProps = child.props
+      const childRef = (child as unknown as { ref?: React.Ref<HTMLElement> }).ref
+      return React.cloneElement(child, {
+        ...props,
+        ...childProps,
+        className: cn(variantClassName, childProps.className),
+        ref: mergeRefs(ref as React.Ref<HTMLElement>, childRef),
+      } as React.HTMLAttributes<HTMLElement> & { ref: React.Ref<HTMLElement> })
+    }
+
     return (
       <button
-        className={cn(buttonVariants({ variant, size, className }))}
+        type={props.type ?? 'button'}
+        className={variantClassName}
         ref={ref}
         {...props}
-      />
+      >
+        {children}
+      </button>
     )
   }
 )

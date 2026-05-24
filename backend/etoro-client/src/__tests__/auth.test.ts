@@ -1,357 +1,229 @@
-import {
-  DEMO_BASE_URL_DEFAULT,
-  DEMO_WS_URL_DEFAULT,
-  loadCredentialsFromEnv,
-  loadDemoCapConfig,
-  MODE_CAPABILITIES,
-  REAL_TRADING_ENABLED,
-  redactCredentials,
-  resolveMode,
-  resolveModeSource,
-} from '../auth';
-import { InvalidCapConfigError, InvalidModeError } from '../errors';
-import { DemoCapEnforcer } from '../cap-enforcer';
-
-describe('REAL_TRADING_ENABLED fence', () => {
-  it('is a const set to false at the source level', () => {
-    expect(REAL_TRADING_ENABLED).toBe(false);
-  });
-});
+import { loadCredentialsFromEnv, resolveMode, redactCredentials } from '../auth';
 
 describe('resolveMode', () => {
-  it('defaults to mock when ETORO_MODE is not set', () => {
-    expect(resolveMode({})).toBe('mock');
+  it('defaults to sandbox when ETORO_MODE is not set', () => {
+    expect(resolveMode({})).toBe('sandbox');
   });
 
-  it('returns mock for ETORO_MODE=mock', () => {
-    expect(resolveMode({ ETORO_MODE: 'mock' })).toBe('mock');
+  it('returns sandbox for ETORO_MODE=sandbox', () => {
+    expect(resolveMode({ ETORO_MODE: 'sandbox' })).toBe('sandbox');
   });
 
-  it('returns demo-readonly for ETORO_MODE=demo-readonly', () => {
-    expect(resolveMode({ ETORO_MODE: 'demo-readonly' })).toBe('demo-readonly');
+  it('returns real for ETORO_MODE=real', () => {
+    expect(resolveMode({ ETORO_MODE: 'real' })).toBe('real');
   });
 
-  it('returns demo-trading for ETORO_MODE=demo-trading', () => {
-    expect(resolveMode({ ETORO_MODE: 'demo-trading' })).toBe('demo-trading');
-  });
-
-  it('returns real-disabled for ETORO_MODE=real-disabled', () => {
-    expect(resolveMode({ ETORO_MODE: 'real-disabled' })).toBe('real-disabled');
+  it('returns demo for ETORO_MODE=demo', () => {
+    expect(resolveMode({ ETORO_MODE: 'demo' })).toBe('demo');
   });
 
   it('is case-insensitive', () => {
-    expect(resolveMode({ ETORO_MODE: 'DEMO-TRADING' })).toBe('demo-trading');
-    expect(resolveMode({ ETORO_MODE: 'Mock' })).toBe('mock');
-  });
-
-  it('throws InvalidModeError for legacy or unknown mode names', () => {
-    for (const raw of ['real', 'sandbox', 'production', 'live', 'demo', 'PRODUCTION-LIVE']) {
-      expect(() => resolveMode({ ETORO_MODE: raw })).toThrow(InvalidModeError);
-    }
-  });
-
-  it('InvalidModeError carries the raw value and the list of valid modes', () => {
-    try {
-      resolveMode({ ETORO_MODE: 'demo' });
-      fail('expected throw');
-    } catch (e) {
-      expect(e).toBeInstanceOf(InvalidModeError);
-      const err = e as InvalidModeError;
-      expect(err.rawValue).toBe('demo');
-      expect(err.validModes).toContain('demo-trading');
-      expect(err.validModes).toContain('demo-readonly');
-      expect(err.message).toContain('demo-readonly');
-    }
-  });
-
-  it('trims and lowercases the raw mode before validating', () => {
-    expect(resolveMode({ ETORO_MODE: '  DEMO-TRADING  ' })).toBe('demo-trading');
-  });
-});
-
-describe('resolveModeSource', () => {
-  it("returns 'default' when ETORO_MODE is unset", () => {
-    expect(resolveModeSource({})).toBe('default');
-  });
-
-  it("returns 'env' when ETORO_MODE is set", () => {
-    expect(resolveModeSource({ ETORO_MODE: 'mock' })).toBe('env');
+    expect(resolveMode({ ETORO_MODE: 'REAL' })).toBe('real');
+    expect(resolveMode({ ETORO_MODE: 'Sandbox' })).toBe('sandbox');
+    expect(resolveMode({ ETORO_MODE: 'DEMO' })).toBe('demo');
+    expect(resolveMode({ ETORO_MODE: 'Demo' })).toBe('demo');
   });
 });
 
 describe('loadCredentialsFromEnv', () => {
-  const demoEnv = {
-    ETORO_DEMO_KEY: 'demo-key-123',
-    ETORO_DEMO_SECRET: 'demo-secret-456',
-    ETORO_DEMO_USER_KEY: 'demo-user-789',
-  };
-  const realEnv = {
-    ETORO_DEMO_KEY: 'demo-key-123',
-    ETORO_DEMO_SECRET: 'demo-secret-456',
-    ETORO_USER_KEY: 'real-user-789',
+  const sandboxEnv = {
+    ETORO_MODE: 'sandbox',
+    ETORO_SANDBOX_KEY: 'sb-key-123',
+    ETORO_SANDBOX_SECRET: 'sb-secret-456',
   };
 
-  it('returns deterministic mock credentials when ETORO_MODE is unset', () => {
-    const creds = loadCredentialsFromEnv({}, { silent: true });
-    expect(creds.mode).toBe('mock');
-    expect(creds.apiKey).toBe('mock-api-key');
-    expect(creds.apiSecret).toBe('mock-api-secret');
-    expect(creds.baseUrl).toMatch(/^mock:/);
-    expect(creds.wsUrl).toMatch(/^mock:/);
+  it('loads sandbox credentials', () => {
+    const creds = loadCredentialsFromEnv(sandboxEnv);
+    expect(creds.mode).toBe('sandbox');
+    expect(creds.apiKey).toBe('sb-key-123');
+    expect(creds.apiSecret).toBe('sb-secret-456');
+    expect(creds.baseUrl).toBe('https://api.etoro.com/sapi');
   });
 
-  it('emits exactly one default-mock warning when ETORO_MODE is unset', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      loadCredentialsFromEnv({});
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0][0]).toMatch(/ETORO_MODE not set/);
-    } finally {
-      warn.mockRestore();
-    }
+  it('throws when sandbox key is missing', () => {
+    expect(() =>
+      loadCredentialsFromEnv({ ETORO_MODE: 'sandbox' }),
+    ).toThrow('Missing eToro sandbox credentials');
   });
 
-  it('suppresses the warning when { silent: true }', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      loadCredentialsFromEnv({}, { silent: true });
-      expect(warn).not.toHaveBeenCalled();
-    } finally {
-      warn.mockRestore();
-    }
-  });
-
-  it('does NOT warn when ETORO_MODE is explicitly set to mock', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      loadCredentialsFromEnv({ ETORO_MODE: 'mock' });
-      expect(warn).not.toHaveBeenCalled();
-    } finally {
-      warn.mockRestore();
-    }
-  });
-
-  it('propagates InvalidModeError for unknown ETORO_MODE values', () => {
-    expect(() => loadCredentialsFromEnv({ ETORO_MODE: 'demo' }, { silent: true }))
-      .toThrow(InvalidModeError);
-  });
-
-  it('returns mock creds for ETORO_MODE=mock without consulting demo env vars', () => {
-    const creds = loadCredentialsFromEnv({
-      ETORO_MODE: 'mock',
-      ETORO_DEMO_KEY: 'should-not-be-read',
-      ETORO_DEMO_SECRET: 'should-not-be-read',
-    }, { silent: true });
-    expect(creds.mode).toBe('mock');
-    expect(creds.apiKey).toBe('mock-api-key');
-    expect(creds.apiSecret).toBe('mock-api-secret');
-  });
-
-  it('loads demo-readonly credentials with default demo URLs', () => {
-    const creds = loadCredentialsFromEnv({ ETORO_MODE: 'demo-readonly', ...demoEnv });
-    expect(creds.mode).toBe('demo-readonly');
-    expect(creds.apiKey).toBe('demo-key-123');
-    expect(creds.apiSecret).toBe('demo-secret-456');
-    expect(creds.baseUrl).toBe(DEMO_BASE_URL_DEFAULT);
-    expect(creds.wsUrl).toBe(DEMO_WS_URL_DEFAULT);
-  });
-
-  it('loads demo-trading credentials with default demo URLs', () => {
-    const creds = loadCredentialsFromEnv({ ETORO_MODE: 'demo-trading', ...demoEnv });
-    expect(creds.mode).toBe('demo-trading');
-    expect(creds.baseUrl).toBe(DEMO_BASE_URL_DEFAULT);
-  });
-
-  it('loads real-disabled credentials but still uses demo URLs (no real URL exposure)', () => {
-    const creds = loadCredentialsFromEnv({ ETORO_MODE: 'real-disabled', ...realEnv });
-    expect(creds.mode).toBe('real-disabled');
-    expect(creds.baseUrl).toBe(DEMO_BASE_URL_DEFAULT);
-    expect(creds.wsUrl).toBe(DEMO_WS_URL_DEFAULT);
-    expect(creds.userKey).toBe('real-user-789');
-  });
-
-  it('demo modes read ETORO_DEMO_USER_KEY into credentials.userKey', () => {
-    const creds = loadCredentialsFromEnv({ ETORO_MODE: 'demo-readonly', ...demoEnv });
-    expect(creds.userKey).toBe('demo-user-789');
-  });
-
-  it('throws when demo-readonly is missing ETORO_DEMO_USER_KEY', () => {
+  it('throws when sandbox secret is missing', () => {
     expect(() =>
       loadCredentialsFromEnv({
-        ETORO_MODE: 'demo-readonly',
-        ETORO_DEMO_KEY: 'k', ETORO_DEMO_SECRET: 's',
+        ETORO_MODE: 'sandbox',
+        ETORO_SANDBOX_KEY: 'key',
       }),
-    ).toThrow(/ETORO_DEMO_USER_KEY/);
+    ).toThrow('Missing eToro sandbox credentials');
   });
 
-  it('throws when real-disabled is missing ETORO_USER_KEY', () => {
-    expect(() =>
-      loadCredentialsFromEnv({
-        ETORO_MODE: 'real-disabled',
-        ETORO_DEMO_KEY: 'k', ETORO_DEMO_SECRET: 's',
-      }),
-    ).toThrow(/ETORO_USER_KEY/);
-  });
-
-  it('throws when demo-readonly is requested without credentials', () => {
-    expect(() =>
-      loadCredentialsFromEnv({ ETORO_MODE: 'demo-readonly' }),
-    ).toThrow(/Missing eToro demo credentials/);
-  });
-
-  it('throws when demo-trading is requested without credentials', () => {
-    expect(() =>
-      loadCredentialsFromEnv({ ETORO_MODE: 'demo-trading', ETORO_DEMO_KEY: 'k' }),
-    ).toThrow(/ETORO_DEMO_KEY/);
-  });
-
-  it('throws when real-disabled is requested without credentials', () => {
-    expect(() =>
-      loadCredentialsFromEnv({ ETORO_MODE: 'real-disabled' }),
-    ).toThrow(/Missing eToro demo credentials/);
-  });
-
-  it('respects ETORO_DEMO_BASE_URL and ETORO_DEMO_WS_URL overrides', () => {
-    const creds = loadCredentialsFromEnv({
-      ETORO_MODE: 'demo-readonly',
-      ...demoEnv,
-      ETORO_DEMO_BASE_URL: 'https://custom-demo.test/api',
-      ETORO_DEMO_WS_URL: 'wss://custom-demo.test/ws',
-    });
-    expect(creds.baseUrl).toBe('https://custom-demo.test/api');
-    expect(creds.wsUrl).toBe('wss://custom-demo.test/ws');
-  });
-
-  it('never returns real-account credentials regardless of legacy env vars', () => {
-    const creds = loadCredentialsFromEnv({
-      ETORO_MODE: 'demo-trading',
-      ...demoEnv,
-      ETORO_REAL_KEY: 'should-be-ignored',
-      ETORO_REAL_SECRET: 'should-be-ignored',
+  it('loads real credentials with confirmation', () => {
+    const realEnv = {
+      ETORO_MODE: 'real',
+      ETORO_REAL_KEY: 'real-key',
+      ETORO_REAL_SECRET: 'real-secret',
       ETORO_REAL_CONFIRMED: 'true',
+    };
+    const creds = loadCredentialsFromEnv(realEnv);
+    expect(creds.mode).toBe('real');
+    expect(creds.apiKey).toBe('real-key');
+    expect(creds.apiSecret).toBe('real-secret');
+  });
+
+  it('throws when real mode without ETORO_REAL_CONFIRMED', () => {
+    expect(() =>
+      loadCredentialsFromEnv({
+        ETORO_MODE: 'real',
+        ETORO_REAL_KEY: 'key',
+        ETORO_REAL_SECRET: 'secret',
+      }),
+    ).toThrow('ETORO_REAL_CONFIRMED=true is required');
+  });
+
+  it('uses custom base URL when provided', () => {
+    const creds = loadCredentialsFromEnv({
+      ...sandboxEnv,
+      ETORO_BASE_URL: 'https://custom.api.com',
     });
-    expect(creds.apiKey).not.toContain('ignored');
-    expect(creds.apiSecret).not.toContain('ignored');
-  });
-});
-
-describe('loadDemoCapConfig', () => {
-  it('returns defaults when env is empty', () => {
-    const cfg = loadDemoCapConfig({});
-    expect(cfg.maxOrderNotionalUsd).toBe(1_000);
-    expect(cfg.maxDailyNotionalUsd).toBe(10_000);
+    expect(creds.baseUrl).toBe('https://custom.api.com');
   });
 
-  it('reads positive values from env', () => {
-    const cfg = loadDemoCapConfig({
-      MAX_DEMO_ORDER_NOTIONAL_USD: '250',
-      MAX_DAILY_DEMO_NOTIONAL_USD: '2500',
+  it('sandbox mode never loads real credentials even if present', () => {
+    const mixedEnv = {
+      ETORO_MODE: 'sandbox',
+      ETORO_SANDBOX_KEY: 'sb-key-123',
+      ETORO_SANDBOX_SECRET: 'sb-secret-456',
+      ETORO_REAL_KEY: 'real-key-should-not-appear',
+      ETORO_REAL_SECRET: 'real-secret-should-not-appear',
+    };
+    const creds = loadCredentialsFromEnv(mixedEnv);
+    expect(creds.apiKey).toBe('sb-key-123');
+    expect(creds.apiSecret).toBe('sb-secret-456');
+    expect(creds.apiKey).not.toContain('real');
+    expect(creds.apiSecret).not.toContain('real');
+  });
+
+  it('rejects ETORO_REAL_CONFIRMED=false for real mode', () => {
+    expect(() =>
+      loadCredentialsFromEnv({
+        ETORO_MODE: 'real',
+        ETORO_REAL_KEY: 'key',
+        ETORO_REAL_SECRET: 'secret',
+        ETORO_REAL_CONFIRMED: 'false',
+      }),
+    ).toThrow('ETORO_REAL_CONFIRMED=true is required');
+  });
+
+  describe('demo mode', () => {
+    it('loads demo credentials when ETORO_DEMO_KEY/SECRET are present', () => {
+      const demoEnv = {
+        ETORO_MODE: 'demo',
+        ETORO_DEMO_KEY: 'demo-key-123',
+        ETORO_DEMO_SECRET: 'demo-secret-456',
+      };
+      const creds = loadCredentialsFromEnv(demoEnv);
+      expect(creds.mode).toBe('demo');
+      expect(creds.apiKey).toBe('demo-key-123');
+      expect(creds.apiSecret).toBe('demo-secret-456');
+      // Demo aliases the sandbox API surface
+      expect(creds.baseUrl).toBe('https://api.etoro.com/sapi');
     });
-    expect(cfg.maxOrderNotionalUsd).toBe(250);
-    expect(cfg.maxDailyNotionalUsd).toBe(2500);
-  });
 
-  it('throws InvalidCapConfigError for a negative MAX_DEMO_ORDER_NOTIONAL_USD', () => {
-    try {
-      loadDemoCapConfig({ MAX_DEMO_ORDER_NOTIONAL_USD: '-50' });
-      fail('expected throw');
-    } catch (e) {
-      expect(e).toBeInstanceOf(InvalidCapConfigError);
-      expect((e as InvalidCapConfigError).field).toBe('maxOrder');
-      expect((e as InvalidCapConfigError).rawValue).toBe('-50');
-    }
-  });
-
-  it('throws InvalidCapConfigError for a non-numeric MAX_DAILY_DEMO_NOTIONAL_USD', () => {
-    try {
-      loadDemoCapConfig({ MAX_DAILY_DEMO_NOTIONAL_USD: 'banana' });
-      fail('expected throw');
-    } catch (e) {
-      expect(e).toBeInstanceOf(InvalidCapConfigError);
-      expect((e as InvalidCapConfigError).field).toBe('maxDaily');
-    }
-  });
-
-  it('accepts "0" as an explicit "no orders allowed" cap', () => {
-    const cfg = loadDemoCapConfig({ MAX_DEMO_ORDER_NOTIONAL_USD: '0' });
-    expect(cfg.maxOrderNotionalUsd).toBe(0);
-    const cap = new DemoCapEnforcer(cfg);
-    expect(cap.wouldExceed(1)?.cap).toBe('per-order');
-    expect(cap.wouldExceed(0)).toBeNull();
-  });
-
-  it('treats empty-string env values as unset (returns default)', () => {
-    const cfg = loadDemoCapConfig({ MAX_DEMO_ORDER_NOTIONAL_USD: '' });
-    expect(cfg.maxOrderNotionalUsd).toBe(1_000);
-  });
-
-  it('throws for "NaN" as a configured cap value', () => {
-    expect(() => loadDemoCapConfig({ MAX_DEMO_ORDER_NOTIONAL_USD: 'NaN' }))
-      .toThrow(InvalidCapConfigError);
-  });
-});
-
-describe('MODE_CAPABILITIES', () => {
-  it('says mock has no credentials and disabled trading', () => {
-    expect(MODE_CAPABILITIES.mock).toEqual({
-      marketData: 'mock',
-      trading: 'disabled',
-      requiresCredentials: false,
+    it('falls back to sandbox credentials when demo creds are absent', () => {
+      const demoEnv = {
+        ETORO_MODE: 'demo',
+        ETORO_SANDBOX_KEY: 'sb-key-fallback',
+        ETORO_SANDBOX_SECRET: 'sb-secret-fallback',
+      };
+      const creds = loadCredentialsFromEnv(demoEnv);
+      // Mode is NEVER silently coerced — we stay on `demo` even if
+      // sandbox credentials were used to populate the request.
+      expect(creds.mode).toBe('demo');
+      expect(creds.apiKey).toBe('sb-key-fallback');
+      expect(creds.apiSecret).toBe('sb-secret-fallback');
+      expect(creds.baseUrl).toBe('https://api.etoro.com/sapi');
     });
-  });
 
-  it('says demo-trading is the only mode with trading enabled', () => {
-    expect(MODE_CAPABILITIES['demo-trading'].trading).toBe('enabled');
-    expect(MODE_CAPABILITIES['demo-readonly'].trading).toBe('disabled');
-    expect(MODE_CAPABILITIES['real-disabled'].trading).toBe('disabled');
-    expect(MODE_CAPABILITIES.mock.trading).toBe('disabled');
+    it('prefers demo-specific credentials when both demo and sandbox vars are set', () => {
+      const env = {
+        ETORO_MODE: 'demo',
+        ETORO_DEMO_KEY: 'demo-key',
+        ETORO_DEMO_SECRET: 'demo-secret',
+        ETORO_SANDBOX_KEY: 'sb-key',
+        ETORO_SANDBOX_SECRET: 'sb-secret',
+      };
+      const creds = loadCredentialsFromEnv(env);
+      expect(creds.mode).toBe('demo');
+      expect(creds.apiKey).toBe('demo-key');
+      expect(creds.apiSecret).toBe('demo-secret');
+    });
+
+    it('throws when neither demo nor sandbox creds are present', () => {
+      expect(() =>
+        loadCredentialsFromEnv({ ETORO_MODE: 'demo' }),
+      ).toThrow('Missing eToro demo credentials');
+    });
+
+    it('does NOT require ETORO_REAL_CONFIRMED for demo mode', () => {
+      expect(() =>
+        loadCredentialsFromEnv({
+          ETORO_MODE: 'demo',
+          ETORO_DEMO_KEY: 'k',
+          ETORO_DEMO_SECRET: 's',
+        }),
+      ).not.toThrow();
+    });
+
+    it('demo mode never loads real credentials even if present', () => {
+      const env = {
+        ETORO_MODE: 'demo',
+        ETORO_DEMO_KEY: 'demo-key',
+        ETORO_DEMO_SECRET: 'demo-secret',
+        ETORO_REAL_KEY: 'real-key-should-not-appear',
+        ETORO_REAL_SECRET: 'real-secret-should-not-appear',
+        ETORO_REAL_CONFIRMED: 'true',
+      };
+      const creds = loadCredentialsFromEnv(env);
+      expect(creds.mode).toBe('demo');
+      expect(creds.apiKey).not.toContain('real');
+      expect(creds.apiSecret).not.toContain('real');
+    });
   });
 });
 
 describe('redactCredentials', () => {
-  it('masks API key and secret while exposing mode + URLs', () => {
+  it('masks API key and secret', () => {
     const redacted = redactCredentials({
       apiKey: 'abcdefghijklmnop',
       apiSecret: 'secret1234567890',
-      userKey: 'userkey0123456789',
-      baseUrl: DEMO_BASE_URL_DEFAULT,
-      wsUrl: DEMO_WS_URL_DEFAULT,
-      mode: 'demo-readonly',
+      baseUrl: 'https://api.etoro.com/sapi',
+      mode: 'sandbox',
     });
     expect(redacted.apiKey).toBe('abc...nop');
     expect(redacted.apiSecret).toBe('sec...890');
-    expect(redacted.userKey).toBe('use...789');
-    expect(redacted.mode).toBe('demo-readonly');
-    expect(redacted.baseUrl).toBe(DEMO_BASE_URL_DEFAULT);
-    expect(redacted.wsUrl).toBe(DEMO_WS_URL_DEFAULT);
+    expect(redacted.mode).toBe('sandbox');
+    expect(redacted.baseUrl).toBe('https://api.etoro.com/sapi');
   });
 
   it('fully masks short credentials', () => {
     const redacted = redactCredentials({
       apiKey: 'abc',
       apiSecret: '12345',
-      userKey: 'uk',
-      baseUrl: DEMO_BASE_URL_DEFAULT,
-      wsUrl: DEMO_WS_URL_DEFAULT,
-      mode: 'demo-trading',
+      baseUrl: 'https://api.etoro.com/sapi',
+      mode: 'sandbox',
     });
     expect(redacted.apiKey).toBe('***');
     expect(redacted.apiSecret).toBe('***');
-    expect(redacted.userKey).toBe('***');
   });
 
   it('never exposes raw credential values', () => {
-    const redacted = redactCredentials({
+    const creds = {
       apiKey: 'SUPERSECRETAPIKEY1234',
       apiSecret: 'VERYSECRETAPISECRET5678',
-      userKey: 'SUPERSECRETUSERKEY9999',
-      baseUrl: DEMO_BASE_URL_DEFAULT,
-      wsUrl: DEMO_WS_URL_DEFAULT,
-      mode: 'demo-trading',
-    });
+      baseUrl: 'https://api.etoro.com/sapi',
+      mode: 'sandbox' as const,
+    };
+    const redacted = redactCredentials(creds);
     const allValues = Object.values(redacted).join(' ');
     expect(allValues).not.toContain('SUPERSECRETAPIKEY1234');
     expect(allValues).not.toContain('VERYSECRETAPISECRET5678');
-    expect(allValues).not.toContain('SUPERSECRETUSERKEY9999');
   });
 });

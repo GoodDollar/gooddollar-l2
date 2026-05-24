@@ -32,49 +32,20 @@ export interface NormalizedQuote {
 }
 
 /**
- * Lane-1 mode contract.
- *
- * - `mock`: zero-network deterministic fake. No credentials required.
- *   Trading is hard-disabled — every order method throws
- *   `RealTradingDisabledError`. Used by tests and downstream services
- *   when demo credentials are absent.
- * - `demo-readonly`: real eToro demo base URLs. Market data is live
- *   against the demo endpoint, trading methods throw
- *   `RealTradingDisabledError`.
- * - `demo-trading`: real eToro demo base URLs. Market data and trading
- *   are both live against the demo account. Demo caps
- *   (`MAX_DEMO_ORDER_NOTIONAL_USD`, `MAX_DAILY_DEMO_NOTIONAL_USD`) are
- *   enforced before any order leaves the SDK.
- * - `real-disabled`: market data only against demo URLs. Trading is
- *   hard-disabled by `REAL_TRADING_ENABLED=false` in source. Provided
- *   so a future lane can flip the source-level fence without re-doing
- *   credential plumbing.
+ * Trading mode for the eToro client.
+ * - `sandbox` — eToro's public sandbox API (no real money).
+ * - `real`    — live trading; gated by `ETORO_REAL_CONFIRMED=true`.
+ * - `demo`    — aliases the sandbox API surface but is a distinct label
+ *               so downstream safety fences can require it explicitly
+ *               (see `backend/hedge-engine/src/safety.ts`).
  */
-export type EtoroMode =
-  | 'mock'
-  | 'demo-readonly'
-  | 'demo-trading'
-  | 'real-disabled';
+export type EtoroMode = 'sandbox' | 'real' | 'demo';
 
 export interface EtoroCredentials {
   apiKey: string;
   apiSecret: string;
-  /**
-   * The per-environment user/account key required by the official eToro
-   * public API on every request as the `x-user-key` header. For mock
-   * mode this is the deterministic literal `'mock-user-key'`; for
-   * `demo-*` modes it is loaded from `ETORO_DEMO_USER_KEY`; for
-   * `real-disabled` from `ETORO_USER_KEY`.
-   */
-  userKey: string;
   baseUrl: string;
-  wsUrl: string;
   mode: EtoroMode;
-}
-
-export interface DemoCapConfig {
-  maxOrderNotionalUsd: number;
-  maxDailyNotionalUsd: number;
 }
 
 export interface EtoroClientConfig {
@@ -108,18 +79,7 @@ export interface OrderRequest {
   symbol: string;
   instrumentId: string;
   side: 'buy' | 'sell';
-  /**
-   * USD notional. When set, the SDK routes to
-   * `/trading/execution/demo/market-open-orders/by-amount`. Mutually
-   * exclusive with `units`.
-   */
   amount: number;
-  /**
-   * Unit count (shares / coins). When set, the SDK routes to
-   * `/trading/execution/demo/market-open-orders/by-units`. Mutually
-   * exclusive with `amount`.
-   */
-  units?: number;
   leverage?: number;
   stopLoss?: number;
   takeProfit?: number;
@@ -181,32 +141,4 @@ export interface AuditLogEntry {
   statusCode?: number;
   durationMs?: number;
   error?: string;
-  /** Resolved USD notional captured at cap-check time (trading actions only). */
-  resolvedNotionalUsd?: number;
-  /** Where the resolved notional came from. */
-  notionalSource?: 'sizer' | 'limit-price' | 'live-quote' | 'reference-fallback';
-  /** Age in ms of the live quote used for sizing (live-quote source only). */
-  quoteAgeMs?: number;
-  /** Resolved mode label emitted once at EtoroClient construction. */
-  resolvedMode?: EtoroMode;
-  /** Whether the mode was resolved from env or set explicitly. */
-  modeSource?: 'env' | 'explicit';
-  /** Resolved per-order cap (USD) recorded at construction. */
-  capOrderUsd?: number;
-  /** Resolved daily cap (USD) recorded at construction. */
-  capDailyUsd?: number;
-  /** Symbols whose instrument overrides were applied at construction. */
-  instrumentOverridesApplied?: string[];
-  /** Resolved audit-log file path captured on the mode-resolved entry. */
-  resolvedAuditLogPath?: string;
-  /**
-   * Number of attempts the rate-limited dispatcher made for this HTTP
-   * call. `1` means "no retry"; `N` means "N-1 backoffs absorbed".
-   */
-  attempts?: number;
-  /**
-   * Sum (ms) of all backoffs slept-for across the call's retries. `0`
-   * on a no-throttle happy path.
-   */
-  totalBackoffMs?: number;
 }

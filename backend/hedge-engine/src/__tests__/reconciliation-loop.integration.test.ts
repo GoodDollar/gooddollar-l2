@@ -1,7 +1,12 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { HedgeEngine } from '../engine';
 import { ExposureReader } from '../exposure-reader';
 import { DeltaCalculator } from '../delta-calculator';
 import { HedgeExecutor } from '../hedge-executor';
+import { CapEnforcer } from '../cap-enforcer';
+import { KillSwitchProbe } from '../kill-switch';
 import {
   HedgeEngineConfig,
   OnChainExposure,
@@ -26,8 +31,7 @@ function makeConfig(overrides?: Partial<HedgeEngineConfig>): HedgeEngineConfig {
     deltaThresholdPct: 2,
     pollIntervalMs: 60_000,
     dryRun: true,
-    mode: 'mock',
-    tradingEnabled: false,
+    etoroMode: 'demo',
     ...overrides,
   };
 }
@@ -249,5 +253,128 @@ describe('Hedge Reconciliation Loop Integration', () => {
       expect(result.etoroOrderId).toBeDefined();
       expect(result.timestamp).toBeGreaterThan(0);
     }
+  });
+
+  describe('safety integration', () => {
+    function makeAdapter(): {
+      openPosition: jest.Mock;
+      closePosition: jest.Mock;
+      getPositions: jest.Mock;
+    } {
+      return {
+        openPosition: jest.fn(async (params) => ({
+          orderId: `eto-${params.symbol}-${Date.now()}`,
+          status: 'filled',
+          executionPrice: 100,
+        })),
+        closePosition: jest.fn(),
+        getPositions: jest.fn().mockResolvedValue([]),
+      };
+    }
+
+    it('enforces per-cycle order count: 4 needed orders, cap=3 → 3 success + 1 cycle_count_exceeded', async () => {
+      const exposures = [
+        makeExposure('AAPL', 10),
+        makeExposure('TSLA', 10),
+        makeExposure('NVDA', 10),
+        makeExposure('MSFT', 10),
+      ];
+      const reader = mockReader(exposures);
+      const adapter = makeAdapter();
+      const instruments = new Map([
+        ['AAPL', 'i-AAPL'], ['TSLA', 'i-TSLA'],
+        ['NVDA', 'i-NVDA'], ['MSFT', 'i-MSFT'],
+      ]);
+      const executor = new HedgeExecutor(adapter, instruments, false);
+      const calculator = new DeltaCalculator({ deltaThresholdUsd: 5, deltaThresholdPct: 0.1 });
+      const capEnforcer = new CapEnforcer({
+        maxOrderNotionalUsd: 100,
+        maxDailyNotionalUsd: 1000,
+        maxOrdersPerCycle: 3,
+        maxOrdersPerDay: 100,
+      });
+      const engine = new HedgeEngine(
+        reader,
+        calculator,
+        executor,
+        makeConfig({ symbols: ['AAPL', 'TSLA', 'NVDA', 'MSFT'], dryRun: false }),
+        { capEnforcer },
+      );
+
+      const snapshot = await engine.tick();
+      expect(snapshot!.hedgesExecuted).toHaveLength(4);
+      const succeeded = snapshot!.hedgesExecuted.filter((r) => r.success);
+      const rejected = snapshot!.hedgesExecuted.filter((r) => !r.success);
+      expect(succeeded).toHaveLength(3);
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0].error).toBe('cycle_count_exceeded');
+      expect(adapter.openPosition).toHaveBeenCalledTimes(3);
+    });
+
+    it('per-order cap: orders over MAX_DEMO_ORDER_NOTIONAL_USD are rejected and adapter not called', async () => {
+      const exposures = [makeExposure('AAPL', 500_000)]; // way over the $100 cap
+      const reader = mockReader(exposures);
+      const adapter = makeAdapter();
+      const instruments = new Map([['AAPL', 'i-AAPL']]);
+      const executor = new HedgeExecutor(adapter, instruments, false);
+      const calculator = new DeltaCalculator({ deltaThresholdUsd: 5000, deltaThresholdPct: 2 });
+      const capEnforcer = new CapEnforcer({
+        maxOrderNotionalUsd: 100,
+        maxDailyNotionalUsd: 300,
+        maxOrdersPerCycle: 3,
+        maxOrdersPerDay: 10,
+      });
+      const engine = new HedgeEngine(
+        reader,
+        calculator,
+        executor,
+        makeConfig({ symbols: ['AAPL'], dryRun: false }),
+        { capEnforcer },
+      );
+
+      const snapshot = await engine.tick();
+      expect(snapshot!.hedgesExecuted).toHaveLength(1);
+      expect(snapshot!.hedgesExecuted[0].success).toBe(false);
+      expect(snapshot!.hedgesExecuted[0].error).toBe('order_notional_exceeded');
+      expect(adapter.openPosition).not.toHaveBeenCalled();
+    });
+
+    it('kill-switch present at tick-start → zero successful orders, adapter never called', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hedge-int-'));
+      const killFile = path.join(tmpDir, 'kill');
+      fs.writeFileSync(killFile, '');
+
+      try {
+        const exposures = [makeExposure('AAPL', 10), makeExposure('TSLA', 10)];
+        const reader = mockReader(exposures);
+        const adapter = makeAdapter();
+        const instruments = new Map([['AAPL', 'i-AAPL'], ['TSLA', 'i-TSLA']]);
+        const killSwitch = new KillSwitchProbe(killFile);
+        const executor = new HedgeExecutor(adapter, instruments, false, { killSwitch });
+        const calculator = new DeltaCalculator({ deltaThresholdUsd: 5, deltaThresholdPct: 0.1 });
+        const capEnforcer = new CapEnforcer({
+          maxOrderNotionalUsd: 100,
+          maxDailyNotionalUsd: 300,
+          maxOrdersPerCycle: 3,
+          maxOrdersPerDay: 10,
+        });
+        const engine = new HedgeEngine(
+          reader,
+          calculator,
+          executor,
+          makeConfig({ symbols: ['AAPL', 'TSLA'], dryRun: false }),
+          { capEnforcer, killSwitch },
+        );
+
+        const snapshot = await engine.tick();
+        expect(snapshot!.hedgesExecuted).toHaveLength(2);
+        expect(snapshot!.hedgesExecuted.every((r) => r.success === false)).toBe(true);
+        expect(snapshot!.hedgesExecuted.every((r) => r.error === 'kill_switch')).toBe(true);
+        expect(adapter.openPosition).not.toHaveBeenCalled();
+        expect(engine.isKillSwitchEngaged()).toBe(true);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
   });
 });

@@ -1,63 +1,108 @@
-import { EtoroClient } from '@goodchain/etoro-client';
-import { EtoroAdapter } from './hedge-executor';
+import type { EtoroAdapter } from './hedge-executor';
 
 /**
- * Thin field-projection wrapper around `EtoroClient.trading`. Backs the
- * hedge-engine's `EtoroAdapter` contract with the official demo trading
- * endpoints (per task 0017's `/trading/execution/demo/market-open-orders/by-amount`
- * etc.). No business logic — the adapter exists solely so `HedgeExecutor`
- * can stay testable against a small interface while production calls
- * land at `EtoroClient.trading.*`.
+ * Minimal slice of @goodchain/etoro-client's EtoroClient that we need.
+ * Typed locally so the hedge-engine package does not require the etoro-client
+ * package as a build-time dep — the runtime wire happens via a relative
+ * `require('../../etoro-client/src/index')` in `index.ts`, matching the
+ * established pattern in `backend/price-service`.
  */
-export function createEtoroBackedAdapter(client: EtoroClient): EtoroAdapter {
-  return {
-    async openPosition(params) {
-      const result = await client.trading.openPosition({
-        instrumentId: params.instrumentId,
-        symbol: params.symbol,
-        side: params.side,
-        amount: params.amount,
-        leverage: params.leverage ?? 1,
-      });
-      return { orderId: result.orderId, status: result.status };
-    },
-    async closePosition(positionId) {
-      const result = await client.trading.closePosition(positionId);
-      return { orderId: result.orderId };
-    },
-    async getPositions() {
-      const raw = await client.trading.getOpenPositions();
-      return raw.map((p) => ({
-        positionId: p.positionId,
-        symbol: p.symbol,
-        side: p.side,
-        amount: p.amount,
-      }));
-    },
+export interface EtoroClientLike {
+  trading: {
+    openPosition(req: {
+      symbol: string;
+      instrumentId: string;
+      side: 'buy' | 'sell';
+      amount: number;
+      leverage?: number;
+    }): Promise<{ orderId: string; status: string; executionPrice?: number }>;
+    closePosition(positionId: string): Promise<{ orderId: string }>;
+    getOpenPositions(): Promise<
+      Array<{
+        positionId: string;
+        symbol: string;
+        side: 'buy' | 'sell';
+        amount: number;
+      }>
+    >;
   };
+  getMode(): string;
+  authenticate?: () => Promise<unknown>;
 }
 
 /**
- * Read-only sentinel adapter for `demo-readonly` / `real-disabled` /
- * disabled-trading paths. Returns an empty position book and throws
- * loudly on any mutation. This is the "fail closed at the adapter
- * boundary" pattern — if the executor's `readOnly` flag is ever bypassed
- * by a future code path, the adapter still refuses to issue orders.
+ * Thin wrapper that maps EtoroClient.trading -> the hedge-engine's
+ * EtoroAdapter interface used by HedgeExecutor.
+ *
+ * Constructed with dependency injection for tests; `create()` is the
+ * production path that builds a real `createEtoroClient()` instance.
  */
-export class ReadOnlyAdapterError extends Error {
-  constructor(action: 'openPosition' | 'closePosition') {
-    super(
-      `hedge-engine refuses to ${action}: adapter is read-only ` +
-      '(ETORO_MODE is not demo-trading, or HEDGE_TRADING_ENABLED is false)',
-    );
-    this.name = 'ReadOnlyAdapterError';
+export class EtoroClientAdapter implements EtoroAdapter {
+  private readonly client: EtoroClientLike;
+
+  constructor(client: EtoroClientLike) {
+    this.client = client;
   }
-}
 
-export function createReadOnlyAdapter(): EtoroAdapter {
-  return {
-    async openPosition() { throw new ReadOnlyAdapterError('openPosition'); },
-    async closePosition() { throw new ReadOnlyAdapterError('closePosition'); },
-    async getPositions() { return []; },
-  };
+  getMode(): string {
+    return this.client.getMode();
+  }
+
+  async openPosition(params: {
+    symbol: string;
+    instrumentId: string;
+    side: 'buy' | 'sell';
+    amount: number;
+    leverage?: number;
+  }): Promise<{ orderId: string; status: string; executionPrice?: number }> {
+    const result = await this.client.trading.openPosition({
+      symbol: params.symbol,
+      instrumentId: params.instrumentId,
+      side: params.side,
+      amount: params.amount,
+      leverage: params.leverage,
+    });
+    return {
+      orderId: result.orderId,
+      status: result.status,
+      executionPrice: result.executionPrice,
+    };
+  }
+
+  async closePosition(positionId: string): Promise<{ orderId: string }> {
+    const result = await this.client.trading.closePosition(positionId);
+    return { orderId: result.orderId };
+  }
+
+  async getPositions(): Promise<
+    Array<{
+      positionId: string;
+      symbol: string;
+      side: 'buy' | 'sell';
+      amount: number;
+    }>
+  > {
+    const positions = await this.client.trading.getOpenPositions();
+    return positions.map((p) => ({
+      positionId: p.positionId,
+      symbol: p.symbol,
+      side: p.side,
+      amount: p.amount,
+    }));
+  }
+
+  /**
+   * Production constructor — lazily requires the etoro-client package so
+   * tests can swap the adapter without pulling in axios/ws at import time.
+   */
+  static async create(): Promise<EtoroClientAdapter> {
+    const mod = require('../../etoro-client/src/index') as {
+      createEtoroClient: (config?: unknown) => EtoroClientLike;
+    };
+    const client = mod.createEtoroClient();
+    if (client.authenticate) {
+      await client.authenticate();
+    }
+    return new EtoroClientAdapter(client);
+  }
 }

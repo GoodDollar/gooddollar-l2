@@ -1,18 +1,20 @@
 /**
- * Format notional USD amounts for display.
+ * USD notional formatter for hedge proof surfaces.
  *
- * Dashboard money values should be exact cents with thousands separators; no
- * compact K/M suffixes, because receipts/proof audits need unambiguous values.
+ * - Conventional sign placement: `-50` → `-$50.00` (not `$-50.00`).
+ * - Thousands separators: `12500` → `$12,500.00`.
+ * - Defends against non-finite engine bugs: returns `—` for NaN / ±Infinity
+ *   so the dashboard never reads `$NaN` to an operator.
  */
-export function formatNotionalUsd(amount: number): string {
-  if (!Number.isFinite(amount)) return '—'
 
-  const sign = amount < 0 ? '-' : ''
-  const abs = Math.abs(amount)
-  const formatted = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(abs)
+const USD_FORMATTER = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
 
-  return `${sign}$${formatted}`
+export function formatNotionalUsd(value: number): string {
+  if (!Number.isFinite(value)) return '—'
+  return USD_FORMATTER.format(value)
 }

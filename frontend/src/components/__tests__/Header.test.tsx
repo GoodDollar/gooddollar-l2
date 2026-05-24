@@ -223,6 +223,123 @@ describe('Header', () => {
     expect(stockNav).toHaveAttribute('data-prefetch', 'false')
     expect(perpsNav).toHaveAttribute('data-prefetch', 'false')
   })
+
+  describe('Analytics nav entry (#0079)', () => {
+    it('renders an Analytics link in the full primary nav (2xl)', () => {
+      render(<Header />)
+      const fullNav = document.querySelector('nav.hidden.\\32 xl\\:flex')!
+      const link = fullNav.querySelector('a[href="/analytics"]')
+      expect(link).not.toBeNull()
+      expect(link!.textContent).toBe('Analytics')
+    })
+
+    it('renders an Analytics link in the condensed primary nav (lg–2xl)', () => {
+      render(<Header />)
+      const condensed = document.querySelector('[data-testid="condensed-nav"]')!
+      const analyticsLinks = condensed.querySelectorAll('a[href="/analytics"]')
+      // One in the top row + one inside the "More" dropdown for parity
+      // with the existing Explore / Pool / Bridge / Stable / Yield /
+      // Govern / Agents / UBI / Activity siblings.
+      expect(analyticsLinks.length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('renders an Analytics link in the mobile drawer', () => {
+      render(<Header />)
+      fireEvent.click(screen.getByLabelText('Open menu'))
+      const mobileNav = screen.getByTestId('mobile-nav')
+      const links = mobileNav.querySelectorAll('a')
+      const hrefs = Array.from(links).map((l) => l.getAttribute('href'))
+      expect(hrefs).toContain('/analytics')
+      expect(mobileNav.textContent).toContain('Analytics')
+    })
+
+    it('disables Link prefetch on the Analytics link (matches sibling pattern)', () => {
+      render(<Header />)
+      const analytics = document.querySelector('a[href="/analytics"]')
+      expect(analytics).not.toBeNull()
+      expect(analytics).toHaveAttribute('data-prefetch', 'false')
+    })
+  })
+})
+
+describe('Header Analytics active-state on /analytics sub-routes (#0079)', () => {
+  afterEach(() => {
+    vi.doUnmock('next/navigation')
+    vi.resetModules()
+  })
+
+  async function renderWithPathname(pathname: string) {
+    vi.resetModules()
+    vi.doMock('next/navigation', () => ({ usePathname: () => pathname }))
+    vi.doMock('../WalletButton', () => ({
+      WalletButton: () => <button>Connect Wallet</button>,
+    }))
+    vi.doMock('../ActivityButton', () => ({
+      ActivityButton: () => <button aria-label="Recent activity">Activity</button>,
+    }))
+    vi.doMock('next/link', () => ({
+      default: ({
+        href,
+        children,
+        className,
+        prefetch,
+        ...rest
+      }: {
+        href: string
+        children: React.ReactNode
+        className?: string
+        prefetch?: boolean
+        [k: string]: unknown
+      }) => (
+        <a
+          href={href}
+          className={className}
+          data-prefetch={String(prefetch)}
+          {...rest}
+        >
+          {children}
+        </a>
+      ),
+    }))
+    const { Header: FreshHeader } = (await import('../Header')) as {
+      Header: typeof import('../Header').Header
+    }
+    return render(<FreshHeader />)
+  }
+
+  it('marks Analytics with aria-current="page" on /analytics', async () => {
+    await renderWithPathname('/analytics')
+    const analyticsAnchors = Array.from(
+      document.querySelectorAll('a[href="/analytics"]'),
+    )
+    expect(analyticsAnchors.length).toBeGreaterThan(0)
+    const active = analyticsAnchors.filter(
+      (a) => a.getAttribute('aria-current') === 'page',
+    )
+    expect(active.length).toBeGreaterThan(0)
+  })
+
+  it('marks Analytics with aria-current="page" on /analytics/hedge/proof/latest (sub-route active)', async () => {
+    await renderWithPathname('/analytics/hedge/proof/latest')
+    const analyticsAnchors = Array.from(
+      document.querySelectorAll('a[href="/analytics"]'),
+    )
+    const active = analyticsAnchors.filter(
+      (a) => a.getAttribute('aria-current') === 'page',
+    )
+    expect(active.length).toBeGreaterThan(0)
+  })
+
+  it('does NOT mark Analytics with aria-current="page" on /stocks', async () => {
+    await renderWithPathname('/stocks')
+    const analyticsAnchors = Array.from(
+      document.querySelectorAll('a[href="/analytics"]'),
+    )
+    const active = analyticsAnchors.filter(
+      (a) => a.getAttribute('aria-current') === 'page',
+    )
+    expect(active.length).toBe(0)
+  })
 })
 
 describe('Header a11y landmarks', () => {
