@@ -81,27 +81,36 @@ test.describe('Lane 6 — /live-prices-proof', () => {
     // Pipeline flow diagram visualises the eToro → … → demo-hedge chain.
     const flow = page.getByTestId('pipeline-flow-diagram')
     await expect(flow).toBeVisible()
-    const nodes = page.locator('[data-testid^="pipeline-node-"]')
+    // #0074 — the diagram now ships two structural variants (desktop +
+    // mobile) so the per-node testids resolve twice in the DOM. Scope
+    // every assertion through the visible container at this viewport
+    // (Playwright defaults to a desktop-class width).
+    const desktopFlow = page.getByTestId('pipeline-flow-desktop')
+    await expect(desktopFlow).toBeVisible()
+    const nodes = desktopFlow.locator('[data-testid^="pipeline-node-"]')
     expect(await nodes.count()).toBeGreaterThanOrEqual(6)
 
     // #0054 — every axis-bound flow node is itself a jump-link to the
     // matching panel, mirroring the rollup chip-row pattern from #0024.
     // The upstream `eToro` source has no first-class panel and stays a
-    // non-interactive span.
+    // non-interactive span. #0073 — `oracle-signer` now jumps to the
+    // OracleUpdatesPanel (write side) instead of the OnChainOraclePanel
+    // (read side) so the recent oracle updates panel is finally
+    // reachable from the diagram.
     const flowNodeJumpMap: Record<string, string> = {
       'price-service': '#panel-live-quotes',
-      'oracle-signer': '#panel-onchain-oracle',
+      'oracle-signer': '#panel-oracle-updates',
       chain: '#panel-onchain-oracle',
       frontend: '#panel-onchain-oracle',
       'demo-hedge': '#panel-last-hedge',
     }
     for (const [nodeId, expectedHref] of Object.entries(flowNodeJumpMap)) {
-      const link = page.getByTestId(`pipeline-node-${nodeId}-link`)
+      const link = desktopFlow.getByTestId(`pipeline-node-${nodeId}-link`)
       await expect(link).toBeVisible()
       expect(await link.getAttribute('href')).toBe(expectedHref)
     }
-    expect(await page.getByTestId('pipeline-node-etoro-link').count()).toBe(0)
-    const firstFlowLink = page.getByTestId('pipeline-node-price-service-link')
+    expect(await desktopFlow.getByTestId('pipeline-node-etoro-link').count()).toBe(0)
+    const firstFlowLink = desktopFlow.getByTestId('pipeline-node-price-service-link')
     await firstFlowLink.click()
     await expect(page.locator('#panel-live-quotes')).toBeInViewport()
 
