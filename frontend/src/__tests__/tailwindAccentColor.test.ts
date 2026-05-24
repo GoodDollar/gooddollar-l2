@@ -17,14 +17,14 @@ function readAccent(colors: ColorMap | undefined): string | undefined {
 describe('tailwind accent token', () => {
   it('defines accent as the brand mint-teal #00B0A0 so text-accent / bg-accent / border-accent / ring-accent emit CSS', () => {
     const full = resolveConfig(tailwindConfig)
-    const value = readAccent(full.theme?.colors as ColorMap | undefined)
+    const value = readAccent(full.theme?.colors as unknown as ColorMap | undefined)
     expect(value).toBeDefined()
     expect(value?.toLowerCase()).toBe('#00b0a0')
   })
 
   it('matches goodgreen.500 so the global :focus-visible outline (#00B0A0) and ring-accent share the same hue', () => {
     const full = resolveConfig(tailwindConfig)
-    const colors = full.theme?.colors as ColorMap | undefined
+    const colors = full.theme?.colors as unknown as ColorMap | undefined
     const accentValue = readAccent(colors)
     const goodgreen = colors?.goodgreen as Record<string, string> | undefined
     expect(accentValue?.toLowerCase()).toBe(goodgreen?.['500']?.toLowerCase())
