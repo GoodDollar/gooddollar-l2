@@ -416,9 +416,31 @@ function ProofErrorRecoveryRow({
       </div>
       <div
         data-testid="hedge-proof-recovery-recap"
-        className="text-xs text-gray-500 font-mono"
+        className="text-xs text-gray-500 font-mono space-y-0.5 min-w-0"
       >
-        Endpoint: {endpoint} · status: {status}
+        {/*
+          `truncate` (= overflow-hidden text-ellipsis whitespace-nowrap)
+          keeps the endpoint to a single line and ellipsises overflow at
+          the right edge. Pathological receipt ids (up to the validator's
+          256-char max) were forcing a 3-line wrap on desktop and pushing
+          horizontal scroll onto <body> on a 375px viewport (#0073). The
+          status moves to its own line below so it is never the thing
+          that gets clipped. The full endpoint stays accessible via
+          hover (desktop) / long-press (mobile) through `title=`.
+        */}
+        <span
+          data-testid="hedge-proof-recovery-recap-endpoint"
+          className="block max-w-full truncate"
+          title={endpoint}
+        >
+          Endpoint: {endpoint}
+        </span>
+        <span
+          data-testid="hedge-proof-recovery-recap-status"
+          className="block"
+        >
+          status: {status}
+        </span>
       </div>
     </div>
   )

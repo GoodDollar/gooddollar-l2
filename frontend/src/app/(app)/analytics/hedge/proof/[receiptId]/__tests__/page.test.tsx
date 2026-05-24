@@ -116,20 +116,73 @@ describe('HedgeProofViewerPerReceiptPage — error-state recovery row (#0071)', 
     )
     renderPage('rcpt-1')
     await screen.findByTestId('hedge-proof-error')
-    const recap = await screen.findByTestId('hedge-proof-recovery-recap')
-    expect(recap.textContent).toBe(
-      'Endpoint: /api/hedge/proof/rcpt-1 · status: engine_down',
-    )
+    expect(
+      screen.getByTestId('hedge-proof-recovery-recap-endpoint').textContent,
+    ).toBe('Endpoint: /api/hedge/proof/rcpt-1')
+    expect(
+      screen.getByTestId('hedge-proof-recovery-recap-status').textContent,
+    ).toBe('status: engine_down')
   })
 
   it('renders the recap with status:no_proof on the per-receipt no_proof branch', async () => {
     mockJson({ status: 'no_proof' }, { status: 404 })
     renderPage('rcpt-2')
     await screen.findByTestId('hedge-proof-error')
-    const recap = await screen.findByTestId('hedge-proof-recovery-recap')
-    expect(recap.textContent).toBe(
-      'Endpoint: /api/hedge/proof/rcpt-2 · status: no_proof',
+    expect(
+      screen.getByTestId('hedge-proof-recovery-recap-endpoint').textContent,
+    ).toBe('Endpoint: /api/hedge/proof/rcpt-2')
+    expect(
+      screen.getByTestId('hedge-proof-recovery-recap-status').textContent,
+    ).toBe('status: no_proof')
+  })
+})
+
+describe('HedgeProofViewerPerReceiptPage — recap line truncation for long receipt ids (#0073)', () => {
+  it('renders the endpoint and status as separate child spans (no single-line concat)', async () => {
+    mockJson(
+      { status: 'engine_down', reason: 'Hedge engine unreachable' },
+      { status: 502 },
     )
+    renderPage('a'.repeat(200))
+    await screen.findByTestId('hedge-proof-error')
+    const recap = await screen.findByTestId('hedge-proof-recovery-recap')
+    const fullEndpoint = `/api/hedge/proof/${encodeURIComponent('a'.repeat(200))}`
+    const endpointSpan = recap.querySelector(
+      '[data-testid="hedge-proof-recovery-recap-endpoint"]',
+    )
+    expect(endpointSpan).not.toBeNull()
+    expect(endpointSpan!.textContent).toBe(`Endpoint: ${fullEndpoint}`)
+    expect(endpointSpan!.className).toMatch(/\btruncate\b/)
+    expect(endpointSpan!.getAttribute('title')).toBe(fullEndpoint)
+    const statusSpan = screen.getByTestId('hedge-proof-recovery-recap-status')
+    expect(statusSpan.textContent).toBe('status: engine_down')
+  })
+
+  it('applies min-w-0 on the recap container so truncate clips inside flex/grid ancestors', async () => {
+    mockJson(
+      { status: 'engine_down', reason: 'Hedge engine unreachable' },
+      { status: 502 },
+    )
+    renderPage('a'.repeat(200))
+    const recap = await screen.findByTestId('hedge-proof-recovery-recap')
+    expect(recap.className).toMatch(/\bmin-w-0\b/)
+  })
+
+  it('preserves the same two-span shape for short ids (regression — no special-case)', async () => {
+    mockJson(
+      { status: 'engine_down', reason: 'Hedge engine unreachable' },
+      { status: 502 },
+    )
+    renderPage('abc')
+    await screen.findByTestId('hedge-proof-error')
+    const endpointSpan = screen
+      .getByTestId('hedge-proof-recovery-recap')
+      .querySelector('[data-testid="hedge-proof-recovery-recap-endpoint"]')
+    expect(endpointSpan!.textContent).toBe('Endpoint: /api/hedge/proof/abc')
+    expect(endpointSpan!.getAttribute('title')).toBe('/api/hedge/proof/abc')
+    expect(
+      screen.getByTestId('hedge-proof-recovery-recap-status').textContent,
+    ).toBe('status: engine_down')
   })
 })
 

@@ -242,9 +242,19 @@ describe('HedgeProofViewerPage', () => {
         '[data-testid="hedge-proof-recovery-recap"]',
       );
       expect(recap).not.toBeNull();
-      expect(recap!.textContent).toBe(
-        'Endpoint: /api/hedge/proof/latest.json · status: engine_down',
+      const endpointSpan = recap!.querySelector(
+        '[data-testid="hedge-proof-recovery-recap-endpoint"]',
       );
+      expect(endpointSpan!.textContent).toBe(
+        'Endpoint: /api/hedge/proof/latest.json',
+      );
+      expect(endpointSpan!.getAttribute('title')).toBe(
+        '/api/hedge/proof/latest.json',
+      );
+      const statusSpan = recap!.querySelector(
+        '[data-testid="hedge-proof-recovery-recap-status"]',
+      );
+      expect(statusSpan!.textContent).toBe('status: engine_down');
       expect(recap!.className).toMatch(/font-mono/);
       expect(recap!.className).toMatch(/text-gray-500/);
     });
@@ -254,11 +264,15 @@ describe('HedgeProofViewerPage', () => {
       render(<HedgeProofViewerPage />);
       await screen.findByTestId('hedge-proof-error');
       const row = await screen.findByTestId('hedge-proof-recovery-row');
-      const recap = row.querySelector(
-        '[data-testid="hedge-proof-recovery-recap"]',
+      const statusSpan = row.querySelector(
+        '[data-testid="hedge-proof-recovery-recap-status"]',
       );
-      expect(recap!.textContent).toBe(
-        'Endpoint: /api/hedge/proof/latest.json · status: no_proof',
+      expect(statusSpan!.textContent).toBe('status: no_proof');
+      const endpointSpan = row.querySelector(
+        '[data-testid="hedge-proof-recovery-recap-endpoint"]',
+      );
+      expect(endpointSpan!.textContent).toBe(
+        'Endpoint: /api/hedge/proof/latest.json',
       );
       expect(
         row.querySelector('[data-testid="hedge-proof-recovery-raw-link"]'),
@@ -274,10 +288,9 @@ describe('HedgeProofViewerPage', () => {
       );
       render(<HedgeProofViewerPage />);
       await screen.findByTestId('hedge-proof-error');
-      const recap = await screen.findByTestId('hedge-proof-recovery-recap');
-      expect(recap.textContent).toBe(
-        'Endpoint: /api/hedge/proof/latest.json · status: network_error',
-      );
+      expect(
+        screen.getByTestId('hedge-proof-recovery-recap-status').textContent,
+      ).toBe('status: network_error');
     });
 
     it('surfaces unreadable status when the response is not JSON', async () => {
@@ -289,10 +302,9 @@ describe('HedgeProofViewerPage', () => {
       );
       render(<HedgeProofViewerPage />);
       await screen.findByTestId('hedge-proof-error');
-      const recap = await screen.findByTestId('hedge-proof-recovery-recap');
-      expect(recap.textContent).toBe(
-        'Endpoint: /api/hedge/proof/latest.json · status: unreadable',
-      );
+      expect(
+        screen.getByTestId('hedge-proof-recovery-recap-status').textContent,
+      ).toBe('status: unreadable');
     });
 
     it('does NOT render the recovery row on the loading branch', async () => {
