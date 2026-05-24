@@ -259,8 +259,18 @@ export function SwapCard() {
   // AND the on-chain quote produces a non-trivial output. Sub-floor outputs
   // (rounded to 0 in the UI, or below FLOOR_THRESHOLD) would either revert
   // on-chain (wasted gas) or accept `amountOutMin = 0`, which disables
-  // slippage protection and exposes the user to sandwich attacks.
-  const canSubmit = hasAmount && rawOutputAmount > 0 && !isBelowFloor && !isOverCap
+  // slippage protection and exposes the user to sandwich attacks. Task 0046
+  // adds `pairOnChain` to the gate so unsupported pairs surface a disabled
+  // CTA with an explicit reason instead of opening the Review modal.
+  const canSubmit = hasAmount && pairOnChain && rawOutputAmount > 0 && !isBelowFloor && !isOverCap
+
+  // Priority order for the disabled-CTA copy: over-cap (clearest), then
+  // pair-unsupported (only meaningful with a parsed amount), then dust.
+  const disabledReason: 'dust' | 'over-cap' | 'pair-unsupported' = isOverCap
+    ? 'over-cap'
+    : (hasAmount && !pairOnChain)
+      ? 'pair-unsupported'
+      : 'dust'
 
   return (
     <div id="swap-card" className="w-full max-w-[460px]">
@@ -500,7 +510,7 @@ export function SwapCard() {
               : onChainAmountOutWei}
             pairOnChain={pairOnChain}
             canSubmit={canSubmit}
-            disabledReason={isOverCap ? 'over-cap' : 'dust'}
+            disabledReason={disabledReason}
             onInvalidSubmit={() => setInputShake(p => p + 1)}
           />
         </div>
