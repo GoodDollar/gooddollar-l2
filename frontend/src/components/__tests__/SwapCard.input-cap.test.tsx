@@ -70,6 +70,7 @@ vi.mock('@/lib/useOnChainSwap', () => ({
 }))
 
 vi.mock('@/lib/useSwapSettings', () => ({
+  SWAP_SETTINGS_DEFAULTS: { slippage: 0.5, deadline: 30 },
   useSwapSettings: () => ({
     slippage: 0.5,
     setSlippage: vi.fn(),

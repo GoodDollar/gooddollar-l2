@@ -27,10 +27,17 @@ interface UserPreferences {
   }
 }
 
-const DEFAULTS: SwapSettings = {
+/**
+ * Public default settings — exported so the UI can detect "non-default"
+ * configurations and surface a small accent dot on the gear icon
+ * (task 0048). Internal helpers below still reference `DEFAULTS` by name.
+ */
+export const SWAP_SETTINGS_DEFAULTS: SwapSettings = {
   slippage: 0.5,
   deadline: 30,
 }
+
+const DEFAULTS = SWAP_SETTINGS_DEFAULTS
 
 function loadPreferences(): UserPreferences {
   if (typeof window === 'undefined') {

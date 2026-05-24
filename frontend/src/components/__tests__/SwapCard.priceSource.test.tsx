@@ -51,6 +51,7 @@ vi.mock('@/lib/useOnChainSwap', () => ({
 }))
 
 vi.mock('@/lib/useSwapSettings', () => ({
+  SWAP_SETTINGS_DEFAULTS: { slippage: 0.5, deadline: 30 },
   useSwapSettings: () => ({
     slippage: 0.5, setSlippage: vi.fn(), deadline: 20, setDeadline: vi.fn(),
   }),
@@ -146,6 +147,22 @@ describe('SwapCard — source attribution badge', () => {
     // PLUS the new inline source badge with `fallback` source
     const badges = screen.getAllByTestId('price-source-badge')
     expect(badges.some(b => b.getAttribute('data-source') === 'fallback')).toBe(true)
+  })
+
+  it('renders the swap-settings gear on first mount with no Advanced toggle (task 0048)', () => {
+    render(
+      <TestWrapper>
+        <SwapCard />
+      </TestWrapper>,
+    )
+
+    // The gear must be present immediately, no clicks required.
+    expect(screen.getByRole('button', { name: /swap settings/i })).toBeInTheDocument()
+
+    // The deleted "Advanced" toggle and its labels must not exist anywhere
+    // in the SwapCard now — we collapsed the disclosure into one click.
+    expect(screen.queryByRole('button', { name: /show advanced settings/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /hide advanced settings/i })).not.toBeInTheDocument()
   })
 
   it('downgrades the rate badge to fallback when one leg is fallback even if the other is chain-oracle', () => {

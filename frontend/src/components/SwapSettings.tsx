@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useSwapSettings } from '@/lib/useSwapSettings'
+import { useSwapSettings, SWAP_SETTINGS_DEFAULTS } from '@/lib/useSwapSettings'
 import { sanitizeNumericInput } from '@/lib/format'
 
 const PRESETS = [0.1, 0.5, 1.0]
@@ -33,17 +33,37 @@ export function SwapSettings() {
 
   const isPreset = PRESETS.includes(slippage)
 
+  // Task 0048 — non-default detection drives the small accent dot on the
+  // gear icon and the descriptive aria-label so users (and screen
+  // readers) can tell at a glance whether their settings differ from the
+  // defaults without opening the popover.
+  const isNonDefault =
+    slippage !== SWAP_SETTINGS_DEFAULTS.slippage ||
+    deadline !== SWAP_SETTINGS_DEFAULTS.deadline
+  const minutesLabel = deadline === 1 ? 'minute' : 'minutes'
+  const ariaLabel = `Swap settings — slippage ${slippage}%, deadline ${deadline} ${minutesLabel}`
+
   return (
     <div className="relative" ref={panelRef}>
       <button
+        type="button"
         onClick={() => setOpen(o => !o)}
-        aria-label="Settings"
-        className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-50 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
+        aria-label={ariaLabel}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className="relative p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-50 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
+        {isNonDefault && (
+          <span
+            data-testid="settings-non-default-dot"
+            aria-hidden="true"
+            className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-goodgreen"
+          />
+        )}
       </button>
 
       {open && (
