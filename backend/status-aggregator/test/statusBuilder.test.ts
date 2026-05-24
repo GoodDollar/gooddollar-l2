@@ -36,6 +36,20 @@ test('after first poll with all healthy: overall is "healthy", pollState is "act
   assert.equal(result.services.length, 2);
 });
 
+test('after first poll with health-only service: service is operational but overall is "degraded"', () => {
+  const statuses: ServiceStatus[] = [
+    { name: 'svc-a', status: 'ok', latencyMs: 5, lastChecked: new Date().toISOString() },
+    { name: 'hedge-engine', status: 'health-only', latencyMs: 3, lastChecked: new Date().toISOString() },
+  ];
+  updateStatuses(statuses);
+
+  const result = buildStatusJson(2);
+  assert.equal(result.overall, 'degraded');
+  assert.equal(result.pollState, 'active');
+  assert.equal(result.healthy, 2);
+  assert.equal(result.total, 2);
+});
+
 test('after first poll with some unreachable: overall is "degraded"', () => {
   const statuses: ServiceStatus[] = [
     { name: 'svc-a', status: 'ok', latencyMs: 5, lastChecked: new Date().toISOString() },

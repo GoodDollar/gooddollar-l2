@@ -1,6 +1,6 @@
 export interface ServiceStatus {
   name: string;
-  status: 'ok' | 'degraded' | 'error' | 'timeout' | 'unreachable';
+  status: 'ok' | 'degraded' | 'health-only' | 'error' | 'timeout' | 'unreachable';
   latencyMs: number;
   uptime?: number;
   chainBlock?: number;
@@ -38,7 +38,7 @@ export function buildStatusJson(serviceCount: number) {
   }
 
   const ok = cachedStatuses.filter(s => s.status === 'ok').length;
-  const operational = cachedStatuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
+  const operational = cachedStatuses.filter(s => s.status === 'ok' || s.status === 'degraded' || s.status === 'health-only').length;
   const overall = operational === serviceCount
     ? (ok === serviceCount ? 'healthy' : 'degraded')
     : operational > 0 ? 'degraded' : 'down';

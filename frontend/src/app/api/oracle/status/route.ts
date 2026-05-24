@@ -1,17 +1,20 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { resolvePriceServiceStatusUrl } from '@/lib/priceServiceStatusUrl'
 import { withApiRateLimit } from '@/lib/withApiRateLimit'
 
 export const runtime = 'nodejs'
 
-const PRICE_SERVICE_URL = process.env.PRICE_SERVICE_URL ?? process.env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? 'http://localhost:9300'
+const PRICE_SERVICE_STATUS_URL = resolvePriceServiceStatusUrl(
+  process.env.PRICE_SERVICE_URL ?? process.env.NEXT_PUBLIC_PRICE_SERVICE_URL,
+)
 const TIMEOUT_MS = 5000
 
 async function handleGet(_req: NextRequest) {
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
-    const res = await fetch(`${PRICE_SERVICE_URL}/status/quotes`, {
+    const res = await fetch(PRICE_SERVICE_STATUS_URL, {
       signal: controller.signal,
       cache: 'no-store',
     })

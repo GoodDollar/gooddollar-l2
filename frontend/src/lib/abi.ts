@@ -681,6 +681,25 @@ export const PriceOracleABI = [
     type: 'function',
   },
   {
+    inputs: [{ name: 'symbol', type: 'string' }],
+    name: 'getPriceData',
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          { name: 'price8', type: 'uint256' },
+          { name: 'timestamp', type: 'uint256' },
+          { name: 'session', type: 'uint8' },
+          { name: 'confidence', type: 'uint8' },
+          { name: 'signerCount', type: 'uint8' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [{ name: 'ticker', type: 'string' }],
     name: 'hasFeed',
     outputs: [{ name: '', type: 'bool' }],

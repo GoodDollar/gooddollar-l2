@@ -3,7 +3,7 @@
  *
  * The status-aggregator polls many backend services. Two health-payload
  * conventions exist in the wild:
- *   1. `{ status: 'ok' | 'degraded' | 'error', ... }`  — 11 services
+ *   1. `{ status: 'ok' | 'degraded' | 'health-only' | 'error', ... }` — services
  *   2. `{ ok: true | false, ... }`                     — indexer
  *
  * parseHealthStatus() must understand both without mis-classifying healthy
@@ -20,6 +20,10 @@ test('status:ok shape returns ok', () => {
 
 test('status:degraded shape returns degraded', () => {
   assert.equal(parseHealthStatus({ status: 'degraded' }), 'degraded');
+});
+
+test('status:health-only shape returns health-only', () => {
+  assert.equal(parseHealthStatus({ status: 'health-only', mode: 'disabled' }), 'health-only');
 });
 
 test('status:error shape returns error', () => {
