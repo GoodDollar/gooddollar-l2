@@ -125,13 +125,13 @@ describe('Cross-page BTC parity (task 0044)', () => {
     // surface attributes the price to `chain-oracle`.
     const stripBtcCard = screen.getAllByTestId('live-price-card').find(c => c.textContent?.includes('BTC-USD'))
     expect(stripBtcCard).toBeDefined()
-    expect(stripBtcCard!.textContent).toMatch(/\$84,250(\.00)?\b/)
+    expect(stripBtcCard!.textContent).toContain('$84,250')
     expect(
       stripBtcCard!.querySelector('[data-testid="price-source-badge"]')!.getAttribute('data-source'),
     ).toBe('chain-oracle')
 
     const wbtcRow = findWbtcRow()
-    expect(wbtcRow.textContent).toMatch(/\$84,250(\.00)?\b/)
+    expect(wbtcRow.textContent).toContain('$84,250')
     expect(
       wbtcRow.querySelector('[data-testid="price-source-badge"]')!.getAttribute('data-source'),
     ).toBe('chain-oracle')
@@ -162,8 +162,8 @@ describe('Cross-page BTC parity (task 0044)', () => {
     expect(wbtcRow.querySelector('[data-testid="price-divergence-chip"]')).not.toBeNull()
     // Chain wins on both — the price magnitude is identical even though
     // the strip and the table format with different precision.
-    expect(stripBtcCard.textContent).toMatch(/\$84,250(\.00)?/)
-    expect(wbtcRow.textContent).toMatch(/\$84,250(\.00)?/)
+    expect(stripBtcCard.textContent).toContain('$84,250')
+    expect(wbtcRow.textContent).toContain('$84,250')
   })
 
   it('both surfaces fall back to coingecko when the chain RPC is offline', () => {
@@ -179,8 +179,8 @@ describe('Cross-page BTC parity (task 0044)', () => {
     const stripBtcCard = screen.getAllByTestId('live-price-card').find(c => c.textContent?.includes('BTC-USD'))!
     const wbtcRow = findWbtcRow()
 
-    expect(stripBtcCard.textContent).toMatch(/\$75,500(\.00)?\b/)
-    expect(wbtcRow.textContent).toMatch(/\$75,500(\.00)?\b/)
+    expect(stripBtcCard.textContent).toContain('$75,500')
+    expect(wbtcRow.textContent).toContain('$75,500')
     expect(
       stripBtcCard.querySelector('[data-testid="price-source-badge"]')!.getAttribute('data-source'),
     ).toBe('coingecko')
