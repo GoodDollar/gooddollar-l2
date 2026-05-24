@@ -233,6 +233,84 @@ describe('HedgeProofViewer race protection (#0065)', () => {
     expect(screen.queryByTestId('hedge-proof-error-auto-retry')).toBeNull()
   })
 
+  describe('recovery row raw markdown link gating (#0081)', () => {
+    const errorBodies = [
+      ['engine_down', { status: 'engine_down', reason: 'unreachable' }, 502],
+      ['engine_error', { status: 'engine_error', reason: 'boom', httpStatus: 503 }, 502],
+      ['unreadable', { status: 'unreadable', reason: 'bad body' }, 502],
+      ['forbidden', { status: 'forbidden', reason: 'denied' }, 403],
+      ['missing', { status: 'missing', reason: 'gone' }, 404],
+      ['invalid_id', { status: 'invalid_id', reason: 'bad id' }, 400],
+    ] as const
+
+    it.each(errorBodies)(
+      'omits hedge-proof-recovery-raw-link on %s (raw endpoint returns no useful body)',
+      async (_label, body, httpStatus) => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+          jsonResponse(body, { status: httpStatus }),
+        )
+        render(
+          <HedgeProofViewer
+            endpoint="/api/hedge/proof/latest.json"
+            rawMarkdownHref="/api/hedge/proof/latest"
+          />,
+        )
+        await screen.findByTestId('hedge-proof-error')
+        expect(
+          screen.queryByTestId('hedge-proof-recovery-raw-link'),
+        ).toBeNull()
+      },
+    )
+
+    it('omits hedge-proof-recovery-raw-link on network_error', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+        new TypeError('Failed to fetch'),
+      )
+      render(
+        <HedgeProofViewer
+          endpoint="/api/hedge/proof/latest.json"
+          rawMarkdownHref="/api/hedge/proof/latest"
+        />,
+      )
+      await screen.findByTestId('hedge-proof-error')
+      expect(screen.queryByTestId('hedge-proof-recovery-raw-link')).toBeNull()
+    })
+
+    it('renders hedge-proof-recovery-raw-link on no_proof (markdown route has a dedicated body)', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        jsonResponse({ status: 'no_proof' }, { status: 404 }),
+      )
+      render(
+        <HedgeProofViewer
+          endpoint="/api/hedge/proof/latest.json"
+          rawMarkdownHref="/api/hedge/proof/latest"
+        />,
+      )
+      await screen.findByTestId('hedge-proof-error')
+      const raw = await screen.findByTestId('hedge-proof-recovery-raw-link')
+      expect(raw.getAttribute('href')).toBe('/api/hedge/proof/latest')
+    })
+
+    it('still renders the OK metadata strip raw link (separate code path)', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        jsonResponse({
+          status: 'ok',
+          markdown: '# hello\n',
+          pointer: { path: 'p', timestamp: 1700000000000, summary: 'demo' },
+        }),
+      )
+      render(
+        <HedgeProofViewer
+          endpoint="/api/hedge/proof/latest.json"
+          rawMarkdownHref="/api/hedge/proof/latest"
+        />,
+      )
+      await screen.findByTestId('hedge-proof-body')
+      const raw = screen.getByTestId('hedge-proof-raw-link')
+      expect(raw.getAttribute('href')).toBe('/api/hedge/proof/latest')
+    })
+  })
+
   it('drops a late response from a stale fetch even when the prop change happens before the first fetch resolves', async () => {
     // This is the canonical race: the seq guard must drop ANY response
     // whose `mySeq !== seqRef.current` regardless of whether the fetch

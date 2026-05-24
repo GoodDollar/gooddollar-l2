@@ -230,7 +230,7 @@ describe('HedgeProofViewerPage', () => {
   });
 
   describe('error-state recovery row (#0071)', () => {
-    it('renders raw markdown link, jump-to-receipts link, and endpoint recap when the JSON route reports engine_down', async () => {
+    it('renders jump-to-receipts link and endpoint recap when the JSON route reports engine_down — raw link is suppressed on error statuses (#0081)', async () => {
       mockJson(
         { status: 'engine_down', reason: 'Hedge engine unreachable' },
         { status: 502 },
@@ -238,13 +238,12 @@ describe('HedgeProofViewerPage', () => {
       render(<HedgeProofViewerPage />);
       await screen.findByTestId('hedge-proof-error');
       const row = await screen.findByTestId('hedge-proof-recovery-row');
-      const raw = row.querySelector(
-        '[data-testid="hedge-proof-recovery-raw-link"]',
-      );
-      expect(raw).not.toBeNull();
-      expect(raw!.getAttribute('href')).toBe('/api/hedge/proof/latest');
-      expect(raw!.getAttribute('target')).toBe('_blank');
-      expect(raw!.getAttribute('rel')).toBe('noopener noreferrer');
+      // #0081 — the raw markdown link is hidden on engine_down because
+      // /api/hedge/proof/latest serves the same one-line error stub on
+      // a white-screen plain-text dead end (regression guard for #0036).
+      expect(
+        row.querySelector('[data-testid="hedge-proof-recovery-raw-link"]'),
+      ).toBeNull();
       const jump = row.querySelector(
         '[data-testid="hedge-proof-recovery-jump-link"]',
       );
@@ -271,6 +270,41 @@ describe('HedgeProofViewerPage', () => {
       expect(statusSpan!.textContent).toBe('status: engine_down');
       expect(recap!.className).toMatch(/font-mono/);
       expect(recap!.className).toMatch(/text-gray-500/);
+    });
+
+    it.each([
+      ['engine_down', { status: 'engine_down', reason: 'unreachable' }, 502],
+      ['engine_error', { status: 'engine_error', reason: 'boom', httpStatus: 503 }, 502],
+      ['unreadable', { status: 'unreadable', reason: 'bad body' }, 502],
+      ['forbidden', { status: 'forbidden', reason: 'denied' }, 403],
+      ['missing', { status: 'missing', reason: 'gone' }, 404],
+      ['invalid_id', { status: 'invalid_id', reason: 'bad id' }, 400],
+    ])(
+      'omits the raw markdown link on %s (#0081)',
+      async (_label, body, httpStatus) => {
+        mockJson(body, { status: httpStatus });
+        render(<HedgeProofViewerPage />);
+        await screen.findByTestId('hedge-proof-error');
+        expect(
+          screen.queryByTestId('hedge-proof-recovery-raw-link'),
+        ).toBeNull();
+        // Recovery row + jump link + recap must still render.
+        expect(screen.getByTestId('hedge-proof-recovery-row')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('hedge-proof-recovery-jump-link'),
+        ).toBeInTheDocument();
+      },
+    );
+
+    it('omits the raw markdown link on network_error (#0081)', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+        new TypeError('Failed to fetch'),
+      );
+      render(<HedgeProofViewerPage />);
+      await screen.findByTestId('hedge-proof-error');
+      expect(
+        screen.queryByTestId('hedge-proof-recovery-raw-link'),
+      ).toBeNull();
     });
 
     it('renders the recovery row with status:no_proof on the no_proof branch', async () => {

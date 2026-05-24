@@ -16,6 +16,25 @@ import {
 } from './HedgeProofViewer/proof-response'
 
 /**
+ * Statuses surfaced by `ProofErrorRecoveryRow` — superset of every wire
+ * status returned by `/api/hedge/proof/*` plus the `network_error`
+ * sentinel synthesised when `fetch` itself rejects. Kept as an explicit
+ * union (rather than `string`) so the per-status conditionals below
+ * (`isAutoRetryStatus`, `isRawMarkdownStatus`) are exhaustive: adding
+ * a new wire status forces the compiler to revisit both rules instead
+ * of letting drift sneak in silently.
+ */
+export type RecoveryRowStatus =
+  | 'no_proof'
+  | 'engine_down'
+  | 'engine_error'
+  | 'unreadable'
+  | 'network_error'
+  | 'forbidden'
+  | 'missing'
+  | 'invalid_id'
+
+/**
  * Wire statuses for which the proof viewer auto-retries on the shared
  * 10s cadence (task 0080). Mirrors the sibling `HedgeStatusCard`'s
  * polling behavior so the operator sees the same recovery cadence on
@@ -25,12 +44,44 @@ import {
  * `empty_body` / `loading` are not error states that benefit from
  * polling.
  */
-const AUTO_RETRY_STATUSES = new Set([
-  'engine_down',
-  'engine_error',
-  'unreadable',
-  'network_error',
-])
+function isAutoRetryStatus(status: RecoveryRowStatus): boolean {
+  switch (status) {
+    case 'engine_down':
+    case 'engine_error':
+    case 'unreadable':
+    case 'network_error':
+      return true
+    case 'no_proof':
+    case 'forbidden':
+    case 'missing':
+    case 'invalid_id':
+      return false
+  }
+}
+
+/**
+ * Whether the recovery row's "View raw markdown ↗" escape-hatch should
+ * be rendered for a given status (task 0081). On `no_proof` the
+ * markdown route serves a dedicated "no proof yet" body an operator
+ * might want to copy into a ticket; on every error status the markdown
+ * route returns either the same one-line error stub already shown in
+ * the styled card or a 4xx / 5xx HTML page — clicking the link drops
+ * the user on a useless white-screen plain-text dead-end (#0036).
+ */
+function isRawMarkdownStatus(status: RecoveryRowStatus): boolean {
+  switch (status) {
+    case 'no_proof':
+      return true
+    case 'engine_down':
+    case 'engine_error':
+    case 'unreadable':
+    case 'network_error':
+    case 'forbidden':
+    case 'missing':
+    case 'invalid_id':
+      return false
+  }
+}
 
 const AUTO_RETRY_NOTE = `Auto-retrying every ${Math.round(
   HEDGE_POLL_INTERVAL_MS / 1000,
@@ -60,6 +111,11 @@ export type {
 
 type OkData = Extract<ProofResponse, { status: 'ok' }>
 
+// Wire statuses that the `error` view-state can carry — every
+// `RecoveryRowStatus` except `no_proof` (which has its own dedicated
+// `kind: 'no_proof'` branch with friendlier copy).
+type ErrorStatus = Exclude<RecoveryRowStatus, 'no_proof'>
+
 type ViewState =
   | { kind: 'loading' }
   | { kind: 'ok'; data: OkData }
@@ -72,7 +128,7 @@ type ViewState =
   // JSON-parse failures. The recovery-row recap renders it verbatim
   // so an operator pasting the line into Slack carries both endpoint
   // and raw status (#0071).
-  | { kind: 'error'; copy: ErrorCopy; status: string }
+  | { kind: 'error'; copy: ErrorCopy; status: ErrorStatus }
 
 function copyForNetwork(): ErrorCopy {
   return {
@@ -240,8 +296,7 @@ export default function HedgeProofViewer({
   // which flips `enabled` off → on and naturally resets the interval
   // phase so the next auto-retry is `+10s` from the click rather than
   // `+0s`. Visibility pause/resume is provided by the hook.
-  const autoRetryEnabled =
-    view.kind === 'error' && AUTO_RETRY_STATUSES.has(view.status)
+  const autoRetryEnabled = view.kind === 'error' && isAutoRetryStatus(view.status)
   useIntervalWhileVisible(load, HEDGE_POLL_INTERVAL_MS, {
     enabled: autoRetryEnabled,
   })
@@ -299,7 +354,7 @@ export default function HedgeProofViewer({
               onRetry={load}
               variant="error"
               autoRetryNote={
-                AUTO_RETRY_STATUSES.has(view.status) ? AUTO_RETRY_NOTE : undefined
+                isAutoRetryStatus(view.status) ? AUTO_RETRY_NOTE : undefined
               }
             />
           )}
@@ -556,10 +611,16 @@ function EmptyBodyState({
  * is down (the operator already knows clicking Retry won't help until
  * the engine recovers); this row gives them somewhere to go:
  *
- *   - `View raw markdown ↗` — escape-hatch to the raw endpoint when
- *     ops scripts or curl are the only way forward (only rendered
- *     when the parent passes `rawMarkdownHref`; per-receipt viewer
- *     omits it because there is no equivalent markdown route).
+ *   - `View raw markdown ↗` — escape-hatch to the raw endpoint, gated
+ *     on `isRawMarkdownStatus(status)` so we only surface it when the
+ *     raw body has independent value (`no_proof` ships a dedicated
+ *     "no proof yet" markdown body operators copy into tickets). On
+ *     every error status the raw endpoint returns either the same
+ *     one-line error stub already shown in the styled card or a
+ *     4xx/5xx HTML page — the link would drop the user on a useless
+ *     plain-text white-screen dead-end (#0036, #0081). The
+ *     per-receipt viewer never passes `rawMarkdownHref` because there
+ *     is no equivalent markdown route.
  *   - `Jump to receipts table ↓` — anchor to `#hedge-recent-receipts`
  *     on `/analytics`, the table they're most likely heading to next.
  *     The anchor sits on the receipts panel itself (not the outer
@@ -574,7 +635,7 @@ function ProofErrorRecoveryRow({
   rawMarkdownHref,
 }: {
   endpoint: string
-  status: string
+  status: RecoveryRowStatus
   rawMarkdownHref?: string
 }) {
   return (
@@ -583,7 +644,7 @@ function ProofErrorRecoveryRow({
       className="mt-4 space-y-2"
     >
       <div className="flex items-center gap-4 flex-wrap text-xs">
-        {rawMarkdownHref && (
+        {rawMarkdownHref && isRawMarkdownStatus(status) && (
           <a
             data-testid="hedge-proof-recovery-raw-link"
             href={rawMarkdownHref}
