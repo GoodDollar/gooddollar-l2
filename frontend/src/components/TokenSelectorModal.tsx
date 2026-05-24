@@ -20,6 +20,8 @@ interface TokenSelectorModalProps {
 }
 
 export function TokenSelectorModal({ open, onClose, onSelect, selected, exclude }: TokenSelectorModalProps) {
+  // Parent in `TokenSelector.tsx` only mounts this component when `open=true`,
+  // so initial state values are correct on each fresh mount. No reset effects.
   const [query, setQuery] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -42,17 +44,10 @@ export function TokenSelectorModal({ open, onClose, onSelect, selected, exclude 
     return token.symbol.toLowerCase().includes(q) || token.name.toLowerCase().includes(q)
   }), [decorated, trimmedQuery])
 
+  // Focus the search input on mount only — the modal mounts fresh per open.
   useEffect(() => {
-    if (open) {
-      setQuery('')
-      setHighlightedIndex(0)
-      requestAnimationFrame(() => searchRef.current?.focus())
-    }
-  }, [open])
-
-  useEffect(() => {
-    setHighlightedIndex(0)
-  }, [query])
+    requestAnimationFrame(() => searchRef.current?.focus())
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -62,6 +57,14 @@ export function TokenSelectorModal({ open, onClose, onSelect, selected, exclude 
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
   }, [open, onClose])
+
+  const handleQueryChange = useCallback((next: string) => {
+    setQuery(next)
+    // Reset highlighted index in the same handler that fired the query
+    // change — keeps state writes co-located so React doesn't trigger an
+    // extra render via a chained effect.
+    setHighlightedIndex(0)
+  }, [])
 
   const handleSelect = useCallback((token: Token) => {
     onSelect(token)
@@ -130,7 +133,7 @@ export function TokenSelectorModal({ open, onClose, onSelect, selected, exclude 
             placeholder="Search by name or symbol"
             aria-label="Search tokens by name or symbol"
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => handleQueryChange(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-dark/80 border border-gray-700/30 text-white placeholder:text-gray-500 text-sm outline-none focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:border-goodgreen/30"
           />
         </div>
