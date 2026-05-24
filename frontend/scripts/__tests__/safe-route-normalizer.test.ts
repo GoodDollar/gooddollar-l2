@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  normalizeMalformedHedgeProofApiPath,
+  isMalformedHedgeProofApiPath,
   normalizeMalformedHedgeProofPath,
   normalizeMalformedStocksPath,
 } from '../safe-route-normalizer.mjs'
@@ -88,68 +88,57 @@ describe('normalizeMalformedHedgeProofPath', () => {
   })
 })
 
-describe('normalizeMalformedHedgeProofApiPath', () => {
-  it('keeps valid api routes unchanged', () => {
-    expect(
-      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/abc123'),
-    ).toBe('/api/hedge/proof/abc123')
+describe('isMalformedHedgeProofApiPath', () => {
+  it('returns false for valid api routes', () => {
+    expect(isMalformedHedgeProofApiPath('/api/hedge/proof/abc123')).toBe(false)
   })
 
-  it('keeps well-formed percent-encoded ids unchanged', () => {
-    expect(
-      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/%2541'),
-    ).toBe('/api/hedge/proof/%2541')
-    expect(
-      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/%E2%9C%93'),
-    ).toBe('/api/hedge/proof/%E2%9C%93')
-  })
-
-  it('rewrites malformed %ZZ to _invalid_url', () => {
-    expect(
-      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/abc%ZZ'),
-    ).toBe('/api/hedge/proof/_invalid_url')
-  })
-
-  it('rewrites trailing lonely % to _invalid_url', () => {
-    expect(
-      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/abc%'),
-    ).toBe('/api/hedge/proof/_invalid_url')
-  })
-
-  it('rewrites truncated multibyte to _invalid_url', () => {
-    expect(
-      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/foo%E0%80'),
-    ).toBe('/api/hedge/proof/_invalid_url')
-    expect(
-      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/%C0'),
-    ).toBe('/api/hedge/proof/_invalid_url')
-  })
-
-  it('preserves query string on rewrite', () => {
-    expect(
-      normalizeMalformedHedgeProofApiPath(
-        '/api/hedge/proof/abc%ZZ?ref=qa&mode=debug',
-      ),
-    ).toBe('/api/hedge/proof/_invalid_url?ref=qa&mode=debug')
-  })
-
-  it('does not rewrite the static latest endpoint', () => {
-    expect(
-      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/latest'),
-    ).toBe('/api/hedge/proof/latest')
-  })
-
-  it('does not rewrite the static latest.json endpoint', () => {
-    expect(
-      normalizeMalformedHedgeProofApiPath('/api/hedge/proof/latest.json'),
-    ).toBe('/api/hedge/proof/latest.json')
-  })
-
-  it('does not rewrite paths outside /api/hedge/proof/', () => {
-    expect(normalizeMalformedHedgeProofApiPath('/api/stocks/%2')).toBe(
-      '/api/stocks/%2',
+  it('returns false for well-formed percent-encoded ids', () => {
+    expect(isMalformedHedgeProofApiPath('/api/hedge/proof/%2541')).toBe(false)
+    expect(isMalformedHedgeProofApiPath('/api/hedge/proof/%E2%9C%93')).toBe(
+      false,
     )
-    expect(normalizeMalformedHedgeProofApiPath('/analytics/hedge/proof/foo%E0%80'))
-      .toBe('/analytics/hedge/proof/foo%E0%80')
+  })
+
+  it('returns true for malformed %ZZ', () => {
+    expect(isMalformedHedgeProofApiPath('/api/hedge/proof/abc%ZZ')).toBe(true)
+  })
+
+  it('returns true for trailing lonely %', () => {
+    expect(isMalformedHedgeProofApiPath('/api/hedge/proof/abc%')).toBe(true)
+  })
+
+  it('returns true for truncated multibyte sequences', () => {
+    expect(isMalformedHedgeProofApiPath('/api/hedge/proof/foo%E0%80')).toBe(
+      true,
+    )
+    expect(isMalformedHedgeProofApiPath('/api/hedge/proof/%C0')).toBe(true)
+  })
+
+  it('detects malformed paths regardless of query string', () => {
+    expect(
+      isMalformedHedgeProofApiPath('/api/hedge/proof/abc%ZZ?ref=qa&mode=debug'),
+    ).toBe(true)
+    expect(
+      isMalformedHedgeProofApiPath('/api/hedge/proof/abc123?ref=qa'),
+    ).toBe(false)
+  })
+
+  it('returns false for the static latest endpoint', () => {
+    expect(isMalformedHedgeProofApiPath('/api/hedge/proof/latest')).toBe(false)
+  })
+
+  it('returns false for the static latest.json endpoint', () => {
+    expect(isMalformedHedgeProofApiPath('/api/hedge/proof/latest.json')).toBe(
+      false,
+    )
+  })
+
+  it('returns false for paths outside /api/hedge/proof/', () => {
+    expect(isMalformedHedgeProofApiPath('/api/stocks/%2')).toBe(false)
+    expect(
+      isMalformedHedgeProofApiPath('/analytics/hedge/proof/foo%E0%80'),
+    ).toBe(false)
+    expect(isMalformedHedgeProofApiPath('/predict/%2')).toBe(false)
   })
 })

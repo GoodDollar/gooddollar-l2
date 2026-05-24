@@ -4,7 +4,6 @@ const STOCKS_ROUTE_PREFIX = '/stocks/'
 const HEDGE_PROOF_ROUTE_PREFIX = '/analytics/hedge/proof/'
 const HEDGE_PROOF_INVALID_PATH = `${HEDGE_PROOF_ROUTE_PREFIX}invalid`
 const HEDGE_PROOF_API_PREFIX = '/api/hedge/proof/'
-const HEDGE_PROOF_API_INVALID_PATH = `${HEDGE_PROOF_API_PREFIX}_invalid_url`
 const HEDGE_PROOF_API_STATIC_SIBLINGS = new Set(['latest', 'latest.json'])
 const REPLACEMENT_CHAR_PATTERN = /\uFFFD/
 
@@ -85,21 +84,28 @@ export function normalizeMalformedHedgeProofPath(rawUrl = '/') {
 // URLs (`/api/hedge/proof/abc%ZZ`, lonely `%`, truncated multibyte) with
 // its built-in HTML 400 page BEFORE any route handler runs — violating
 // the API's JSON-only contract that ops scripts and the dashboard client
-// both depend on. Rewriting to the synthesised `_invalid_url` route
-// (registered as a static sibling, so Next.js picks it over the dynamic
-// `[receiptId]` handler) returns the canonical `ProofResponse` envelope
-// at HTTP 400 with `Content-Type: application/json`. The static
-// `latest` / `latest.json` endpoints are explicitly excluded so they
-// continue serving their existing payloads unchanged.
-export function normalizeMalformedHedgeProofApiPath(rawUrl = '/') {
-  const { url, path, query } = splitUrl(rawUrl)
-  if (!path.startsWith(HEDGE_PROOF_API_PREFIX)) return url
+// both depend on.
+//
+// Returning a boolean here (rather than rewriting to a synthesised route)
+// avoids two App-Router naming pitfalls: leading-underscore folders are
+// private by convention (opted out of routing), and any other static
+// sibling can collide with a real receipt id (operators do construct ids
+// containing hyphens and alphanumerics). The custom server writes the
+// canonical JSON envelope directly when this returns `true`, bypassing
+// Next.js entirely for malformed input — the route layer never has to
+// know.
+//
+// The static `latest` / `latest.json` endpoints and any path outside the
+// `/api/hedge/proof/` prefix are left alone.
+export function isMalformedHedgeProofApiPath(rawUrl = '/') {
+  const { path } = splitUrl(rawUrl)
+  if (!path.startsWith(HEDGE_PROOF_API_PREFIX)) return false
   const rest = path.slice(HEDGE_PROOF_API_PREFIX.length)
-  if (HEDGE_PROOF_API_STATIC_SIBLINGS.has(rest)) return url
+  if (HEDGE_PROOF_API_STATIC_SIBLINGS.has(rest)) return false
   try {
     decodeURIComponent(path)
-    return url
+    return false
   } catch {
-    return `${HEDGE_PROOF_API_INVALID_PATH}${query}`
+    return true
   }
 }
