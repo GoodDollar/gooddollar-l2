@@ -58,6 +58,14 @@ export const STATIC_QUICKSTART: readonly QuickstartStep[] = Object.freeze([
       "200 with quote envelope, or 404 { error: 'no-quote' } before " +
       'first tick',
   }),
+  Object.freeze({
+    step: 4,
+    goal: 'Fetch a subset of cached symbols in one call',
+    request: 'GET /quotes?symbols=AAPL,MSFT',
+    expect:
+      '200 with quotes for only the requested set; ' +
+      'unmatched symbols listed in body.unmatched',
+  }),
 ]) as readonly QuickstartStep[];
 
 const WS_QUICKSTART_GOAL = 'Subscribe to live ticks';
@@ -95,9 +103,12 @@ export function buildWsQuickstartAlternatives(
  * matches the affordance of steps 1–3 (which are paste-runnable
  * `curl /…` lines).
  */
-export function buildWsQuickstartStep(ws: WsAdvertisement): QuickstartStep {
+export function buildWsQuickstartStep(
+  ws: WsAdvertisement,
+  step: number = STATIC_QUICKSTART.length + 1,
+): QuickstartStep {
   return {
-    step: 4,
+    step,
     goal: WS_QUICKSTART_GOAL,
     request: `wscat -c ${ws.url}`,
     alternatives: buildWsQuickstartAlternatives(ws.url),
@@ -107,15 +118,16 @@ export function buildWsQuickstartStep(ws: WsAdvertisement): QuickstartStep {
 
 /**
  * Build the full quickstart array for a single discovery response.
- * When the broadcaster is bound, step 4 is appended; when it's not
- * (`ws === null`), only the 3 static HTTP steps are returned. Pulled
- * into a single function so the `/` handler stays a one-liner and
- * tests have a stable seam to assert against.
+ * When the broadcaster is bound, the WS recipe step is appended at
+ * `STATIC_QUICKSTART.length + 1`; when it's not (`ws === null`),
+ * only the static HTTP steps are returned. Pulled into a single
+ * function so the `/` handler stays a one-liner and tests have a
+ * stable seam to assert against.
  */
 export function buildQuickstart(
   ws: WsAdvertisement | null,
 ): readonly QuickstartStep[] {
   const steps: QuickstartStep[] = [...STATIC_QUICKSTART];
-  if (ws) steps.push(buildWsQuickstartStep(ws));
+  if (ws) steps.push(buildWsQuickstartStep(ws, STATIC_QUICKSTART.length + 1));
   return steps;
 }

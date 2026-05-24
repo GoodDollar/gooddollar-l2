@@ -287,11 +287,9 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'All cached quotes (or filter with ?symbols=AAPL,MSFT); ' +
       '503 when source dead AND no matched quotes.',
     responseShape:
-      '{totalCached,count(dep→matchedCount|totalCached),requestedCount?,' +
-      'matchedCount?,unmatched?,invalidRequested?,cappedAt?,degraded?,' +
-      'stale?,message?,quotes:Record<string,NormalizedQuote&' +
-      '{cacheAge,filterAccepted,filterReason}>,source?,deprecations,' +
-      'timestamp,timestampIso} -- 200/503',
+      '{totalCached,count,requestedCount?,matchedCount?,unmatched?,' +
+      'invalidRequested?,cappedAt?,degraded?,stale?,message?,' +
+      'quotes{cacheAge,filter*},source?,deprecations,timestamp*} 200/503',
   },
   {
     path: '/quotes/fresh/all',

@@ -18,14 +18,24 @@ async function close(s: import('http').Server): Promise<void> {
 }
 
 /**
- * Task 0056: step 4 of the quickstart used to ship `CONNECT
+ * Task 0056: the WS quickstart step used to ship `CONNECT
  * ws://localhost:9301` — `CONNECT` is HTTP's proxy-tunnel verb,
  * not a WebSocket recipe, and not paste-runnable in any client.
  * The new shape ships `wscat -c ws://…` as the canonical request
  * with `websocat` and a Node `ws` one-liner as alternatives, all
  * embedding the live broadcaster URL on every response.
+ *
+ * Step number is dynamic: tasks 0077+ added new static HTTP steps,
+ * so this test locates the WS recipe by its shape (wscat/websocat
+ * verb) rather than by a hardcoded index.
  */
-describe('quickstart step 4 paste-runnable WS recipe (task 0056)', () => {
+function findWsStep(qs: Array<Record<string, unknown>>): Record<string, unknown> {
+  const step = qs.find((s) => /^(wscat|websocat) (-c )?ws:\/\//.test(s.request as string));
+  if (!step) throw new Error('WS quickstart step not found in quickstart array');
+  return step;
+}
+
+describe('quickstart WS recipe paste-runnable (task 0056)', () => {
   let server: import('http').Server;
   let baseUrl: string;
 
@@ -46,24 +56,26 @@ describe('quickstart step 4 paste-runnable WS recipe (task 0056)', () => {
     await close(server);
   });
 
-  it('step 4 request matches /^(wscat|websocat) (-c )?ws:\\// (PRD acceptance regex)', async () => {
+  it('WS step request matches /^(wscat|websocat) (-c )?ws:\\// (PRD acceptance regex)', async () => {
     const body = (await (await fetch(`${baseUrl}/`)).json()) as Record<string, unknown>;
     const qs = body.quickstart as Array<Record<string, unknown>>;
-    const step4 = qs[3];
-    expect(step4.request as string).toMatch(/^(wscat|websocat) (-c )?ws:\/\//);
+    const wsStep = findWsStep(qs);
+    expect(wsStep.request as string).toMatch(/^(wscat|websocat) (-c )?ws:\/\//);
   });
 
-  it('step 4 request never starts with the bogus CONNECT verb', async () => {
+  it('WS step request never starts with the bogus CONNECT verb', async () => {
     const body = (await (await fetch(`${baseUrl}/`)).json()) as Record<string, unknown>;
     const qs = body.quickstart as Array<Record<string, unknown>>;
-    expect(qs[3].request as string).not.toMatch(/^CONNECT\s/);
+    for (const s of qs) {
+      expect(s.request as string).not.toMatch(/^CONNECT\s/);
+    }
   });
 
-  it('step 4 alternatives is a 2-element array carrying websocat + node -e recipes', async () => {
+  it('WS step alternatives is a 2-element array carrying websocat + node -e recipes', async () => {
     const body = (await (await fetch(`${baseUrl}/`)).json()) as Record<string, unknown>;
     const ws = body.websocket as Record<string, unknown>;
     const qs = body.quickstart as Array<Record<string, unknown>>;
-    const alts = qs[3].alternatives as string[];
+    const alts = findWsStep(qs).alternatives as string[];
     expect(Array.isArray(alts)).toBe(true);
     expect(alts).toHaveLength(2);
     expect(alts[0]).toBe(`websocat ${ws.url}`);
@@ -71,14 +83,17 @@ describe('quickstart step 4 paste-runnable WS recipe (task 0056)', () => {
     expect(alts[1]).toContain(`'${ws.url}'`);
   });
 
-  it('static HTTP steps 1–3 do NOT carry the alternatives field (only step 4 has it)', async () => {
+  it('only the WS step carries the alternatives field; static HTTP steps do not', async () => {
     const body = (await (await fetch(`${baseUrl}/`)).json()) as Record<string, unknown>;
     const qs = body.quickstart as Array<Record<string, unknown>>;
-    expect(qs).toHaveLength(4);
-    for (let i = 0; i < 3; i++) {
-      expect('alternatives' in qs[i]).toBe(false);
+    const wsStep = findWsStep(qs);
+    for (const s of qs) {
+      if (s === wsStep) {
+        expect('alternatives' in s).toBe(true);
+      } else {
+        expect('alternatives' in s).toBe(false);
+      }
     }
-    expect('alternatives' in qs[3]).toBe(true);
   });
 
   it('buildWsQuickstartAlternatives is pure: same URL → same recipes', () => {
