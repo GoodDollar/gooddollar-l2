@@ -223,12 +223,28 @@ export default function HedgeProofViewer({
       )}
       {view.kind === 'error' && (
         <>
-          <HedgeProofErrorCard
-            title={view.copy.title}
-            detail={view.copy.detail}
-            onRetry={load}
-            variant="error"
-          />
+          {view.status === 'invalid_id' ? (
+            // `invalid_id` is a deterministic verdict on the URL itself —
+            // re-firing the same fetch will fail the same validator
+            // forever. Suppress Retry and offer the receipts table as the
+            // primary recovery (#0072).
+            <HedgeProofErrorCard
+              title={view.copy.title}
+              detail={view.copy.detail}
+              variant="error"
+              primaryAction={{
+                label: 'Open receipts table',
+                href: '/analytics#hedge-status-card',
+              }}
+            />
+          ) : (
+            <HedgeProofErrorCard
+              title={view.copy.title}
+              detail={view.copy.detail}
+              onRetry={load}
+              variant="error"
+            />
+          )}
           <ProofErrorRecoveryRow
             endpoint={endpoint}
             status={view.status}

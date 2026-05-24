@@ -132,3 +132,41 @@ describe('HedgeProofViewerPerReceiptPage — error-state recovery row (#0071)', 
     )
   })
 })
+
+describe('HedgeProofViewerPerReceiptPage — invalid_id Retry suppression (#0072)', () => {
+  it('omits the Retry button on invalid_id and renders an Open receipts table link', async () => {
+    mockJson(
+      { status: 'invalid_id', reason: 'Receipt id is too long' },
+      { status: 400 },
+    )
+    renderPage('a'.repeat(200))
+    await screen.findByTestId('hedge-proof-error')
+    expect(screen.queryByTestId('hedge-proof-retry')).toBeNull()
+    const link = screen.getByRole('link', { name: /open receipts table/i })
+    expect(link.getAttribute('href')).toBe('/analytics#hedge-status-card')
+  })
+
+  it('keeps the Retry button on engine_down (regression — Retry is still appropriate)', async () => {
+    mockJson(
+      { status: 'engine_down', reason: 'Hedge engine unreachable' },
+      { status: 502 },
+    )
+    renderPage('rcpt-1')
+    await screen.findByTestId('hedge-proof-error')
+    expect(screen.getByTestId('hedge-proof-retry')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /open receipts table/i }),
+    ).toBeNull()
+  })
+
+  it('still renders the error card title and detail on the invalid_id branch', async () => {
+    mockJson(
+      { status: 'invalid_id', reason: 'Receipt id is too long' },
+      { status: 400 },
+    )
+    renderPage('a'.repeat(200))
+    const card = await screen.findByTestId('hedge-proof-error')
+    expect(card.textContent).toMatch(/Receipt id was rejected/i)
+    expect(card.textContent).toMatch(/Receipt id is too long/)
+  })
+})

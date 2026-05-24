@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import {
   ExclamationCircleIcon,
   InformationCircleIcon,
@@ -37,6 +39,15 @@ export interface HedgeProofErrorCardProps {
    * copy-paste recovery.
    */
   titleTooltip?: string
+  /**
+   * Primary recovery affordance rendered as a button-styled `<Link>` in
+   * the action row (#0072). Used for dead-end surfaces like `invalid_id`
+   * where Retry would loop forever against an already-rejected URL —
+   * the operator needs a different destination (e.g. the receipts
+   * table) rather than another no-op fetch. Renders alongside (or in
+   * place of) the Retry button when set.
+   */
+  primaryAction?: { label: string; href: string }
 }
 
 export default function HedgeProofErrorCard({
@@ -46,6 +57,7 @@ export default function HedgeProofErrorCard({
   variant = 'neutral',
   testid = 'hedge-proof-error',
   titleTooltip,
+  primaryAction,
 }: HedgeProofErrorCardProps) {
   const wrapperClass =
     variant === 'error'
@@ -100,16 +112,27 @@ export default function HedgeProofErrorCard({
           <p className="mt-1 text-sm text-gray-300">{detail}</p>
         </div>
       </div>
-      {onRetry && (
+      {(primaryAction || onRetry) && (
         <div className="mt-4 flex items-center gap-3 flex-wrap">
-          <button
-            type="button"
-            data-testid="hedge-proof-retry"
-            onClick={() => void onRetry()}
-            className={retryClass}
-          >
-            Retry
-          </button>
+          {primaryAction && (
+            <Link
+              data-testid="hedge-proof-primary-action"
+              href={primaryAction.href}
+              className={retryClass}
+            >
+              {primaryAction.label}
+            </Link>
+          )}
+          {onRetry && (
+            <button
+              type="button"
+              data-testid="hedge-proof-retry"
+              onClick={() => void onRetry()}
+              className={retryClass}
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
     </section>

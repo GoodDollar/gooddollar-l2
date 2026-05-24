@@ -186,7 +186,7 @@ describe('HedgeProofViewerPage', () => {
     expect(screen.queryByTestId('hedge-proof-empty-body')).toBeNull();
   });
 
-  it('renders a branded "Receipt id was rejected" card when the route returns invalid_id (#0049)', async () => {
+  it('renders a branded "Receipt id was rejected" card when the route returns invalid_id (#0049, #0072)', async () => {
     mockJson(
       { status: 'invalid_id', reason: 'Missing or empty receipt id' },
       { status: 400 },
@@ -196,7 +196,14 @@ describe('HedgeProofViewerPage', () => {
     expect(errPanel.textContent).toMatch(/Receipt id was rejected/i);
     expect(errPanel.textContent).toMatch(/Missing or empty receipt id/);
     expect(errPanel.className).toMatch(/border-red/);
-    expect(screen.getByTestId('hedge-proof-retry')).toBeInTheDocument();
+    // #0072 — Retry is suppressed on invalid_id (deterministic verdict
+    // on the URL itself; retrying the same request loops forever).
+    // The primary recovery is an "Open receipts table" link instead.
+    expect(screen.queryByTestId('hedge-proof-retry')).toBeNull();
+    const recovery = screen.getByRole('link', {
+      name: /open receipts table/i,
+    });
+    expect(recovery.getAttribute('href')).toBe('/analytics#hedge-status-card');
   });
 
   it('renders a branded fallback when the route returns an unknown status, without crashing (#0049)', async () => {

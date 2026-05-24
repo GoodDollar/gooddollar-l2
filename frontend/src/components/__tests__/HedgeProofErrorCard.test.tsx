@@ -144,6 +144,75 @@ describe('HedgeProofErrorCard', () => {
     })
   })
 
+  describe('primaryAction prop (#0072)', () => {
+    it('renders a primaryAction link with the red-error palette in place of Retry', () => {
+      render(
+        <HedgeProofErrorCard
+          title="Receipt id was rejected"
+          detail="Receipt id is too long"
+          variant="error"
+          primaryAction={{
+            label: 'Open receipts table',
+            href: '/analytics#hedge-status-card',
+          }}
+        />,
+      )
+      const link = screen.getByRole('link', { name: /open receipts table/i })
+      expect(link.getAttribute('href')).toBe('/analytics#hedge-status-card')
+      for (const cls of RED_PALETTE) expect(link.className).toContain(cls)
+      expect(screen.queryByTestId('hedge-proof-retry')).toBeNull()
+    })
+
+    it('renders both Retry and primaryAction when both props are provided', () => {
+      render(
+        <HedgeProofErrorCard
+          title="Hedge engine unreachable"
+          detail="Engine offline"
+          variant="error"
+          onRetry={() => {}}
+          primaryAction={{
+            label: 'Open receipts table',
+            href: '/analytics#hedge-status-card',
+          }}
+        />,
+      )
+      expect(
+        screen.getByRole('link', { name: /open receipts table/i }),
+      ).toBeInTheDocument()
+      expect(screen.getByTestId('hedge-proof-retry')).toBeInTheDocument()
+    })
+
+    it('omits the action-row wrapper when neither prop is provided', () => {
+      render(
+        <HedgeProofErrorCard
+          title="x"
+          detail="y"
+          variant="error"
+        />,
+      )
+      const card = screen.getByTestId('hedge-proof-error')
+      expect(card.querySelectorAll('.mt-4').length).toBe(0)
+      expect(card.querySelector('button')).toBeNull()
+      expect(card.querySelector('a')).toBeNull()
+    })
+
+    it('uses the neutral palette on the primaryAction link when variant="neutral"', () => {
+      render(
+        <HedgeProofErrorCard
+          title="x"
+          detail="y"
+          primaryAction={{
+            label: 'Open receipts table',
+            href: '/analytics#hedge-status-card',
+          }}
+        />,
+      )
+      const link = screen.getByRole('link', { name: /open receipts table/i })
+      for (const cls of NEUTRAL_PALETTE) expect(link.className).toContain(cls)
+      expect(link.className).not.toContain('border-red-500/40')
+    })
+  })
+
   describe('status icon anchor (#0057)', () => {
     it('variant="error" renders a red exclamation glyph at the top-left', () => {
       render(
