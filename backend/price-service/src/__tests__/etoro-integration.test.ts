@@ -1,10 +1,10 @@
 import { PriceService } from '../index';
 import { connectEtoroSource, EtoroSourceConfig } from '../etoro-source';
-import { NormalizedQuote } from '../types';
+import { NormalizedQuote, computeSpread } from '../types';
 
 function makeQuote(symbol: string, mid: number): NormalizedQuote {
-  return {
-    source: 'etoro',
+  return computeSpread({
+    source: 'etoro' as const,
     symbol,
     instrumentId: `${symbol}-1`,
     bid: mid - 0.05,
@@ -12,10 +12,10 @@ function makeQuote(symbol: string, mid: number): NormalizedQuote {
     mid,
     last: mid,
     timestamp: Date.now(),
-    sessionState: 'open',
+    sessionState: 'open' as const,
     confidence: 95,
     stale: false,
-  };
+  });
 }
 
 describe('connectEtoroSource', () => {

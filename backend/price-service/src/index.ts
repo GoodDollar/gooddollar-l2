@@ -1,38 +1,46 @@
-import type { Server } from 'http';
 import { QuoteCache } from './quote-cache';
 import { WsBroadcaster } from './ws-broadcaster';
 import { createServer } from './server';
 import { bootstrapEtoroSource } from './bootstrap';
 import type { EtoroSourceHandle } from './etoro-source';
-import { PriceServiceConfig, DEFAULT_CONFIG, NormalizedQuote, RiskFilterResult } from './types';
+import { AuditLogger } from './audit-logger';
+import { classifySourceError } from './source-status';
+import { resolveRuntime, RuntimeBlock, checkRealTradingFence } from './runtime';
+import {
+  PriceServiceConfig,
+  DEFAULT_CONFIG,
+  NormalizedQuote,
+  RiskFilterResult,
+  IngestStats,
+  SourceStatus,
+} from './types';
 
 export { QuoteCache } from './quote-cache';
 export { RiskFilter } from './risk-filter';
 export { WsBroadcaster } from './ws-broadcaster';
 export { createServer } from './server';
 export { connectEtoroSource } from './etoro-source';
+export { AuditLogger } from './audit-logger';
+export type { AuditLoggerOptions, AuditRecordInput } from './audit-logger';
 export type { EtoroSourceConfig, EtoroSourceHandle, MarketDataSource } from './etoro-source';
 export {
   bootstrapEtoroSource,
   defaultBootstrapDeps,
 } from './bootstrap';
 export type { BootstrapDeps, BootstrapResult } from './bootstrap';
+export { RuntimeBlock, resolveRuntime, checkRealTradingFence } from './runtime';
 export type * from './types';
+
+export interface PriceServiceOptions {
+  /** Optional pre-built audit logger; defaults to one using env defaults. */
+  auditLogger?: AuditLogger;
+}
 
 /**
  * Parse a TCP port from an env var with loud-fail semantics.
  *
- * - Unset / empty → `defaultPort` (operator opted out, use the
- *   service default unchanged).
- * - Anything else MUST be a base-10 integer in `1..65535`. Trailing
- *   whitespace is tolerated (`'9410 '`); embedded non-digits
- *   (`'9410abc'`) and out-of-range values (`'0'`, `'99999'`,
- *   `'-1'`) throw with the var name and the valid range, so a
- *   typo fails loud at boot rather than silently binding the
- *   default.
- *
- * Exported so the unit suite (`__tests__/parse-env-port.test.ts`)
- * can pin the contract without having to spawn the service.
+ * - Unset / empty → `defaultPort`.
+ * - Anything else MUST be a base-10 integer in `1..65535`.
  */
 export function parseEnvPort(
   value: string | undefined,
@@ -55,29 +63,89 @@ export function parseEnvPort(
   return n;
 }
 
+/**
+ * Parse a positive integer port from env. Returns undefined for unset,
+ * empty, or non-positive values so callers can fall through to defaults.
+ */
+export function envPort(name: string): number | undefined {
+  const raw = process.env[name];
+  if (!raw) return undefined;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return n;
+}
+
 export class PriceService {
   readonly cache: QuoteCache;
   readonly broadcaster: WsBroadcaster;
+  readonly auditLogger: AuditLogger;
+  readonly bootAtMs: number;
   readonly config: PriceServiceConfig;
-  private httpServer?: Server;
+  private httpServer?: ReturnType<typeof import('http').createServer>;
+  private sourceStatus: SourceStatus = {
+    connected: false,
+    reason: 'not-attached',
+    lastAttachAt: null,
+  };
 
-  constructor(config?: Partial<PriceServiceConfig>) {
+  constructor(config?: Partial<PriceServiceConfig>, options?: PriceServiceOptions) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.cache = new QuoteCache(config);
     this.broadcaster = new WsBroadcaster();
+    this.auditLogger = options?.auditLogger ?? new AuditLogger();
+    this.bootAtMs = Date.now();
   }
 
   ingestQuote(quote: NormalizedQuote): RiskFilterResult {
-    return this.cache.update(quote);
+    const result = this.cache.update(quote);
+    this.auditLogger.record({
+      accepted: result.accepted,
+      reason: result.reason,
+      quote: result.quote,
+    });
+    return result;
+  }
+
+  getIngestStats(): IngestStats {
+    return this.auditLogger.stats();
+  }
+
+  setSourceStatus(status: SourceStatus): void {
+    this.sourceStatus = status;
+  }
+
+  getSourceStatus(): SourceStatus {
+    return this.sourceStatus;
+  }
+
+  getRuntime(): RuntimeBlock {
+    return resolveRuntime(this.bootAtMs, this.sourceStatus);
   }
 
   start(): void {
-    const app = createServer(this.cache, this.config);
+    const app = createServer(
+      this.cache,
+      this.config,
+      () => this.getIngestStats(),
+      () => this.getSourceStatus(),
+      () => this.bootAtMs,
+      () => ({ port: this.config.wsPort }),
+      () => this.broadcaster.getStatus(),
+      () => this.getRuntime(),
+      () => this.broadcaster.clientCount,
+    );
     this.httpServer = app.listen(this.config.port, () => {
       console.log(`[price-service] REST server listening on port ${this.config.port}`);
     });
-    this.broadcaster.start(this.config.wsPort, this.cache);
-    console.log(`[price-service] WS broadcaster listening on port ${this.config.wsPort}`);
+    this.broadcaster.start(this.config.wsPort, this.cache, () => this.getSourceStatus());
+    this.broadcaster.on('listening', () => {
+      const port = this.broadcaster.getStatus().port ?? this.config.wsPort;
+      console.log(`[price-service] WS broadcaster bound on port ${port}`);
+    });
+    this.broadcaster.on('error', () => {
+      const reason = this.broadcaster.getStatus().bindError ?? 'unknown';
+      console.error(`[price-service] WS broadcaster bind failed: ${reason}`);
+    });
   }
 
   stop(): void {
@@ -90,6 +158,12 @@ export class PriceService {
 }
 
 if (require.main === module) {
+  const fence = checkRealTradingFence();
+  if (fence) {
+    console.error(fence.message);
+    process.exit(fence.exitCode);
+  }
+
   const service = new PriceService({
     port: parseEnvPort(
       process.env.PRICE_SERVICE_PORT,
@@ -109,10 +183,31 @@ if (require.main === module) {
   try {
     const result = bootstrapEtoroSource(service);
     sourceHandle = result.handle;
-  } catch (err) {
+    if (result.ok && result.handle) {
+      service.setSourceStatus({
+        connected: true,
+        symbols: result.handle.stats().symbols,
+        lastAttachAt: Date.now(),
+      });
+    } else if (!result.ok) {
+      service.setSourceStatus({
+        connected: false,
+        reason: 'source-unavailable',
+        detail: result.reason ?? null,
+        lastAttachAt: null,
+      });
+    }
+  } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[price-service] fatal: ${msg}`);
-    process.exit(1);
+    console.warn(`[price-service] eToro source unavailable: ${msg}`);
+    console.warn('[price-service] Running without live quotes — use REST API to ingest manually');
+    const { reason, detail } = classifySourceError(err);
+    service.setSourceStatus({
+      connected: false,
+      reason,
+      detail,
+      lastAttachAt: null,
+    });
   }
 
   const shutdown = () => {

@@ -1,10 +1,12 @@
-import { PriceService, QuoteCache, RiskFilter, WsBroadcaster, createServer } from '../index';
-import { DEFAULT_CONFIG, NormalizedQuote } from '../types';
-import { INSTRUMENT_SYMBOLS } from '@goodchain/etoro-client';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { PriceService, QuoteCache, RiskFilter, WsBroadcaster, createServer, AuditLogger, envPort } from '../index';
+import { NormalizedQuote, computeSpread } from '../types';
 
 function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
-  return {
-    source: 'etoro',
+  const base = {
+    source: 'etoro' as const,
     symbol: 'AAPL',
     instrumentId: 'AAPL-1',
     bid: 189.50,
@@ -12,11 +14,12 @@ function makeQuote(overrides?: Partial<NormalizedQuote>): NormalizedQuote {
     mid: 189.55,
     last: 189.55,
     timestamp: Date.now(),
-    sessionState: 'open',
+    sessionState: 'open' as const,
     confidence: 1,
     stale: false,
     ...overrides,
   };
+  return computeSpread(base);
 }
 
 describe('PriceService', () => {
@@ -51,12 +54,140 @@ describe('PriceService', () => {
     expect(service.cache.getFresh().length).toBe(0);
   });
 
-  it('DEFAULT_CONFIG.symbols matches INSTRUMENT_SYMBOLS exactly', () => {
-    expect(DEFAULT_CONFIG.symbols).toEqual([...INSTRUMENT_SYMBOLS]);
+  describe('audit / ingest stats', () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'price-service-audit-'));
+    });
+
+    afterEach(() => {
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch {}
+    });
+
+    it('records accepted and rejected quotes via the audit logger', async () => {
+      const logPath = path.join(tmpDir, 'svc.log');
+      const auditLogger = new AuditLogger({ logPath });
+      const service = new PriceService({ port: 0, wsPort: 0 }, { auditLogger });
+
+      service.ingestQuote(makeQuote({ symbol: 'AAPL' }));
+      service.ingestQuote(makeQuote({ symbol: 'TSLA', sessionState: 'halted' }));
+
+      const stats = service.getIngestStats();
+      expect(stats.ingested).toBe(1);
+      expect(stats.rejected).toBe(1);
+      expect(stats.byReason.halted).toBe(1);
+      expect(stats.firstAtMs).not.toBeNull();
+      expect(stats.lastAtMs).not.toBeNull();
+
+      // Audit writes are non-blocking (task 0067) — flush before
+      // reading the file so the assertion sees the persisted lines.
+      await auditLogger.flush(500);
+      const lines = fs.readFileSync(logPath, 'utf8').trim().split('\n');
+      expect(lines).toHaveLength(2);
+    });
+
+    it('provides a default audit logger when none is supplied', () => {
+      const service = new PriceService({ port: 0, wsPort: 0 });
+      expect(service.auditLogger).toBeInstanceOf(AuditLogger);
+    });
   });
 
-  it('config is publicly readable on a constructed PriceService', () => {
-    const service = new PriceService({ port: 0, wsPort: 0, symbols: ['BTC'] });
-    expect(service.config.symbols).toEqual(['BTC']);
+  describe('source status', () => {
+    it('default source status is not-attached / disconnected', () => {
+      const svc = new PriceService({ port: 0, wsPort: 0 });
+      expect(svc.getSourceStatus()).toEqual({
+        connected: false,
+        reason: 'not-attached',
+        lastAttachAt: null,
+      });
+    });
+
+    it('setSourceStatus(connected) is observable via getSourceStatus', () => {
+      const svc = new PriceService({ port: 0, wsPort: 0 });
+      svc.setSourceStatus({
+        connected: true,
+        symbols: ['AAPL', 'TSLA'],
+        lastAttachAt: 12345,
+      });
+      const got = svc.getSourceStatus();
+      expect(got.connected).toBe(true);
+      if (got.connected) {
+        expect(got.symbols).toEqual(['AAPL', 'TSLA']);
+        expect(got.lastAttachAt).toBe(12345);
+      }
+    });
+
+    it('setSourceStatus(disconnected) is observable via getSourceStatus', () => {
+      const svc = new PriceService({ port: 0, wsPort: 0 });
+      svc.setSourceStatus({
+        connected: false,
+        reason: 'lost connection',
+        lastAttachAt: 999,
+      });
+      const got = svc.getSourceStatus();
+      expect(got.connected).toBe(false);
+      if (!got.connected) {
+        expect(got.reason).toBe('lost connection');
+        expect(got.lastAttachAt).toBe(999);
+      }
+    });
+  });
+
+  describe('bootAtMs', () => {
+    it('PriceService.start wires bootAtMs through to /health and /audit/stats', async () => {
+      const service = new PriceService({ port: 0, wsPort: 0 });
+      service.start();
+      try {
+        const httpServer = (service as unknown as { httpServer: import('http').Server }).httpServer;
+        const addr = httpServer.address() as import('net').AddressInfo;
+        const baseUrl = `http://127.0.0.1:${addr.port}`;
+        const hRes = (await (await fetch(`${baseUrl}/health`)).json()) as Record<string, number>;
+        const aRes = (await (await fetch(`${baseUrl}/audit/stats`)).json()) as Record<string, number>;
+        expect(typeof hRes.bootAtMs).toBe('number');
+        expect(hRes.bootAtMs).toBe(service.bootAtMs);
+        expect(aRes.bootAtMs).toBe(service.bootAtMs);
+        expect(hRes.uptimeMs).toBeGreaterThanOrEqual(0);
+        expect(aRes.uptimeMs).toBeGreaterThanOrEqual(0);
+      } finally {
+        service.stop();
+      }
+    });
+  });
+
+  describe('envPort', () => {
+    const ENV_NAME = '__TEST_PRICE_SERVICE_PORT__';
+
+    afterEach(() => {
+      delete process.env[ENV_NAME];
+    });
+
+    it('returns undefined when unset', () => {
+      expect(envPort(ENV_NAME)).toBeUndefined();
+    });
+
+    it('parses a valid port', () => {
+      process.env[ENV_NAME] = '9300';
+      expect(envPort(ENV_NAME)).toBe(9300);
+    });
+
+    it('returns undefined for empty string', () => {
+      process.env[ENV_NAME] = '';
+      expect(envPort(ENV_NAME)).toBeUndefined();
+    });
+
+    it('returns undefined for non-numeric', () => {
+      process.env[ENV_NAME] = 'not-a-port';
+      expect(envPort(ENV_NAME)).toBeUndefined();
+    });
+
+    it('returns undefined for negative or zero ports', () => {
+      process.env[ENV_NAME] = '0';
+      expect(envPort(ENV_NAME)).toBeUndefined();
+      process.env[ENV_NAME] = '-1';
+      expect(envPort(ENV_NAME)).toBeUndefined();
+    });
   });
 });

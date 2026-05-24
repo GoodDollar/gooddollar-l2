@@ -1,4 +1,10 @@
-import { NormalizedQuote, RiskFilterResult, PriceServiceConfig, DEFAULT_CONFIG } from './types';
+import {
+  NormalizedQuote,
+  RiskFilterResult,
+  PriceServiceConfig,
+  DEFAULT_CONFIG,
+  computeSpread,
+} from './types';
 
 export class RiskFilter {
   private readonly config: PriceServiceConfig;
@@ -9,7 +15,9 @@ export class RiskFilter {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  apply(quote: NormalizedQuote): RiskFilterResult {
+  apply(rawQuote: NormalizedQuote): RiskFilterResult {
+    let quote = computeSpread(rawQuote);
+
     const staleness = this.checkStaleness(quote);
     if (!staleness.accepted) return staleness;
 
@@ -18,6 +26,7 @@ export class RiskFilter {
 
     const session = this.checkSession(quote);
     if (!session.accepted) return session;
+    quote = session.quote;
 
     const deviation = this.checkTwapDeviation(quote);
     if (!deviation.accepted) return deviation;
@@ -69,6 +78,18 @@ export class RiskFilter {
     return { accepted: true, quote };
   }
 
+  /**
+   * Asset-class-aware session filter.
+   *
+   * - equity / etf / index: market hours matter; `closed` is rejected.
+   * - crypto: 24/7; if source reports `closed` we downgrade confidence
+   *   by 25 (clamped) instead of rejecting — BTC/ETH never truly close.
+   * - forex / commodity: 24/5; weekend `closed` is accepted with a
+   *   smaller confidence downgrade (15).
+   * - unknown / undefined: keep legacy behavior — only `halted` rejects.
+   *
+   * `halted` always rejects, regardless of asset class.
+   */
   private checkSession(quote: NormalizedQuote): RiskFilterResult {
     if (quote.sessionState === 'halted') {
       return {
@@ -77,7 +98,51 @@ export class RiskFilter {
         quote: { ...quote, confidence: 0 },
       };
     }
-    return { accepted: true, quote };
+
+    const assetClass = quote.assetClass ?? 'unknown';
+
+    switch (assetClass) {
+      case 'equity':
+      case 'etf':
+      case 'index':
+        if (quote.sessionState === 'closed') {
+          return {
+            accepted: false,
+            reason: `market-closed: ${assetClass} session is closed`,
+            quote: { ...quote, confidence: 0 },
+          };
+        }
+        return { accepted: true, quote };
+
+      case 'crypto':
+        if (quote.sessionState === 'closed') {
+          return {
+            accepted: true,
+            quote: {
+              ...quote,
+              confidence: Math.max(0, Math.min(100, quote.confidence - 25)),
+            },
+          };
+        }
+        return { accepted: true, quote };
+
+      case 'forex':
+      case 'commodity':
+        if (quote.sessionState === 'closed') {
+          return {
+            accepted: true,
+            quote: {
+              ...quote,
+              confidence: Math.max(0, Math.min(100, quote.confidence - 15)),
+            },
+          };
+        }
+        return { accepted: true, quote };
+
+      case 'unknown':
+      default:
+        return { accepted: true, quote };
+    }
   }
 
   private checkTwapDeviation(quote: NormalizedQuote): RiskFilterResult {

@@ -1,84 +1,116 @@
 # @goodchain/price-service
 
-Normalized, risk-filtered price service consuming eToro market data.
+Lane 2 of the eToro live-price pipeline. Ingests eToro market data
+through the lane-1 eToro client, applies risk filters (staleness,
+spread, asset-class session rules, TWAP deviation), caches the latest
+quote per symbol, and exposes both a REST API and a WebSocket
+broadcaster for downstream consumers (lane 3 oracle-signer, lane 5
+frontend).
 
-Part of [Lane 1 — eToro live prices & demo hedging](../../docs/ETORO_GOODCHAIN_ADAPTER.md).
-**Demo only** — backed by `@goodchain/etoro-client` whose `REAL_TRADING_ENABLED`
-source-level fence guarantees no real-money path. This service performs reads
-only.
+## Ports
 
-## Install / test
+| Port | Protocol  | Env var                  | Default |
+| ---- | --------- | ------------------------ | ------- |
+| 9300 | HTTP REST | `PRICE_SERVICE_PORT`     | `9300`  |
+| 9301 | WebSocket | `PRICE_SERVICE_WS_PORT`  | `9301`  |
 
-```bash
-npm install
-npm run build      # tsc → dist/
-npm run typecheck  # tsc --noEmit
-npm test           # jest --verbose; offline
-npm start          # node dist/index.js (uses ETORO_MODE)
-npm run dev        # ts-node src/index.ts
-```
-
-From the repo root: `npm run install:lane1` / `npm run test:lane1`.
-
-## Run locally
-
-```bash
-# Mock mode — no credentials required:
-ETORO_MODE=mock npm start
-
-# Demo-readonly — real demo quotes, no orders:
-ETORO_MODE=demo-readonly \
-  ETORO_DEMO_KEY=… ETORO_DEMO_SECRET=… ETORO_DEMO_USER_KEY=… \
-  npm start
-```
-
-### Smoke check
-
-After `npm start`, confirm quotes are flowing:
-
-```bash
-curl -s http://localhost:9300/health | jq .
-# {"status": "ok", "freshQuotes": <≥1>, "totalCached": <≥1>,
-#  "configuredSymbols": <N>, "timestamp": <epoch ms>}
-
-curl -s http://localhost:9300/quotes | jq '.quotes | keys'
-# ["AAPL", "BTC", ...]   (subset of ORACLE_SYMBOLS or DEFAULT_LANE_SYMBOLS)
-
-curl -s http://localhost:9300/quotes/BTC | jq '{mid,bid,ask,timestamp,stale}'
-# {"mid": <positive number>, "bid": <number>, "ask": <number>,
-#  "timestamp": <epoch ms>, "stale": false}
-```
-
-If `/health` returns `503 {"status": "degraded"}` after 10 s the
-upstream eToro source isn't producing fresh quotes (mock mode produces
-them within one tick; demo-readonly may take longer on first auth —
-see [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../../docs/ETORO_GOODCHAIN_ADAPTER.md)).
+Unset or invalid env vars fall through to the defaults so tests do not
+need to set them.
 
 ## Endpoints
 
-| Surface | Default port | Source |
-|---------|--------------|--------|
-| REST (`/quotes`, `/health`) | `9300` | `DEFAULT_CONFIG.port` in [`src/types.ts`](src/types.ts) |
-| WebSocket (normalized stream) | `9301` | `DEFAULT_CONFIG.wsPort` in [`src/types.ts`](src/types.ts) |
+- `GET /health` — service health + (when stats are wired) `ingested`,
+  `rejected`, `acceptanceRatio` (number in `[0,1]` or `null` on cold
+  start) and `acceptanceRatioStatus` (`'ok'` | `'no-data'`).
+- `GET /quotes` — every cached quote with `spread`, `spreadPct`,
+  `cacheAge`, `filterAccepted`, `filterReason`.
+- `GET /quotes/:symbol` — single symbol.
+- `GET /quotes/fresh/all` — only quotes that are non-stale and accepted.
+- `GET /status/quotes` — per-symbol last-update age, session state,
+  confidence.
+- `GET /audit/stats` — `{ ingested, rejected, byReason,
+  acceptanceRatio, acceptanceRatioStatus, firstAt, lastAt,
+  writeErrors, bufferedDrops, timestamp }`. `acceptanceRatio` is
+  `null` and `acceptanceRatioStatus` is `'no-data'` until the first
+  tick lands. `bufferedDrops` rises when the audit log can't keep up
+  with ingestion and oldest lines are shed (see "Audit log").
 
-Downstream `oracle-signer` connects to the WS port by default
-(`PRICE_SERVICE_URL=ws://localhost:9301`; see
-[`backend/oracle-signer`](../oracle-signer/)).
+## Env
 
-## Env (this package)
+| Env var                  | Default                     | Purpose                                   |
+| ------------------------ | --------------------------- | ----------------------------------------- |
+| `ETORO_MODE`             | `sandbox`                   | Forces the eToro client to demo mode.     |
+| `REAL_TRADING_ENABLED`   | `false`                     | Belt-and-braces. Price service never reads it to enable trading. |
+| `PRICE_SERVICE_PORT`     | `9300`                      | REST port.                                |
+| `PRICE_SERVICE_WS_PORT`  | `9301`                      | WebSocket broadcaster port.               |
+| `ORACLE_SYMBOLS`         | `DEFAULT_CONFIG.symbols`    | Comma-separated symbols to subscribe to.  |
+| `PRICE_AUDIT_LOG_PATH`   | `<pkg>/audit.log`           | JSONL audit log path.                     |
+| `GOODPRICE_CWD`          | derived from PM2 config dir | Override PM2 `cwd` for portable installs. |
 
-| Var | Default | Notes |
-|-----|---------|-------|
-| `ORACLE_SYMBOLS` | `DEFAULT_LANE_SYMBOLS` | Comma-separated symbol subset. Unknown symbols mark the service `degraded`. |
-| `PRICE_SERVICE_STRICT_MODE` | unset | `'true'` makes missing demo creds a boot failure; default tolerates. |
+## Audit log
 
-The SDK env (modes, credentials, caps, instrument overrides) is read by
-`@goodchain/etoro-client`; see the deep contract:
-[`docs/ETORO_GOODCHAIN_ADAPTER.md`](../../docs/ETORO_GOODCHAIN_ADAPTER.md).
+Every accepted and rejected quote is appended as one JSON line to
+`PRICE_AUDIT_LOG_PATH` (default `backend/price-service/audit.log`).
+Schema:
 
-## Where to go next
+```json
+{
+  "timestamp": "2026-05-23T12:34:56.789Z",
+  "accepted": true,
+  "reason": "stale: quote age 12000ms exceeds threshold 10000ms",
+  "quote": { "symbol": "AAPL", "bid": 189.5, "ask": 189.6, ... }
+}
+```
 
-- Live-prices-on-chain proof runbook: [`docs/runbooks/lane1-live-prices-on-chain.md`](../../docs/runbooks/lane1-live-prices-on-chain.md)
-- Full lane contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../../docs/ETORO_GOODCHAIN_ADAPTER.md)
-- SDK package: [`backend/etoro-client/README.md`](../etoro-client/README.md)
-- Lane scripts: `npm run install:lane1`, `npm run test:lane1`
+The logger writes to a single append-mode `WriteStream` opened on the
+first record, so `record()` never blocks the Node event loop on disk
+I/O. An in-memory queue (capped at 10 000 lines by default) absorbs
+bursts when the kernel falls behind; if the cap is exceeded while the
+stream is backpressured, the oldest queued lines are dropped and
+`bufferedDrops` increments — recent forensic detail wins over ten-
+minute-old ticks. Stream errors (full disk, unwritable path) bump
+`writeErrors` instead. Both counters are exposed in-memory via
+`/audit/stats`, so consumers do not have to read the file.
+
+## PM2
+
+The price-service is supervised by the repo-root `pm2-ecosystem.config.js`
+as the `goodprice` app. To start it on its own:
+
+```bash
+cd backend/price-service
+npm install
+npm run build
+pm2 start ../../pm2-ecosystem.config.js --only goodprice
+```
+
+`cwd` resolves to `backend/price-service` relative to the PM2 config
+file by default; set `GOODPRICE_CWD` to point elsewhere (e.g. a deployed
+build directory) if needed.
+
+## Safety invariants
+
+- `ETORO_MODE=sandbox` and `REAL_TRADING_ENABLED=false` are hardcoded in
+  the PM2 entry. The price-service does not itself trade; these are
+  belt-and-braces for the embedded eToro client.
+- There is no env var or code path that can enable real-money trading.
+  Risk filters reject obviously bad quotes; everything else is logged.
+- The audit log only records quote fields — quotes never carry API keys
+  or other secrets.
+
+## Development
+
+```bash
+npm install
+npm run typecheck
+npm test
+npm run build
+```
+
+Run locally without PM2:
+
+```bash
+PRICE_AUDIT_LOG_PATH=/tmp/price-audit.log \
+  PRICE_SERVICE_PORT=9300 PRICE_SERVICE_WS_PORT=9301 \
+  npm run dev
+```
