@@ -267,6 +267,53 @@ describe('OracleSignerService', () => {
       expect(result).not.toBeNull();
     });
 
+    it('anchors deviation gate to the submitted mid even when WS pushes arrive during a slow tx', async () => {
+      // Slow submitBatch resolves only after we drive several WS quotes
+      // onto AAPL. The post-confirm anchor must be the originally
+      // submitted mid, not the latest WS push.
+      const service = new OracleSignerService(makeConfig({ minDeviationBps: 10 }));
+      let resolveSlow!: (value: unknown) => void;
+      const slow = new Promise((res) => { resolveSlow = res; });
+      const submit = service.getSubmitter().submitBatch as unknown as jest.Mock;
+      submit.mockImplementationOnce(async () => {
+        await slow;
+        return { txHash: '0xslow', gasUsed: BigInt(1), symbolCount: 1, roundTripMs: 5_000 };
+      });
+
+      const submittedMid = 191.50;
+      service.getBuffer().update({
+        source: 'etoro', symbol: 'AAPL', instrumentId: '1',
+        bid: submittedMid - 0.01, ask: submittedMid + 0.01,
+        mid: submittedMid, last: submittedMid,
+        timestamp: Date.now(), sessionState: 'open', confidence: 95, stale: false,
+      });
+
+      const tickPromise = service.tick();
+
+      // WS pushes arrive while the previous tx is in flight.
+      for (const mid of [191.55, 191.62, 191.99]) {
+        service.getBuffer().update({
+          source: 'etoro', symbol: 'AAPL', instrumentId: '1',
+          bid: mid - 0.01, ask: mid + 0.01, mid, last: mid,
+          timestamp: Date.now(), sessionState: 'open', confidence: 95, stale: false,
+        });
+      }
+
+      resolveSlow({});
+      await tickPromise;
+
+      // 191.65 vs anchor 191.50 = 7.83 bps, below 10 bps threshold.
+      // If the buggy behavior had persisted (anchor = 191.99), the
+      // symbol would still be emitted at 191.65 (17.7 bps).
+      service.getBuffer().update({
+        source: 'etoro', symbol: 'AAPL', instrumentId: '1',
+        bid: 191.64, ask: 191.66, mid: 191.65, last: 191.65,
+        timestamp: Date.now(), sessionState: 'open', confidence: 95, stale: false,
+      });
+      const pending = service.getBuffer().getPendingUpdates();
+      expect(pending).toHaveLength(0);
+    });
+
     it('skips markSubmitted on a reverted submitBatch so the next tick retries the same symbols', async () => {
       const service = new OracleSignerService(makeConfig({ minDeviationBps: 10 }));
       const submit = service.getSubmitter().submitBatch as unknown as jest.Mock;
