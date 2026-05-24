@@ -1,5 +1,16 @@
 'use client'
 
+/**
+ * OrderBook — DEMO / FIXTURE COMPONENT ONLY.
+ *
+ * GoodPerps prices fills off the chain oracle's mark and settles against
+ * an AMM-style margin engine — there is no on-chain CLOB. Production
+ * routes MUST NOT mount `DemoOrderBook` or call `generateDemoOrderBook`.
+ * Use `<PerpsMarketStructureCard>` instead (task 0043). The generator is
+ * kept exported so storybook + the existing aggregation tests keep
+ * working.
+ */
+
 import { useMemo } from 'react'
 import { formatPerpsPrice } from '@/lib/perpsData'
 
@@ -49,7 +60,9 @@ export function aggregateBookLevels(
 // can invert adjacent levels for i >= 3, so we sort explicitly after generation
 // and recompute cumulative totals in render order (best-quote = smallest total,
 // deepest level = largest total) instead of trusting push order.
-export function generateOrderBook(
+//
+// DEMO ONLY (task 0043). Production /perps uses `PerpsMarketStructureCard`.
+export function generateDemoOrderBook(
   midPrice: number,
   levels: number = 12,
 ): { bids: OrderBookEntry[]; asks: OrderBookEntry[]; spread: number } {
@@ -85,7 +98,7 @@ export function generateOrderBook(
   return { bids, asks: asks.reverse(), spread }
 }
 
-interface OrderBookProps {
+interface DemoOrderBookProps {
   markPrice: number
 }
 
@@ -94,9 +107,12 @@ interface OrderBookProps {
 // to show meaningful depth without overflowing the sidebar.
 const VISIBLE_ROWS = 6
 
-export function OrderBook({ markPrice }: OrderBookProps) {
+/**
+ * DemoOrderBook — DEMO / FIXTURE COMPONENT ONLY. See file header.
+ */
+export function DemoOrderBook({ markPrice }: DemoOrderBookProps) {
   const { visibleBids, visibleAsks, displaySpread, maxTotal } = useMemo(() => {
-    const { bids, asks } = generateOrderBook(markPrice)
+    const { bids, asks } = generateDemoOrderBook(markPrice)
     // bids: best→deep order, asks: deep→best order (post-reverse).
     // Aggregate each side independently so adjacent levels that round to
     // the same display string collapse into one row.

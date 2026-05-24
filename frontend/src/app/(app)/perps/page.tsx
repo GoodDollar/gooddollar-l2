@@ -68,43 +68,16 @@ import { ChartErrorBoundary } from '@/components/ChartErrorBoundary'
 import { IndicatorToggle } from '@/components/IndicatorToggle'
 import { ScrollStrip } from '@/components/ScrollStrip'
 
-const OrderBook = dynamic(
-  () => import('@/components/OrderBook').then(m => ({ default: m.OrderBook })),
+const PerpsMarketStructureCard = dynamic(
+  () => import('@/components/PerpsMarketStructureCard').then(m => ({ default: m.PerpsMarketStructureCard })),
   {
     ssr: false,
     loading: () => (
-      <div className="text-xs">
-        <div className="flex justify-between text-gray-500 px-2 py-1.5 border-b border-gray-700/20">
-          <span>Price</span><span>Size</span><span>Total</span>
-        </div>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex justify-between px-2 py-1">
-            <div className="h-3 w-16 bg-dark-50/40 rounded animate-pulse" />
-            <div className="h-3 w-10 bg-dark-50/40 rounded animate-pulse" />
-            <div className="h-3 w-10 bg-dark-50/40 rounded animate-pulse" />
-          </div>
-        ))}
-      </div>
-    ),
-  }
-)
-
-const RecentTrades = dynamic(
-  () => import('@/components/RecentTrades').then(m => ({ default: m.RecentTrades })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="text-xs">
-        <div className="flex justify-between text-gray-500 px-2 py-1.5 border-b border-gray-700/20">
-          <span>Price</span><span>Size</span><span>Time</span>
-        </div>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex justify-between px-2 py-1">
-            <div className="h-3 w-16 bg-dark-50/40 rounded animate-pulse" />
-            <div className="h-3 w-10 bg-dark-50/40 rounded animate-pulse" />
-            <div className="h-3 w-14 bg-dark-50/40 rounded animate-pulse" />
-          </div>
-        ))}
+      <div className="p-5 text-xs space-y-2">
+        <div className="h-5 w-48 bg-dark-50/40 rounded animate-pulse" />
+        <div className="h-4 w-full bg-dark-50/40 rounded animate-pulse" />
+        <div className="h-4 w-full bg-dark-50/40 rounded animate-pulse" />
+        <div className="h-4 w-full bg-dark-50/40 rounded animate-pulse" />
       </div>
     ),
   }
@@ -1015,21 +988,21 @@ export default function PerpsPage() {
         </div>
       </div>
 
-      {/* Order book / trades / positions grid */}
-      {/* On mobile: visible when book tab active; on desktop: always visible */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+      {/* Market structure + positions grid */}
+      {/* On mobile: visible when book tab active; on desktop: always visible.
+          Task 0043 replaced the legacy 3-column OrderBook / RecentTrades /
+          OpenPositions row with this 2-column layout — the GoodPerps oracle
+          margin engine has no CLOB, so the structure card now shows the
+          honest mark/index/open-interest plus an explainer paragraph. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-700/20">
-            <h3 className="text-xs font-semibold text-white">Order Book</h3>
-          </div>
-          <OrderBook markPrice={pair.markPrice} />
-        </div>
-
-        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-700/20">
-            <h3 className="text-xs font-semibold text-white">Recent Trades</h3>
-          </div>
-          <RecentTrades markPrice={pair.markPrice} />
+          <PerpsMarketStructureCard
+            symbol={pair.symbol}
+            markPrice={pair.markPrice}
+            indexPrice={pair.indexPrice}
+            openInterestUsd={pair.openInterest}
+            source={priceSources[pair.symbol] ?? 'unknown'}
+          />
         </div>
 
         <div

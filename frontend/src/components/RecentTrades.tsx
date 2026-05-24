@@ -1,5 +1,15 @@
 'use client'
 
+/**
+ * RecentTrades — DEMO / FIXTURE COMPONENT ONLY.
+ *
+ * GoodPerps has no on-chain trade tape (fills price off the oracle mark
+ * against an AMM-style margin engine). Production routes MUST NOT mount
+ * `DemoRecentTrades` or call `generateDemoRecentTrades`. Use
+ * `<PerpsMarketStructureCard>` instead (task 0043). The generator is
+ * kept exported for storybook only.
+ */
+
 import { useMemo } from 'react'
 import { formatPerpsPrice } from '@/lib/perpsData'
 
@@ -10,7 +20,8 @@ interface RecentTrade {
   time: string
 }
 
-function generateRecentTrades(midPrice: number, count: number = 20): RecentTrade[] {
+// DEMO ONLY (task 0043). Production /perps uses `PerpsMarketStructureCard`.
+function generateDemoRecentTrades(midPrice: number, count: number = 20): RecentTrade[] {
   const trades: RecentTrade[] = []
   const now = new Date()
 
@@ -28,12 +39,15 @@ function generateRecentTrades(midPrice: number, count: number = 20): RecentTrade
   return trades
 }
 
-interface RecentTradesProps {
+interface DemoRecentTradesProps {
   markPrice: number
 }
 
-export function RecentTrades({ markPrice }: RecentTradesProps) {
-  const trades = useMemo(() => generateRecentTrades(markPrice), [markPrice])
+/**
+ * DemoRecentTrades — DEMO / FIXTURE COMPONENT ONLY. See file header.
+ */
+export function DemoRecentTrades({ markPrice }: DemoRecentTradesProps) {
+  const trades = useMemo(() => generateDemoRecentTrades(markPrice), [markPrice])
 
   return (
     <div className="text-xs">

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { aggregateBookLevels, generateOrderBook } from '../OrderBook'
+import { aggregateBookLevels, generateDemoOrderBook } from '../OrderBook'
+
+// Task 0043: `generateOrderBook` was renamed to `generateDemoOrderBook` so
+// production routes can no longer accidentally import a Math.random()
+// generator. The aggregation invariants this suite covers still apply to
+// the demo generator, which storybook keeps around.
+const generateOrderBook = generateDemoOrderBook
 
 // Task 0082 — the perps order book ladder must be strictly monotonic in price.
 // Real exchanges (Hyperliquid, Binance, Coinbase, dYdX, GMX) all render asks
