@@ -137,6 +137,7 @@ import { PerpsPriceStrip } from '@/components/PerpsPriceStrip'
 import { PortfolioPriceStrip } from '@/components/PortfolioPriceStrip'
 import { AnalyticsPriceStrip } from '@/components/AnalyticsPriceStrip'
 import { ActivityPriceStrip } from '@/components/ActivityPriceStrip'
+import { SwapRoute } from '@/components/SwapRoute'
 
 const surfaces: Array<{ name: string; render: () => React.ReactElement }> = [
   { name: 'Swap (landing strip)',   render: () => <LandingPriceStrip /> },
@@ -276,6 +277,28 @@ describe('Lane 4 — global price-source-badge invariant', () => {
     const cgLabels = Array.from(cgBadges).map(b => b.textContent ?? '')
     const cgCount = cgLabels.filter(l => l.includes('Cached')).length
     expect(cgCount).toBeGreaterThanOrEqual(2)
+  })
+
+  it('Swap card never claims "GoodSwap Pool" for an unsupported pair (task 0047)', () => {
+    // Render the SwapRoute panel directly with `pairOnChain=false` and a
+    // CoinGecko-fallback rate. The chip MUST not say "GoodSwap Pool" under
+    // any circumstances when there is no on-chain pool — this catches the
+    // 0047 regression where the panel hard-coded the green pill.
+    const { container } = render(
+      <TestWrapper>
+        <SwapRoute
+          inputToken={{ symbol: 'LINK', name: 'Chainlink', icon: '', decimals: 18, address: '0x2', category: 'DeFi' as const }}
+          outputToken={{ symbol: 'SNX', name: 'Synthetix', icon: '', decimals: 18, address: '0x3', category: 'DeFi' as const }}
+          pairOnChain={false}
+          rateSource="fallback"
+        />
+      </TestWrapper>,
+    )
+    // Case-sensitive: only the chip label is "GoodSwap Pool". The off-chain
+    // copy correctly says "no GoodSwap pool exists" (lowercase p) so we
+    // explicitly exclude that variant from the assertion.
+    expect(container.textContent ?? '').not.toMatch(/GoodSwap Pool/)
+    expect(container.querySelector('[data-route-mode]')?.getAttribute('data-route-mode')).not.toBe('pool')
   })
 
   it('Stocks page: every per-row price has a sibling source badge', async () => {

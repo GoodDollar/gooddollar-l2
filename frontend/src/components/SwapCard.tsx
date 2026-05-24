@@ -480,7 +480,14 @@ export function SwapCard() {
               visible={hasAmount}
             />
             <PriceImpactWarning priceImpact={priceImpact} visible={hasAmount} />
-            {hasAmount && <SwapRoute inputToken={inputToken} outputToken={outputToken} />}
+            {hasAmount && (
+              <SwapRoute
+                inputToken={inputToken}
+                outputToken={outputToken}
+                pairOnChain={pairOnChain}
+                rateSource={rateSource}
+              />
+            )}
           </>
         )}
 
