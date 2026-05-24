@@ -1,4 +1,6 @@
 import * as React from 'react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
@@ -51,5 +53,50 @@ describe('Button', () => {
       </Button>,
     )
     expect(ref.current?.tagName).toBe('A')
+  })
+
+  it('asChild merges parent and child classNames so callers can extend variant styles (#0083)', () => {
+    render(
+      <Button asChild variant="secondary" className="px-9">
+        <a data-testid="cta" href="/x" className="custom-extra">
+          X
+        </a>
+      </Button>,
+    )
+    const el = screen.getByTestId('cta')
+    expect(el.className).toContain('px-9')
+    expect(el.className).toContain('custom-extra')
+    expect(el.className).toContain('bg-dark-50')
+  })
+
+  it('asChild composes parent and child refs so both observers receive the DOM node (#0083)', () => {
+    const parentRef = React.createRef<HTMLAnchorElement>()
+    const childRef = React.createRef<HTMLAnchorElement>()
+    render(
+      <Button
+        asChild
+        ref={parentRef as unknown as React.Ref<HTMLButtonElement>}
+      >
+        <a ref={childRef} href="/x">
+          X
+        </a>
+      </Button>,
+    )
+    expect(parentRef.current?.tagName).toBe('A')
+    expect(childRef.current?.tagName).toBe('A')
+    expect(parentRef.current).toBe(childRef.current)
+  })
+
+  it('does not import @radix-ui/react-slot so Turbopack cannot evict a Slot chunk under button.tsx (#0083)', () => {
+    // The whole point of this fix is to remove the cross-module dependency
+    // that caused the dev server to return HTTP 500 sitewide after new
+    // routes were added (Turbopack would evict the Slot factory and the
+    // button.tsx chunk would crash on the next request). A static-source
+    // assertion is the cheapest guard against the import sneaking back in.
+    const source = readFileSync(
+      resolve(__dirname, '..', 'button.tsx'),
+      'utf8',
+    )
+    expect(source).not.toMatch(/^\s*import[^\n]*['"]@radix-ui\/react-slot['"]/m)
   })
 })
