@@ -42,9 +42,10 @@ export class PriceWsClient {
     this.ws.on('message', (data: WebSocket.Data) => {
       try {
         const parsed = JSON.parse(data.toString());
-        const quote = this.extractQuote(parsed);
-        if (quote && quote.symbol && Number.isFinite(quote.mid) && quote.mid > 0) {
-          this.onQuote(quote);
+        for (const quote of this.extractQuotes(parsed)) {
+          if (quote.symbol && Number.isFinite(quote.mid) && quote.mid > 0) {
+            this.onQuote(quote);
+          }
         }
       } catch {
         // malformed message — skip
@@ -69,22 +70,32 @@ export class PriceWsClient {
   }
 
   /**
-   * Handles both the WsBroadcaster envelope format ({ type: 'quote', data: NormalizedQuote })
-   * and raw NormalizedQuote messages for backward compatibility.
+   * Normalises every supported WS message shape into a flat list of quotes
+   * for the caller to validate and fan out. Recognised shapes:
+   *   - `{ type: 'quote', data: NormalizedQuote }` — live tick.
+   *   - `{ type: 'snapshot', data: NormalizedQuote[] }` — initial replay
+   *     sent by the broadcaster on connect so the buffer is usable before
+   *     the next upstream tick.
+   *   - Raw `NormalizedQuote` (no envelope) — legacy/backward compat.
+   * Unknown shapes yield zero quotes (dropped silently).
    */
-  private extractQuote(parsed: unknown): NormalizedQuote | null {
-    if (!parsed || typeof parsed !== 'object') return null;
+  private extractQuotes(parsed: unknown): NormalizedQuote[] {
+    if (!parsed || typeof parsed !== 'object') return [];
     const msg = parsed as Record<string, unknown>;
 
     if (msg.type === 'quote' && msg.data && typeof msg.data === 'object') {
-      return msg.data as NormalizedQuote;
+      return [msg.data as NormalizedQuote];
+    }
+
+    if (msg.type === 'snapshot' && Array.isArray(msg.data)) {
+      return msg.data as NormalizedQuote[];
     }
 
     if ('symbol' in msg && 'mid' in msg) {
-      return msg as unknown as NormalizedQuote;
+      return [msg as unknown as NormalizedQuote];
     }
 
-    return null;
+    return [];
   }
 
   close(): void {

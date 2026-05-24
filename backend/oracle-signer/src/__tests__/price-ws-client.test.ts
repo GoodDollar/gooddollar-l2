@@ -124,6 +124,93 @@ describe('PriceWsClient', () => {
     client.connect();
   });
 
+  describe('snapshot frames', () => {
+    function wrapSnapshot(quotes: NormalizedQuote[]) {
+      return JSON.stringify({
+        type: 'snapshot',
+        data: quotes,
+        count: quotes.length,
+        timestamp: Date.now(),
+      });
+    }
+
+    it('primes onQuote with every snapshot entry on connect', (done) => {
+      const received: NormalizedQuote[] = [];
+      server.on('connection', (ws) => {
+        ws.send(wrapSnapshot([
+          makeQuote('BTC', 60000),
+          makeQuote('ETH', 3000),
+        ]));
+      });
+      const client = new PriceWsClient(`ws://localhost:${port}`, (quote) => {
+        received.push(quote);
+        if (received.length === 2) {
+          client.close();
+          expect(received.map((q) => q.symbol).sort()).toEqual(['BTC', 'ETH']);
+          done();
+        }
+      });
+      client.connect();
+    });
+
+    it('still receives subsequent type=quote frames after a snapshot', (done) => {
+      const received: NormalizedQuote[] = [];
+      server.on('connection', (ws) => {
+        ws.send(wrapSnapshot([makeQuote('BTC', 60000)]));
+        ws.send(wrapEnvelope(makeQuote('ETH', 3000)));
+      });
+      const client = new PriceWsClient(`ws://localhost:${port}`, (quote) => {
+        received.push(quote);
+        if (received.length === 2) {
+          client.close();
+          expect(received[0].symbol).toBe('BTC');
+          expect(received[1].symbol).toBe('ETH');
+          done();
+        }
+      });
+      client.connect();
+    });
+
+    it('skips snapshot entries that fail the finite-mid guard', (done) => {
+      const received: NormalizedQuote[] = [];
+      server.on('connection', (ws) => {
+        ws.send(wrapSnapshot([
+          makeQuote('BAD', 0),
+          makeQuote('GOOD', 100),
+        ]));
+      });
+      const client = new PriceWsClient(`ws://localhost:${port}`, (quote) => {
+        received.push(quote);
+        // wait a small moment to be sure no extra entries arrive
+        setTimeout(() => {
+          if (received.length === 1) {
+            client.close();
+            expect(received[0].symbol).toBe('GOOD');
+            done();
+          }
+        }, 50);
+      });
+      client.connect();
+    });
+
+    it('ignores an empty snapshot without calling onQuote', (done) => {
+      const received: NormalizedQuote[] = [];
+      server.on('connection', (ws) => {
+        ws.send(wrapSnapshot([]));
+        setTimeout(() => ws.send(wrapEnvelope(makeQuote('BTC', 60000))), 30);
+      });
+      const client = new PriceWsClient(`ws://localhost:${port}`, (quote) => {
+        received.push(quote);
+        if (received.length === 1) {
+          client.close();
+          expect(received[0].symbol).toBe('BTC');
+          done();
+        }
+      });
+      client.connect();
+    });
+  });
+
   it('rejects quotes with NaN or Infinity mid', (done) => {
     const received: NormalizedQuote[] = [];
 
