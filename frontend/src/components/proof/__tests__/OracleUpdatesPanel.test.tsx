@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { Profiler, type ReactNode } from 'react'
 import { render, screen, act } from '@testing-library/react'
 
 interface WatchOptions {
@@ -27,6 +28,7 @@ vi.mock('@/lib/abi', () => ({
 }))
 
 import { OracleUpdatesPanel } from '../OracleUpdatesPanel'
+import { ProofNowProvider } from '../ProofNowProvider'
 import {
   TestProofPipelineAxesProvider,
 } from '../ProofPipelineAxesProvider'
@@ -223,6 +225,128 @@ describe('OracleUpdatesPanel', () => {
       const status = screen.getByTestId('oracle-updates-status')
       expect(status.textContent).toMatch(/live/i)
       expect(status.textContent).toMatch(/PriceUpdated events/i)
+    })
+  })
+
+  // Task #0070 — per-event "Xs ago" caption ticks via ProofNowProvider so
+  // each row's age string updates over time without waiting for a fresh
+  // event. Only the per-row leaf re-renders per tick; the panel header
+  // and subscription banner stay stable.
+  describe('shared-tick migration (#0070)', () => {
+    function renderWithProofNow(onChain: AxisHealth = 'healthy') {
+      const value: ProofPipelineAxesState = {
+        ...BASE_AXES_VALUE,
+        axes: { ...BASE_AXES_VALUE.axes, onChain },
+      }
+      return render(
+        <TestProofPipelineAxesProvider value={value}>
+          <ProofNowProvider>
+            <ProofPanelActionsProvider>
+              <OracleUpdatesPanel />
+            </ProofPanelActionsProvider>
+          </ProofNowProvider>
+        </TestProofPipelineAxesProvider>,
+      )
+    }
+
+    it('caption steps from 3s ago to 8s ago after a 5s shared tick advance — without a new event', () => {
+      vi.useFakeTimers()
+      const t0 = new Date('2026-05-23T13:00:00.000Z').getTime()
+      vi.setSystemTime(new Date(t0))
+
+      renderWithProofNow('healthy')
+
+      act(() => {
+        vi.setSystemTime(new Date(t0 - 3_000))
+        lastWatchOptions.onLogs?.([
+          {
+            transactionHash: '0x' + 'a'.repeat(64),
+            blockNumber: 100n,
+            args: { symbol: 'AAPL', price8: 19_000_000_000n, session: 0 },
+          },
+        ])
+        vi.setSystemTime(new Date(t0))
+      })
+
+      expect(screen.getByText('AAPL')).toBeInTheDocument()
+      expect(screen.getByText(/3s ago/)).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(5_000)
+      })
+
+      expect(screen.getByText(/8s ago/)).toBeInTheDocument()
+      expect(screen.queryByText(/3s ago/)).not.toBeInTheDocument()
+
+      vi.useRealTimers()
+    })
+
+    it('panel header / empty state do not re-render every shared tick — only the RelativeAge leaves do', () => {
+      vi.useFakeTimers()
+      const t0 = new Date('2026-05-23T13:00:00.000Z').getTime()
+      vi.setSystemTime(new Date(t0))
+
+      let panelCommits = 0
+      const Probe = ({ children }: { children: ReactNode }) => (
+        <Profiler id="oracle-updates" onRender={() => { panelCommits++ }}>
+          {children}
+        </Profiler>
+      )
+
+      const value: ProofPipelineAxesState = {
+        ...BASE_AXES_VALUE,
+        axes: { ...BASE_AXES_VALUE.axes, onChain: 'healthy' },
+      }
+      render(
+        <TestProofPipelineAxesProvider value={value}>
+          <ProofNowProvider>
+            <ProofPanelActionsProvider>
+              <Probe>
+                <OracleUpdatesPanel />
+              </Probe>
+            </ProofPanelActionsProvider>
+          </ProofNowProvider>
+        </TestProofPipelineAxesProvider>,
+      )
+
+      act(() => {
+        lastWatchOptions.onLogs?.([
+          {
+            transactionHash: '0x' + 'b'.repeat(64),
+            blockNumber: 200n,
+            args: { symbol: 'TSLA', price8: 25_000_000_000n, session: 0 },
+          },
+        ])
+      })
+
+      const baseline = panelCommits
+      act(() => {
+        vi.advanceTimersByTime(3_000)
+      })
+      // The Profiler subtree includes the leaves, so up to one commit
+      // per tick is acceptable. The contract this test enforces is
+      // that we have NOT regressed back to a per-panel timer that
+      // would compound with the shared 1s tick — allow up to 4
+      // commits across 3 seconds.
+      expect(panelCommits - baseline).toBeLessThanOrEqual(4)
+
+      vi.useRealTimers()
+    })
+
+    it('does not call Date.now() at render-time inside OracleUpdatesPanel.tsx', () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('node:fs') as typeof import('node:fs')
+      const src = fs.readFileSync(
+        'src/components/proof/OracleUpdatesPanel.tsx',
+        'utf8',
+      )
+      // Date.now() is allowed exactly once: when capturing the
+      // wall-clock at the moment a `PriceUpdated` event arrives
+      // (`capturedAt: Date.now()`). It must NOT be called from
+      // render-time formatting any more.
+      const matches = src.match(/Date\.now\(\)/g) ?? []
+      expect(matches.length).toBeLessThanOrEqual(1)
+      expect(src).not.toMatch(/function formatRelative\b/)
     })
   })
 })

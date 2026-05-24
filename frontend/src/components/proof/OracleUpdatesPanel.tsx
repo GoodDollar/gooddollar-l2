@@ -7,9 +7,11 @@ import { PriceOracleABI } from '@/lib/abi'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { RetryButton } from './PanelHeaderControls'
+import { useProofNow } from './ProofNowProvider'
 import { usePanelRetry } from './ProofPanelActionsProvider'
 import { shortAddress } from './panelHeaderMetaUtils'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
+import { formatRelativeAge } from './proofRelativeAge'
 import { DEFAULT_ORACLE_EVENT_POLLING_INTERVAL_MS } from './useProofPipelineAxes'
 import type { AxisHealth } from './proofAxes'
 
@@ -30,12 +32,18 @@ const SESSION_LABEL: Record<number, string> = {
   4: 'Halted',
 }
 
-function formatRelative(ts: number): string {
-  const ageMs = Math.max(0, Date.now() - ts)
-  if (ageMs < 1000) return 'just now'
-  if (ageMs < 60_000) return `${Math.floor(ageMs / 1000)}s ago`
-  if (ageMs < 3_600_000) return `${Math.floor(ageMs / 60_000)}m ago`
-  return `${Math.floor(ageMs / 3_600_000)}h ago`
+/**
+ * Per-row leaf component that renders the "Xs ago" caption for an
+ * oracle event timestamp. Subscribes to the page-scoped 1s tick from
+ * `useProofNow()` so the caption keeps updating between events without
+ * waiting for a fresh `PriceUpdated` log to land — see task lane6-
+ * oracle-updates-panel-formatrelative-never-ticks-stale-event-captions-and-no-shared-now
+ * (#0070). Only this leaf re-renders per tick; the panel header and
+ * subscription banner stay stable.
+ */
+function RelativeAge({ ts }: { ts: number }) {
+  const now = useProofNow()
+  return <>{formatRelativeAge(Math.max(0, now - ts))}</>
 }
 
 function formatUsd8(price8: bigint): string {
@@ -190,7 +198,7 @@ export function OracleUpdatesPanel() {
                 <div className="flex items-center gap-3 text-xs">
                   <span className="text-gray-500">block #{String(e.blockNumber)}</span>
                   <span className="text-gray-500">·</span>
-                  <span className="text-gray-400">{formatRelative(e.capturedAt)}</span>
+                  <span className="text-gray-400"><RelativeAge ts={e.capturedAt} /></span>
                   <span className="text-gray-500">·</span>
                   {link ? (
                     <a
