@@ -1617,6 +1617,25 @@ export function createServer(
       // error → message → humanReason → severity → nextStep →
       // existing tail. Triplet sources from
       // `ERROR_REASONS_PUBLIC['no-quote']`. See task 0072.
+      const src = sanitizedSource();
+      // Mirror the bulk `/quotes` 503 contract (task 0066): when the
+      // upstream source is dead the body's `source.retryAfterSeconds`
+      // is the canonical backoff hint, so lift it into the HTTP
+      // `Retry-After` header too. Off-the-shelf middleware
+      // (urllib3, Faraday, retry-axios) honours the same schedule
+      // across bulk and per-symbol endpoints. RFC 9110 §10.2.3
+      // explicitly permits `Retry-After` on 404. Gated on
+      // `!connected && retryAfterSeconds > 0` so the warmup branch
+      // (healthy source, cold cache, non-deterministic first tick)
+      // does NOT advertise a misleading hint. See task 0074.
+      if (
+        src &&
+        !src.connected &&
+        typeof src.retryAfterSeconds === 'number' &&
+        src.retryAfterSeconds > 0
+      ) {
+        res.setHeader('Retry-After', String(src.retryAfterSeconds));
+      }
       const body: Record<string, unknown> = {
         error: 'no-quote',
         message:
@@ -1628,7 +1647,7 @@ export function createServer(
         symbol: result.symbol,
         configured: true,
       };
-      res.status(404).json(finalizeEnvelope(body, now, { src: sanitizedSource() }));
+      res.status(404).json(finalizeEnvelope(body, now, { src }));
       return;
     }
     const body: Record<string, unknown> = {
