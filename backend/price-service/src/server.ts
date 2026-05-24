@@ -35,7 +35,12 @@ import {
   type NormalizeSymbolResult,
 } from './symbol-normalize';
 import { MAX_REQUESTED_SYMBOLS, parseSymbolsQuery } from './symbols-query';
-import { MAX_AGE_MS_REGEX, parseMaxAgeMs } from './max-age-query';
+import {
+  INVALID_REASON_MESSAGE_TAIL,
+  InvalidReason,
+  MAX_AGE_MS_REGEX,
+  parseMaxAgeMs,
+} from './max-age-query';
 import {
   METRICS_CONTENT_TYPE,
   MetricsSnapshot,
@@ -797,6 +802,52 @@ const INVALID_MAX_AGE_MS_NEXT_STEP =
   ERROR_REASONS_PUBLIC['invalid-max-age-ms']!.nextStep;
 const INVALID_MAX_AGE_MS_SEVERITY: SourceSeverity =
   ERROR_REASONS_PUBLIC['invalid-max-age-ms']!.severity;
+
+/**
+ * Canonical 400 `invalid-max-age-ms` envelope shared by
+ * `/quotes/:symbol` (task 0081) and `/quotes/fresh/all` (task 0087).
+ * Single source of truth for the field set + ordering: the per-symbol
+ * variant rides `symbol` alongside; the bulk variant omits it (no
+ * single symbol in scope). `invalidReason` (task 0089) is the
+ * structured enum companion to the human-string `message` tail; a
+ * SDK retry adapter can switch on it directly instead of regexing
+ * the copy.
+ *
+ * Field order combines two existing contracts:
+ *   - task 0073 leading-5: `error, message, humanReason, severity, nextStep`
+ *   - task 0083 requestId-after-nextStep convention
+ * `invalidReason` slots BETWEEN `requestId` and `expected` so SDKs
+ * read the structured "what failed" discriminator before the
+ * structured "what was expected" schema block.
+ */
+function buildInvalidMaxAgeMsBody(args: {
+  reason: InvalidReason;
+  requestId: string | undefined;
+  path: string;
+  method: string;
+  symbol?: string;
+}): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    error: 'invalid-max-age-ms',
+    message:
+      `the ?maxAgeMs= query value is not a positive base-10 ` +
+      `integer of up to 11 digits (${INVALID_REASON_MESSAGE_TAIL[args.reason]})`,
+    humanReason: INVALID_MAX_AGE_MS_HUMAN_REASON,
+    severity: INVALID_MAX_AGE_MS_SEVERITY,
+    nextStep: INVALID_MAX_AGE_MS_NEXT_STEP,
+    requestId: args.requestId,
+    invalidReason: args.reason,
+    expected: {
+      parameter: 'maxAgeMs',
+      pattern: MAX_AGE_MS_REGEX.source,
+      example: '30000',
+    },
+  };
+  if (args.symbol !== undefined) body.symbol = args.symbol;
+  Object.assign(body, echoPath(args.path));
+  body.method = args.method;
+  return body;
+}
 
 /**
  * Fallback `Retry-After` value (seconds) shipped on the `stale-cache`
@@ -1664,28 +1715,13 @@ export function createServer(
     // `ok + age > value` comparison because that needs the cache entry.
     const parsedMaxAge = parseMaxAgeMs(req.query.maxAgeMs);
     if (parsedMaxAge.kind === 'invalid') {
-      const body: Record<string, unknown> = {
-        error: 'invalid-max-age-ms',
-        message:
-          `the ?maxAgeMs= query value is not a positive base-10 ` +
-          `integer of up to 11 digits (saw ${
-            parsedMaxAge.reason === 'type'
-              ? 'a non-string'
-              : 'an unparseable string'
-          })`,
-        humanReason: INVALID_MAX_AGE_MS_HUMAN_REASON,
-        severity: INVALID_MAX_AGE_MS_SEVERITY,
-        nextStep: INVALID_MAX_AGE_MS_NEXT_STEP,
+      const body = buildInvalidMaxAgeMsBody({
+        reason: parsedMaxAge.reason,
         requestId: req.requestId,
-        expected: {
-          parameter: 'maxAgeMs',
-          pattern: MAX_AGE_MS_REGEX.source,
-          example: '30000',
-        },
-        symbol: result.symbol,
-        ...echoPath(req.path),
+        path: req.path,
         method: req.method,
-      };
+        symbol: result.symbol,
+      });
       res.status(400).json(finalizeTimestamps(body, now));
       return;
     }
@@ -1812,30 +1848,17 @@ export function createServer(
     // malformed query short-circuits to 400 before any cache work
     // (matches the per-symbol precedent from task 0082). The
     // envelope shape is identical to /quotes/:symbol's 400 minus the
-    // `symbol` field (no single symbol in scope on the bulk variant).
+    // `symbol` field (no single symbol in scope on the bulk variant);
+    // `buildInvalidMaxAgeMsBody` is the single source of truth for
+    // both endpoints — drift-gated by tests.
     const parsedMaxAge = parseMaxAgeMs(req.query.maxAgeMs);
     if (parsedMaxAge.kind === 'invalid') {
-      const body: Record<string, unknown> = {
-        error: 'invalid-max-age-ms',
-        message:
-          `the ?maxAgeMs= query value is not a positive base-10 ` +
-          `integer of up to 11 digits (saw ${
-            parsedMaxAge.reason === 'type'
-              ? 'a non-string'
-              : 'an unparseable string'
-          })`,
-        humanReason: INVALID_MAX_AGE_MS_HUMAN_REASON,
-        severity: INVALID_MAX_AGE_MS_SEVERITY,
-        nextStep: INVALID_MAX_AGE_MS_NEXT_STEP,
+      const body = buildInvalidMaxAgeMsBody({
+        reason: parsedMaxAge.reason,
         requestId: req.requestId,
-        expected: {
-          parameter: 'maxAgeMs',
-          pattern: MAX_AGE_MS_REGEX.source,
-          example: '30000',
-        },
-        ...echoPath(req.path),
+        path: req.path,
         method: req.method,
-      };
+      });
       res.status(400).json(finalizeTimestamps(body, now));
       return;
     }
