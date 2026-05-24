@@ -26,7 +26,7 @@ beforeAll(() => {
 
 const push = vi.fn()
 const walletState = { address: undefined as `0x${string}` | undefined }
-const favoritesState = { favorites: new Set<string>() }
+const watchlistState = { watchlist: [] as string[] }
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, replace: vi.fn() }),
@@ -118,16 +118,28 @@ vi.mock('@/lib/useStocksRebalanceStatus', () => ({
   }),
 }))
 
-vi.mock('@/lib/useStockWatchlist', () => ({
-  useStockWatchlist: () => ({
-    favorites: favoritesState.favorites,
-    toggleFavorite: (ticker: string) => {
-      const next = new Set(favoritesState.favorites)
-      if (next.has(ticker)) next.delete(ticker)
-      else next.add(ticker)
-      favoritesState.favorites = next
+vi.mock('@/lib/useWatchlist', () => ({
+  useWatchlist: () => ({
+    watchlist: watchlistState.watchlist,
+    isWatched: (ticker: string) => watchlistState.watchlist.includes(ticker.toUpperCase()),
+    add: (ticker: string) => {
+      const upper = ticker.toUpperCase()
+      if (!watchlistState.watchlist.includes(upper)) {
+        watchlistState.watchlist = [...watchlistState.watchlist, upper].sort()
+      }
     },
-    isFavorite: (ticker: string) => favoritesState.favorites.has(ticker),
+    remove: (ticker: string) => {
+      const upper = ticker.toUpperCase()
+      watchlistState.watchlist = watchlistState.watchlist.filter((t) => t !== upper)
+    },
+    toggle: (ticker: string) => {
+      const upper = ticker.toUpperCase()
+      if (watchlistState.watchlist.includes(upper)) {
+        watchlistState.watchlist = watchlistState.watchlist.filter((t) => t !== upper)
+      } else {
+        watchlistState.watchlist = [...watchlistState.watchlist, upper].sort()
+      }
+    },
   }),
 }))
 
@@ -140,7 +152,7 @@ async function findDashboardSection() {
 describe('Stocks Drift & Rebalance dashboard — filter wiring', () => {
   beforeEach(() => {
     walletState.address = undefined
-    favoritesState.favorites = new Set()
+    watchlistState.watchlist = []
     push.mockReset()
   })
 
