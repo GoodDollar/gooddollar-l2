@@ -36,7 +36,7 @@ describe('QuoteBuffer', () => {
     const first = buffer.getPendingUpdates();
     expect(first).toHaveLength(1);
 
-    buffer.markSubmitted(['AAPL']);
+    buffer.markSubmitted([{ symbol: 'AAPL', mid: 191.50 }]);
 
     // Small move: 0.05% — below 1% threshold
     buffer.update(makeQuote('AAPL', 191.60));
@@ -47,7 +47,7 @@ describe('QuoteBuffer', () => {
   it('includes symbols that exceed deviation threshold', () => {
     const buffer = new QuoteBuffer(100); // 100 bps = 1%
     buffer.update(makeQuote('AAPL', 191.50));
-    buffer.markSubmitted(['AAPL']);
+    buffer.markSubmitted([{ symbol: 'AAPL', mid: 191.50 }]);
 
     // Large move: ~1.6% — exceeds 1% threshold
     buffer.update(makeQuote('AAPL', 194.50));
@@ -123,6 +123,52 @@ describe('QuoteBuffer', () => {
 
     const updates = buffer.getPendingUpdates();
     expect(updates[0].timestamp).toBe(1716100000);
+  });
+
+  describe('markSubmitted anchors to the submitted mid, not latestQuotes', () => {
+    // Regression for the slow-tx drift: WS quotes that arrive between
+    // gate-snapshot and tx-confirm must not move the deviation anchor.
+    it('records the mid that was submitted, not the live mid at confirm time', () => {
+      const buffer = new QuoteBuffer(10); // 10 bps default
+      buffer.update(makeQuote('AAPL', 191.50));
+
+      const snapshot = buffer.getPendingUpdates();
+      expect(snapshot[0].symbol).toBe('AAPL');
+
+      // WS quote arrives during the in-flight tx. The buffer's
+      // latestQuotes mutates, but the anchor must remain the
+      // submitted price.
+      buffer.update(makeQuote('AAPL', 191.99));
+      buffer.markSubmitted([{ symbol: 'AAPL', mid: 191.50 }]);
+
+      // 191.65 vs anchor 191.50 → 7.83 bps, below 10 bps threshold.
+      buffer.update(makeQuote('AAPL', 191.65));
+      const after = buffer.getPendingUpdates();
+      expect(after).toHaveLength(0);
+
+      // Sanity: had the buggy behavior persisted (anchor = 191.99),
+      // 191.65 vs 191.99 = 17.7 bps and the symbol would have been
+      // emitted; the test above proves the new anchor is in effect.
+    });
+
+    it('ignores entries with non-finite or non-positive mid', () => {
+      const buffer = new QuoteBuffer(0);
+      buffer.update(makeQuote('AAPL', 191.50));
+
+      buffer.markSubmitted([
+        { symbol: 'AAPL', mid: 191.50 },
+        { symbol: 'TSLA', mid: NaN },
+        { symbol: 'NVDA', mid: 0 },
+      ]);
+
+      // AAPL anchored at 191.50; the other entries are ignored so
+      // the next ingest of TSLA/NVDA is treated as a first-time
+      // submission (i.e., always emitted).
+      buffer.update(makeQuote('TSLA', 178.30));
+      buffer.update(makeQuote('NVDA', 1000));
+      const pending = buffer.getPendingUpdates().map((u) => u.symbol).sort();
+      expect(pending).toEqual(['AAPL', 'NVDA', 'TSLA']);
+    });
   });
 
   describe('NaN/Infinity guards', () => {

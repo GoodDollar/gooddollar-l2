@@ -75,11 +75,18 @@ export class OracleSignerService {
     const updates = this.buffer.getPendingUpdates();
     if (updates.length === 0) return null;
 
+    // Capture the actually-submitted mids before awaiting confirmation
+    // so the deviation gate is anchored to the on-chain price even if
+    // WS pushes mutate latestQuotes during the in-flight tx.
+    const submittedMids = updates.map((u) => ({
+      symbol: u.symbol,
+      mid: Number(u.price8) / 1e8,
+    }));
     this.tickInFlight = true;
     this.lastTickStartedAtMs = Date.now();
     try {
       const result = await this.submitter.submitBatch(updates);
-      this.buffer.markSubmitted(updates.map(u => u.symbol));
+      this.buffer.markSubmitted(submittedMids);
       this.updateCount++;
 
       console.log(

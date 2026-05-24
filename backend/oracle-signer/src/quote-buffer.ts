@@ -46,11 +46,16 @@ export class QuoteBuffer {
     return updates;
   }
 
-  markSubmitted(symbols: string[]): void {
-    for (const symbol of symbols) {
-      const quote = this.latestQuotes.get(symbol);
-      if (quote) {
-        this.lastSubmittedPrices.set(symbol, quote.mid);
+  /**
+   * Anchors the deviation gate to the price that was actually submitted
+   * on chain. Reading `latestQuotes` here would race with WS pushes that
+   * arrive between gate-snapshot and tx-confirm, mis-anchoring the gate
+   * to a price that never reached the chain.
+   */
+  markSubmitted(submitted: ReadonlyArray<{ symbol: string; mid: number }>): void {
+    for (const { symbol, mid } of submitted) {
+      if (Number.isFinite(mid) && mid > 0) {
+        this.lastSubmittedPrices.set(symbol, mid);
       }
     }
   }
