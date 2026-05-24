@@ -310,10 +310,10 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'All cached quotes (or filter with ?symbols=AAPL,MSFT); ' +
       '503 when source dead AND no matched quotes.',
     responseShape:
-      '{requestId,totalCached,count(dep→matched|total),requestedCount?,' +
-      'matchedCount?,unmatched?,invalidRequested?,requestCap?,degraded?,' +
-      'stale?,message?,quotes{cacheAge,filter{Accepted,Reason}},source?,' +
-      'deprecations,timestamp,timestampIso}--200/503',
+      '{requestId,totalCached,count,requestedCount?,matchedCount?,' +
+      'unmatched?,invalidRequested?,filterDiscarded?,requestCap?,' +
+      'degraded?,stale?,message?,quotes{cacheAge,filter{Accepted,' +
+      'Reason}},source?,deprecations,timestamp,timestampIso}--200/503',
   },
   {
     path: '/quotes/fresh/all',
@@ -1467,17 +1467,24 @@ export function createServer(
     // trip. The 503 trigger swaps `count === 0` → `matchedCount === 0`
     // so a request for an uncached subset under a dead source still
     // surfaces as 503.
+    // Three branches drive the body shape (task 0088 split the prior
+    // merged `null` case):
+    //   - `filter === null`        — query absent → unfiltered dump.
+    //   - `filter.presentButEmpty` — query on the wire but no usable
+    //                                tokens → empty quotes + the new
+    //                                `filterDiscarded` sentinel so a
+    //                                client that built `?symbols=${
+    //                                arr.join(',')}` from an empty
+    //                                array sees the no-op.
+    //   - active filter            — narrowed cache walk + the same
+    //                                requestedCount/matchedCount/
+    //                                unmatched overlays as task 0077.
     const filter = parseSymbolsQuery(req.query.symbols);
     const all = cache.getAll();
     const quotes: Record<string, unknown> = {};
     const unmatched: string[] = [];
-    if (filter) {
-      for (const symbol of filter.requested) {
-        const entry = all.get(symbol);
-        if (!entry) {
-          unmatched.push(symbol);
-          continue;
-        }
+    if (filter === null) {
+      for (const [symbol, entry] of all) {
         quotes[symbol] = {
           ...entry.quote,
           cacheAge: now - entry.cachedAt,
@@ -1485,8 +1492,13 @@ export function createServer(
           filterReason: entry.filterResult.reason,
         };
       }
-    } else {
-      for (const [symbol, entry] of all) {
+    } else if (!filter.presentButEmpty) {
+      for (const symbol of filter.requested) {
+        const entry = all.get(symbol);
+        if (!entry) {
+          unmatched.push(symbol);
+          continue;
+        }
         quotes[symbol] = {
           ...entry.quote,
           cacheAge: now - entry.cachedAt,
@@ -1506,17 +1518,25 @@ export function createServer(
       totalCached: cache.size,
       count: matchedCount,
     };
-    if (filter) {
+    if (filter !== null && !filter.presentButEmpty) {
       body.requestedCount = filter.requested.length;
       body.matchedCount = matchedCount;
       if (unmatched.length > 0) body.unmatched = unmatched;
       if (filter.invalid.length > 0) body.invalidRequested = [...filter.invalid];
       if (filter.capped) body.requestCap = MAX_REQUESTED_SYMBOLS;
+    } else if (filter?.presentButEmpty) {
+      body.requestedCount = 0;
+      body.matchedCount = 0;
+      body.filterDiscarded = 'symbols-query-empty';
     }
     body.quotes = quotes;
+    const filterApplied = filter !== null && !filter.presentButEmpty;
     const ctx: EnvelopeCtx = {
       deprecations: {
-        count: filter
+        // task 0088 — present-but-empty rides the unfiltered-path
+        // pointer (`totalCached`) because no real filter was applied.
+        // The new `filterDiscarded` body field is the explicit signal.
+        count: filterApplied
           ? 'rename → matchedCount when ?symbols= filter is applied; ' +
             'will be removed in the next release'
           : 'rename → totalCached; will be removed in the next release',
@@ -1538,9 +1558,15 @@ export function createServer(
           'serving stale cached quotes — upstream source is dead ' +
           '(see source.reason / source.nextStep)';
       } else if (matchedCount === 0) {
-        message = filter
-          ? 'no requested symbols are cached yet — see body.unmatched'
-          : 'no cached quotes — source is healthy, awaiting first tick';
+        if (filterApplied) {
+          message = 'no requested symbols are cached yet — see body.unmatched';
+        } else if (filter?.presentButEmpty) {
+          message =
+            'the ?symbols= query was present but contained no usable ' +
+            'tokens — see body.filterDiscarded';
+        } else {
+          message = 'no cached quotes — source is healthy, awaiting first tick';
+        }
       }
       ctx.src = src;
       ctx.degraded = degraded;

@@ -9,12 +9,44 @@ describe('parseSymbolsQuery — pure helper (task 0077)', () => {
     expect(parseSymbolsQuery(null)).toBeNull();
   });
 
-  it('returns null when query is an empty string', () => {
-    expect(parseSymbolsQuery('')).toBeNull();
+  it('returns presentButEmpty sentinel when query is an empty string (task 0088)', () => {
+    expect(parseSymbolsQuery('')).toEqual({
+      requested: [],
+      invalid: [],
+      capped: false,
+      presentButEmpty: true,
+    });
   });
 
-  it('returns null when query is whitespace only', () => {
-    expect(parseSymbolsQuery('   ,  ,  ')).toBeNull();
+  it('returns presentButEmpty sentinel when query is whitespace + commas only (task 0088)', () => {
+    expect(parseSymbolsQuery('   ,  ,  ')).toEqual({
+      requested: [],
+      invalid: [],
+      capped: false,
+      presentButEmpty: true,
+    });
+  });
+
+  it('returns presentButEmpty sentinel for whitespace-only and commas-only inputs (task 0088)', () => {
+    // All three URL-decoded forms collapse to the same "filter
+    // discarded" verdict so the handler emits one explicit signal.
+    const expected = {
+      requested: [],
+      invalid: [],
+      capped: false,
+      presentButEmpty: true as const,
+    };
+    expect(parseSymbolsQuery('   ')).toEqual(expected);
+    expect(parseSymbolsQuery(',,,')).toEqual(expected);
+    expect(parseSymbolsQuery(' , , , ')).toEqual(expected);
+  });
+
+  it('distinguishes absent from present-but-empty (task 0088)', () => {
+    expect(parseSymbolsQuery(undefined)).toBeNull();
+    expect(parseSymbolsQuery(null)).toBeNull();
+    const empty = parseSymbolsQuery('');
+    expect(empty).not.toBeNull();
+    expect(empty?.presentButEmpty).toBe(true);
   });
 
   it('parses a single token', () => {
