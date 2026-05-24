@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/predict-backend",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "GoodPredict - Prediction market CLOB backend for GoodDollar L2",
   "type": "module",
   "main": "dist/index.js",

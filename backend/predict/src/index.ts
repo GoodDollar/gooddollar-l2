@@ -33,7 +33,7 @@ const CONTRACT_ADDRESSES: PredictContractAddresses = {
 
 async function main() {
   console.log('==============================================');
-  console.log('  GoodPredict Backend v0.2.0');
+  console.log('  GoodPredict Backend v0.2.1');
   console.log('  Prediction Markets on GoodDollar L2');
   console.log('  Now with on-chain settlement!');
   console.log('==============================================\n');
@@ -142,7 +142,7 @@ async function main() {
     res.json({
       status: 'ok',
       service: 'goodpredict',
-      version: '0.2.0',
+      version: '0.2.1',
       uptime: process.uptime(),
       onChain: !!contracts,
       rpcUrl: contracts ? RPC_URL : null,

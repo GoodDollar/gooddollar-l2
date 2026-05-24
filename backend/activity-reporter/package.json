@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/activity-reporter",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Listens for protocol events (swaps, perps, lend, predict, stocks, yield) and auto-reports activity to AgentRegistry",
   "main": "dist/index.js",
   "scripts": {

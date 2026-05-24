@@ -16,7 +16,7 @@ const RUNTIME = {
 
 function makeSnap(overrides: Partial<MetricsSnapshot> = {}): MetricsSnapshot {
   return {
-    version: '0.1.0',
+    version: '0.1.1',
     uptimeSeconds: 42.3,
     runtime: RUNTIME,
     cacheSize: 0,
@@ -188,7 +188,7 @@ describe('renderMetrics — populated snapshot', () => {
 
   it('emits price_service_info with the labeled identity gauge of 1', () => {
     expect(body).toContain(
-      'price_service_info{version="0.1.0",etoro_mode="sandbox",network="testnet",fixture_only="true",real_trading_enabled="false"} 1',
+      'price_service_info{version="0.1.1",etoro_mode="sandbox",network="testnet",fixture_only="true",real_trading_enabled="false"} 1',
     );
   });
 });

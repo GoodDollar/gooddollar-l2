@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/rpc-balancer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "RPC load balancer & health-aware proxy for GoodDollar L2 — distributes requests across multiple upstream RPC nodes with failover, rate limiting, and metrics",
   "main": "dist/index.js",
   "scripts": {

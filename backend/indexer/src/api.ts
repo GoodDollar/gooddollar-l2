@@ -112,7 +112,7 @@ export function createAPI(db: IndexerDB, port: number): express.Application {
     res.json({
       ok: true,
       service: "gooddollar-indexer",
-      version: "0.1.0",
+      version: "0.2.1",
       last_indexed_block: lastBlock,
       uptime: process.uptime(),
     });

@@ -1,6 +1,6 @@
 {
   "name": "@goodchain/price-service",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Normalized, risk-filtered price service consuming eToro market data",
   "main": "dist/index.js",

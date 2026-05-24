@@ -62,7 +62,7 @@ async function main() {
   };
 
   console.log('═══════════════════════════════════════════════');
-  console.log('  GoodYield Harvest Keeper v0.1.0');
+  console.log('  GoodYield Harvest Keeper v0.2.1');
   console.log('═══════════════════════════════════════════════');
   console.log(`  RPC:       ${config.rpcUrl}`);
   console.log(`  Factory:   ${config.factoryAddress}`);

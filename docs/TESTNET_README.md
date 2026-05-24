@@ -11,7 +11,7 @@ _Last updated: 2026-05-18 10:30 UTC during iter 30 (README/doc checkpoint 6). Th
 
 - Branch: `main`
 - Snapshot source: committed README + GitHub Actions history for this branch
-- Package version: `0.2.0`
+- Package version: `0.2.1`
 - Autobuilder iteration: `6`
 - Chain: GoodDollar L2 Devnet (`42069` configured, `42069` live)
 - Latest local block: `176824`

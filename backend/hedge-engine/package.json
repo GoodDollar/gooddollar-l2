@@ -1,6 +1,6 @@
 {
   "name": "@goodchain/hedge-engine",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Off-chain hedge engine — maps GoodChain exposure to eToro hedge orders",
   "main": "dist/index.js",

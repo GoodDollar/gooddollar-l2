@@ -1,6 +1,6 @@
 {
   "name": "goodstocks-price-keeper",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Price keeper bot for GoodStocks — fetches real stock prices and pushes to on-chain PriceOracle",
   "main": "dist/index.js",
   "scripts": {

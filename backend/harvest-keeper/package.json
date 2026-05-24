@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/harvest-keeper",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Auto-compound harvest keeper for GoodYield vaults — periodically calls harvest() on all active vaults to compound yields and route UBI fees",
   "main": "dist/index.js",
   "scripts": {

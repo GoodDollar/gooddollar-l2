@@ -4,7 +4,7 @@
 
 GoodChain L2 is an OP Stack-style EVM chain where useful financial activity routes protocol fees into universal basic income for verified humans. The repository combines the chain, Solidity protocols, a unified Next.js app suite, PM2-managed backend keepers, analytics, agent SDK, and testnet readiness automation.
 
-**Package version:** `0.2.0` · **Chain ID:** `42069` (`0xa455`)
+**Package version:** `0.2.1` · **Chain ID:** `42069` (`0xa455`)
 
 ## Vision
 

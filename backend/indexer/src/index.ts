@@ -27,7 +27,7 @@ async function main() {
   const pollInterval = parseInt(process.env.POLL_INTERVAL_MS || "2000", 10);
 
   console.log("╔══════════════════════════════════════════════╗");
-  console.log("║   GoodDollar L2 Event Indexer v0.1.0        ║");
+  console.log("║   GoodDollar L2 Event Indexer v0.2.1        ║");
   console.log("╠══════════════════════════════════════════════╣");
   console.log(`║  RPC:    ${rpcUrl.padEnd(35)} ║`);
   console.log(`║  DB:     ${dbPath.padEnd(35)} ║`);
