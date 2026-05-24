@@ -97,6 +97,14 @@ const nextConfig = {
   // shape of this bridge so it cannot quietly regress again.
   distDir: process.env.NEXT_DIST_DIR || '.next',
 
+  // Allow 127.0.0.1 as a dev origin so Playwright's webServer (which binds to
+  // 127.0.0.1) can load HMR and dev resources without the cross-origin block
+  // introduced in Next.js 15+. Without this, the HMR WebSocket fails, delaying
+  // client-side hydration and causing E2E tests (e.g. live-prices-proof) to
+  // time out before React mounts and pipeline health checks can fire.
+  // See: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+  allowedDevOrigins: ['127.0.0.1'],
+
   async headers() {
     return [
       {
