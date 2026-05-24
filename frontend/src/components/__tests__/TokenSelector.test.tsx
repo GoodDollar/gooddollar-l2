@@ -2,6 +2,18 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { TokenSelector, TOKENS } from '../TokenSelector'
 
+vi.mock('wagmi', () => ({
+  useAccount: () => ({ address: undefined }),
+  useBalance: () => ({ data: undefined }),
+  useReadContracts: () => ({ data: undefined }),
+}))
+
+vi.mock('@/lib/useAttributedPrice', () => ({
+  useAttributedPrices: (symbols: string[]) => Object.fromEntries(
+    symbols.map(symbol => [symbol, { priceUsd: symbol === 'USDC' ? 1 : 100, source: 'etoro-demo' }]),
+  ),
+}))
+
 describe('TokenSelector', () => {
   const defaultProps = {
     selected: TOKENS[1], // ETH
