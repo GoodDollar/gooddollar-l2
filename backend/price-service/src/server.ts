@@ -282,8 +282,8 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     methods: ['GET'],
     summary: 'Service discovery: lists endpoints, version, docs.',
     responseShape:
-      '{service,description,version,docs,runtime?,endpoints[],' +
-      'quickstart[],sourceReasonCatalog,source?,websocket?,' +
+      '{service,requestId,description,version,docs,runtime?,' +
+      'endpoints[],quickstart[],sourceReasonCatalog,source?,websocket?,' +
       "websocketError?,status:'ok'|'degraded',timestamp,timestampIso}",
   },
   {
@@ -310,10 +310,10 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'All cached quotes (or filter with ?symbols=AAPL,MSFT); ' +
       '503 when source dead AND no matched quotes.',
     responseShape:
-      '{totalCached,count(dep→matched|total),requestedCount?,matchedCount?,' +
-      'unmatched?,invalidRequested?,requestCap?,degraded?,stale?,message?,' +
-      'quotes{cacheAge,filter{Accepted,Reason}},source?,deprecations,' +
-      'timestamp,timestampIso} -- 200/503',
+      '{requestId,totalCached,count(dep→matched|total),requestedCount?,' +
+      'matchedCount?,unmatched?,invalidRequested?,requestCap?,degraded?,' +
+      'stale?,message?,quotes{cacheAge,filter{Accepted,Reason}},source?,' +
+      'deprecations,timestamp,timestampIso}--200/503',
   },
   {
     path: '/quotes/fresh/all',
@@ -321,7 +321,7 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary:
       'Fresh + risk-accepted quotes only; 503 when source/WS is dead.',
     responseShape:
-      '{ quotes: NormalizedQuote[], freshCount, ' +
+      '{ requestId, quotes: NormalizedQuote[], freshCount, ' +
       'count (deprecated→freshCount), degraded?, message?, source?, ' +
       'deprecations, timestamp, timestampIso } -- 200/503',
   },
@@ -364,8 +364,8 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     // `degraded:boolean` is the canonical health field (task 0064);
     // legacy `healthy?:boolean` rides one release as a deprecated alias.
     responseShape:
-      '{degraded,message?,healthy?(deprecated→degraded),freshCount,' +
-      'totalCount,quotes:Array<{symbol,cacheAge,' +
+      '{requestId,degraded,message?,healthy?(deprecated→degraded),' +
+      'freshCount,totalCount,quotes:Array<{symbol,cacheAge,' +
       'lastUpdateMs(deprecated→cacheAge),sessionState,confidence}>,' +
       'deprecations,source?,timestamp,timestampIso} -- 200/503',
   },
@@ -376,9 +376,9 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'Ingested vs rejected counts, rejection breakdown, acceptance ratio, ' +
       'uptime.',
     responseShape:
-      '{ingested,rejected,byReason,acceptanceRatio,' +
+      '{requestId,ingested,rejected,byReason,acceptanceRatio,' +
       "acceptanceRatioStatus:'ok'|'no-data'," +
-      'firstAtMs,firstAtIso,lastAtMs,lastAtIso,writeErrors,bufferedDrops,' +
+      'firstAt{Ms,Iso},lastAt{Ms,Iso},writeErrors,bufferedDrops,' +
       'firstAt?,lastAt?(dep→*Ms),runtime?,deprecations?,' +
       'bootAt*?,uptimeMs?,timestamp,timestampIso}',
   },
@@ -389,7 +389,7 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'Reference catalog: enum values that may appear as `source.reason` ' +
       'on data endpoints (NOT live state).',
     responseShape:
-      '{ reasons: Record<string, {humanReason, nextStep, ' +
+      '{requestId, reasons: Record<string, {humanReason, nextStep, ' +
       "severity:'ok'|'info'|'degraded'|'critical'}>, count, timestamp, " +
       'timestampIso }',
   },
@@ -1344,6 +1344,7 @@ export function createServer(
     // payload sees the safety/mode flags before the long endpoint list.
     const body: Record<string, unknown> = {
       service: 'price-service',
+      requestId: req.requestId,
       description: SERVICE_DESCRIPTION,
       version: PACKAGE_VERSION,
       docs: DOCS_URL,
@@ -1363,7 +1364,7 @@ export function createServer(
     );
   });
 
-  app.get('/docs/source-reasons', (_req: Request, res: Response) => {
+  app.get('/docs/source-reasons', (req: Request, res: Response) => {
     const now = Date.now();
     // Two sibling maps with identical inner shape (task 0063):
     // `reasons` describes upstream-source state (task 0020 catalog);
@@ -1378,6 +1379,7 @@ export function createServer(
     // explicitly as `null` so a JSON consumer sees the full enum
     // domain instead of guessing the missing key. See task 0066.
     const body: Record<string, unknown> = {
+      requestId: req.requestId,
       reasons: SOURCE_REASONS_PUBLIC,
       count: SOURCE_REASON_CATALOG_COUNT,
       errorReasons: ERROR_REASONS_PUBLIC,
@@ -1482,6 +1484,7 @@ export function createServer(
     // ship together for one deprecation window so existing consumers
     // don't break.
     const body: Record<string, unknown> = {
+      requestId: req.requestId,
       totalCached: cache.size,
       count: matchedCount,
     };
@@ -1759,7 +1762,7 @@ export function createServer(
     res.json(finalizeEnvelope(body, now, { src: sanitizedSource() }));
   });
 
-  app.get('/quotes/fresh/all', (_req: Request, res: Response) => {
+  app.get('/quotes/fresh/all', (req: Request, res: Response) => {
     const now = Date.now();
     const fresh = cache.getFresh();
     // Reuse the canonical `computeDegraded` verdict so /quotes/fresh/all,
@@ -1775,6 +1778,7 @@ export function createServer(
     // pointer (same cadence as `/quotes.count → totalCached` from
     // task 0035). See task 0054.
     const body: Record<string, unknown> = {
+      requestId: req.requestId,
       quotes: fresh,
       freshCount: fresh.length,
       count: fresh.length,
@@ -1809,7 +1813,7 @@ export function createServer(
     );
   });
 
-  app.get('/audit/stats', (_req: Request, res: Response) => {
+  app.get('/audit/stats', (req: Request, res: Response) => {
     const now = Date.now();
     const stats: IngestStats = statsGetter
       ? statsGetter()
@@ -1822,7 +1826,13 @@ export function createServer(
           writeErrors: 0,
           bufferedDrops: 0,
         };
-    const { body, deprecations } = buildAuditStatsBody(stats);
+    const { body: domainBody, deprecations } = buildAuditStatsBody(stats);
+    // requestId rides at the top of the body so JSON-only consumers
+    // (Datadog/CloudWatch capture, browser fetch logs) carry the
+    // correlation token alongside the domain payload — matches the
+    // `/health` slot precedent (task 0078) and the 0041 field-order
+    // policy (identity → requestId → domain → meta tail). See task 0084.
+    const body: Record<string, unknown> = { requestId: req.requestId, ...domainBody };
     // Surface the safety block (`etoroMode`, `realTradingEnabled`,
     // `network`, `fixtureOnly`, `configuredAt*`) here too so an SRE
     // polling acceptance-ratio and audit-log backpressure metrics
@@ -1909,7 +1919,7 @@ export function createServer(
     };
   }
 
-  app.get('/status/quotes', (_req: Request, res: Response) => {
+  app.get('/status/quotes', (req: Request, res: Response) => {
     const now = Date.now();
     const all = cache.getAll();
     // Per-quote entry shape pins the canonical-duration convention
@@ -1944,6 +1954,7 @@ export function createServer(
 
     const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
     const body: Record<string, unknown> = {
+      requestId: req.requestId,
       freshCount,
       totalCount: all.size,
       quotes,

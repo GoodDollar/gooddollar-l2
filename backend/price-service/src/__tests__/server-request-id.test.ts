@@ -140,12 +140,12 @@ describe('X-Request-Id correlation header (task 0078)', () => {
     expect(body.requestId).toBe('trace-405-1');
   });
 
-  it('body.requestId is ABSENT on data 200 bodies (header is sufficient there)', async () => {
+  it('body.requestId rides on /quotes success envelope (task 0084)', async () => {
     const res = await fetch(`${baseUrl}/quotes`, {
       headers: { 'X-Request-Id': 'trace-quotes' },
     });
     const body = (await res.json()) as Record<string, unknown>;
-    expect('requestId' in body).toBe(false);
+    expect(body.requestId).toBe('trace-quotes');
     expect(res.headers.get('x-request-id')).toBe('trace-quotes');
   });
 
