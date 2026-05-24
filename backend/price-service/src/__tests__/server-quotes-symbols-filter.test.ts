@@ -147,8 +147,13 @@ describe('GET /quotes?symbols= filter (task 0077)', () => {
     const quotes = eps.find((e) => e.path === '/quotes')!;
     expect(quotes.responseShape as string).toMatch(/requestedCount\?/);
     expect(quotes.responseShape as string).toMatch(/matchedCount\?/);
-    expect(quotes.responseShape as string).toMatch(/unmatched\?/);
-    expect(quotes.responseShape as string).toMatch(/invalidRequested\?/);
+    // task 0091 compacted `unmatched?` + the two new partitions into
+    // brace-expansion shorthand `unmatched{,Cold,Unconfigured}?`; the
+    // word-boundary regex matches either the legacy `unmatched?` form
+    // or the compact `unmatched{...}?` form so this assertion outlives
+    // the catalog-string evolution.
+    expect(quotes.responseShape as string).toMatch(/unmatched\b/);
+    expect(quotes.responseShape as string).toMatch(/invalidRequested\b/);
   });
 
   it('quickstart includes a step demonstrating ?symbols=', async () => {

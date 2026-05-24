@@ -323,10 +323,14 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     // + `invalidCap?` fit under the 240-char wire cap; the full inner
     // shape is documented on the /quotes/:symbol catalog row below
     // (entry-level shape is identical between the two endpoints).
+    // task 0091 — `unmatched{,Cold,Unconfigured}?` is brace-expansion
+    // shorthand for the union + the two partitions; `degraded?` /
+    // `message?` / `invalidCap?` drop off the compact catalog row
+    // to make room (they ride on the body unchanged).
     responseShape:
       '{requestId,totalCached,count,requestedCount?,matchedCount?,' +
-      'unmatched?,invalidRequested?,invalidRequestedTotal?,invalidCap?,' +
-      'filterDiscarded?,requestCap?,degraded?,stale?,message?,' +
+      'unmatched{,Cold,Unconfigured}?,invalidRequested?,' +
+      'invalidRequestedTotal?,filterDiscarded?,requestCap?,stale?,' +
       'quotes[],source?,deprecations,timestamp,timestampIso}--200/503',
   },
   {
@@ -1547,7 +1551,17 @@ export function createServer(
     const filter = parseSymbolsQuery(req.query.symbols);
     const all = cache.getAll();
     const quotes: Record<string, unknown> = {};
-    const unmatched: string[] = [];
+    // task 0091 — partition unmatched at miss time so the bulk
+    // response mirrors the per-symbol 404 split:
+    //   - `unmatchedCold`        ↔ `no-quote` (configured, cache cold
+    //                              — info severity, retryable).
+    //   - `unmatchedUnconfigured`↔ `symbol-not-configured` (not in
+    //                              `ORACLE_SYMBOLS` — critical, terminal
+    //                              until operator extends config).
+    // `unmatched` stays for one deprecation window as the union; the
+    // rename pointer rides `body.deprecations.unmatched`.
+    const unmatchedCold: string[] = [];
+    const unmatchedUnconfigured: string[] = [];
     if (filter === null) {
       for (const [symbol, entry] of all) {
         quotes[symbol] = {
@@ -1561,7 +1575,10 @@ export function createServer(
       for (const symbol of filter.requested) {
         const entry = all.get(symbol);
         if (!entry) {
-          unmatched.push(symbol);
+          const bucket = configuredSet.has(symbol)
+            ? unmatchedCold
+            : unmatchedUnconfigured;
+          bucket.push(symbol);
           continue;
         }
         quotes[symbol] = {
@@ -1572,6 +1589,10 @@ export function createServer(
         };
       }
     }
+    // Union is a derived view of the partitions (cold first, then
+    // unconfigured) — drift between union and partitions is structurally
+    // impossible, pinned by a SET-equality test.
+    const unmatched = [...unmatchedCold, ...unmatchedUnconfigured];
     const matchedCount = Object.keys(quotes).length;
     // `count` is the legacy alias for `totalCached` on the unfiltered
     // path and `matchedCount` on the filtered path. Both fields hold the
@@ -1587,6 +1608,16 @@ export function createServer(
       body.requestedCount = filter.requested.length;
       body.matchedCount = matchedCount;
       if (unmatched.length > 0) body.unmatched = unmatched;
+      // task 0091 — partitions + severity tag follow the existing
+      // omit-on-empty pattern so an all-cached request stays
+      // byte-identical to today. Severity sources from
+      // `ERROR_REASONS_PUBLIC['symbol-not-configured']` so the bulk
+      // body and the per-symbol envelope cannot drift.
+      if (unmatchedCold.length > 0) body.unmatchedCold = unmatchedCold;
+      if (unmatchedUnconfigured.length > 0) {
+        body.unmatchedUnconfigured = unmatchedUnconfigured;
+        body.unmatchedUnconfiguredSeverity = SYMBOL_NOT_CONFIGURED_SEVERITY;
+      }
       if (filter.invalid.length > 0) {
         body.invalidRequested = [...filter.invalid];
         // task 0090 — sibling counter only fires when invalid tokens
@@ -1602,17 +1633,25 @@ export function createServer(
     }
     body.quotes = quotes;
     const filterApplied = filter !== null && !filter.presentButEmpty;
-    const ctx: EnvelopeCtx = {
-      deprecations: {
-        // task 0088 — present-but-empty rides the unfiltered-path
-        // pointer (`totalCached`) because no real filter was applied.
-        // The new `filterDiscarded` body field is the explicit signal.
-        count: filterApplied
-          ? 'rename → matchedCount when ?symbols= filter is applied; ' +
-            'will be removed in the next release'
-          : 'rename → totalCached; will be removed in the next release',
-      },
+    const deprecations: Record<string, string> = {
+      // task 0088 — present-but-empty rides the unfiltered-path
+      // pointer (`totalCached`) because no real filter was applied.
+      // The new `filterDiscarded` body field is the explicit signal.
+      count: filterApplied
+        ? 'rename → matchedCount when ?symbols= filter is applied; ' +
+          'will be removed in the next release'
+        : 'rename → totalCached; will be removed in the next release',
     };
+    // task 0091 — the `unmatched` rename pointer only fires when the
+    // legacy union actually shipped; all-cached requests keep the
+    // pre-0091 deprecations object byte-identical.
+    if (filterApplied && unmatched.length > 0) {
+      deprecations.unmatched =
+        'split → unmatchedCold (configured + cache cold — retryable) + ' +
+        'unmatchedUnconfigured (not in ORACLE_SYMBOLS — terminal); ' +
+        'will be removed in the next release';
+    }
+    const ctx: EnvelopeCtx = { deprecations };
     let status = 200;
     if (sourceStatusGetter) {
       const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
