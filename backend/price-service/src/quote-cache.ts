@@ -29,8 +29,20 @@ export class QuoteCache {
       });
     }
 
+    // Mirror the etoro-client market-data listener loop: a single
+    // throwing listener (e.g. WsBroadcaster client.send race) must not
+    // silence later listeners on the same tick or unwind into the
+    // upstream ingest path.
     for (const listener of this.listeners) {
-      listener(quote.symbol, result);
+      try {
+        listener(quote.symbol, result);
+      } catch (err) {
+        console.warn(
+          `[price-service] cache listener threw — skipping. ` +
+          `symbol=${quote.symbol} ` +
+          `err=${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
     return result;

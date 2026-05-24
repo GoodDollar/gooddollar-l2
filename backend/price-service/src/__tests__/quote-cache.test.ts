@@ -136,6 +136,23 @@ describe('QuoteCache', () => {
       cache.update(makeQuote({ symbol: 'TSLA' }));
       expect(received).toEqual(['AAPL']);
     });
+
+    // Regression: a single throwing listener used to propagate up out
+    // of `update`, breaking the upstream ingest path (etoro-source →
+    // PriceService.ingestQuote) and silencing every later listener
+    // for the same tick. Mirrors the defensive pattern in
+    // etoro-client/src/market-data.ts.
+    it('isolates a throwing listener so update returns and later listeners still fire', () => {
+      const received: string[] = [];
+      cache.onUpdate(() => { throw new Error('downstream blew up'); });
+      cache.onUpdate((symbol) => received.push(symbol));
+
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      expect(() => cache.update(makeQuote({ symbol: 'AAPL' }))).not.toThrow();
+      expect(received).toEqual(['AAPL']);
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/cache listener threw/));
+      warn.mockRestore();
+    });
   });
 
   describe('clear', () => {

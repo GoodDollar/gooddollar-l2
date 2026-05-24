@@ -160,4 +160,74 @@ describe('WsBroadcaster', () => {
       });
     });
   });
+
+  describe('send-failure isolation', () => {
+    // Build a fake server-side WebSocket whose `send` we control. Used in
+    // place of a live peer so the test can drive the for-loop through a
+    // synthetic CLOSING-race / backpressure scenario.
+    function makeFakeOpenClient(send: jest.Mock): WebSocket {
+      return {
+        readyState: WebSocket.OPEN,
+        send,
+        on: jest.fn(),
+        once: jest.fn(),
+      } as unknown as WebSocket;
+    }
+
+    it('continues broadcasting to remaining clients when one client.send throws', () => {
+      const goodSend = jest.fn();
+      const badSend = jest.fn(() => { throw new Error('WebSocket is not open: readyState 2'); });
+      const goodClient = makeFakeOpenClient(goodSend);
+      const badClient = makeFakeOpenClient(badSend);
+
+      const wss = (broadcaster as unknown as { wss: { clients: Set<WebSocket> } }).wss;
+      wss.clients.add(badClient);
+      wss.clients.add(goodClient);
+
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      // cache.update fires the broadcaster's listener which invokes
+      // the broadcast loop synchronously; the second client must
+      // still receive the frame even though the first threw.
+      expect(() => cache.update(makeQuote({ symbol: 'AAPL', last: 195 }))).not.toThrow();
+
+      expect(badSend).toHaveBeenCalledTimes(1);
+      expect(goodSend).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(goodSend.mock.calls[0][0] as string).type).toBe('quote');
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/ws send failed/));
+      warn.mockRestore();
+    });
+
+    it('snapshot-on-connect throw is logged and does not crash the WSS', () => {
+      const fakeClient = makeFakeOpenClient(
+        jest.fn(() => { throw new Error('Cannot call send() while not in OPEN state'); }),
+      );
+      const wss = (broadcaster as unknown as {
+        wss: { emit: (event: string, ...args: unknown[]) => boolean };
+      }).wss;
+
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      // The broadcaster's connection handler runs synchronously with
+      // emit; if the throw escapes, this expression throws.
+      expect(() => wss.emit('connection', fakeClient, {})).not.toThrow();
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/snapshot-on-connect failed/));
+      warn.mockRestore();
+    });
+
+    it('attaches a per-client error sink on connect so stale subscribers do not bubble up', () => {
+      const onSpy = jest.fn();
+      const fakeClient = {
+        readyState: WebSocket.OPEN,
+        send: jest.fn(),
+        on: onSpy,
+        once: jest.fn(),
+      } as unknown as WebSocket;
+
+      const wss = (broadcaster as unknown as {
+        wss: { emit: (event: string, ...args: unknown[]) => boolean };
+      }).wss;
+      wss.emit('connection', fakeClient, {});
+
+      expect(onSpy).toHaveBeenCalledWith('error', expect.any(Function));
+    });
+  });
 });
