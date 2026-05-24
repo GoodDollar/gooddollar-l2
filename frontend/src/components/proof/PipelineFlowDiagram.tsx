@@ -4,7 +4,6 @@ import {
   AxisHealth,
   AxisKey,
   AxisState,
-  PANEL_BY_AXIS,
   ResolvedAxis,
   describeAxisForFlowNode,
 } from './proofAxes'
@@ -13,20 +12,48 @@ import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 type Tone = 'unknown' | 'healthy' | 'degraded'
 
 /**
- * Human-readable panel name per axis. Used by the jump-link `aria-label`
- * on each flow node so screen readers announce the navigation intent
- * ("Jump to live quotes panel") instead of repeating the node label.
- * Lives next to `PANEL_BY_AXIS` (which carries the anchor id and chip
- * reason copy) so future copy edits land in one file — see #0054.
+ * Stable identifier for every pipeline-flow node. Surfaced as a literal
+ * union so the `PANEL_BY_NODE` map below is exhaustive at compile time:
+ * adding a new node id without a matching jump target becomes a type
+ * error, not a runtime "this node points nowhere" surprise — see #0073.
  */
-const PANEL_HUMAN_NAME: Record<AxisKey, string> = {
-  quotes: 'live quotes',
-  onChain: 'on-chain oracle',
-  hedgeProof: 'last demo hedge',
+type NodeId =
+  | 'etoro'
+  | 'price-service'
+  | 'oracle-signer'
+  | 'chain'
+  | 'frontend'
+  | 'demo-hedge'
+
+interface NodeJumpTarget {
+  /** Stable `id` of the panel `<section>` this node jumps to. */
+  anchor: string
+  /** Screen-reader name appended to `aria-label="… jump to <name> panel"`. */
+  humanName: string
+}
+
+/**
+ * Per-node jump target for the flow diagram. Finer-grained than the
+ * axis-keyed `PANEL_BY_AXIS` (which the rollup chip row still owns)
+ * because two nodes that share the same `onChain` axis can still want
+ * different panel destinations: `oracle-signer` is the WRITE side (its
+ * output is the keeper's `PriceUpdated` events), `chain`/`frontend` are
+ * the READ side (multicall over `getPriceData`). Pre-0073 all three
+ * shared `#panel-onchain-oracle`, which made the OracleUpdatesPanel
+ * unreachable from the diagram and conflated the keeper with its
+ * read-side mirror — see task #0073.
+ */
+const PANEL_BY_NODE: Record<NodeId, NodeJumpTarget | null> = {
+  etoro: null,
+  'price-service': { anchor: 'panel-live-quotes', humanName: 'live quotes' },
+  'oracle-signer': { anchor: 'panel-oracle-updates', humanName: 'recent oracle updates' },
+  chain: { anchor: 'panel-onchain-oracle', humanName: 'on-chain oracle' },
+  frontend: { anchor: 'panel-onchain-oracle', humanName: 'on-chain oracle' },
+  'demo-hedge': { anchor: 'panel-last-hedge', humanName: 'last demo hedge' },
 }
 
 interface NodeSpec {
-  id: string
+  id: NodeId
   label: string
   axis: AxisKey
   subtitle?: string
@@ -241,12 +268,11 @@ function FlowNode({
   trailingEdge: { spec: EdgeSpec; tone: Tone } | null
   showHedgeProofIndicator: boolean
 }) {
-  // The upstream `eToro` source has no first-class panel; rendering it as
-  // an anchor that links to the live-quotes panel would duplicate the
-  // adjacent `price-service` click target. All other nodes carry a stable
-  // anchor in `PANEL_BY_AXIS`, so the jump map is exhaustive over the
-  // remaining `AxisKey` values without a switch.
-  const anchor = spec.id === 'etoro' ? null : PANEL_BY_AXIS[spec.axis].anchor
+  // Per-node jump target — finer-grained than `PANEL_BY_AXIS` so the
+  // write-side (`oracle-signer` → OracleUpdatesPanel) and the read-side
+  // (`chain`/`frontend` → OnChainOraclePanel) don't share one anchor
+  // (#0073). `etoro` is intentionally `null` (no first-class panel).
+  const jumpTarget = PANEL_BY_NODE[spec.id]
   const pillClass = `${PILL_BASE_CLASS} ${TONE_NODE_CLASS[tone]}`
   const pillContent = (
     <>
@@ -265,24 +291,23 @@ function FlowNode({
     </>
   )
 
-  // When the node is an anchor, the aria-label overrides the rendered
-  // text for screen readers — append the jump intent so both halves are
-  // announced (the axis state from #0055 plus the panel-jump from #0054).
-  const linkAriaLabel = `${statusSentence} — jump to ${PANEL_HUMAN_NAME[spec.axis]} panel`
-
   return (
     <li
       data-testid={`pipeline-node-${spec.id}`}
       data-tone={tone}
       className="inline-flex items-center"
     >
-      {anchor ? (
+      {jumpTarget ? (
         <a
-          href={`#${anchor}`}
+          href={`#${jumpTarget.anchor}`}
           data-testid={`pipeline-node-${spec.id}-link`}
           className={`${pillClass} ${PILL_INTERACTIVE_CLASS}`}
           title={statusSentence}
-          aria-label={linkAriaLabel}
+          // When the node is an anchor, the aria-label overrides the
+          // rendered text for screen readers — append the jump intent so
+          // both halves are announced (axis state from #0055 plus the
+          // panel-jump from #0054, now per-node from #0073).
+          aria-label={`${statusSentence} — jump to ${jumpTarget.humanName} panel`}
         >
           {pillContent}
         </a>

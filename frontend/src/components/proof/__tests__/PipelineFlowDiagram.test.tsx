@@ -744,16 +744,58 @@ describe('PipelineFlowDiagram', () => {
       expect(link.getAttribute('href')).toBe('#panel-live-quotes')
     })
 
-    it('oracle-signer / chain / frontend nodes all link to #panel-onchain-oracle', () => {
+    // #0073 — `oracle-signer` is the WRITE side (keeper emits PriceUpdated)
+    // so it now jumps to the OracleUpdatesPanel (`#panel-oracle-updates`).
+    // `chain` and `frontend` are READ-side stages and keep linking to the
+    // OnChainOraclePanel (`#panel-onchain-oracle`).
+    it('oracle-signer node links to #panel-oracle-updates (write-side) (#0073)', () => {
       mockOnChainUnknown()
       installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
       renderFlow({ offChainIntervalMs: 60_000 })
 
-      for (const id of ['oracle-signer', 'chain', 'frontend']) {
+      const link = screen.getByTestId('pipeline-node-oracle-signer-link') as HTMLAnchorElement
+      expect(link.tagName).toBe('A')
+      expect(link.getAttribute('href')).toBe('#panel-oracle-updates')
+    })
+
+    it('chain and frontend nodes both link to #panel-onchain-oracle (read-side)', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      for (const id of ['chain', 'frontend']) {
         const link = screen.getByTestId(`pipeline-node-${id}-link`) as HTMLAnchorElement
         expect(link.tagName).toBe('A')
         expect(link.getAttribute('href')).toBe('#panel-onchain-oracle')
       }
+    })
+
+    // #0073 — every node's href must resolve to a panel section that
+    // actually exists on the proof page. Pin the known anchor ids here
+    // so a future re-target that points at a non-existent panel surfaces
+    // immediately. The four data-panel sections render with these ids:
+    // see LiveQuotesPanel / OnChainOraclePanel / OracleUpdatesPanel /
+    // LastDemoHedgePanel.
+    it('every node href resolves to a known panel section id (#0073)', () => {
+      const KNOWN_PANEL_IDS = new Set([
+        'panel-live-quotes',
+        'panel-onchain-oracle',
+        'panel-oracle-updates',
+        'panel-last-hedge',
+      ])
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const links = document.querySelectorAll(
+        '[data-testid^="pipeline-node-"][data-testid$="-link"]',
+      )
+      expect(links.length).toBeGreaterThan(0)
+      links.forEach((a) => {
+        const href = a.getAttribute('href') ?? ''
+        expect(href.startsWith('#')).toBe(true)
+        expect(KNOWN_PANEL_IDS.has(href.slice(1))).toBe(true)
+      })
     })
 
     it('demo-hedge node links to #panel-last-hedge', () => {
@@ -784,9 +826,13 @@ describe('PipelineFlowDiagram', () => {
       installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
       renderFlow({ offChainIntervalMs: 60_000 })
 
+      // #0073 — `oracle-signer` aria-label names the OracleUpdatesPanel
+      // ("recent oracle updates") because that's where its writes
+      // surface. `chain` and `frontend` continue to name the
+      // OnChainOraclePanel because that's the read-side they exercise.
       const expectations: Record<string, RegExp> = {
         'price-service': /live quotes/i,
-        'oracle-signer': /on-chain oracle/i,
+        'oracle-signer': /recent oracle updates/i,
         chain: /on-chain oracle/i,
         frontend: /on-chain oracle/i,
         'demo-hedge': /last demo hedge/i,

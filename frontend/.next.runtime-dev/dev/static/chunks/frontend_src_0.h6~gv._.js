@@ -4182,15 +4182,37 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 /**
- * Human-readable panel name per axis. Used by the jump-link `aria-label`
- * on each flow node so screen readers announce the navigation intent
- * ("Jump to live quotes panel") instead of repeating the node label.
- * Lives next to `PANEL_BY_AXIS` (which carries the anchor id and chip
- * reason copy) so future copy edits land in one file — see #0054.
- */ const PANEL_HUMAN_NAME = {
-    quotes: 'live quotes',
-    onChain: 'on-chain oracle',
-    hedgeProof: 'last demo hedge'
+ * Per-node jump target for the flow diagram. Finer-grained than the
+ * axis-keyed `PANEL_BY_AXIS` (which the rollup chip row still owns)
+ * because two nodes that share the same `onChain` axis can still want
+ * different panel destinations: `oracle-signer` is the WRITE side (its
+ * output is the keeper's `PriceUpdated` events), `chain`/`frontend` are
+ * the READ side (multicall over `getPriceData`). Pre-0073 all three
+ * shared `#panel-onchain-oracle`, which made the OracleUpdatesPanel
+ * unreachable from the diagram and conflated the keeper with its
+ * read-side mirror — see task #0073.
+ */ const PANEL_BY_NODE = {
+    etoro: null,
+    'price-service': {
+        anchor: 'panel-live-quotes',
+        humanName: 'live quotes'
+    },
+    'oracle-signer': {
+        anchor: 'panel-oracle-updates',
+        humanName: 'recent oracle updates'
+    },
+    chain: {
+        anchor: 'panel-onchain-oracle',
+        humanName: 'on-chain oracle'
+    },
+    frontend: {
+        anchor: 'panel-onchain-oracle',
+        humanName: 'on-chain oracle'
+    },
+    'demo-hedge': {
+        anchor: 'panel-last-hedge',
+        humanName: 'last demo hedge'
+    }
 };
 const NODES = [
     {
@@ -4337,24 +4359,24 @@ function PipelineFlowDiagram() {
                         } : null
                     }, `node-${node.id}`, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 141,
+                        lineNumber: 168,
                         columnNumber: 13
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 134,
+                lineNumber: 161,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ToneLegend, {}, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 156,
+                lineNumber: 183,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 129,
+        lineNumber: 156,
         columnNumber: 5
     }, this);
 }
@@ -4390,20 +4412,20 @@ _c = PipelineFlowDiagram;
                         className: "inline-block h-2 w-2 rounded-full border border-green-500/50 bg-green-500/20"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 181,
+                        lineNumber: 208,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "healthy"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 185,
+                        lineNumber: 212,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 180,
+                lineNumber: 207,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
@@ -4415,20 +4437,20 @@ _c = PipelineFlowDiagram;
                         className: "inline-block h-2 w-2 rounded-full border border-yellow-500/50 bg-yellow-500/20"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 188,
+                        lineNumber: 215,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "degraded"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 192,
+                        lineNumber: 219,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 187,
+                lineNumber: 214,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
@@ -4440,20 +4462,20 @@ _c = PipelineFlowDiagram;
                         className: "inline-block h-2 w-2 rounded-full border border-white/15 bg-white/5"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 195,
+                        lineNumber: 222,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "loading"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 199,
+                        lineNumber: 226,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 194,
+                lineNumber: 221,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
@@ -4465,26 +4487,26 @@ _c = PipelineFlowDiagram;
                         className: "inline-block h-1.5 w-1.5 rounded-full bg-green-400/80"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 215,
+                        lineNumber: 242,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "hedge-proof healthy (mirroring upstream tone)"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 219,
+                        lineNumber: 246,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 211,
+                lineNumber: 238,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 175,
+        lineNumber: 202,
         columnNumber: 5
     }, this);
 }
@@ -4492,12 +4514,11 @@ _c1 = ToneLegend;
 const PILL_BASE_CLASS = 'inline-flex items-baseline gap-1.5 rounded-lg border px-3 py-1.5';
 const PILL_INTERACTIVE_CLASS = 'no-underline transition-colors hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-100 focus-visible:ring-accent/60';
 function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndicator }) {
-    // The upstream `eToro` source has no first-class panel; rendering it as
-    // an anchor that links to the live-quotes panel would duplicate the
-    // adjacent `price-service` click target. All other nodes carry a stable
-    // anchor in `PANEL_BY_AXIS`, so the jump map is exhaustive over the
-    // remaining `AxisKey` values without a switch.
-    const anchor = spec.id === 'etoro' ? null : __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$proofAxes$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PANEL_BY_AXIS"][spec.axis].anchor;
+    // Per-node jump target — finer-grained than `PANEL_BY_AXIS` so the
+    // write-side (`oracle-signer` → OracleUpdatesPanel) and the read-side
+    // (`chain`/`frontend` → OnChainOraclePanel) don't share one anchor
+    // (#0073). `etoro` is intentionally `null` (no first-class panel).
+    const jumpTarget = PANEL_BY_NODE[spec.id];
     const pillClass = `${PILL_BASE_CLASS} ${TONE_NODE_CLASS[tone]}`;
     const pillContent = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
         children: [
@@ -4506,7 +4527,7 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 children: spec.label
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 253,
+                lineNumber: 279,
                 columnNumber: 7
             }, this),
             spec.subtitle && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4514,7 +4535,7 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 children: spec.subtitle
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 255,
+                lineNumber: 281,
                 columnNumber: 9
             }, this),
             showHedgeProofIndicator && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4524,30 +4545,30 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 className: "ml-1 inline-block h-1.5 w-1.5 self-center rounded-full bg-green-400/80"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 258,
+                lineNumber: 284,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true);
-    // When the node is an anchor, the aria-label overrides the rendered
-    // text for screen readers — append the jump intent so both halves are
-    // announced (the axis state from #0055 plus the panel-jump from #0054).
-    const linkAriaLabel = `${statusSentence} — jump to ${PANEL_HUMAN_NAME[spec.axis]} panel`;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
         "data-testid": `pipeline-node-${spec.id}`,
         "data-tone": tone,
         className: "inline-flex items-center",
         children: [
-            anchor ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
-                href: `#${anchor}`,
+            jumpTarget ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                href: `#${jumpTarget.anchor}`,
                 "data-testid": `pipeline-node-${spec.id}-link`,
                 className: `${pillClass} ${PILL_INTERACTIVE_CLASS}`,
                 title: statusSentence,
-                "aria-label": linkAriaLabel,
+                // When the node is an anchor, the aria-label overrides the
+                // rendered text for screen readers — append the jump intent so
+                // both halves are announced (axis state from #0055 plus the
+                // panel-jump from #0054, now per-node from #0073).
+                "aria-label": `${statusSentence} — jump to ${jumpTarget.humanName} panel`,
                 children: pillContent
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 280,
+                lineNumber: 301,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                 className: pillClass,
@@ -4556,7 +4577,7 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 children: pillContent
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 290,
+                lineNumber: 315,
                 columnNumber: 9
             }, this),
             trailingEdge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4567,13 +4588,13 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 children: "→"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 295,
+                lineNumber: 320,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 274,
+        lineNumber: 295,
         columnNumber: 5
     }, this);
 }
