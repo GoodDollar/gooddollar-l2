@@ -25,8 +25,8 @@ interface IFastWithdrawalLP {
  *     --rpc-url $DEVNET_RPC --broadcast --legacy
  */
 contract FixFastWithdrawalUBIPool is Script {
-    address constant FAST_WITHDRAWAL_LP = 0xefAB0Beb0A557E452b398035eA964948c750b2Fd;
-    address constant UBI_FEE_SPLITTER   = 0xC0BF43A4Ca27e0976195E6661b099742f10507e5;
+    address constant FAST_WITHDRAWAL_LP = 0xF8Cb2FC7b170A2A7a00c29e38f17e987973c10d1;
+    address constant UBI_FEE_SPLITTER   = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
     address constant DEPLOYER_EOA       = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
     function run() external {

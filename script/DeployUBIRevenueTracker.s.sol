@@ -16,9 +16,10 @@ contract DeployUBIRevenueTracker is Script {
         uint256 key = vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
         address deployer = vm.addr(key);
 
-        // UBIFeeSplitter address — from op-stack/addresses.json (post-RedeployUBIAndLiFi)
+        // UBIFeeSplitter address — canonical devnet address (post-RedeployUBIAndLiFi)
         // NOTE: 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 was the old UBIFeeHook; do NOT use it.
-        address feeSplitter = vm.envOr("UBI_FEE_SPLITTER", address(0xC0BF43A4Ca27e0976195E6661b099742f10507e5));
+        // NOTE: 0xC0BF43A4Ca27e0976195E6661b099742f10507e5 was the stale pre-GOO-1958 address; do NOT use it.
+        address feeSplitter = vm.envOr("UBI_FEE_SPLITTER", address(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512));
 
         vm.startBroadcast(key);
 
