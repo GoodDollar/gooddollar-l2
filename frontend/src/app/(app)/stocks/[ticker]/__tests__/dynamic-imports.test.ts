@@ -9,7 +9,6 @@ const src = readFileSync(
 
 const MUST_STAY_STATIC = [
   'PriceChart',
-  'DepthChart',
   'StockMarketData',
   'AnalystOutlookCard',
   'NewsEventsPanel',

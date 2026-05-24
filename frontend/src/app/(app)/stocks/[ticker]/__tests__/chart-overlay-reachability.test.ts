@@ -26,19 +26,18 @@ describe('stocks/[ticker] chart overlay reachability', () => {
       const idx = src.indexOf(tag)
       const before = src.slice(0, idx)
       const lastHost = before.lastIndexOf('data-chart-overlay-host')
-      const lastToolbar = before.lastIndexOf('flex items-center justify-between mb-3')
       expect(lastHost).toBeGreaterThan(-1)
-      expect(lastHost).toBeGreaterThan(lastToolbar)
+      // The wrapper must immediately precede the overlay (no other tag in between)
+      const betweenHostAndOverlay = src.slice(lastHost, idx)
+      expect(betweenHostAndOverlay).not.toContain('TIMEFRAMES.map')
     }
   })
 
-  it('does not place DemoChartOverlay as a sibling of the timeframe toolbar', () => {
-    const toolbarIdx = src.indexOf('{chartView === \'price\' && TIMEFRAMES.map')
+  it('does not host the timeframe toolbar inside the overlay wrapper', () => {
+    const hostIdx = src.indexOf('data-chart-overlay-host')
+    expect(hostIdx).toBeGreaterThan(-1)
+    const toolbarIdx = src.indexOf('TIMEFRAMES.map')
     expect(toolbarIdx).toBeGreaterThan(-1)
-    const toolbarRow = src.indexOf('flex items-center justify-between mb-3', Math.max(0, toolbarIdx - 400))
-    expect(toolbarRow).toBeGreaterThan(-1)
-    const before = src.slice(0, toolbarRow)
-    const stretch = src.slice(before.lastIndexOf('<div'), toolbarRow + 800)
-    expect(stretch).not.toContain('<DemoChartOverlay')
+    expect(toolbarIdx).toBeLessThan(hostIdx)
   })
 })

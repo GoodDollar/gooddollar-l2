@@ -37,7 +37,6 @@ import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerT
 const AnalystOutlookCard = lazy(() => import('@/components/stocks/AnalystOutlookCard').then((mod) => ({ default: mod.AnalystOutlookCard })))
 const NewsEventsPanel = lazy(() => import('@/components/stocks/NewsEventsPanel').then((mod) => ({ default: mod.NewsEventsPanel })))
 const PriceChart = lazy(() => import('@/components/PriceChart').then((mod) => ({ default: mod.PriceChart })))
-const DepthChart = lazy(() => import('@/components/stocks/DepthChart').then((mod) => ({ default: mod.DepthChart })))
 const StockMarketData = lazy(() => import('@/components/stocks/StockMarketData').then((mod) => ({ default: mod.StockMarketData })))
 
 // NOTE: Keep these imports STATIC. Inside an App Router dynamic-segment
@@ -479,7 +478,6 @@ export default function StockDetailPage() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
-  const [chartView, setChartView] = useState<'price' | 'depth'>('price')
   const [activeTab, setActiveTab] = useState<TickerTab>(() => parseTickerTab(searchParams.get('tab')))
   const [analysisExpanded, setAnalysisExpanded] = useState(true)
   const [peerMetric, setPeerMetric] = useState<PeerMetric>('change24h')
@@ -674,42 +672,26 @@ export default function StockDetailPage() {
           </Suspense>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center mb-3">
               <div className="flex gap-1">
-                {chartView === 'price' && TIMEFRAMES.map(tf => (
+                {TIMEFRAMES.map(tf => (
                   <button key={tf} onClick={() => setTimeframe(tf)}
                     className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
                     {tf}
                   </button>
                 ))}
               </div>
-              <div className="flex gap-0.5 rounded-lg bg-dark-50/60 p-0.5">
-                <button onClick={() => setChartView('price')}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chartView === 'price' ? 'bg-dark-200 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
-                  Price
-                </button>
-                <button onClick={() => setChartView('depth')}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chartView === 'depth' ? 'bg-dark-200 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
-                  Depth
-                </button>
-              </div>
             </div>
-            {chartView === 'price' ? (
-              <div className="relative" data-chart-overlay-host>
-                <DemoChartOverlay isLive={isLive} />
-                {chartMounted ? (
-                  <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
-                    <PriceChart data={chartData} height={350} />
-                  </Suspense>
-                ) : (
-                  <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
-                )}
-              </div>
-            ) : (
-              <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
-                <DepthChart oraclePrice={stock.price} height={350} />
-              </Suspense>
-            )}
+            <div className="relative" data-chart-overlay-host>
+              <DemoChartOverlay isLive={isLive} />
+              {chartMounted ? (
+                <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
+                  <PriceChart data={chartData} height={350} />
+                </Suspense>
+              ) : (
+                <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
+              )}
+            </div>
           </div>
 
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-gray-700/20 bg-dark-100/70 p-2">
