@@ -341,7 +341,7 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       '{ingested,rejected,byReason,acceptanceRatio,' +
       "acceptanceRatioStatus:'ok'|'no-data'," +
       'firstAtMs,firstAtIso,lastAtMs,lastAtIso,writeErrors,bufferedDrops,' +
-      "firstAt?,lastAt? (deprecated→*Ms),deprecations?," +
+      'firstAt?,lastAt?(dep→*Ms),runtime?,deprecations?,' +
       'bootAt*?,uptimeMs?,timestamp,timestampIso}',
   },
   {
@@ -1723,6 +1723,15 @@ export function createServer(
           bufferedDrops: 0,
         };
     const { body, deprecations } = buildAuditStatsBody(stats);
+    // Surface the safety block (`etoroMode`, `realTradingEnabled`,
+    // `network`, `fixtureOnly`, `configuredAt*`) here too so an SRE
+    // polling acceptance-ratio and audit-log backpressure metrics
+    // can filter fixture-mode noise without a second GET against
+    // `/health`. Same `runtimeGetter()` reference `/` and
+    // `/health` use, so the three endpoints can never drift. Slot
+    // sits between the domain payload and the boot tail.
+    // See task 0075.
+    if (runtimeGetter) body.runtime = runtimeGetter();
     res.json(
       finalizeEnvelope(body, now, { boot: buildBootBlock(now), deprecations }),
     );
