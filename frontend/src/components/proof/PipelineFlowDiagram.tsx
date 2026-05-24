@@ -1,5 +1,6 @@
 'use client'
 
+import { Fragment, type ReactNode } from 'react'
 import {
   AxisHealth,
   AxisKey,
@@ -142,15 +143,70 @@ function resolveAxisForSegment(axis: AxisKey, axes: AxisState): ResolvedAxis {
 }
 
 /**
+ * Resolved render-time state for one node: everything the desktop and
+ * mobile branches need to paint the pill, with no axis-state derivation
+ * happening inside the per-variant JSX. Computed once at the diagram's
+ * top level so the two variants cannot drift on tone, status copy, or
+ * indicator visibility — see #0074.
+ */
+interface ResolvedNode {
+  spec: NodeSpec
+  tone: Tone
+  statusSentence: string
+  showHedgeProofIndicator: boolean
+  /** Resolved trailing-edge target; `null` for the terminal `demo-hedge` node. */
+  trailingEdge: { spec: EdgeSpec; tone: Tone } | null
+}
+
+function resolveNodesForRender(axes: AxisState): readonly ResolvedNode[] {
+  return NODES.map((node, idx) => {
+    const resolved = resolveAxisForSegment(node.axis, axes)
+    const edge = EDGES[idx]
+    const edgeResolved = edge ? resolveAxisForSegment(edge.axis, axes) : null
+    return {
+      spec: node,
+      tone: axisToTone(resolved.axis),
+      statusSentence: describeAxisForFlowNode(node.label, resolved, node.axis),
+      showHedgeProofIndicator:
+        node.id === 'demo-hedge' && resolved.subordinated && resolved.ok,
+      trailingEdge:
+        edge && edgeResolved
+          ? { spec: edge, tone: axisToTone(edgeResolved.axis) }
+          : null,
+    }
+  })
+}
+
+/**
  * Visualises the eToro → price-service → oracle-signer → chain →
  * frontend → demo-hedge pipeline. Reads axis health from
  * `ProofPipelineAxesProvider` so the flow node tones can never
  * disagree with the AlivenessRollup chip row above — see task
  * lane6-pipeline-flow-onchain-nodes-render-unknown-while-rollup-says-degraded
  * (0050).
+ *
+ * Renders two structural variants of the same node lineup so the
+ * layout matches the viewport without producing orphaned trailing
+ * arrows on either side (#0074):
+ *  - **Desktop** (`sm:` and above): a horizontal `flex flex-wrap`
+ *    strip with inline `→` arrows tucked inside each node's `<li>`
+ *    (the #0031 fix that keeps the arrow attached to its source on
+ *    wrap).
+ *  - **Mobile** (below `sm:`): a vertical `flex flex-col` stack of
+ *    nodes with standalone `↓` chevron `<li>` items between them; no
+ *    arrow ever sits next to whitespace because each chevron is its
+ *    own row.
+ *
+ * Both variants share the same per-node testid (`pipeline-node-<id>`)
+ * and per-edge testid (`pipeline-edge-<id>`); tests scope queries
+ * through the `pipeline-flow-desktop` / `pipeline-flow-mobile`
+ * containers so the doubled DOM in jsdom does not break strict `getBy`
+ * semantics. In production, CSS hides whichever container the active
+ * viewport doesn't want.
  */
 export function PipelineFlowDiagram() {
   const { axes } = useProofPipelineAxesContext()
+  const resolved = resolveNodesForRender(axes)
 
   return (
     <section
@@ -158,30 +214,63 @@ export function PipelineFlowDiagram() {
       data-testid="pipeline-flow-diagram"
       className="rounded-2xl border border-white/10 bg-dark-100/40 px-4 py-3"
     >
-      <ol className="flex flex-wrap items-center gap-y-2 text-xs">
-        {NODES.map((node, idx) => {
-          const resolved = resolveAxisForSegment(node.axis, axes)
-          const edge = EDGES[idx]
-          const edgeResolved = edge ? resolveAxisForSegment(edge.axis, axes) : null
-          const statusSentence = describeAxisForFlowNode(node.label, resolved, node.axis)
-          return (
+      <ol
+        data-testid="pipeline-flow-mobile"
+        data-variant="mobile"
+        className="flex flex-col gap-2 text-xs sm:hidden"
+      >
+        {resolved.map((r, idx) => (
+          <Fragment key={`mobile-${r.spec.id}`}>
             <FlowNode
-              key={`node-${node.id}`}
-              spec={node}
-              tone={axisToTone(resolved.axis)}
-              statusSentence={statusSentence}
-              showHedgeProofIndicator={node.id === 'demo-hedge' && resolved.subordinated && resolved.ok}
-              trailingEdge={
-                edge && edgeResolved
-                  ? { spec: edge, tone: axisToTone(edgeResolved.axis) }
-                  : null
-              }
+              spec={r.spec}
+              tone={r.tone}
+              statusSentence={r.statusSentence}
+              showHedgeProofIndicator={r.showHedgeProofIndicator}
+              trailingEdge={null}
             />
-          )
-        })}
+            {idx < resolved.length - 1 && r.trailingEdge && (
+              <MobileChevron edge={r.trailingEdge} />
+            )}
+          </Fragment>
+        ))}
+      </ol>
+      <ol
+        data-testid="pipeline-flow-desktop"
+        data-variant="desktop"
+        className="hidden flex-wrap items-center gap-y-2 text-xs sm:flex"
+      >
+        {resolved.map((r) => (
+          <FlowNode
+            key={`desktop-${r.spec.id}`}
+            spec={r.spec}
+            tone={r.tone}
+            statusSentence={r.statusSentence}
+            showHedgeProofIndicator={r.showHedgeProofIndicator}
+            trailingEdge={r.trailingEdge}
+          />
+        ))}
       </ol>
       <ToneLegend />
     </section>
+  )
+}
+
+/**
+ * Standalone `↓` chevron for the mobile vertical stack. Renders its own
+ * `<li>` so the previous node and the next node share no DOM ancestry
+ * with the chevron — flex-wrap orphaning is structurally impossible
+ * (the mobile stack does not wrap; each row is one item).
+ */
+function MobileChevron({ edge }: { edge: { spec: EdgeSpec; tone: Tone } }): ReactNode {
+  return (
+    <li
+      role="presentation"
+      data-testid={`pipeline-edge-${edge.spec.id}`}
+      data-tone={edge.tone}
+      className={`self-center text-base leading-none ${TONE_EDGE_CLASS[edge.tone]}`}
+    >
+      <span aria-hidden>↓</span>
+    </li>
   )
 }
 
