@@ -20,6 +20,12 @@ import {
 } from './envelope';
 import { WsAdvertisement, WsHostnameSource } from './ws-advertisement';
 import { buildQuickstart } from './quickstart';
+import {
+  computeDegraded,
+  DEGRADED_NO_CACHE_MESSAGE,
+  SourceStatusGetter,
+  WsStatusGetter,
+} from './degraded';
 
 // Re-export the quickstart + WS types and helpers off `./server` so
 // existing test imports (`from '../server'`) keep compiling. The
@@ -39,15 +45,13 @@ export type { WsAdvertisement, WsHostnameSource } from './ws-advertisement';
 export { isoFromMs };
 
 export type IngestStatsGetter = () => IngestStats;
-export type SourceStatusGetter = () => SourceStatus;
 export type BootAtGetter = () => number;
 export type WsAddressGetter = () => { port: number; host?: string };
-export type WsStatusGetter = () => {
-  listening: boolean;
-  bindError: string | null;
-  port: number | null;
-};
 export type RuntimeGetter = () => RuntimeBlock;
+// Re-exported from `./degraded` so existing call sites can keep
+// importing the getter types from `./server`; the canonical home
+// is `./degraded` (task 0076).
+export type { SourceStatusGetter, WsStatusGetter };
 
 /**
  * Operator-facing block shipped on `/` and `/health` when the broadcaster
@@ -1122,36 +1126,6 @@ function buildAuditStatsBody(
 }
 
 /**
- * Single source of truth for the healthy/degraded verdict on
- * `/health` and `/status/quotes`. Two endpoints reading the same
- * inputs must always agree, otherwise downstream consumers
- * (oracle-signer) get conflicting signals.
- *
- * The cache alone is not enough: an empty cache during warmup is
- * fine when the source is connected, but the same empty cache with
- * a dead source is "we will never tick" — degraded. A failed WS
- * bind is also degraded: live-tick subscribers can't connect, so
- * the service is read-only at best (and to a stranger's instance
- * at worst, when the same port is held by another process).
- */
-function computeDegraded(
-  cache: QuoteCache,
-  sourceStatusGetter?: SourceStatusGetter,
-  wsStatusGetter?: WsStatusGetter,
-): { degraded: boolean; src?: SanitizedSourceStatus } {
-  const fresh = cache.getFresh();
-  const cacheHealthy = fresh.length > 0 || cache.size === 0;
-  let degraded = !cacheHealthy;
-  let src: SanitizedSourceStatus | undefined;
-  if (sourceStatusGetter) {
-    src = sanitizeSourceStatus(sourceStatusGetter());
-    if (!src.connected) degraded = true;
-  }
-  if (wsStatusGetter && !wsStatusGetter().listening) degraded = true;
-  return { degraded, src };
-}
-
-/**
  * Cache-only-degraded fallback (no `sourceStatusGetter` wired but the
  * cache went sour) — RFC 9110 §15.6.4 still wants a `Retry-After`, so
  * we tag the 503 with the `'degraded'`-severity cadence. Pulled off
@@ -1484,9 +1458,7 @@ export function createServer(
       let message: string | undefined;
       if (degraded && count === 0) {
         status = 503;
-        message =
-          'no cached quotes — upstream source is degraded ' +
-          '(see source.reason / source.nextStep)';
+        message = DEGRADED_NO_CACHE_MESSAGE;
       } else if (degraded && count > 0) {
         body.stale = true;
         message =
