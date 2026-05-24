@@ -3,6 +3,10 @@ import { renderHook } from '@testing-library/react'
 
 vi.mock('wagmi', () => ({
   useReadContracts: vi.fn(() => ({ data: undefined, isLoading: false })),
+  // Task 0044: `useAttributedPrices` (via `useOnChainPairs`) now runs
+  // inside `useOnChainMarketData`. Stub the single-read helper as well
+  // so the existing source-mapping fixtures stay decoupled from RPC.
+  useReadContract: vi.fn(() => ({ data: undefined, isLoading: false })),
 }))
 
 vi.mock('@/lib/usePriceFeeds', async () => {
@@ -12,6 +16,14 @@ vi.mock('@/lib/usePriceFeeds', async () => {
     usePriceFeeds: vi.fn(),
   }
 })
+
+// `useOnChainMarketData` depends on `useAttributedPrices` for BTC/WBTC/
+// ETH/WETH parity (task 0044). The source-mapping tests focus on the
+// non-canonical path, so stub the canonical resolver to "no signal" and
+// let the existing chain-oracle / coingecko / fallback wiring run.
+vi.mock('@/lib/useAttributedPrice', () => ({
+  useAttributedPrices: () => ({} as Record<string, never>),
+}))
 
 import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
 import { usePriceFeeds, FALLBACK_PRICES } from '@/lib/usePriceFeeds'
