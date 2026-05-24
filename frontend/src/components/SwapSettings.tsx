@@ -1,8 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { useSwapSettings, SWAP_SETTINGS_DEFAULTS } from '@/lib/useSwapSettings'
-import { sanitizeNumericInput } from '@/lib/format'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import {
+  useSwapSettings,
+  SWAP_SETTINGS_DEFAULTS,
+  classifySlippageInput,
+  MIN_USEFUL_SLIPPAGE,
+  MAX_SLIPPAGE,
+  type SlippageDecision,
+} from '@/lib/useSwapSettings'
 
 const PRESETS = [0.1, 0.5, 1.0]
 
@@ -14,11 +20,14 @@ export function SwapSettings() {
     setDeadline,
     suggestion,
     applySuggestion,
-    hasLearning
   } = useSwapSettings()
   const [open, setOpen] = useState(false)
   const [customSlippage, setCustomSlippage] = useState('')
-  const [showMaxWarning, setShowMaxWarning] = useState(false)
+  // Task 0049 — `decision` is the single source of truth for what the
+  // visible custom-slippage input "means". Renderer dispatches off
+  // `decision.kind` for border colour, warning text, preset highlight,
+  // and whether to call `setSlippage`.
+  const [decision, setDecision] = useState<SlippageDecision>({ kind: 'blank' })
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,7 +40,46 @@ export function SwapSettings() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [open])
 
+  // Reset the local decision when the popover closes so reopening starts
+  // from a clean state — otherwise a stale "invalid-zero" warning could
+  // hang around.
+  useEffect(() => {
+    if (!open) {
+      setDecision({ kind: 'blank' })
+      setCustomSlippage('')
+    }
+  }, [open])
+
+  const handleSlippageChange = useCallback((raw: string) => {
+    const next = classifySlippageInput(raw)
+    setDecision(next)
+    switch (next.kind) {
+      case 'blank':
+        setCustomSlippage('')
+        return
+      case 'invalid-zero':
+        // Keep whatever the user typed visible (e.g. "0", "0.00") so the
+        // mismatch with the green preset chip is obvious. We do NOT
+        // call `setSlippage` — the preset stays unchanged in storage.
+        setCustomSlippage(raw)
+        return
+      case 'clamped-max':
+        setCustomSlippage(String(MAX_SLIPPAGE))
+        setSlippage(MAX_SLIPPAGE)
+        return
+      case 'low':
+      case 'ok':
+      case 'high-risk':
+        setCustomSlippage(raw)
+        setSlippage(next.value)
+        return
+    }
+  }, [setSlippage])
+
+  // Preset chip stays highlighted only when the stored value matches AND
+  // the user has not typed an invalid-zero into the custom field.
   const isPreset = PRESETS.includes(slippage)
+  const presetActive = isPreset && decision.kind !== 'invalid-zero'
 
   // Task 0048 — non-default detection drives the small accent dot on the
   // gear icon and the descriptive aria-label so users (and screen
@@ -76,9 +124,15 @@ export function SwapSettings() {
               {PRESETS.map(p => (
                 <button
                   key={p}
-                  onClick={() => { setSlippage(p); setCustomSlippage('') }}
+                  type="button"
+                  onClick={() => {
+                    setSlippage(p)
+                    setCustomSlippage('')
+                    setDecision({ kind: 'blank' })
+                  }}
+                  aria-pressed={presetActive && slippage === p}
                   className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none ${
-                    slippage === p && isPreset
+                    slippage === p && presetActive
                       ? 'bg-goodgreen/10 text-goodgreen border border-goodgreen/40'
                       : 'bg-dark-50 text-gray-300 border border-gray-700/50 hover:border-gray-600'
                   }`}
@@ -93,45 +147,65 @@ export function SwapSettings() {
                   inputMode="decimal"
                   placeholder="Custom"
                   aria-label="Custom slippage tolerance percentage"
+                  aria-invalid={decision.kind === 'invalid-zero'}
                   value={customSlippage}
-                  onChange={e => {
-                    const val = sanitizeNumericInput(e.target.value)
-                    const num = parseFloat(val)
-                    if (!isNaN(num) && num > 50) {
-                      setCustomSlippage('50')
-                      setShowMaxWarning(true)
-                      setSlippage(50)
-                    } else {
-                      setCustomSlippage(val)
-                      setShowMaxWarning(false)
-                      if (!isNaN(num) && num > 0) setSlippage(num)
-                    }
-                  }}
-                  onBlur={() => {
-                    const num = parseFloat(customSlippage)
-                    if (!isNaN(num) && num > 50) {
-                      setCustomSlippage('50')
-                      setShowMaxWarning(true)
-                    } else if (!isNaN(num) && num > 0) {
-                      setShowMaxWarning(false)
-                    }
-                  }}
+                  onChange={e => handleSlippageChange(e.target.value)}
                   className={`w-full py-1.5 px-2 rounded-lg text-sm text-right bg-dark-50 border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 ${
-                    !isPreset && slippage > 0
-                      ? 'border-goodgreen/40 text-goodgreen'
-                      : 'border-gray-700/50 text-gray-300'
+                    decision.kind === 'invalid-zero'
+                      ? 'border-amber-500/50 text-amber-300'
+                      : decision.kind === 'clamped-max'
+                        ? 'border-orange-500/50 text-orange-300'
+                        : !isPreset && slippage > 0
+                          ? 'border-goodgreen/40 text-goodgreen'
+                          : 'border-gray-700/50 text-gray-300'
                   }`}
                 />
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">%</span>
               </div>
             </div>
 
-            {/* Smart Suggestion */}
-            {suggestion && !showMaxWarning && (
+            {/* Inline warning row immediately below the input — driven off
+                the decision so visible value and stored value always agree
+                or surface an explicit reason for the mismatch. */}
+            {decision.kind === 'invalid-zero' && (
+              <p
+                role="alert"
+                data-testid="slippage-invalid-zero-warning"
+                className="text-xs text-amber-400 mt-1.5"
+              >
+                Slippage must be greater than 0 — choose a preset or enter a value &gt; 0.
+              </p>
+            )}
+            {decision.kind === 'low' && (
+              <p
+                role="status"
+                data-testid="slippage-low-warning"
+                className="text-xs text-yellow-400 mt-1.5"
+              >
+                Slippage below {MIN_USEFUL_SLIPPAGE}% — most trades will fail. Did you mean 0.5%?
+              </p>
+            )}
+            {decision.kind === 'high-risk' && (
+              <p className="text-xs text-yellow-400 mt-1.5">High slippage increases risk of front-running</p>
+            )}
+            {decision.kind === 'clamped-max' && (
+              <p className="text-xs text-orange-400 mt-1.5">Maximum slippage is {MAX_SLIPPAGE}%</p>
+            )}
+            {/* Existing high-risk-from-stored-state branch — keeps the
+                warning visible when the user previously saved >5% and
+                hasn't touched the input this session. */}
+            {decision.kind === 'blank' && slippage > 5 && (
+              <p className="text-xs text-yellow-400 mt-1.5">High slippage increases risk of front-running</p>
+            )}
+
+            {/* Smart Suggestion lives below the warning row so it never
+                gets lost behind a max-warning when the two co-occur. */}
+            {suggestion && decision.kind !== 'clamped-max' && (
               <div className="mt-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-blue-300 flex-1">{suggestion}</p>
                   <button
+                    type="button"
                     onClick={applySuggestion}
                     className="ml-2 px-2 py-1 text-xs text-blue-300 hover:text-white border border-blue-500/30 rounded hover:bg-blue-500/20 transition-colors focus-visible:ring-1 focus-visible:ring-blue-500/50 focus-visible:outline-none"
                   >
@@ -139,13 +213,6 @@ export function SwapSettings() {
                   </button>
                 </div>
               </div>
-            )}
-
-            {showMaxWarning && (
-              <p className="text-xs text-orange-400 mt-1.5">Maximum slippage is 50%</p>
-            )}
-            {!showMaxWarning && !suggestion && slippage > 5 && (
-              <p className="text-xs text-yellow-400 mt-1.5">High slippage increases risk of front-running</p>
             )}
           </div>
 

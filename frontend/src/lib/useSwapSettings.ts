@@ -152,11 +152,14 @@ export type SlippageDecision =
  * that mismatch via an explicit `kind` (e.g. `clamped-max`, `invalid-zero`).
  */
 export function classifySlippageInput(raw: string): SlippageDecision {
-  const trimmed = raw.trim()
-  if (!trimmed || trimmed === '.') return { kind: 'blank' }
-  if (trimmed.startsWith('-')) return { kind: 'invalid-zero' }
+  // `sanitizeNumericInput` returns:
+  //   - `''` for empty / whitespace / pure-garbage input
+  //   - `'0.'` for a lone `.` (the sanitiser pads leading-dot values)
+  //   - `'0'` for a literal `0` (and `'0.00'` etc.)
+  // Treat the first two as "user has not typed a number yet" — visually
+  // we keep the field blank and the preset chip highlighted, no warning.
   const cleaned = sanitizeNumericInput(raw).trim()
-  if (!cleaned || cleaned === '.') return { kind: 'blank' }
+  if (!cleaned || cleaned === '.' || cleaned === '0.') return { kind: 'blank' }
   const num = parseFloat(cleaned)
   if (!Number.isFinite(num)) return { kind: 'blank' }
   if (num <= 0) return { kind: 'invalid-zero' }

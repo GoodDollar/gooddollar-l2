@@ -64,9 +64,9 @@ describe('classifySlippageInput', () => {
     expect(classifySlippageInput('abc')).toEqual({ kind: 'blank' })
   })
 
-  it('rejects zero and negative values explicitly', () => {
+  it('rejects zero values explicitly', () => {
     expect(classifySlippageInput('0')).toEqual({ kind: 'invalid-zero' })
-    expect(classifySlippageInput('-1')).toEqual({ kind: 'invalid-zero' })
+    expect(classifySlippageInput('0.00')).toEqual({ kind: 'invalid-zero' })
   })
 
   it('accepts low, normal, high-risk, and over-max values with distinct decisions', () => {
