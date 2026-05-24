@@ -26,11 +26,6 @@ import {
   useCastVote,
   useQueueProposal,
   useExecuteProposal,
-  useVotingDelay,
-  useVotingPeriod,
-  useTimelockDelay,
-  useProposalThresholdBps,
-  useQuorumBps,
   proposalStateName,
   proposalStateColor,
   proposalStateBg,
@@ -38,6 +33,7 @@ import {
   formatVotes,
 } from '@/lib/useGovernance'
 import { sanitizeNumericInput } from '@/lib/format'
+import { GovernanceParams } from './governance-params'
 
 // ── Lock Duration Presets ─────────────────────────────────────────────────────
 
@@ -380,42 +376,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="bg-gray-800/50 rounded-lg p-3">
       <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
       <p className="text-lg font-bold text-white mt-1">{value}</p>
-    </div>
-  )
-}
-
-// ── Governance Params ─────────────────────────────────────────────────────────
-
-function GovernanceParams() {
-  const { data: votingDelay } = useVotingDelay()
-  const { data: votingPeriod } = useVotingPeriod()
-  const { data: timelockDelay } = useTimelockDelay()
-  const { data: thresholdBps } = useProposalThresholdBps()
-  const { data: quorumBps } = useQuorumBps()
-
-  function fmtSecs(val: bigint | undefined): string {
-    if (val === undefined) return '…'
-    const s = Number(val)
-    if (s === 0) return '0s'
-    return formatDuration(s)
-  }
-
-  function fmtBps(val: bigint | undefined): string {
-    if (val === undefined) return '…'
-    return (Number(val) / 100).toFixed(2).replace(/\.?0+$/, '') + '% of veG$'
-  }
-
-  return (
-    <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5">
-      <h3 className="text-sm font-semibold text-gray-400 mb-3">Governance Parameters</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 text-sm">
-        <div className="min-w-0"><span className="text-gray-500">Proposal Threshold:</span> <span className="text-white break-words">{fmtBps(thresholdBps as bigint | undefined)}</span></div>
-        <div className="min-w-0"><span className="text-gray-500">Quorum:</span> <span className="text-white break-words">{fmtBps(quorumBps as bigint | undefined)}</span></div>
-        <div className="min-w-0"><span className="text-gray-500">Voting Period:</span> <span className="text-white break-words">{fmtSecs(votingPeriod as bigint | undefined)}</span></div>
-        <div className="min-w-0"><span className="text-gray-500">Voting Delay:</span> <span className="text-white break-words">{fmtSecs(votingDelay as bigint | undefined)}</span></div>
-        <div className="min-w-0"><span className="text-gray-500">Timelock:</span> <span className="text-white break-words">{fmtSecs(timelockDelay as bigint | undefined)}</span></div>
-        <div className="min-w-0"><span className="text-gray-500">Early Unlock Penalty:</span> <span className="text-white break-words">30% (⅓ → UBI)</span></div>
-      </div>
     </div>
   )
 }
