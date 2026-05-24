@@ -1,5 +1,6 @@
 import e2eRegistry from '@/lib/tests/e2eRegistry.json'
 import allTestsRegistry from '@/lib/tests/allTestsRegistry.json'
+import artifactRegistry from '@/lib/tests/artifactRegistry.json'
 
 export const metadata = {
   title: 'All Tests',
@@ -14,6 +15,7 @@ type TestCategory = {
   quickCommand?: string
   config?: string
   report?: string
+  artifactLinks?: Array<{ label: string; href: string; description?: string }>
   files: string[]
 }
 
@@ -39,8 +41,8 @@ export default function TestsPage() {
           <div className="grid min-w-[280px] grid-cols-2 gap-3 text-sm">
             <Stat label="Total files" value={String(totalFiles)} />
             <Stat label="Playwright" value={String(allTestsRegistry.summary.playwrightSpecs)} />
-            <Stat label="Vitest" value={String(allTestsRegistry.summary.frontendVitestFiles)} />
-            <Stat label="Contracts" value={String(allTestsRegistry.summary.contractTests)} />
+            <Stat label="Images" value={String(artifactRegistry.summary.playwrightImages)} />
+            <Stat label="Tx hashes" value={String(artifactRegistry.summary.transactionHashes)} />
           </div>
         </div>
       </section>
@@ -53,6 +55,10 @@ export default function TestsPage() {
           <div className="mt-2 font-mono text-sm text-white">{allTestsRegistry.updatedAt}</div>
           <div className="mt-4 text-sm text-gray-400">Source root</div>
           <div className="mt-2 break-all font-mono text-xs text-goodgreen">{allTestsRegistry.sourceRoot}</div>
+          <div className="mt-4 text-sm text-gray-400">Artifact portal</div>
+          <a className="mt-2 block break-all font-mono text-xs text-goodgreen hover:underline" href={artifactRegistry.links.root}>
+            {artifactRegistry.links.root}
+          </a>
         </div>
         <div className="rounded-2xl border border-white/[0.08] bg-etoro-card p-5">
           <div className="text-sm text-gray-400">Main commands</div>
@@ -86,6 +92,20 @@ export default function TestsPage() {
                     <code className="mt-3 block break-all rounded-xl bg-black/25 p-3 text-xs text-goodgreen">{category.command}</code>
                     {category.quickCommand ? (
                       <code className="mt-2 block break-all rounded-xl bg-black/15 p-3 text-xs text-gray-300">Quick: {category.quickCommand}</code>
+                    ) : null}
+                    {category.artifactLinks?.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {category.artifactLinks.map((link) => (
+                          <a
+                            key={`${category.id}-${link.href}`}
+                            href={link.href}
+                            className="rounded-full border border-goodgreen/25 bg-goodgreen/10 px-3 py-1.5 text-xs font-semibold text-goodgreen hover:bg-goodgreen/15"
+                            title={link.description}
+                          >
+                            {link.label}
+                          </a>
+                        ))}
+                      </div>
                     ) : null}
                   </div>
                   <span className="rounded-full bg-goodgreen/10 px-3 py-1 text-xs font-semibold text-goodgreen">

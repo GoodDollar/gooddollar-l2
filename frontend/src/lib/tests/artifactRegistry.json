@@ -1,0 +1,137 @@
+{
+  "version": "test-artifacts-2026-05-24",
+  "updatedAt": "2026-05-24T20:12:04Z",
+  "publicBaseUrl": "https://goodclaw.org/tests/artifacts",
+  "summary": {
+    "playwrightImages": 641,
+    "transactionFiles": 329,
+    "transactionHashes": 6553
+  },
+  "links": {
+    "root": "https://goodclaw.org/tests/artifacts",
+    "playwrightImages": "https://goodclaw.org/tests/artifacts/playwright-images/index.html",
+    "playwrightReport": "https://goodclaw.org/tests/artifacts/playwright-report/index.html",
+    "blockchainTransactions": "https://goodclaw.org/tests/artifacts/blockchain-transactions/index.html",
+    "transactionsJson": "https://goodclaw.org/tests/artifacts/blockchain-transactions/transactions.json"
+  },
+  "processes": [
+    {
+      "id": "frontend-vitest",
+      "title": "Frontend Vitest + Testing Library",
+      "kind": "unit/integration",
+      "command": "cd frontend && npx vitest run",
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/frontend-vitest.html",
+          "description": "source files and runner command"
+        },
+        {
+          "label": "All tests JSON",
+          "href": "https://goodclaw.org/tests/allTestsRegistry.json",
+          "description": "full file inventory"
+        }
+      ]
+    },
+    {
+      "id": "playwright-e2e",
+      "title": "Playwright E2E",
+      "kind": "browser/e2e",
+      "command": "cd frontend && npm run test:e2e:all",
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/playwright-e2e.html",
+          "description": "Playwright-specific links"
+        },
+        {
+          "label": "Playwright HTML report",
+          "href": "https://goodclaw.org/tests/artifacts/playwright-report/index.html",
+          "description": "latest copied report"
+        },
+        {
+          "label": "All Playwright images",
+          "href": "https://goodclaw.org/tests/artifacts/playwright-images/index.html",
+          "description": "641 screenshots/images"
+        }
+      ]
+    },
+    {
+      "id": "foundry-contracts",
+      "title": "Foundry Solidity tests",
+      "kind": "contracts",
+      "command": "npm run test:contracts",
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/foundry-contracts.html",
+          "description": "contract-test artifacts"
+        },
+        {
+          "label": "Blockchain transactions",
+          "href": "https://goodclaw.org/tests/artifacts/blockchain-transactions/index.html",
+          "description": "6553 tx hashes"
+        },
+        {
+          "label": "Broadcast JSON files",
+          "href": "https://goodclaw.org/tests/artifacts/blockchain-transactions/files.json",
+          "description": "329 JSON files"
+        }
+      ]
+    },
+    {
+      "id": "backend-node",
+      "title": "Backend package tests",
+      "kind": "services",
+      "command": "npm run test:lane1",
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/backend-node.html",
+          "description": "backend/service test paths"
+        },
+        {
+          "label": "All tests JSON",
+          "href": "https://goodclaw.org/tests/allTestsRegistry.json",
+          "description": "full file inventory"
+        }
+      ]
+    },
+    {
+      "id": "sdk-node",
+      "title": "SDK tests",
+      "kind": "sdk",
+      "command": "cd sdk && npm test",
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/sdk-node.html",
+          "description": "SDK test paths"
+        },
+        {
+          "label": "All tests JSON",
+          "href": "https://goodclaw.org/tests/allTestsRegistry.json",
+          "description": "full file inventory"
+        }
+      ]
+    },
+    {
+      "id": "quality-checks",
+      "title": "Frontend quality/perf checks",
+      "kind": "checks",
+      "command": "cd frontend && npm run check:perf",
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/quality-checks.html",
+          "description": "quality/perf check artifacts"
+        },
+        {
+          "label": "Visual screenshots",
+          "href": "https://goodclaw.org/tests/artifacts/playwright-images/index.html",
+          "description": "641 screenshots/images"
+        }
+      ]
+    }
+  ]
+}

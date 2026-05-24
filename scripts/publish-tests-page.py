@@ -18,6 +18,10 @@ GREEN = "#13C636"
 
 
 def ensure_all_tests_registry() -> None:
+    # First generate the test inventory, then publish/capture artifacts, then
+    # regenerate so each test process includes clickable artifact links/counts.
+    subprocess.run([str(ROOT / "scripts" / "generate-tests-registry.py")], cwd=ROOT, check=True)
+    subprocess.run([str(ROOT / "scripts" / "publish-test-artifacts.py")], cwd=ROOT, check=True)
     subprocess.run([str(ROOT / "scripts" / "generate-tests-registry.py")], cwd=ROOT, check=True)
 
 
@@ -56,6 +60,8 @@ def render(e2e: dict, all_tests: dict) -> str:
     .grid {{ display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap:16px; margin-top:18px; }}
     .commands {{ display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap:12px; margin-top:16px; }}
     .command code {{ color:var(--green); word-break:break-all; }}
+    .artifact-links {{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }}
+    .artifact-links a {{ border:1px solid rgba(19,198,54,.22); background:rgba(19,198,54,.08); border-radius:999px; padding:7px 10px; color:var(--green); font-size:12px; font-weight:700; text-decoration:none; }}
     section {{ margin-top:32px; }}
     summary {{ cursor:pointer; list-style:none; }}
     summary::-webkit-details-marker {{ display:none; }}
@@ -116,6 +122,11 @@ def render_command(item: dict) -> str:
 
 def render_category(category: dict) -> str:
     files = "".join(f"<li>{esc(path)}</li>" for path in category["files"])
+    artifact_links = "".join(
+        f"<a href=\"{esc(link['href'])}\" title=\"{esc(link.get('description', ''))}\">{esc(link['label'])}</a>"
+        for link in category.get("artifactLinks", [])
+    )
+    artifact_html = f"<div class=\"artifact-links\">{artifact_links}</div>" if artifact_links else ""
     meta = []
     if category.get("config"):
         meta.append(f"Config: <span class=\"mono\">{esc(category['config'])}</span>")
@@ -131,6 +142,7 @@ def render_category(category: dict) -> str:
           <p class=\"mono\" style=\"color:var(--green);word-break:break-all\">{esc(category['command'])}</p>
           {quick}
           <span class=\"badge critical\">{len(category['files'])} files</span>
+          {artifact_html}
         </summary>
         {meta_html}
         <div class=\"file-list\"><ul>{files}</ul></div>

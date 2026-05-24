@@ -635,6 +635,18 @@
         "frontend/src/lib/chartData.test.ts",
         "frontend/src/lib/stockDiscovery.test.ts",
         "frontend/src/lib/stockInsights.test.ts"
+      ],
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/frontend-vitest.html",
+          "description": "source files and runner command"
+        },
+        {
+          "label": "All tests JSON",
+          "href": "https://goodclaw.org/tests/allTestsRegistry.json",
+          "description": "full file inventory"
+        }
       ]
     },
     {
@@ -675,6 +687,23 @@
         "frontend/e2e/swap-journey.spec.ts",
         "frontend/e2e/testnet-guide-link-check.spec.ts",
         "frontend/e2e/wallet.spec.ts"
+      ],
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/playwright-e2e.html",
+          "description": "Playwright-specific links"
+        },
+        {
+          "label": "Playwright HTML report",
+          "href": "https://goodclaw.org/tests/artifacts/playwright-report/index.html",
+          "description": "latest copied report"
+        },
+        {
+          "label": "All Playwright images",
+          "href": "https://goodclaw.org/tests/artifacts/playwright-images/index.html",
+          "description": "641 screenshots/images"
+        }
       ]
     },
     {
@@ -764,6 +793,23 @@
         "test/swap/GoodSwapRouter.t.sol",
         "test/swap/LiFiBridgeAggregator.t.sol",
         "test/swap/LimitOrderBook.t.sol"
+      ],
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/foundry-contracts.html",
+          "description": "contract-test artifacts"
+        },
+        {
+          "label": "Blockchain transactions",
+          "href": "https://goodclaw.org/tests/artifacts/blockchain-transactions/index.html",
+          "description": "6553 tx hashes"
+        },
+        {
+          "label": "Broadcast JSON files",
+          "href": "https://goodclaw.org/tests/artifacts/blockchain-transactions/files.json",
+          "description": "329 JSON files"
+        }
       ]
     },
     {
@@ -944,6 +990,18 @@
         "backend/swap-oracle/src/__tests__/deviation.test.ts",
         "backend/swap-oracle/src/__tests__/fetchPrices.test.ts",
         "backend/swap-oracle/src/__tests__/updateOnChain.test.ts"
+      ],
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/backend-node.html",
+          "description": "backend/service test paths"
+        },
+        {
+          "label": "All tests JSON",
+          "href": "https://goodclaw.org/tests/allTestsRegistry.json",
+          "description": "full file inventory"
+        }
       ]
     },
     {
@@ -955,6 +1013,18 @@
         "sdk/src/__tests__/integration.test.ts",
         "sdk/src/__tests__/orchestration.test.ts",
         "sdk/src/__tests__/sdk.test.ts"
+      ],
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/sdk-node.html",
+          "description": "SDK test paths"
+        },
+        {
+          "label": "All tests JSON",
+          "href": "https://goodclaw.org/tests/allTestsRegistry.json",
+          "description": "full file inventory"
+        }
       ]
     },
     {
@@ -974,6 +1044,18 @@
         "frontend/scripts/check-served-chunks.mjs",
         "frontend/scripts/check-status-bundle.mjs",
         "frontend/scripts/check-stocks-bundles.mjs"
+      ],
+      "artifactLinks": [
+        {
+          "label": "Process artifact hub",
+          "href": "https://goodclaw.org/tests/artifacts/process/quality-checks.html",
+          "description": "quality/perf check artifacts"
+        },
+        {
+          "label": "Visual screenshots",
+          "href": "https://goodclaw.org/tests/artifacts/playwright-images/index.html",
+          "description": "641 screenshots/images"
+        }
       ]
     }
   ]

@@ -12,5 +12,7 @@ describe('TestsPage', () => {
     expect(screen.getAllByText(/cd frontend && npm run test:e2e:all/).length).toBeGreaterThan(0)
     expect(screen.getByText(/frontend\/e2e\/app-regression\.spec\.ts/)).toBeInTheDocument()
     expect(screen.getByText('Frontend Vitest + Testing Library')).toBeInTheDocument()
+    expect(screen.getByText('All Playwright images')).toBeInTheDocument()
+    expect(screen.getByText('Blockchain transactions')).toBeInTheDocument()
   })
 })

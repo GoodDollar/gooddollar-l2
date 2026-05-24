@@ -9,6 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "frontend" / "src" / "lib" / "tests" / "allTestsRegistry.json"
 DOCS_OUT = ROOT / "docs" / "tests" / "allTestsRegistry.json"
+ARTIFACT_REGISTRY = ROOT / "frontend" / "src" / "lib" / "tests" / "artifactRegistry.json"
+PUBLIC_ARTIFACT_BASE_URL = "https://goodclaw.org/tests/artifacts"
 
 EXCLUDE_PARTS = {
     ".git",
@@ -49,6 +51,52 @@ def matching_files(root: str, predicate) -> list[str]:
     return sorted(files)
 
 
+def default_artifact_links(category_id: str) -> list[dict[str, str]]:
+    base = PUBLIC_ARTIFACT_BASE_URL
+    links = {
+        "frontend-vitest": [
+            ("Artifact hub", f"{base}/process/frontend-vitest.html", "source files and runner command"),
+            ("All tests JSON", "https://goodclaw.org/tests/allTestsRegistry.json", "full inventory"),
+        ],
+        "playwright-e2e": [
+            ("Artifact hub", f"{base}/process/playwright-e2e.html", "Playwright artifact links"),
+            ("Playwright HTML report", f"{base}/playwright-report/index.html", "latest copied report"),
+            ("All Playwright images", f"{base}/playwright-images/index.html", "screenshots and visual-review images"),
+        ],
+        "foundry-contracts": [
+            ("Artifact hub", f"{base}/process/foundry-contracts.html", "contract test artifacts"),
+            ("Blockchain transactions", f"{base}/blockchain-transactions/index.html", "transaction hashes and explorer links"),
+            ("Broadcast JSON", f"{base}/blockchain-transactions/files.json", "raw Foundry broadcast files"),
+        ],
+        "backend-node": [
+            ("Artifact hub", f"{base}/process/backend-node.html", "backend/service test paths"),
+            ("All tests JSON", "https://goodclaw.org/tests/allTestsRegistry.json", "full inventory"),
+        ],
+        "sdk-node": [
+            ("Artifact hub", f"{base}/process/sdk-node.html", "SDK test paths"),
+            ("All tests JSON", "https://goodclaw.org/tests/allTestsRegistry.json", "full inventory"),
+        ],
+        "quality-checks": [
+            ("Artifact hub", f"{base}/process/quality-checks.html", "quality/perf check artifacts"),
+            ("Visual screenshots", f"{base}/playwright-images/index.html", "screenshots and visual-review images"),
+        ],
+    }
+    return [
+        {"label": label, "href": href, "description": description}
+        for label, href, description in links.get(category_id, [])
+    ]
+
+
+def load_artifact_links() -> dict[str, list[dict[str, str]]]:
+    if not ARTIFACT_REGISTRY.exists():
+        return {}
+    try:
+        data = json.loads(ARTIFACT_REGISTRY.read_text())
+    except Exception:
+        return {}
+    return {process["id"]: process.get("artifactLinks", []) for process in data.get("processes", [])}
+
+
 def package_test_scripts() -> list[dict[str, str]]:
     scripts: list[dict[str, str]] = []
     for package_json in sorted(ROOT.glob("backend/*/package.json")) + [ROOT / "sdk" / "package.json"]:
@@ -81,6 +129,8 @@ def build_registry() -> dict:
     )
     sdk = matching_files("sdk", lambda path: "__tests__" in path.parts or ".test." in path.name or ".spec." in path.name)
     checks = matching_files("frontend/scripts", lambda path: path.name.startswith("check-") and path.suffix == ".mjs")
+
+    artifact_links = load_artifact_links()
 
     categories = [
         {
@@ -129,6 +179,9 @@ def build_registry() -> dict:
             "files": checks,
         },
     ]
+    for category in categories:
+        category["artifactLinks"] = artifact_links.get(category["id"]) or default_artifact_links(category["id"])
+
     total_files = sum(len(category["files"]) for category in categories)
     return {
         "version": "all-tests-2026-05-24",
