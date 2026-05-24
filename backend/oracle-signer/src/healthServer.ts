@@ -15,7 +15,6 @@
 
 import * as http from 'http';
 import { canonicalEmptyProofSnapshot, redactProofReason } from './proof-store';
-import { canonicalEmptyProofSnapshot, redactProofReason } from './proof-store';
 
 export interface HealthServerOptions {
   name: string;
