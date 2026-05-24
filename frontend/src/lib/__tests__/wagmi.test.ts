@@ -326,6 +326,20 @@ describe('Reown console filter — installs on both branches', () => {
     expect(errorSpy.mock.calls.some((c) => String(c[0]).includes('not found on Allowlist'))).toBe(false)
   })
 
+  it('RPC_BATCH_CONFIG coalesces over one ~60 fps animation frame (#0065)', async () => {
+    // The default `batch: true` shorthand uses `wait: 0`, which only
+    // catches calls inside the same microtask — intermediate
+    // React/wagmi work fragments a 12-contract refresh into ~7
+    // POSTs on /proof. We cap the coalescing window to 16ms (one
+    // animation frame) so all calls from a single React commit
+    // land in one batched POST. Larger values would risk a
+    // perceptible delay on `Retry now`.
+    const mod = await loadWagmiWithEnv('0123456789abcdef0123456789abcdef')
+    expect(mod.RPC_BATCH_WAIT_MS).toBe(16)
+    expect(mod.RPC_BATCH_SIZE).toBe(1_000)
+    expect(mod.RPC_BATCH_CONFIG).toEqual({ batchSize: 1_000, wait: 16 })
+  })
+
   it('idempotency: re-importing wagmi.ts does not double-wrap console methods', async () => {
     // First import installs the wrapper.
     await loadWagmiWithEnv('0123456789abcdef0123456789abcdef')

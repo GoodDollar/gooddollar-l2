@@ -110,8 +110,28 @@ export { validateWcProjectId } from './wagmi-helpers'
 // ./chain.ts) by also collapsing reads that don't go through
 // `useReadContracts` (raw `useReadContract`, `getBlockNumber`, ENS
 // lookups, balance reads). See task 0059.
+//
+// `wait` controls the coalescing window (ms) — viem queues calls for
+// `wait` ms before flushing them as a single batched payload. The
+// `batch: true` shorthand expands to `wait: 0`, which coalesces only
+// calls that hit the queue inside the same microtask; intermediate
+// React/wagmi work (query-key hashing, block-number lookups, commits)
+// pushes the per-contract `eth_call`s from a single `useReadContracts`
+// across microtask boundaries, fragmenting a 12-contract refresh into
+// ~7 separate POSTs on the proof page.
+//
+// 16 ms (one ~60 fps animation frame) is small enough that `Retry now`
+// still feels instantaneous and large enough that all calls fired by a
+// single React commit land in the same batched POST. See task
+// lane6-rpc-batch-wait-zero-fragments-onchain-multicall-fanout (0065).
+export const RPC_BATCH_WAIT_MS = 16
+export const RPC_BATCH_SIZE = 1_000
+export const RPC_BATCH_CONFIG = {
+  batchSize: RPC_BATCH_SIZE,
+  wait: RPC_BATCH_WAIT_MS,
+} as const
 const transports = {
-  [gooddollarL2.id]: http('/api/rpc', { batch: true }),
+  [gooddollarL2.id]: http('/api/rpc', { batch: RPC_BATCH_CONFIG }),
 } as const
 
 // Branch on whether we have a real, 32-char-hex WalletConnect project
