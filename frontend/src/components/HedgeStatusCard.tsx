@@ -263,8 +263,11 @@ function resolveEngineState(input: {
         statLabel: 'down',
         color: 'text-red-400',
         sub: {
+          // text-red-300 (#fca5a5) clears WCAG AA (≥4.5:1) against
+          // bg-dark-50 (#1a2540) at ~7.9:1; the previous text-red-400/80
+          // landed at 3.98:1 and axe flagged it serious (#0067).
           text: `auto-retry ${Math.round(input.pollIntervalMs / 1000)}s`,
-          color: 'text-red-400/80',
+          color: 'text-red-300',
         },
       }
     case 'awaiting tick':
