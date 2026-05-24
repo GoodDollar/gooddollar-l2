@@ -605,7 +605,8 @@ function HedgeProofViewer({ endpoint, notFoundTitle = DEFAULT_NOT_FOUND_TITLE, n
             if (mySeq !== seqRef.current) return;
             setView({
                 kind: 'error',
-                copy: copyForNetwork()
+                copy: copyForNetwork(),
+                status: 'network_error'
             });
             return;
         }
@@ -620,7 +621,8 @@ function HedgeProofViewer({ endpoint, notFoundTitle = DEFAULT_NOT_FOUND_TITLE, n
                 copy: {
                     title: 'Hedge engine returned an unreadable response',
                     detail: 'The proof endpoint did not return JSON.'
-                }
+                },
+                status: 'unreadable'
             });
             return;
         }
@@ -647,7 +649,8 @@ function HedgeProofViewer({ endpoint, notFoundTitle = DEFAULT_NOT_FOUND_TITLE, n
         }
         setView({
             kind: 'error',
-            copy: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$HedgeProofViewer$2f$proof$2d$response$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["copyForResponse"])(body, surface)
+            copy: (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$HedgeProofViewer$2f$proof$2d$response$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["copyForResponse"])(body, surface),
+            status: body.status
         });
     }, [
         endpoint,
@@ -666,12 +669,12 @@ function HedgeProofViewer({ endpoint, notFoundTitle = DEFAULT_NOT_FOUND_TITLE, n
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(PageHeader, {}, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 181,
+                lineNumber: 197,
                 columnNumber: 7
             }, this),
             view.kind === 'loading' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(LoadingState, {}, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 182,
+                lineNumber: 198,
                 columnNumber: 35
             }, this),
             view.kind === 'ok' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(OkState, {
@@ -679,7 +682,7 @@ function HedgeProofViewer({ endpoint, notFoundTitle = DEFAULT_NOT_FOUND_TITLE, n
                 rawMarkdownHref: rawMarkdownHref
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 184,
+                lineNumber: 200,
                 columnNumber: 9
             }, this),
             view.kind === 'empty_body' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(EmptyBodyState, {
@@ -688,33 +691,59 @@ function HedgeProofViewer({ endpoint, notFoundTitle = DEFAULT_NOT_FOUND_TITLE, n
                 rawMarkdownHref: rawMarkdownHref
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 187,
+                lineNumber: 203,
                 columnNumber: 9
             }, this),
-            view.kind === 'no_proof' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$HedgeProofErrorCard$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                title: notFoundTitle,
-                detail: notFoundDetail,
-                onRetry: load,
-                titleTooltip: notFoundTitleTooltip
-            }, void 0, false, {
-                fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 194,
-                columnNumber: 9
-            }, this),
-            view.kind === 'error' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$HedgeProofErrorCard$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                title: view.copy.title,
-                detail: view.copy.detail,
-                onRetry: load,
-                variant: "error"
-            }, void 0, false, {
-                fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 202,
-                columnNumber: 9
-            }, this)
+            view.kind === 'no_proof' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$HedgeProofErrorCard$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                        title: notFoundTitle,
+                        detail: notFoundDetail,
+                        onRetry: load,
+                        titleTooltip: notFoundTitleTooltip
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
+                        lineNumber: 211,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ProofErrorRecoveryRow, {
+                        endpoint: endpoint,
+                        status: "no_proof",
+                        rawMarkdownHref: rawMarkdownHref
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
+                        lineNumber: 217,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true),
+            view.kind === 'error' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$HedgeProofErrorCard$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                        title: view.copy.title,
+                        detail: view.copy.detail,
+                        onRetry: load,
+                        variant: "error"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
+                        lineNumber: 226,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ProofErrorRecoveryRow, {
+                        endpoint: endpoint,
+                        status: view.status,
+                        rawMarkdownHref: rawMarkdownHref
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
+                        lineNumber: 232,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-        lineNumber: 180,
+        lineNumber: 196,
         columnNumber: 5
     }, this);
 }
@@ -732,14 +761,14 @@ function PageHeader() {
                         children: "←"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                        lineNumber: 221,
+                        lineNumber: 251,
                         columnNumber: 9
                     }, this),
                     " Back to dashboard"
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 216,
+                lineNumber: 246,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -747,13 +776,13 @@ function PageHeader() {
                 children: "Hedge proof"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 223,
+                lineNumber: 253,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-        lineNumber: 215,
+        lineNumber: 245,
         columnNumber: 5
     }, this);
 }
@@ -767,34 +796,34 @@ function LoadingState() {
                 className: "h-5 bg-dark-50 rounded w-2/3"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 235,
+                lineNumber: 265,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "h-4 bg-dark-50 rounded w-1/2"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 236,
+                lineNumber: 266,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "h-4 bg-dark-50 rounded w-3/4"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 237,
+                lineNumber: 267,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "h-4 bg-dark-50 rounded w-5/6"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 238,
+                lineNumber: 268,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-        lineNumber: 230,
+        lineNumber: 260,
         columnNumber: 5
     }, this);
 }
@@ -807,7 +836,7 @@ function OkState({ data, rawMarkdownHref }) {
                 rawMarkdownHref: rawMarkdownHref
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 252,
+                lineNumber: 282,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -817,18 +846,18 @@ function OkState({ data, rawMarkdownHref }) {
                     children: data.markdown
                 }, void 0, false, {
                     fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                    lineNumber: 257,
+                    lineNumber: 287,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 253,
+                lineNumber: 283,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-        lineNumber: 251,
+        lineNumber: 281,
         columnNumber: 5
     }, this);
 }
@@ -843,7 +872,7 @@ function ProofMetadataStrip({ pointer, rawMarkdownHref }) {
                 children: ts.relative
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 273,
+                lineNumber: 303,
                 columnNumber: 7
             }, this),
             pointer.summary && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -853,7 +882,7 @@ function ProofMetadataStrip({ pointer, rawMarkdownHref }) {
                 children: pointer.summary
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 277,
+                lineNumber: 307,
                 columnNumber: 9
             }, this),
             rawMarkdownHref && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -865,13 +894,13 @@ function ProofMetadataStrip({ pointer, rawMarkdownHref }) {
                 children: "View raw markdown"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 286,
+                lineNumber: 316,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-        lineNumber: 272,
+        lineNumber: 302,
         columnNumber: 5
     }, this);
 }
@@ -883,7 +912,7 @@ function EmptyBodyState({ data, onRetry, rawMarkdownHref }) {
                 rawMarkdownHref: rawMarkdownHref
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 311,
+                lineNumber: 341,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$HedgeProofErrorCard$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
@@ -893,13 +922,84 @@ function EmptyBodyState({ data, onRetry, rawMarkdownHref }) {
                 onRetry: onRetry
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-                lineNumber: 312,
+                lineNumber: 342,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
-        lineNumber: 310,
+        lineNumber: 340,
+        columnNumber: 5
+    }, this);
+}
+/**
+ * Secondary recovery affordances rendered beneath the error / no_proof
+ * cards (#0071). The Retry button alone is not useful when the engine
+ * is down (the operator already knows clicking Retry won't help until
+ * the engine recovers); this row gives them somewhere to go:
+ *
+ *   - `View raw markdown ↗` — escape-hatch to the raw endpoint when
+ *     ops scripts or curl are the only way forward (only rendered
+ *     when the parent passes `rawMarkdownHref`; per-receipt viewer
+ *     omits it because there is no equivalent markdown route).
+ *   - `Jump to receipts table ↓` — anchor to `#hedge-status-card` on
+ *     `/analytics`, the table they're most likely heading to next.
+ *   - Endpoint + status recap — machine-readable line so an operator
+ *     copy-pasting it into Slack carries both pieces of context.
+ */ function ProofErrorRecoveryRow({ endpoint, status, rawMarkdownHref }) {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        "data-testid": "hedge-proof-recovery-row",
+        className: "mt-4 space-y-2",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "flex items-center gap-4 flex-wrap text-xs",
+                children: [
+                    rawMarkdownHref && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                        "data-testid": "hedge-proof-recovery-raw-link",
+                        href: rawMarkdownHref,
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        className: "text-goodgreen hover:underline",
+                        children: "View raw markdown ↗"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
+                        lineNumber: 383,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                        "data-testid": "hedge-proof-recovery-jump-link",
+                        href: "/analytics#hedge-status-card",
+                        className: "text-goodgreen hover:underline",
+                        children: "Jump to receipts table ↓"
+                    }, void 0, false, {
+                        fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
+                        lineNumber: 393,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
+                lineNumber: 381,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                "data-testid": "hedge-proof-recovery-recap",
+                className: "text-xs text-gray-500 font-mono",
+                children: [
+                    "Endpoint: ",
+                    endpoint,
+                    " · status: ",
+                    status
+                ]
+            }, void 0, true, {
+                fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
+                lineNumber: 401,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/frontend/src/components/HedgeProofViewer.tsx",
+        lineNumber: 377,
         columnNumber: 5
     }, this);
 }

@@ -41,7 +41,14 @@ type ViewState =
   | { kind: 'ok'; data: OkData }
   | { kind: 'empty_body'; data: OkData }
   | { kind: 'no_proof' }
-  | { kind: 'error'; copy: ErrorCopy }
+  // The `status` field carries the underlying machine-readable wire
+  // status (`engine_down`, `engine_error`, `unreadable`, `forbidden`,
+  // `missing`, `invalid_id`) for `ProofResponse`-shaped failures, or a
+  // synthesised sentinel (`network_error`, `unreadable`) for fetch /
+  // JSON-parse failures. The recovery-row recap renders it verbatim
+  // so an operator pasting the line into Slack carries both endpoint
+  // and raw status (#0071).
+  | { kind: 'error'; copy: ErrorCopy; status: string }
 
 function copyForNetwork(): ErrorCopy {
   return {
@@ -135,7 +142,11 @@ export default function HedgeProofViewer({
     } catch {
       if (controller.signal.aborted) return
       if (mySeq !== seqRef.current) return
-      setView({ kind: 'error', copy: copyForNetwork() })
+      setView({
+        kind: 'error',
+        copy: copyForNetwork(),
+        status: 'network_error',
+      })
       return
     }
     let body: ProofResponse
@@ -150,6 +161,7 @@ export default function HedgeProofViewer({
           title: 'Hedge engine returned an unreadable response',
           detail: 'The proof endpoint did not return JSON.',
         },
+        status: 'unreadable',
       })
       return
     }
@@ -166,7 +178,11 @@ export default function HedgeProofViewer({
       setView({ kind: 'no_proof' })
       return
     }
-    setView({ kind: 'error', copy: copyForResponse(body, surface) })
+    setView({
+      kind: 'error',
+      copy: copyForResponse(body, surface),
+      status: body.status,
+    })
   }, [endpoint, surface])
 
   useEffect(() => {
@@ -191,20 +207,34 @@ export default function HedgeProofViewer({
         />
       )}
       {view.kind === 'no_proof' && (
-        <HedgeProofErrorCard
-          title={notFoundTitle}
-          detail={notFoundDetail}
-          onRetry={load}
-          titleTooltip={notFoundTitleTooltip}
-        />
+        <>
+          <HedgeProofErrorCard
+            title={notFoundTitle}
+            detail={notFoundDetail}
+            onRetry={load}
+            titleTooltip={notFoundTitleTooltip}
+          />
+          <ProofErrorRecoveryRow
+            endpoint={endpoint}
+            status="no_proof"
+            rawMarkdownHref={rawMarkdownHref}
+          />
+        </>
       )}
       {view.kind === 'error' && (
-        <HedgeProofErrorCard
-          title={view.copy.title}
-          detail={view.copy.detail}
-          onRetry={load}
-          variant="error"
-        />
+        <>
+          <HedgeProofErrorCard
+            title={view.copy.title}
+            detail={view.copy.detail}
+            onRetry={load}
+            variant="error"
+          />
+          <ProofErrorRecoveryRow
+            endpoint={endpoint}
+            status={view.status}
+            rawMarkdownHref={rawMarkdownHref}
+          />
+        </>
       )}
     </div>
   )
@@ -316,5 +346,64 @@ function EmptyBodyState({
         onRetry={onRetry}
       />
     </article>
+  )
+}
+
+/**
+ * Secondary recovery affordances rendered beneath the error / no_proof
+ * cards (#0071). The Retry button alone is not useful when the engine
+ * is down (the operator already knows clicking Retry won't help until
+ * the engine recovers); this row gives them somewhere to go:
+ *
+ *   - `View raw markdown ↗` — escape-hatch to the raw endpoint when
+ *     ops scripts or curl are the only way forward (only rendered
+ *     when the parent passes `rawMarkdownHref`; per-receipt viewer
+ *     omits it because there is no equivalent markdown route).
+ *   - `Jump to receipts table ↓` — anchor to `#hedge-status-card` on
+ *     `/analytics`, the table they're most likely heading to next.
+ *   - Endpoint + status recap — machine-readable line so an operator
+ *     copy-pasting it into Slack carries both pieces of context.
+ */
+function ProofErrorRecoveryRow({
+  endpoint,
+  status,
+  rawMarkdownHref,
+}: {
+  endpoint: string
+  status: string
+  rawMarkdownHref?: string
+}) {
+  return (
+    <div
+      data-testid="hedge-proof-recovery-row"
+      className="mt-4 space-y-2"
+    >
+      <div className="flex items-center gap-4 flex-wrap text-xs">
+        {rawMarkdownHref && (
+          <a
+            data-testid="hedge-proof-recovery-raw-link"
+            href={rawMarkdownHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-goodgreen hover:underline"
+          >
+            View raw markdown ↗
+          </a>
+        )}
+        <Link
+          data-testid="hedge-proof-recovery-jump-link"
+          href="/analytics#hedge-status-card"
+          className="text-goodgreen hover:underline"
+        >
+          Jump to receipts table ↓
+        </Link>
+      </div>
+      <div
+        data-testid="hedge-proof-recovery-recap"
+        className="text-xs text-gray-500 font-mono"
+      >
+        Endpoint: {endpoint} · status: {status}
+      </div>
+    </div>
   )
 }

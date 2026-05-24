@@ -83,3 +83,52 @@ describe('HedgeProofViewerPerReceiptPage — long-id title (#0063)', () => {
     expect(heading.getAttribute('title')).toBeNull()
   })
 })
+
+describe('HedgeProofViewerPerReceiptPage — error-state recovery row (#0071)', () => {
+  it('suppresses the raw markdown link (no rawMarkdownHref on the per-receipt page)', async () => {
+    mockJson(
+      { status: 'engine_down', reason: 'Hedge engine unreachable' },
+      { status: 502 },
+    )
+    renderPage('rcpt-1')
+    await screen.findByTestId('hedge-proof-error')
+    const row = await screen.findByTestId('hedge-proof-recovery-row')
+    expect(
+      row.querySelector('[data-testid="hedge-proof-recovery-raw-link"]'),
+    ).toBeNull()
+  })
+
+  it('renders the jump-to-receipts link with the same anchor as the latest viewer', async () => {
+    mockJson(
+      { status: 'engine_down', reason: 'Hedge engine unreachable' },
+      { status: 502 },
+    )
+    renderPage('rcpt-1')
+    await screen.findByTestId('hedge-proof-error')
+    const jump = await screen.findByTestId('hedge-proof-recovery-jump-link')
+    expect(jump.getAttribute('href')).toBe('/analytics#hedge-status-card')
+  })
+
+  it('renders the recap with the per-receipt endpoint and the resolved status', async () => {
+    mockJson(
+      { status: 'engine_down', reason: 'Hedge engine unreachable' },
+      { status: 502 },
+    )
+    renderPage('rcpt-1')
+    await screen.findByTestId('hedge-proof-error')
+    const recap = await screen.findByTestId('hedge-proof-recovery-recap')
+    expect(recap.textContent).toBe(
+      'Endpoint: /api/hedge/proof/rcpt-1 · status: engine_down',
+    )
+  })
+
+  it('renders the recap with status:no_proof on the per-receipt no_proof branch', async () => {
+    mockJson({ status: 'no_proof' }, { status: 404 })
+    renderPage('rcpt-2')
+    await screen.findByTestId('hedge-proof-error')
+    const recap = await screen.findByTestId('hedge-proof-recovery-recap')
+    expect(recap.textContent).toBe(
+      'Endpoint: /api/hedge/proof/rcpt-2 · status: no_proof',
+    )
+  })
+})

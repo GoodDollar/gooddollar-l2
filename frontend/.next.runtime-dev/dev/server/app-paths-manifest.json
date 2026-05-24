@@ -3,11 +3,9 @@
   "/(app)/analytics/hedge/proof/latest/page": "app/(app)/analytics/hedge/proof/latest/page.js",
   "/(app)/analytics/page": "app/(app)/analytics/page.js",
   "/_not-found/page": "app/_not-found/page.js",
-  "/api/[...slug]/route": "app/api/[...slug]/route.js",
   "/api/analytics/overview/route": "app/api/analytics/overview/route.js",
   "/api/hedge/proof/[receiptId]/route": "app/api/hedge/proof/[receiptId]/route.js",
   "/api/hedge/proof/latest.json/route": "app/api/hedge/proof/latest.json/route.js",
-  "/api/hedge/proof/latest/route": "app/api/hedge/proof/latest/route.js",
   "/api/hedge/status/route": "app/api/hedge/status/route.js",
   "/page": "app/page.js"
 }

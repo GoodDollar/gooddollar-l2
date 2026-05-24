@@ -742,6 +742,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
 
   return (
     <section
+      id="hedge-status-card"
       data-testid="hedge-status-card"
       className="bg-dark-100/50 rounded-xl border border-dark-50 p-5"
     >

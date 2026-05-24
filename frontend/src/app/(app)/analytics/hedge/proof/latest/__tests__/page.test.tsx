@@ -208,6 +208,123 @@ describe('HedgeProofViewerPage', () => {
     expect(screen.getByTestId('hedge-proof-retry')).toBeInTheDocument();
   });
 
+  describe('error-state recovery row (#0071)', () => {
+    it('renders raw markdown link, jump-to-receipts link, and endpoint recap when the JSON route reports engine_down', async () => {
+      mockJson(
+        { status: 'engine_down', reason: 'Hedge engine unreachable' },
+        { status: 502 },
+      );
+      render(<HedgeProofViewerPage />);
+      await screen.findByTestId('hedge-proof-error');
+      const row = await screen.findByTestId('hedge-proof-recovery-row');
+      const raw = row.querySelector(
+        '[data-testid="hedge-proof-recovery-raw-link"]',
+      );
+      expect(raw).not.toBeNull();
+      expect(raw!.getAttribute('href')).toBe('/api/hedge/proof/latest');
+      expect(raw!.getAttribute('target')).toBe('_blank');
+      expect(raw!.getAttribute('rel')).toBe('noopener noreferrer');
+      const jump = row.querySelector(
+        '[data-testid="hedge-proof-recovery-jump-link"]',
+      );
+      expect(jump).not.toBeNull();
+      expect(jump!.getAttribute('href')).toBe(
+        '/analytics#hedge-status-card',
+      );
+      const recap = row.querySelector(
+        '[data-testid="hedge-proof-recovery-recap"]',
+      );
+      expect(recap).not.toBeNull();
+      expect(recap!.textContent).toBe(
+        'Endpoint: /api/hedge/proof/latest.json · status: engine_down',
+      );
+      expect(recap!.className).toMatch(/font-mono/);
+      expect(recap!.className).toMatch(/text-gray-500/);
+    });
+
+    it('renders the recovery row with status:no_proof on the no_proof branch', async () => {
+      mockJson({ status: 'no_proof' }, { status: 404 });
+      render(<HedgeProofViewerPage />);
+      await screen.findByTestId('hedge-proof-error');
+      const row = await screen.findByTestId('hedge-proof-recovery-row');
+      const recap = row.querySelector(
+        '[data-testid="hedge-proof-recovery-recap"]',
+      );
+      expect(recap!.textContent).toBe(
+        'Endpoint: /api/hedge/proof/latest.json · status: no_proof',
+      );
+      expect(
+        row.querySelector('[data-testid="hedge-proof-recovery-raw-link"]'),
+      ).not.toBeNull();
+      expect(
+        row.querySelector('[data-testid="hedge-proof-recovery-jump-link"]'),
+      ).not.toBeNull();
+    });
+
+    it('surfaces network_error status when fetch rejects', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+        new TypeError('Failed to fetch'),
+      );
+      render(<HedgeProofViewerPage />);
+      await screen.findByTestId('hedge-proof-error');
+      const recap = await screen.findByTestId('hedge-proof-recovery-recap');
+      expect(recap.textContent).toBe(
+        'Endpoint: /api/hedge/proof/latest.json · status: network_error',
+      );
+    });
+
+    it('surfaces unreadable status when the response is not JSON', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response('<html>nope</html>', {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' },
+        }),
+      );
+      render(<HedgeProofViewerPage />);
+      await screen.findByTestId('hedge-proof-error');
+      const recap = await screen.findByTestId('hedge-proof-recovery-recap');
+      expect(recap.textContent).toBe(
+        'Endpoint: /api/hedge/proof/latest.json · status: unreadable',
+      );
+    });
+
+    it('does NOT render the recovery row on the loading branch', async () => {
+      // First fetch never resolves so the viewer stays in `loading`.
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+      render(<HedgeProofViewerPage />);
+      await screen.findByTestId('hedge-proof-loading');
+      expect(
+        screen.queryByTestId('hedge-proof-recovery-row'),
+      ).toBeNull();
+    });
+
+    it('does NOT render the recovery row on the OK branch', async () => {
+      mockJson({
+        status: 'ok',
+        markdown: '# hello',
+        pointer: { path: 'x', timestamp: 1700000000000, summary: 'demo' },
+      });
+      render(<HedgeProofViewerPage />);
+      await screen.findByTestId('hedge-proof-body');
+      expect(
+        screen.queryByTestId('hedge-proof-recovery-row'),
+      ).toBeNull();
+    });
+
+    it('does NOT render the recovery row on the empty_body branch', async () => {
+      mockJson({
+        status: 'ok',
+        markdown: '',
+        pointer: { path: 'x', timestamp: 1700000000000, summary: 'demo' },
+      });
+      render(<HedgeProofViewerPage />);
+      await screen.findByTestId('hedge-proof-empty-body');
+      expect(
+        screen.queryByTestId('hedge-proof-recovery-row'),
+      ).toBeNull();
+    });
+  });
+
   it('retry on a network rejection re-fetches and recovers to the happy view', async () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
