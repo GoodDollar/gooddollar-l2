@@ -50,6 +50,22 @@ test('status field takes precedence over ok field when both are present', () => 
   assert.equal(parseHealthStatus({ status: 'degraded', ok: true }), 'degraded');
 });
 
+test('status:starting maps to degraded (price-service pre-first-quote)', () => {
+  // The price-service /health and /status/quotes endpoints emit
+  // `status: 'starting'` until at least one quote has flowed (see
+  // task 0052). The aggregator must surface this as `degraded` (amber)
+  // on the proof UI rather than falling through to the safe-default
+  // `error` and lighting red on a still-booting pipeline.
+  assert.equal(
+    parseHealthStatus({
+      status: 'starting',
+      reason: 'no quote ingested yet',
+      cumulativeUpdates: 0,
+    }),
+    'degraded',
+  );
+});
+
 test('price-service degraded body (503-shape) maps to degraded', () => {
   // The price-service `/health` returns 503 with this body shape after 10s
   // without fresh quotes (`backend/price-service/README.md`). The aggregator
