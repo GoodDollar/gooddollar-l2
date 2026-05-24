@@ -6,9 +6,18 @@ interface StocksRebalanceDashboardProps {
   symbols: RebalanceInvariantResult[]
   isLoading?: boolean
   error?: string | null
+  /** Empty-state copy shown when symbols is empty, !isLoading, and !error.
+   *  Defaults to the legacy `"No active symbols reported."` message. */
+  emptyMessage?: string
+  /** When set alongside totalCount and the two differ, the subtitle is
+   *  augmented with `(filteredCount of totalCount)` so users know the
+   *  dashboard is following an active filter. */
+  filteredCount?: number
+  totalCount?: number
 }
 
 const EM_DASH = '—'
+const DEFAULT_EMPTY_MESSAGE = 'No active symbols reported.'
 const AWAITING_PILL_CLS = 'inline-flex rounded-md border px-2 py-1 text-gray-300 bg-gray-500/10 border-gray-500/25'
 
 function formatBps(bps: number): string {
@@ -24,14 +33,35 @@ function isRowAwaiting(entry: RebalanceInvariantResult): boolean {
   return entry.oracleBlock === 0 && entry.lastSyncedBlock === 0
 }
 
-export function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }: StocksRebalanceDashboardProps) {
+function shouldShowFilterCount(filteredCount?: number, totalCount?: number): boolean {
+  return (
+    typeof filteredCount === 'number' &&
+    typeof totalCount === 'number' &&
+    filteredCount !== totalCount
+  )
+}
+
+export function StocksRebalanceDashboard({
+  symbols,
+  isLoading = false,
+  error = null,
+  emptyMessage = DEFAULT_EMPTY_MESSAGE,
+  filteredCount,
+  totalCount,
+}: StocksRebalanceDashboardProps) {
   const allRowsAwaiting = !isLoading && !error && symbols.length > 0 && symbols.every(isRowAwaiting)
+  const showFilterCount = shouldShowFilterCount(filteredCount, totalCount)
   return (
     <section className="rounded-2xl border border-gray-700/20 bg-dark-100/50 p-4 sm:p-5" aria-label="Stocks drift and rebalance dashboard">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div>
           <h2 className="text-sm sm:text-base font-semibold text-white">Drift & Rebalance</h2>
-          <p className="text-xs text-gray-400">Per-symbol block coherence across AMM, perps, prediction, lend, and yield.</p>
+          <p className="text-xs text-gray-400">
+            Per-symbol block coherence across AMM, perps, prediction, lend, and yield.
+            {showFilterCount ? (
+              <span className="text-gray-500 ml-1">({filteredCount} of {totalCount})</span>
+            ) : null}
+          </p>
         </div>
       </div>
 
@@ -48,7 +78,7 @@ export function StocksRebalanceDashboard({ symbols, isLoading = false, error = n
       )}
 
       {!isLoading && !error && symbols.length === 0 && (
-        <p className="text-xs text-gray-400">No active symbols reported.</p>
+        <p className="text-xs text-gray-400">{emptyMessage}</p>
       )}
 
       {!isLoading && !error && symbols.length > 0 && (

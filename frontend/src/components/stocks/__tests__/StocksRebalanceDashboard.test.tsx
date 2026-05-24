@@ -114,4 +114,70 @@ describe('StocksRebalanceDashboard', () => {
     expect(screen.getByText('Awaiting')).toBeInTheDocument()
     expect(screen.queryByText(/Awaiting on-chain block data/i)).not.toBeInTheDocument()
   })
+
+  it('renders the custom emptyMessage when symbols is empty', () => {
+    render(
+      <StocksRebalanceDashboard
+        symbols={[]}
+        emptyMessage="No symbols match your current filters."
+      />,
+    )
+    expect(
+      screen.getByText('No symbols match your current filters.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('No active symbols reported.')).not.toBeInTheDocument()
+  })
+
+  it('falls back to the default empty message when no emptyMessage prop is provided', () => {
+    render(<StocksRebalanceDashboard symbols={[]} />)
+    expect(screen.getByText('No active symbols reported.')).toBeInTheDocument()
+  })
+
+  it('augments the subtitle with (N of M) when filtered/total differ', () => {
+    render(
+      <StocksRebalanceDashboard
+        symbols={[
+          {
+            symbol: 'AAPL',
+            currentBlock: 100,
+            oracleBlock: 100,
+            products: { amm: 100, perps: 100, prediction: 100, lend: 100, yield: 100 },
+            lastSyncedBlock: 100,
+            blockSkew: 0,
+            divergenceBps: 12,
+            coherentBlock: true,
+            stopReasons: [],
+            riskIncreaseAllowed: true,
+          },
+        ]}
+        filteredCount={3}
+        totalCount={10}
+      />,
+    )
+    expect(screen.getByText(/\(3 of 10\)/)).toBeInTheDocument()
+  })
+
+  it('omits the (N of M) suffix when filteredCount equals totalCount', () => {
+    render(
+      <StocksRebalanceDashboard
+        symbols={[
+          {
+            symbol: 'AAPL',
+            currentBlock: 100,
+            oracleBlock: 100,
+            products: { amm: 100, perps: 100, prediction: 100, lend: 100, yield: 100 },
+            lastSyncedBlock: 100,
+            blockSkew: 0,
+            divergenceBps: 12,
+            coherentBlock: true,
+            stopReasons: [],
+            riskIncreaseAllowed: true,
+          },
+        ]}
+        filteredCount={10}
+        totalCount={10}
+      />,
+    )
+    expect(screen.queryByText(/of 10\)/)).not.toBeInTheDocument()
+  })
 })

@@ -265,6 +265,26 @@ export default function StocksPage() {
   const activeFilterCount = Number(sectorFilter !== 'all') + Number(capFilter !== 'all') + Number(momentumFilter !== 'all') + Number(liquidityFilter !== 'all')
   const hasSearchQuery = query.trim().length > 0
   const hasActiveFilters = activeFilterCount > 0
+
+  // Mirror the listing's filter pipeline into the Drift & Rebalance dashboard so
+  // the two surfaces never disagree about which symbols are in scope. We keep
+  // fetching the full set (the listing needs it to clear filters without a
+  // round-trip) and intersect at the render layer.
+  const filteredTickers = useMemo(
+    () => new Set(filtered.map((s) => s.ticker)),
+    [filtered],
+  )
+  const filteredRebalanceSymbols = useMemo(
+    () => (rebalanceStatus?.symbols ?? []).filter((entry) => filteredTickers.has(entry.symbol)),
+    [rebalanceStatus, filteredTickers],
+  )
+  const totalRebalanceCount = rebalanceStatus?.symbols?.length ?? 0
+  const dashboardEmptyMessage = useMemo(() => {
+    if (watchlistActive && favorites.size === 0) {
+      return 'Your watchlist is empty — star a stock to track its oracle health here.'
+    }
+    return 'No symbols match your current filters.'
+  }, [watchlistActive, favorites])
   const screenerQueryString = useMemo(() => {
     return serializeStocksScreenerState({
       query,
@@ -503,9 +523,12 @@ export default function StocksPage() {
       </div>
       <div className="mb-4">
         <StocksRebalanceDashboard
-          symbols={rebalanceStatus?.symbols ?? []}
+          symbols={filteredRebalanceSymbols}
           isLoading={rebalanceLoading}
           error={rebalanceError}
+          emptyMessage={dashboardEmptyMessage}
+          filteredCount={filteredRebalanceSymbols.length}
+          totalCount={totalRebalanceCount}
         />
       </div>
 
