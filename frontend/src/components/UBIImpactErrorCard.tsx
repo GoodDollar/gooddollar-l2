@@ -20,12 +20,20 @@ interface UBIImpactErrorCardProps {
   onRetry: () => void
   message?: string
   variant?: 'default' | 'timeout' | 'compact'
+  /**
+   * Heading rendered in the hero variants. Defaults to "Unable to load UBI
+   * Impact data" for backward compatibility with the original caller. Lane
+   * 4 / task 0045 — `/governance` reuses this card for the chain-offline
+   * Governance Parameters state with a topic-specific title.
+   */
+  title?: string
 }
 
 export function UBIImpactErrorCard({
   onRetry,
   message,
   variant = 'default',
+  title = 'Unable to load UBI Impact data',
 }: UBIImpactErrorCardProps) {
   const isCompact = variant === 'compact'
   const isTimeout = variant === 'timeout'
@@ -66,7 +74,7 @@ export function UBIImpactErrorCard({
 
       {!isCompact && (
         <h2 className="mb-2 text-lg font-semibold text-white">
-          Unable to load UBI Impact data
+          {title}
         </h2>
       )}
 
