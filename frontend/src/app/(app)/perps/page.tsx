@@ -179,7 +179,7 @@ function PerpsOracleSurfaces() {
   return <StalePriceBanner variant="crypto" className="mt-3" />
 }
 
-function PairInfoBar({ pair }: { pair: PerpPair }) {
+function PairInfoBar({ pair, railLive }: { pair: PerpPair; railLive: boolean }) {
   // Mobile (≤640px): 2-column grid of stacked label/value tiles, so each
   // stat reads as a single unit. Desktop (≥640px): inline flex-wrap, identical
   // to the previous layout. See task 0099.
@@ -193,8 +193,14 @@ function PairInfoBar({ pair }: { pair: PerpPair }) {
   // "Vol $1.25B · Funding +0.49% · OI $890M" header even with the crypto
   // oracle offline. `pair.high24h === pair.markPrice` is the sentinel
   // emitted by useOnChainPerps when no live 24h band is available.
+  //
+  // Task 0058: the Mark cell joins the same honesty contract. When the
+  // crypto rail is not `live`, the headline price collapses to `—` —
+  // otherwise it sat at FALLBACK_PAIRS.markPrice next to a red "Oracle
+  // offline" badge, the canonical failure of the price-flow override.
   const high24h = pair.high24h ?? pair.markPrice
   const low24h = pair.low24h ?? pair.markPrice
+  const hasMark = railLive && Number.isFinite(pair.markPrice) && pair.markPrice > 0
   const hasChange = pair.change24h !== 0
   const hasRange = high24h !== pair.markPrice || low24h !== pair.markPrice
   const hasVolume = pair.volume24h > 0
@@ -208,7 +214,11 @@ function PairInfoBar({ pair }: { pair: PerpPair }) {
     >
       <div className={tileCls} data-pair-info-cell="Mark">
         <span className={labelCls}>Mark</span>
-        <span className="text-white font-medium sm:ml-1.5">{formatPerpsPrice(pair.markPrice)}</span>
+        {hasMark ? (
+          <span className="text-white font-medium sm:ml-1.5">{formatPerpsPrice(pair.markPrice)}</span>
+        ) : (
+          <span className={dashCls}>{EM_DASH}</span>
+        )}
       </div>
       <div className={tileCls} data-pair-info-cell="24h">
         <span className={labelCls}>24h</span>
@@ -901,7 +911,7 @@ export default function PerpsPage() {
         <div className="flex items-center justify-end pb-2 border-b border-gray-700/10 mb-1.5">
           <CryptoOracleStatusBadge />
         </div>
-        <PairInfoBar pair={pair} />
+        <PairInfoBar pair={pair} railLive={cryptoRailHealth === 'live'} />
         <div className="flex items-center gap-3 pt-1 text-xs">
           <Link href={`/explore/${pair.baseAsset === 'BTC' ? 'WBTC' : pair.baseAsset}`}
             className="text-gray-500 hover:text-goodgreen transition-colors inline-flex items-center gap-1">

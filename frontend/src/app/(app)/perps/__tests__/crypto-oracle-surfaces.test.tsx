@@ -132,4 +132,29 @@ describe('PerpsPage — crypto oracle surfaces (task 0037)', () => {
 
     expect(screen.queryByTestId('stale-price-banner')).not.toBeInTheDocument()
   })
+
+  // Task 0058: regression-recovery for task 0057. The Mark cell sat at
+  // $84,250 next to a red "Oracle offline" badge — restore symmetry with
+  // the other six PairInfoBar cells so the whole row em-dashes together
+  // when the crypto rail is not live.
+  it('renders em-dash in the Mark cell when the rail is offline', () => {
+    railHealthMock.mockReturnValue({ health: 'offline', ageMs: null, isLoading: false })
+
+    const { container } = render(<TestWrapper><PerpsPage /></TestWrapper>)
+
+    const cell = container.querySelector('[data-pair-info-cell="Mark"]')
+    expect(cell, 'Mark cell present').not.toBeNull()
+    expect(cell!.textContent, 'Mark cell em-dashed').toMatch(/—/)
+    expect(cell!.textContent, 'Mark cell hides fallback BTC seed').not.toMatch(/\$84,250/)
+  })
+
+  it('renders the live mark price in the Mark cell when the rail is live', () => {
+    railHealthMock.mockReturnValue({ health: 'live', ageMs: 3_000, isLoading: false })
+
+    const { container } = render(<TestWrapper><PerpsPage /></TestWrapper>)
+
+    const cell = container.querySelector('[data-pair-info-cell="Mark"]')
+    expect(cell, 'Mark cell present').not.toBeNull()
+    expect(cell!.textContent, 'Mark cell shows live price').toMatch(/\$84,250/)
+  })
 })
