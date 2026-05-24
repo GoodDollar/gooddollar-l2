@@ -1,7 +1,13 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { useFundingRateChart, type FundingRange, type FundingRateSnapshot } from '@/lib/perpsHistoryData'
+import {
+  useFundingRateHistory,
+  type FundingRange,
+  type FundingRateSnapshot,
+  type FundingRateStatus,
+} from '@/lib/perpsHistoryData'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
 
 const RANGES: { label: string; value: FundingRange }[] = [
   { label: '24H', value: '24h' },
@@ -31,7 +37,7 @@ interface TooltipData {
   range: FundingRange
 }
 
-function BarChart({ data, range }: { data: FundingRateSnapshot[]; range: FundingRange }) {
+function BarChart({ data, range }: { data: readonly FundingRateSnapshot[]; range: FundingRange }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [dimensions, setDimensions] = useState({ width: 600, height: 200 })
@@ -181,12 +187,56 @@ function BarChart({ data, range }: { data: FundingRateSnapshot[]; range: Funding
   )
 }
 
+interface EmptyFundingChartProps {
+  /** When `chain-offline` we render a Retry button; otherwise just copy. */
+  status: FundingRateStatus
+  onRetry: () => void
+}
+
+/**
+ * Empty-state body shown when no live bars are available — either the
+ * chain RPC is unreachable (`chain-offline`) or no indexer-backed series
+ * is wired yet (`unknown`). Preserves the chart container's minimum
+ * height so the surrounding layout doesn't jump as the status flips.
+ *
+ * The component accepts `'live'` for type symmetry with the parent's
+ * `status` field, but is only mounted by the parent when the chart has
+ * no bars to draw.
+ */
+function EmptyFundingChart({ status, onRetry }: EmptyFundingChartProps) {
+  const message = status === 'chain-offline'
+    ? 'No funding data — chain unreachable.'
+    : 'No funding data yet.'
+
+  return (
+    <div
+      data-testid="funding-rate-empty"
+      data-status={status}
+      role="status"
+      className="flex flex-col items-center justify-center text-center px-4"
+      style={{ minHeight: 200 }}
+    >
+      <div className="mb-3 text-sm text-gray-300">{message}</div>
+      {status === 'chain-offline' && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="rounded-lg bg-goodgreen px-4 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-goodgreen-600 active:scale-[0.98]"
+        >
+          Retry now
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function FundingRateChart({ symbol }: { symbol: string }) {
   const [range, setRange] = useState<FundingRange>('7d')
-  const data = useFundingRateChart(symbol, range)
+  const { status, snapshots, refetch } = useFundingRateHistory(symbol, range)
 
-  const avgRate = data.length > 0 ? data.reduce((s, d) => s + d.rate, 0) / data.length : 0
-  const avgAnnualized = avgRate * 8760 * 100
+  const hasBars = status === 'live' && snapshots.length > 0
+  const avgRate = hasBars ? snapshots.reduce((s, d) => s + d.rate, 0) / snapshots.length : null
+  const avgAnnualized = avgRate === null ? null : avgRate * 8760 * 100
 
   return (
     <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
@@ -195,14 +245,31 @@ export function FundingRateChart({ symbol }: { symbol: string }) {
           <h3 className="text-xs font-semibold text-white">Funding Rate History</h3>
           <div className="flex items-center gap-1.5 text-[11px]">
             <span className="text-gray-500">Avg:</span>
-            <span className={`font-medium ${avgRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {formatRate(avgRate)}
-            </span>
+            {avgRate === null ? (
+              <span className="text-gray-500" data-testid="funding-rate-avg">—</span>
+            ) : (
+              <span
+                data-testid="funding-rate-avg"
+                className={`font-medium ${avgRate >= 0 ? 'text-green-400' : 'text-red-400'}`}
+              >
+                {formatRate(avgRate)}
+              </span>
+            )}
             <span className="text-gray-600">|</span>
-            <span className={`${avgAnnualized >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-              {formatAnnualized(avgAnnualized)} ann.
-            </span>
+            {avgAnnualized === null ? (
+              <span className="text-gray-500" data-testid="funding-rate-annualized">— ann.</span>
+            ) : (
+              <span
+                data-testid="funding-rate-annualized"
+                className={avgAnnualized >= 0 ? 'text-green-300' : 'text-red-300'}
+              >
+                {formatAnnualized(avgAnnualized)} ann.
+              </span>
+            )}
           </div>
+          {hasBars && (
+            <PriceSourceBadge source="chain-oracle" size="sm" />
+          )}
         </div>
         <div className="flex gap-1">
           {RANGES.map(r => (
@@ -221,7 +288,11 @@ export function FundingRateChart({ symbol }: { symbol: string }) {
         </div>
       </div>
       <div className="px-2 py-2">
-        <BarChart data={data} range={range} />
+        {hasBars ? (
+          <BarChart data={snapshots} range={range} />
+        ) : (
+          <EmptyFundingChart status={status} onRetry={refetch} />
+        )}
       </div>
     </div>
   )

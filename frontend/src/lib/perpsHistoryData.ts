@@ -1,19 +1,19 @@
 /**
- * perpsHistoryData.ts — Types, market-wide funding-rate generator, and
- * deterministic demo seeds for the four /perps history tabs.
+ * perpsHistoryData.ts — Types, deterministic demo seeds for the four
+ * /perps history tabs, and the production funding-rate-history hook.
  *
  * Production hooks (`useOpenOrders` / `useOrderHistory` / `useTradeHistory`
- * / `useFundingHistory`) currently return `[]` until on-chain perps event
- * indexing is wired. The seeded demo generators are exposed via explicit
- * `useDemo*` hooks for storybook + fixture tests only — production routes
- * MUST NOT import them.
- *
- * Funding-rate **chart** data (`generateFundingRateHistory`) is market-wide
- * and intentionally remains a deterministic placeholder until the indexer
- * lands.
+ * / `useFundingHistory` / `useFundingRateHistory`) currently return
+ * empty data until on-chain perps event indexing is wired. The seeded
+ * demo generators are exposed via explicit `useDemo*` hooks for
+ * storybook + fixture tests only — production routes MUST NOT import
+ * them. Task 0042 promoted `useFundingRateHistory` to the same pattern
+ * so the funding chart can no longer paint a fake 168-hour ladder while
+ * /activity reports the RPC is unreachable.
  */
 
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
+import { useBlockNumber } from 'wagmi'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -177,7 +177,7 @@ function generateFundingHistory(count: number): FundingHistoryItem[] {
   })
 }
 
-// ─── Funding Rate Chart Data (market-wide, unchanged) ─────────────────────────
+// ─── Funding Rate Chart Data ──────────────────────────────────────────────────
 
 export interface FundingRateSnapshot {
   timestamp: number
@@ -194,30 +194,52 @@ const PAIR_SEEDS: Record<string, number> = {
   'AAPL-USD': 5004, 'TSLA-USD': 5005,
 }
 
-export function generateFundingRateHistory(
-  symbol: string,
-  range: FundingRange,
-): FundingRateSnapshot[] {
-  const hours = RANGE_HOURS[range]
-  const rng = seededRng((PAIR_SEEDS[symbol] ?? 5999) + hours)
-  const now = Date.now()
-  const snapshots: FundingRateSnapshot[] = []
+/**
+ * Status of the funding-rate history feed:
+ *  - `live` — indexer returned a real time series.
+ *  - `chain-offline` — the chain RPC is unreachable, so even an indexer
+ *    would have nothing fresh to show. UI renders a Retry empty state.
+ *  - `unknown` — chain is reachable but no indexer is wired yet (the
+ *    default until perps event indexing ships). UI renders a "no data
+ *    yet" empty state without a retry button.
+ */
+export type FundingRateStatus = 'live' | 'chain-offline' | 'unknown'
 
-  let drift = (rng() - 0.4) * 0.0001
-  for (let i = hours - 1; i >= 0; i--) {
-    drift += (rng() - 0.5) * 0.00004
-    const rate = drift + (rng() - 0.5) * 0.0002
-    snapshots.push({
-      timestamp: now - i * 3600_000,
-      rate: +rate.toFixed(6),
-      annualized: +(rate * 8760 * 100).toFixed(4),
-    })
-  }
-  return snapshots
+export interface FundingRateHistoryResult {
+  status: FundingRateStatus
+  snapshots: readonly FundingRateSnapshot[]
+  refetch: () => void
 }
 
-export function useFundingRateChart(symbol: string, range: FundingRange) {
-  return useMemo(() => generateFundingRateHistory(symbol, range), [symbol, range])
+const EMPTY_FUNDING_RATE_SNAPSHOTS: readonly FundingRateSnapshot[] = Object.freeze([])
+
+/**
+ * Production funding-rate history reader.
+ *
+ * Today we have no perps-events indexer, so this hook never returns a
+ * live series — it just distinguishes "chain unreachable, retry" from
+ * "chain up but indexer pending". Once `useOnChainFundingPayments` (or
+ * an equivalent subgraph reader) lands, swap the empty snapshots for a
+ * real series here and consumers continue to work unchanged.
+ *
+ * `_symbol` / `_range` are kept on the signature so the eventual
+ * indexer-backed implementation can land without re-wiring callers.
+ */
+export function useFundingRateHistory(
+  _symbol: string,
+  _range: FundingRange,
+): FundingRateHistoryResult {
+  const { isError, refetch } = useBlockNumber({
+    query: { refetchInterval: 30_000 },
+  })
+
+  const refetchSafe = useCallback(() => { void refetch() }, [refetch])
+
+  return useMemo<FundingRateHistoryResult>(() => ({
+    status: isError ? 'chain-offline' : 'unknown',
+    snapshots: EMPTY_FUNDING_RATE_SNAPSHOTS,
+    refetch: refetchSafe,
+  }), [isError, refetchSafe])
 }
 
 // ─── Production hooks ─────────────────────────────────────────────────────────
@@ -267,4 +289,35 @@ export function useDemoTradeHistory(): TradeHistoryItem[] {
 
 export function useDemoFundingHistory(): FundingHistoryItem[] {
   return useMemo(() => generateFundingHistory(30), [])
+}
+
+/**
+ * Demo / fixture funding-rate-history generator. Deterministic LCG walk
+ * keyed off `symbol + hours`. Storybook and the funding chart's own
+ * unit fixtures may import this; production routes MUST NOT.
+ */
+export function generateDemoFundingRateHistory(
+  symbol: string,
+  range: FundingRange,
+): FundingRateSnapshot[] {
+  const hours = RANGE_HOURS[range]
+  const rng = seededRng((PAIR_SEEDS[symbol] ?? 5999) + hours)
+  const now = Date.now()
+  const snapshots: FundingRateSnapshot[] = []
+
+  let drift = (rng() - 0.4) * 0.0001
+  for (let i = hours - 1; i >= 0; i--) {
+    drift += (rng() - 0.5) * 0.00004
+    const rate = drift + (rng() - 0.5) * 0.0002
+    snapshots.push({
+      timestamp: now - i * 3600_000,
+      rate: +rate.toFixed(6),
+      annualized: +(rate * 8760 * 100).toFixed(4),
+    })
+  }
+  return snapshots
+}
+
+export function useDemoFundingRateChart(symbol: string, range: FundingRange) {
+  return useMemo(() => generateDemoFundingRateHistory(symbol, range), [symbol, range])
 }
