@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/cn'
 
@@ -41,10 +42,17 @@ export interface ButtonProps
   asChild?: boolean
 }
 
+// `asChild` follows the canonical Radix Slot pattern: when true, the
+// single child element receives the button's classes / ref / handlers
+// instead of being wrapped in a <button>. This is the documented usage
+// for callers who need a styled anchor (e.g. `<Button asChild><Link/>`).
+// Before this was wired, the prop leaked to the DOM as `aschild=""` and
+// callers ended up with an invalid `<button><a/></button>` tree (#0066).
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button'
     return (
-      <button
+      <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
