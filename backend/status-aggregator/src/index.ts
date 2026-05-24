@@ -9,63 +9,17 @@
  */
 
 import * as http from 'http';
-import { parseHealthStatus } from './parseHealthStatus';
-import { SERVICES, type ServiceConfig } from './services';
-import { buildStatusJson, updateStatuses, type ServiceStatus } from './statusBuilder';
+import { checkService } from './checkService';
+import { SERVICES } from './services';
+import { buildStatusJson, updateStatuses } from './statusBuilder';
 
 const PORT = parseInt(process.env.PORT ?? '9200', 10);
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS ?? '15000', 10);
-const TIMEOUT_MS = 5000;
 
 const startedAt = Date.now();
 
-async function checkService(svc: ServiceConfig): Promise<ServiceStatus> {
-  const start = Date.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-  try {
-    const res = await fetch(svc.url, { signal: controller.signal });
-    clearTimeout(timer);
-    const latencyMs = Date.now() - start;
-
-    if (!res.ok) {
-      return {
-        name: svc.name,
-        status: 'error',
-        latencyMs,
-        error: `HTTP ${res.status}`,
-        lastChecked: new Date().toISOString(),
-      };
-    }
-
-    const body = await res.json() as Record<string, unknown>;
-    const svcStatus = parseHealthStatus(body);
-    return {
-      name: svc.name,
-      status: svcStatus,
-      latencyMs,
-      uptime: typeof body.uptime === 'number' ? body.uptime : undefined,
-      chainBlock: typeof body.chainBlock === 'number' ? body.chainBlock : undefined,
-      error: svcStatus === 'error' ? String(body.error ?? 'unhealthy') : undefined,
-      lastChecked: new Date().toISOString(),
-    };
-  } catch (err: any) {
-    clearTimeout(timer);
-    const latencyMs = Date.now() - start;
-    const isTimeout = err.name === 'AbortError';
-    return {
-      name: svc.name,
-      status: isTimeout ? 'timeout' : 'unreachable',
-      latencyMs,
-      error: isTimeout ? `timeout after ${TIMEOUT_MS}ms` : (err.message ?? 'unreachable'),
-      lastChecked: new Date().toISOString(),
-    };
-  }
-}
-
 async function pollAll(): Promise<void> {
-  const statuses = await Promise.all(SERVICES.map(checkService));
+  const statuses = await Promise.all(SERVICES.map((svc) => checkService(svc)));
   updateStatuses(statuses);
   const operational = statuses.filter(s => s.status === 'ok' || s.status === 'degraded').length;
   console.log(
