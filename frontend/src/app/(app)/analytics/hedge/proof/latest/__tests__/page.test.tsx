@@ -207,7 +207,7 @@ describe('HedgeProofViewerPage', () => {
     const recovery = screen.getByRole('link', {
       name: /open receipts table/i,
     });
-    expect(recovery.getAttribute('href')).toBe('/analytics#hedge-status-card');
+    expect(recovery.getAttribute('href')).toBe('/analytics#hedge-recent-receipts');
   });
 
   it('renders a branded fallback when the route returns an unknown status, without crashing (#0049)', async () => {
@@ -240,7 +240,7 @@ describe('HedgeProofViewerPage', () => {
       );
       expect(jump).not.toBeNull();
       expect(jump!.getAttribute('href')).toBe(
-        '/analytics#hedge-status-card',
+        '/analytics#hedge-recent-receipts',
       );
       const recap = row.querySelector(
         '[data-testid="hedge-proof-recovery-recap"]',

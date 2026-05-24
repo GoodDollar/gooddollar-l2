@@ -249,7 +249,7 @@ export default function HedgeProofViewer({
               variant="error"
               primaryAction={{
                 label: 'Open receipts table',
-                href: '/analytics#hedge-status-card',
+                href: '/analytics#hedge-recent-receipts',
               }}
             />
           ) : (
@@ -410,8 +410,11 @@ function EmptyBodyState({
  *     ops scripts or curl are the only way forward (only rendered
  *     when the parent passes `rawMarkdownHref`; per-receipt viewer
  *     omits it because there is no equivalent markdown route).
- *   - `Jump to receipts table ↓` — anchor to `#hedge-status-card` on
- *     `/analytics`, the table they're most likely heading to next.
+ *   - `Jump to receipts table ↓` — anchor to `#hedge-recent-receipts`
+ *     on `/analytics`, the table they're most likely heading to next.
+ *     The anchor sits on the receipts panel itself (not the outer
+ *     hedge-card section) so the user lands directly on Recent
+ *     receipts without scrolling past the stat tiles (#0076).
  *   - Endpoint + status recap — machine-readable line so an operator
  *     copy-pasting it into Slack carries both pieces of context.
  */
@@ -443,7 +446,7 @@ function ProofErrorRecoveryRow({
         )}
         <Link
           data-testid="hedge-proof-recovery-jump-link"
-          href="/analytics#hedge-status-card"
+          href="/analytics#hedge-recent-receipts"
           className="text-goodgreen hover:underline"
         >
           Jump to receipts table ↓

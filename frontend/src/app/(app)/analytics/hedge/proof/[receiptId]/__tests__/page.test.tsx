@@ -106,7 +106,7 @@ describe('HedgeProofViewerPerReceiptPage — error-state recovery row (#0071)', 
     renderPage('rcpt-1')
     await screen.findByTestId('hedge-proof-error')
     const jump = await screen.findByTestId('hedge-proof-recovery-jump-link')
-    expect(jump.getAttribute('href')).toBe('/analytics#hedge-status-card')
+    expect(jump.getAttribute('href')).toBe('/analytics#hedge-recent-receipts')
   })
 
   it('renders the recap with the per-receipt endpoint and the resolved status', async () => {
@@ -279,7 +279,7 @@ describe('HedgeProofViewerPerReceiptPage — invalid_id Retry suppression (#0072
     await screen.findByTestId('hedge-proof-error')
     expect(screen.queryByTestId('hedge-proof-retry')).toBeNull()
     const link = screen.getByRole('link', { name: /open receipts table/i })
-    expect(link.getAttribute('href')).toBe('/analytics#hedge-status-card')
+    expect(link.getAttribute('href')).toBe('/analytics#hedge-recent-receipts')
   })
 
   it('keeps the Retry button on engine_down (regression — Retry is still appropriate)', async () => {

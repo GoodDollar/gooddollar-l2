@@ -2878,4 +2878,21 @@ describe('HedgeStatusCard', () => {
       expect(cell.className.split(/\s+/)).toContain('uppercase');
     });
   });
+
+  describe('recent-receipts anchor (#0076)', () => {
+    it('exposes #hedge-recent-receipts on the receipts panel so proof-page jump links land on Recent receipts, not the top of the hedge card', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const panel = await screen.findByTestId('hedge-recent-receipts');
+      expect(panel.id).toBe('hedge-recent-receipts');
+      // The anchor must sit inside the outer hedge-card section so the
+      // section-level `#hedge-status-card` anchor (analytics section
+      // nav) still works alongside the new, more specific anchor.
+      const section = screen.getByTestId('hedge-status-card');
+      expect(section.contains(panel)).toBe(true);
+      // `scroll-mt-20` keeps the panel heading clear of the `h-16`
+      // sticky site header when the browser scrolls to the anchor.
+      expect(panel.className.split(/\s+/)).toContain('scroll-mt-20');
+    });
+  });
 });

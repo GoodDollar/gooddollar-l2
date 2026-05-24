@@ -153,12 +153,12 @@ describe('HedgeProofErrorCard', () => {
           variant="error"
           primaryAction={{
             label: 'Open receipts table',
-            href: '/analytics#hedge-status-card',
+            href: '/analytics#hedge-recent-receipts',
           }}
         />,
       )
       const link = screen.getByRole('link', { name: /open receipts table/i })
-      expect(link.getAttribute('href')).toBe('/analytics#hedge-status-card')
+      expect(link.getAttribute('href')).toBe('/analytics#hedge-recent-receipts')
       for (const cls of RED_PALETTE) expect(link.className).toContain(cls)
       expect(screen.queryByTestId('hedge-proof-retry')).toBeNull()
     })
@@ -172,7 +172,7 @@ describe('HedgeProofErrorCard', () => {
           onRetry={() => {}}
           primaryAction={{
             label: 'Open receipts table',
-            href: '/analytics#hedge-status-card',
+            href: '/analytics#hedge-recent-receipts',
           }}
         />,
       )
@@ -203,7 +203,7 @@ describe('HedgeProofErrorCard', () => {
           detail="y"
           primaryAction={{
             label: 'Open receipts table',
-            href: '/analytics#hedge-status-card',
+            href: '/analytics#hedge-recent-receipts',
           }}
         />,
       )

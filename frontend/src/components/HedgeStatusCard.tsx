@@ -997,7 +997,21 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
         )}
       </div>
 
-      <div className="bg-dark-50 rounded-lg p-3 overflow-x-auto">
+      {/*
+        `id="hedge-recent-receipts"` is the precise anchor used by the
+        hedge-proof recovery row's "Jump to receipts table ↓" link and
+        the invalid_id primary "Open receipts table" action (#0076).
+        The outer `<section id="hedge-status-card">` stays in place for
+        the analytics section nav (#0078); this is a more specific
+        landing target so the user lands on the receipts panel itself
+        rather than the top of the hedge card. `scroll-mt-20` (80px)
+        clears the `h-16` sticky site header.
+      */}
+      <div
+        id="hedge-recent-receipts"
+        data-testid="hedge-recent-receipts"
+        className="scroll-mt-20 bg-dark-50 rounded-lg p-3 overflow-x-auto"
+      >
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-sm font-medium text-gray-300">Recent receipts</h3>
