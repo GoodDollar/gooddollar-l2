@@ -74,7 +74,7 @@ export function StocksStatusPanel({ onCtaClick }: StocksStatusPanelProps) {
     ctaLabel = 'View stocks'
   }
   const ctaClass = isLive
-    ? 'bg-goodgreen text-dark-900 hover:brightness-110'
+    ? 'bg-goodgreen text-black hover:brightness-110'
     : 'bg-dark-100 text-gray-200 border border-gray-700/40 hover:bg-dark-50/40'
 
   return (

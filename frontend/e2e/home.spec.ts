@@ -10,9 +10,9 @@ test.describe('Home / Swap page', () => {
     await expect(page.getByRole('heading', { name: /trade\. predict\. invest\./i })).toBeVisible()
   })
 
-  test('renders UBI stats in hero', async ({ page }) => {
-    await expect(page.getByText(/\$2\.4M/).first()).toBeVisible()
-    await expect(page.getByText(/640K\+/).first()).toBeVisible()
+  test('renders UBI impact context without fabricated counters', async ({ page }) => {
+    await expect(page.getByText(/Live counters coming soon/i)).toBeVisible()
+    await expect(page.getByText(/640,000\+ people worldwide/i)).toBeVisible()
   })
 
   test('renders swap card', async ({ page }) => {

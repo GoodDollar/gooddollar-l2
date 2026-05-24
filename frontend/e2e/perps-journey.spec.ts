@@ -248,18 +248,18 @@ test.describe('Perps Journey', () => {
     await expect(oneWeekBtn).toHaveClass(/text-goodgreen/)
   })
 
-  test('order book and recent trades sections are present', async ({ page }) => {
+  test('oracle pricing and history sections are present', async ({ page }) => {
     await page.goto('/perps')
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('h1', { hasText: 'Perpetual Futures' })).toBeVisible({ timeout: 10_000 })
 
-    const orderBookHeader = page.locator('h3', { hasText: 'Order Book' })
-    const recentTradesHeader = page.locator('h3', { hasText: 'Recent Trades' })
+    const pricingHeader = page.locator('h3', { hasText: 'How GoodPerps prices fills' })
+    const historyTabs = page.getByRole('group', { name: 'Perps history tabs' })
     const openPositionsHeader = page.locator('h3', { hasText: 'Open Positions' })
 
-    await expect(orderBookHeader).toBeVisible()
-    await expect(recentTradesHeader).toBeVisible()
+    await expect(pricingHeader).toBeVisible()
+    await expect(historyTabs.getByRole('button', { name: 'Trade History' })).toBeVisible()
     await expect(openPositionsHeader).toBeVisible()
   })
 

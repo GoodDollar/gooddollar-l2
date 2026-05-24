@@ -14,8 +14,10 @@ test.describe('Stocks Journey', () => {
     const heading = page.locator('h1', { hasText: 'Tokenized Stocks' })
     await expect(heading).toBeVisible({ timeout: 10_000 })
 
-    const subtitle = page.locator('text=Trade synthetic equities 24/7 with fractional shares')
+    const subtitle = page.getByTestId('stocks-hero-subhead')
     await expect(subtitle).toBeVisible()
+    await expect(subtitle).toContainText(/Trade synthetic AAPL, TSLA, NVDA/i)
+    await expect(subtitle).toContainText(/24\/7/i)
   })
 
   test('info banner explains how tokenized stocks work', async ({ page }) => {
@@ -24,8 +26,8 @@ test.describe('Stocks Journey', () => {
 
     await expect(page.locator('h1', { hasText: 'Tokenized Stocks' })).toBeVisible({ timeout: 10_000 })
 
-    await expect(page.locator('text=How Tokenized Stocks Work')).toBeVisible()
     await expect(page.locator('text=Synthetic stock tokens track real equity prices')).toBeVisible()
+    await expect(page.getByText(/Every trade routes 33% of fees to UBI/i)).toBeVisible()
   })
 
   test('search input is present with placeholder', async ({ page }) => {

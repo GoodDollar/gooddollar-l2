@@ -231,12 +231,15 @@ export function useAllOnChainMarkets(count: bigint): {
   // current devnet state — 4 placeholder markets with totalYES=totalNO=
   // collateral=0), the downstream `hasMeaningfulPrice` filter in
   // predictData.ts drops them all and the Predict grid renders empty.
-  // Only suppress the demo fallback when at least one market has actual
-  // liquidity to display, so testers always see meaningful cards.
-  const hasLiveLiquidity = markets.some(
-    (m) => m.totalYES > BigInt(0) || m.totalNO > BigInt(0) || m.collateral > BigInt(0)
+  //
+  // Merge-train reruns surfaced the sibling case: a chain can have historical
+  // resolved liquidity but no active liquidity. That is still an empty public
+  // market surface, so keep demo cards visible until at least one active live
+  // market exists.
+  const hasActiveLiveLiquidity = markets.some(
+    (m) => m.isActive && (m.totalYES > BigInt(0) || m.totalNO > BigInt(0) || m.collateral > BigInt(0))
   )
-  const finalMarkets = hasLiveLiquidity ? markets : FALLBACK_MARKETS
+  const finalMarkets = hasActiveLiveLiquidity ? markets : FALLBACK_MARKETS
   return {
     markets: finalMarkets,
     isLoading: marketResults.isLoading,

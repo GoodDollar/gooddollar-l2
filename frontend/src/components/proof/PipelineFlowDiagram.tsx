@@ -28,6 +28,15 @@ const REASON_BY_AXIS: Record<AxisKey, string> = {
   hedgeProof: 'hedge-proof missing',
 }
 
+const PANEL_HREF_BY_NODE_ID: Record<string, string | null> = {
+  etoro: null,
+  'price-service': '#panel-live-quotes',
+  'oracle-signer': '#panel-oracle-updates',
+  chain: '#panel-onchain-oracle',
+  frontend: '#panel-onchain-oracle',
+  'demo-hedge': '#panel-last-hedge',
+}
+
 interface NodeSpec {
   id: string
   label: string
@@ -215,21 +224,23 @@ export function PipelineFlowDiagram({
       data-testid="pipeline-flow-diagram"
       className="rounded-2xl border border-white/10 bg-dark-100/40 px-4 py-3"
     >
-      <ol className="flex flex-wrap items-center gap-y-2 text-xs">
-        {NODES.map((node, idx) => {
-          const nodeTone = axisToTone(axes[node.axis])
-          const edge = EDGES[idx]
-          const edgeTone = edge ? axisToTone(axes[edge.axis]) : null
-          return (
-            <FlowNode
-              key={`node-${node.id}`}
-              spec={node}
-              tone={nodeTone}
-              trailingEdge={edge && edgeTone ? { spec: edge, tone: edgeTone } : null}
-            />
-          )
-        })}
-      </ol>
+      <div data-testid="pipeline-flow-desktop">
+        <ol className="flex flex-wrap items-center gap-y-2 text-xs">
+          {NODES.map((node, idx) => {
+            const nodeTone = axisToTone(axes[node.axis])
+            const edge = EDGES[idx]
+            const edgeTone = edge ? axisToTone(axes[edge.axis]) : null
+            return (
+              <FlowNode
+                key={`node-${node.id}`}
+                spec={node}
+                tone={nodeTone}
+                trailingEdge={edge && edgeTone ? { spec: edge, tone: edgeTone } : null}
+              />
+            )
+          })}
+        </ol>
+      </div>
       {failedReasons.length > 0 && (
         <p
           data-testid="pipeline-flow-degradation"
@@ -251,18 +262,32 @@ function FlowNode({
   tone: Tone
   trailingEdge: { spec: EdgeSpec; tone: Tone } | null
 }) {
+  const href = PANEL_HREF_BY_NODE_ID[spec.id]
+  const nodeContent = (
+    <span
+      className={`inline-flex flex-col items-start rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`}
+    >
+      <span className="font-mono uppercase tracking-wider">{spec.label}</span>
+      {spec.subtitle && <span className="text-[10px] text-gray-400">{spec.subtitle}</span>}
+    </span>
+  )
+
   return (
     <li
       data-testid={`pipeline-node-${spec.id}`}
       data-tone={tone}
       className="inline-flex items-center"
     >
-      <span
-        className={`inline-flex flex-col items-start rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`}
-      >
-        <span className="font-mono uppercase tracking-wider">{spec.label}</span>
-        {spec.subtitle && <span className="text-[10px] text-gray-400">{spec.subtitle}</span>}
-      </span>
+      {href ? (
+        <a
+          href={href}
+          data-testid={`pipeline-node-${spec.id}-link`}
+          className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          aria-label={`Jump to ${spec.label} panel`}
+        >
+          {nodeContent}
+        </a>
+      ) : nodeContent}
       {trailingEdge && (
         <span
           aria-hidden

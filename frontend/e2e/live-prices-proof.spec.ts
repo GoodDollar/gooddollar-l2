@@ -161,7 +161,8 @@ test.describe('Lane 6 — /live-prices-proof', () => {
       expect(href).toMatch(/\/address\/0x[a-fA-F0-9]{40}$/)
     } else {
       const txt = (await oracleText.textContent()) ?? ''
-      expect(txt).toMatch(/0x[a-fA-F0-9]{40}/)
+      expect(txt).toMatch(/^0x[a-fA-F0-9]{4}…[a-fA-F0-9]{4}$/)
+      expect(await oracleText.getAttribute('title')).toMatch(/^0x[a-fA-F0-9]{40}$/)
     }
 
     expect(errors, `page errors: ${JSON.stringify(errors)}`).toEqual([])

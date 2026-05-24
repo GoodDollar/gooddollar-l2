@@ -262,6 +262,31 @@ describe('useAllOnChainMarkets — fallback gating (iter18)', () => {
     expect(result.current.markets[1].question).toBe('Will ETH flip BTC?')
   })
 
+  it('only resolved on-chain markets have liquidity → returns demo FALLBACK_MARKETS', () => {
+    const RESOLVED_LIQUIDITY_TUPLE: [string, bigint, number, bigint, bigint, bigint] = [
+      'Resolved historical market',
+      BigInt(Math.floor(new Date('2026-01-01').getTime() / 1000)),
+      1,
+      BigInt(5e18),
+      BigInt(3e18),
+      BigInt(10e18),
+    ]
+
+    useReadContractsMock
+      .mockReturnValueOnce({
+        data: [{ status: 'success', result: RESOLVED_LIQUIDITY_TUPLE }],
+        isLoading: false,
+      })
+      .mockReturnValueOnce({
+        data: [{ status: 'success', result: BigInt(6250) }],
+        isLoading: false,
+      })
+
+    const { result } = renderHook(() => useAllOnChainMarkets(BigInt(1)))
+    expect(result.current.markets).toHaveLength(6)
+    expect(result.current.markets.map((m) => m.question)).not.toContain('Resolved historical market')
+  })
+
   it('only collateral is non-zero (no trades yet but market is funded) → real markets win', () => {
     const COLLATERAL_ONLY_TUPLE: [string, bigint, number, bigint, bigint, bigint] = [
       'Funded market with no trades',
