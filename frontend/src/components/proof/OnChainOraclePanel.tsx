@@ -8,6 +8,7 @@ import { sessionPillClass } from './sessionPill'
 import { MonoLinkAtom, MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
 import { usePanelRetry } from './ProofPanelActionsProvider'
+import { shortAddress } from './panelHeaderMetaUtils'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
 /**
@@ -264,6 +265,14 @@ export function OnChainOraclePanel() {
  * Renders the explorer link when both pieces are configured, the plain
  * mono span when only the address is configured, or nothing when no
  * address is known so the panel-header rail collapses to empty.
+ *
+ * The visible value is the canonical `0x{first6}…{last4}` short form
+ * (#0072) so this panel renders the same string `OracleUpdatesPanel`
+ * does — the two adjacent proof-page panels can no longer disagree on
+ * how the same `CONTRACTS.StocksPriceOracle` address looks. The
+ * `title` tooltip, the `aria-label`, and the explorer `href` all keep
+ * the full hex so power users (and screen-reader users) reach the
+ * exact address.
  */
 function OracleAddressAtom({
   oracleAddress,
@@ -273,10 +282,11 @@ function OracleAddressAtom({
   explorer: string
 }) {
   if (!oracleAddress) return null
+  const visible = shortAddress(oracleAddress)
   if (explorer) {
     return (
       <MonoLinkAtom
-        value={oracleAddress}
+        value={visible}
         href={`${explorer.replace(/\/$/, '')}/address/${oracleAddress}`}
         data-testid="oracle-address-link"
         aria-label={`Open ${oracleAddress} on block explorer`}
@@ -286,7 +296,7 @@ function OracleAddressAtom({
   }
   return (
     <MonoSourceAtom
-      value={oracleAddress}
+      value={visible}
       data-testid="oracle-address-text"
       title={oracleAddress}
     />

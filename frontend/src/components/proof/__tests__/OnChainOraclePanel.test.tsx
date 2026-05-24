@@ -18,6 +18,7 @@ vi.mock('@/lib/abi', () => ({
 import { OnChainOraclePanel } from '../OnChainOraclePanel'
 import { TestProofPipelineAxesProvider } from '../ProofPipelineAxesProvider'
 import { ProofPanelActionsProvider } from '../ProofPanelActionsProvider'
+import { shortAddress } from '../panelHeaderMetaUtils'
 import {
   type DecodedPriceData,
   type OnChainFetchStatus,
@@ -25,6 +26,7 @@ import {
 } from '../useProofPipelineAxes'
 
 const ORACLE_ADDRESS = '0x1111111111111111111111111111111111111111'
+const ORACLE_ADDRESS_SHORT = shortAddress(ORACLE_ADDRESS)
 
 /**
  * Sane defaults for the parts of the axes context that don't drive the
@@ -188,7 +190,11 @@ describe('OnChainOraclePanel', () => {
     )
     expect(link.getAttribute('target')).toBe('_blank')
     expect(link.getAttribute('rel')).toBe('noopener noreferrer')
-    expect(link.textContent).toContain(ORACLE_ADDRESS)
+    // The visible link text is the canonical short form so this panel
+    // matches OracleUpdatesPanel's address rendering — see #0072. The
+    // full hex stays reachable via the `href` and the `title` tooltip.
+    expect(link.textContent).toContain(ORACLE_ADDRESS_SHORT)
+    expect(link.textContent).not.toContain(ORACLE_ADDRESS)
     expect(screen.queryByTestId('oracle-address-text')).not.toBeInTheDocument()
   })
 
@@ -211,7 +217,11 @@ describe('OnChainOraclePanel', () => {
 
     expect(screen.queryByTestId('oracle-address-link')).not.toBeInTheDocument()
     const span = screen.getByTestId('oracle-address-text')
-    expect(span.textContent).toContain(ORACLE_ADDRESS)
+    // Fallback span also uses the canonical short form so the two
+    // adjacent panels never disagree on how the same oracle address
+    // looks — see #0072.
+    expect(span.textContent).toContain(ORACLE_ADDRESS_SHORT)
+    expect(span.textContent).not.toContain(ORACLE_ADDRESS)
   })
 
   it('survives a trailing slash on the explorer URL', () => {
@@ -235,6 +245,28 @@ describe('OnChainOraclePanel', () => {
     vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER_URL', '')
     renderPanel({ status: 'ok' })
     expect(screen.getByTestId('oracle-address-text').getAttribute('title')).toBe(ORACLE_ADDRESS)
+  })
+
+  // #0072 — sister to the OracleUpdatesPanel test that pins the same
+  // short-form. Both panels sit one above the other on the proof page
+  // and a reviewer scanning for "is this the right oracle?" must see
+  // an identical visible string in both panel headers. Pin the link's
+  // visible text to exactly `shortAddress(ORACLE_ADDRESS)` so any
+  // future drift in render path (longer slice, different separator)
+  // surfaces here.
+  it('renders the explorer link text as exactly shortAddress(oracleAddress) — same canonical short form as OracleUpdatesPanel (#0072)', () => {
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER', 'https://explorer.example.com')
+    renderPanel({ status: 'ok' })
+    const link = screen.getByTestId('oracle-address-link')
+    expect(link.textContent?.trim()).toBe(`${ORACLE_ADDRESS_SHORT} ↗`)
+  })
+
+  it('renders the fallback span text as exactly shortAddress(oracleAddress) (#0072)', () => {
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER', '')
+    vi.stubEnv('NEXT_PUBLIC_BLOCK_EXPLORER_URL', '')
+    renderPanel({ status: 'ok' })
+    const span = screen.getByTestId('oracle-address-text')
+    expect(span.textContent?.trim()).toBe(ORACLE_ADDRESS_SHORT)
   })
 
   // Task lane6-onchain-oracle-column-headers-unexplained-jargon:
