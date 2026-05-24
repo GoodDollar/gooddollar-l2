@@ -130,6 +130,103 @@ describe('InstrumentResolver — caching', () => {
   });
 });
 
+describe('InstrumentResolver — negative caching', () => {
+  it('caches a not-found result for the negative TTL', async () => {
+    const http = createMockAxios({ search: { FAKE: [] } });
+    const get = http.get as jest.Mock;
+    const resolver = new InstrumentResolver({
+      http,
+      audit: silentAudit(),
+      negativeTtlMs: 1_000_000,
+    });
+
+    await expect(resolver.resolve('FAKE')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    await expect(resolver.resolve('FAKE')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    await expect(resolver.resolve('fake')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-attempts after the negative TTL elapses', async () => {
+    let now = 1_000_000;
+    const http = createMockAxios({ search: { FAKE: [] } });
+    const get = http.get as jest.Mock;
+    const resolver = new InstrumentResolver({
+      http,
+      audit: silentAudit(),
+      negativeTtlMs: 100,
+      clock: () => now,
+    });
+
+    await expect(resolver.resolve('FAKE')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    expect(get).toHaveBeenCalledTimes(1);
+
+    now += 200;
+    await expect(resolver.resolve('FAKE')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves InstrumentNotFoundError shape on a cached not-found', async () => {
+    const http = createMockAxios({
+      search: {
+        FAKE: [
+          { instrumentId: 'INST-X', internalSymbolFull: 'FAKEX', symbol: 'FAKEX', displayname: 'Fake X', instrumentType: 'Stock', isCurrentlyTradable: true },
+          { instrumentId: 'INST-Y', internalSymbolFull: 'FAKEY', symbol: 'FAKEY', displayname: 'Fake Y', instrumentType: 'Stock', isCurrentlyTradable: true },
+        ],
+      },
+    });
+    const resolver = new InstrumentResolver({ http, audit: silentAudit() });
+
+    let firstErr: unknown;
+    try { await resolver.resolve('FAKE'); } catch (e) { firstErr = e; }
+    let secondErr: unknown;
+    try { await resolver.resolve('FAKE'); } catch (e) { secondErr = e; }
+
+    expect(firstErr).toBeInstanceOf(InstrumentNotFoundError);
+    expect(secondErr).toBeInstanceOf(InstrumentNotFoundError);
+    expect((secondErr as InstrumentNotFoundError).candidates)
+      .toEqual((firstErr as InstrumentNotFoundError).candidates);
+    expect((secondErr as InstrumentNotFoundError).candidates).toEqual(['FAKEX', 'FAKEY']);
+    expect((secondErr as InstrumentNotFoundError).symbol).toBe('FAKE');
+  });
+
+  it('clearCache flushes the negative entry', async () => {
+    const http = createMockAxios({ search: { FAKE: [] } });
+    const get = http.get as jest.Mock;
+    const resolver = new InstrumentResolver({ http, audit: silentAudit() });
+
+    await expect(resolver.resolve('FAKE')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    expect(get).toHaveBeenCalledTimes(1);
+    resolver.clearCache();
+    await expect(resolver.resolve('FAKE')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it('disables negative cache when negativeTtlMs is 0', async () => {
+    const http = createMockAxios({ search: { FAKE: [] } });
+    const get = http.get as jest.Mock;
+    const resolver = new InstrumentResolver({
+      http,
+      audit: silentAudit(),
+      negativeTtlMs: 0,
+    });
+
+    await expect(resolver.resolve('FAKE')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    await expect(resolver.resolve('FAKE')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it('positive cache is unaffected by the negative-cache code path', async () => {
+    const http = createMockAxios({ search: { AAPL: [SEARCH_HIT_AAPL] } });
+    const get = http.get as jest.Mock;
+    const resolver = new InstrumentResolver({ http, audit: silentAudit() });
+
+    await resolver.resolve('AAPL');
+    await resolver.resolve('AAPL');
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('InstrumentResolver — resolveMany', () => {
   it('resolves each requested symbol in turn', async () => {
     const http = createMockAxios({
@@ -214,6 +311,25 @@ describe('InstrumentResolver — audit logging', () => {
     const resolver = new InstrumentResolver({ http, audit });
 
     await expect(resolver.resolve('FOO')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    const noMatch = entries.filter((e) => (e as { action: string }).action === 'instrument-resolver-no-match');
+    expect(noMatch).toHaveLength(1);
+  });
+
+  it('does NOT write an extra no-match audit line on a negative-cache hit', async () => {
+    const entries: unknown[] = [];
+    const audit = new AuditLogger('demo-readonly', {
+      logPath: '/dev/null',
+      appendImpl: (_p, line) => { entries.push(JSON.parse(line)); },
+      mkdirImpl: () => undefined,
+      consoleErrorImpl: () => undefined,
+    });
+    const http = createMockAxios({ search: { FOO: [] } });
+    const resolver = new InstrumentResolver({ http, audit, negativeTtlMs: 1_000_000 });
+
+    await expect(resolver.resolve('FOO')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    await expect(resolver.resolve('FOO')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+    await expect(resolver.resolve('FOO')).rejects.toBeInstanceOf(InstrumentNotFoundError);
+
     const noMatch = entries.filter((e) => (e as { action: string }).action === 'instrument-resolver-no-match');
     expect(noMatch).toHaveLength(1);
   });

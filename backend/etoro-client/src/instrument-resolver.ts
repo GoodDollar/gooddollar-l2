@@ -28,6 +28,14 @@ export interface InstrumentResolverDeps {
   /** Cache TTL in ms. Default 24 h. eToro instrument IDs are stable. */
   ttlMs?: number;
   /**
+   * Negative-cache TTL in ms. Default 60_000 (1 min). Set to 0 to
+   * disable so every not-found re-hits the network. Kept intentionally
+   * short so a transient `/search` flake doesn't pin a symbol as
+   * unresolvable for a day, but long enough to prevent tick-frequency
+   * thrash from the lane's REST fallback.
+   */
+  negativeTtlMs?: number;
+  /**
    * Optional clock for deterministic cache-expiry tests. Defaults to
    * `Date.now`.
    */
@@ -42,6 +50,14 @@ export interface InstrumentResolverDeps {
 }
 
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_NEGATIVE_TTL_MS = 60 * 1000;
+
+type ResolverCacheEntry = {
+  expiresAt: number;
+  result:
+    | { ok: true; value: ResolvedInstrument }
+    | { ok: false; candidates: readonly string[] };
+};
 
 /**
  * Documented fields projection for `/market-data/search`. Pinned per
@@ -75,15 +91,17 @@ export class InstrumentResolver {
   private readonly audit: AuditLogger | undefined;
   private readonly dispatch: HttpDispatcher;
   private readonly ttlMs: number;
+  private readonly negativeTtlMs: number;
   private readonly clock: () => number;
   private readonly malformedListSink: MalformedListSink;
-  private readonly cache = new Map<string, { value: ResolvedInstrument; expiresAt: number }>();
+  private readonly cache = new Map<string, ResolverCacheEntry>();
 
   constructor(deps: InstrumentResolverDeps) {
     this.http = deps.http;
     this.audit = deps.audit;
     this.dispatch = deps.dispatch ?? identityDispatcher;
     this.ttlMs = deps.ttlMs ?? DEFAULT_TTL_MS;
+    this.negativeTtlMs = deps.negativeTtlMs ?? DEFAULT_NEGATIVE_TTL_MS;
     this.clock = deps.clock ?? Date.now;
     this.malformedListSink = deps.malformedListSink ?? {
       audit: this.audit,
@@ -95,17 +113,33 @@ export class InstrumentResolver {
   async resolve(symbol: string): Promise<ResolvedInstrument> {
     const key = symbol.toUpperCase();
     const cached = this.cache.get(key);
-    if (cached && cached.expiresAt > this.clock()) return cached.value;
+    if (cached && cached.expiresAt > this.clock()) {
+      if (cached.result.ok) return cached.result.value;
+      // Re-throw a fresh InstrumentNotFoundError so the stack trace
+      // points at the cache-hit call site; preserve candidates so
+      // consumers that inspect them get the same shape as a network miss.
+      throw new InstrumentNotFoundError({
+        symbol,
+        candidates: cached.result.candidates,
+      });
+    }
 
     const override = laneOverrideFor(key);
     if (override) {
-      this.cacheSet(key, override);
+      this.cacheSetPositive(key, override);
       return override;
     }
 
-    const resolved = await this.fetchAndMatch(key);
-    this.cacheSet(key, resolved);
-    return resolved;
+    try {
+      const resolved = await this.fetchAndMatch(key);
+      this.cacheSetPositive(key, resolved);
+      return resolved;
+    } catch (err) {
+      if (err instanceof InstrumentNotFoundError && this.negativeTtlMs > 0) {
+        this.cacheSetNegative(key, err.candidates);
+      }
+      throw err;
+    }
   }
 
   async resolveMany(symbols: readonly string[]): Promise<Map<string, ResolvedInstrument>> {
@@ -116,13 +150,23 @@ export class InstrumentResolver {
     return out;
   }
 
-  /** Test-only: clear cache so the next `resolve` re-fetches. */
+  /** Test-only: clear cache so the next `resolve` re-fetches. Flushes positive and negative entries alike. */
   clearCache(): void {
     this.cache.clear();
   }
 
-  private cacheSet(key: string, value: ResolvedInstrument): void {
-    this.cache.set(key, { value, expiresAt: this.clock() + this.ttlMs });
+  private cacheSetPositive(key: string, value: ResolvedInstrument): void {
+    this.cache.set(key, {
+      expiresAt: this.clock() + this.ttlMs,
+      result: { ok: true, value },
+    });
+  }
+
+  private cacheSetNegative(key: string, candidates: readonly string[]): void {
+    this.cache.set(key, {
+      expiresAt: this.clock() + this.negativeTtlMs,
+      result: { ok: false, candidates },
+    });
   }
 
   private async fetchAndMatch(symbol: string): Promise<ResolvedInstrument> {
