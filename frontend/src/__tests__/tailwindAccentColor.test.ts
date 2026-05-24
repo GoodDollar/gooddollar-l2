@@ -15,14 +15,14 @@ function readAccent(colors: ColorMap | undefined): string | undefined {
 }
 
 describe('tailwind accent token', () => {
-  it('defines accent as the brand mint-teal #00B0A0 so text-accent / bg-accent / border-accent / ring-accent emit CSS', () => {
+  it('defines accent as official eToro green #13C636 so text-accent / bg-accent / border-accent / ring-accent emit CSS', () => {
     const full = resolveConfig(tailwindConfig)
     const value = readAccent(full.theme?.colors as unknown as ColorMap | undefined)
     expect(value).toBeDefined()
-    expect(value?.toLowerCase()).toBe('#00b0a0')
+    expect(value?.toLowerCase()).toBe('#13c636')
   })
 
-  it('matches goodgreen.500 so the global :focus-visible outline (#00B0A0) and ring-accent share the same hue', () => {
+  it('matches goodgreen.500 so the global :focus-visible outline (#13C636) and ring-accent share the same hue', () => {
     const full = resolveConfig(tailwindConfig)
     const colors = full.theme?.colors as unknown as ColorMap | undefined
     const accentValue = readAccent(colors)

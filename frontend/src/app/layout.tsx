@@ -74,7 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="font-sans min-h-screen flex flex-col">
+      <body className="font-sans min-h-screen flex flex-col bg-etoro-afterhours text-etoro-intelligence">
         {/* Skip to main content — WCAG 2.4.1 */}
         <a
           href="#main-content"
@@ -90,7 +90,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main
               id="main-content"
               tabIndex={-1}
-              className="flex-1 flex flex-col items-center px-4 pt-8 pb-12 outline-none"
+              className="etoro-page-shell flex-1 flex flex-col items-center px-4 pt-8 pb-12 outline-none"
             >
               <PageTransition>{children}</PageTransition>
             </main>

@@ -45,7 +45,7 @@ vi.mock('@/lib/useOnChainMarketData', () => ({
       },
       {
         symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
-        category: 'GoodDollar' as const, color: '#00B0A0',
+        category: 'GoodDollar' as const, color: '#13C636',
         price: 0.0002, change1h: 0.1, change24h: -0.5, change7d: 1.0,
         volume24h: 5e5, marketCap: 1e7, sparkline7d: [0.00019, 0.0002, 0.00021],
         description: 'GoodDollar UBI token',
@@ -172,7 +172,7 @@ describe('TokenDetailPage — null market data (G$ has no CoinGecko quote)', () 
         tokens: [
           {
             symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
-            category: 'GoodDollar' as const, color: '#00B0A0',
+            category: 'GoodDollar' as const, color: '#13C636',
             price: 0.0002,
             change1h: null,
             change24h: null,

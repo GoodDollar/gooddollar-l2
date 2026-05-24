@@ -19,7 +19,7 @@ export default function WalletProviders({ children }: { children: React.ReactNod
     <WagmiProvider config={config}>
       <RainbowKitProvider
         theme={darkTheme({
-          accentColor: '#00B0A0',
+          accentColor: '#13C636',
           accentColorForeground: '#071311',
           borderRadius: 'medium',
         })}

@@ -305,7 +305,7 @@ function FeaturedMarket({ market }: { market: PredictionMarket | null }) {
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-[0.04]"
-        style={{ background: 'radial-gradient(ellipse at top right, #00B0A0 0%, transparent 60%)' }}
+        style={{ background: 'radial-gradient(ellipse at top right, #13C636 0%, transparent 60%)' }}
       />
 
       <div className="flex items-center gap-2 mb-3">
@@ -429,7 +429,7 @@ function OnlyFeaturedNotice({
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-goodgreen bg-goodgreen/10 border border-goodgreen/20 hover:bg-goodgreen/10 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/40 focus-visible:outline-none"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-goodgreen bg-goodgreen/10 border border-goodgreen/20 hover:bg-goodgreen/20 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/40 focus-visible:outline-none"
           >
             Clear filter
           </button>

@@ -34,7 +34,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
+      "font-src 'self' https://fonts.gstatic.com https://marketing.etorostatic.com",
       "img-src 'self' data: https://assets.coingecko.com https://raw.githubusercontent.com https://goodswap.goodclaw.org https://logo.clearbit.com",
       [
         "connect-src 'self'",

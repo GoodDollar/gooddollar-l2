@@ -1,6 +1,9 @@
 # Local/editor
 .cursor/skills/
 .cursor/mcp.json
+.codex-reviews/
+.cursor-runs/
+.paperclip/
 AGENTS.md
 TOOLS.local.md
 *.log
@@ -125,6 +128,9 @@ frontend/tsconfig.tsbuildinfo
 
 # Local generated review artifacts
 frontend/.next.review/
+frontend/.next.e2e.stale-*/
+docs/screenshots/*.png
+scripts/paperclip-continuous-testers.mjs
 
 # Local generated review artifacts
 frontend/*.png

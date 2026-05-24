@@ -7,8 +7,8 @@ const links = [
 export function LandingFooter() {
   return (
     <footer className="w-full max-w-5xl mx-auto mt-auto pt-8 mb-4 px-4">
-      <div className="border-t border-gray-700/20 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <p className="text-xs text-gray-500">
+      <div className="border-t border-white/[0.08] pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p className="text-xs text-etoro-intelligence/45">
           Powered by GoodDollar L2
         </p>
         <nav aria-label="Footer" className="flex items-center gap-4">
@@ -18,7 +18,7 @@ export function LandingFooter() {
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              className="text-xs text-etoro-intelligence/45 hover:text-etoro-intelligence transition-colors"
             >
               {link.label}
             </a>

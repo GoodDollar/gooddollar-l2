@@ -10,7 +10,7 @@ interface TokenIconProps {
 function GoodDollarIcon({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="16" fill="#00B0A0" />
+      <circle cx="16" cy="16" r="16" fill="#13C636" />
       <text
         x="16"
         y="17"

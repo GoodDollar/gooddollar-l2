@@ -37,10 +37,10 @@ export function UBIBanner() {
   }
 
   return (
-    <div role="region" aria-label="UBI Impact" className="w-full bg-goodgreen/[0.06] border-b border-goodgreen/10">
+    <div role="region" aria-label="UBI Impact" className="w-full bg-goodgreen/[0.08] border-b border-goodgreen/15">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-1.5">
         {impact.status === 'live' && impact.ubiDistributedUsd != null && impact.claimers != null ? (
-          <p className="text-xs text-gray-300 flex-1 text-center" data-testid="ubi-banner-copy">
+          <p className="text-xs text-etoro-intelligence/75 flex-1 text-center" data-testid="ubi-banner-copy">
             <span className="text-goodgreen mr-1.5">&#9829;</span>
             <span className="text-goodgreen font-medium">{formatCompactUsd(impact.ubiDistributedUsd)}</span>
             {' '}distributed to{' '}
@@ -48,7 +48,7 @@ export function UBIBanner() {
             {' '}people through UBI — funded by your trades
           </p>
         ) : (
-          <p className="text-xs text-gray-300 flex-1 text-center" data-testid="ubi-banner-copy">
+          <p className="text-xs text-etoro-intelligence/75 flex-1 text-center" data-testid="ubi-banner-copy">
             <span className="text-goodgreen mr-1.5">&#9829;</span>
             Every swap funds UBI. Live impact metrics coming soon.
           </p>
@@ -56,7 +56,7 @@ export function UBIBanner() {
         <button
           onClick={dismiss}
           aria-label="Dismiss UBI banner"
-          className="ml-3 shrink-0 p-1 rounded-md text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+          className="ml-3 shrink-0 p-1 rounded-md text-etoro-intelligence/45 hover:text-etoro-intelligence/80 hover:bg-white/5 transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

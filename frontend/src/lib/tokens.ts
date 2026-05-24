@@ -96,7 +96,7 @@ export const TOKENS: Token[] = [
 export const POPULAR_TOKENS = TOKENS.filter(t => t.popular)
 
 export const TOKEN_COLORS: Record<string, string> = {
-  'G$': '#00B0A0',
+  'G$': '#13C636',
   'ETH': '#627EEA',
   'USDC': '#2775CA',
   'WBTC': '#F7931A',

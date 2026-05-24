@@ -68,16 +68,16 @@ export function Header() {
   }, [mobileMenuOpen])
 
   return (
-    <header className="w-full border-b border-dark-50/50 bg-dark-100/80 backdrop-blur-md relative z-50">
+    <header className="w-full border-b border-white/[0.08] bg-etoro-afterhours/85 shadow-[0_8px_32px_rgba(0,0,0,0.22)] backdrop-blur-xl relative z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 h-16">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="w-8 h-8 shrink-0 rounded-full bg-goodgreen flex items-center justify-center font-bold text-dark text-sm">
+          <div className="w-8 h-8 shrink-0 rounded-full bg-goodgreen flex items-center justify-center font-bold text-etoro-afterhours text-sm shadow-[0_0_20px_rgba(19,198,54,0.25)]">
             G$
           </div>
-          <span className="hidden sm:inline text-lg font-semibold text-white">GoodDollar</span>
+          <span className="hidden sm:inline text-lg font-semibold tracking-[-0.02em] text-etoro-intelligence">GoodDollar</span>
         </div>
 
-        <nav aria-label="Primary" className="hidden 2xl:flex items-center gap-5 text-sm text-gray-400">
+        <nav aria-label="Primary" className="hidden 2xl:flex items-center gap-5 text-sm text-etoro-intelligence/60">
           <Link prefetch={false} href="/" className={isSwap ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Swap</Link>
           <Link prefetch={false} href="/explore" className={isExplore ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Explore</Link>
           <Link prefetch={false} href="/pool" className={`flex items-center gap-1.5 ${isPool ? 'text-white font-medium' : 'hover:text-white transition-colors'}`}>
@@ -100,8 +100,8 @@ export function Header() {
           <Link prefetch={false} href="/yield" className={isYield ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Yield</Link>
           <Link prefetch={false} href="/governance" className={isGovernance ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Govern</Link>
           <Link prefetch={false} href="/agents" className={isAgents ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Agents</Link>
-          <Link prefetch={false} href="/ubi-impact" className={isUBIImpact ? 'text-green-400 font-medium' : 'text-green-400/60 hover:text-green-400 transition-colors'}>UBI</Link>
-          <Link prefetch={false} href="/activity" className={isActivity ? 'text-goodgreen font-medium' : 'text-goodgreen hover:text-goodgreen transition-colors'}>
+          <Link prefetch={false} href="/ubi-impact" className={isUBIImpact ? 'text-goodgreen font-medium' : 'text-goodgreen/60 hover:text-goodgreen transition-colors'}>UBI</Link>
+          <Link prefetch={false} href="/activity" className={isActivity ? 'text-goodgreen font-medium' : 'text-goodgreen/60 hover:text-goodgreen transition-colors'}>
             <span className="flex items-center gap-1">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-goodgreen animate-pulse" />
               Activity
@@ -122,7 +122,7 @@ export function Header() {
           <Link prefetch={false} href="/invite" className={isInvite ? 'text-accent font-medium' : 'text-accent/60 hover:text-accent transition-colors'}>Invite</Link>
         </nav>
 
-        <nav data-testid="condensed-nav" aria-label="Primary condensed" className="hidden lg:flex 2xl:hidden items-center gap-3 text-sm text-gray-400">
+        <nav data-testid="condensed-nav" aria-label="Primary condensed" className="hidden lg:flex 2xl:hidden items-center gap-3 text-sm text-etoro-intelligence/60">
           <Link prefetch={false} href="/" className={isSwap ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Swap</Link>
           <Link prefetch={false} href="/stocks" className={isStocks ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Stocks</Link>
           <Link prefetch={false} href="/perps" className={isPerps ? 'text-white font-medium' : 'hover:text-white transition-colors'}>Perps</Link>
@@ -141,7 +141,7 @@ export function Header() {
               More
               <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
             </summary>
-            <div className="absolute right-0 top-full mt-3 w-48 rounded-xl border border-dark-50 bg-dark-100/95 shadow-xl shadow-black/30 backdrop-blur-md p-2 z-50">
+            <div className="absolute right-0 top-full mt-3 w-48 rounded-2xl border border-white/[0.10] bg-etoro-carbon/95 shadow-xl shadow-black/30 backdrop-blur-xl p-2 z-50">
               <Link prefetch={false} href="/explore" className={`block px-3 py-2 rounded-lg ${isExplore ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Explore</Link>
               <Link prefetch={false} href="/pool" className={`flex items-center justify-between px-3 py-2 rounded-lg ${isPool ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>
                 Pool
@@ -155,8 +155,8 @@ export function Header() {
               <Link prefetch={false} href="/yield" className={`block px-3 py-2 rounded-lg ${isYield ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Yield</Link>
               <Link prefetch={false} href="/governance" className={`block px-3 py-2 rounded-lg ${isGovernance ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Govern</Link>
               <Link prefetch={false} href="/agents" className={`block px-3 py-2 rounded-lg ${isAgents ? 'text-white bg-dark-50/50 font-medium' : 'text-gray-400 hover:text-white hover:bg-dark-50/50'}`}>Agents</Link>
-              <Link prefetch={false} href="/ubi-impact" className={`block px-3 py-2 rounded-lg ${isUBIImpact ? 'text-green-400 bg-dark-50/50 font-medium' : 'text-green-300 hover:text-green-400 hover:bg-dark-50/50'}`}>UBI</Link>
-              <Link prefetch={false} href="/activity" className={`block px-3 py-2 rounded-lg ${isActivity ? 'text-goodgreen bg-dark-50/50 font-medium' : 'text-goodgreen/80 hover:text-goodgreen hover:bg-dark-50/50'}`}>Activity</Link>
+              <Link prefetch={false} href="/ubi-impact" className={`block px-3 py-2 rounded-lg ${isUBIImpact ? 'text-goodgreen bg-dark-50/50 font-medium' : 'text-goodgreen/70 hover:text-goodgreen hover:bg-dark-50/50'}`}>UBI</Link>
+              <Link prefetch={false} href="/activity" className={`block px-3 py-2 rounded-lg ${isActivity ? 'text-goodgreen bg-dark-50/50 font-medium' : 'text-goodgreen/70 hover:text-goodgreen hover:bg-dark-50/50'}`}>Activity</Link>
               <Link
                 prefetch={false}
                 href="/analytics"
@@ -208,7 +208,7 @@ export function Header() {
         <div
           ref={menuRef}
           data-testid="mobile-nav"
-          className="lg:hidden border-t border-dark-50/50 bg-dark-100 backdrop-blur-md animate-in slide-in-from-top-2 duration-200 relative z-50"
+          className="lg:hidden border-t border-white/[0.08] bg-etoro-carbon/95 backdrop-blur-xl relative z-50"
         >
           <nav aria-label="Mobile" className="flex flex-col px-4 py-3 gap-1">
             <Link prefetch={false} href="/"
@@ -291,13 +291,13 @@ export function Header() {
             </Link>
             <Link prefetch={false} href="/ubi-impact"
               onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isUBIImpact ? 'text-green-400 font-medium bg-dark-50/50' : 'text-green-400/60 hover:text-green-400'}`}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isUBIImpact ? 'text-goodgreen font-medium bg-dark-50/50' : 'text-goodgreen/60 hover:text-goodgreen'}`}
             >
               🌍 UBI Impact
             </Link>
             <Link prefetch={false} href="/activity"
               onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isActivity ? 'text-goodgreen font-medium bg-dark-50/50' : 'text-goodgreen hover:text-goodgreen'}`}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isActivity ? 'text-goodgreen font-medium bg-dark-50/50' : 'text-goodgreen/60 hover:text-goodgreen'}`}
             >
               <span className="flex items-center gap-1.5">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-goodgreen animate-pulse" />
@@ -332,6 +332,12 @@ export function Header() {
               className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isTestnetGuide ? 'text-accent font-medium bg-accent/10' : 'text-accent/70 hover:text-accent'}`}
             >
               📖 Testnet Guide
+            </Link>
+            <Link prefetch={false} href="/live-prices-proof"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${isProof ? 'text-accent font-medium bg-accent/10' : 'text-accent/70 hover:text-accent'}`}
+            >
+              📈 Proof
             </Link>
             <Link prefetch={false} href="/invite"
               onClick={() => setMobileMenuOpen(false)}

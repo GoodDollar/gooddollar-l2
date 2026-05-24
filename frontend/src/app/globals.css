@@ -2,39 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "eToro";
+  src: url("https://marketing.etorostatic.com/cache1/fonts/etoro/eToro-VF-v0.7.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-stretch: 0% 100%;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "eToro Numbers";
+  src: url("https://marketing.etorostatic.com/cache1/fonts/etoro/eToro-VF-v0.7.ttf") format("truetype-variations");
+  font-weight: 620;
+  font-stretch: 84%;
+  font-display: swap;
+}
+
 @layer base {
   :root {
+    /* ProductClaw/eToro brand tokens */
+    --etoro-afterhours: #10110E;
+    --etoro-void: #0A0A0A;
+    --etoro-carbon: #15170F;
+    --etoro-graphite: #1C1E16;
+    --etoro-intelligence: #ECEAD1;
+    --etoro-official-green: #13C636;
+    --etoro-signal: #6DFF8A;
+    --etoro-collective: #075434;
+    --etoro-red: #E31937;
+    --etoro-text-primary: #FFFFFF;
+    --etoro-text-secondary: rgba(255,255,255,0.65);
+    --etoro-text-tertiary: rgba(255,255,255,0.35);
+    --font-etoro: "eToro", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-etoro-numbers: "eToro Numbers", "eToro", ui-monospace, SFMono-Regular, Menlo, monospace;
+
     /* Dark theme (default) */
-    --background: 218 41% 12%;
-    --foreground: 0 0% 96%;
-    --card: 220 40% 10%;
-    --card-foreground: 0 0% 96%;
-    --muted: 220 35% 18%;
-    --muted-foreground: 215 20% 60%;
-    --border: 220 30% 20%;
-    --input: 220 35% 16%;
-    --ring: 174 100% 35%;
-    --shadow: 220 40% 4% / 0.5;
+    --background: 80 10% 6%;
+    --foreground: 56 42% 87%;
+    --card: 75 21% 7%;
+    --card-foreground: 56 42% 87%;
+    --muted: 75 15% 10%;
+    --muted-foreground: 56 20% 72%;
+    --border: 0 0% 100% / 0.12;
+    --input: 75 15% 10%;
+    --ring: 132 82% 43%;
+    --shadow: 80 10% 3% / 0.58;
 
     /* Design tokens */
-    --radius-sm: 0.25rem;
-    --radius: 0.5rem;
-    --radius-md: 0.625rem;
-    --radius-lg: 0.75rem;
-    --radius-xl: 1rem;
+    --radius-sm: 0.375rem;
+    --radius: 0.75rem;
+    --radius-md: 0.875rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.125rem;
   }
 
   .light {
-    --background: 0 0% 100%;
-    --foreground: 218 41% 12%;
-    --card: 0 0% 98%;
-    --card-foreground: 218 41% 12%;
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 9% 42%;
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: 174 100% 35%;
-    --shadow: 220 40% 4% / 0.12;
+    --etoro-afterhours: #FAFAFA;
+    --etoro-void: #FFFFFF;
+    --etoro-carbon: #FFFFFF;
+    --etoro-graphite: #F4F6F2;
+    --etoro-intelligence: #10110E;
+    --etoro-text-primary: #10110E;
+    --etoro-text-secondary: rgba(16,17,14,0.65);
+    --etoro-text-tertiary: rgba(16,17,14,0.38);
+    --background: 0 0% 98%;
+    --foreground: 80 10% 6%;
+    --card: 0 0% 100%;
+    --card-foreground: 80 10% 6%;
+    --muted: 90 14% 94%;
+    --muted-foreground: 80 8% 38%;
+    --border: 80 10% 6% / 0.10;
+    --input: 80 10% 6% / 0.12;
+    --ring: 155 85% 18%;
+    --shadow: 80 10% 6% / 0.12;
   }
 }
 
@@ -43,23 +83,34 @@ html {
 }
 
 body {
-  background: linear-gradient(180deg, #131d33 0%, #0f1729 30%, #0f1729 100%);
-  color: #f5f5f5;
+  background:
+    radial-gradient(circle at top left, rgba(19, 198, 54, 0.12), transparent 34rem),
+    linear-gradient(180deg, var(--etoro-afterhours) 0%, var(--etoro-void) 68%, #050505 100%);
+  color: var(--etoro-intelligence);
   min-height: 100vh;
   overflow-x: hidden;
+  font-family: var(--font-etoro);
+  font-feature-settings: "ss01" on, "tnum" on;
 }
 
 .light body {
-  background: linear-gradient(180deg, #f0f4ff 0%, #ffffff 30%, #ffffff 100%);
-  color: #0f1729;
+  background:
+    radial-gradient(circle at top left, rgba(19, 198, 54, 0.10), transparent 34rem),
+    linear-gradient(180deg, #FAFAFA 0%, #FFFFFF 70%, #F4F6F2 100%);
+  color: #10110E;
+}
+
+::selection {
+  background: rgba(19, 198, 54, 0.35);
+  color: var(--etoro-text-primary);
 }
 
 /*
  * Global focus-visible indicator for all interactive elements.
- * Uses the accent color (#00B0A0 / goodgreen) for consistency with the dark theme.
+ * Uses the ProductClaw/eToro brand green for a consistent trading-app shell.
  */
 :focus-visible {
-  outline: 2px solid #00B0A0;
+  outline: 2px solid var(--etoro-official-green);
   outline-offset: 2px;
 }
 
@@ -88,6 +139,54 @@ input[type="number"] {
   }
   .scrollbar-none::-webkit-scrollbar {
     display: none;
+  }
+
+  .etoro-page-shell {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .etoro-page-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(236, 234, 209, 0.035) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(236, 234, 209, 0.03) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: linear-gradient(to bottom, black, transparent 74%);
+  }
+
+  .etoro-card {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.04);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.10), 0 8px 32px rgba(16,17,14,0.18);
+    backdrop-filter: blur(10px) saturate(1.08);
+  }
+
+  .etoro-chip {
+    border: 1px solid rgba(236,234,209,0.16);
+    border-radius: 9999px;
+    background: rgba(236,234,209,0.06);
+    color: var(--etoro-intelligence);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .etoro-number {
+    font-family: var(--font-etoro-numbers);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .etoro-glow-line {
+    display: inline-block;
+    width: 28px;
+    height: 1px;
+    background: var(--etoro-signal);
+    box-shadow: 0 0 18px rgba(109,255,138,0.45);
   }
 }
 

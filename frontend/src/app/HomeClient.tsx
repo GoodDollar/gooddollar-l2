@@ -60,7 +60,7 @@ export default function HomeClient() {
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[400px] opacity-[0.07] rounded-full blur-[100px]"
-        style={{ background: 'radial-gradient(ellipse at center, #00B0A0 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(ellipse at center, #13C636 0%, transparent 70%)' }}
       />
 
       <div className="mb-4 text-center max-w-md relative">
@@ -87,7 +87,7 @@ export default function HomeClient() {
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 -m-4 opacity-[0.06] rounded-3xl blur-[60px]"
-          style={{ background: 'radial-gradient(ellipse at center, #00B0A0 0%, transparent 70%)' }}
+          style={{ background: 'radial-gradient(ellipse at center, #13C636 0%, transparent 70%)' }}
         />
         <SafeDynamic label="swap form">
           <SwapCard />

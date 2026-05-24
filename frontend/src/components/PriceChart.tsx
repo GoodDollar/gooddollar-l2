@@ -43,8 +43,8 @@ export function PriceChart({ data, height = 400, indicators = DEFAULT_INDICATORS
         horzLines: { color: 'rgba(107, 114, 128, 0.1)' },
       },
       crosshair: {
-        vertLine: { color: 'rgba(0, 176, 160, 0.3)', width: 1, style: 2 },
-        horzLine: { color: 'rgba(0, 176, 160, 0.3)', width: 1, style: 2 },
+        vertLine: { color: 'rgba(19, 198, 54, 0.30)', width: 1, style: 2 },
+        horzLine: { color: 'rgba(19, 198, 54, 0.30)', width: 1, style: 2 },
       },
       rightPriceScale: { borderColor: 'rgba(107, 114, 128, 0.2)' },
       timeScale: { borderColor: 'rgba(107, 114, 128, 0.2)', timeVisible: true, secondsVisible: false },
@@ -53,16 +53,16 @@ export function PriceChart({ data, height = 400, indicators = DEFAULT_INDICATORS
     })
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#22C55E',
+      upColor: '#13C636',
       downColor: '#EF4444',
       borderDownColor: '#EF4444',
-      borderUpColor: '#22C55E',
+      borderUpColor: '#13C636',
       wickDownColor: '#EF4444',
-      wickUpColor: '#22C55E',
+      wickUpColor: '#13C636',
     })
 
     const volumeSeries = chart.addSeries(HistogramSeries, {
-      color: 'rgba(0, 176, 160, 0.15)',
+      color: 'rgba(19, 198, 54, 0.15)',
       priceFormat: { type: 'volume' },
       priceScaleId: 'vol',
     })

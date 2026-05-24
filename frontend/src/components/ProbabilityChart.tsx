@@ -28,8 +28,8 @@ export function ProbabilityChart({ data, height = 300 }: ProbabilityChartProps) 
         horzLines: { color: 'rgba(107, 114, 128, 0.1)' },
       },
       crosshair: {
-        vertLine: { color: 'rgba(0, 176, 160, 0.3)', width: 1, style: 2 },
-        horzLine: { color: 'rgba(0, 176, 160, 0.3)', width: 1, style: 2 },
+        vertLine: { color: 'rgba(19, 198, 54, 0.30)', width: 1, style: 2 },
+        horzLine: { color: 'rgba(19, 198, 54, 0.30)', width: 1, style: 2 },
       },
       rightPriceScale: {
         borderColor: 'rgba(107, 114, 128, 0.2)',
@@ -41,9 +41,9 @@ export function ProbabilityChart({ data, height = 300 }: ProbabilityChartProps) 
     })
 
     const areaSeries = chart.addSeries(AreaSeries, {
-      lineColor: '#00B0A0',
-      topColor: 'rgba(0, 176, 160, 0.3)',
-      bottomColor: 'rgba(0, 176, 160, 0.02)',
+      lineColor: '#13C636',
+      topColor: 'rgba(19, 198, 54, 0.30)',
+      bottomColor: 'rgba(19, 198, 54, 0.02)',
       lineWidth: 2,
       priceFormat: {
         type: 'custom',

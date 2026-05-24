@@ -10,41 +10,51 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-geist-mono)', 'monospace'],
+        sans: ['var(--font-etoro)', 'var(--font-geist-sans)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-etoro-numbers)', 'var(--font-geist-mono)', 'monospace'],
       },
       colors: {
         goodgreen: {
-          DEFAULT: '#00B0A0',
-          50: '#E6F9F7',
-          100: '#B3EDE8',
-          200: '#80E1D9',
-          300: '#4DD5CA',
-          400: '#26CCBF',
-          500: '#00B0A0',
-          600: '#009A8C',
-          700: '#007A6F',
-          800: '#005A52',
-          900: '#003A35',
+          DEFAULT: '#13C636',
+          50: '#ECFFF0',
+          100: '#CFFFD9',
+          200: '#9EFFB3',
+          300: '#6DFF8A',
+          400: '#35E95A',
+          500: '#13C636',
+          600: '#0FA82D',
+          700: '#0B8024',
+          800: '#075434',
+          900: '#04351F',
         },
-        // Brand accent alias — matches goodgreen.500 and the hard-coded
-        // #00B0A0 in globals.css :focus-visible. Without this key the
-        // text-accent / bg-accent / border-accent / ring-accent utilities
-        // (and their slash-opacity variants) silently fall through to
+        // Brand accent alias — ProductClaw/eToro official green. Without
+        // this key the text-accent / bg-accent / border-accent / ring-accent
+        // utilities (and slash-opacity variants) silently fall through to
         // currentColor / transparent across the proof page.
-        accent: '#00B0A0',
+        accent: '#13C636',
         gray: {
           500: '#9ca3af',
-          600: '#9ca3af',
+          600: '#6b7280',
         },
         dark: {
-          DEFAULT: '#0f1729',
-          50: '#1a2540',
-          100: '#151e35',
-          200: '#121a2e',
-          300: '#0f1729',
-          400: '#0c1320',
-          500: '#091018',
+          DEFAULT: '#10110E',
+          50: '#1C1E16',
+          100: '#15170F',
+          200: '#12140E',
+          300: '#10110E',
+          400: '#0A0A0A',
+          500: '#050505',
+        },
+        etoro: {
+          afterhours: '#10110E',
+          void: '#0A0A0A',
+          carbon: '#15170F',
+          graphite: '#1C1E16',
+          intelligence: '#ECEAD1',
+          signal: '#6DFF8A',
+          collective: '#075434',
+          green: '#13C636',
+          red: '#E31937',
         },
         // CSS-variable-driven tokens (for theming)
         background: 'hsl(var(--background))',

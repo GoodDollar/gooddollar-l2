@@ -29,7 +29,7 @@ vi.mock('@/lib/useOnChainMarketData', () => ({
       },
       {
         symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
-        category: 'GoodDollar' as const, color: '#00B0A0',
+        category: 'GoodDollar' as const, color: '#13C636',
         price: 0.0002, change1h: 0.1, change24h: -0.5, change7d: 1.0,
         volume24h: 5e5, marketCap: 1e7, sparkline7d: [0.00019, 0.0002, 0.00021],
         description: 'GoodDollar UBI token',
@@ -287,7 +287,7 @@ describe('ExplorePage — null market data (G$ has no CoinGecko quote)', () => {
         tokens: [
           {
             symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
-            category: 'GoodDollar' as const, color: '#00B0A0',
+            category: 'GoodDollar' as const, color: '#13C636',
             price: 0.0002,
             change1h: null,
             change24h: null,
@@ -338,7 +338,7 @@ describe('ExplorePage — zero market cap fallback (task 0098)', () => {
         tokens: [
           {
             symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
-            category: 'GoodDollar' as const, color: '#00B0A0',
+            category: 'GoodDollar' as const, color: '#13C636',
             price: 0.0002, change1h: null, change24h: null, change7d: null,
             volume24h: null, marketCap: 0, sparkline7d: null,
             description: 'GoodDollar UBI token', maxSupply: null,
@@ -384,7 +384,7 @@ describe('ExplorePage — zero market cap fallback (task 0098)', () => {
         tokens: [
           {
             symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
-            category: 'GoodDollar' as const, color: '#00B0A0',
+            category: 'GoodDollar' as const, color: '#13C636',
             price: 0.0002, change1h: 0, change24h: 0, change7d: 0,
             volume24h: null, marketCap: 0, sparkline7d: null,
             description: 'GoodDollar UBI token', maxSupply: null,
@@ -449,7 +449,7 @@ describe('ExplorePage — per-row source attribution (task 0041)', () => {
           },
           {
             symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
-            category: 'GoodDollar' as const, color: '#00B0A0',
+            category: 'GoodDollar' as const, color: '#13C636',
             price: 0.0102, change1h: 0.1, change24h: -0.5, change7d: 1.0,
             volume24h: 5e5, marketCap: 1e7, sparkline7d: [0.01, 0.0102, 0.0101],
             description: 'GoodDollar UBI token',

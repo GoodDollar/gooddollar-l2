@@ -71,14 +71,14 @@ function showUpdateNotification(): void {
       position: fixed;
       top: 20px;
       right: 20px;
-      background: #00B0A0;
-      color: white;
+      background: #13C636;
+      color: #10110E;
       padding: 12px 16px;
       border-radius: 8px;
       font-family: system-ui, sans-serif;
       font-size: 14px;
       font-weight: 500;
-      box-shadow: 0 4px 12px rgba(0, 176, 160, 0.3);
+      box-shadow: 0 4px 12px rgba(19, 198, 54, 0.30);
       z-index: 9999;
       cursor: pointer;
       transition: opacity 0.3s ease;
