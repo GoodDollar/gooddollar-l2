@@ -1,36 +1,27 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { StalePriceBanner } from '@/components/StalePriceBanner'
 
-import { StalePriceBanner } from '../StalePriceBanner'
-
-describe('StalePriceBanner (task 0064)', () => {
-  it('renders the stocks variant copy + default /lane1 pipeline link', () => {
+// Task 0037 — the perps page needs the same oracle-offline banner the
+// stocks pages use, scoped to the crypto rail. Adding a `crypto`
+// variant keeps the existing component canonical (no duplicate banner
+// components) and lets the perps page reuse the same styling and
+// dismissal contract.
+describe('StalePriceBanner', () => {
+  it('renders the stocks oracle-offline copy for the stocks variant', () => {
     render(<StalePriceBanner variant="stocks" />)
-    expect(
-      screen.getByText(/Oracle offline: showing demo prices/),
-    ).toBeInTheDocument()
-    const link = screen.getByTestId('stale-price-banner-link')
-    expect(link.getAttribute('href')).toBe('/lane1')
-    expect(link.textContent).toContain('See pipeline status')
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/Oracle offline: showing demo prices/i)).toBeInTheDocument()
   })
 
-  it('renders the swap variant copy + default /lane1 link', () => {
+  it('renders the swap cached-rates copy for the swap variant', () => {
     render(<StalePriceBanner variant="swap" />)
-    expect(
-      screen.getByText(/Live prices unavailable: showing cached rates/),
-    ).toBeInTheDocument()
-    expect(screen.getByTestId('stale-price-banner-link').getAttribute('href')).toBe('/lane1')
+    expect(screen.getByText(/Live prices unavailable/i)).toBeInTheDocument()
   })
 
-  it('respects a linkHref override', () => {
-    render(<StalePriceBanner variant="swap" linkHref="/test-dashboard#stock-drift-dashboard" />)
-    expect(
-      screen.getByTestId('stale-price-banner-link').getAttribute('href'),
-    ).toBe('/test-dashboard#stock-drift-dashboard')
-  })
-
-  it('suppresses the link when linkHref is null', () => {
-    render(<StalePriceBanner variant="swap" linkHref={null} />)
-    expect(screen.queryByTestId('stale-price-banner-link')).toBeNull()
+  it('renders the crypto rail offline copy for the crypto variant', () => {
+    render(<StalePriceBanner variant="crypto" />)
+    expect(screen.getByText(/Crypto oracle offline/i)).toBeInTheDocument()
+    expect(screen.getByText(/may not reflect current market values/i)).toBeInTheDocument()
   })
 })

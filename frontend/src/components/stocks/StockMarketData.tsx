@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useAccount } from 'wagmi'
 import { OrderBook } from '@/components/OrderBook'
 import { RecentTrades } from '@/components/RecentTrades'
+import { useStockTrades } from '@/lib/useStockTrades'
 
 interface StockMarketDataProps {
   markPrice: number
+  symbol?: string
 }
 
 const TABS = [
@@ -15,8 +18,16 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
-export function StockMarketData({ markPrice }: StockMarketDataProps) {
+const RECENT_TRADES_LIMIT = 20
+
+export function StockMarketData({ markPrice, symbol }: StockMarketDataProps) {
   const [activeTab, setActiveTab] = useState<TabId>('orderbook')
+  const { address } = useAccount()
+  const { trades } = useStockTrades(address)
+  const symbolTrades = useMemo(() => {
+    if (!symbol) return trades.slice(0, RECENT_TRADES_LIMIT)
+    return trades.filter(t => t.ticker === symbol).slice(0, RECENT_TRADES_LIMIT)
+  }, [trades, symbol])
 
   return (
     <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
@@ -39,8 +50,10 @@ export function StockMarketData({ markPrice }: StockMarketDataProps) {
       </div>
 
       <div className="p-0">
-        {activeTab === 'orderbook' && <OrderBook markPrice={markPrice} />}
-        {activeTab === 'trades' && <RecentTrades markPrice={markPrice} />}
+        {activeTab === 'orderbook' && <OrderBook />}
+        {activeTab === 'trades' && (
+          <RecentTrades trades={symbolTrades} symbol={symbol} markPrice={markPrice} />
+        )}
       </div>
     </div>
   )

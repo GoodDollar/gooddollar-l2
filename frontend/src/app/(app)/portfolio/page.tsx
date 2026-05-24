@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { useAccount } from 'wagmi'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
 import { formatVolume } from '@/lib/predictData'
 import { useOnChainPredictPositions, useOnChainPredictSummary, useOnChainMarkets } from '@/lib/useOnChainPredict'
@@ -16,6 +17,12 @@ import { Sparkline } from '@/components/Sparkline'
 import { StockLogo } from '@/components/ui/stock-logo'
 import { getStockByTicker } from '@/lib/stockData'
 import { SummaryCard, SectionHeader, EmptyState } from '@/components/ui'
+import { DEVNET_CHAIN_ID } from '@/lib/devnet'
+
+// Task 0054: shared "value unknown" placeholder used by the summary tiles
+// when no wallet is connected (or it's on the wrong chain). Mirrors the
+// em-dash treatment already used by PairInfoBar and the stocks listing.
+const NO_DATA_DASH = '—'
 
 
 function HealthBadge({ value }: { value: number }) {
@@ -29,14 +36,20 @@ function HealthBadge({ value }: { value: number }) {
 }
 
 export default function PortfolioPage() {
+  // Task 0054: the GoodLend / GoodYield sections use mock data in demo mode.
+  // Gate them on the same wallet signal the on-chain sections already use so
+  // disconnected/wrong-chain users do not see a fabricated $26K dashboard.
+  const { isConnected, chainId } = useAccount()
+  const isLive = isConnected && chainId === DEVNET_CHAIN_ID
+
   const { holdings: stockHoldings } = useOnChainHoldings()
   const { positions: predictPositions } = useOnChainPredictPositions()
   const predictSummary = useOnChainPredictSummary()
   const { markets: predictMarkets } = useOnChainMarkets()
   const { positions: perpsPositions } = useOnChainPositions()
   const { summary: perpsAccount } = useOnChainAccountSummary()
-  const lend = useMockLendPositions()
-  const yield_ = useMockYieldPositions()
+  const lend = useMockLendPositions(isLive)
+  const yield_ = useMockYieldPositions(isLive)
 
   // Build predict market lookup
   const predictMarketMap = useMemo(() => {
@@ -75,13 +88,23 @@ export default function PortfolioPage() {
       <PortfolioOnChain />
 
       <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
-        <SummaryCard label="Total Value" value={formatLargeNumber(totalValue)} />
+        <SummaryCard
+          label="Total Value"
+          value={isLive ? formatLargeNumber(totalValue) : NO_DATA_DASH}
+        />
         <SummaryCard
           label="Unrealized P&L"
-          value={`${totalPnl >= 0 ? '+' : ''}${formatStockPrice(totalPnl)}`}
-          color={pnlColor}
+          value={
+            isLive
+              ? `${totalPnl >= 0 ? '+' : ''}${formatStockPrice(totalPnl)}`
+              : NO_DATA_DASH
+          }
+          color={isLive ? pnlColor : undefined}
         />
-        <SummaryCard label="Active Positions" value={String(totalPositions)} />
+        <SummaryCard
+          label="Active Positions"
+          value={isLive ? String(totalPositions) : NO_DATA_DASH}
+        />
       </div>
 
       {/* Stocks Section */}

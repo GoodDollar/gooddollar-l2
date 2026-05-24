@@ -12,14 +12,40 @@ const STOCK_ORACLE_V2_ABI = [
  */
 export class OracleSubmitter {
   private readonly contract: ethers.Contract;
-  private readonly wallet: ethers.Wallet;
+  private readonly signer: ethers.Signer;
+  private readonly _provider: ethers.JsonRpcProvider;
   private readonly txTimeoutMs: number;
+  private readonly cachedAddress: string;
 
-  constructor(rpcUrl: string, oracleAddress: string, signerKey: string, txTimeoutMs = 60000) {
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    this.wallet = new ethers.Wallet(signerKey, provider);
-    this.contract = new ethers.Contract(oracleAddress, STOCK_ORACLE_V2_ABI, this.wallet);
+  constructor(
+    rpcUrlOrSigner: string | ethers.Signer,
+    oracleAddress: string,
+    signerKeyOrAddress: string,
+    txTimeoutMs = 60000,
+  ) {
+    // Two construction modes:
+    //   1) (rpcUrl: string, oracleAddress, signerKey, timeout)   — back-compat
+    //   2) (signer: ethers.Signer, oracleAddress, signerAddr, timeout) — shared signer
+    // Mode 2 is used by OracleSignerService to share one NonceManager-wrapped
+    // wallet across both rails so concurrent ticks don't collide on nonce.
+    if (typeof rpcUrlOrSigner === 'string') {
+      this._provider = new ethers.JsonRpcProvider(rpcUrlOrSigner);
+      this.signer = new ethers.Wallet(signerKeyOrAddress, this._provider);
+      this.cachedAddress = (this.signer as ethers.Wallet).address;
+    } else {
+      this.signer = rpcUrlOrSigner;
+      const p = rpcUrlOrSigner.provider;
+      if (!p) throw new Error('shared signer must have a provider attached');
+      this._provider = p as ethers.JsonRpcProvider;
+      this.cachedAddress = signerKeyOrAddress;
+    }
+    this.contract = new ethers.Contract(oracleAddress, STOCK_ORACLE_V2_ABI, this.signer);
     this.txTimeoutMs = txTimeoutMs;
+  }
+
+  /** Underlying JSON-RPC provider — exposed so the chain-guard can query the chain id without standing up a second provider. */
+  get provider(): ethers.JsonRpcProvider {
+    return this._provider;
   }
 
   async submitBatch(updates: PendingUpdate[]): Promise<UpdateResult> {
@@ -66,6 +92,7 @@ export class OracleSubmitter {
       gasUsed: receipt.gasUsed,
       symbolCount: updates.length,
       roundTripMs: Date.now() - start,
+      blockNumber: receipt.blockNumber,
     };
   }
 
@@ -74,6 +101,6 @@ export class OracleSubmitter {
   }
 
   get signerAddress(): string {
-    return this.wallet.address;
+    return this.cachedAddress;
   }
 }

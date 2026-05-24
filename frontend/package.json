@@ -17,6 +17,7 @@
     "analyze": "ANALYZE=true npm run build",
     "check:landing-bundle": "node scripts/check-landing-bundle.mjs",
     "check:stocks-bundles": "node scripts/check-stocks-bundles.mjs",
+    "check:status-bundle": "node scripts/check-status-bundle.mjs",
     "check:stocks-portfolio-bundle": "ROUTE='/(app)/stocks/portfolio/page' ROUTE_BUDGET_KB=1200 node scripts/check-route-bundle.mjs",
     "check:no-edge-middleware": "node scripts/check-middleware-absent.mjs",
     "check:buildid-sync": "node scripts/check-buildid-sync.mjs",

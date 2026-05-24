@@ -1,0 +1,797 @@
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest'
+import type { NextRequest } from 'next/server'
+import { GET, redactUpstreamReason } from '../route'
+import { __resetOracleStatusCacheForTests } from '@/lib/oracleStatusCache'
+
+// Vitest tests don't need a real NextRequest — the handler only checks rate
+// limit headers via getRealIp(). A bare-bones stub typechecks and satisfies
+// the wrapper.
+const stubReq = new Request('http://localhost/api/oracle/status') as unknown as NextRequest
+
+const originalCacheMs = process.env.ORACLE_STATUS_CACHE_MS
+
+beforeEach(() => {
+  vi.restoreAllMocks()
+  __resetOracleStatusCacheForTests()
+  // Default to a disabled cache for the existing test bodies that mock
+  // each call independently. The dedicated cache-wiring suite below
+  // re-enables it explicitly.
+  process.env.ORACLE_STATUS_CACHE_MS = '0'
+})
+
+afterEach(() => {
+  if (originalCacheMs === undefined) delete process.env.ORACLE_STATUS_CACHE_MS
+  else process.env.ORACLE_STATUS_CACHE_MS = originalCacheMs
+})
+
+const quotesBody = {
+  healthy: true,
+  freshCount: 5,
+  totalCount: 5,
+  quotes: [{ symbol: 'AAPL', lastUpdateMs: 1200, sessionState: 'open', confidence: 92 }],
+  timestamp: 1710000000000,
+}
+
+const proofBody = {
+  generatedAt: 1710000001000,
+  stocks: [{
+    rail: 'stocks', txHash: '0xS1', blockNumber: 100, gasUsed: '150000',
+    symbols: ['AAPL'], roundTripMs: 80, submittedAtMs: 1700000000000, mids: { AAPL: 191.5 },
+  }],
+  crypto: [{
+    rail: 'crypto', txHash: '0xC1', blockNumber: 101, gasUsed: '120000',
+    symbols: ['WETH'], roundTripMs: 60, submittedAtMs: 1700000001000, mids: { WETH: 3500 },
+  }],
+}
+
+function fetchMockTwo(handlerByUrl: Record<string, () => Response | Promise<Response>>) {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input.toString()
+    for (const key of Object.keys(handlerByUrl)) {
+      if (url.includes(key)) {
+        return handlerByUrl[key]()
+      }
+    }
+    throw new Error(`unexpected fetch: ${url}`)
+  })
+}
+
+describe('GET /api/oracle/status — merged response', () => {
+  it('returns merged payload when both upstreams are healthy', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody),  { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.healthy).toBe(true)
+    expect(data.degraded).toBe(false)
+    expect(data.quotes).toHaveLength(1)
+    expect(data.proof.stocks[0].txHash).toBe('0xS1')
+    expect(data.proof.crypto[0].txHash).toBe('0xC1')
+    expect(data.upstreams.priceService).toEqual({ status: 'ok', label: 'mock' })
+    expect(data.upstreams.oracleSigner).toEqual({ status: 'ok' })
+  })
+
+  it('degrades when only price-service is reachable; proof is empty', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.degraded).toBe(true)
+    expect(data.quotes).toHaveLength(1)
+    expect(data.proof.stocks).toEqual([])
+    expect(data.proof.crypto).toEqual([])
+    expect(data.upstreams.priceService).toEqual({ status: 'ok', label: 'mock' })
+    expect(data.upstreams.oracleSigner.status).toBe('down')
+    expect(data.upstreams.oracleSigner.reason).toContain('ECONNREFUSED')
+  })
+
+  it('degrades when only oracle-signer is reachable; quotes are empty', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.degraded).toBe(true)
+    expect(data.quotes).toEqual([])
+    expect(data.proof.stocks).toHaveLength(1)
+    expect(data.upstreams.priceService.status).toBe('down')
+    expect(data.upstreams.priceService.reason).toContain('ECONNREFUSED')
+    expect(data.upstreams.oracleSigner).toEqual({ status: 'ok' })
+  })
+
+  it('returns 503 only when BOTH upstreams are down', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.healthy).toBe(false)
+    expect(data.degraded).toBe(true)
+    expect(Array.isArray(data.quotes)).toBe(true)
+    expect(data.proof.stocks).toEqual([])
+    expect(data.proof.crypto).toEqual([])
+  })
+
+  it('503 body surfaces the failing-upstream reason for each rail', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('fetch failed: ECONNREFUSED 127.0.0.1:9300') },
+      '/proof':         () => new Response('bad gateway', { status: 502 }),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.upstreams.priceService.status).toBe('down')
+    expect(data.upstreams.priceService.reason).toContain('ECONNREFUSED')
+    expect(data.upstreams.oracleSigner.status).toBe('down')
+    expect(data.upstreams.oracleSigner.reason).toMatch(/returned 502/)
+  })
+
+  it('treats non-OK upstream response as down (not as data)', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response('bad gateway', { status: 502 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.degraded).toBe(true)
+    expect(data.upstreams.priceService.status).toBe('down')
+    expect(data.upstreams.priceService.reason).toMatch(/returned 502/)
+    expect(data.upstreams.oracleSigner).toEqual({ status: 'ok' })
+  })
+})
+
+describe('GET /api/oracle/status — ingest counters', () => {
+  it('forwards ingest counters from upstream proof when present', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        ingest: {
+          accepted: 4221, droppedJsonParse: 1, droppedShape: 0,
+          droppedInvalidMid: 2, droppedMissingSymbol: 0,
+          lastDroppedAtMs: 1700000005000,
+          lastDroppedReason: 'SyntaxError: Unexpected token',
+          lastDroppedSnippet: 'not-json',
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.ingest.accepted).toBe(4221)
+    expect(data.ingest.droppedJsonParse).toBe(1)
+    expect(data.ingest.droppedInvalidMid).toBe(2)
+    expect(data.ingest.lastDroppedReason).toBe('SyntaxError: Unexpected token')
+    expect(data.ingest.lastDroppedSnippet).toBe('not-json')
+  })
+
+  it('defaults ingest counters to zero when upstream omits them (older signer)', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.ingest).toEqual({
+      accepted: 0, droppedJsonParse: 0, droppedShape: 0,
+      droppedInvalidMid: 0, droppedMissingSymbol: 0,
+    })
+  })
+
+  it('503 body includes a zero-ingest object so consumers can read it unconditionally', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.ingest).toBeDefined()
+    expect(data.ingest.accepted).toBe(0)
+    expect(data.ingest.droppedJsonParse).toBe(0)
+  })
+})
+
+describe('GET /api/oracle/status — failures + counts', () => {
+  it('forwards failures and counts from upstream proof when present', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        failures: {
+          stocks: [{
+            rail: 'stocks',
+            reason: 'execution reverted: deviation too high',
+            errorClass: 'CALL_EXCEPTION',
+            symbols: ['AAPL'],
+            attemptedAtMs: 1700000003000,
+          }],
+          crypto: [],
+        },
+        counts: {
+          stocks: { ok: 412, failed: 3 },
+          crypto: { ok: 117, failed: 0 },
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.failures.stocks).toHaveLength(1)
+    expect(data.failures.stocks[0].errorClass).toBe('CALL_EXCEPTION')
+    expect(data.failures.stocks[0].reason).toContain('deviation too high')
+    expect(data.counts.stocks).toEqual({ ok: 412, failed: 3 })
+    expect(data.counts.crypto).toEqual({ ok: 117, failed: 0 })
+  })
+
+  it('defaults failures and counts to empty/zero when upstream omits them (older signer)', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.failures).toEqual({ stocks: [], crypto: [] })
+    expect(data.counts).toEqual({
+      stocks: { ok: 0, failed: 0 },
+      crypto: { ok: 0, failed: 0 },
+    })
+  })
+
+  it('503 body includes empty failures + zero counts so consumers can read them unconditionally', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.failures).toEqual({ stocks: [], crypto: [] })
+    expect(data.counts).toEqual({
+      stocks: { ok: 0, failed: 0 },
+      crypto: { ok: 0, failed: 0 },
+    })
+  })
+
+  it('treats malformed upstream failures/counts as zero defaults', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        failures: 'oops not an object',
+        counts: { stocks: 'oops', crypto: null },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.failures).toEqual({ stocks: [], crypto: [] })
+    expect(data.counts).toEqual({
+      stocks: { ok: 0, failed: 0 },
+      crypto: { ok: 0, failed: 0 },
+    })
+  })
+})
+
+describe('GET /api/oracle/status — per-rail status', () => {
+  it('forwards rails block from upstream proof when present', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        rails: {
+          stocks: {
+            enabled: true,
+            lastSuccessAtMs: 1700000000000,
+            lastSuccessAgeMs: 1203,
+            lastFailureAtMs: null,
+            lastFailureAgeMs: null,
+          },
+          crypto: {
+            enabled: false,
+            lastSuccessAtMs: null,
+            lastSuccessAgeMs: null,
+            lastFailureAtMs: null,
+            lastFailureAgeMs: null,
+          },
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.rails.stocks).toEqual({
+      enabled: true,
+      lastSuccessAtMs: 1700000000000,
+      lastSuccessAgeMs: 1203,
+      lastFailureAtMs: null,
+      lastFailureAgeMs: null,
+    })
+    expect(data.rails.crypto.enabled).toBe(false)
+    expect(data.rails.crypto.lastSuccessAtMs).toBeNull()
+  })
+
+  it('defaults rails to disabled+null when upstream omits the block (older signer)', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.rails).toEqual({
+      stocks: {
+        enabled: false,
+        lastSuccessAtMs: null,
+        lastSuccessAgeMs: null,
+        lastFailureAtMs: null,
+        lastFailureAgeMs: null,
+      },
+      crypto: {
+        enabled: false,
+        lastSuccessAtMs: null,
+        lastSuccessAgeMs: null,
+        lastFailureAtMs: null,
+        lastFailureAgeMs: null,
+      },
+    })
+  })
+
+  it('503 body includes rails defaults so consumers can read them unconditionally', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.rails).toBeDefined()
+    expect(data.rails.stocks.enabled).toBe(false)
+    expect(data.rails.crypto.enabled).toBe(false)
+    expect(data.rails.stocks.lastSuccessAtMs).toBeNull()
+  })
+
+  it('coerces malformed upstream rail status to defaults', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        rails: { stocks: 'oops', crypto: { enabled: 'not-a-bool' } },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.rails.stocks.enabled).toBe(false)
+    expect(data.rails.stocks.lastSuccessAtMs).toBeNull()
+    expect(data.rails.crypto.enabled).toBe(false)
+  })
+})
+
+describe('GET /api/oracle/status — service block (task 0010)', () => {
+  it('forwards service:{status:degraded,reason} from an upstream 503-with-body', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(
+        JSON.stringify({
+          ...proofBody,
+          service: { status: 'degraded', reason: 'refused: non-devnet chain id 1' },
+        }),
+        { status: 503 },
+      ),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    // Reachable but degraded — upstream "down" axis stays 'ok' because the
+    // signer responded with a valid (if degraded) JSON body.
+    expect(data.upstreams.oracleSigner.status).toBe('ok')
+    expect(data.service).toEqual({ status: 'degraded', reason: 'refused: non-devnet chain id 1' })
+    expect(data.healthy).toBe(false)
+    expect(data.degraded).toBe(true)
+  })
+
+  it('forwards service:{status:ok} from a healthy upstream', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(
+        JSON.stringify({ ...proofBody, service: { status: 'ok' } }),
+        { status: 200 },
+      ),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.service).toEqual({ status: 'ok' })
+  })
+
+  it('defaults service to {status:unknown} when upstream omits the field', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.service).toEqual({ status: 'unknown' })
+  })
+
+  it('503 both-down branch includes service:{status:unknown}', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.service).toEqual({ status: 'unknown' })
+  })
+
+  it('still treats a non-200/503 upstream response as down (502)', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response('bad gateway', { status: 502 }),
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.upstreams.oracleSigner.status).toBe('down')
+    expect(data.service).toEqual({ status: 'unknown' })
+  })
+
+  it('coerces malformed upstream service to {status:unknown}', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(
+        JSON.stringify({ ...proofBody, service: { status: 'unexpected-value' } }),
+        { status: 200 },
+      ),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.service.status).toBe('unknown')
+  })
+})
+
+describe('GET /api/oracle/status — chain info (task 0011)', () => {
+  it('forwards chain block from upstream proof when present', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        chain: {
+          chainId: 31337,
+          rpcEndpoint: 'http://localhost:8545/',
+          signerAddress: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+          oracleAddresses: {
+            stocks: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+            crypto: '0x59b670e9fA9D0A427751Af201D676719a970857b',
+          },
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.chain).toEqual({
+      chainId: 31337,
+      rpcEndpoint: 'http://localhost:8545/',
+      signerAddress: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+      oracleAddresses: {
+        stocks: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+        crypto: '0x59b670e9fA9D0A427751Af201D676719a970857b',
+      },
+    })
+  })
+
+  it('defaults chain to null/null when upstream omits the block', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.chain).toEqual({
+      chainId: null,
+      signerAddress: null,
+      oracleAddresses: { stocks: null, crypto: null },
+    })
+  })
+
+  it('503 both-down branch includes chain defaults', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const res = await GET(stubReq)
+    expect(res.status).toBe(503)
+    const data = await res.json()
+    expect(data.chain).toBeDefined()
+    expect(data.chain.chainId).toBeNull()
+    expect(data.chain.signerAddress).toBeNull()
+    expect(data.chain.oracleAddresses).toEqual({ stocks: null, crypto: null })
+  })
+
+  it('coerces malformed upstream chain values to defaults', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        chain: { chainId: 'not-a-number', signerAddress: 42, oracleAddresses: 'oops' },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.chain.chainId).toBeNull()
+    expect(data.chain.signerAddress).toBeNull()
+    expect(data.chain.oracleAddresses).toEqual({ stocks: null, crypto: null })
+  })
+
+  it('preserves signer-address checksum casing verbatim', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify({
+        ...proofBody,
+        chain: {
+          chainId: 31337,
+          signerAddress: '0xAbCdEf0123456789abcdef0123456789abcdef01',
+          oracleAddresses: { stocks: null, crypto: null },
+        },
+      }), { status: 200 }),
+    })
+
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.chain.signerAddress).toBe('0xAbCdEf0123456789abcdef0123456789abcdef01')
+  })
+})
+
+describe('GET /api/oracle/status — provenance envelope (label + sessionAsOfMs)', () => {
+  it('exposes priceService.label from NEXT_PUBLIC_PRICE_SOURCE_LABEL env', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const prev = process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL
+    process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL = 'eToro demo'
+    try {
+      const res = await GET(stubReq)
+      const data = await res.json()
+      expect(data.upstreams.priceService.label).toBe('eToro demo')
+    } finally {
+      if (prev === undefined) delete process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL
+      else process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL = prev
+    }
+  })
+
+  it('defaults priceService.label to "mock" when env is unset', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const prev = process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL
+    delete process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL
+    try {
+      const res = await GET(stubReq)
+      const data = await res.json()
+      expect(data.upstreams.priceService.label).toBe('mock')
+    } finally {
+      if (prev !== undefined) process.env.NEXT_PUBLIC_PRICE_SOURCE_LABEL = prev
+    }
+  })
+
+  it('synthesizes sessionAsOfMs for a closed-session quote when upstream omits it', async () => {
+    const closedQuote = {
+      ...quotesBody,
+      quotes: [{ symbol: 'AAPL', lastUpdateMs: 1200, sessionState: 'closed', confidence: 82 }],
+    }
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(closedQuote), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const res = await GET(stubReq)
+    const data = await res.json()
+    const q = data.quotes[0]
+    expect(typeof q.sessionAsOfMs).toBe('number')
+    expect(q.sessionAsOfMs).toBeGreaterThan(0)
+  })
+
+  it('forwards upstream sessionAsOfMs untouched when present', async () => {
+    const upstreamAnchor = Date.UTC(2026, 4, 15, 20, 0)
+    const closedQuote = {
+      ...quotesBody,
+      quotes: [{
+        symbol: 'AAPL', lastUpdateMs: 1200, sessionState: 'closed', confidence: 82,
+        sessionAsOfMs: upstreamAnchor,
+      }],
+    }
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(closedQuote), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.quotes[0].sessionAsOfMs).toBe(upstreamAnchor)
+  })
+
+  it('does not synthesize sessionAsOfMs for open sessions', async () => {
+    fetchMockTwo({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+    const res = await GET(stubReq)
+    const data = await res.json()
+    expect(data.quotes[0].sessionAsOfMs).toBeUndefined()
+  })
+})
+
+describe('redactUpstreamReason', () => {
+  it('strips long hex sequences (signer keys, addresses)', () => {
+    const r = redactUpstreamReason(
+      new Error('rpc error using key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 — bad'),
+    )
+    expect(r).not.toContain('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80')
+    expect(r).toContain('<redacted-hex>')
+  })
+
+  it('collapses newlines into spaces', () => {
+    const r = redactUpstreamReason(new Error('first line\nsecond line\r\nthird'))
+    expect(r).not.toContain('\n')
+    expect(r).not.toContain('\r')
+    expect(r).toContain('first line second line third')
+  })
+
+  it('clamps length to <=200 chars', () => {
+    const long = 'x'.repeat(1000)
+    const r = redactUpstreamReason(new Error(long))
+    expect(r.length).toBeLessThanOrEqual(200)
+  })
+
+  it('handles non-Error throws (string)', () => {
+    expect(redactUpstreamReason('plain string failure')).toBe('plain string failure')
+  })
+
+  it('prefers err.cause.code prefix when present (undici fetch failure pattern)', () => {
+    const err = new Error('fetch failed')
+    ;(err as { cause?: { code?: string } }).cause = { code: 'ECONNREFUSED' }
+    expect(redactUpstreamReason(err)).toBe('ECONNREFUSED: fetch failed')
+  })
+})
+
+describe('GET /api/oracle/status — TTL + single-flight cache (task 0048)', () => {
+  beforeEach(() => {
+    __resetOracleStatusCacheForTests()
+    process.env.ORACLE_STATUS_CACHE_MS = '1000'
+  })
+
+  function trackingMock(handlerByUrl: Record<string, () => Response | Promise<Response>>) {
+    return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      for (const key of Object.keys(handlerByUrl)) {
+        if (url.includes(key)) return handlerByUrl[key]()
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+  }
+
+  it('collapses two concurrent calls to ONE upstream pair fetch (single-flight)', async () => {
+    const spy = trackingMock({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody),  { status: 200 }),
+    })
+
+    const [resA, resB] = await Promise.all([GET(stubReq), GET(stubReq)])
+    expect(resA.status).toBe(200)
+    expect(resB.status).toBe(200)
+    // One call to /status/quotes and one to /proof — total 2 fetches across
+    // both clients (not 4, which is what fan-out without single-flight gives).
+    expect(spy).toHaveBeenCalledTimes(2)
+    const urls = spy.mock.calls.map((c) => String(c[0]))
+    expect(urls.filter((u) => u.includes('/status/quotes'))).toHaveLength(1)
+    expect(urls.filter((u) => u.includes('/proof'))).toHaveLength(1)
+  })
+
+  it('TTL hit: a second call within TTL serves from cache without re-fanout', async () => {
+    const spy = trackingMock({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody),  { status: 200 }),
+    })
+
+    const first = await GET(stubReq)
+    expect(first.status).toBe(200)
+    const second = await GET(stubReq)
+    expect(second.status).toBe(200)
+    // Both /status/quotes + /proof fetched exactly once across both calls.
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns identical body bytes on cache hit (response stream is single-use; cache rebuilds NextResponse each time)', async () => {
+    trackingMock({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody),  { status: 200 }),
+    })
+
+    const first = await GET(stubReq)
+    const firstBody = await first.json()
+    const second = await GET(stubReq)
+    const secondBody = await second.json()
+    // generatedAt is captured into the cached body, so it must be byte-identical
+    // on a cache hit — proving the response is rebuilt from the cached payload,
+    // not the same one-shot Response object.
+    expect(secondBody).toEqual(firstBody)
+  })
+
+  it('does NOT cache the both-upstreams-down 503; the next call retries upstream', async () => {
+    const spy = trackingMock({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => { throw new Error('ECONNREFUSED') },
+    })
+
+    const first = await GET(stubReq)
+    expect(first.status).toBe(503)
+    const second = await GET(stubReq)
+    expect(second.status).toBe(503)
+    // 4 fetches total: 2 per call (both upstreams), because the 503 path
+    // intentionally throws inside the cache fetcher so the cache never writes.
+    expect(spy).toHaveBeenCalledTimes(4)
+  })
+
+  it('DOES cache the degraded 200 path (one upstream up, one down)', async () => {
+    const spy = trackingMock({
+      '/status/quotes': () => { throw new Error('ECONNREFUSED') },
+      '/proof':         () => new Response(JSON.stringify(proofBody), { status: 200 }),
+    })
+
+    const first = await GET(stubReq)
+    expect(first.status).toBe(200)
+    const firstBody = await first.json()
+    expect(firstBody.degraded).toBe(true)
+    const second = await GET(stubReq)
+    expect(second.status).toBe(200)
+    // 2 fetches total: only the first call hit upstream; the second was a
+    // cache hit because at least one upstream succeeded.
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('with ORACLE_STATUS_CACHE_MS=0, every call hits upstream (cache disabled)', async () => {
+    process.env.ORACLE_STATUS_CACHE_MS = '0'
+    const spy = trackingMock({
+      '/status/quotes': () => new Response(JSON.stringify(quotesBody), { status: 200 }),
+      '/proof':         () => new Response(JSON.stringify(proofBody),  { status: 200 }),
+    })
+
+    await GET(stubReq)
+    await GET(stubReq)
+    // 4 fetches: 2 per call, no cache.
+    expect(spy).toHaveBeenCalledTimes(4)
+  })
+})

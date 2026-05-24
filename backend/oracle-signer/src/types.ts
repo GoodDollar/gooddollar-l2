@@ -34,6 +34,7 @@ export enum SessionState {
 export interface OracleSignerConfig {
   priceServiceUrl: string;
   rpcUrl: string;
+  /** StockOracleV2 address. Empty string disables the stocks rail. */
   oracleAddress: string;
   signerKey: string;
   updateIntervalMs: number;
@@ -41,12 +42,24 @@ export interface OracleSignerConfig {
   symbols: string[];
   txTimeoutMs: number;
   /**
-   * Cumulative malformed/parse-fail/socket-error frame count beyond
-   * which the watchdog flips `SERVICE_HEALTH_STATUS=degraded` with
-   * the `WS_STREAM_REASON_PREFIX` reason. Surfaces silent
-   * price-service ↔ signer schema drift on `/health`.
+   * Devnet chain-id allowlist. The service refuses to start the submission
+   * loop when `provider.getNetwork().chainId` is not in this list — a
+   * defence-in-depth guard against accidentally publishing keeper-signed
+   * batches to mainnet. Defaults to [31337, 1337].
    */
-  wsFailureDegradeAt: number;
+  allowedChainIds: number[];
+
+  // ---- Crypto rail (optional) ----
+  /** SwapPriceOracle address. Empty string disables the crypto rail. */
+  swapPriceOracleAddress?: string;
+  /** Raw `CRYPTO_SYMBOL_MAP` env value — parsed by the service. */
+  cryptoSymbolMap?: string;
+  /** Crypto-rail submission interval; defaults to `updateIntervalMs` when undefined. */
+  cryptoUpdateIntervalMs?: number;
+  /** Crypto-rail deviation threshold (bps); defaults to `minDeviationBps`. */
+  cryptoMinDeviationBps?: number;
+  /** Crypto-rail symbol allowlist; defaults to the keys of `cryptoSymbolMap`. */
+  cryptoSymbols?: string[];
 }
 
 export interface PendingUpdate {
@@ -57,9 +70,20 @@ export interface PendingUpdate {
   confidence: number;
 }
 
+/** Like `PendingUpdate` but for the SwapPriceOracle rail (token address keyed, no timestamp/session/confidence). */
+export interface PendingCryptoUpdate {
+  symbol: string;
+  address: string;
+  price8: bigint;
+  /** Off-chain quote timestamp (seconds). The contract uses `block.timestamp`; this is only kept for audit logging. */
+  timestamp: number;
+}
+
 export interface UpdateResult {
   txHash: string;
   gasUsed: bigint;
   symbolCount: number;
   roundTripMs: number;
+  /** Optional block number when known (added in 0004's proof-store path). */
+  blockNumber?: number;
 }

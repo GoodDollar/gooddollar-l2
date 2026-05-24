@@ -3,39 +3,30 @@ import { render, screen } from '@testing-library/react'
 import { NewsEventsPanel } from '@/components/stocks/NewsEventsPanel'
 
 describe('NewsEventsPanel', () => {
-  it('renders loading state', () => {
-    render(<NewsEventsPanel ticker="AAPL" isLoading error={null} items={[]} />)
+  it('renders the loading skeleton', () => {
+    render(<NewsEventsPanel ticker="AAPL" isLoading error={null} />)
     expect(screen.getByLabelText(/news loading/i)).toBeInTheDocument()
   })
 
-  it('renders empty state', () => {
-    render(<NewsEventsPanel ticker="AAPL" isLoading={false} error={null} items={[]} />)
-    expect(screen.getByText(/No recent catalysts for AAPL yet/i)).toBeInTheDocument()
+  it('renders the error state when an error is provided', () => {
+    render(<NewsEventsPanel ticker="AAPL" isLoading={false} error="Failed to load news" />)
+    expect(screen.getByText('Failed to load news')).toBeInTheDocument()
   })
 
-  it('renders news rows and safe external links', () => {
-    render(
-      <NewsEventsPanel
-        ticker="AAPL"
-        isLoading={false}
-        error={null}
-        items={[
-          {
-            id: 'n1',
-            ticker: 'AAPL',
-            headline: 'Apple launches new model line',
-            source: 'Market Wire',
-            publishedAt: '2026-05-18T15:30:00Z',
-            tag: 'Product',
-            url: 'https://example.com/aapl-news',
-          },
-        ]}
-      />
-    )
+  // Task 0034 — the previous panel rendered three fabricated headlines per
+  // ticker (with example.com URLs) without a demo badge, next to a synthetic
+  // live price. Until a real news provider is wired up, the only honest
+  // rendering is an empty-state telling the user nothing is fabricated.
+  it('renders the honest "news feed coming soon" empty state', () => {
+    render(<NewsEventsPanel ticker="AAPL" isLoading={false} error={null} />)
+    expect(screen.getByText(/news feed coming soon/i)).toBeInTheDocument()
+    expect(screen.getByText(/none of this is fabricated/i)).toBeInTheDocument()
+  })
 
-    const link = screen.getByRole('link', { name: /Apple launches new model line/i })
-    expect(link).toHaveAttribute('href', 'https://example.com/aapl-news')
-    expect(link).toHaveAttribute('target', '_blank')
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  it('renders no anchor tags (no fabricated article links)', () => {
+    const { container } = render(
+      <NewsEventsPanel ticker="AAPL" isLoading={false} error={null} />,
+    )
+    expect(container.querySelectorAll('a')).toHaveLength(0)
   })
 })

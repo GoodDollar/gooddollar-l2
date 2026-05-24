@@ -39,3 +39,20 @@ export function deriveStocksOracleHealth(
 function liveOrFallback(onChainReachable?: boolean): StocksOracleHealth {
   return onChainReachable === false ? 'fallback' : 'live'
 }
+
+/**
+ * Derive the age (in ms) of the most recent stocks-keeper heartbeat from the
+ * `/api/status` payload. Returns `null` when the payload is missing, the
+ * service is absent, or `lastChecked` is unparseable. Used by the badge's
+ * compact-fallback render to print `Updated <age>` next to the live label.
+ */
+export function getStocksKeeperAgeMs(payload: unknown, now = Date.now()): number | null {
+  const data = payload as StatusPayload | null
+  if (!data || !Array.isArray(data.services)) return null
+  const service = data.services.find((s) => s?.name === 'stocks-keeper')
+  if (!service?.lastChecked) return null
+  const ts = Date.parse(service.lastChecked)
+  if (!Number.isFinite(ts)) return null
+  const ageMs = now - ts
+  return ageMs >= 0 ? ageMs : 0
+}

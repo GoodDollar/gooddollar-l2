@@ -83,3 +83,61 @@ describe('oracle-signer startup guard', () => {
     expect(!key).toBe(true); // falsy — this is what triggers the guard
   });
 });
+
+describe('OracleSignerService.serviceStatus — task 0010', () => {
+  beforeEach(() => {
+    jest.resetModules();
+    startHealthServerMock.mockClear();
+  });
+
+  it('reports ok when the service has not refused', () => {
+    process.env.ORACLE_SIGNER_KEY = '0x' + '11'.repeat(32);
+    process.env.STOCK_ORACLE_V2_ADDRESS = '0x' + '22'.repeat(20);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { OracleSignerService } = require('../index') as { OracleSignerService: new (cfg: unknown) => { serviceStatus: () => { status: string; reason?: string } } };
+
+    const cfg = {
+      priceServiceUrl: 'ws://x',
+      rpcUrl: 'http://x',
+      oracleAddress: process.env.STOCK_ORACLE_V2_ADDRESS,
+      signerKey: process.env.ORACLE_SIGNER_KEY,
+      updateIntervalMs: 5000,
+      minDeviationBps: 10,
+      txTimeoutMs: 60000,
+      symbols: ['AAPL'],
+      allowedChainIds: [31337],
+      swapPriceOracleAddress: '',
+      cryptoSymbolMap: '',
+    };
+    const svc = new OracleSignerService(cfg);
+    expect(svc.serviceStatus()).toEqual({ status: 'ok' });
+  });
+
+  it('reports degraded with refusal reason after chain-guard refuses', async () => {
+    process.env.ORACLE_SIGNER_KEY = '0x' + '33'.repeat(32);
+    process.env.STOCK_ORACLE_V2_ADDRESS = '0x' + '44'.repeat(20);
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { OracleSignerService } = require('../index') as { OracleSignerService: new (cfg: unknown, deps: { getChainId: () => Promise<number> }) => { start: () => Promise<void>; serviceStatus: () => { status: string; reason?: string }; isRefused: boolean } };
+
+    const cfg = {
+      priceServiceUrl: 'ws://x',
+      rpcUrl: 'http://x',
+      oracleAddress: process.env.STOCK_ORACLE_V2_ADDRESS,
+      signerKey: process.env.ORACLE_SIGNER_KEY,
+      updateIntervalMs: 5000,
+      minDeviationBps: 10,
+      txTimeoutMs: 60000,
+      symbols: ['AAPL'],
+      allowedChainIds: [31337],
+      swapPriceOracleAddress: '',
+      cryptoSymbolMap: '',
+    };
+    const svc = new OracleSignerService(cfg, { getChainId: async () => 1 });
+    await svc.start();
+    expect(svc.isRefused).toBe(true);
+    const status = svc.serviceStatus();
+    expect(status.status).toBe('degraded');
+    expect(status.reason).toContain('non-devnet chain id 1');
+  });
+});

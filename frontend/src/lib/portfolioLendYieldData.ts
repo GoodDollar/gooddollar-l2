@@ -64,10 +64,34 @@ const MOCK_VAULTS: YieldVault[] = [
   { name: 'Stock Index', asset: 'gSPY/G$', deposited: 5_000, currentValue: 5_112.75, yieldEarned: 112.75, apy: 9.0 },
 ]
 
+// ─── Empty fallbacks for disconnected / wrong-chain wallets ──────────────────
+//
+// Task 0054: when no wallet is connected (or it's on the wrong chain) the
+// Portfolio page must NOT paint a logged-in-style dashboard with fake totals.
+// The same hooks are still called — they return these shaped zeros so the
+// page's own `supplies.length === 0` / `vaults.length === 0` branches render
+// the existing empty states alongside Stocks / Predictions / Perps.
+
+export const EMPTY_LEND_POSITIONS: LendPositions = {
+  supplies: [],
+  borrows: [],
+  totalSupplied: 0,
+  totalBorrowed: 0,
+  netValue: 0,
+}
+
+export const EMPTY_YIELD_POSITIONS: YieldPositions = {
+  vaults: [],
+  totalDeposited: 0,
+  totalCurrentValue: 0,
+  totalYieldEarned: 0,
+}
+
 // ─── Hooks ──────────────────────────────────────────────────────────────────
 
-export function useMockLendPositions(): LendPositions {
+export function useMockLendPositions(enabled: boolean = true): LendPositions {
   return useMemo(() => {
+    if (!enabled) return EMPTY_LEND_POSITIONS
     const totalSupplied = MOCK_SUPPLIES.reduce((s, p) => s + p.valueUsd, 0)
     const totalBorrowed = MOCK_BORROWS.reduce((s, p) => s + p.valueUsd, 0)
     return {
@@ -77,11 +101,12 @@ export function useMockLendPositions(): LendPositions {
       totalBorrowed,
       netValue: totalSupplied - totalBorrowed,
     }
-  }, [])
+  }, [enabled])
 }
 
-export function useMockYieldPositions(): YieldPositions {
+export function useMockYieldPositions(enabled: boolean = true): YieldPositions {
   return useMemo(() => {
+    if (!enabled) return EMPTY_YIELD_POSITIONS
     const totalDeposited = MOCK_VAULTS.reduce((s, v) => s + v.deposited, 0)
     const totalCurrentValue = MOCK_VAULTS.reduce((s, v) => s + v.currentValue, 0)
     const totalYieldEarned = MOCK_VAULTS.reduce((s, v) => s + v.yieldEarned, 0)
@@ -91,5 +116,5 @@ export function useMockYieldPositions(): YieldPositions {
       totalCurrentValue,
       totalYieldEarned,
     }
-  }, [])
+  }, [enabled])
 }

@@ -2,11 +2,21 @@
 
 import { useState, useEffect } from 'react'
 
+import { isPageHidden, subscribePageVisibility } from './usePageVisibility'
+
 export interface QuoteStatus {
   symbol: string
   lastUpdateMs: number
   sessionState: string
   confidence: number
+  /**
+   * Optional ms-since-epoch of the *price's* as-of timestamp. For closed
+   * sessions, the time of the closing print; for after-hours, the most
+   * recent market-close time; for pre-market, the market-open time. The
+   * field is undefined for open sessions (the "Updated Xs ago" clause
+   * already covers liveness) and for upstreams that don't yet emit it.
+   */
+  sessionAsOfMs?: number
   oracleBlock?: number
   divergenceBps?: number
   productSync?: Partial<Record<'amm' | 'perps' | 'prediction' | 'lend' | 'yield', { lastSyncedBlock: number; value?: number }>>
@@ -52,6 +62,7 @@ interface StatusStore {
   inFlight: boolean
   failureCount: number
   cooldownUntil: number
+  unsubscribeVisibility: (() => void) | null
 }
 
 const store: StatusStore = {
@@ -61,6 +72,7 @@ const store: StatusStore = {
   inFlight: false,
   failureCount: 0,
   cooldownUntil: 0,
+  unsubscribeVisibility: null,
 }
 
 function notify(): void {
@@ -69,7 +81,7 @@ function notify(): void {
 
 async function fetchStatus(force = false): Promise<void> {
   if (store.inFlight) return
-  if (typeof document !== 'undefined' && document.hidden) return
+  if (!force && isPageHidden()) return
   if (!force && Date.now() < store.cooldownUntil) return
 
   store.inFlight = true
@@ -101,17 +113,38 @@ async function fetchStatus(force = false): Promise<void> {
   }
 }
 
-function startPolling(): void {
+function armInterval(): void {
   if (store.intervalId !== null) return
-  if (typeof window === 'undefined') return
   store.intervalId = setInterval(fetchStatus, POLL_INTERVAL_MS)
+}
+
+function disarmInterval(): void {
+  if (store.intervalId === null) return
+  clearInterval(store.intervalId)
+  store.intervalId = null
+}
+
+function startPolling(): void {
+  if (typeof window === 'undefined') return
+  if (store.unsubscribeVisibility === null) {
+    store.unsubscribeVisibility = subscribePageVisibility((hidden) => {
+      if (hidden) {
+        disarmInterval()
+        return
+      }
+      armInterval()
+      void fetchStatus(true)
+    })
+  }
+  if (!isPageHidden()) armInterval()
 }
 
 function stopPolling(): void {
   if (store.subscribers.size > 0) return
-  if (store.intervalId !== null) {
-    clearInterval(store.intervalId)
-    store.intervalId = null
+  disarmInterval()
+  if (store.unsubscribeVisibility) {
+    store.unsubscribeVisibility()
+    store.unsubscribeVisibility = null
   }
 }
 
@@ -174,10 +207,14 @@ export function __resetPriceServiceStatusStoreForTests(): void {
   if (store.intervalId !== null) {
     clearInterval(store.intervalId)
   }
+  if (store.unsubscribeVisibility) {
+    store.unsubscribeVisibility()
+  }
   store.state = { status: null, isLoading: true, error: null, nextRetryAt: null }
   store.subscribers.clear()
   store.intervalId = null
   store.inFlight = false
   store.failureCount = 0
   store.cooldownUntil = 0
+  store.unsubscribeVisibility = null
 }

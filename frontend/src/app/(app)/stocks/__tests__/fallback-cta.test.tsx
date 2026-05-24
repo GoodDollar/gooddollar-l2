@@ -1,6 +1,25 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { TestWrapper } from '@/test-utils/wrapper'
+
+beforeAll(() => {
+  if (typeof window.matchMedia !== 'function') {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    })
+  }
+})
 
 const push = vi.fn()
 const walletState = { address: undefined as `0x${string}` | undefined }
@@ -61,19 +80,33 @@ describe('StocksPage CTA state honors oracle isLive', () => {
       </TestWrapper>
     )
 
-    // Hero should NOT advertise live trading
     expect(screen.queryByRole('button', { name: 'Connect Wallet to Trade Stocks' })).not.toBeInTheDocument()
-    // Hero should advertise demo preview
     expect(screen.getByRole('button', { name: /preview stocks demo/i })).toBeInTheDocument()
     expect(screen.getByText(/Stocks Oracle in Demo Mode/i)).toBeInTheDocument()
 
-    // Desktop per-row CTA: "Preview" with adjacent "Demo" chip — NO bare "Trade" button
+    expect(screen.queryByText(/Oracle offline: showing demo prices/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('stale-price-banner')).not.toBeInTheDocument()
+    expect(screen.getByText(/illustrative demo values, not live market data/i)).toBeInTheDocument()
+
     expect(screen.queryByRole('button', { name: 'Trade' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Preview AAPL — demo data/ })).toBeInTheDocument()
 
-    // Mobile card affordance: "Tap to preview" + "Demo" chip, NOT "Tap to trade"
-    expect(screen.queryByText('Tap to trade')).not.toBeInTheDocument()
     expect(screen.getByLabelText(/Demo data — preview only/i)).toBeInTheDocument()
+  })
+
+  it('shows the StalePriceBanner alone (no rich card) when oracle is NOT live but wallet IS connected', () => {
+    walletState.address = '0x1111111111111111111111111111111111111111'
+    stocksState.isLive = false
+
+    render(
+      <TestWrapper>
+        <StocksPage />
+      </TestWrapper>
+    )
+
+    expect(screen.getByTestId('stale-price-banner')).toBeInTheDocument()
+    expect(screen.queryByText(/Stocks Oracle in Demo Mode/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /preview stocks demo/i })).not.toBeInTheDocument()
   })
 
   it('shows live-trade hero and Trade CTAs when oracle IS live and wallet disconnected', () => {

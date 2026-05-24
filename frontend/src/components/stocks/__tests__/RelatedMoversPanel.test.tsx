@@ -12,6 +12,7 @@ vi.mock('next/link', () => ({
 const stock = (ticker: string, change24h: number): Stock => ({
   ticker,
   name: `s${ticker}`,
+  displayName: `s${ticker}`,
   sector: 'Technology',
   description: '',
   price: 100,
@@ -25,6 +26,25 @@ const stock = (ticker: string, change24h: number): Stock => ({
   eps: 1,
   dividendYield: 0,
   avgVolume: 1,
+})
+
+const zeroStock = (ticker: string): Stock => ({
+  ticker,
+  name: `s${ticker}`,
+  displayName: `s${ticker}`,
+  sector: 'Technology',
+  description: '',
+  price: 100,
+  change24h: 0,
+  volume24h: 0,
+  marketCap: 0,
+  high52w: 0,
+  low52w: 0,
+  sparkline7d: [],
+  peRatio: 0,
+  eps: 0,
+  dividendYield: 0,
+  avgVolume: 0,
 })
 
 describe('RelatedMoversPanel', () => {
@@ -45,5 +65,74 @@ describe('RelatedMoversPanel', () => {
     const moversHeading = screen.getByText(/Daily movers/i)
     expect(moversHeading).toBeInTheDocument()
     expect(screen.queryByText(/\+2\.40%/)).toBeNull()
+  })
+
+  it('omits movers whose oracle has no 24h-change reading and shows an honest empty state', () => {
+    render(
+      <RelatedMoversPanel
+        currentTicker="AAPL"
+        related={[]}
+        movers={[zeroStock('MSFT'), zeroStock('NVDA'), zeroStock('AMZN')]}
+      />
+    )
+
+    // No fabricated +0.00% lines for zero-data oracle.
+    expect(screen.queryByText(/\+0\.00%/)).toBeNull()
+    expect(screen.queryByText(/-0\.00%/)).toBeNull()
+    expect(screen.getByText(/No 24h-change data from the oracle yet/i)).toBeInTheDocument()
+  })
+
+  it('keeps movers that have real volume even when change24h is zero (true flat day)', () => {
+    const flatButReal: Stock = { ...zeroStock('MSFT'), volume24h: 1_000_000 }
+    render(
+      <RelatedMoversPanel
+        currentTicker="AAPL"
+        related={[]}
+        movers={[flatButReal]}
+      />
+    )
+    expect(screen.getByText('MSFT')).toBeInTheDocument()
+  })
+
+  // Task 0060: when the stocks rail is not live, the Related symbols
+  // sub-rail must collapse its price column to an em-dash so the page-
+  // level "Demo data" banner is not contradicted by un-attributed
+  // sidebar prices.
+  it('renders em-dash for related-symbol prices when the rail is offline', () => {
+    render(
+      <RelatedMoversPanel
+        currentTicker="AAPL"
+        related={[
+          { ...stock('MSFT', 0), price: 388.45 },
+          { ...stock('GOOGL', 0), price: 161.12 },
+          { ...stock('NVDA', 0), price: 104.75 },
+          { ...stock('META', 0), price: 567.89 },
+        ]}
+        movers={[]}
+        railLive={false}
+      />,
+    )
+
+    expect(screen.getByText('MSFT')).toBeInTheDocument()
+    expect(screen.queryByText(/\$388\.45/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\$161\.12/)).not.toBeInTheDocument()
+    expect(screen.getAllByText('—')).toHaveLength(4)
+  })
+
+  it('renders formatted prices for related-symbol rows when the rail is live', () => {
+    render(
+      <RelatedMoversPanel
+        currentTicker="AAPL"
+        related={[
+          { ...stock('MSFT', 0), price: 388.45 },
+          { ...stock('GOOGL', 0), price: 161.12 },
+        ]}
+        movers={[]}
+        railLive
+      />,
+    )
+
+    expect(screen.getByText('$388.45')).toBeInTheDocument()
+    expect(screen.getByText('$161.12')).toBeInTheDocument()
   })
 })

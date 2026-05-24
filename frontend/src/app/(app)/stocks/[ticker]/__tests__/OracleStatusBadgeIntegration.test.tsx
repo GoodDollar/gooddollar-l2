@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 
-import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { OracleStatusBadge, __resetOracleStatusFallbackForTests } from '@/components/OracleStatusBadge'
 
 // Mock the primary quotes-status hook so we can simulate the production scenario
 // where the quotes endpoint is unreachable from the browser (the case we
@@ -21,6 +21,7 @@ const { usePriceServiceStatus } = await import('@/lib/usePriceServiceStatus')
 describe('Stock detail page OracleStatusBadge integration', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    __resetOracleStatusFallbackForTests()
   })
 
   it('shows Live on the detail variant when primary quote status is down but stocks-keeper is healthy (default fallback ON)', async () => {
@@ -152,5 +153,62 @@ describe('Stock detail page OracleStatusBadge integration', () => {
     await waitFor(() => expect(screen.getByText('Oracle offline')).toBeInTheDocument())
     expect(screen.queryByText('Live')).not.toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('shows per-symbol freshness on detail variant when primary status is down but oracle-status fallback returns a matching quote', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+      nextRetryAt: null,
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          healthy: true,
+          degraded: false,
+          quotes: [
+            { symbol: 'AAPL', lastUpdateMs: 3000, sessionState: 'open', confidence: 95 },
+          ],
+          freshCount: 1,
+          totalCount: 1,
+          timestamp: Date.now(),
+        }),
+        { status: 200 },
+      ),
+    )
+
+    render(<OracleStatusBadge variant="detail" symbol="AAPL" useStocksFallback />)
+    await waitFor(() => expect(screen.getByText(/Updated/)).toBeInTheDocument())
+    expect(screen.getByText('Market Open')).toBeInTheDocument()
+    expect(screen.queryByText('stocks-keeper')).not.toBeInTheDocument()
+  })
+
+  it('shows "no <SYMBOL> feed yet" on detail variant when oracle-status fallback omits the requested symbol', async () => {
+    vi.mocked(usePriceServiceStatus).mockReturnValue({
+      status: null,
+      isLoading: false,
+      error: 'quote status unavailable',
+      nextRetryAt: null,
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          healthy: true,
+          degraded: false,
+          quotes: [
+            { symbol: 'TSLA', lastUpdateMs: 1500, sessionState: 'open', confidence: 88 },
+          ],
+          freshCount: 1,
+          totalCount: 1,
+          timestamp: Date.now(),
+        }),
+        { status: 200 },
+      ),
+    )
+
+    render(<OracleStatusBadge variant="detail" symbol="AAPL" useStocksFallback />)
+    await waitFor(() => expect(screen.getByText(/no AAPL feed yet/)).toBeInTheDocument())
+    expect(screen.getByText('Live')).toBeInTheDocument()
   })
 })

@@ -26,8 +26,20 @@ import React from 'react'
 // rendering the heavy detail layout in jsdom.
 
 const mockUseParams = vi.fn(() => ({ ticker: 'JPM' }))
+const mockRouter = {
+  push: vi.fn(),
+  replace: vi.fn(),
+  back: vi.fn(),
+  forward: vi.fn(),
+  refresh: vi.fn(),
+  prefetch: vi.fn(),
+}
+const mockSearchParams = new URLSearchParams('')
 vi.mock('next/navigation', () => ({
   useParams: () => mockUseParams(),
+  useRouter: () => mockRouter,
+  usePathname: () => '/stocks/JPM',
+  useSearchParams: () => mockSearchParams,
 }))
 
 const mockUseOnChainStocks = vi.fn((): { stocks: import('@/lib/stockData').Stock[]; isLoading: boolean; isLive: boolean } => ({
@@ -99,6 +111,12 @@ beforeEach(() => {
   cleanup()
   mockUseParams.mockReturnValue({ ticker: 'JPM' })
   mockUseOnChainStocks.mockReturnValue({ stocks: [], isLoading: true, isLive: false })
+  mockRouter.push.mockClear()
+  mockRouter.replace.mockClear()
+  mockRouter.back.mockClear()
+  mockRouter.forward.mockClear()
+  mockRouter.refresh.mockClear()
+  mockRouter.prefetch.mockClear()
 })
 
 describe('StockDetailPage — loading vs not-found', () => {
@@ -107,6 +125,10 @@ describe('StockDetailPage — loading vs not-found', () => {
 
     render(<StockDetailPage />)
 
+    // Sanity: the component actually reached its hook block. Catches future
+    // regressions where a new next/navigation hook is added without a matching
+    // mock and the page throws before any assertion can run.
+    expect(mockUseOnChainStocks).toHaveBeenCalled()
     expect(screen.getByTestId('stocks-detail-loading')).toBeInTheDocument()
     expect(screen.queryByText(/Stock Not Found/i)).not.toBeInTheDocument()
   })

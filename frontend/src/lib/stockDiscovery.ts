@@ -1,5 +1,4 @@
 import type { Stock } from '@/lib/stockData'
-import { calcUpsidePercent, getAnalystOutlook } from '@/lib/stockInsights'
 
 export function getRelatedSymbols(stocks: Stock[], ticker: string, limit: number = 4): Stock[] {
   const current = stocks.find((s) => s.ticker === ticker)
@@ -37,15 +36,12 @@ export function getTrendingStocks(stocks: Stock[], limit: number = 6): Stock[] {
     .slice(0, limit)
 }
 
+// Task 0036 — previously combined a fabricated analyst-consensus upside
+// with `change24h` to score "picks". With the analyst feed unwired, the
+// only honest signal left is signed 24h change. Once a real consensus
+// source lands the upside term can fold back in here.
 export function getMarketAnalysisPicks(stocks: Stock[], limit: number = 6): Stock[] {
   return [...stocks]
-    .map((stock) => {
-      const outlook = getAnalystOutlook(stock.ticker)
-      const upside = outlook ? calcUpsidePercent(stock.price, outlook.targetMean) : 0
-      const confidence = outlook?.analystCount ?? 0
-      return { stock, score: (upside * 2) + (confidence * 0.5) + stock.change24h }
-    })
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.change24h - a.change24h)
     .slice(0, limit)
-    .map((entry) => entry.stock)
 }

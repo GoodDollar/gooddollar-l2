@@ -6,12 +6,15 @@ import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import Link from 'next/link'
-import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
+import { formatStockPrice, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
-import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
+import { hasLiveOracleChange, hasLiveOracleFundamentals } from '@/lib/oracleHonesty'
+import { AnalysisGrid } from '@/components/stocks/AnalysisGrid'
+import { DemoChartOverlay } from '@/components/DemoChartOverlay'
+import { TrendSummaryCard } from '@/components/stocks/TrendSummaryCard'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
@@ -27,12 +30,13 @@ import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
 import { StockLogo } from '@/components/ui/stock-logo'
 import { StockStatsBar } from '@/components/stocks/StockStatsBar'
+import { KeyStatistics } from '@/components/stocks/KeyStatistics'
+import { PeerComparePanel, type PeerMetric } from '@/components/stocks/PeerComparePanel'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
 const AnalystOutlookCard = lazy(() => import('@/components/stocks/AnalystOutlookCard').then((mod) => ({ default: mod.AnalystOutlookCard })))
 const NewsEventsPanel = lazy(() => import('@/components/stocks/NewsEventsPanel').then((mod) => ({ default: mod.NewsEventsPanel })))
 const PriceChart = lazy(() => import('@/components/PriceChart').then((mod) => ({ default: mod.PriceChart })))
-const DepthChart = lazy(() => import('@/components/stocks/DepthChart').then((mod) => ({ default: mod.DepthChart })))
 const StockMarketData = lazy(() => import('@/components/stocks/StockMarketData').then((mod) => ({ default: mod.StockMarketData })))
 
 // NOTE: Keep these imports STATIC. Inside an App Router dynamic-segment
@@ -74,7 +78,6 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 }
 
 const TIMEFRAMES: Timeframe[] = ['1H', '4H', '1D', '1W', '1M', '3M', '1Y']
-type PeerMetric = 'change24h' | 'marketCap' | 'peRatio'
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const DETAIL_BACK_LINKS: Record<string, { label: string; href: string }> = {
   watchlist: { label: 'Back to Watchlist', href: '/stocks/watchlist' },
@@ -108,18 +111,6 @@ function normalizeTickerForLookup(rawTicker?: string): string {
   if (UNSAFE_TICKER_PATTERN.test(normalized)) return ''
   if (!SAFE_TICKER_PATTERN.test(normalized)) return ''
   return normalized
-}
-
-function formatEventDate(offsetDays: number): string {
-  const now = new Date()
-  const date = new Date(now.getTime() + offsetDays * 24 * 60 * 60 * 1000)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-}
-
-function formatCalendarDate(dateInput: Date | string): string {
-  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 type StockOrderType = 'market' | 'limit' | 'stop-limit'
@@ -473,7 +464,7 @@ export default function StockDetailPage() {
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const isReservedSubroute = !!rawTicker && RESERVED_STOCK_SUBROUTES.has(rawTicker.toLowerCase())
   const ticker = normalizeTickerForLookup(rawTicker)
-  const { stocks, isLive } = useOnChainStocks()
+  const { stocks, isLoading: stocksLoading, isLive } = useOnChainStocks()
   const { bySymbol: rebalanceBySymbol } = useStocksRebalanceStatus(ticker ? [ticker] : [])
   const tickerRebalance = ticker ? rebalanceBySymbol[ticker] : undefined
   const riskIncreaseAllowed = tickerRebalance?.riskIncreaseAllowed ?? true
@@ -481,14 +472,12 @@ export default function StockDetailPage() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
-  const [chartView, setChartView] = useState<'price' | 'depth'>('price')
   const [activeTab, setActiveTab] = useState<TickerTab>(() => parseTickerTab(searchParams.get('tab')))
   const [analysisExpanded, setAnalysisExpanded] = useState(true)
   const [peerMetric, setPeerMetric] = useState<PeerMetric>('change24h')
   const orderFormRef = useRef<HTMLDivElement | null>(null)
   const [analystLoading, setAnalystLoading] = useState(true)
-  const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
-  const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
+  const { isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const chartMounted = useMounted()
@@ -505,36 +494,12 @@ export default function StockDetailPage() {
     const directPeers = relatedSymbols.length > 0 ? relatedSymbols : topMovers.filter((candidate) => candidate.ticker !== stock.ticker)
     return directPeers.slice(0, 5)
   }, [relatedSymbols, stock, topMovers])
-  const trendSummary = useMemo(() => {
-    if (!chartData.length) return null
-    const first = chartData[0]?.close ?? 0
-    const last = chartData[chartData.length - 1]?.close ?? 0
-    if (first <= 0 || last <= 0) return null
-    const changePct = ((last - first) / first) * 100
-    let signal: 'Bullish' | 'Neutral' | 'Bearish' = 'Neutral'
-    if (changePct > 2) signal = 'Bullish'
-    if (changePct < -2) signal = 'Bearish'
-    const high = Math.max(...chartData.map((point) => point.high))
-    const low = Math.min(...chartData.map((point) => point.low))
-    const spreadPct = first > 0 ? ((high - low) / first) * 100 : 0
-    return { signal, changePct, spreadPct }
-  }, [chartData])
-  const fundamentalsRows = useMemo(() => (stock ? buildFundamentalsRows(stock) : []), [stock])
+  const liveFundamentals = !!stock && isLive && hasLiveOracleFundamentals(stock)
+  const fundamentalsRows = useMemo(
+    () => (stock ? buildFundamentalsRows(stock, liveFundamentals) : []),
+    [stock, liveFundamentals],
+  )
   const backLink = DETAIL_BACK_LINKS[searchParams.get('from') ?? ''] ?? DEFAULT_DETAIL_BACK_LINK
-  const eventTimeline = useMemo(() => {
-    if (!stock) return []
-    const upcoming = [
-      { id: `${stock.ticker}-earnings-next`, label: 'Earnings call', date: formatEventDate(7), status: 'Upcoming' },
-      { id: `${stock.ticker}-dividend-next`, label: 'Dividend ex-date', date: stock.dividendYield > 0 ? formatEventDate(13) : 'Not scheduled', status: stock.dividendYield > 0 ? 'Upcoming' : 'Info' },
-    ]
-    const recent = newsItems.slice(0, 2).map((item, idx) => ({
-      id: item.id,
-      label: item.headline,
-      date: formatCalendarDate(item.publishedAt),
-      status: idx === 0 ? 'Recent' : 'Catalyst',
-    }))
-    return [...upcoming, ...recent]
-  }, [newsItems, stock])
 
   useEffect(() => {
     setAnalystLoading(true)
@@ -590,6 +555,33 @@ export default function StockDetailPage() {
     )
   }
 
+  if (!stock && stocksLoading) {
+    return (
+      <div
+        data-testid="stocks-detail-loading"
+        aria-busy="true"
+        aria-live="polite"
+        className="max-w-6xl mx-auto px-4 py-6 animate-pulse"
+      >
+        <span className="sr-only">Loading stock details…</span>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-12 w-12 rounded-full bg-dark-50/60" />
+          <div className="flex flex-col gap-2">
+            <div className="h-5 w-24 rounded bg-dark-50/60" />
+            <div className="h-3 w-40 rounded bg-dark-50/40" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 h-64 rounded-xl bg-dark-50/40" />
+          <div className="h-64 rounded-xl bg-dark-50/40" />
+          <div className="h-32 rounded-xl bg-dark-50/40" />
+          <div className="h-32 rounded-xl bg-dark-50/40" />
+          <div className="h-32 rounded-xl bg-dark-50/40" />
+        </div>
+      </div>
+    )
+  }
+
   if (!stock) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
@@ -637,9 +629,22 @@ export default function StockDetailPage() {
 
           <div className="flex items-baseline gap-3 mb-2">
             <span className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
-            <span className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
-            </span>
+            {hasLiveOracleChange(stock) ? (
+              <span
+                data-testid="headline-change-24h"
+                className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}
+              >
+                {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
+              </span>
+            ) : (
+              <span
+                data-testid="headline-change-24h"
+                aria-label="24-hour change unavailable"
+                className="text-sm font-medium text-gray-500"
+              >
+                —
+              </span>
+            )}
           </div>
           <div className="mb-4 min-h-[1.75rem]">
             {chartMounted ? (
@@ -654,47 +659,30 @@ export default function StockDetailPage() {
           <StockStatsBar stock={stock} />
 
           <Suspense fallback={<div className="mb-4 h-24 rounded-2xl bg-dark-100 animate-pulse" />}>
-            <AnalystOutlookCard
-              currentPrice={stock.price}
-              outlook={analystOutlook}
-              isLoading={analystLoading}
-            />
+            <AnalystOutlookCard isLoading={analystLoading} />
           </Suspense>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center mb-3">
               <div className="flex gap-1">
-                {chartView === 'price' && TIMEFRAMES.map(tf => (
+                {TIMEFRAMES.map(tf => (
                   <button key={tf} onClick={() => setTimeframe(tf)}
                     className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
                     {tf}
                   </button>
                 ))}
               </div>
-              <div className="flex gap-0.5 rounded-lg bg-dark-50/60 p-0.5">
-                <button onClick={() => setChartView('price')}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chartView === 'price' ? 'bg-dark-200 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
-                  Price
-                </button>
-                <button onClick={() => setChartView('depth')}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chartView === 'depth' ? 'bg-dark-200 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
-                  Depth
-                </button>
-              </div>
             </div>
-            {chartView === 'price' ? (
-              chartMounted ? (
+            <div className="relative" data-chart-overlay-host>
+              <DemoChartOverlay isLive={isLive} />
+              {chartMounted ? (
                 <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
                   <PriceChart data={chartData} height={350} />
                 </Suspense>
               ) : (
                 <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
-              )
-            ) : (
-              <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
-                <DepthChart oraclePrice={stock.price} height={350} />
-              </Suspense>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-gray-700/20 bg-dark-100/70 p-2">
@@ -722,55 +710,7 @@ export default function StockDetailPage() {
           </div>
 
           {activeTab === 'overview' && (
-            <>
-              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
-                <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">Market Cap</div>
-                    <div className="text-white font-medium truncate">{formatLargeNumber(stock.marketCap)}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">24h Volume</div>
-                    <div className="text-white font-medium truncate">{formatLargeNumber(stock.volume24h)}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">Sector</div>
-                    <div className="text-white font-medium truncate">{stock.sector}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">52W High</div>
-                    <div className="text-white font-medium truncate">{formatStockPrice(stock.high52w)}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">52W Low</div>
-                    <div className="text-white font-medium truncate">{formatStockPrice(stock.low52w)}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-gray-500 text-xs mb-0.5">24h Change</div>
-                    <div className={`font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 text-xs mb-0.5">P/E Ratio</div>
-                    <div className="text-white font-medium">{stock.peRatio.toFixed(1)}x</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 text-xs mb-0.5">EPS</div>
-                    <div className={`font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>${stock.eps.toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 text-xs mb-0.5">Dividend Yield</div>
-                    <div className="text-white font-medium">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : '—'}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 text-xs mb-0.5">Avg Volume</div>
-                    <div className="text-white font-medium">{formatLargeNumber(stock.avgVolume).replace('$', '')}</div>
-                  </div>
-                </div>
-              </div>
-            </>
+            <KeyStatistics stock={stock} />
           )}
 
           {activeTab === 'fundamentals' && (
@@ -791,21 +731,9 @@ export default function StockDetailPage() {
           {activeTab === 'events' && (
             <section className="rounded-2xl border border-gray-700/20 bg-dark-100 p-5">
               <h2 className="mb-3 text-sm font-semibold text-white">Events</h2>
-              {eventTimeline.length === 0 ? (
-                <p className="text-xs text-gray-500">No event data available right now.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {eventTimeline.map((event) => (
-                    <li key={event.id} className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-white">{event.label}</span>
-                        <span className="text-[10px] text-gray-500">{event.status}</span>
-                      </div>
-                      <p className="text-xs text-gray-400">{event.date}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <p className="text-xs leading-relaxed text-gray-400">
+                Events feed coming soon — Earnings reports, ex-dividend dates, and other corporate-action events will appear here once a real calendar is connected. None of this is fabricated.
+              </p>
             </section>
           )}
 
@@ -824,79 +752,11 @@ export default function StockDetailPage() {
             </div>
             {analysisExpanded && (
               <div className="mt-4 space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Valuation</div>
-                    <div className="mt-1 text-sm font-medium text-white">P/E {stock.peRatio.toFixed(1)}x</div>
-                  </div>
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Profitability</div>
-                    <div className={`mt-1 text-sm font-medium ${stock.eps >= 0 ? 'text-green-400' : 'text-red-400'}`}>EPS ${stock.eps.toFixed(2)}</div>
-                  </div>
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Income</div>
-                    <div className="mt-1 text-sm font-medium text-white">{stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}% yield` : 'No dividend'}</div>
-                  </div>
-                  <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Liquidity</div>
-                    <div className="mt-1 text-sm font-medium text-white">{formatLargeNumber(stock.avgVolume).replace('$', '')} avg vol</div>
-                  </div>
-                </div>
+                <AnalysisGrid stock={stock} />
 
-                <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300">Peer Compare</h3>
-                    <div className="flex flex-wrap gap-1">
-                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'change24h' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('change24h')}>24h%</button>
-                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'marketCap' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('marketCap')}>Mkt Cap</button>
-                      <button type="button" className={`px-2 py-1 rounded-md text-[11px] ${peerMetric === 'peRatio' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('peRatio')}>P/E</button>
-                    </div>
-                  </div>
-                  {peerCandidates.length === 0 ? (
-                    <p className="text-xs text-gray-500">Peer data unavailable right now.</p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {peerCandidates
-                        .toSorted((a, b) => (b[peerMetric] - a[peerMetric]))
-                        .map((peer) => (
-                          <div key={peer.ticker} className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2 text-xs">
-                            <Link href={`/stocks/${peer.ticker}`} className="font-medium text-white hover:text-goodgreen transition-colors">{peer.ticker}</Link>
-                            {peerMetric === 'change24h' && (
-                              <span className={peer.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                {peer.change24h >= 0 ? '+' : ''}{peer.change24h.toFixed(2)}%
-                              </span>
-                            )}
-                            {peerMetric === 'marketCap' && <span className="text-gray-200">{formatLargeNumber(peer.marketCap)}</span>}
-                            {peerMetric === 'peRatio' && <span className="text-gray-200">{peer.peRatio.toFixed(1)}x</span>}
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                <PeerComparePanel peers={peerCandidates} metric={peerMetric} onMetricChange={setPeerMetric} />
 
-                <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300 mb-2">Trend Summary</h3>
-                  {!trendSummary ? (
-                    <p className="text-xs text-gray-500">Trend signal unavailable while chart data loads.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
-                        <div className="text-gray-500">Signal</div>
-                        <div className={`mt-1 font-semibold ${trendSummary.signal === 'Bullish' ? 'text-green-400' : trendSummary.signal === 'Bearish' ? 'text-red-400' : 'text-gray-200'}`}>{trendSummary.signal}</div>
-                      </div>
-                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
-                        <div className="text-gray-500">{timeframe} move</div>
-                        <div className={`mt-1 font-semibold ${trendSummary.changePct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {trendSummary.changePct >= 0 ? '+' : ''}{trendSummary.changePct.toFixed(2)}%
-                        </div>
-                      </div>
-                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
-                        <div className="text-gray-500">Range spread</div>
-                        <div className="mt-1 font-semibold text-gray-200">{trendSummary.spreadPct.toFixed(2)}%</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <TrendSummaryCard chartData={chartData} timeframe={timeframe} isLive={isLive} />
               </div>
             )}
           </section>
@@ -915,7 +775,6 @@ export default function StockDetailPage() {
                 ticker={stock.ticker}
                 isLoading={newsLoading}
                 error={newsError}
-                items={newsItems}
               />
             </Suspense>
           )}
@@ -942,7 +801,7 @@ export default function StockDetailPage() {
           </div>
 
           <Suspense fallback={<div className="mt-4 h-28 rounded-2xl bg-dark-100 animate-pulse" />}>
-            <StockMarketData markPrice={stock.price} />
+            <StockMarketData markPrice={stock.price} symbol={stock.ticker} />
           </Suspense>
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
@@ -989,6 +848,7 @@ export default function StockDetailPage() {
             currentTicker={stock.ticker}
             related={relatedSymbols}
             movers={topMovers}
+            railLive={isLive}
           />
 
           {hasPosition ? (

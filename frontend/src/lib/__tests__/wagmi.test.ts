@@ -176,6 +176,67 @@ describe('config builder — branches on NEXT_PUBLIC_WC_PROJECT_ID', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Transport — JSON-RPC batching window (task 0052)
+//
+// viem's `http(url, { batch: true })` shorthand defaults `batch.wait` to
+// 0 ms, which flushes on the next microtask. Concurrent wagmi reads
+// scheduled on adjacent microtasks (different `useEffect`s in one React
+// commit, React Query refetch waves) therefore each emit their own
+// /api/rpc POST. Bumping `batch.wait` to 10 ms coalesces them into one
+// batched POST per refetch tick. See the task PRD for the network
+// evidence.
+// ---------------------------------------------------------------------------
+
+describe('transports — JSON-RPC batching window (task 0052)', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+    vi.resetModules()
+    vi.doUnmock('viem')
+  })
+
+  // viem's HTTP transport captures `batch.wait` inside the request
+  // closure (see node_modules/viem/_esm/clients/transports/http.js: the
+  // value is destructured from `batch` per request and never exposed
+  // on the runtime Transport object). The most reliable assertion is
+  // therefore at the boundary where wagmi calls `http(url, opts)` —
+  // we record the `opts.batch` literal each call site passes and
+  // assert it matches `{ wait: 10 }` for the gooddollarL2 transport.
+  async function batchOptsFor(envValue: string | undefined): Promise<unknown> {
+    const httpCalls: Array<{ url: unknown; opts: unknown }> = []
+    vi.doMock('viem', async () => {
+      const actual = await vi.importActual<typeof import('viem')>('viem')
+      return {
+        ...actual,
+        http: (url?: string, opts?: unknown) => {
+          httpCalls.push({ url, opts })
+          return actual.http(url, opts as Parameters<typeof actual.http>[1])
+        },
+      }
+    })
+    await loadWagmiWithEnv(envValue)
+    const rpcCall = httpCalls.find((c) => c.url === '/api/rpc')
+    expect(rpcCall, 'wagmi must call http() with the /api/rpc url').toBeDefined()
+    return (rpcCall!.opts as { batch?: unknown } | undefined)?.batch
+  }
+
+  it('passes batch.wait = 10 to viem http() on the no-WC branch', async () => {
+    const batch = await batchOptsFor(undefined)
+    expect(batch).toEqual({ wait: 10 })
+  })
+
+  it('passes batch.wait = 10 to viem http() on the valid-WC branch', async () => {
+    const batch = await batchOptsFor('0123456789abcdef0123456789abcdef')
+    expect(batch).toEqual({ wait: 10 })
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Reown console filter — installs on BOTH branches (iter 10)
 //
 // Surface-sweep review on 2026-05-17 showed @reown/appkit emits two

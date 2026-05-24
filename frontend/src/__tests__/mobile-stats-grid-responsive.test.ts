@@ -3,8 +3,12 @@ import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
 describe('Stocks detail Key Statistics grid', () => {
+  // KeyStatistics was extracted from `[ticker]/page.tsx` into its own
+  // component as part of the honest-no-data refactor (task 0028). The
+  // layout invariants (responsive gap, overflow protection) still apply
+  // and live in the extracted component now.
   const source = readFileSync(
-    resolve(__dirname, '../app/(app)/stocks/[ticker]/page.tsx'),
+    resolve(__dirname, '../components/stocks/KeyStatistics.tsx'),
     'utf-8'
   )
 
@@ -18,12 +22,6 @@ describe('Stocks detail Key Statistics grid', () => {
   })
 
   it('stat values have overflow protection (min-w-0 or truncate)', () => {
-    const keyStatsIdx = source.indexOf('Key Statistics')
-    const sectionEnd = source.indexOf('</div>\n              </div>', keyStatsIdx)
-    const section = source.slice(keyStatsIdx, sectionEnd)
-
-    expect(
-      section.includes('min-w-0') || section.includes('truncate')
-    ).toBe(true)
+    expect(source.includes('min-w-0') || source.includes('truncate')).toBe(true)
   })
 })

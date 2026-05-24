@@ -10,7 +10,6 @@ import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { StalePriceBanner } from '@/components/StalePriceBanner'
-import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
 import { getChartData, type Timeframe } from '@/lib/chartData'
@@ -28,6 +27,7 @@ import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/wa
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { BidAskSpread, PriceWithTick } from '@/components/BidAskSpread'
 import { SentimentCard } from '@/components/SentimentCard'
+import { DemoChartOverlay } from '@/components/DemoChartOverlay'
 
 const DeferredPriceChart = dynamic(
   () => import('@/components/PriceChart').then((module) => module.PriceChart),
@@ -450,8 +450,7 @@ export function StockDetailContent() {
   const stock = stocks.find(s => s.ticker === ticker)
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
-  const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
-  const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
+  const { isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const chartMounted = useMounted()
@@ -573,13 +572,10 @@ export function StockDetailContent() {
             </div>
           )}
 
-          <DeferredAnalystOutlookCard
-            currentPrice={stock.price}
-            outlook={analystOutlook}
-            isLoading={false}
-          />
+          <DeferredAnalystOutlookCard isLoading={false} />
 
-          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
+          <div className="relative bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
+            <DemoChartOverlay isLive={isLive} />
             <div className="flex gap-1 mb-3">
               {TIMEFRAMES.map(tf => (
                 <button key={tf} onClick={() => setTimeframe(tf)}
@@ -655,7 +651,6 @@ export function StockDetailContent() {
             ticker={stock.ticker}
             isLoading={newsLoading}
             error={newsError}
-            items={newsItems}
           />
         </div>
 
@@ -749,6 +744,7 @@ export function StockDetailContent() {
             currentTicker={stock.ticker}
             related={relatedSymbols}
             movers={topMovers}
+            railLive={oracleGuard.health === 'live'}
           />
 
           {hasPosition ? (

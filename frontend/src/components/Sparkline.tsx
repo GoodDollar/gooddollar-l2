@@ -32,7 +32,11 @@ export const Sparkline = memo(function Sparkline({
   unavailableLabel = 'Price history unavailable',
 }: SparklineProps) {
   // Unavailable data — render a faint dashed baseline placeholder.
-  if (data === null || data === undefined || data.length === 0) {
+  // An all-equal series (incl. all-zero) is also treated as unavailable so a
+  // flat line of dashes doesn't read as "we measured a constant price".
+  const seriesIsUnavailable =
+    data === null || data === undefined || data.length === 0 || new Set(data).size <= 1
+  if (seriesIsUnavailable) {
     const midY = height / 2
     return (
       <svg

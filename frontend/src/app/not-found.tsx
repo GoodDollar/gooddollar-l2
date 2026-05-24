@@ -9,6 +9,7 @@ const SECTIONS = [
   { href: '/yield', label: 'Yield' },
   { href: '/explore', label: 'Explore' },
   { href: '/portfolio', label: 'Portfolio' },
+  { href: '/status', label: 'Status' },
 ]
 
 export default function NotFound() {

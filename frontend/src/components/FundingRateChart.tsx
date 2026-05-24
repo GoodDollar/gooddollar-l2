@@ -31,7 +31,7 @@ interface TooltipData {
   range: FundingRange
 }
 
-function BarChart({ data, range }: { data: FundingRateSnapshot[]; range: FundingRange }) {
+function BarChart({ data, range }: { data: readonly FundingRateSnapshot[]; range: FundingRange }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [dimensions, setDimensions] = useState({ width: 600, height: 200 })
@@ -181,11 +181,51 @@ function BarChart({ data, range }: { data: FundingRateSnapshot[]; range: Funding
   )
 }
 
+function RangeButtons({ range, setRange }: { range: FundingRange; setRange: (r: FundingRange) => void }) {
+  return (
+    <div className="flex gap-1">
+      {RANGES.map((r) => (
+        <button
+          key={r.value}
+          type="button"
+          onClick={() => setRange(r.value)}
+          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+            range === r.value
+              ? 'bg-goodgreen/15 text-goodgreen'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          {r.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function FundingRateChart({ symbol }: { symbol: string }) {
   const [range, setRange] = useState<FundingRange>('7d')
   const data = useFundingRateChart(symbol, range)
 
-  const avgRate = data.length > 0 ? data.reduce((s, d) => s + d.rate, 0) / data.length : 0
+  if (data.length === 0) {
+    return (
+      <div
+        className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden"
+        data-testid="funding-rate-chart-empty"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700/20">
+          <h3 className="text-xs font-semibold text-white">Funding Rate History</h3>
+          <RangeButtons range={range} setRange={setRange} />
+        </div>
+        <div className="px-4 py-6">
+          <div className="rounded-xl border border-dashed border-gray-700/30 px-4 py-8 text-center text-xs text-gray-500">
+            Funding rate history will appear here once on-chain funding events are indexed.
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const avgRate = data.reduce((s, d) => s + d.rate, 0) / data.length
   const avgAnnualized = avgRate * 8760 * 100
 
   return (
@@ -204,21 +244,7 @@ export function FundingRateChart({ symbol }: { symbol: string }) {
             </span>
           </div>
         </div>
-        <div className="flex gap-1">
-          {RANGES.map(r => (
-            <button
-              key={r.value}
-              onClick={() => setRange(r.value)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                range === r.value
-                  ? 'bg-goodgreen/15 text-goodgreen'
-                  : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
+        <RangeButtons range={range} setRange={setRange} />
       </div>
       <div className="px-2 py-2">
         <BarChart data={data} range={range} />

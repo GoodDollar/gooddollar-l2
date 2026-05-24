@@ -6,7 +6,19 @@ interface StocksRebalanceDashboardProps {
   symbols: RebalanceInvariantResult[]
   isLoading?: boolean
   error?: string | null
+  /** Empty-state copy shown when symbols is empty, !isLoading, and !error.
+   *  Defaults to the legacy `"No active symbols reported."` message. */
+  emptyMessage?: string
+  /** When set alongside totalCount and the two differ, the subtitle is
+   *  augmented with `(filteredCount of totalCount)` so users know the
+   *  dashboard is following an active filter. */
+  filteredCount?: number
+  totalCount?: number
 }
+
+const EM_DASH = '—'
+const DEFAULT_EMPTY_MESSAGE = 'No active symbols reported.'
+const AWAITING_PILL_CLS = 'inline-flex rounded-md border px-2 py-1 text-gray-300 bg-gray-500/10 border-gray-500/25'
 
 function formatBps(bps: number): string {
   return `${(bps / 100).toFixed(2)}%`
@@ -17,13 +29,39 @@ function statusTone(entry: RebalanceInvariantResult): string {
   return 'text-red-300 bg-red-500/10 border-red-500/25'
 }
 
-export function StocksRebalanceDashboard({ symbols, isLoading = false, error = null }: StocksRebalanceDashboardProps) {
+function isRowAwaiting(entry: RebalanceInvariantResult): boolean {
+  return entry.oracleBlock === 0 && entry.lastSyncedBlock === 0
+}
+
+function shouldShowFilterCount(filteredCount?: number, totalCount?: number): boolean {
+  return (
+    typeof filteredCount === 'number' &&
+    typeof totalCount === 'number' &&
+    filteredCount !== totalCount
+  )
+}
+
+export function StocksRebalanceDashboard({
+  symbols,
+  isLoading = false,
+  error = null,
+  emptyMessage = DEFAULT_EMPTY_MESSAGE,
+  filteredCount,
+  totalCount,
+}: StocksRebalanceDashboardProps) {
+  const allRowsAwaiting = !isLoading && !error && symbols.length > 0 && symbols.every(isRowAwaiting)
+  const showFilterCount = shouldShowFilterCount(filteredCount, totalCount)
   return (
     <section className="rounded-2xl border border-gray-700/20 bg-dark-100/50 p-4 sm:p-5" aria-label="Stocks drift and rebalance dashboard">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div>
           <h2 className="text-sm sm:text-base font-semibold text-white">Drift & Rebalance</h2>
-          <p className="text-xs text-gray-400">Per-symbol block coherence across AMM, perps, prediction, lend, and yield.</p>
+          <p className="text-xs text-gray-400">
+            Per-symbol block coherence across AMM, perps, prediction, lend, and yield.
+            {showFilterCount ? (
+              <span className="text-gray-500 ml-1">({filteredCount} of {totalCount})</span>
+            ) : null}
+          </p>
         </div>
       </div>
 
@@ -40,40 +78,64 @@ export function StocksRebalanceDashboard({ symbols, isLoading = false, error = n
       )}
 
       {!isLoading && !error && symbols.length === 0 && (
-        <p className="text-xs text-gray-400">No active symbols reported.</p>
+        <p className="text-xs text-gray-400">{emptyMessage}</p>
       )}
 
       {!isLoading && !error && symbols.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-gray-400 border-b border-gray-700/30">
-                <th className="py-2 text-left font-medium">Symbol</th>
-                <th className="py-2 text-right font-medium">Oracle block</th>
-                <th className="py-2 text-right font-medium">Last synced</th>
-                <th className="py-2 text-right font-medium">Skew</th>
-                <th className="py-2 text-right font-medium">Divergence</th>
-                <th className="py-2 text-right font-medium">Risk gate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {symbols.map((entry) => (
-                <tr key={entry.symbol} className="border-b border-gray-700/10">
-                  <td className="py-2 text-white font-medium">{entry.symbol}</td>
-                  <td className="py-2 text-right text-gray-300">{entry.oracleBlock}</td>
-                  <td className="py-2 text-right text-gray-300">{entry.lastSyncedBlock}</td>
-                  <td className="py-2 text-right text-gray-300">{entry.blockSkew}</td>
-                  <td className="py-2 text-right text-gray-300">{formatBps(entry.divergenceBps)}</td>
-                  <td className="py-2 text-right">
-                    <span className={`inline-flex rounded-md border px-2 py-1 ${statusTone(entry)}`}>
-                      {entry.riskIncreaseAllowed ? 'Open' : 'Stopped'}
-                    </span>
-                  </td>
+        <>
+          {allRowsAwaiting && (
+            <p className="text-xs text-gray-400 mb-2">
+              Awaiting on-chain block data — values shown once the oracle aggregator reports a current block.
+            </p>
+          )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-700/30">
+                  <th className="py-2 text-left font-medium">Symbol</th>
+                  <th className="py-2 text-right font-medium">Oracle block</th>
+                  <th className="py-2 text-right font-medium">Last synced</th>
+                  <th className="py-2 text-right font-medium">Skew</th>
+                  <th className="py-2 text-right font-medium">Divergence</th>
+                  <th className="py-2 text-right font-medium">Risk gate</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {symbols.map((entry) => {
+                  const awaiting = isRowAwaiting(entry)
+                  return (
+                    <tr key={entry.symbol} className="border-b border-gray-700/10">
+                      <td className="py-2 text-white font-medium">{entry.symbol}</td>
+                      <td className={`py-2 text-right ${awaiting ? 'text-gray-500' : 'text-gray-300'}`}>
+                        {awaiting ? EM_DASH : entry.oracleBlock}
+                      </td>
+                      <td className={`py-2 text-right ${awaiting ? 'text-gray-500' : 'text-gray-300'}`}>
+                        {awaiting ? EM_DASH : entry.lastSyncedBlock}
+                      </td>
+                      <td className={`py-2 text-right ${awaiting ? 'text-gray-500' : 'text-gray-300'}`}>
+                        {awaiting ? EM_DASH : entry.blockSkew}
+                      </td>
+                      <td className={`py-2 text-right ${awaiting ? 'text-gray-500' : 'text-gray-300'}`}>
+                        {awaiting ? EM_DASH : formatBps(entry.divergenceBps)}
+                      </td>
+                      <td className="py-2 text-right">
+                        {awaiting ? (
+                          <span className={AWAITING_PILL_CLS} aria-label="Risk gate: awaiting on-chain data">
+                            Awaiting
+                          </span>
+                        ) : (
+                          <span className={`inline-flex rounded-md border px-2 py-1 ${statusTone(entry)}`}>
+                            {entry.riskIncreaseAllowed ? 'Open' : 'Stopped'}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </section>
   )

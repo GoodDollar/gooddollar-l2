@@ -3,7 +3,7 @@
 import { LANE1_STATUS_HREF } from '@/lib/lane1Links'
 
 interface StalePriceBannerProps {
-  variant: 'swap' | 'stocks'
+  variant: 'swap' | 'stocks' | 'crypto'
   className?: string
   /**
    * Override the "See pipeline status →" anchor target. Defaults to the
@@ -22,6 +22,10 @@ const MESSAGES = {
   stocks: {
     icon: '📡',
     text: 'Oracle offline: showing demo prices. Data may not reflect current market values.',
+  },
+  crypto: {
+    icon: '📡',
+    text: 'Crypto oracle offline: showing demo prices. Mark, 24h stats, funding, and OI may not reflect current market values.',
   },
 } as const
 

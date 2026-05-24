@@ -11,7 +11,7 @@ describe('Global 404 page', () => {
 
   it('renders quick-nav links to all main sections', () => {
     render(<NotFound />)
-    const expectedSections = ['Swap', 'Stocks', 'Perps', 'Lend', 'Yield', 'Explore', 'Portfolio']
+    const expectedSections = ['Swap', 'Stocks', 'Perps', 'Lend', 'Yield', 'Explore', 'Portfolio', 'Status']
     for (const section of expectedSections) {
       const link = screen.getByRole('link', { name: section })
       expect(link).toBeTruthy()
@@ -24,5 +24,6 @@ describe('Global 404 page', () => {
     expect(screen.getByRole('link', { name: 'Stocks' }).getAttribute('href')).toBe('/stocks')
     expect(screen.getByRole('link', { name: 'Perps' }).getAttribute('href')).toBe('/perps')
     expect(screen.getByRole('link', { name: 'Explore' }).getAttribute('href')).toBe('/explore')
+    expect(screen.getByRole('link', { name: 'Status' }).getAttribute('href')).toBe('/status')
   })
 })

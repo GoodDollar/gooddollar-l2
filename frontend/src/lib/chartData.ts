@@ -76,6 +76,22 @@ export function computeSMA(data: OHLCData[], period: number): SMAPoint[] {
   return result
 }
 
+function isFinitePositive(n: number): boolean {
+  return Number.isFinite(n) && n > 0
+}
+
+function updateLastCandle(series: OHLCData[], basePrice: number): void {
+  if (series.length === 0) return
+  if (!isFinitePositive(basePrice)) return
+  const last = series[series.length - 1]
+  series[series.length - 1] = {
+    ...last,
+    close: basePrice,
+    high: Math.max(last.high, basePrice),
+    low: Math.min(last.low, basePrice),
+  }
+}
+
 export function getChartData(symbol: string, timeframe: Timeframe, basePrice: number): OHLCData[] {
   if (!CHART_CACHE.has(symbol)) {
     CHART_CACHE.set(symbol, new Map())
@@ -83,8 +99,10 @@ export function getChartData(symbol: string, timeframe: Timeframe, basePrice: nu
   const symbolCache = CHART_CACHE.get(symbol)!
   if (!symbolCache.has(timeframe)) {
     symbolCache.set(timeframe, generateOHLC(basePrice, TIMEFRAME_CONFIG[timeframe]))
+  } else {
+    updateLastCandle(symbolCache.get(timeframe)!, basePrice)
   }
-  return symbolCache.get(timeframe)!
+  return symbolCache.get(timeframe)!.slice()
 }
 
 export interface ProbabilityPoint {

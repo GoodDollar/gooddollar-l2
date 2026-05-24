@@ -1,12 +1,17 @@
 /**
- * perpsHistoryData.ts — Types and mock data generators for Perps history tabs.
+ * perpsHistoryData.ts — Types for /perps history tabs and the funding-rate
+ * chart.
  *
- * Provides hooks returning realistic placeholder data for Open Orders,
- * Order History, Trade History, and Funding History until on-chain event
- * indexing is available.
+ * The hooks return empty arrays until the on-chain event indexer is
+ * wired. The previous implementation generated deterministic
+ * `seededRng` rows ("realistic placeholder data") which painted red
+ * "Cancel" buttons next to orders nobody had placed, fabricated
+ * funding-rate bars, and lied to the user about the state of the
+ * exchange. The honest empty-state branches that already lived in
+ * `PerpsHistoryTabs.tsx` and `FundingRateChart.tsx` now fire because
+ * there is no fake data ahead of them. Removed in initiative 0007c,
+ * task 0041.
  */
-
-import { useMemo } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,120 +63,6 @@ export interface FundingHistoryItem {
   timestamp: number
 }
 
-// ─── Deterministic pseudo-random ──────────────────────────────────────────────
-
-function seededRng(seed: number) {
-  let s = seed
-  return () => {
-    s = (s * 1664525 + 1013904223) & 0x7fffffff
-    return s / 0x7fffffff
-  }
-}
-
-// ─── Generators ───────────────────────────────────────────────────────────────
-
-const PAIRS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'AAPL-USD', 'TSLA-USD']
-const BASE_PRICES: Record<string, number> = {
-  'BTC-USD': 67800,
-  'ETH-USD': 1920,
-  'SOL-USD': 134,
-  'AAPL-USD': 192,
-  'TSLA-USD': 178,
-}
-
-function generateOpenOrders(count: number): HistoryOpenOrder[] {
-  const rng = seededRng(42)
-  const now = Date.now()
-  return Array.from({ length: count }, (_, i) => {
-    const pair = PAIRS[Math.floor(rng() * PAIRS.length)]
-    const base = BASE_PRICES[pair] ?? 100
-    const side = rng() > 0.5 ? 'long' : 'short' as const
-    const type = rng() > 0.5 ? 'limit' : 'stop-limit' as const
-    const offset = (rng() - 0.5) * 0.04 * base
-    const size = +(rng() * 2 + 0.01).toFixed(4)
-    return {
-      id: `oo-${i}`,
-      pair,
-      side,
-      type,
-      price: +(base + offset).toFixed(2),
-      triggerPrice: type === 'stop-limit' ? +(base + offset * 0.8).toFixed(2) : undefined,
-      size,
-      filled: 0,
-      leverage: [2, 5, 10, 25][Math.floor(rng() * 4)],
-      createdAt: now - Math.floor(rng() * 3600_000 * 24),
-    }
-  })
-}
-
-function generateOrderHistory(count: number): OrderHistoryItem[] {
-  const rng = seededRng(123)
-  const now = Date.now()
-  const statuses: OrderStatus[] = ['filled', 'cancelled', 'expired', 'partial']
-  return Array.from({ length: count }, (_, i) => {
-    const pair = PAIRS[Math.floor(rng() * PAIRS.length)]
-    const base = BASE_PRICES[pair] ?? 100
-    const status = statuses[Math.floor(rng() * statuses.length)]
-    const size = +(rng() * 3 + 0.01).toFixed(4)
-    const createdAt = now - Math.floor(rng() * 3600_000 * 72)
-    return {
-      id: `oh-${i}`,
-      pair,
-      side: rng() > 0.5 ? 'long' : 'short' as const,
-      type: (['market', 'limit', 'stop-limit'] as const)[Math.floor(rng() * 3)],
-      price: +(base + (rng() - 0.5) * 0.06 * base).toFixed(2),
-      size,
-      filledSize: status === 'filled' ? size : status === 'partial' ? +(size * rng()).toFixed(4) : 0,
-      status,
-      createdAt,
-      filledAt: status === 'filled' || status === 'partial' ? createdAt + Math.floor(rng() * 60_000) : undefined,
-    }
-  })
-}
-
-function generateTradeHistory(count: number): TradeHistoryItem[] {
-  const rng = seededRng(777)
-  const now = Date.now()
-  return Array.from({ length: count }, (_, i) => {
-    const pair = PAIRS[Math.floor(rng() * PAIRS.length)]
-    const base = BASE_PRICES[pair] ?? 100
-    const size = +(rng() * 2 + 0.01).toFixed(4)
-    const price = +(base + (rng() - 0.5) * 0.04 * base).toFixed(2)
-    const notional = size * price
-    return {
-      id: `th-${i}`,
-      pair,
-      side: rng() > 0.5 ? 'long' : 'short' as const,
-      price,
-      size,
-      fee: +(notional * 0.001).toFixed(4),
-      pnl: +((rng() - 0.45) * notional * 0.08).toFixed(2),
-      timestamp: now - Math.floor(rng() * 3600_000 * 168),
-    }
-  })
-}
-
-function generateFundingHistory(count: number): FundingHistoryItem[] {
-  const rng = seededRng(999)
-  const now = Date.now()
-  return Array.from({ length: count }, (_, i) => {
-    const pair = PAIRS[Math.floor(rng() * PAIRS.length)]
-    const rate = (rng() - 0.5) * 0.0006
-    const positionSize = +(rng() * 5 + 0.1).toFixed(3)
-    const base = BASE_PRICES[pair] ?? 100
-    return {
-      id: `fh-${i}`,
-      pair,
-      rate,
-      amount: +(rate * positionSize * base).toFixed(4),
-      positionSize,
-      timestamp: now - i * 8 * 3600_000,
-    }
-  })
-}
-
-// ─── Funding Rate Chart Data ──────────────────────────────────────────────────
-
 export interface FundingRateSnapshot {
   timestamp: number
   rate: number
@@ -180,53 +71,38 @@ export interface FundingRateSnapshot {
 
 export type FundingRange = '24h' | '7d' | '30d'
 
-const RANGE_HOURS: Record<FundingRange, number> = { '24h': 24, '7d': 168, '30d': 720 }
+// ─── Frozen empties ───────────────────────────────────────────────────────────
+//
+// Module-level constants give the consumer hooks stable referential
+// identity without needing a `useMemo` inside each hook.
 
-const PAIR_SEEDS: Record<string, number> = {
-  'BTC-USD': 5001, 'ETH-USD': 5002, 'SOL-USD': 5003,
-  'AAPL-USD': 5004, 'TSLA-USD': 5005,
-}
-
-export function generateFundingRateHistory(
-  symbol: string,
-  range: FundingRange,
-): FundingRateSnapshot[] {
-  const hours = RANGE_HOURS[range]
-  const rng = seededRng((PAIR_SEEDS[symbol] ?? 5999) + hours)
-  const now = Date.now()
-  const snapshots: FundingRateSnapshot[] = []
-
-  let drift = (rng() - 0.4) * 0.0001
-  for (let i = hours - 1; i >= 0; i--) {
-    drift += (rng() - 0.5) * 0.00004
-    const rate = drift + (rng() - 0.5) * 0.0002
-    snapshots.push({
-      timestamp: now - i * 3600_000,
-      rate: +rate.toFixed(6),
-      annualized: +(rate * 8760 * 100).toFixed(4),
-    })
-  }
-  return snapshots
-}
-
-export function useFundingRateChart(symbol: string, range: FundingRange) {
-  return useMemo(() => generateFundingRateHistory(symbol, range), [symbol, range])
-}
+const EMPTY_OPEN_ORDERS: readonly HistoryOpenOrder[] = Object.freeze([])
+const EMPTY_ORDER_HISTORY: readonly OrderHistoryItem[] = Object.freeze([])
+const EMPTY_TRADE_HISTORY: readonly TradeHistoryItem[] = Object.freeze([])
+const EMPTY_FUNDING_HISTORY: readonly FundingHistoryItem[] = Object.freeze([])
+const EMPTY_FUNDING_RATES: readonly FundingRateSnapshot[] = Object.freeze([])
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
-export function useMockOpenOrders() {
-  return useMemo(() => generateOpenOrders(5), [])
+export function useMockOpenOrders(): readonly HistoryOpenOrder[] {
+  return EMPTY_OPEN_ORDERS
 }
 
-export function useMockOrderHistory() {
-  return useMemo(() => generateOrderHistory(20), [])
+export function useMockOrderHistory(): readonly OrderHistoryItem[] {
+  return EMPTY_ORDER_HISTORY
 }
 
-export function useMockTradeHistory() {
-  return useMemo(() => generateTradeHistory(25), [])
+export function useMockTradeHistory(): readonly TradeHistoryItem[] {
+  return EMPTY_TRADE_HISTORY
 }
 
-export function useMockFundingHistory() {
-  return useMemo(() => generateFundingHistory(30), [])
+export function useMockFundingHistory(): readonly FundingHistoryItem[] {
+  return EMPTY_FUNDING_HISTORY
+}
+
+export function useFundingRateChart(
+  _symbol: string,
+  _range: FundingRange,
+): readonly FundingRateSnapshot[] {
+  return EMPTY_FUNDING_RATES
 }
