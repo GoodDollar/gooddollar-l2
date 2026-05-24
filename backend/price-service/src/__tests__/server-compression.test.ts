@@ -94,12 +94,17 @@ describe('Compression middleware on every JSON response (task 0068)', () => {
     const plain = identity.body.toString('utf8');
 
     // Both bodies were generated from independent requests, so the
-    // per-request `timestamp` field will differ. Strip it before the
-    // structural equality check — the rest of the body must match
-    // byte-for-byte.
-    const stripTs = (s: string): string =>
-      JSON.stringify({ ...JSON.parse(s), timestamp: 0, timestampIso: '0' });
-    expect(stripTs(decoded)).toBe(stripTs(plain));
+    // per-request `timestamp` and `requestId` fields will differ.
+    // Strip them before the structural equality check — the rest of
+    // the body must match byte-for-byte.
+    const stripPerRequest = (s: string): string =>
+      JSON.stringify({
+        ...JSON.parse(s),
+        timestamp: 0,
+        timestampIso: '0',
+        requestId: '0',
+      });
+    expect(stripPerRequest(decoded)).toBe(stripPerRequest(plain));
   });
 
   it('GET / with Accept-Encoding: identity returns no Content-Encoding', async () => {

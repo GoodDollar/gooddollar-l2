@@ -377,9 +377,9 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'uptime.',
     responseShape:
       '{requestId,ingested,rejected,byReason,acceptanceRatio,' +
-      "acceptanceRatioStatus:'ok'|'no-data'," +
-      'firstAt{Ms,Iso},lastAt{Ms,Iso},writeErrors,bufferedDrops,' +
-      'firstAt?,lastAt?(dep→*Ms),runtime?,deprecations?,' +
+      'acceptanceRatioStatus:ok|no-data,' +
+      'firstAtMs,firstAtIso,lastAtMs,lastAtIso,writeErrors,bufferedDrops,' +
+      'firstAt?,lastAt?,runtime?,deprecations?,' +
       'bootAt*?,uptimeMs?,timestamp,timestampIso}',
   },
   {
