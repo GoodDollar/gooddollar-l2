@@ -146,4 +146,41 @@ describe('QuoteCache', () => {
       expect(cache.size).toBe(0);
     });
   });
+
+  describe('cumulativeUpdates', () => {
+    it('starts at 0 on a fresh cache', () => {
+      expect(cache.cumulativeUpdates).toBe(0);
+    });
+
+    it('increments on accepted quote', () => {
+      cache.update(makeQuote());
+      expect(cache.cumulativeUpdates).toBe(1);
+    });
+
+    it('increments on rejected quote (e.g. halted session)', () => {
+      cache.update(makeQuote({ sessionState: 'halted' }));
+      expect(cache.cumulativeUpdates).toBe(1);
+      expect(cache.size).toBe(0);
+    });
+
+    it('increments on rejected (stale) quote', () => {
+      cache.update(makeQuote({ timestamp: Date.now() - 60_000 }));
+      expect(cache.cumulativeUpdates).toBe(1);
+      expect(cache.size).toBe(0);
+    });
+
+    it('accumulates across many updates regardless of acceptance', () => {
+      cache.update(makeQuote({ symbol: 'AAPL' }));
+      cache.update(makeQuote({ symbol: 'TSLA', sessionState: 'halted' }));
+      cache.update(makeQuote({ symbol: 'MSFT' }));
+      expect(cache.cumulativeUpdates).toBe(3);
+    });
+
+    it('is not reset by clear()', () => {
+      cache.update(makeQuote({ symbol: 'AAPL' }));
+      cache.update(makeQuote({ symbol: 'TSLA' }));
+      cache.clear();
+      expect(cache.cumulativeUpdates).toBe(2);
+    });
+  });
 });

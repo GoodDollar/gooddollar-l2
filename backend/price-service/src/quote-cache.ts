@@ -6,6 +6,10 @@ export class QuoteCache {
   private readonly filter: RiskFilter;
   private readonly config: PriceServiceConfig;
   private readonly listeners: Array<(symbol: string, result: RiskFilterResult) => void> = [];
+  // Monotonic counter of ingest attempts (accepted or rejected). Used by the
+  // health endpoints to distinguish "boot has not yet received any quote"
+  // (`starting`) from "cache emptied or all quotes stale" (`degraded`).
+  private cumulativeUpdatesCount = 0;
 
   constructor(config?: Partial<PriceServiceConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -13,6 +17,7 @@ export class QuoteCache {
   }
 
   update(quote: NormalizedQuote): RiskFilterResult {
+    this.cumulativeUpdatesCount++;
     const result = this.filter.apply(quote);
     const now = Date.now();
 
@@ -90,5 +95,9 @@ export class QuoteCache {
 
   get size(): number {
     return this.cache.size;
+  }
+
+  get cumulativeUpdates(): number {
+    return this.cumulativeUpdatesCount;
   }
 }
