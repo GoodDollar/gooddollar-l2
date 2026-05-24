@@ -23,7 +23,7 @@
         "shows UBI funding narrative",
         "no 404/error shell"
       ],
-      "titlePattern": "Trade\\. Predict\\. Invest\\. Fund",
+      "titlePattern": "Trade.*Predict.*Fund|Swap|GoodSwap",
       "mustContain": [
         "Trade",
         "UBI"
@@ -129,6 +129,10 @@
       "titlePattern": "Portfolio|Stocks",
       "mustContain": [
         "Portfolio"
+      ],
+      "mustNotContain": [
+        "0% \u2014 Critical",
+        "0% - Critical"
       ]
     },
     {
@@ -231,6 +235,11 @@
       "titlePattern": "Portfolio|Perps",
       "mustContain": [
         "Portfolio"
+      ],
+      "mustNotContain": [
+        "positions.length===0 ? (",
+        "=== 0 ?",
+        "):("
       ]
     },
     {
@@ -436,6 +445,76 @@
       "mustContain": [
         "Playwright",
         "GoodSwap"
+      ]
+    },
+    {
+      "id": "faucet",
+      "name": "Testnet Faucet",
+      "route": "/faucet",
+      "kind": "community",
+      "owner": "Community",
+      "critical": false,
+      "assertions": [
+        "faucet page renders",
+        "claim form visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Faucet|Testnet",
+      "mustContain": [
+        "Faucet",
+        "Claim"
+      ]
+    },
+    {
+      "id": "testnet-guide",
+      "name": "Testnet Guide",
+      "route": "/testnet-guide",
+      "kind": "community",
+      "owner": "Community",
+      "critical": false,
+      "assertions": [
+        "testnet guide renders",
+        "scenario list visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Testnet|Guide",
+      "mustContain": [
+        "Testnet",
+        "Scenario"
+      ]
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics Dashboard",
+      "route": "/analytics",
+      "kind": "analytics",
+      "owner": "Infra",
+      "critical": false,
+      "assertions": [
+        "analytics dashboard renders",
+        "service health and protocol metrics visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Analytics|Dashboard",
+      "mustContain": [
+        "Analytics"
+      ]
+    },
+    {
+      "id": "invite",
+      "name": "Invite Testers",
+      "route": "/invite",
+      "kind": "community",
+      "owner": "Community",
+      "critical": false,
+      "assertions": [
+        "invite page renders",
+        "invitation template visible",
+        "no 404/error shell"
+      ],
+      "titlePattern": "Invite|Tester",
+      "mustContain": [
+        "Invite"
       ]
     }
   ]
