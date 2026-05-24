@@ -26,6 +26,15 @@ import {
   SourceStatusGetter,
   WsStatusGetter,
 } from './degraded';
+import {
+  ASCII_TICKER_FULL_SOURCE,
+  ASCII_TICKER_RAW,
+  ASCII_TICKER_RAW_SOURCE,
+  nearestSymbol,
+  normalizeSymbol,
+  type NormalizeSymbolResult,
+} from './symbol-normalize';
+import { MAX_REQUESTED_SYMBOLS, parseSymbolsQuery } from './symbols-query';
 
 // Re-export the quickstart + WS types and helpers off `./server` so
 // existing test imports (`from '../server'`) keep compiling. The
@@ -275,13 +284,14 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     path: '/quotes',
     methods: ['GET'],
     summary:
-      'Every cached quote with cache age and per-quote filter verdict; ' +
-      '503 when source dead AND cache empty (matches /quotes/fresh/all).',
+      'All cached quotes (or filter with ?symbols=AAPL,MSFT); ' +
+      '503 when source dead AND no matched quotes.',
     responseShape:
-      '{ totalCached, count (deprecated→totalCached), deprecations, ' +
-      'degraded?, stale?, message?, quotes: Record<string, ' +
-      'NormalizedQuote & {cacheAge, filterAccepted, filterReason}>, ' +
-      'source?, timestamp, timestampIso } -- 200/503',
+      '{totalCached,count(dep→matchedCount|totalCached),requestedCount?,' +
+      'matchedCount?,unmatched?,invalidRequested?,cappedAt?,degraded?,' +
+      'stale?,message?,quotes:Record<string,NormalizedQuote&' +
+      '{cacheAge,filterAccepted,filterReason}>,source?,deprecations,' +
+      'timestamp,timestampIso} -- 200/503',
   },
   {
     path: '/quotes/fresh/all',
@@ -866,43 +876,13 @@ export function build404BodySize(): number {
 }
 
 /**
- * Raw-input shape gate: pre-fold ASCII-only check. Run BEFORE
- * `.toUpperCase()` so JavaScript's full Unicode case-fold (which
- * expands `ß → SS`, Latin ligatures → ASCII letters, `ı → I`) cannot
- * silently rewrite caller input into something the post-fold regex
- * would accept.
- *
- * Once raw is ASCII, `.toUpperCase()` is provably letter-case-only
- * (1:1 on the ASCII alphabet, locale-insensitive), so the canonical
- * symbol is exactly what the caller meant — no silent semantic
- * rewrite, no homoglyph slip-through.
- *
- * `ASCII_TICKER_RAW_SOURCE` is the unanchored grammar published in
- * the 400 `invalid-symbol` envelope's `expected.pattern` field so the
- * displayed regex and the validator regex can't drift (task 0045).
- * Tests assert `expected.pattern === '^' + ASCII_TICKER_RAW_SOURCE + '$'`.
+ * Symbol-validation primitives live in `./symbol-normalize` and are
+ * re-exported here so existing imports (`from '../server'`) keep
+ * working. The constants and helpers are documented in their canonical
+ * home; this re-export block exists only as a back-compat barrel.
  */
-export const ASCII_TICKER_RAW_SOURCE = '[A-Za-z0-9._-]{1,16}';
-const ASCII_TICKER_RAW = new RegExp(`^${ASCII_TICKER_RAW_SOURCE}$`);
-
-/**
- * Combined-gate regex source published as the wire `expected.pattern` so a
- * single `new RegExp(body.expected.pattern).test(input)` reproduces the
- * server's `normalizeSymbol` verdict bit-for-bit. The lookahead encodes
- * the `HAS_ALNUM` requirement inline; the trailing fragment is the same
- * shape grammar as `ASCII_TICKER_RAW_SOURCE`.
- *
- * Task 0045 shipped only the shape source on the wire, so a frontend
- * piping the pattern through `new RegExp(...)` accepted punctuation-only
- * inputs (`...`, `----------------`) the server then rejected on the
- * alnum branch. Task 0047 unifies the two gates into one regex.
- *
- * Lookaheads are supported by ECMAScript, PCRE, Java, Python, and Go's
- * RE2 (since 2023). Rust's `regex` crate rejects them — Rust consumers
- * fall back to `mustContainAlnum: true`, which stays on the wire as a
- * non-lookahead flag for that case.
- */
-export const ASCII_TICKER_FULL_SOURCE = `^(?=.*[A-Za-z0-9])${ASCII_TICKER_RAW_SOURCE}$`;
+export { ASCII_TICKER_RAW_SOURCE, ASCII_TICKER_FULL_SOURCE, normalizeSymbol, nearestSymbol };
+export type { NormalizeSymbolResult };
 
 /**
  * Machine-readable companion to the 400 `invalid-symbol` natural-language
@@ -946,105 +926,6 @@ const INVALID_SYMBOL_SHAPE_MESSAGE =
   `symbol must match /^${ASCII_TICKER_RAW_SOURCE}$/ ` +
   '(case-insensitive — lowercase is accepted and canonicalised to ' +
   'uppercase before lookup)';
-
-/**
- * Second gate: require at least one alphanumeric character in the raw
- * input. Without this, `[._-]{1,16}` strings (`................`,
- * `----------------`, `.-_`) pass the shape check, land on the
- * `symbol-not-configured` 404, and tell the operator to add the junk
- * string to ORACLE_SYMBOLS — which can never work. Real-world tickers
- * (eToro / OPRA / RIC / Bloomberg) always carry at least one letter
- * or digit, so this gate has zero false positives on any instrument
- * in current or planned subscription sets.
- */
-const HAS_ALNUM = /[A-Za-z0-9]/;
-
-/**
- * eToro / standard ticker shape: 1..16 chars of upper-case letters,
- * digits, dot, dash, underscore. Matches every symbol in
- * DEFAULT_CONFIG.symbols (`AAPL`, `TSLA`, ...) and the standard eToro
- * instrument surface (`BRK.B`, `BTC-USD`, `BTC_USD`). Kept as a
- * defensive assertion below — unreachable from the public surface
- * once `ASCII_TICKER_RAW` has passed; fires only on a future refactor
- * that breaks the invariant.
- */
-const VALID_SYMBOL = /^[A-Z0-9._-]{1,16}$/;
-
-export type NormalizeSymbolResult =
-  | { ok: true; symbol: string }
-  | { ok: false; reason: 'shape' | 'no-alnum' };
-
-/**
- * Two-row Levenshtein edit distance. Bounded scan: when `|a.length -
- * b.length| > limit`, return `limit + 1` immediately so the caller can
- * reject without paying for the DP. Pure; no allocations beyond two
- * Int32 rows the same size as `b`.
- */
-function levenshtein(a: string, b: string, limit: number): number {
-  if (Math.abs(a.length - b.length) > limit) return limit + 1;
-  if (a === b) return 0;
-  let prev = new Array<number>(b.length + 1);
-  let curr = new Array<number>(b.length + 1);
-  for (let j = 0; j <= b.length; j++) prev[j] = j;
-  for (let i = 1; i <= a.length; i++) {
-    curr[0] = i;
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
-      curr[j] = Math.min(
-        prev[j] + 1,
-        curr[j - 1] + 1,
-        prev[j - 1] + cost,
-      );
-    }
-    [prev, curr] = [curr, prev];
-  }
-  return prev[b.length];
-}
-
-/**
- * Find the closest configured symbol to a typo'd input. Threshold is
- * `max(2, floor(input.length * 0.3))` — a baseline of 2 catches the
- * realistic 2-edit ticker typos (`APLE` → `AAPL`: insert `A` after the
- * first `A`, delete trailing `E`) while still refusing absurd matches
- * (any 5+ char input far from every configured symbol). Scales gently
- * for longer inputs (a 10-char input gets threshold 3).
- *
- * Returns `undefined` (NOT `null`, NOT `""`) when no candidate clears
- * the threshold, so the wire envelope can omit the field entirely
- * instead of shipping a confusing null.
- */
-export function nearestSymbol(
-  input: string,
-  symbols: readonly string[],
-): string | undefined {
-  if (symbols.length === 0) return undefined;
-  const threshold = Math.max(2, Math.floor(input.length * 0.3));
-  let bestDist = Infinity;
-  let bestSym: string | undefined;
-  for (const sym of symbols) {
-    const d = levenshtein(input, sym, threshold);
-    if (d < bestDist) {
-      bestDist = d;
-      bestSym = sym;
-      if (d === 0) break;
-    }
-  }
-  return bestDist <= threshold ? bestSym : undefined;
-}
-
-export function normalizeSymbol(raw: string): NormalizeSymbolResult {
-  if (typeof raw !== 'string') return { ok: false, reason: 'shape' };
-  if (raw.length === 0 || raw.length > 16) return { ok: false, reason: 'shape' };
-  if (!ASCII_TICKER_RAW.test(raw)) return { ok: false, reason: 'shape' };
-  if (!HAS_ALNUM.test(raw)) return { ok: false, reason: 'no-alnum' };
-  const upper = raw.toUpperCase();
-  // Defensive: `ASCII_TICKER_RAW` + `HAS_ALNUM` already accepted the
-  // raw shape, and `.toUpperCase()` on ASCII letters is provably 1:1.
-  // Unreachable in production; guards against a future refactor that
-  // loosens the gates.
-  if (!VALID_SYMBOL.test(upper)) return { ok: false, reason: 'shape' };
-  return { ok: true, symbol: upper };
-}
 
 /**
  * Status of the acceptance ratio. The "no-data" state — distinct from
@@ -1417,55 +1298,87 @@ export function createServer(
     );
   });
 
-  app.get('/quotes', (_req: Request, res: Response) => {
+  app.get('/quotes', (req: Request, res: Response) => {
     const now = Date.now();
+    // `?symbols=` (task 0077) is a strictly additive filter: absent
+    // query → today's unfiltered behaviour, byte-identical body shape.
+    // When present, the requested subset (deduped + uppercased) gates
+    // the cache iteration and four optional summary fields ride on the
+    // body so the caller learns matched/invalid/unmatched in one round
+    // trip. The 503 trigger swaps `count === 0` → `matchedCount === 0`
+    // so a request for an uncached subset under a dead source still
+    // surfaces as 503.
+    const filter = parseSymbolsQuery(req.query.symbols);
     const all = cache.getAll();
     const quotes: Record<string, unknown> = {};
-    for (const [symbol, entry] of all) {
-      quotes[symbol] = {
-        ...entry.quote,
-        cacheAge: now - entry.cachedAt,
-        filterAccepted: entry.filterResult.accepted,
-        filterReason: entry.filterResult.reason,
-      };
+    const unmatched: string[] = [];
+    if (filter) {
+      for (const symbol of filter.requested) {
+        const entry = all.get(symbol);
+        if (!entry) {
+          unmatched.push(symbol);
+          continue;
+        }
+        quotes[symbol] = {
+          ...entry.quote,
+          cacheAge: now - entry.cachedAt,
+          filterAccepted: entry.filterResult.accepted,
+          filterReason: entry.filterResult.reason,
+        };
+      }
+    } else {
+      for (const [symbol, entry] of all) {
+        quotes[symbol] = {
+          ...entry.quote,
+          cacheAge: now - entry.cachedAt,
+          filterAccepted: entry.filterResult.accepted,
+          filterReason: entry.filterResult.reason,
+        };
+      }
     }
-    const count = Object.keys(quotes).length;
-    // `count` is the legacy alias for `totalCached`. Both fields hold the
-    // EXACT SAME number (drift-gated by tests) and ship together for one
-    // deprecation window so existing consumers don't break. The follow-up
-    // task drops `count` and the `deprecations.count` entry. Keep the
-    // canonical field (`totalCached`) first so a fresh integrator reading
-    // top-down learns it before the deprecated alias.
+    const matchedCount = Object.keys(quotes).length;
+    // `count` is the legacy alias for `totalCached` on the unfiltered
+    // path and `matchedCount` on the filtered path. Both fields hold the
+    // same number on the unfiltered path (drift-gated by tests) and
+    // ship together for one deprecation window so existing consumers
+    // don't break.
     const body: Record<string, unknown> = {
       totalCached: cache.size,
-      count,
+      count: matchedCount,
     };
-    let ctx: EnvelopeCtx = {
-      deprecations: {
-        count: 'rename → totalCached; will be removed in the next release',
-      },
+    if (filter) {
+      body.requestedCount = filter.requested.length;
+      body.matchedCount = matchedCount;
+      if (unmatched.length > 0) body.unmatched = unmatched;
+      if (filter.invalid.length > 0) body.invalidRequested = [...filter.invalid];
+      if (filter.capped) body.cappedAt = MAX_REQUESTED_SYMBOLS;
+    }
+    const deprecations: Record<string, string> = {
+      count: filter
+        ? 'rename → matchedCount when ?symbols= filter is applied; ' +
+          'will be removed in the next release'
+        : 'rename → totalCached; will be removed in the next release',
     };
+    let ctx: EnvelopeCtx = { deprecations };
     let status = 200;
     if (sourceStatusGetter) {
       const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
-      // 503 only fires when the source is dead AND the cache holds
-      // nothing useful — a non-empty cache is still a useful read-only
-      // answer (flagged with `stale:true` so a consumer can distinguish
-      // fresh from cache-only). See task 0060. The body-level
-      // `degraded` + `message` go through the envelope helper so field
-      // ordering matches `/health`, `/quotes/fresh/all`, `/status/quotes`.
-      // See task 0064.
       let message: string | undefined;
-      if (degraded && count === 0) {
+      // 503 only fires when source is dead AND no matched entries are
+      // available — same rule whether filtered or not, where
+      // `matchedCount` replaces the unfiltered `count` (task 0077).
+      if (degraded && matchedCount === 0) {
         status = 503;
         message = DEGRADED_NO_CACHE_MESSAGE;
-      } else if (degraded && count > 0) {
+      } else if (degraded && matchedCount > 0) {
         body.stale = true;
         message =
           'serving stale cached quotes — upstream source is dead ' +
           '(see source.reason / source.nextStep)';
-      } else if (count === 0) {
-        message = 'no cached quotes — source is healthy, awaiting first tick';
+      } else if (matchedCount === 0) {
+        message = filter
+          ? 'no requested symbols are cached yet — see body.unmatched'
+          : 'no cached quotes — source is healthy, awaiting first tick';
       }
       body.quotes = quotes;
       ctx = { ...ctx, src, degraded, message };
