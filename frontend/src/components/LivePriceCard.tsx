@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react'
 import { PriceSourceBadge } from './PriceSourceBadge'
+import { PriceDivergenceChip } from './PriceDivergenceChip'
 import type { PriceSource } from '@/lib/priceSource'
 
 export interface LivePriceCardProps {
@@ -19,11 +20,17 @@ export interface LivePriceCardProps {
   /** Age of the underlying price in ms, or null when unknown. */
   updatedAgoMs: number | null
   /**
-   * Cross-page divergence flag. When true the card renders a "Source disagrees"
-   * chip next to the source badge — used by the `useAttributedPrice` hook to
-   * call out chain-vs-cache splits without removing the source attribution.
+   * Cross-page divergence flag. When true the card renders a `<PriceDivergenceChip>`
+   * next to the source badge — used by `useAttributedPrice` to call out
+   * chain-vs-cache splits without removing the source attribution.
    */
   divergent?: boolean
+  /**
+   * Rejected-feed USD value for the divergence chip's tooltip. Optional —
+   * when unset, the chip still renders ("Source disagrees") but cannot
+   * surface the other side's number.
+   */
+  divergenceOtherUsd?: number | null
   /** Compact mode drops the 24h change row and uses smaller padding. */
   compact?: boolean
   className?: string
@@ -88,7 +95,8 @@ const WARNING_SOURCES = new Set<PriceSource>(['closed', 'stale'])
 export function LivePriceCard(props: LivePriceCardProps) {
   const {
     symbol, price, change24h, source, updatedAgoMs,
-    divergent = false, compact = false, className = '',
+    divergent = false, divergenceOtherUsd = null,
+    compact = false, className = '',
   } = props
 
   const isFallback = source === 'fallback' && price !== null
@@ -142,16 +150,17 @@ export function LivePriceCard(props: LivePriceCardProps) {
       )}
 
       <div className="flex items-center justify-between mt-2 gap-2">
-        <div className="flex items-center gap-1 min-w-0">
+        <div
+          data-testid={divergent ? 'live-price-divergent' : undefined}
+          className="flex items-center gap-1 min-w-0"
+        >
           <PriceSourceBadge source={source} size="sm" />
           {divergent && (
-            <span
-              data-testid="live-price-divergent"
-              title="Chain oracle and cached feed disagree by more than 0.5%"
-              className="text-[10px] text-amber-400 shrink-0"
-            >
-              Source disagrees
-            </span>
+            <PriceDivergenceChip
+              otherUsd={divergenceOtherUsd ?? NaN}
+              symbol={symbol}
+              compact
+            />
           )}
         </div>
         {(() => {

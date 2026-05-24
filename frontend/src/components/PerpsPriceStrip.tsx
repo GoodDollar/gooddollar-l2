@@ -60,6 +60,7 @@ export function PerpsPriceStrip({ activeSymbol, className = '' }: PerpsPriceStri
       source,
       updatedAgoMs: isMissing ? null : attr.ageMs,
       divergent: attr.divergent,
+      divergenceOtherUsd: attr.divergenceOtherUsd,
     }
   })
 

@@ -7,9 +7,10 @@ import { TokenIcon } from '@/components/TokenIcon'
 import { Sparkline } from '@/components/Sparkline'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import { PriceDivergenceChip } from '@/components/PriceDivergenceChip'
 import { formatPrice, formatVolume, formatMarketCap, selectTopGainers, type TokenMarketData } from '@/lib/marketData'
 import { TOKEN_CATEGORIES, type TokenCategory, resolveCategory } from '@/lib/tokens'
-import { useOnChainMarketData } from '@/lib/useOnChainMarketData'
+import { useOnChainMarketData, type DivergenceInfo } from '@/lib/useOnChainMarketData'
 import type { PriceSource } from '@/lib/priceSource'
 import { ScrollStrip } from '@/components/ScrollStrip'
 import ExploreLoading from './loading'
@@ -45,11 +46,21 @@ interface TokenRowProps {
    * row never claims live data without attribution.
    */
   source?: PriceSource
+  /**
+   * Cross-page divergence info for the canonical BTC/WBTC + ETH/WETH
+   * classes (task 0044). `null` (the default) means no chip — both feeds
+   * agree, or only one feed has a value, or the symbol has no canonical
+   * resolver. Non-null renders a "Source disagrees" amber chip next to
+   * the price cell.
+   */
+  divergence?: DivergenceInfo | null
   onRowClick: (symbol: string) => void
   onSwapClick: (symbol: string) => void
 }
 
-const TokenRow = memo(function TokenRow({ token, idx, source = 'unknown', onRowClick, onSwapClick }: TokenRowProps) {
+const TokenRow = memo(function TokenRow({
+  token, idx, source = 'unknown', divergence = null, onRowClick, onSwapClick,
+}: TokenRowProps) {
   // When the price did not come from a live feed we render only the
   // numeric price (which the static fallback at least pins to a known
   // ballpark) and collapse every other column to an em-dash placeholder.
@@ -84,7 +95,16 @@ const TokenRow = memo(function TokenRow({ token, idx, source = 'unknown', onRowC
         </div>
       </td>
       <td className="py-3 px-3 text-right text-white font-medium">
-        {formatPrice(token.price)}
+        <div className="flex items-baseline justify-end gap-1.5">
+          <span>{formatPrice(token.price)}</span>
+          {divergence !== null && (
+            <PriceDivergenceChip
+              otherUsd={divergence.otherUsd}
+              symbol={token.symbol}
+              compact
+            />
+          )}
+        </div>
       </td>
       <td className="py-3 px-2 text-right font-medium hidden lg:table-cell">
         <PercentageChange value={change1h} decimals={1} size="xs" />
@@ -455,7 +475,7 @@ function ExplorePageContent() {
   })
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const { tokens: data, sources } = useOnChainMarketData()
+  const { tokens: data, sources, divergence } = useOnChainMarketData()
 
   // Canonicalise the URL if the user arrived with a typo or unknown
   // category. We use router.replace (not push) so the back button still
@@ -715,6 +735,7 @@ function ExplorePageContent() {
                     token={token}
                     idx={idx}
                     source={sources[token.symbol]}
+                    divergence={divergence?.[token.symbol] ?? null}
                     onRowClick={handleRowClick}
                     onSwapClick={handleSwapClick}
                   />

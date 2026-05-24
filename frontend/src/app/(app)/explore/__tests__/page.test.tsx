@@ -539,6 +539,72 @@ describe('ExplorePage — per-row source attribution (task 0041)', () => {
     }
   })
 
+  it('renders a divergence chip on canonical rows when chain & CoinGecko disagree (task 0044)', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '', decimals: 8, address: '0xab',
+            category: 'Bitcoin' as const, color: '#F7931A',
+            price: 84_250, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+            volume24h: 1e9, marketCap: 4e11, sparkline7d: [83000, 83500, 84250],
+            description: 'Wrapped Bitcoin',
+          },
+          {
+            symbol: 'ETH', name: 'Ether', icon: '', decimals: 18, address: '0x0',
+            category: 'Infrastructure' as const, color: '#627EEA',
+            price: 3500, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+            volume24h: 1e9, marketCap: 4e11, sparkline7d: [3400, 3450, 3500],
+            description: 'Ethereum',
+          },
+        ],
+        sources: { WBTC: 'chain-oracle', ETH: 'chain-oracle' } as Record<string, string>,
+        // Chain mark $84,250 vs CoinGecko $76,531 — the PRD screenshot.
+        divergence: { WBTC: { otherUsd: 76_531 }, ETH: null } as Record<string, { otherUsd: number } | null>,
+      }),
+    }))
+    const { default: Page } = await import('../page')
+    render(<TestWrapper><Page /></TestWrapper>)
+    const wbtcRow = findTokenRow('WBTC')
+    const ethRow = findTokenRow('ETH')
+    const wbtcChip = wbtcRow.querySelector('[data-testid="price-divergence-chip"]')
+    expect(wbtcChip).not.toBeNull()
+    expect(wbtcChip!.textContent).toMatch(/disagrees|drift/i)
+    // The other source's number is exposed (title attribute or visible text).
+    const wbtcChipText = (wbtcChip!.getAttribute('title') ?? '') + ' ' + (wbtcChip!.textContent ?? '')
+    expect(wbtcChipText).toMatch(/76,?531/)
+    // Non-canonical / non-divergent rows do not get a chip.
+    expect(ethRow.querySelector('[data-testid="price-divergence-chip"]')).toBeNull()
+  })
+
+  it('omits the divergence chip when the canonical resolver reports no disagreement (task 0044)', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '', decimals: 8, address: '0xab',
+            category: 'Bitcoin' as const, color: '#F7931A',
+            price: 84_250, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+            volume24h: 1e9, marketCap: 4e11, sparkline7d: [83000, 83500, 84250],
+            description: 'Wrapped Bitcoin',
+          },
+        ],
+        sources: { WBTC: 'chain-oracle' } as Record<string, string>,
+        divergence: { WBTC: null } as Record<string, { otherUsd: number } | null>,
+      }),
+    }))
+    const { default: Page } = await import('../page')
+    render(<TestWrapper><Page /></TestWrapper>)
+    const wbtcRow = findTokenRow('WBTC')
+    expect(wbtcRow.querySelector('[data-testid="price-divergence-chip"]')).toBeNull()
+  })
+
   it('includes only chain/coingecko rows in the Total Market Cap aggregate', async () => {
     vi.doMock('@/lib/useOnChainMarketData', () => ({
       TOKEN_COLORS: {} as Record<string, string>,
