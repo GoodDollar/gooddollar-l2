@@ -28,6 +28,8 @@ describe('Lane 6 / stale-rejection — risk filter rejects backdated quotes', ()
       ask: 191.55,
       mid: 191.5,
       last: 191.5,
+      spread: 0.1,
+      spreadPct: 0.000522,
       timestamp: Date.now() - staleAgeMs,
       sessionState: 'open',
       confidence: 95,

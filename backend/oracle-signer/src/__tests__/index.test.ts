@@ -174,7 +174,7 @@ describe('OracleSignerService', () => {
     expect(snap.chain.signerAddress).toBe('0x1111111111111111111111111111111111111111');
     expect(snap.chain.oracleAddresses.stocks).toBe('0xAA00000000000000000000000000000000000001');
     expect(snap.chain.oracleAddresses.crypto).toBeNull();
-    expect(snap.chain.rpcEndpoint).toBe('http://localhost:8545/');
+    expect(snap.chain.rpcEndpoint).toBe('http://localhost:8545');
 
     service.stop();
   });

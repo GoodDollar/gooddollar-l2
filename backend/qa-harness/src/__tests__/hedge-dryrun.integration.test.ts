@@ -1,13 +1,12 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { REAL_TRADING_ENABLED, EtoroClient } from '../../../etoro-client/src';
+import { REAL_TRADING_ENABLED } from '../../../etoro-client/src';
 import { DeltaCalculator } from '../../../hedge-engine/src/delta-calculator';
 import { HedgeEngine } from '../../../hedge-engine/src/engine';
 import { ExposureReader } from '../../../hedge-engine/src/exposure-reader';
 import { HedgeExecutor } from '../../../hedge-engine/src/hedge-executor';
 import { HedgeProofRecorder } from '../../../hedge-engine/src/hedge-proof';
-import { createMockEtoro } from '../mock-etoro-server';
 import { writeEvidence } from '../evidence';
 import { getRunId } from '../run-id';
 
@@ -20,33 +19,18 @@ describe('Lane 6 / hedge-dryrun — dry-run hedge produces a proof and never hit
     const runId = getRunId();
     const t0 = Date.now();
 
-    const client = new EtoroClient({
-      credentials: {
-        mode: 'sandbox',
-        apiKey: 'sandbox-test-key',
-        apiSecret: 'sandbox-test-secret',
-        baseUrl: 'https://mock.etoro.local/sapi',
-      },
-    });
-    const mock = createMockEtoro({ axios: client.getHttpClient() });
-
+    const orders: Array<Record<string, unknown>> = [];
     const adapter = {
       async openPosition(p: { symbol: string; instrumentId: string; side: 'buy' | 'sell'; amount: number }) {
-        const r = await client.trading.openPosition(p);
-        return { orderId: r.orderId, status: r.status };
+        orders.push(p);
+        return { orderId: 'unexpected-live-order', status: 'unexpected' };
       },
       async closePosition(positionId: string) {
-        const r = await client.trading.closePosition(positionId);
-        return { orderId: r.orderId };
+        orders.push({ positionId, type: 'close' });
+        return { orderId: 'unexpected-live-close' };
       },
       async getPositions() {
-        const ps = await client.trading.getOpenPositions();
-        return ps.map((p) => ({
-          positionId: p.positionId,
-          symbol: p.symbol,
-          side: p.side,
-          amount: p.amount,
-        }));
+        return [];
       },
     };
 
@@ -87,7 +71,7 @@ describe('Lane 6 / hedge-dryrun — dry-run hedge produces a proof and never hit
       proof.dryRun === true &&
       proof.realTradingEnabled === false &&
       proof.beforeExposure.netDelta === 10_000 &&
-      mock.orders.length === 0 &&
+      orders.length === 0 &&
       latestExists;
 
     writeEvidence({
@@ -97,19 +81,18 @@ describe('Lane 6 / hedge-dryrun — dry-run hedge produces a proof and never hit
       details: {
         durationMs: Date.now() - t0,
         proof,
-        mockOrderCount: mock.orders.length,
+        mockOrderCount: orders.length,
         proofDir: tmp,
         realTradingEnabled: REAL_TRADING_ENABLED,
       },
     });
 
     fs.rmSync(tmp, { recursive: true, force: true });
-    mock.stop();
 
     expect(proof.orderId).toBe('dry-run');
     expect(proof.dryRun).toBe(true);
     expect(proof.realTradingEnabled).toBe(false);
-    expect(mock.orders).toHaveLength(0);
+    expect(orders).toHaveLength(0);
     expect(latestExists).toBe(true);
   });
 });

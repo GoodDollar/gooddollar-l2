@@ -1,5 +1,4 @@
 import { REAL_TRADING_ENABLED, EtoroClient } from '../../../etoro-client/src';
-import { createMockEtoro } from '../mock-etoro-server';
 import { writeEvidence } from '../evidence';
 import { getRunId } from '../run-id';
 
@@ -14,14 +13,15 @@ describe('Lane 6 / auth — eToro client authenticates against mock server', () 
 
     const client = new EtoroClient({
       credentials: {
-        mode: 'sandbox',
+        mode: 'mock',
         apiKey: 'sandbox-test-key',
         apiSecret: 'sandbox-test-secret',
-        baseUrl: 'https://mock.etoro.local/sapi',
+        userKey: 'sandbox-test-user-key',
+        baseUrl: 'mock://etoro.local',
+        wsUrl: 'mock://etoro.local/ws',
       },
     });
 
-    const mock = createMockEtoro({ axios: client.getHttpClient() });
 
     let token: string | null = null;
     let error: string | null = null;
@@ -32,7 +32,7 @@ describe('Lane 6 / auth — eToro client authenticates against mock server', () 
     }
 
     const summary = client.getSummary();
-    const ok = token !== null && token.startsWith('mock-token-') && client.isAuthenticated();
+    const ok = token !== null && token === 'mock-token' && client.isAuthenticated();
     const evidencePath = writeEvidence({
       check: '01-auth',
       ok,
@@ -46,11 +46,10 @@ describe('Lane 6 / auth — eToro client authenticates against mock server', () 
       },
     });
 
-    mock.stop();
 
     // Assertions — fail loudly with the evidence path so reviewers know where to look.
     expect(token).not.toBeNull();
-    expect(token).toMatch(/^mock-token-/);
+    expect(token).toBe('mock-token');
     expect(client.isAuthenticated()).toBe(true);
     // No raw secret in summary
     const dumped = JSON.stringify(summary);

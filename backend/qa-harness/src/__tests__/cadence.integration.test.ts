@@ -51,6 +51,8 @@ describe('Lane 6 / cadence — price service broadcasts at the configured interv
         ask: 191.55 + beats * 0.01,
         mid: 191.5 + beats * 0.01,
         last: 191.5 + beats * 0.01,
+        spread: 0.1,
+        spreadPct: 0.000522,
         timestamp: now,
         sessionState: 'open',
         confidence: 95,
