@@ -1,4 +1,5 @@
 import {
+  KNOWN_REJECTION_REASONS,
   METRICS_CONTENT_TYPE,
   MetricsSnapshot,
   escapeLabelValue,
@@ -111,9 +112,19 @@ describe('renderMetrics — empty snapshot', () => {
     expect(matches).toBeNull();
   });
 
-  it('emits zero rejected_total samples when no rejections observed', () => {
-    const matches = body.match(/^price_service_rejected_total\{[^}]*\} \d+$/gm);
-    expect(matches).toBeNull();
+  it('cache_age_seconds HELP line documents the empty-rows semantics', () => {
+    expect(body).toMatch(
+      /^# HELP price_service_cache_age_seconds .* Empty when no quotes are cached\.$/m,
+    );
+  });
+
+  it('emits one zero-baseline rejected_total row per known reason when cold', () => {
+    const matches = body.match(/^price_service_rejected_total\{reason="[^"]+"\} \d+$/gm);
+    expect(matches).toEqual(
+      [...KNOWN_REJECTION_REASONS]
+        .sort()
+        .map((r) => `price_service_rejected_total{reason="${r}"} 0`),
+    );
   });
 });
 
@@ -129,8 +140,8 @@ describe('renderMetrics — populated snapshot', () => {
     ingestTotal: 1234,
     acceptedTotal: 1100,
     rejectedTotalByReason: {
-      'stale-spread': 22,
-      'stale-timestamp': 10,
+      stale: 22,
+      'spread-too-wide': 10,
     },
     sourceReason: 'source-unavailable',
     sourceConnected: false,
@@ -147,11 +158,16 @@ describe('renderMetrics — populated snapshot', () => {
     expect(body).toContain('price_service_cache_age_seconds{symbol="NVDA"} 0.05');
   });
 
-  it('emits exactly the observed rejection reason samples in sorted-key order', () => {
+  it('overlays observed counts onto the zero-baseline rows in sorted-key order', () => {
     const matches = body.match(/^price_service_rejected_total\{reason="[^"]+"\} \d+$/gm);
     expect(matches).toEqual([
-      'price_service_rejected_total{reason="stale-spread"} 22',
-      'price_service_rejected_total{reason="stale-timestamp"} 10',
+      'price_service_rejected_total{reason="deviation"} 0',
+      'price_service_rejected_total{reason="halted"} 0',
+      'price_service_rejected_total{reason="invalid"} 0',
+      'price_service_rejected_total{reason="market-closed"} 0',
+      'price_service_rejected_total{reason="spread-too-wide"} 10',
+      'price_service_rejected_total{reason="stale"} 22',
+      'price_service_rejected_total{reason="unknown"} 0',
     ]);
   });
 
@@ -173,6 +189,20 @@ describe('renderMetrics — populated snapshot', () => {
     expect(body).toContain(
       'price_service_info{version="0.1.0",etoro_mode="sandbox",network="testnet",fixture_only="true",real_trading_enabled="false"} 1',
     );
+  });
+});
+
+describe('renderMetrics — future rejection reason resilience', () => {
+  it('emits an extra row for a not-yet-cataloged reason without dropping baselines', () => {
+    const body = renderMetrics(
+      makeSnap({ rejectedTotalByReason: { 'new-future-reason': 7 } }),
+    );
+    const matches = body.match(/^price_service_rejected_total\{reason="[^"]+"\} \d+$/gm);
+    const expected = [
+      ...KNOWN_REJECTION_REASONS.map((r) => `price_service_rejected_total{reason="${r}"} 0`),
+      'price_service_rejected_total{reason="new-future-reason"} 7',
+    ].sort();
+    expect(matches).toEqual(expected);
   });
 });
 

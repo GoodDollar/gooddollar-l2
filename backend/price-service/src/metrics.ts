@@ -18,6 +18,38 @@ export const METRICS_CONTENT_TYPE =
   'text/plain; version=0.0.4; charset=utf-8';
 
 /**
+ * Pre-registered rejection-reason buckets emitted as zero-baseline
+ * rows for `price_service_rejected_total`, even on a freshly-booted
+ * instance that has rejected nothing. Without these, PromQL
+ * `rate(...)[5m]` and `increase(...)[5m]` over the counter family
+ * return NaN / blank — Grafana panels can't distinguish "no
+ * rejections (good)" from "metric missing (bad)" until the second
+ * rejection of each reason. See Prometheus best-practices doc on
+ * avoiding missing metrics and task 0086.
+ *
+ * The set mirrors every prefix `risk-filter.ts` emits before the
+ * first `:` (which `AuditLogger.reasonBucket` slices off), plus the
+ * `'unknown'` fallback the audit logger uses when a producer
+ * supplies no reason. A drift test parses risk-filter.ts and asserts
+ * every emitted literal appears in this list so a future filter
+ * addition is a one-line catalog update.
+ *
+ * Sorted alphabetically so the constant declaration order matches
+ * the emission order (sorted at render time) — helps reviewer grep
+ * and keeps the byte-stability test from hinging on a Map's
+ * insertion order.
+ */
+export const KNOWN_REJECTION_REASONS: readonly string[] = [
+  'deviation',
+  'halted',
+  'invalid',
+  'market-closed',
+  'spread-too-wide',
+  'stale',
+  'unknown',
+];
+
+/**
  * Dependency-free struct captured at handler entry. Snapshotting once
  * means a mid-render quote tick can't desync `cache_size` from
  * `cache_fresh_size`. The emitter is a pure function of this struct.
@@ -188,7 +220,7 @@ function emitCacheAges(lines: string[], snap: MetricsSnapshot): void {
     lines,
     'price_service_cache_age_seconds',
     'gauge',
-    'Age of the cached quote per symbol, in seconds.',
+    'Age of the cached quote per symbol, in seconds. Empty when no quotes are cached.',
     snap.cacheAges.map((c) =>
       sampleLine(
         'price_service_cache_age_seconds',
@@ -214,21 +246,37 @@ function emitIngestCounters(lines: string[], snap: MetricsSnapshot): void {
     'Total quotes accepted by the risk filter.',
     [sampleLine('price_service_accepted_total', [], snap.acceptedTotal)],
   );
-  const rejectedSamples = Object.keys(snap.rejectedTotalByReason)
-    .sort()
-    .map((reason) =>
-      sampleLine(
-        'price_service_rejected_total',
-        [['reason', reason]],
-        snap.rejectedTotalByReason[reason] ?? 0,
-      ),
-    );
   family(
     lines,
     'price_service_rejected_total',
     'counter',
-    'Total quotes rejected by the risk filter, by reason bucket.',
-    rejectedSamples,
+    'Total quotes rejected by the risk filter, by reason bucket. Every known reason ships a zero-baseline row so PromQL rate()/increase() return 0 (not NaN) on cold boot.',
+    renderRejectedSamples(snap.rejectedTotalByReason),
+  );
+}
+
+/**
+ * Overlay the observed `rejectedTotalByReason` counts onto a
+ * pre-populated map of every `KNOWN_REJECTION_REASONS` bucket → 0,
+ * then emit one sorted sample line per bucket. Unknown future buckets
+ * (a reason the catalog hasn't seen yet) ship alongside the
+ * baselines so nothing is silently swallowed; the drift test guards
+ * the catalog from falling behind risk-filter additions.
+ */
+function renderRejectedSamples(
+  byReason: Readonly<Record<string, number>>,
+): string[] {
+  const merged = new Map<string, number>();
+  for (const reason of KNOWN_REJECTION_REASONS) merged.set(reason, 0);
+  for (const [reason, count] of Object.entries(byReason)) {
+    merged.set(reason, count);
+  }
+  return [...merged.keys()].sort().map((reason) =>
+    sampleLine(
+      'price_service_rejected_total',
+      [['reason', reason]],
+      merged.get(reason) ?? 0,
+    ),
   );
 }
 
