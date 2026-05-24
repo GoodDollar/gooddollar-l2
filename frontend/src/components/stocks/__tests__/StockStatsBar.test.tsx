@@ -27,15 +27,15 @@ function baseStock(overrides: Partial<Stock> = {}): Stock {
 }
 
 describe('StockStatsBar — no-data branching', () => {
-  it('renders em-dashes for 24h H/L/Vol when change24h=0 and volume24h=0', () => {
+  it('renders em-dashes for 24h %/H/L/Vol when change24h=0 and volume24h=0', () => {
     render(<StockStatsBar stock={baseStock({ change24h: 0, volume24h: 0 })} />)
 
-    // Funding + OI always render '—' (2). Plus 24h H, 24h L, Vol = 5 total.
+    // Funding + OI always render '—' (2). Plus 24h %, 24h H, 24h L, Vol = 6 total.
     const dashes = screen.getAllByText('—')
-    expect(dashes.length).toBe(5)
+    expect(dashes.length).toBe(6)
 
-    // 24h percent renders gray 0.00% with no arrow.
-    expect(screen.getByText('0.00%')).toBeInTheDocument()
+    // 24h % no longer leaks a fabricated 0.00% on the no-data branch.
+    expect(screen.queryByText('0.00%')).not.toBeInTheDocument()
     expect(screen.queryByText(/▲|▼/)).not.toBeInTheDocument()
   })
 

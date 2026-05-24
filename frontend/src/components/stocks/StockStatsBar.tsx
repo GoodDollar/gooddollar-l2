@@ -49,7 +49,7 @@ export function StockStatsBar({ stock }: { stock: Stock }) {
       </Tile>
       <Tile label="24h">
         {noData ? (
-          <MutedValue>0.00%</MutedValue>
+          <MutedValue>{EM_DASH}</MutedValue>
         ) : (
           <span
             className={`font-medium sm:ml-1.5 ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}
