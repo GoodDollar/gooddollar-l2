@@ -9,14 +9,23 @@ import { OracleSubmitter } from './oracle-submitter';
 import { OracleSignerConfig, UpdateResult } from './types';
 import { startHealthServer } from './healthServer';
 
+// Prefix used by the stuck-tick watchdog when it owns the degrade state.
+// Matched on clear so we never clobber another component's degrade reason
+// (e.g. unknown-symbol or RPC-URL fallback set by loadConfig).
+const WATCHDOG_REASON_PREFIX = 'tick stuck >';
+
 export class OracleSignerService {
   private wsClient: PriceWsClient;
   private buffer: QuoteBuffer;
   private submitter: OracleSubmitter;
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
+  private watchdogHandle: ReturnType<typeof setInterval> | null = null;
   private readonly config: OracleSignerConfig;
   private running = false;
   private updateCount = 0;
+  private tickInFlight = false;
+  private overlappedTickCount = 0;
+  private lastTickStartedAtMs: number | null = null;
 
   constructor(config: OracleSignerConfig) {
     this.config = config;
@@ -44,12 +53,30 @@ export class OracleSignerService {
         console.error('[oracle-signer] tick error:', err.message);
       });
     }, this.config.updateIntervalMs);
+
+    // Watchdog: a tick that runs longer than 2x the tx timeout almost
+    // certainly means the underlying tx is wedged. Surface it through
+    // the canonical degrade env vars so /health turns amber.
+    const watchdogPeriodMs = Math.max(50, Math.floor(this.config.txTimeoutMs / 4));
+    this.watchdogHandle = setInterval(() => this.runWatchdog(), watchdogPeriodMs);
   }
 
   async tick(): Promise<UpdateResult | null> {
+    if (this.tickInFlight) {
+      this.overlappedTickCount++;
+      const ageMs = Date.now() - (this.lastTickStartedAtMs ?? 0);
+      console.warn(
+        `[oracle-signer] Skipping tick — previous submitBatch still in flight ` +
+        `(started ${ageMs}ms ago, overlapped ${this.overlappedTickCount}x)`,
+      );
+      return null;
+    }
+
     const updates = this.buffer.getPendingUpdates();
     if (updates.length === 0) return null;
 
+    this.tickInFlight = true;
+    this.lastTickStartedAtMs = Date.now();
     try {
       const result = await this.submitter.submitBatch(updates);
       this.buffer.markSubmitted(updates.map(u => u.symbol));
@@ -66,6 +93,29 @@ export class OracleSignerService {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[oracle-signer] Submission failed: ${msg}`);
       throw err;
+    } finally {
+      this.tickInFlight = false;
+    }
+  }
+
+  private runWatchdog(): void {
+    const stuckThresholdMs = this.config.txTimeoutMs * 2;
+    const startedAt = this.lastTickStartedAtMs;
+    const elapsed = startedAt === null ? 0 : Date.now() - startedAt;
+    const isStuck = this.tickInFlight && elapsed > stuckThresholdMs;
+
+    if (isStuck) {
+      process.env.SERVICE_HEALTH_STATUS = 'degraded';
+      process.env.SERVICE_DISABLED_REASON =
+        `${WATCHDOG_REASON_PREFIX}${elapsed}ms — tx timeout exceeded twice`;
+      return;
+    }
+
+    // Only clear a degrade marker that the watchdog itself set; never
+    // touch another source's degrade reason (e.g. unknown symbols).
+    if (process.env.SERVICE_DISABLED_REASON?.startsWith(WATCHDOG_REASON_PREFIX)) {
+      delete process.env.SERVICE_HEALTH_STATUS;
+      delete process.env.SERVICE_DISABLED_REASON;
     }
   }
 
@@ -75,8 +125,24 @@ export class OracleSignerService {
       clearInterval(this.intervalHandle);
       this.intervalHandle = null;
     }
+    if (this.watchdogHandle) {
+      clearInterval(this.watchdogHandle);
+      this.watchdogHandle = null;
+    }
     this.wsClient.close();
     console.log(`[oracle-signer] Stopped after ${this.updateCount} updates`);
+  }
+
+  get inFlight(): boolean {
+    return this.tickInFlight;
+  }
+
+  get overlappedTicks(): number {
+    return this.overlappedTickCount;
+  }
+
+  get lastTickStartedAt(): number | null {
+    return this.lastTickStartedAtMs;
   }
 
   get isRunning(): boolean {
