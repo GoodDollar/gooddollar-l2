@@ -54,7 +54,7 @@ export interface ActiveIndicators {
 }
 
 export const DEFAULT_INDICATORS: ActiveIndicators = {
-  vol: true,
+  vol: false,
   sma20: false,
   ema50: false,
 }
