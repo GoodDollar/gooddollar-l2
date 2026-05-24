@@ -1,14 +1,19 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { QuoteCache } from './quote-cache';
-import { NormalizedQuote, RiskFilterResult, SourceStatus } from './types';
+import { NormalizedQuote, RiskFilterResult } from './types';
 import {
   redactSourceReason,
   sanitizeSourceStatus,
   SanitizedSourceStatus,
 } from './source-status';
 import { isoFromMs } from './iso';
+import {
+  computeDegraded,
+  DEGRADED_NO_CACHE_MESSAGE,
+  SourceStatusGetter,
+} from './degraded';
 
-export type SourceStatusGetter = () => SourceStatus;
+export type { SourceStatusGetter };
 
 /**
  * On-connect frame summarising the current cache state. `timestampIso`
@@ -16,13 +21,22 @@ export type SourceStatusGetter = () => SourceStatus;
  * (`new Date(timestamp).toISOString() === timestampIso`) so consumers
  * subscribed to BOTH WS and REST surfaces handle one timestamp shape.
  * Field order matches the REST envelope tail convention from task 0041:
- * `..., source?, timestamp, timestampIso`.
+ * `..., source?, degraded?, message?, timestamp, timestampIso`.
+ *
+ * `degraded` rides whenever a `sourceStatusGetter` is wired so a
+ * frontend can branch on `frame.degraded` directly — matching the
+ * REST `/quotes` body shape (task 0064 unified the verdict, task
+ * 0076 unified the wire). `message` rides ONLY when `degraded:true`
+ * and is byte-identical to the REST 503 message via the shared
+ * `DEGRADED_NO_CACHE_MESSAGE` constant.
  */
 interface SnapshotFrame {
   type: 'snapshot';
   data: NormalizedQuote[];
   count: number;
   source?: SanitizedSourceStatus;
+  degraded?: boolean;
+  message?: string;
   timestamp: number;
   timestampIso: string;
 }
@@ -122,14 +136,18 @@ export class WsBroadcaster {
       // same instant (task 0048 invariant).
       const fresh = cache.getFresh();
       const now = Date.now();
-      const source = sourceStatusGetter
-        ? sanitizeSourceStatus(sourceStatusGetter())
+      const degradedInfo = sourceStatusGetter
+        ? computeDegraded(cache, sourceStatusGetter)
         : undefined;
       const snapshot: SnapshotFrame = {
         type: 'snapshot',
         data: fresh,
         count: fresh.length,
-        ...(source !== undefined && { source }),
+        ...(degradedInfo?.src !== undefined && { source: degradedInfo.src }),
+        ...(degradedInfo !== undefined && { degraded: degradedInfo.degraded }),
+        ...(degradedInfo?.degraded === true && fresh.length === 0 && {
+          message: DEGRADED_NO_CACHE_MESSAGE,
+        }),
         timestamp: now,
         timestampIso: isoFromMs(now)!,
       };
