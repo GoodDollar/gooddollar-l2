@@ -113,12 +113,6 @@ function normalizeTickerForLookup(rawTicker?: string): string {
   return normalized
 }
 
-function formatEventDate(offsetDays: number): string {
-  const now = new Date()
-  const date = new Date(now.getTime() + offsetDays * 24 * 60 * 60 * 1000)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-}
-
 type StockOrderType = 'market' | 'limit' | 'stop-limit'
 
 function OrderForm({
@@ -506,13 +500,6 @@ export default function StockDetailPage() {
     [stock, liveFundamentals],
   )
   const backLink = DETAIL_BACK_LINKS[searchParams.get('from') ?? ''] ?? DEFAULT_DETAIL_BACK_LINK
-  const eventTimeline = useMemo(() => {
-    if (!stock) return []
-    return [
-      { id: `${stock.ticker}-earnings-next`, label: 'Earnings call', date: formatEventDate(7), status: 'Upcoming' },
-      { id: `${stock.ticker}-dividend-next`, label: 'Dividend ex-date', date: stock.dividendYield > 0 ? formatEventDate(13) : 'Not scheduled', status: stock.dividendYield > 0 ? 'Upcoming' : 'Info' },
-    ]
-  }, [stock])
 
   useEffect(() => {
     setAnalystLoading(true)
