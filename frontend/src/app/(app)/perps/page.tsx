@@ -62,6 +62,7 @@ const PriceChart = dynamic(
   }
 )
 import { ChartErrorBoundary } from '@/components/ChartErrorBoundary'
+import { DemoChartOverlay } from '@/components/DemoChartOverlay'
 import { IndicatorToggle } from '@/components/IndicatorToggle'
 import { ScrollStrip } from '@/components/ScrollStrip'
 import { PairSelector } from '@/components/perps/PairSelector'
@@ -956,7 +957,17 @@ export default function PerpsPage() {
               <IndicatorToggle indicators={indicators} onChange={toggleIndicator} />
             </div>
             <ChartErrorBoundary>
-              <PriceChart data={chartData} height={400} indicators={indicators} />
+              <div
+                className="relative"
+                aria-label={`${pair.symbol} illustrative chart`}
+              >
+                {/* chartData comes from getChartData() — synthetic, hash-seeded
+                    OHLC regardless of rail health. Until a real OHLC source
+                    lands the honesty pill is unconditionally visible; flip
+                    this boolean the day a live OHLC feed is wired in. */}
+                <DemoChartOverlay isLive={false} />
+                <PriceChart data={chartData} height={400} indicators={indicators} />
+              </div>
             </ChartErrorBoundary>
           </div>
         </div>

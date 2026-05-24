@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { DemoChartOverlay } from '@/components/stocks/DemoChartOverlay'
+import { DemoChartOverlay } from '@/components/DemoChartOverlay'
 
 describe('DemoChartOverlay', () => {
   it('renders the illustrative pill when the rail is not live', () => {

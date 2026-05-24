@@ -27,7 +27,7 @@ import { isWalletConnectEnabled, mobileWalletUnavailableMessage } from '@/lib/wa
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 import { BidAskSpread, PriceWithTick } from '@/components/BidAskSpread'
 import { SentimentCard } from '@/components/SentimentCard'
-import { DemoChartOverlay } from '@/components/stocks/DemoChartOverlay'
+import { DemoChartOverlay } from '@/components/DemoChartOverlay'
 
 const DeferredPriceChart = dynamic(
   () => import('@/components/PriceChart').then((module) => module.PriceChart),
