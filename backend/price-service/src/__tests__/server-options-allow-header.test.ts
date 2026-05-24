@@ -84,7 +84,12 @@ describe('OPTIONS responses emit RFC 7231 `Allow` header (task 0059)', () => {
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-origin')).toBe('*');
     expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
-    expect(res.headers.get('access-control-allow-headers')).toBe('Content-Type');
+    // task 0078 extends the default Allow-Headers set with X-Request-Id
+    // so a browser fetch() supplying a correlation header passes
+    // preflight.
+    expect(res.headers.get('access-control-allow-headers')).toBe(
+      'Content-Type, X-Request-Id',
+    );
     expect(res.headers.get('access-control-max-age')).toBe('600');
   });
 

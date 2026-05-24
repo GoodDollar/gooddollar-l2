@@ -31,6 +31,9 @@ const CANONICAL_KEY_ORDER: readonly string[] = [
   'humanReason',
   'severity',
   'nextStep',
+  // task 0078: `requestId` rides high (right after the triplet) so an
+  // on-call grepping a body sees the support-trace key first.
+  'requestId',
   'allowed',
   'method',
   'path',

@@ -35,6 +35,11 @@ import {
   type NormalizeSymbolResult,
 } from './symbol-normalize';
 import { MAX_REQUESTED_SYMBOLS, parseSymbolsQuery } from './symbols-query';
+import {
+  DEFAULT_CORS_ALLOW_HEADERS,
+  REQUEST_ID_REGEX,
+  requestIdMiddleware,
+} from './request-id';
 
 // Re-export the quickstart + WS types and helpers off `./server` so
 // existing test imports (`from '../server'`) keep compiling. The
@@ -399,6 +404,24 @@ const SOURCE_REASON_CATALOG_POINTER = Object.freeze({
     'for the current verdict.',
   url: '/docs/source-reasons',
   count: SOURCE_REASON_CATALOG_COUNT,
+});
+
+/**
+ * Support / triage pointer shipped on `GET /` so a fresh integrator
+ * filing a bug report knows the first piece of information to include
+ * is the `X-Request-Id` value. Mirrors the Polygon/Stripe/Cloudflare
+ * convention: one stable header echoed on every response (task 0078).
+ */
+const SUPPORT_BLOCK = Object.freeze({
+  correlation: Object.freeze({
+    header: 'X-Request-Id',
+    pattern: REQUEST_ID_REGEX.source,
+    describe:
+      'echoed from client when sent (safe regex above); generated ' +
+      'server-side otherwise. Include this header value in any bug ' +
+      'report so on-call can grep audit.log + process logs for the ' +
+      'same correlation key.',
+  }),
 });
 
 /**
@@ -840,6 +863,10 @@ function build404SyntheticBody(): Record<string, unknown> {
     humanReason: ERROR_REASONS_PUBLIC['not-found']!.humanReason,
     severity: ERROR_REASONS_PUBLIC['not-found']!.severity,
     nextStep: ERROR_REASONS_PUBLIC['not-found']!.nextStep,
+    // Synthetic worst-case ID: 24 chars matches `generateRequestId`'s
+    // upper bound (base36(Date.now()) → ~9 chars + '-' + 8 hex chars =
+    // 18 today; padded here for headroom on long-running services).
+    requestId: 'mvvvvvvvvvvv-ffffffff',
     path: '/__boot_guard_synthetic__',
     method: 'GET',
     discovery: '/',
@@ -1079,6 +1106,12 @@ export function createServer(
   // `Cache-Control: no-store` (task 0043) at least don't cross-serve
   // gzip bytes to identity clients. ETags stay disabled (task 0044).
   // See task 0068.
+  // Request-correlation middleware runs FIRST so the OPTIONS 204
+  // short-circuit (which `return`s without `next()`) and the
+  // compression layer both see the `X-Request-Id` header set on the
+  // response. Echoes a safe client-supplied value or generates a
+  // short sortable `<base36-ts>-<8-hex>` ID. See task 0078.
+  app.use(requestIdMiddleware());
   app.use(compression({ threshold: 256, level: 6 }));
   const cfg = { ...DEFAULT_CONFIG, ...config };
   // Built once: per-request membership check is O(1). Uppercase every
@@ -1168,7 +1201,17 @@ export function createServer(
 
   app.use((req: Request, res: Response, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    // Browser fetch() consumers can only read response headers that
+    // the server explicitly exposes via Access-Control-Expose-Headers.
+    // `X-Request-Id` (task 0078) and `Retry-After` (task 0066) are the
+    // two non-default headers integrators ask for; ship the list on
+    // every response so a `response.headers.get('x-request-id')` call
+    // resolves from cross-origin fetches without preflight gymnastics.
+    res.setHeader('Access-Control-Expose-Headers', 'X-Request-Id, Retry-After');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      DEFAULT_CORS_ALLOW_HEADERS.join(', '),
+    );
     res.setHeader('Access-Control-Max-Age', '600');
     // RFC 9111 §5.2.2.5 — `no-store` forbids any storage of the
     // response, including by browser BFCache and CDN edge caches.
@@ -1214,6 +1257,7 @@ export function createServer(
     body.endpoints = buildEndpointIndex();
     body.quickstart = quickstart;
     body.sourceReasonCatalog = SOURCE_REASON_CATALOG_POINTER;
+    body.support = SUPPORT_BLOCK;
     res.json(
       finalizeEnvelope(body, now, {
         src,
@@ -1257,6 +1301,7 @@ export function createServer(
     const now = Date.now();
     const fresh = cache.getFresh();
     const body: Record<string, unknown> = {
+      requestId: req.requestId,
       freshQuotes: fresh.length,
       totalCached: cache.size,
       configuredSymbols: cfg.symbols.length,
@@ -1709,6 +1754,7 @@ export function createServer(
         humanReason: METHOD_NOT_ALLOWED_HUMAN_REASON,
         severity: METHOD_NOT_ALLOWED_SEVERITY,
         nextStep: METHOD_NOT_ALLOWED_NEXT_STEP,
+        requestId: req.requestId,
         allowed,
         method: req.method,
         ...echoed,
@@ -1777,6 +1823,7 @@ export function createServer(
         humanReason: MALFORMED_URI_HUMAN_REASON,
         severity: MALFORMED_URI_SEVERITY,
         nextStep: MALFORMED_URI_NEXT_STEP,
+        requestId: req.requestId,
         expected: MALFORMED_URI_EXPECTED,
       };
       if (didYouMean !== undefined) body.didYouMean = didYouMean;
@@ -1803,6 +1850,7 @@ export function createServer(
     const body: Record<string, unknown> = {
       error: code,
       message,
+      requestId: req.requestId,
       ...echoPath(req.path),
       method: req.method,
     };

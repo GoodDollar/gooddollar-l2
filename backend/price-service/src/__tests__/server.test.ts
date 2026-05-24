@@ -1103,7 +1103,12 @@ describe('REST Server — CORS preflight', () => {
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-origin')).toBe('*');
     expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
-    expect(res.headers.get('access-control-allow-headers')).toBe('Content-Type');
+    // task 0078: the default Allow-Headers list grows to include
+    // X-Request-Id so a browser fetch() supplying a correlation key
+    // passes preflight.
+    expect(res.headers.get('access-control-allow-headers')).toBe(
+      'Content-Type, X-Request-Id',
+    );
     expect(res.headers.get('access-control-max-age')).toBe('600');
     const text = await res.text();
     expect(text).toBe('');
@@ -1505,12 +1510,16 @@ describe('REST Server — 404 hint list is compact (task 0027)', () => {
 
   const COMPACT_404_PATHS = ['/favicon.ico', '/nope', '/quotes//x'];
 
+  // Cap was raised from 700 → 760 by task 0078 to absorb the
+  // mandatory `requestId` correlation field (~30 bytes per body).
+  // The 404 surface is still strictly compact: catalog summaries and
+  // responseShape strings stay off the wire here.
   for (const p of COMPACT_404_PATHS) {
-    it(`GET ${p} 404 body ≤ 700 bytes`, async () => {
+    it(`GET ${p} 404 body ≤ 760 bytes`, async () => {
       const r = await fetch(`${baseUrl}${p}`);
       expect(r.status).toBe(404);
       const buf = Buffer.from(await r.arrayBuffer());
-      expect(buf.byteLength).toBeLessThanOrEqual(700);
+      expect(buf.byteLength).toBeLessThanOrEqual(760);
     });
   }
 

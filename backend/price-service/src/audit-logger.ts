@@ -36,6 +36,14 @@ export interface AuditRecordInput {
   accepted: boolean;
   reason?: string;
   quote: NormalizedQuote;
+  /**
+   * Optional correlation key sourced from the HTTP request that
+   * triggered ingestion (see `req.requestId`, task 0078). Best-effort:
+   * populated only when the ingest path runs in HTTP request scope.
+   * Replay tooling treats absent values as "no correlation" — old
+   * JSONL lines stay valid without modification.
+   */
+  requestId?: string;
 }
 
 interface AuditLogLine {
@@ -43,6 +51,7 @@ interface AuditLogLine {
   accepted: boolean;
   reason?: string;
   quote: NormalizedQuote;
+  requestId?: string;
 }
 
 /**
@@ -123,6 +132,7 @@ export class AuditLogger {
       quote: input.quote,
     };
     if (input.reason !== undefined) line.reason = input.reason;
+    if (input.requestId !== undefined) line.requestId = input.requestId;
 
     if (input.accepted) {
       this.statsState.ingested += 1;
