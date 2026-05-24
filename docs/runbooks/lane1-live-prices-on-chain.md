@@ -181,6 +181,10 @@ stdout for a `Submission failed:` line.
   — REST `:9300`, WS `:9301`, env table.
 - Consumer: [`backend/oracle-signer/README.md`](../../backend/oracle-signer/README.md)
   — health `:9107`, env table, upstream/downstream wiring.
+- See the live page at [`/lane1`](../../frontend/src/app/(app)/lane1/page.tsx)
+  — operator surface showing source mode, per-symbol freshness, pipeline
+  health, and the failure-mode card with these same `npm run install:lane1`
+  and `ETORO_MODE=mock` steps embedded.
 - Sibling proof: [`docs/runbooks/lane1-demo-hedge-proof.md`](./lane1-demo-hedge-proof.md).
 - Deep contract: [`docs/ETORO_GOODCHAIN_ADAPTER.md`](../ETORO_GOODCHAIN_ADAPTER.md).
 - SDK error catalogue: [`backend/etoro-client/src/errors.ts`](../../backend/etoro-client/src/errors.ts).
