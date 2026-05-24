@@ -488,10 +488,24 @@ describe('PipelineFlowDiagram', () => {
       })
     })
 
-    it('legend contains a hedge-subordinated entry as the last item', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+    // #0075 — the subordinated case (hedgeProof healthy + at least one
+    // upstream axis non-healthy) is the ONLY state where the indicator
+    // dot renders, and now also the only state where the 4th legend
+    // entry renders. Use the same fixtures as the #0047 subordination
+    // suite above so the boolean stays linked.
+    it('legend contains a hedge-subordinated entry as the last item when the indicator is on screen', async () => {
+      mockOnChainDegraded()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) throw new Error('boom')
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
       renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        expect(desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')).not.toBeNull()
+      })
 
       const legend = screen.getByTestId('pipeline-flow-legend')
       const entries = legend.querySelectorAll('[data-testid^="pipeline-legend-"]')
@@ -505,12 +519,19 @@ describe('PipelineFlowDiagram', () => {
       expect(text).toMatch(/mirroring upstream tone/)
     })
 
-    it('hedge-subordinated legend swatch matches the indicator dot size (h-1.5 w-1.5)', () => {
-      mockOnChainUnknown()
-      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+    it('hedge-subordinated legend swatch matches the indicator dot size (h-1.5 w-1.5)', async () => {
+      mockOnChainDegraded()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) throw new Error('boom')
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
       renderFlow({ offChainIntervalMs: 60_000 })
 
-      const entry = screen.getByTestId('pipeline-legend-hedge-subordinated')
+      const entry = await vi.waitFor(() =>
+        screen.getByTestId('pipeline-legend-hedge-subordinated'),
+      )
       const swatch = entry.querySelector('[aria-hidden]') as HTMLElement | null
       expect(swatch).not.toBeNull()
       const cls = swatch?.className ?? ''
@@ -518,7 +539,7 @@ describe('PipelineFlowDiagram', () => {
       expect(cls).toMatch(/\bw-1\.5\b/)
     })
 
-    it('indicator dot is absent when the demo-hedge pill is not subordinated (regression guard for #0047)', async () => {
+    it('indicator dot AND legend entry both hide when the demo-hedge pill is not subordinated (#0075)', async () => {
       mockOnChainHealthy()
       installFetchMock((url) => {
         if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
@@ -534,8 +555,121 @@ describe('PipelineFlowDiagram', () => {
         )
       })
       expect(desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')).toBeNull()
-      // Legend entry stays in place — the legend is static, not state-driven.
-      expect(screen.queryByTestId('pipeline-legend-hedge-subordinated')).not.toBeNull()
+      // #0075 — the 4th legend entry is gated on the same boolean as the
+      // indicator dot; with all axes healthy there is no indicator on
+      // screen, so the legend entry must not be present either.
+      expect(screen.queryByTestId('pipeline-legend-hedge-subordinated')).toBeNull()
+    })
+  })
+
+  // #0075 — gate the 4th legend entry on the same `hedgeIndicatorVisible`
+  // predicate that drives the indicator dot. The legend's job is to
+  // describe glyphs ON THIS DIAGRAM, RIGHT NOW; showing an entry for a
+  // glyph that isn't on the page makes a reviewer search for something
+  // that doesn't exist.
+  describe('hedge-subordinated legend gating (#0075)', () => {
+    function expectIndicatorAndLegendAgree(): void {
+      const indicator = desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')
+      const legendEntry = screen.queryByTestId('pipeline-legend-hedge-subordinated')
+      expect(Boolean(legendEntry), 'legend entry presence').toBe(Boolean(indicator))
+    }
+
+    it('all axes healthy: legend has exactly 3 entries; no indicator', async () => {
+      mockOnChainHealthy()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+          'healthy',
+        )
+      })
+      const entries = screen
+        .getByTestId('pipeline-flow-legend')
+        .querySelectorAll('[data-testid^="pipeline-legend-"]')
+      expect(entries).toHaveLength(3)
+      expectIndicatorAndLegendAgree()
+    })
+
+    it('all axes degraded (cold/red): legend has exactly 3 entries; no indicator', async () => {
+      mockOnChainDegraded()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) throw new Error('boom')
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: false, status: 500, body: {} }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        expect(desktopFlow().getByTestId('pipeline-node-price-service').getAttribute('data-tone')).toBe(
+          'degraded',
+        )
+      })
+      const entries = screen
+        .getByTestId('pipeline-flow-legend')
+        .querySelectorAll('[data-testid^="pipeline-legend-"]')
+      expect(entries).toHaveLength(3)
+      expectIndicatorAndLegendAgree()
+    })
+
+    it('first paint (unknown): legend has exactly 3 entries; no indicator', () => {
+      mockOnChainUnknown()
+      installFetchMock(() => new Promise<FetchMockEntry>(() => {}) as Promise<FetchMockEntry>)
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      const entries = screen
+        .getByTestId('pipeline-flow-legend')
+        .querySelectorAll('[data-testid^="pipeline-legend-"]')
+      expect(entries).toHaveLength(3)
+      expectIndicatorAndLegendAgree()
+    })
+
+    it('subordinated (hedgeProof healthy + upstream degraded): legend has 4 entries; indicator present', async () => {
+      mockOnChainDegraded()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) throw new Error('boom')
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: true, status: 200, body: PROOF_ENVELOPE_OK }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        expect(desktopFlow().queryByTestId('pipeline-node-demo-hedge-indicator')).not.toBeNull()
+      })
+      const entries = screen
+        .getByTestId('pipeline-flow-legend')
+        .querySelectorAll('[data-testid^="pipeline-legend-"]')
+      expect(entries).toHaveLength(4)
+      expectIndicatorAndLegendAgree()
+    })
+
+    it('hedge-proof degraded + upstream healthy: indicator absent, legend back to 3 entries', async () => {
+      mockOnChainHealthy()
+      installFetchMock((url) => {
+        if (url.includes('/quotes')) return { ok: true, status: 200, body: QUOTES_OK }
+        if (url.includes('/api/hedge-proof/latest'))
+          return { ok: false, status: 500, body: {} }
+        return { ok: false, status: 404, body: {} }
+      })
+      renderFlow({ offChainIntervalMs: 60_000 })
+
+      await vi.waitFor(() => {
+        expect(desktopFlow().getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+          'degraded',
+        )
+      })
+      const entries = screen
+        .getByTestId('pipeline-flow-legend')
+        .querySelectorAll('[data-testid^="pipeline-legend-"]')
+      expect(entries).toHaveLength(3)
+      expectIndicatorAndLegendAgree()
     })
   })
 

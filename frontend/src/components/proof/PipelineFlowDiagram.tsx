@@ -207,6 +207,14 @@ function resolveNodesForRender(axes: AxisState): readonly ResolvedNode[] {
 export function PipelineFlowDiagram() {
   const { axes } = useProofPipelineAxesContext()
   const resolved = resolveNodesForRender(axes)
+  // Single source of truth for "is the hedge-proof subordinated indicator
+  // currently on screen?". The FlowNode for `demo-hedge` reads this via
+  // `showHedgeProofIndicator` (inside `resolveNodesForRender`) and the
+  // `ToneLegend`'s 4th entry reads it via prop — see #0075. Computed
+  // once here so the two consumers cannot drift.
+  const hedgeIndicatorVisible = resolved.some(
+    (r) => r.spec.id === 'demo-hedge' && r.showHedgeProofIndicator,
+  )
 
   return (
     <section
@@ -250,7 +258,7 @@ export function PipelineFlowDiagram() {
           />
         ))}
       </ol>
-      <ToneLegend />
+      <ToneLegend hedgeIndicatorVisible={hedgeIndicatorVisible} />
     </section>
   )
 }
@@ -275,18 +283,25 @@ function MobileChevron({ edge }: { edge: { spec: EdgeSpec; tone: Tone } }): Reac
 }
 
 /**
- * Inline three-entry tone legend mapping each pipeline-flow tone family
- * to its user-facing word — see #0057. The legend is descriptive
- * content, not interactive, and is wrapped in an `aria-label`-ed `<ul>`
- * so screen readers announce it as a single grouped region.
+ * Inline tone legend mapping each pipeline-flow tone family to its
+ * user-facing word — see #0057. The legend is descriptive content, not
+ * interactive, and is wrapped in an `aria-label`-ed `<ul>` so screen
+ * readers announce it as a single grouped region.
  *
  * Layout: on viewports ≥ sm the legend right-aligns on the same row as
  * the node strip wraps onto when there's space; on smaller viewports it
  * wraps below. The swatch uses a tiny ringed circle (not the node's
  * rounded-lg rectangle) so the visual primitive is clearly "swatch",
  * not "pill".
+ *
+ * The optional 4th entry (`pipeline-legend-hedge-subordinated`) only
+ * renders when `hedgeIndicatorVisible` is true — the same boolean that
+ * gates the green indicator dot on the demo-hedge pill (#0075). The
+ * legend's job is to describe glyphs ON THIS DIAGRAM, RIGHT NOW; an
+ * entry for a glyph that isn't present sends the reviewer hunting for
+ * something that doesn't exist.
  */
-function ToneLegend() {
+function ToneLegend({ hedgeIndicatorVisible }: { hedgeIndicatorVisible: boolean }) {
   return (
     <ul
       aria-label="Pipeline tone legend"
@@ -323,17 +338,23 @@ function ToneLegend() {
        * three tone entries above) so the visual link from legend to
        * indicator is pixel-accurate. The `sm:ml-2` separator keeps it
        * visually distinct from the three tone-family entries above.
+       *
+       * #0075 — gated on `hedgeIndicatorVisible`, the same predicate
+       * the FlowNode uses to render the indicator dot. The legend
+       * describes the dot only when the dot is on screen.
        */}
-      <li
-        className="inline-flex items-center gap-1.5 sm:ml-2"
-        data-testid="pipeline-legend-hedge-subordinated"
-      >
-        <span
-          aria-hidden
-          className="inline-block h-1.5 w-1.5 rounded-full bg-green-400/80"
-        />
-        <span>hedge-proof healthy (mirroring upstream tone)</span>
-      </li>
+      {hedgeIndicatorVisible && (
+        <li
+          className="inline-flex items-center gap-1.5 sm:ml-2"
+          data-testid="pipeline-legend-hedge-subordinated"
+        >
+          <span
+            aria-hidden
+            className="inline-block h-1.5 w-1.5 rounded-full bg-green-400/80"
+          />
+          <span>hedge-proof healthy (mirroring upstream tone)</span>
+        </li>
+      )}
     </ul>
   )
 }
