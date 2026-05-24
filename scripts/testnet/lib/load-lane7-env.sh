@@ -35,7 +35,8 @@
 #     child process the smoke spawns (node, curl, awk), which is
 #     precisely what the safety fence is meant to prevent.
 #   - operational keys (ports, URLs, thresholds, oracle address,
-#     REPORT path, etc.) are exported into the shell so the
+#     lane7 address artifact path, REPORT path, etc.) are exported into the shell
+#     so the
 #     existing parameter-expansion defaults in the caller pick
 #     them up unchanged. Single code path through `require_uint` /
 #     `PROBE_URL_RE` — no validation duplication.
@@ -90,7 +91,7 @@ while IFS='=' read -r _key _val; do
       |QUOTE_MAX_AGE_S|PRICE_SERVICE_URL|ORACLE_SIGNER_URL \
       |HEDGE_ENGINE_URL|STATUS_AGGREGATOR_URL \
       |PRICE_SERVICE_QUOTES_URL|STOCK_ORACLE_V2_ADDRESS \
-      |HEALTH_CONTRACT|REPORT|L2_RPC_URL)
+      |LANE7_ADDRESSES_JSON|HEALTH_CONTRACT|REPORT|L2_RPC_URL)
       if [[ -z "${!_key:-}" ]]; then export "$_key=$_val"; fi
       ;;
     PRIVATE_KEY|ORACLE_SIGNER_KEY|RISK_ENGINE_ADDRESS)

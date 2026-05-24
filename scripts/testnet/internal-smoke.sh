@@ -38,7 +38,9 @@
 #   HEDGE_ENGINE_URL          override the hedge-engine /health URL
 #   STATUS_AGGREGATOR_URL     override the status-aggregator /status.json URL
 #   LANE7_RPC                 default http://localhost:8545 — unset => skip on-chain
-#   STOCK_ORACLE_V2_ADDRESS   default reads from op-stack/addresses.json
+#   STOCK_ORACLE_V2_ADDRESS   explicit oracle address override
+#   LANE7_ADDRESSES_JSON      default op-stack/addresses.lane7.json; read
+#                              before canonical op-stack/addresses.json
 #   STALENESS_THRESHOLD_S     default 600            (non-negative integer seconds;
 #                                                     duration suffixes like `10m`
 #                                                     are NOT supported — fails fast)
@@ -741,6 +743,23 @@ else
       fi
 
       if [[ -z "$stock_oracle" ]]; then
+        addr_json="${LANE7_ADDRESSES_JSON:-$REPO_ROOT/op-stack/addresses.lane7.json}"
+        if [[ -f "$addr_json" ]]; then
+          stock_oracle="$(node -e '
+            const fs=require("fs");
+            try {
+              const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+              const c=j.contracts||{};
+              console.log(c.StockOracleV2 || "");
+            } catch (_) {}
+          ' "$addr_json" 2>/dev/null)"
+          if [[ -n "$stock_oracle" ]]; then
+            stock_oracle_source="lane7 address overlay ($addr_json)"
+          fi
+        fi
+      fi
+
+      if [[ -z "$stock_oracle" ]]; then
         addr_json="$REPO_ROOT/op-stack/addresses.json"
         if [[ -f "$addr_json" ]]; then
           stock_oracle="$(node -e '
@@ -785,7 +804,7 @@ else
       fi
 
       if [[ -z "$stock_oracle" ]]; then
-        add_summary "⚠️  StockOracleV2 address unknown — set STOCK_ORACLE_V2_ADDRESS or populate op-stack/addresses.json"
+        add_summary "⚠️  StockOracleV2 address unknown — set STOCK_ORACLE_V2_ADDRESS, populate op-stack/addresses.lane7.json, or populate op-stack/addresses.json"
         WARNINGS+=("StockOracleV2 address unresolved — freshness probe skipped")
       else
         artifact_stock_oracle=""
@@ -800,7 +819,9 @@ else
             } catch (_) {}
           ' "$addr_json" 2>/dev/null)"
         fi
-        if [[ -n "$artifact_stock_oracle" && "$artifact_stock_oracle" != "$stock_oracle" ]]; then
+        if [[ "$stock_oracle_source" == lane7\ address\ overlay* ]]; then
+          add_summary "ℹ️  StockOracleV2 address \`$stock_oracle\` resolved from lane7 address overlay"
+        elif [[ -n "$artifact_stock_oracle" && "$artifact_stock_oracle" != "$stock_oracle" ]]; then
           add_summary "⚠️  StockOracleV2 artifact mismatch — using \`$stock_oracle\` from $stock_oracle_source; op-stack has \`$artifact_stock_oracle\`"
           WARNINGS+=("StockOracleV2 artifact mismatch — using $stock_oracle_source target $stock_oracle instead of op-stack/addresses.json $artifact_stock_oracle")
         else

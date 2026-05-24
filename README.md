@@ -28,6 +28,7 @@ User or agent activity → protocol transaction → protocol fee
 | Agents dashboard | `paperclip.goodclaw.org` | Paperclip control plane (operator surface; availability is not a GoodSwap release gate) |
 
 Canonical network metadata: [`op-stack/addresses.json`](op-stack/addresses.json).
+Lane7 live-demo/devnet overrides live in [`op-stack/addresses.lane7.json`](op-stack/addresses.lane7.json) and are only for `GOODCHAIN_LANE=lane7` or lane7 smoke tooling.
 
 ## Release status — 2026-05-24
 
@@ -378,7 +379,7 @@ pm2 save
 
 - Slither high/medium cleanup completed in prior security initiative — continuous checks still required.
 - **Lending oracle:** admin-set placeholder; replace before mainnet ([`docs/security/iter35-oracle-risk-controls.md`](docs/security/iter35-oracle-risk-controls.md)).
-- **GOO-1846:** `setMinter` extcodesize policy — open for production ([`docs/release/RC_COORDINATOR_20260522.md`](docs/release/RC_COORDINATOR_20260522.md)).
+- **GOO-1846:** Removed `setMinter` extcodesize guard to allow admin-authorized EOAs (see [`docs/release/RC_COORDINATOR_20260522.md`](docs/release/RC_COORDINATOR_20260522.md)).
 - **Secrets:** PM2 uses Anvil default keys in dev only — never commit `.env` with production keys.
 - External audit + bug bounty: **required before mainnet** ([`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md)).
 

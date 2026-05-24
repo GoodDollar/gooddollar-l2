@@ -8,6 +8,12 @@ function pickEnv(key, fallback = '') {
   return process.env[key] || fallback;
 }
 
+const GOODCHAIN_LANE = process.env.GOODCHAIN_LANE || '';
+
+function lane7Default(value, fallback = '') {
+  return GOODCHAIN_LANE === 'lane7' ? value : fallback;
+}
+
 module.exports = {
   apps: [
     {
@@ -37,9 +43,19 @@ module.exports = {
       kill_timeout: 5000,
       env: {
         NODE_ENV: 'production',
-        PRICE_SERVICE_URL: pickEnv('PRICE_SERVICE_URL', 'http://127.0.0.1:49300/status/quotes'),
-        NEXT_PUBLIC_PRICE_SERVICE_URL: pickEnv('NEXT_PUBLIC_PRICE_SERVICE_URL', 'http://127.0.0.1:49300'),
-        ORACLE_SIGNER_URL: pickEnv('ORACLE_SIGNER_URL', 'http://127.0.0.1:49107/proof'),
+        GOODCHAIN_LANE,
+        PRICE_SERVICE_URL: pickEnv(
+          'PRICE_SERVICE_URL',
+          lane7Default('http://127.0.0.1:49300/status/quotes'),
+        ),
+        NEXT_PUBLIC_PRICE_SERVICE_URL: pickEnv(
+          'NEXT_PUBLIC_PRICE_SERVICE_URL',
+          lane7Default('http://127.0.0.1:49300'),
+        ),
+        ORACLE_SIGNER_URL: pickEnv(
+          'ORACLE_SIGNER_URL',
+          lane7Default('http://127.0.0.1:49107/proof'),
+        ),
         ORACLE_SIGNER_PROOF_URL: pickEnv('ORACLE_SIGNER_PROOF_URL'),
         NEXT_PUBLIC_STOCK_ORACLE_V2_ADDRESS: pickEnv(
           'NEXT_PUBLIC_STOCK_ORACLE_V2_ADDRESS',

@@ -49,6 +49,7 @@ function loadDotenv(filePath) {
 
 const ROOT_ENV = loadDotenv(path.join(__dirname, '..', '.env'));
 const ADDR_ENV = loadDotenv(path.join(__dirname, '..', '.autobuilder', 'addresses.env'));
+const GOODCHAIN_LANE = process.env.GOODCHAIN_LANE || ROOT_ENV.GOODCHAIN_LANE || '';
 
 function loadAddressJsonEnv(filePath) {
   const out = {};
@@ -98,6 +99,9 @@ function loadAddressJsonEnv(filePath) {
 }
 
 const ADDR_JSON_ENV = loadAddressJsonEnv(path.join(__dirname, '..', 'op-stack', 'addresses.json'));
+const LANE7_ADDR_JSON_ENV = GOODCHAIN_LANE === 'lane7'
+  ? loadAddressJsonEnv(path.join(__dirname, '..', 'op-stack', 'addresses.lane7.json'))
+  : {};
 
 function pick(key, fallback) {
   // Prefer canonical deployed-address artifacts over .env and the PM2 parent
@@ -117,13 +121,22 @@ function pickAny(keys, fallback) {
 function pickRuntimeAny(keys, fallback) {
   // Runtime lane wiring such as StockOracleV2 may intentionally diverge from
   // generated deployment artifacts after a lane-local Anvil reset. Let the
-  // operator's exported env/.env win for those keys, then fall back to
-  // address artifacts.
+  // operator's exported env/.env win for those keys, then fall back to the
+  // lane7 overlay when explicitly opted in, then canonical address artifacts.
   for (const key of keys) {
-    const value = process.env[key] || ROOT_ENV[key] || ADDR_JSON_ENV[key] || ADDR_ENV[key];
+    const value =
+      process.env[key] ||
+      ROOT_ENV[key] ||
+      LANE7_ADDR_JSON_ENV[key] ||
+      ADDR_JSON_ENV[key] ||
+      ADDR_ENV[key];
     if (value) return value;
   }
   return fallback;
+}
+
+function lane7Default(value, fallback = '') {
+  return GOODCHAIN_LANE === 'lane7' ? value : fallback;
 }
 
 function pickOperatorAny(keys, fallback) {
@@ -357,10 +370,23 @@ module.exports = {
           'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY',
           '',
         ),
-        PRICE_SERVICE_URL: pickRuntimeAny(['PRICE_SERVICE_URL'], 'http://127.0.0.1:49300/status/quotes'),
-        NEXT_PUBLIC_PRICE_SERVICE_URL: pickRuntimeAny(['NEXT_PUBLIC_PRICE_SERVICE_URL', 'PRICE_SERVICE_URL'], 'http://127.0.0.1:49300'),
-        ORACLE_SIGNER_URL: pickRuntimeAny(['ORACLE_SIGNER_URL'], 'http://127.0.0.1:49107/proof'),
-        STATUS_AGGREGATOR_URL: pickRuntimeAny(['STATUS_AGGREGATOR_URL'], 'http://127.0.0.1:49200/status.json'),
+        GOODCHAIN_LANE,
+        PRICE_SERVICE_URL: pickRuntimeAny(
+          ['PRICE_SERVICE_URL'],
+          lane7Default('http://127.0.0.1:49300/status/quotes'),
+        ),
+        NEXT_PUBLIC_PRICE_SERVICE_URL: pickRuntimeAny(
+          ['NEXT_PUBLIC_PRICE_SERVICE_URL', 'PRICE_SERVICE_URL'],
+          lane7Default('http://127.0.0.1:49300'),
+        ),
+        ORACLE_SIGNER_URL: pickRuntimeAny(
+          ['ORACLE_SIGNER_URL'],
+          lane7Default('http://127.0.0.1:49107/proof'),
+        ),
+        STATUS_AGGREGATOR_URL: pickRuntimeAny(
+          ['STATUS_AGGREGATOR_URL'],
+          lane7Default('http://127.0.0.1:49200/status.json'),
+        ),
         NEXT_PUBLIC_STOCK_ORACLE_V2_ADDRESS: pickOperatorAny(['NEXT_PUBLIC_STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2_ADDRESS', 'STOCK_ORACLE_V2'], ''),
       },
     }),

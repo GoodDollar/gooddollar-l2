@@ -1,0 +1,11 @@
+{
+    "_comment": "Lane7 live demo/devnet address overlay captured from the 2026-05-24 GoodSwap demo. Use this only for GOODCHAIN_LANE=lane7 or scripts/testnet/internal-smoke.sh; keep generic consumers on op-stack/addresses.json.",
+    "chain_id": 42069,
+    "chain_name": "GoodDollar L2 Devnet Lane7",
+    "rpc_url": "http://localhost:8545",
+    "contracts": {
+        "SwapPriceOracle": "0x2F94C3189edA0e357B23048aEc736F323Ac431f6",
+        "StockOracleV2": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        "StockOracleV2Adapter": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+    }
+}

@@ -25,22 +25,36 @@
 # Env:
 #   PM2_APP_NAME (default: goodswap)
 #   NEXT_LIVE_URL (default: http://localhost:3100/)
+#   GOODCHAIN_LANE=lane7 — opt into lane7 49xxx route defaults
 #   FRONTEND_DEPLOY_SKIP_CI (default: 0)  — skip `npm ci`, use existing node_modules
 #   FRONTEND_DEPLOY_SKIP_BUILD (default: 0)  — skip `npm run build`
 set -euo pipefail
 
 PM2_APP_NAME="${PM2_APP_NAME:-goodswap}"
 NEXT_LIVE_URL="${NEXT_LIVE_URL:-http://localhost:3100/}"
+GOODCHAIN_LANE="${GOODCHAIN_LANE:-}"
 SKIP_CI="${FRONTEND_DEPLOY_SKIP_CI:-0}"
 SKIP_BUILD="${FRONTEND_DEPLOY_SKIP_BUILD:-0}"
 
-# Lane-7 live-prices defaults. These are intentionally exported before build
-# and `pm2 reload --update-env` so the server routes keep pointing at the
-# demo lane after a deploy even when the caller's shell is otherwise empty.
-export PRICE_SERVICE_URL="${PRICE_SERVICE_URL:-http://127.0.0.1:49300/status/quotes}"
-export NEXT_PUBLIC_PRICE_SERVICE_URL="${NEXT_PUBLIC_PRICE_SERVICE_URL:-http://127.0.0.1:49300}"
-export ORACLE_SIGNER_URL="${ORACLE_SIGNER_URL:-http://127.0.0.1:49107/proof}"
-export STATUS_AGGREGATOR_URL="${STATUS_AGGREGATOR_URL:-http://127.0.0.1:49200/status.json}"
+# Lane-7 live-prices defaults are intentionally opt-in. Generic deploys must
+# provide explicit route envs instead of inheriting lane-local Anvil ports.
+if [ "$GOODCHAIN_LANE" = "lane7" ]; then
+  export PRICE_SERVICE_URL="${PRICE_SERVICE_URL:-http://127.0.0.1:49300/status/quotes}"
+  export NEXT_PUBLIC_PRICE_SERVICE_URL="${NEXT_PUBLIC_PRICE_SERVICE_URL:-http://127.0.0.1:49300}"
+  export ORACLE_SIGNER_URL="${ORACLE_SIGNER_URL:-http://127.0.0.1:49107/proof}"
+  export STATUS_AGGREGATOR_URL="${STATUS_AGGREGATOR_URL:-http://127.0.0.1:49200/status.json}"
+else
+  missing_route_env=()
+  for key in PRICE_SERVICE_URL NEXT_PUBLIC_PRICE_SERVICE_URL ORACLE_SIGNER_URL STATUS_AGGREGATOR_URL; do
+    if [ -z "${!key:-}" ]; then
+      missing_route_env+=("$key")
+    fi
+  done
+  if [ "${#missing_route_env[@]}" -gt 0 ]; then
+    printf '\033[1;31m[deploy] FAIL:\033[0m set GOODCHAIN_LANE=lane7 for lane7 49xxx defaults or export explicit route envs: %s\n' "${missing_route_env[*]}" >&2
+    exit 1
+  fi
+fi
 
 cd "$(dirname "$0")/.."   # frontend/
 
