@@ -42,6 +42,14 @@ describe('QuoteCache', () => {
       expect(cache.size).toBe(0);
     });
 
+    it('does not store a crossed quote (bid > ask)', () => {
+      const result = cache.update(makeQuote({ bid: 101, ask: 100, mid: 100.5 }));
+      expect(result.accepted).toBe(false);
+      expect(result.reason).toMatch(/^crossed:/);
+      expect(cache.size).toBe(0);
+      expect(cache.get('AAPL')).toBeUndefined();
+    });
+
     it('updates existing quote', () => {
       cache.update(makeQuote({ last: 100 }));
       cache.update(makeQuote({ last: 105 }));
