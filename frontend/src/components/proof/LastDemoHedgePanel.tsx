@@ -1,14 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import { type ExposureSnapshot, type HedgeProof, isNoOpProof } from '@/lib/hedgeProof'
 import { parseRunId } from '@/lib/parseRunId'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
+import { useProofNow } from './ProofNowProvider'
 import { usePanelRetry } from './ProofPanelActionsProvider'
 import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
+import { formatRelativeAge } from './proofRelativeAge'
 import { shortenSourcePath } from './panelHeaderMetaUtils'
 
 // Shared chip family for the LastDemoHedge header row. All status pills
@@ -104,29 +106,23 @@ function formatUsd(n: number): string {
   })
 }
 
-function formatRelative(ts: number): string {
-  const ageMs = Math.max(0, Date.now() - ts)
-  if (ageMs < 1_000) return 'just now'
-  if (ageMs < 60_000) return `${Math.floor(ageMs / 1_000)}s ago`
-  if (ageMs < 3_600_000) return `${Math.floor(ageMs / 60_000)}m ago`
-  return `${Math.floor(ageMs / 3_600_000)}h ago`
-}
-
-const RELATIVE_TICK_MS = 30_000
-
+/**
+ * Render the "Xs ago · HH:MM:SS UTC" caption for a hedge proof
+ * timestamp. Reads the page-scoped 1s tick from `useProofNow()` so the
+ * caption updates each second without a per-instance setInterval, and
+ * ticks in lockstep with every other relative-age caption on the proof
+ * page (panel countdowns, pipeline banner, oracle updates). See task
+ * lane6-last-demo-hedge-relative-timestamp-mounts-its-own-30s-setinterval-per-instance
+ * (#0069). Falls back to a stable captured `now` when no provider is
+ * mounted, keeping isolated unit tests deterministic.
+ */
 function RelativeTimestamp({ ms }: { ms: number }) {
-  const [, setTick] = useState(0)
+  const now = useProofNow()
   const finite = Number.isFinite(ms) && ms !== 0
-
-  useEffect(() => {
-    if (!finite) return
-    const id = setInterval(() => setTick((n) => n + 1), RELATIVE_TICK_MS)
-    return () => clearInterval(id)
-  }, [finite])
-
   if (!finite) {
     return <span data-testid="hedge-timestamp">—</span>
   }
+  const ageMs = Math.max(0, now - ms)
   const date = new Date(ms)
   const iso = date.toISOString()
   const local = date.toLocaleString(undefined, { timeZoneName: 'short' })
@@ -136,7 +132,7 @@ function RelativeTimestamp({ ms }: { ms: number }) {
       title={`${iso}\n${local}`}
       className="inline-flex flex-wrap items-baseline gap-1"
     >
-      <span className="font-mono break-all text-gray-200">{formatRelative(ms)}</span>
+      <span className="font-mono break-all text-gray-200">{formatRelativeAge(ageMs)}</span>
       <span aria-hidden className="text-gray-500">·</span>
       <span className="font-mono text-gray-400">{iso.slice(11, 19)} UTC</span>
     </span>

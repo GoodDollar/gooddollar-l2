@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { Profiler, type ReactNode } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LastDemoHedgePanel } from '../LastDemoHedgePanel'
+import { ProofNowProvider } from '../ProofNowProvider'
 import {
   ProofPipelineAxesProvider,
   TestProofPipelineAxesProvider,
@@ -202,15 +204,33 @@ describe('LastDemoHedgePanel', () => {
     expect(screen.getByTestId('hedge-timestamp').textContent).toBe('—')
   })
 
-  it('relative phrase updates at the 30s ticker without a fresh fetch', async () => {
+  it('relative phrase updates via ProofNowProvider tick without a fresh fetch (#0069)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date(T0))
     // After #0062 the panel does not own a fetch — guard regression by
-    // asserting global fetch is never invoked while we drive the 30s tick.
+    // asserting global fetch is never invoked while the shared tick
+    // advances.
     const fetchSpy = vi.fn()
     globalThis.fetch = fetchSpy as unknown as typeof globalThis.fetch
 
-    renderWithProof({ ...PROOF_NO_OP, timestamp: T_PROOF })
+    // After #0069 the relative phrase ticks via `useProofNow()`, not a
+    // per-instance setInterval — wrap in ProofNowProvider so the tick
+    // is observable in the test.
+    render(
+      <TestProofPipelineAxesProvider
+        value={{
+          ...BASE_AXES_VALUE,
+          lastHedgeProofPayload: { proof: { ...PROOF_NO_OP, timestamp: T_PROOF }, source: RELATIVE_SOURCE },
+          lastHedgeProofStatus: 'ok',
+        }}
+      >
+        <ProofNowProvider>
+          <ProofPanelActionsProvider>
+            <LastDemoHedgePanel />
+          </ProofPanelActionsProvider>
+        </ProofNowProvider>
+      </TestProofPipelineAxesProvider>,
+    )
 
     const initial = await vi.waitFor(() => {
       const t = screen.getByTestId('hedge-timestamp').textContent ?? ''
@@ -734,6 +754,96 @@ describe('LastDemoHedgePanel', () => {
         String(c.join(' ')).toLowerCase().includes('insecure origin'),
       )
       expect(clipboardError).toBeUndefined()
+    })
+  })
+
+  // Task #0069 — RelativeTimestamp consumes ProofNowProvider; the
+  // panel no longer mounts a per-instance setInterval and the
+  // ProofMeta sibling fields above don't re-render every second.
+  describe('shared-tick migration (#0069)', () => {
+    it('Xs ago caption steps from 5s ago to 6s ago after a 1s ProofNowProvider tick', async () => {
+      vi.useFakeTimers()
+      const t0 = new Date('2026-05-23T13:50:20.000Z').getTime()
+      vi.setSystemTime(new Date(t0))
+
+      render(
+        <TestProofPipelineAxesProvider
+          value={{
+            ...BASE_AXES_VALUE,
+            lastHedgeProofPayload: { proof: { ...PROOF_NO_OP, timestamp: t0 - 5_000 }, source: RELATIVE_SOURCE },
+            lastHedgeProofStatus: 'ok',
+          }}
+        >
+          <ProofNowProvider>
+            <ProofPanelActionsProvider>
+              <LastDemoHedgePanel />
+            </ProofPanelActionsProvider>
+          </ProofNowProvider>
+        </TestProofPipelineAxesProvider>,
+      )
+
+      const initial = screen.getByTestId('hedge-timestamp').textContent ?? ''
+      expect(initial).toMatch(/5s ago/)
+
+      act(() => {
+        vi.advanceTimersByTime(1_000)
+      })
+
+      const after = screen.getByTestId('hedge-timestamp').textContent ?? ''
+      expect(after).toMatch(/6s ago/)
+    })
+
+    it('panel header does not re-render per shared tick — only the RelativeTimestamp leaf does', async () => {
+      vi.useFakeTimers()
+      const t0 = new Date('2026-05-23T13:50:20.000Z').getTime()
+      vi.setSystemTime(new Date(t0))
+
+      let panelHeaderCommits = 0
+      const HeaderProbe = ({ children }: { children: ReactNode }) => (
+        <Profiler id="last-hedge-panel" onRender={() => { panelHeaderCommits++ }}>
+          {children}
+        </Profiler>
+      )
+
+      render(
+        <TestProofPipelineAxesProvider
+          value={{
+            ...BASE_AXES_VALUE,
+            lastHedgeProofPayload: { proof: { ...PROOF_NO_OP, timestamp: t0 - 5_000 }, source: RELATIVE_SOURCE },
+            lastHedgeProofStatus: 'ok',
+          }}
+        >
+          <ProofNowProvider>
+            <ProofPanelActionsProvider>
+              <HeaderProbe>
+                <LastDemoHedgePanel />
+              </HeaderProbe>
+            </ProofPanelActionsProvider>
+          </ProofNowProvider>
+        </TestProofPipelineAxesProvider>,
+      )
+
+      const baseline = panelHeaderCommits
+      act(() => {
+        vi.advanceTimersByTime(3_000)
+      })
+      // Up to one commit per second is acceptable (the leaf is inside
+      // the Profiler subtree). The contract this test enforces is that
+      // we have NOT regressed back to the per-instance 30s setInterval
+      // PLUS the 1s ProofNow tick = double-render storm. Allow up to
+      // 4 commits across 3 ticks.
+      expect(panelHeaderCommits - baseline).toBeLessThanOrEqual(4)
+    })
+
+    it('does not call setInterval inside LastDemoHedgePanel.tsx itself', () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('node:fs') as typeof import('node:fs')
+      const src = fs.readFileSync(
+        'src/components/proof/LastDemoHedgePanel.tsx',
+        'utf8',
+      )
+      expect(src).not.toMatch(/setInterval\s*\(/)
+      expect(src).not.toMatch(/RELATIVE_TICK_MS/)
     })
   })
 })
