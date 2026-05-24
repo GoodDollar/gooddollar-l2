@@ -807,10 +807,22 @@ else
         add_summary "⚠️  StockOracleV2 address unknown — set STOCK_ORACLE_V2_ADDRESS, populate op-stack/addresses.lane7.json, or populate op-stack/addresses.json"
         WARNINGS+=("StockOracleV2 address unresolved — freshness probe skipped")
       else
-        artifact_stock_oracle=""
+        lane7_artifact_stock_oracle=""
+        addr_json="${LANE7_ADDRESSES_JSON:-$REPO_ROOT/op-stack/addresses.lane7.json}"
+        if [[ -f "$addr_json" ]]; then
+          lane7_artifact_stock_oracle="$(node -e '
+            const fs=require("fs");
+            try {
+              const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+              const c=j.contracts||{};
+              console.log(c.StockOracleV2 || "");
+            } catch (_) {}
+          ' "$addr_json" 2>/dev/null)"
+        fi
+        generic_artifact_stock_oracle=""
         addr_json="$REPO_ROOT/op-stack/addresses.json"
         if [[ -f "$addr_json" ]]; then
-          artifact_stock_oracle="$(node -e '
+          generic_artifact_stock_oracle="$(node -e '
             const fs=require("fs");
             try {
               const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
@@ -821,9 +833,14 @@ else
         fi
         if [[ "$stock_oracle_source" == lane7\ address\ overlay* ]]; then
           add_summary "ℹ️  StockOracleV2 address \`$stock_oracle\` resolved from lane7 address overlay"
-        elif [[ -n "$artifact_stock_oracle" && "$artifact_stock_oracle" != "$stock_oracle" ]]; then
-          add_summary "⚠️  StockOracleV2 artifact mismatch — using \`$stock_oracle\` from $stock_oracle_source; op-stack has \`$artifact_stock_oracle\`"
-          WARNINGS+=("StockOracleV2 artifact mismatch — using $stock_oracle_source target $stock_oracle instead of op-stack/addresses.json $artifact_stock_oracle")
+        elif [[ -n "$lane7_artifact_stock_oracle" && "$lane7_artifact_stock_oracle" == "$stock_oracle" ]]; then
+          add_summary "ℹ️  StockOracleV2 address \`$stock_oracle\` resolved from $stock_oracle_source and matches lane7 address overlay"
+        elif [[ -n "$lane7_artifact_stock_oracle" && "$lane7_artifact_stock_oracle" != "$stock_oracle" ]]; then
+          add_summary "⚠️  StockOracleV2 lane7 overlay mismatch — using \`$stock_oracle\` from $stock_oracle_source; lane7 overlay has \`$lane7_artifact_stock_oracle\`"
+          WARNINGS+=("StockOracleV2 lane7 overlay mismatch — using $stock_oracle_source target $stock_oracle instead of op-stack/addresses.lane7.json $lane7_artifact_stock_oracle")
+        elif [[ -n "$generic_artifact_stock_oracle" && "$generic_artifact_stock_oracle" != "$stock_oracle" ]]; then
+          add_summary "⚠️  StockOracleV2 artifact mismatch — using \`$stock_oracle\` from $stock_oracle_source; op-stack has \`$generic_artifact_stock_oracle\`"
+          WARNINGS+=("StockOracleV2 artifact mismatch — using $stock_oracle_source target $stock_oracle instead of op-stack/addresses.json $generic_artifact_stock_oracle")
         else
           add_summary "ℹ️  StockOracleV2 address \`$stock_oracle\` resolved from $stock_oracle_source"
         fi
