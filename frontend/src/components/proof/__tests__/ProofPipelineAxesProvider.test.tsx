@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, renderHook, screen, cleanup } from '@testing-library/react'
+import { render, renderHook, screen, cleanup, within } from '@testing-library/react'
 import type { PropsWithChildren } from 'react'
 
 vi.mock('wagmi', () => ({
@@ -126,8 +126,12 @@ describe('ProofPipelineAxesProvider', () => {
     const chip = screen.getByTestId('reason-chip-panel-onchain-oracle')
     expect(chip.textContent).toMatch(/no on-chain prices/i)
 
+    // The flow diagram renders two structural variants since #0074; scope
+    // per-node queries through the desktop container so strict-mode
+    // `getByTestId` finds exactly one element.
+    const desktop = within(screen.getByTestId('pipeline-flow-desktop'))
     for (const id of ['oracle-signer', 'chain', 'frontend']) {
-      const node = screen.getByTestId(`pipeline-node-${id}`)
+      const node = desktop.getByTestId(`pipeline-node-${id}`)
       expect(node.getAttribute('data-tone')).toBe('degraded')
       // The pill element is the LI's first child. Axis-bound nodes wrap
       // it in an <a> jump-link (per #0054); eToro remains a <span>.
@@ -192,8 +196,11 @@ describe('ProofPipelineAxesProvider', () => {
       return el
     })
     expect(banner).toBeInTheDocument()
+    // Scope to the desktop flow container — the strict `getByTestId`
+    // would otherwise see both desktop + mobile (#0074).
+    const desktop = within(screen.getByTestId('pipeline-flow-desktop'))
     for (const id of ['etoro', 'price-service', 'oracle-signer', 'chain', 'frontend']) {
-      expect(screen.getByTestId(`pipeline-node-${id}`).getAttribute('data-tone')).toBe('degraded')
+      expect(desktop.getByTestId(`pipeline-node-${id}`).getAttribute('data-tone')).toBe('degraded')
     }
   })
 })
