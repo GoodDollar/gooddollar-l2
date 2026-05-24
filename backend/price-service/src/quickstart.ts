@@ -74,6 +74,14 @@ export const STATIC_QUICKSTART: readonly QuickstartStep[] = Object.freeze([
       '200 text/plain (version=0.0.4) with price_service_* series ' +
       '(info, uptime_seconds, cache_size, ingest_total, source_connected, ws_*)',
   }),
+  Object.freeze({
+    step: 6,
+    goal: 'Fetch a single symbol with a freshness budget',
+    request: 'GET /quotes/AAPL?maxAgeMs=30000',
+    expect:
+      "200 when cache age <= 30000ms; 503 body.error='stale-cache' " +
+      'with cacheAge + maxAgeMs + Retry-After otherwise',
+  }),
 ]) as readonly QuickstartStep[];
 
 const WS_QUICKSTART_GOAL = 'Subscribe to live ticks';

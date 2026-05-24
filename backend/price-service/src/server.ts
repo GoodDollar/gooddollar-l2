@@ -35,6 +35,7 @@ import {
   type NormalizeSymbolResult,
 } from './symbol-normalize';
 import { MAX_REQUESTED_SYMBOLS, parseSymbolsQuery } from './symbols-query';
+import { MAX_AGE_MS_REGEX, parseMaxAgeMs } from './max-age-query';
 import {
   METRICS_CONTENT_TYPE,
   MetricsSnapshot,
@@ -328,8 +329,9 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     path: '/quotes/:symbol',
     methods: ['GET'],
     summary:
-      'Single symbol; 400 invalid-symbol|invalid-symbol-or-path, ' +
-      '404 symbol-not-configured|no-quote, 200 quote envelope.',
+      'Single symbol; 400 invalid-symbol|invalid-symbol-or-path|' +
+      'invalid-max-age-ms, 404 symbol-not-configured|no-quote, ' +
+      '503 stale-cache (?maxAgeMs= gate), 200 quote envelope.',
     parametric: true,
     // The three sub-envelopes (200/400/404) plus the meta tail blow past
     // the 240-char cap when every field is named. 200's inner field
@@ -344,14 +346,16 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     responseShape:
       // 200 body shape mirrors /quotes entries; here we cover the
       // error-envelope shapes the per-symbol route emits. The
-      // triplet (humanReason/severity/nextStep) on the 404 branch
-      // sources from `ERROR_REASONS_PUBLIC`. See task 0072.
-      '200:env | ' +
-      '400:{error:invalid-symbol|invalid-symbol-or-path,' +
-      'message,expected?,didYouMean?,path*,method} | ' +
-      '404:{error,message,humanReason,severity,nextStep,' +
-      'symbol,configured,configuredSymbols?(+Count),' +
-      'didYouMean?,source?}; tail: ts,tsIso',
+      // triplet (humanReason/severity/nextStep) on the 404 + 503
+      // branches sources from `ERROR_REASONS_PUBLIC`. The 503
+      // `stale-cache` branch fires only when the optional
+      // `?maxAgeMs=` query exceeds the entry's `cacheAge`. See
+      // tasks 0072, 0081. `3plet` = humanReason+severity+nextStep.
+      '200:env|400:invalid-symbol|invalid-symbol-or-path|' +
+      'invalid-max-age-ms:{message,expected?,didYouMean?}|' +
+      '404/503:{error,message,humanReason,severity,nextStep,symbol,' +
+      'configuredSymbols?(+Count),cacheAge?,maxAgeMs?,source?};' +
+      'tail:ts,tsIso',
   },
   {
     path: '/status/quotes',
@@ -771,6 +775,36 @@ const MALFORMED_URI_NEXT_STEP =
   ERROR_REASONS_PUBLIC['malformed-uri']!.nextStep;
 const MALFORMED_URI_SEVERITY: SourceSeverity =
   ERROR_REASONS_PUBLIC['malformed-uri']!.severity;
+
+/**
+ * Triplet constants for the task 0081 freshness-gate paths. Sourced
+ * from `ERROR_REASONS_PUBLIC` so the body wire shape and the
+ * `/docs/source-reasons` catalog cannot drift. `stale-cache` 503 is
+ * shipped when the cache entry is older than the caller's
+ * `?maxAgeMs=` budget; `invalid-max-age-ms` 400 fires when the query
+ * value fails the regex.
+ */
+const STALE_CACHE_HUMAN_REASON =
+  ERROR_REASONS_PUBLIC['stale-cache']!.humanReason;
+const STALE_CACHE_NEXT_STEP = ERROR_REASONS_PUBLIC['stale-cache']!.nextStep;
+const STALE_CACHE_SEVERITY: SourceSeverity =
+  ERROR_REASONS_PUBLIC['stale-cache']!.severity;
+
+const INVALID_MAX_AGE_MS_HUMAN_REASON =
+  ERROR_REASONS_PUBLIC['invalid-max-age-ms']!.humanReason;
+const INVALID_MAX_AGE_MS_NEXT_STEP =
+  ERROR_REASONS_PUBLIC['invalid-max-age-ms']!.nextStep;
+const INVALID_MAX_AGE_MS_SEVERITY: SourceSeverity =
+  ERROR_REASONS_PUBLIC['invalid-max-age-ms']!.severity;
+
+/**
+ * Fallback `Retry-After` value (seconds) shipped on the `stale-cache`
+ * 503 when the upstream source is healthy (so its `retryAfterSeconds`
+ * tells the caller nothing useful). 15s matches the canonical
+ * `degraded` severity from task 0066 — retry middleware (urllib3,
+ * Faraday, retry-axios) backs off on a sensible schedule.
+ */
+const STALE_CACHE_DEFAULT_RETRY_AFTER_SECONDS = 15;
 
 /**
  * Per-request `message` for the catch-all 404. Names the offending verb
@@ -1642,9 +1676,70 @@ export function createServer(
       res.status(404).json(finalizeEnvelope(body, now, { src }));
       return;
     }
+    const age = now - entry.cachedAt;
+    // task 0081 — optional `?maxAgeMs=<positive-integer>` server-side
+    // freshness gate. Absent ⇒ unchanged (backwards-compat 200).
+    // Invalid ⇒ 400 with the canonical triplet. Present + entry too
+    // old ⇒ 503 stale-cache. Present + fresh enough ⇒ 200 (body
+    // byte-identical to the no-query path; the gate is policy, not
+    // payload). Runs strictly AFTER the entry-exists check so 404
+    // branches (`symbol-not-configured`, `no-quote`) keep their
+    // existing contract.
+    const parsedMaxAge = parseMaxAgeMs(req.query.maxAgeMs);
+    if (parsedMaxAge.kind === 'invalid') {
+      const body: Record<string, unknown> = {
+        error: 'invalid-max-age-ms',
+        message:
+          `the ?maxAgeMs= query value is not a positive base-10 ` +
+          `integer of up to 11 digits (saw ${
+            parsedMaxAge.reason === 'type'
+              ? 'a non-string'
+              : 'an unparseable string'
+          })`,
+        humanReason: INVALID_MAX_AGE_MS_HUMAN_REASON,
+        severity: INVALID_MAX_AGE_MS_SEVERITY,
+        nextStep: INVALID_MAX_AGE_MS_NEXT_STEP,
+        expected: {
+          parameter: 'maxAgeMs',
+          pattern: MAX_AGE_MS_REGEX.source,
+          example: '30000',
+        },
+        symbol: result.symbol,
+        ...echoPath(req.path),
+        method: req.method,
+      };
+      res.status(400).json(finalizeTimestamps(body, now));
+      return;
+    }
+    if (parsedMaxAge.kind === 'ok' && age > parsedMaxAge.value) {
+      const src = sanitizedSource();
+      const retryAfter =
+        src &&
+        !src.connected &&
+        typeof src.retryAfterSeconds === 'number' &&
+        src.retryAfterSeconds > 0
+          ? src.retryAfterSeconds
+          : STALE_CACHE_DEFAULT_RETRY_AFTER_SECONDS;
+      res.setHeader('Retry-After', String(retryAfter));
+      const body: Record<string, unknown> = {
+        error: 'stale-cache',
+        message:
+          `cached quote for ${result.symbol} is ${age}ms old; ` +
+          `request specified maxAgeMs=${parsedMaxAge.value}`,
+        humanReason: STALE_CACHE_HUMAN_REASON,
+        severity: STALE_CACHE_SEVERITY,
+        nextStep: STALE_CACHE_NEXT_STEP,
+        symbol: result.symbol,
+        configured: true,
+        cacheAge: age,
+        maxAgeMs: parsedMaxAge.value,
+      };
+      res.status(503).json(finalizeEnvelope(body, now, { src }));
+      return;
+    }
     const body: Record<string, unknown> = {
       ...entry.quote,
-      cacheAge: now - entry.cachedAt,
+      cacheAge: age,
       filterAccepted: entry.filterResult.accepted,
       filterReason: entry.filterResult.reason,
     };

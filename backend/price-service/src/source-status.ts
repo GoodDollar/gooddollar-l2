@@ -376,6 +376,28 @@ export const ERROR_REASONS_PUBLIC: Readonly<
       'consult `expected` for the encoding contract.',
     severity: 'info',
   },
+  // task 0081 — `?maxAgeMs=` freshness gate. `stale-cache` fires on
+  // the 503 path when the cached entry is older than the caller's
+  // budget; `invalid-max-age-ms` fires on the 400 path when the
+  // query value fails the regex (positive base-10 integer ≤ 11d).
+  'stale-cache': {
+    humanReason:
+      'The latest cached tick for this symbol exceeds the freshness ' +
+      'budget specified by the caller.',
+    nextStep:
+      'Retry after the upstream source delivers a fresh tick ' +
+      '(see source.reason / source.nextStep) or relax maxAgeMs.',
+    severity: 'degraded',
+  },
+  'invalid-max-age-ms': {
+    humanReason:
+      'The `maxAgeMs` query parameter is not a positive base-10 ' +
+      'integer of up to 11 digits.',
+    nextStep:
+      'Replay with `?maxAgeMs=` matching `expected.pattern`; omit ' +
+      'the parameter to skip the freshness gate.',
+    severity: 'info',
+  },
 });
 
 /**
