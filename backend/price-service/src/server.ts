@@ -319,11 +319,13 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     path: '/quotes/fresh/all',
     methods: ['GET'],
     summary:
-      'Fresh + risk-accepted quotes only; 503 when source/WS is dead.',
+      'Fresh + risk-accepted quotes (+ ?symbols= filter, ?maxAgeMs= gate); ' +
+      '503 when source/WS is dead, 400 invalid-max-age-ms.',
     responseShape:
-      '{ requestId, quotes: NormalizedQuote[], freshCount, ' +
-      'count (deprecated→freshCount), degraded?, message?, source?, ' +
-      'deprecations, timestamp, timestampIso } -- 200/503',
+      '{requestId,quotes:NormalizedQuote[],freshCount,' +
+      'count(deprecated→freshCount),matchedCount?,unmatched?,' +
+      'invalidRequested?,requestCap?,maxAgeMs?,degraded?,message?,' +
+      'source?,deprecations,timestamp,timestampIso}--200/503/400',
   },
   {
     path: '/quotes/:symbol',
@@ -1780,7 +1782,73 @@ export function createServer(
 
   app.get('/quotes/fresh/all', (req: Request, res: Response) => {
     const now = Date.now();
+    // task 0087 — `?maxAgeMs=` shape validation runs FIRST so a
+    // malformed query short-circuits to 400 before any cache work
+    // (matches the per-symbol precedent from task 0082). The
+    // envelope shape is identical to /quotes/:symbol's 400 minus the
+    // `symbol` field (no single symbol in scope on the bulk variant).
+    const parsedMaxAge = parseMaxAgeMs(req.query.maxAgeMs);
+    if (parsedMaxAge.kind === 'invalid') {
+      const body: Record<string, unknown> = {
+        error: 'invalid-max-age-ms',
+        message:
+          `the ?maxAgeMs= query value is not a positive base-10 ` +
+          `integer of up to 11 digits (saw ${
+            parsedMaxAge.reason === 'type'
+              ? 'a non-string'
+              : 'an unparseable string'
+          })`,
+        humanReason: INVALID_MAX_AGE_MS_HUMAN_REASON,
+        severity: INVALID_MAX_AGE_MS_SEVERITY,
+        nextStep: INVALID_MAX_AGE_MS_NEXT_STEP,
+        requestId: req.requestId,
+        expected: {
+          parameter: 'maxAgeMs',
+          pattern: MAX_AGE_MS_REGEX.source,
+          example: '30000',
+        },
+        ...echoPath(req.path),
+        method: req.method,
+      };
+      res.status(400).json(finalizeTimestamps(body, now));
+      return;
+    }
+    // task 0087 — `?symbols=` filters the fresh array down to the
+    // requested set and surfaces the same `requestedCount` /
+    // `matchedCount` / `unmatched` / `invalidRequested` /
+    // `requestCap` overlays the bulk `/quotes` handler ships
+    // (task 0077). Absent query → byte-identical body to today's
+    // unfiltered response.
+    const filter = parseSymbolsQuery(req.query.symbols);
     const fresh = cache.getFresh();
+    let filtered = fresh;
+    const unmatched: string[] = [];
+    if (filter) {
+      const requestedSet = new Set(filter.requested);
+      const seenInFresh = new Set<string>();
+      filtered = fresh.filter((q) => {
+        if (!requestedSet.has(q.symbol)) return false;
+        seenInFresh.add(q.symbol);
+        return true;
+      });
+      for (const requested of filter.requested) {
+        if (!seenInFresh.has(requested)) unmatched.push(requested);
+      }
+    }
+    // task 0087 — `?maxAgeMs=ok` overlays a per-entry freshness
+    // gate. Joins to `cache.getAll()` for `cachedAt` (the public
+    // `getFresh()` shape doesn't carry it). Entries older than the
+    // budget drop out of the response; body-level `maxAgeMs` is
+    // echoed so the caller sees what gate ran.
+    if (parsedMaxAge.kind === 'ok') {
+      const all = cache.getAll();
+      const budget = parsedMaxAge.value;
+      filtered = filtered.filter((q) => {
+        const entry = all.get(q.symbol);
+        if (!entry) return false;
+        return now - entry.cachedAt <= budget;
+      });
+    }
     // Reuse the canonical `computeDegraded` verdict so /quotes/fresh/all,
     // /health, /status/quotes, and /quotes all agree on "should a consumer
     // trust the empty array?". Without sourceStatusGetter the legacy
@@ -1795,10 +1863,20 @@ export function createServer(
     // task 0035). See task 0054.
     const body: Record<string, unknown> = {
       requestId: req.requestId,
-      quotes: fresh,
-      freshCount: fresh.length,
-      count: fresh.length,
+      quotes: filtered,
+      freshCount: filtered.length,
+      count: filtered.length,
     };
+    if (filter) {
+      body.requestedCount = filter.requested.length;
+      body.matchedCount = filtered.length;
+      if (unmatched.length > 0) body.unmatched = unmatched;
+      if (filter.invalid.length > 0) body.invalidRequested = [...filter.invalid];
+      if (filter.capped) body.requestCap = MAX_REQUESTED_SYMBOLS;
+    }
+    if (parsedMaxAge.kind === 'ok') {
+      body.maxAgeMs = parsedMaxAge.value;
+    }
     // Body-level `degraded` + `message` flow through the envelope ctx
     // (task 0064) so field ordering matches the other three health
     // endpoints. The legacy direct-write path is kept for the
@@ -1808,7 +1886,7 @@ export function createServer(
     let degradedMessage: string | undefined;
     if (sourceStatusGetter) {
       degradedField = degraded;
-      if (fresh.length === 0) {
+      if (filtered.length === 0) {
         degradedMessage = degraded
           ? 'no fresh quotes — upstream source is degraded ' +
             '(see source.reason / source.nextStep)'
@@ -1823,7 +1901,10 @@ export function createServer(
         degraded: degradedField,
         message: degradedMessage,
         deprecations: {
-          count: 'rename → freshCount; will be removed in the next release',
+          count: filter
+            ? 'rename → matchedCount when ?symbols= filter is applied; ' +
+              'will be removed in the next release'
+            : 'rename → freshCount; will be removed in the next release',
         },
       }),
     );

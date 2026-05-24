@@ -82,6 +82,17 @@ export const STATIC_QUICKSTART: readonly QuickstartStep[] = Object.freeze([
       "200 when cache age <= 30000ms; 503 body.error='stale-cache' " +
       'with cacheAge + maxAgeMs + Retry-After otherwise',
   }),
+  Object.freeze({
+    step: 7,
+    goal:
+      'Pull fresh + risk-accepted quotes for a watchlist with one ' +
+      'freshness gate (task 0087)',
+    request: 'GET /quotes/fresh/all?symbols=AAPL,MSFT&maxAgeMs=30000',
+    expect:
+      '200 quotes:[...] filtered to AAPL/MSFT and at most 30s old; body ' +
+      'echoes requestedCount,matchedCount,unmatched?,maxAgeMs; 400 ' +
+      "body.error='invalid-max-age-ms' when the gate value is malformed",
+  }),
 ]) as readonly QuickstartStep[];
 
 const WS_QUICKSTART_GOAL = 'Subscribe to live ticks';
