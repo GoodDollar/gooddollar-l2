@@ -1,32 +1,14 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-// Mock fs module before importing the component
-vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>()
-  return {
-    ...actual,
-    promises: {
-      ...actual.promises,
-      readFile: vi.fn(),
-    },
-  }
-})
-
 import Lane1RunbookPage from '../page'
-import { promises as fsPromises } from 'fs'
 
-beforeEach(() => {
-  vi.mocked(fsPromises.readFile).mockReset()
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('Lane1RunbookPage (task 0065)', () => {
-  it('renders the runbook body when the markdown file is readable', async () => {
-    const sampleRunbook =
-      '# Lane 1 — produce a live-prices-on-chain proof\n\n' +
-      'Operator runbook for the **first** artifact.\n'
-    vi.mocked(fsPromises.readFile).mockResolvedValue(sampleRunbook)
-
+  it('renders the shipped runbook body when the markdown file is readable', async () => {
     const ui = await Lane1RunbookPage()
     render(ui)
 
@@ -36,10 +18,7 @@ describe('Lane1RunbookPage (task 0065)', () => {
   })
 
   it('renders a degraded recovery panel when the runbook file is missing', async () => {
-    const enoent = Object.assign(new Error('ENOENT: no such file or directory'), {
-      code: 'ENOENT',
-    })
-    vi.mocked(fsPromises.readFile).mockRejectedValue(enoent)
+    vi.spyOn(process, 'cwd').mockReturnValue('/tmp/lane1-runbook-missing-test/frontend')
 
     const ui = await Lane1RunbookPage()
     render(ui)
