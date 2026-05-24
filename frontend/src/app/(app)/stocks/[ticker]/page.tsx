@@ -673,8 +673,7 @@ export default function StockDetailPage() {
             <AnalystOutlookCard isLoading={analystLoading} />
           </Suspense>
 
-          <div className="relative bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
-            {chartView === 'price' && <DemoChartOverlay isLive={isLive} />}
+          <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex gap-1">
                 {chartView === 'price' && TIMEFRAMES.map(tf => (
@@ -696,13 +695,16 @@ export default function StockDetailPage() {
               </div>
             </div>
             {chartView === 'price' ? (
-              chartMounted ? (
-                <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
-                  <PriceChart data={chartData} height={350} />
-                </Suspense>
-              ) : (
-                <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
-              )
+              <div className="relative" data-chart-overlay-host>
+                <DemoChartOverlay isLive={isLive} />
+                {chartMounted ? (
+                  <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
+                    <PriceChart data={chartData} height={350} />
+                  </Suspense>
+                ) : (
+                  <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
+                )}
+              </div>
             ) : (
               <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
                 <DepthChart oraclePrice={stock.price} height={350} />
