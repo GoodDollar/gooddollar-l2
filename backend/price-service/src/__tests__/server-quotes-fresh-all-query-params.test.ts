@@ -312,7 +312,11 @@ describe('/quotes/fresh/all catalog row (task 0087)', () => {
     expect(e!.responseShape).toMatch(/invalidRequested\?/);
     expect(e!.responseShape).toMatch(/maxAgeMs\?/);
     expect(e!.responseShape).toMatch(/freshCount/);
-    expect(e!.responseShape).toMatch(/deprecated/);
+    // task 0090 compresses `count(deprecated→freshCount)` to
+    // `count(dep)` so the new `invalidRequestedTotal?` / `invalidCap?`
+    // fields fit under the 240-char wire cap; accept either form here
+    // (the runtime rename pointer lives on `body.deprecations.count`).
+    expect(e!.responseShape).toMatch(/\(dep(?:recated)?/);
     expect(e!.responseShape.length).toBeLessThanOrEqual(240);
     expect(e!.summary).toMatch(/\?symbols=/);
     expect(e!.summary).toMatch(/\?maxAgeMs=/);

@@ -171,7 +171,12 @@ describe('/quotes/fresh/all responseShape catalog (task 0054)', () => {
     expect(e).toBeDefined();
     expect(e!.responseShape).toMatch(/freshCount/);
     expect(e!.responseShape).toMatch(/count/);
-    expect(e!.responseShape).toMatch(/deprecated/);
+    // task 0090 — `(deprecated→freshCount)` shortened to `(dep)` so
+    // the new `invalidRequestedTotal?` + `invalidCap?` fields fit
+    // under the 240-char wire cap. The durable rename pointer rides
+    // `body.deprecations.count` (asserted elsewhere); the catalog
+    // string only needs the inline marker to flag `count` as legacy.
+    expect(e!.responseShape).toMatch(/\(dep(?:recated)?/);
     expect(e!.responseShape.length).toBeLessThanOrEqual(240);
   });
 });

@@ -34,7 +34,11 @@ import {
   normalizeSymbol,
   type NormalizeSymbolResult,
 } from './symbol-normalize';
-import { MAX_REQUESTED_SYMBOLS, parseSymbolsQuery } from './symbols-query';
+import {
+  MAX_INVALID_REPORTED,
+  MAX_REQUESTED_SYMBOLS,
+  parseSymbolsQuery,
+} from './symbols-query';
 import {
   INVALID_REASON_MESSAGE_TAIL,
   InvalidReason,
@@ -314,11 +318,16 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary:
       'All cached quotes (or filter with ?symbols=AAPL,MSFT); ' +
       '503 when source dead AND no matched quotes.',
+    // task 0090 — `quotes{cacheAge,filter{Accepted,Reason}}` inner
+    // detail compresses to `quotes[]` here so `invalidRequestedTotal?`
+    // + `invalidCap?` fit under the 240-char wire cap; the full inner
+    // shape is documented on the /quotes/:symbol catalog row below
+    // (entry-level shape is identical between the two endpoints).
     responseShape:
       '{requestId,totalCached,count,requestedCount?,matchedCount?,' +
-      'unmatched?,invalidRequested?,filterDiscarded?,requestCap?,' +
-      'degraded?,stale?,message?,quotes{cacheAge,filter{Accepted,' +
-      'Reason}},source?,deprecations,timestamp,timestampIso}--200/503',
+      'unmatched?,invalidRequested?,invalidRequestedTotal?,invalidCap?,' +
+      'filterDiscarded?,requestCap?,degraded?,stale?,message?,' +
+      'quotes[],source?,deprecations,timestamp,timestampIso}--200/503',
   },
   {
     path: '/quotes/fresh/all',
@@ -326,11 +335,16 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     summary:
       'Fresh + risk-accepted quotes (+ ?symbols= filter, ?maxAgeMs= gate); ' +
       '503 when source/WS is dead, 400 invalid-max-age-ms.',
+    // task 0090 — `count(deprecated→freshCount)` shortens to
+    // `count(deprecated)` so `invalidRequestedTotal?` + `invalidCap?` fit
+    // under the 240-char cap; the durable rename pointer rides
+    // `body.deprecations.count` on the wire.
     responseShape:
-      '{requestId,quotes:NormalizedQuote[],freshCount,' +
-      'count(deprecated→freshCount),matchedCount?,unmatched?,' +
-      'invalidRequested?,requestCap?,maxAgeMs?,degraded?,message?,' +
-      'source?,deprecations,timestamp,timestampIso}--200/503/400',
+      '{requestId,quotes[],freshCount,count(deprecated),' +
+      'matchedCount?,unmatched?,invalidRequested?,' +
+      'invalidRequestedTotal?,invalidCap?,requestCap?,maxAgeMs?,' +
+      'degraded?,message?,source?,deprecations,timestamp,' +
+      'timestampIso}--200/503/400',
   },
   {
     path: '/quotes/:symbol',
@@ -1573,7 +1587,13 @@ export function createServer(
       body.requestedCount = filter.requested.length;
       body.matchedCount = matchedCount;
       if (unmatched.length > 0) body.unmatched = unmatched;
-      if (filter.invalid.length > 0) body.invalidRequested = [...filter.invalid];
+      if (filter.invalid.length > 0) {
+        body.invalidRequested = [...filter.invalid];
+        // task 0090 — sibling counter only fires when invalid tokens
+        // actually came in; back-compat-safe for `?symbols=AAPL`.
+        body.invalidRequestedTotal = filter.invalidTotal;
+      }
+      if (filter.invalidCapped) body.invalidCap = MAX_INVALID_REPORTED;
       if (filter.capped) body.requestCap = MAX_REQUESTED_SYMBOLS;
     } else if (filter?.presentButEmpty) {
       body.requestedCount = 0;
@@ -1920,7 +1940,11 @@ export function createServer(
       body.requestedCount = filter.requested.length;
       body.matchedCount = filtered.length;
       if (unmatched.length > 0) body.unmatched = unmatched;
-      if (filter.invalid.length > 0) body.invalidRequested = [...filter.invalid];
+      if (filter.invalid.length > 0) {
+        body.invalidRequested = [...filter.invalid];
+        body.invalidRequestedTotal = filter.invalidTotal;
+      }
+      if (filter.invalidCapped) body.invalidCap = MAX_INVALID_REPORTED;
       if (filter.capped) body.requestCap = MAX_REQUESTED_SYMBOLS;
     }
     if (parsedMaxAge.kind === 'ok') {
