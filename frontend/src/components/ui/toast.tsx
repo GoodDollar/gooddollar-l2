@@ -172,6 +172,10 @@ export function toastError(title: string, description?: string) {
   _ensureToast({ title, description, variant: 'destructive', duration: 7000 })
 }
 
+export function toastInfo(title: string, description?: string) {
+  _ensureToast({ title, description, variant: 'default', duration: 5000 })
+}
+
 // ─── Toaster (Provider + rendered toasts) ────────────────────────────────────
 
 export function Toaster() {

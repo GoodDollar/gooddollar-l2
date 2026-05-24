@@ -268,6 +268,9 @@ ${errorDetails.stack}
   render() {
     if (this.state.hasError) {
       const errorInfo = this.getErrorDisplayInfo()
+      // Hide "Go Home" when the user is already on the homepage — otherwise
+      // the button cycles them back to the same broken page.
+      const showHome = typeof window === 'undefined' || window.location.pathname !== '/'
 
       return (
         <div className="min-h-screen flex items-center justify-center bg-dark text-white p-4">
@@ -295,13 +298,15 @@ ${errorDetails.stack}
                 </button>
               )}
 
-              <button
-                onClick={() => window.location.href = '/'}
-                className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
-              >
-                <Home className="w-4 h-4" />
-                Go Home
-              </button>
+              {showHome && (
+                <button
+                  onClick={() => window.location.href = '/'}
+                  className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
+                >
+                  <Home className="w-4 h-4" />
+                  Go Home
+                </button>
+              )}
 
               <button
                 onClick={this.handleReportIssue}

@@ -19,6 +19,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import type { PriceSource } from './priceSource'
 
 // ─── CoinGecko ID mapping ─────────────────────────────────────────────────────
 
@@ -186,6 +187,14 @@ export interface PriceFeedState {
    * showing a 0 / fallback price. See task 0027.
    */
   unknownSymbols: string[]
+  /**
+   * Per-symbol price provenance — `coingecko` once /api/prices returned a
+   * value for the symbol, `fallback` for any tracked symbol we have only a
+   * cached/static value for. Added in lane 4 (task 0007d/0002) so every
+   * consumer can render an honest source attribution without inspecting the
+   * fetch internals. Empty until the first refresh tick.
+   */
+  sources: Record<string, PriceSource>
 }
 
 // ─── Shared singleton store ───────────────────────────────────────────────────
@@ -210,6 +219,7 @@ const store: PriceFeedStore = {
     lastUpdated: null,
     error: null,
     unknownSymbols: [],
+    sources: {},
   },
   refs: new Map(),
   subscribers: new Set(),
@@ -260,6 +270,12 @@ async function refresh(): Promise<void> {
   store.inFlight = true
   try {
     const { prices: live, quotes, unknownSymbols } = await fetchCoinGeckoQuotes(symbols)
+
+    const nextSources: Record<string, PriceSource> = {}
+    for (const sym of symbols) {
+      nextSources[sym] = live[sym] !== undefined ? 'coingecko' : 'fallback'
+    }
+
     store.state = {
       prices: { ...store.state.prices, ...live },
       quotes: { ...store.state.quotes, ...quotes },
@@ -270,12 +286,16 @@ async function refresh(): Promise<void> {
       // one asking for an unknown symbol also drops it from the surfaced list.
       // We always send the full trackedSymbols() set, so the response covers it.
       unknownSymbols,
+      sources: { ...store.state.sources, ...nextSources },
     }
   } catch (err) {
+    const fallbackSources: Record<string, PriceSource> = { ...store.state.sources }
+    for (const sym of symbols) fallbackSources[sym] = 'fallback'
     store.state = {
       ...store.state,
       isLive: false,
       error: err instanceof Error ? err.message : 'Price feed unavailable',
+      sources: fallbackSources,
       // Leave unknownSymbols alone on transient network errors so any prior
       // warning surfaces stay rendered until the next successful refresh.
     }
@@ -361,6 +381,7 @@ export function __resetPriceFeedStoreForTests(): void {
     lastUpdated: null,
     error: null,
     unknownSymbols: [],
+    sources: {},
   }
 }
 

@@ -20,6 +20,7 @@ vi.mock('@/lib/useStockPrices', () => ({
     prices: {},
     isLive: false,
     isLoading: false,
+    sources: {},
   })),
 }))
 
@@ -38,6 +39,7 @@ describe('useStockHoldings — wallet-aware loading state (task 0026)', () => {
       prices: {},
       isLive: false,
       isLoading: true,
+      sources: {},
     })
     // No positions query runs when address is undefined (enabled: false)
     vi.mocked(useReadContracts).mockReturnValue({
@@ -57,6 +59,7 @@ describe('useStockHoldings — wallet-aware loading state (task 0026)', () => {
       prices: { AAPL: 195 },
       isLive: true,
       isLoading: false,
+      sources: { AAPL: 'chain-oracle' },
     })
     vi.mocked(useReadContracts).mockReturnValue({
       data: undefined,
@@ -75,6 +78,7 @@ describe('useStockHoldings — wallet-aware loading state (task 0026)', () => {
       prices: {},
       isLive: false,
       isLoading: true,
+      sources: {},
     })
     vi.mocked(useReadContracts).mockReturnValue({
       data: [],
@@ -93,6 +97,7 @@ describe('useStockHoldings — wallet-aware loading state (task 0026)', () => {
       prices: { AAPL: 195 },
       isLive: true,
       isLoading: false,
+      sources: { AAPL: 'chain-oracle' },
     })
     vi.mocked(useReadContracts).mockReturnValue({
       data: [],

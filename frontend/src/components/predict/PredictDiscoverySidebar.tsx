@@ -26,12 +26,13 @@
  */
 import { useMemo } from 'react'
 import Link from 'next/link'
-import { Newspaper, Flame } from 'lucide-react'
+import { Newspaper, Flame, Clock } from 'lucide-react'
 import type { PredictionMarket, MarketCategory } from '@/lib/predictData'
 import { formatVolume } from '@/lib/predictData'
 import {
   selectBreakingNews,
   selectHotTopics,
+  selectRecentlyResolvedTopics,
   type BreakingNewsEntry,
   type HotTopicEntry,
 } from '@/lib/predictDiscovery'
@@ -66,6 +67,14 @@ export function PredictDiscoverySidebar({
     () => selectHotTopics(markets, hotTopicsLimit),
     [markets, hotTopicsLimit],
   )
+  // Fallback for the end-of-cycle state: if the active list is empty but
+  // resolved markets exist, surface a clearly-labelled "RECENTLY RESOLVED"
+  // widget that links into the archive view, instead of letting the
+  // sidebar tint resolved categories as active hot markets (task 0015).
+  const resolvedTopics = useMemo(
+    () => (hotTopics.length === 0 ? selectRecentlyResolvedTopics(markets, hotTopicsLimit) : []),
+    [hotTopics, markets, hotTopicsLimit],
+  )
 
   return (
     <aside
@@ -74,7 +83,13 @@ export function PredictDiscoverySidebar({
       className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start"
     >
       <BreakingNewsWidget entries={breakingNews} />
-      <HotTopicsWidget entries={hotTopics} onSelect={onCategorySelect} />
+      {hotTopics.length > 0 ? (
+        <HotTopicsWidget entries={hotTopics} onSelect={onCategorySelect} />
+      ) : resolvedTopics.length > 0 ? (
+        <RecentlyResolvedTopicsWidget entries={resolvedTopics} />
+      ) : (
+        <HotTopicsWidget entries={hotTopics} onSelect={onCategorySelect} />
+      )}
     </aside>
   )
 }
@@ -147,6 +162,7 @@ function HotTopicsWidget({
     <section
       role="region"
       aria-labelledby={headingId}
+      data-testid="hot-topics-widget"
       className="rounded-xl border border-gray-700/30 bg-dark-100/60 p-4"
     >
       <h2
@@ -157,7 +173,9 @@ function HotTopicsWidget({
         Hot topics
       </h2>
       {entries.length === 0 ? (
-        <p className="text-sm text-gray-500 py-2">Nothing trending yet.</p>
+        <p className="text-sm text-gray-500 py-2" data-testid="hot-topics-empty">
+          No hot topics yet — waiting for new oracle markets.
+        </p>
       ) : (
         <ul className="flex flex-col gap-1">
           {entries.map(({ category, total, count }) => (
@@ -178,6 +196,49 @@ function HotTopicsWidget({
           ))}
         </ul>
       )}
+    </section>
+  )
+}
+
+/* ---------- Recently resolved (fallback for end-of-cycle state) ---------- */
+
+function RecentlyResolvedTopicsWidget({ entries }: { entries: HotTopicEntry[] }) {
+  const headingId = 'predict-sidebar-recently-resolved'
+  return (
+    <section
+      role="region"
+      aria-labelledby={headingId}
+      data-testid="recently-resolved-widget"
+      className="rounded-xl border border-gray-700/30 bg-dark-100/60 p-4"
+    >
+      <h2
+        id={headingId}
+        className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3"
+      >
+        <Clock className="w-4 h-4 text-gray-400" aria-hidden="true" />
+        Recently resolved
+      </h2>
+      <p className="text-[11px] text-gray-500 mb-3 leading-snug">
+        New oracle markets are coming. In the meantime, browse archived markets by category.
+      </p>
+      <ul className="flex flex-col gap-1" data-testid="recently-resolved-list">
+        {entries.map(({ category, total, count }) => (
+          <li key={category}>
+            <Link
+              href={`/predict?view=archive&category=${encodeURIComponent(category)}`}
+              data-testid={`recently-resolved-row-${category}`}
+              className="w-full flex items-center justify-between gap-3 rounded-lg px-2 py-2 -mx-2 text-left border border-gray-700/40 bg-dark-200/30 hover:bg-dark-200/60 focus:bg-dark-200/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/60 transition-colors text-gray-300"
+            >
+              <span className="text-sm truncate">{category}</span>
+              <span className="shrink-0 flex items-center gap-2 text-[11px] text-gray-500">
+                <span className="text-gray-400">{formatVolume(total)}</span>
+                <span aria-hidden="true">•</span>
+                <span>{count} resolved</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

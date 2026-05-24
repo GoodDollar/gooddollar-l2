@@ -6,15 +6,20 @@ import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import Link from 'next/link'
-import { formatStockPrice, formatStockShares, MAX_STOCK_ORDER_USD } from '@/lib/stockData'
+import { formatStockPrice, formatLargeNumber, formatStockShares, MAX_STOCK_ORDER_USD, type Stock } from '@/lib/stockData'
 import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
+import { getAnalystOutlook } from '@/lib/stockInsights'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
-import { hasLiveOracleChange, hasLiveOracleFundamentals } from '@/lib/oracleHonesty'
-import { AnalysisGrid } from '@/components/stocks/AnalysisGrid'
-import { DemoChartOverlay } from '@/components/DemoChartOverlay'
-import { TrendSummaryCard } from '@/components/stocks/TrendSummaryCard'
+import {
+  isNoData,
+  pctOrDash,
+  usdOrDash,
+  intOrDash,
+  looksLikePlaceholder52w,
+  NO_DATA_DASH,
+} from '@/lib/formatNoData'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { useWalletReady } from '@/lib/WalletReadyContext'
 import { useMintSynthetic, useRedeemSynthetic, useStockPosition, type OnChainStockPosition } from '@/lib/useStocks'
@@ -26,17 +31,22 @@ import { RelatedMoversPanel } from '@/components/stocks/RelatedMoversPanel'
 import { StockAccountPanel } from '@/components/stocks/StockAccountPanel'
 import { WalletConnectConfigWarning } from '@/components/stocks/WalletConnectConfigWarning'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import {
+  SyntheticStockHeaderBadge,
+  useSyntheticStockHeader,
+} from '@/components/stocks/SyntheticStockHeaderBadge'
+import { useStockSources } from '@/lib/useStockSources'
+import type { PriceSource } from '@/lib/priceSource'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 import { MobileTradeStickyBar } from '@/components/stocks/MobileTradeStickyBar'
 import { StockLogo } from '@/components/ui/stock-logo'
 import { StockStatsBar } from '@/components/stocks/StockStatsBar'
-import { KeyStatistics } from '@/components/stocks/KeyStatistics'
-import { PeerComparePanel, type PeerMetric } from '@/components/stocks/PeerComparePanel'
 import { buildFundamentalsRows, parseTickerTab, type TickerTab } from './tickerTabState'
 
 const AnalystOutlookCard = lazy(() => import('@/components/stocks/AnalystOutlookCard').then((mod) => ({ default: mod.AnalystOutlookCard })))
 const NewsEventsPanel = lazy(() => import('@/components/stocks/NewsEventsPanel').then((mod) => ({ default: mod.NewsEventsPanel })))
 const PriceChart = lazy(() => import('@/components/PriceChart').then((mod) => ({ default: mod.PriceChart })))
+const DepthChart = lazy(() => import('@/components/stocks/DepthChart').then((mod) => ({ default: mod.DepthChart })))
 const StockMarketData = lazy(() => import('@/components/stocks/StockMarketData').then((mod) => ({ default: mod.StockMarketData })))
 
 // NOTE: Keep these imports STATIC. Inside an App Router dynamic-segment
@@ -78,6 +88,199 @@ function WalletGatedTradeButton({ hasAmount, children }: { hasAmount: boolean; c
 }
 
 const TIMEFRAMES: Timeframe[] = ['1H', '4H', '1D', '1W', '1M', '3M', '1Y']
+type PeerMetric = 'change24h' | 'marketCap' | 'peRatio'
+
+const FEED_PENDING_CAPTION = 'Source: feed pending — values populate once the on-chain stocks oracle is live.'
+
+interface KeyStatRow {
+  label: string
+  value: string
+  /**
+   * When true the cell renders as a dim em-dash regardless of the raw
+   * value. Used for two cases: the on-chain oracle is offline (`!isLive`)
+   * or the row was explicitly flagged as having no data (per-field
+   * `isNoData` check or `looksLikePlaceholder52w` detection).
+   */
+  missing: boolean
+  /** Tint colour applied when `missing === false`. */
+  tone?: 'positive' | 'negative' | 'neutral'
+}
+
+function buildKeyStatRows(stock: Stock, isLive: boolean): KeyStatRow[] {
+  const placeholder52w = looksLikePlaceholder52w(stock)
+  const dashIfOffline = (raw: unknown) => !isLive || isNoData(raw)
+  const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`
+  return [
+    { label: 'Market Cap', value: usdOrDash(stock.marketCap),    missing: dashIfOffline(stock.marketCap) },
+    { label: '24h Volume', value: usdOrDash(stock.volume24h),    missing: dashIfOffline(stock.volume24h) },
+    { label: 'Sector',     value: stock.sector,                  missing: false },
+    { label: '52W High',   value: formatStockPrice(stock.high52w), missing: dashIfOffline(stock.high52w) || placeholder52w },
+    { label: '52W Low',    value: formatStockPrice(stock.low52w),  missing: dashIfOffline(stock.low52w)  || placeholder52w },
+    { label: '24h Change', value: fmtPct(stock.change24h), missing: dashIfOffline(stock.change24h), tone: stock.change24h >= 0 ? 'positive' : 'negative' },
+    { label: 'P/E Ratio',  value: `${stock.peRatio.toFixed(1)}x`, missing: dashIfOffline(stock.peRatio) },
+    { label: 'EPS',        value: `$${stock.eps.toFixed(2)}`,     missing: dashIfOffline(stock.eps), tone: stock.eps >= 0 ? 'positive' : 'negative' },
+    { label: 'Dividend Yield', value: `${stock.dividendYield.toFixed(2)}%`, missing: !isLive || stock.dividendYield <= 0 },
+    { label: 'Avg Volume', value: intOrDash(stock.avgVolume),    missing: dashIfOffline(stock.avgVolume) },
+  ]
+}
+
+function chartSourceLabel(source: PriceSource): string {
+  switch (source) {
+    case 'chain-oracle': return 'on-chain oracle'
+    case 'etoro-demo':   return 'eToro demo'
+    case 'coingecko':    return 'Cached (CoinGecko)'
+    case 'fallback':     return 'Fallback price'
+    case 'stale':        return 'Stale feed'
+    case 'closed':       return 'Market closed'
+    case 'unknown':      return 'Feed pending'
+  }
+}
+
+interface PriceChartFrameProps {
+  stock: Stock
+  chartMounted: boolean
+  chartData: ReturnType<typeof getChartData>
+  chartLastClose: number | null
+  chartDisagrees: boolean
+  source: PriceSource
+}
+
+/**
+ * Wraps `PriceChart` with the lane-4 honesty contract for the
+ * `/stocks/[ticker]` chart panel (task 0039):
+ *
+ *   1. A persistent "Illustrative chart — historical candles are
+ *      synthetic. Last point: live <source>" disclaimer above the
+ *      chart frame, anchored so it stays visible across every
+ *      timeframe selection.
+ *   2. An empty-state ("Chart unavailable — oracle feed pending")
+ *      whenever `stock.price` is not a positive finite number — we
+ *      do NOT render `<PriceChart>` on top of zero noise.
+ *   3. A small `data-testid="chart-watermark"` element labelled
+ *      `GoodChain demo` instead of the TradingView `TV` mark.
+ */
+function PriceChartFrame({ stock, chartMounted, chartData, chartLastClose, chartDisagrees, source }: PriceChartFrameProps) {
+  const priceFinite = Number.isFinite(stock.price) && stock.price > 0
+  const disclaimer = (
+    <div
+      data-testid="chart-synthetic-disclaimer"
+      className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300 leading-snug"
+    >
+      Illustrative chart — historical candles are synthetic. Last point: live{' '}
+      <span className="font-medium">{chartSourceLabel(source)}</span>.
+    </div>
+  )
+  if (!priceFinite) {
+    return (
+      <div>
+        {disclaimer}
+        <div
+          data-testid="chart-empty-state"
+          className="w-full rounded-xl border border-gray-700/30 bg-dark-50/30 text-xs text-gray-400 flex items-center justify-center"
+          style={{ height: 350 }}
+        >
+          Chart unavailable — oracle feed pending.
+        </div>
+      </div>
+    )
+  }
+  if (!chartMounted) {
+    return (
+      <div>
+        {disclaimer}
+        <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
+      </div>
+    )
+  }
+  return (
+    <div>
+      {disclaimer}
+      <div className="relative">
+        <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
+          <PriceChart data={chartData} height={350} />
+        </Suspense>
+        <span
+          data-testid="chart-watermark"
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-2 left-2 text-[10px] uppercase tracking-wide text-gray-600"
+        >
+          GoodChain demo
+        </span>
+        {chartLastClose != null && (
+          <span
+            data-testid="chart-last-close"
+            data-value={chartLastClose}
+            className="sr-only"
+          >
+            {formatStockPrice(chartLastClose)}
+          </span>
+        )}
+        {chartDisagrees && (
+          <div
+            data-testid="chart-demo-ribbon"
+            className="absolute top-2 left-2 right-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300 leading-snug"
+          >
+            Demo chart — not live oracle. Last close shown is procedural; spot
+            header reflects the on-chain mark.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface AnalysisTileProps {
+  label: string
+  /** Live-path text shown when `missing === false`. */
+  value: string
+  /** Offline / no-data text shown when `missing === true`. */
+  dash: string
+  missing: boolean
+  testId?: string
+  tone?: 'positive' | 'negative' | 'neutral'
+}
+
+function AnalysisTile({ label, value, dash, missing, testId, tone }: AnalysisTileProps) {
+  const toneClass = tone === 'positive' ? 'text-green-400' : tone === 'negative' ? 'text-red-400' : 'text-white'
+  const valueClass = missing ? 'text-gray-500' : toneClass
+  return (
+    <div className="rounded-xl border border-gray-700/30 bg-dark-50/30 p-3">
+      <div className="text-[10px] uppercase tracking-wide text-gray-500">{label}</div>
+      <div data-testid={testId} className={`mt-1 text-sm font-medium ${valueClass}`}>
+        {missing ? dash : value}
+      </div>
+    </div>
+  )
+}
+
+function KeyStatisticsCard({ stock, isLive }: { stock: Stock; isLive: boolean }) {
+  const rows = buildKeyStatRows(stock, isLive)
+  const anyMissing = rows.some((row) => row.missing)
+  return (
+    <div data-testid="ticker-key-statistics" className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
+      <h2 className="text-sm font-semibold text-white mb-3">Key Statistics</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
+        {rows.map((row) => {
+          const toneClass = row.tone === 'positive' ? 'text-green-400' : row.tone === 'negative' ? 'text-red-400' : 'text-white'
+          const valueClass = row.missing ? 'text-gray-500' : toneClass
+          return (
+            <div key={row.label} className="min-w-0">
+              <div className="text-gray-500 text-xs mb-0.5">{row.label}</div>
+              <div className={`font-medium truncate ${valueClass}`}>
+                {row.missing ? NO_DATA_DASH : row.value}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {anyMissing && (
+        <p className="mt-3 text-[11px] text-gray-500" data-testid="key-statistics-feed-pending">
+          {FEED_PENDING_CAPTION}
+        </p>
+      )}
+    </div>
+  )
+}
 const INVALID_TICKER_RECOVERY = ['AAPL', 'MSFT', 'NVDA'] as const
 const DETAIL_BACK_LINKS: Record<string, { label: string; href: string }> = {
   watchlist: { label: 'Back to Watchlist', href: '/stocks/watchlist' },
@@ -111,6 +314,18 @@ function normalizeTickerForLookup(rawTicker?: string): string {
   if (UNSAFE_TICKER_PATTERN.test(normalized)) return ''
   if (!SAFE_TICKER_PATTERN.test(normalized)) return ''
   return normalized
+}
+
+function formatEventDate(offsetDays: number): string {
+  const now = new Date()
+  const date = new Date(now.getTime() + offsetDays * 24 * 60 * 60 * 1000)
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+function formatCalendarDate(dateInput: Date | string): string {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 type StockOrderType = 'market' | 'limit' | 'stop-limit'
@@ -464,20 +679,24 @@ export default function StockDetailPage() {
   const rawTicker = Array.isArray(params.ticker) ? params.ticker[0] : (params.ticker as string | undefined)
   const isReservedSubroute = !!rawTicker && RESERVED_STOCK_SUBROUTES.has(rawTicker.toLowerCase())
   const ticker = normalizeTickerForLookup(rawTicker)
-  const { stocks, isLoading: stocksLoading, isLive } = useOnChainStocks()
+  const { stocks, isLive } = useOnChainStocks()
   const { bySymbol: rebalanceBySymbol } = useStocksRebalanceStatus(ticker ? [ticker] : [])
   const tickerRebalance = ticker ? rebalanceBySymbol[ticker] : undefined
   const riskIncreaseAllowed = tickerRebalance?.riskIncreaseAllowed ?? true
   const riskStopReasons = tickerRebalance?.stopReasons ?? []
   const stock = stocks.find(s => s.ticker === ticker)
+  const syntheticHeader = useSyntheticStockHeader()
+  const stockSources = useStockSources()
   const { position } = useStockPosition(ticker ?? '')
   const [timeframe, setTimeframe] = useState<Timeframe>('3M')
+  const [chartView, setChartView] = useState<'price' | 'depth'>('price')
   const [activeTab, setActiveTab] = useState<TickerTab>(() => parseTickerTab(searchParams.get('tab')))
   const [analysisExpanded, setAnalysisExpanded] = useState(true)
   const [peerMetric, setPeerMetric] = useState<PeerMetric>('change24h')
   const orderFormRef = useRef<HTMLDivElement | null>(null)
   const [analystLoading, setAnalystLoading] = useState(true)
-  const { isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
+  const analystOutlook = useMemo(() => (ticker ? getAnalystOutlook(ticker) : null), [ticker])
+  const { items: newsItems, isLoading: newsLoading, error: newsError } = useStockNews(ticker ?? '')
   // Defer chart render until after hydration to avoid SSR layout glitches
   // and the Next.js 14 dynamic-segment manifest bug. See task 0090.
   const chartMounted = useMounted()
@@ -486,6 +705,12 @@ export default function StockDetailPage() {
     if (!stock || !chartMounted) return []
     return getChartData(stock.ticker, timeframe, stock.price)
   }, [chartMounted, stock, timeframe])
+  const chartLastClose = chartData.length > 0 ? chartData[chartData.length - 1].close : null
+  const chartDisagrees =
+    chartLastClose != null &&
+    stock != null &&
+    stock.price > 0 &&
+    Math.abs(stock.price - chartLastClose) / stock.price > 0.005
   const hasPosition = !!position && position.debtFloat > 0
   const relatedSymbols = useMemo(() => (stock ? getRelatedSymbols(stocks, stock.ticker, 4) : []), [stocks, stock])
   const topMovers = useMemo(() => getTopMovers(stocks, 5), [stocks])
@@ -494,12 +719,36 @@ export default function StockDetailPage() {
     const directPeers = relatedSymbols.length > 0 ? relatedSymbols : topMovers.filter((candidate) => candidate.ticker !== stock.ticker)
     return directPeers.slice(0, 5)
   }, [relatedSymbols, stock, topMovers])
-  const liveFundamentals = !!stock && isLive && hasLiveOracleFundamentals(stock)
-  const fundamentalsRows = useMemo(
-    () => (stock ? buildFundamentalsRows(stock, liveFundamentals) : []),
-    [stock, liveFundamentals],
-  )
+  const trendSummary = useMemo(() => {
+    if (!chartData.length) return null
+    const first = chartData[0]?.close ?? 0
+    const last = chartData[chartData.length - 1]?.close ?? 0
+    if (first <= 0 || last <= 0) return null
+    const changePct = ((last - first) / first) * 100
+    let signal: 'Bullish' | 'Neutral' | 'Bearish' = 'Neutral'
+    if (changePct > 2) signal = 'Bullish'
+    if (changePct < -2) signal = 'Bearish'
+    const high = Math.max(...chartData.map((point) => point.high))
+    const low = Math.min(...chartData.map((point) => point.low))
+    const spreadPct = first > 0 ? ((high - low) / first) * 100 : 0
+    return { signal, changePct, spreadPct }
+  }, [chartData])
+  const fundamentalsRows = useMemo(() => (stock ? buildFundamentalsRows(stock) : []), [stock])
   const backLink = DETAIL_BACK_LINKS[searchParams.get('from') ?? ''] ?? DEFAULT_DETAIL_BACK_LINK
+  const eventTimeline = useMemo(() => {
+    if (!stock) return []
+    const upcoming = [
+      { id: `${stock.ticker}-earnings-next`, label: 'Earnings call', date: formatEventDate(7), status: 'Upcoming' },
+      { id: `${stock.ticker}-dividend-next`, label: 'Dividend ex-date', date: stock.dividendYield > 0 ? formatEventDate(13) : 'Not scheduled', status: stock.dividendYield > 0 ? 'Upcoming' : 'Info' },
+    ]
+    const recent = newsItems.slice(0, 2).map((item, idx) => ({
+      id: item.id,
+      label: item.headline,
+      date: formatCalendarDate(item.publishedAt),
+      status: idx === 0 ? 'Recent' : 'Catalyst',
+    }))
+    return [...upcoming, ...recent]
+  }, [newsItems, stock])
 
   useEffect(() => {
     setAnalystLoading(true)
@@ -555,33 +804,6 @@ export default function StockDetailPage() {
     )
   }
 
-  if (!stock && stocksLoading) {
-    return (
-      <div
-        data-testid="stocks-detail-loading"
-        aria-busy="true"
-        aria-live="polite"
-        className="max-w-6xl mx-auto px-4 py-6 animate-pulse"
-      >
-        <span className="sr-only">Loading stock details…</span>
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-12 w-12 rounded-full bg-dark-50/60" />
-          <div className="flex flex-col gap-2">
-            <div className="h-5 w-24 rounded bg-dark-50/60" />
-            <div className="h-3 w-40 rounded bg-dark-50/40" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 h-64 rounded-xl bg-dark-50/40" />
-          <div className="h-64 rounded-xl bg-dark-50/40" />
-          <div className="h-32 rounded-xl bg-dark-50/40" />
-          <div className="h-32 rounded-xl bg-dark-50/40" />
-          <div className="h-32 rounded-xl bg-dark-50/40" />
-        </div>
-      </div>
-    )
-  }
-
   if (!stock) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
@@ -616,33 +838,28 @@ export default function StockDetailPage() {
       <WalletConnectConfigWarning className="mb-4" />
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-start gap-3 mb-4">
             <StockLogo ticker={stock.ticker} size="md" />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl font-bold text-white">{stock.ticker}</h1>
                 <WatchlistStarButton ticker={stock.ticker} size="md" />
+                <SyntheticStockHeaderBadge />
               </div>
               <p className="text-sm text-gray-400">{stock.name} · {stock.sector}</p>
+              <p data-testid="ticker-hero-subhead" className="mt-1 text-xs text-gray-500 leading-snug">
+                {syntheticHeader.subheadText}
+              </p>
             </div>
           </div>
 
           <div className="flex items-baseline gap-3 mb-2">
-            <span className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
-            {hasLiveOracleChange(stock) ? (
-              <span
-                data-testid="headline-change-24h"
-                className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}
-              >
-                {stock.change24h >= 0 ? '+' : ''}{stock.change24h.toFixed(2)}%
-              </span>
+            <span data-testid="stock-spot-price" className="text-3xl font-bold text-white">{formatStockPrice(stock.price)}</span>
+            {isNoData(stock.change24h) ? (
+              <span data-testid="stock-spot-change" className="text-sm font-medium text-gray-500">{NO_DATA_DASH}</span>
             ) : (
-              <span
-                data-testid="headline-change-24h"
-                aria-label="24-hour change unavailable"
-                className="text-sm font-medium text-gray-500"
-              >
-                —
+              <span data-testid="stock-spot-change" className={`text-sm font-medium ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {pctOrDash(stock.change24h)}
               </span>
             )}
           </div>
@@ -656,33 +873,51 @@ export default function StockDetailPage() {
             ) : null}
           </div>
 
-          <StockStatsBar stock={stock} />
+          <StockStatsBar stock={stock} isLive={isLive} />
 
           <Suspense fallback={<div className="mb-4 h-24 rounded-2xl bg-dark-100 animate-pulse" />}>
-            <AnalystOutlookCard isLoading={analystLoading} />
+            <AnalystOutlookCard
+              currentPrice={stock.price}
+              outlook={analystOutlook}
+              isLoading={analystLoading}
+            />
           </Suspense>
 
           <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-4 mb-4">
-            <div className="flex items-center mb-3">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex gap-1">
-                {TIMEFRAMES.map(tf => (
+                {chartView === 'price' && TIMEFRAMES.map(tf => (
                   <button key={tf} onClick={() => setTimeframe(tf)}
                     className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${timeframe === tf ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`}>
                     {tf}
                   </button>
                 ))}
               </div>
+              <div className="flex gap-0.5 rounded-lg bg-dark-50/60 p-0.5">
+                <button onClick={() => setChartView('price')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chartView === 'price' ? 'bg-dark-200 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
+                  Price
+                </button>
+                <button onClick={() => setChartView('depth')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chartView === 'depth' ? 'bg-dark-200 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
+                  Depth
+                </button>
+              </div>
             </div>
-            <div className="relative" data-chart-overlay-host>
-              <DemoChartOverlay isLive={isLive} />
-              {chartMounted ? (
-                <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
-                  <PriceChart data={chartData} height={350} />
-                </Suspense>
-              ) : (
-                <div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />
-              )}
-            </div>
+            {chartView === 'price' ? (
+              <PriceChartFrame
+                stock={stock}
+                chartMounted={chartMounted}
+                chartData={chartData}
+                chartLastClose={chartLastClose}
+                chartDisagrees={chartDisagrees}
+                source={stockSources[stock.ticker] ?? 'unknown'}
+              />
+            ) : (
+              <Suspense fallback={<div className="w-full bg-dark-50/30 rounded-xl animate-pulse" style={{ height: 350 }} />}>
+                <DepthChart oraclePrice={stock.price} height={350} />
+              </Suspense>
+            )}
           </div>
 
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-gray-700/20 bg-dark-100/70 p-2">
@@ -710,7 +945,7 @@ export default function StockDetailPage() {
           </div>
 
           {activeTab === 'overview' && (
-            <KeyStatistics stock={stock} />
+            <KeyStatisticsCard stock={stock} isLive={isLive} />
           )}
 
           {activeTab === 'fundamentals' && (
@@ -731,16 +966,34 @@ export default function StockDetailPage() {
           {activeTab === 'events' && (
             <section className="rounded-2xl border border-gray-700/20 bg-dark-100 p-5">
               <h2 className="mb-3 text-sm font-semibold text-white">Events</h2>
-              <p className="text-xs leading-relaxed text-gray-400">
-                Events feed coming soon — Earnings reports, ex-dividend dates, and other corporate-action events will appear here once a real calendar is connected. None of this is fabricated.
-              </p>
+              {eventTimeline.length === 0 ? (
+                <p className="text-xs text-gray-500">No event data available right now.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {eventTimeline.map((event) => (
+                    <li key={event.id} className="rounded-xl border border-gray-700/20 bg-dark-50/20 p-3">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-white">{event.label}</span>
+                        <span className="text-[10px] text-gray-500">{event.status}</span>
+                      </div>
+                      <p className="text-xs text-gray-400">{event.date}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           )}
 
           {activeTab === 'overview' && (
           <section className="bg-dark-100 rounded-2xl border border-gray-700/20 p-5 mt-4" aria-labelledby="analysis-heading">
             <div className="flex items-center justify-between gap-2">
-              <h2 id="analysis-heading" className="text-sm font-semibold text-white">Analysis</h2>
+              <h2
+                id="analysis-heading"
+                title="Some fields show '—' when the price service has no live data yet."
+                className="text-sm font-semibold text-white"
+              >
+                Analysis
+              </h2>
               <button
                 type="button"
                 className="text-xs text-gray-400 hover:text-white transition-colors"
@@ -752,11 +1005,113 @@ export default function StockDetailPage() {
             </div>
             {analysisExpanded && (
               <div className="mt-4 space-y-4">
-                <AnalysisGrid stock={stock} />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <AnalysisTile
+                    label="Valuation"
+                    testId="analysis-pe"
+                    missing={!isLive || isNoData(stock.peRatio)}
+                    value={`P/E ${stock.peRatio.toFixed(1)}x`}
+                    dash={`P/E ${NO_DATA_DASH}`}
+                  />
+                  <AnalysisTile
+                    label="Profitability"
+                    testId="analysis-eps"
+                    missing={!isLive || isNoData(stock.eps)}
+                    value={`EPS $${stock.eps.toFixed(2)}`}
+                    dash={`EPS ${NO_DATA_DASH}`}
+                    tone={stock.eps >= 0 ? 'positive' : 'negative'}
+                  />
+                  <AnalysisTile
+                    label="Income"
+                    missing={!isLive || stock.dividendYield <= 0}
+                    value={`${stock.dividendYield.toFixed(2)}% yield`}
+                    dash="No dividend"
+                  />
+                  <AnalysisTile
+                    label="Liquidity"
+                    testId="analysis-avg-vol"
+                    missing={!isLive || isNoData(stock.avgVolume)}
+                    value={`${formatLargeNumber(stock.avgVolume).replace('$', '')} avg vol`}
+                    dash={NO_DATA_DASH}
+                  />
+                </div>
 
-                <PeerComparePanel peers={peerCandidates} metric={peerMetric} onMetricChange={setPeerMetric} />
+                <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300">Peer Compare</h3>
+                    <div className="flex flex-wrap gap-1">
+                      <button type="button" disabled={!isLive} className={`px-2 py-1 rounded-md text-[11px] disabled:opacity-50 disabled:cursor-not-allowed ${peerMetric === 'change24h' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('change24h')}>24h%</button>
+                      <button type="button" disabled={!isLive} className={`px-2 py-1 rounded-md text-[11px] disabled:opacity-50 disabled:cursor-not-allowed ${peerMetric === 'marketCap' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('marketCap')}>Mkt Cap</button>
+                      <button type="button" disabled={!isLive} className={`px-2 py-1 rounded-md text-[11px] disabled:opacity-50 disabled:cursor-not-allowed ${peerMetric === 'peRatio' ? 'bg-goodgreen/15 text-goodgreen' : 'text-gray-400 hover:text-white'}`} onClick={() => setPeerMetric('peRatio')}>P/E</button>
+                    </div>
+                  </div>
+                  {!isLive ? (
+                    <p className="text-xs text-gray-500" data-testid="peer-empty-state">
+                      Peer comparison populates when the stocks oracle is reachable.
+                    </p>
+                  ) : peerCandidates.length === 0 || peerCandidates.every((peer) => isNoData(peer[peerMetric])) ? (
+                    <p className="text-xs text-gray-500" data-testid="peer-empty-state">
+                      Peer data unavailable right now.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {peerCandidates
+                        .toSorted((a, b) => (b[peerMetric] - a[peerMetric]))
+                        .map((peer) => (
+                          <div
+                            key={peer.ticker}
+                            data-testid={`peer-row-${peer.ticker}`}
+                            className="flex items-center justify-between rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2 text-xs"
+                          >
+                            <Link href={`/stocks/${peer.ticker}`} className="font-medium text-white hover:text-goodgreen transition-colors">{peer.ticker}</Link>
+                            {peerMetric === 'change24h' && (
+                              isNoData(peer.change24h)
+                                ? <span className="text-gray-500">{NO_DATA_DASH}</span>
+                                : <span className={peer.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>{pctOrDash(peer.change24h)}</span>
+                            )}
+                            {peerMetric === 'marketCap' && (
+                              <span className={isNoData(peer.marketCap) ? 'text-gray-500' : 'text-gray-200'}>
+                                {isNoData(peer.marketCap) ? NO_DATA_DASH : formatLargeNumber(peer.marketCap)}
+                              </span>
+                            )}
+                            {peerMetric === 'peRatio' && (
+                              <span className={isNoData(peer.peRatio) ? 'text-gray-500' : 'text-gray-200'}>
+                                {isNoData(peer.peRatio) ? NO_DATA_DASH : `${peer.peRatio.toFixed(1)}x`}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
 
-                <TrendSummaryCard chartData={chartData} timeframe={timeframe} isLive={isLive} />
+                <div className="rounded-xl border border-gray-700/30 bg-dark-50/20 p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-300 mb-2">Trend Summary</h3>
+                  {!isLive ? (
+                    <p className="text-xs text-gray-500" data-testid="trend-summary-empty-state">
+                      Trend summary populates when the on-chain price history is available.
+                    </p>
+                  ) : !trendSummary ? (
+                    <p className="text-xs text-gray-500">Trend signal unavailable while chart data loads.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
+                        <div className="text-gray-500">Signal</div>
+                        <div className={`mt-1 font-semibold ${trendSummary.signal === 'Bullish' ? 'text-green-400' : trendSummary.signal === 'Bearish' ? 'text-red-400' : 'text-gray-200'}`}>{trendSummary.signal}</div>
+                      </div>
+                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
+                        <div className="text-gray-500">{timeframe} move</div>
+                        <div className={`mt-1 font-semibold ${trendSummary.changePct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {trendSummary.changePct >= 0 ? '+' : ''}{trendSummary.changePct.toFixed(2)}%
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-gray-700/20 bg-dark-100/70 px-3 py-2">
+                        <div className="text-gray-500">Range spread</div>
+                        <div className="mt-1 font-semibold text-gray-200">{trendSummary.spreadPct.toFixed(2)}%</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </section>
@@ -775,6 +1130,7 @@ export default function StockDetailPage() {
                 ticker={stock.ticker}
                 isLoading={newsLoading}
                 error={newsError}
+                items={newsItems}
               />
             </Suspense>
           )}
@@ -801,7 +1157,11 @@ export default function StockDetailPage() {
           </div>
 
           <Suspense fallback={<div className="mt-4 h-28 rounded-2xl bg-dark-100 animate-pulse" />}>
-            <StockMarketData markPrice={stock.price} symbol={stock.ticker} />
+            <StockMarketData
+              ticker={stock.ticker}
+              markPrice={stock.price}
+              source={stockSources[stock.ticker] ?? 'unknown'}
+            />
           </Suspense>
 
           <div className="mt-4 bg-dark-100 rounded-2xl border border-gray-700/20 p-5">
@@ -848,7 +1208,6 @@ export default function StockDetailPage() {
             currentTicker={stock.ticker}
             related={relatedSymbols}
             movers={topMovers}
-            railLive={isLive}
           />
 
           {hasPosition ? (

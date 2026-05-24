@@ -37,11 +37,17 @@ export interface OnChainReserveData {
   utilization: number
 }
 
-export function useReserveData(assetAddress: `0x${string}` | undefined): {
+export interface ReserveDataResult {
   data: OnChainReserveData | null
   isLoading: boolean
   error: Error | null
-} {
+  /** Wagmi `dataUpdatedAt` ms timestamp; 0 when no data has arrived yet. */
+  dataUpdatedAt: number
+  /** Manual refetch trigger — used by the Markets-table "Retry now" button. */
+  refetch: () => void
+}
+
+export function useReserveData(assetAddress: `0x${string}` | undefined): ReserveDataResult {
   const result = useReadContract({
     address: POOL,
     abi: GoodLendPoolABI,
@@ -50,8 +56,17 @@ export function useReserveData(assetAddress: `0x${string}` | undefined): {
     query: { enabled: !!assetAddress, refetchInterval: 15_000 },
   })
 
+  const refetch = () => { void result.refetch() }
+  const dataUpdatedAt = result.dataUpdatedAt ?? 0
+
   if (!result.data) {
-    return { data: null, isLoading: result.isLoading, error: result.error as Error | null }
+    return {
+      data: null,
+      isLoading: result.isLoading,
+      error: result.error as Error | null,
+      dataUpdatedAt,
+      refetch,
+    }
   }
 
   const [totalDeposits, totalBorrows, liquidityIndex, borrowIndex, supplyRate, borrowRate, accruedToTreasury] = result.data
@@ -65,6 +80,8 @@ export function useReserveData(assetAddress: `0x${string}` | undefined): {
     data: { totalDeposits, totalBorrows, liquidityIndex, borrowIndex, supplyRate, borrowRate, accruedToTreasury, supplyAPY, borrowAPY, utilization },
     isLoading: result.isLoading,
     error: result.error as Error | null,
+    dataUpdatedAt,
+    refetch,
   }
 }
 

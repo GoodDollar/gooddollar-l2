@@ -81,4 +81,30 @@ describe('SwapSettings', () => {
     fireEvent.change(customInput, { target: { value: '10' } })
     expect(screen.getByText(/high slippage/i)).toBeInTheDocument()
   })
+
+  it('aria-label on the gear includes the current slippage and deadline values', () => {
+    render(<SwapSettings />)
+    const btn = screen.getByRole('button', { name: /swap settings/i })
+    // Default: slippage 0.5%, deadline 30 minutes.
+    expect(btn).toHaveAttribute('aria-label', expect.stringContaining('0.5%'))
+    expect(btn).toHaveAttribute('aria-label', expect.stringContaining('30 minutes'))
+  })
+
+  it('does NOT render the non-default dot at default slippage/deadline', () => {
+    render(<SwapSettings />)
+    expect(screen.queryByTestId('settings-non-default-dot')).not.toBeInTheDocument()
+  })
+
+  it('renders the non-default dot when slippage differs from the default', () => {
+    // Pre-seed localStorage with a non-default setting before mount.
+    localStorage.setItem('goodswap-settings', JSON.stringify({ slippage: 2, deadline: 30 }))
+    render(<SwapSettings />)
+    expect(screen.getByTestId('settings-non-default-dot')).toBeInTheDocument()
+  })
+
+  it('renders the non-default dot when deadline differs from the default', () => {
+    localStorage.setItem('goodswap-settings', JSON.stringify({ slippage: 0.5, deadline: 60 }))
+    render(<SwapSettings />)
+    expect(screen.getByTestId('settings-non-default-dot')).toBeInTheDocument()
+  })
 })

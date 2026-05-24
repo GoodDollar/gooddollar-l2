@@ -76,33 +76,50 @@ export function computeSMA(data: OHLCData[], period: number): SMAPoint[] {
   return result
 }
 
-function isFinitePositive(n: number): boolean {
-  return Number.isFinite(n) && n > 0
-}
-
-function updateLastCandle(series: OHLCData[], basePrice: number): void {
-  if (series.length === 0) return
-  if (!isFinitePositive(basePrice)) return
-  const last = series[series.length - 1]
-  series[series.length - 1] = {
-    ...last,
-    close: basePrice,
-    high: Math.max(last.high, basePrice),
-    low: Math.min(last.low, basePrice),
-  }
-}
-
+/**
+ * getChartData — returns a stable historical OHLC series whose **last candle
+ * always tracks the latest `basePrice`** passed in (task 0023 / 0031).
+ *
+ * Why: the spot-price header reads live oracle prices, but the chart used to
+ * be a frozen module-level cache keyed only on `(symbol, timeframe)`. After
+ * the oracle updated the spot, the chart's right-axis last-print label kept
+ * showing whatever price seeded the cache on first render (e.g. the static
+ * fallback). That produced the lane-defining contradiction: spot $193 next
+ * to chart $218.
+ *
+ * Strategy: historical candles (`0..N-2`) stay stable for a given
+ * `(symbol, timeframe)` so the chart doesn't flicker. The last candle is
+ * mutated in place to honour the latest `basePrice`. Invalid prices
+ * (NaN / 0 / negative) leave the series untouched.
+ */
 export function getChartData(symbol: string, timeframe: Timeframe, basePrice: number): OHLCData[] {
   if (!CHART_CACHE.has(symbol)) {
     CHART_CACHE.set(symbol, new Map())
   }
   const symbolCache = CHART_CACHE.get(symbol)!
-  if (!symbolCache.has(timeframe)) {
-    symbolCache.set(timeframe, generateOHLC(basePrice, TIMEFRAME_CONFIG[timeframe]))
-  } else {
-    updateLastCandle(symbolCache.get(timeframe)!, basePrice)
+  let series = symbolCache.get(timeframe)
+  if (!series) {
+    series = generateOHLC(basePrice, TIMEFRAME_CONFIG[timeframe])
+    symbolCache.set(timeframe, series)
   }
-  return symbolCache.get(timeframe)!.slice()
+  if (series.length === 0) return series
+
+  const lastIdx = series.length - 1
+  const cachedLast = series[lastIdx]
+  const open = cachedLast.open
+  const safePrice = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : cachedLast.close
+  const updatedLast: OHLCData =
+    safePrice === cachedLast.close
+      ? cachedLast
+      : {
+          ...cachedLast,
+          close: safePrice,
+          high: Math.max(open, safePrice, cachedLast.high),
+          low: Math.min(open, safePrice, cachedLast.low),
+        }
+  if (updatedLast === cachedLast) return series
+
+  return [...series.slice(0, lastIdx), updatedLast]
 }
 
 export interface ProbabilityPoint {

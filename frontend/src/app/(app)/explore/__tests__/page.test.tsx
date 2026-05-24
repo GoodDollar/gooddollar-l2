@@ -16,22 +16,27 @@ vi.mock('@/components/TokenIcon', () => ({
 
 vi.mock('@/lib/useOnChainMarketData', () => ({
   TOKEN_COLORS: {} as Record<string, string>,
-  useOnChainMarketData: () => ({ isLive: true, isLoading: false, tokens: [
-    {
-      symbol: 'ETH', name: 'Ether', icon: '', decimals: 18, address: '0x0',
-      category: 'Infrastructure' as const, color: '#627EEA',
-      price: 3500, change1h: 0.5, change24h: 1.2, change7d: -2.0,
-      volume24h: 1e9, marketCap: 4e11, sparkline7d: [3400, 3450, 3500],
-      description: 'Ethereum',
-    },
-    {
-      symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
-      category: 'GoodDollar' as const, color: '#00B0A0',
-      price: 0.0002, change1h: 0.1, change24h: -0.5, change7d: 1.0,
-      volume24h: 5e5, marketCap: 1e7, sparkline7d: [0.00019, 0.0002, 0.00021],
-      description: 'GoodDollar UBI token',
-    },
-  ]}),
+  useOnChainMarketData: () => ({
+    isLive: true,
+    isLoading: false,
+    tokens: [
+      {
+        symbol: 'ETH', name: 'Ether', icon: '', decimals: 18, address: '0x0',
+        category: 'Infrastructure' as const, color: '#627EEA',
+        price: 3500, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+        volume24h: 1e9, marketCap: 4e11, sparkline7d: [3400, 3450, 3500],
+        description: 'Ethereum',
+      },
+      {
+        symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
+        category: 'GoodDollar' as const, color: '#00B0A0',
+        price: 0.0002, change1h: 0.1, change24h: -0.5, change7d: 1.0,
+        volume24h: 5e5, marketCap: 1e7, sparkline7d: [0.00019, 0.0002, 0.00021],
+        description: 'GoodDollar UBI token',
+      },
+    ],
+    sources: { ETH: 'chain-oracle', 'G$': 'chain-oracle' } as Record<string, string>,
+  }),
 }))
 
 import ExplorePage from '../page'
@@ -283,7 +288,6 @@ describe('ExplorePage — null market data (G$ has no CoinGecko quote)', () => {
           {
             symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
             category: 'GoodDollar' as const, color: '#00B0A0',
-            // Price is real (from on-chain pools), but off-chain quote data is missing.
             price: 0.0002,
             change1h: null,
             change24h: null,
@@ -295,6 +299,7 @@ describe('ExplorePage — null market data (G$ has no CoinGecko quote)', () => {
             maxSupply: null,
           },
         ],
+        sources: { 'G$': 'chain-oracle' } as Record<string, string>,
       }),
     }))
     const { default: ExplorePageNullCase } = await import('../page')
@@ -339,6 +344,7 @@ describe('ExplorePage — zero market cap fallback (task 0098)', () => {
             description: 'GoodDollar UBI token', maxSupply: null,
           },
         ],
+        sources: { 'G$': 'chain-oracle' } as Record<string, string>,
       }),
     }))
     const { default: ExplorePageZeroCap } = await import('../page')
@@ -384,6 +390,7 @@ describe('ExplorePage — zero market cap fallback (task 0098)', () => {
             description: 'GoodDollar UBI token', maxSupply: null,
           },
         ],
+        sources: { 'G$': 'chain-oracle' } as Record<string, string>,
       }),
     }))
     const { default: ExplorePageZeroCap } = await import('../page')
@@ -394,5 +401,239 @@ describe('ExplorePage — zero market cap fallback (task 0098)', () => {
     const mcapCell = gRow.querySelector('td span[title="Market cap unavailable"]')
     expect(mcapCell).not.toBeNull()
     expect(mcapCell!.textContent).toBe('—')
+  })
+})
+
+// Task 0041 — per-row source attribution on /explore. Every Lane 4 surface
+// already carries a PriceSourceBadge except /explore; this is the densest
+// price surface in the app and must show provenance on every row, must
+// collapse fallback/unknown rows to em-dashes (no fake sparklines), and
+// must exclude non-live rows from the headline aggregate.
+describe('ExplorePage — per-row source attribution (task 0041)', () => {
+  beforeEach(() => {
+    pushMock.mockClear()
+    replaceMock.mockClear()
+    searchParamsString = ''
+    vi.resetModules()
+  })
+
+  /**
+   * Helper — find the `<tr>` element that holds a given token icon. The
+   * Trending / Top Gainers cards render the same `TokenIcon` mock, so
+   * `getByTestId` returns multiple matches. We narrow to the row that
+   * actually sits inside a `<table>` (i.e. the data row), which is the
+   * one carrying the per-row source badge.
+   */
+  function findTokenRow(symbol: string): HTMLTableRowElement {
+    const icons = screen.getAllByTestId(`icon-${symbol}`)
+    for (const icon of icons) {
+      const row = icon.closest('tr')
+      if (row && row.closest('table')) return row as HTMLTableRowElement
+    }
+    throw new Error(`no <tr> inside <table> found for ${symbol}`)
+  }
+
+  it('renders a PriceSourceBadge in every populated token row', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'ETH', name: 'Ether', icon: '', decimals: 18, address: '0x0',
+            category: 'Infrastructure' as const, color: '#627EEA',
+            price: 3500, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+            volume24h: 1e9, marketCap: 4e11, sparkline7d: [3400, 3450, 3500],
+            description: 'Ethereum',
+          },
+          {
+            symbol: 'G$', name: 'GoodDollar', icon: '', decimals: 18, address: '0x1',
+            category: 'GoodDollar' as const, color: '#00B0A0',
+            price: 0.0102, change1h: 0.1, change24h: -0.5, change7d: 1.0,
+            volume24h: 5e5, marketCap: 1e7, sparkline7d: [0.01, 0.0102, 0.0101],
+            description: 'GoodDollar UBI token',
+          },
+        ],
+        sources: { ETH: 'chain-oracle', 'G$': 'chain-oracle' } as Record<string, string>,
+      }),
+    }))
+    const { default: Page } = await import('../page')
+    render(<TestWrapper><Page /></TestWrapper>)
+    const ethRow = findTokenRow('ETH')
+    const gdRow = findTokenRow('G$')
+    expect(ethRow.querySelector('[data-testid="price-source-badge"]')).not.toBeNull()
+    expect(gdRow.querySelector('[data-testid="price-source-badge"]')).not.toBeNull()
+    expect(
+      ethRow.querySelector('[data-testid="price-source-badge"]')?.getAttribute('data-source'),
+    ).toBe('chain-oracle')
+  })
+
+  it('collapses fallback-source rows to em-dashes for change / volume / market cap and renders no live sparkline', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '', decimals: 8, address: '0xab',
+            category: 'Bitcoin' as const, color: '#F7931A',
+            price: 60125.8, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+            volume24h: 1e9, marketCap: 4e11, sparkline7d: [60000, 60100, 60125],
+            description: 'Wrapped Bitcoin',
+          },
+        ],
+        sources: { WBTC: 'fallback' } as Record<string, string>,
+      }),
+    }))
+    const { default: Page } = await import('../page')
+    render(<TestWrapper><Page /></TestWrapper>)
+    const wbtcRow = findTokenRow('WBTC')
+    // Source badge reads "fallback".
+    const badge = wbtcRow.querySelector('[data-testid="price-source-badge"]')
+    expect(badge?.getAttribute('data-source')).toBe('fallback')
+    // The row must contain at least one em-dash placeholder (24h column).
+    expect(wbtcRow.textContent).toContain('—')
+    // Sparkline cell must not render a polyline (only the dashed unavailable baseline).
+    const polylines = wbtcRow.querySelectorAll('polyline')
+    expect(polylines.length).toBe(0)
+  })
+
+  it('excludes non-live source rows from the Total Market Cap aggregate', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '', decimals: 8, address: '0xab',
+            category: 'Bitcoin' as const, color: '#F7931A',
+            price: 60125.8, change1h: null, change24h: null, change7d: null,
+            volume24h: null, marketCap: 1.2e12, sparkline7d: null,
+            description: 'Wrapped Bitcoin',
+          },
+          {
+            symbol: 'UNI', name: 'Uniswap', icon: '', decimals: 18, address: '0xcd',
+            category: 'DeFi' as const, color: '#FF007A',
+            price: 7.92, change1h: null, change24h: null, change7d: null,
+            volume24h: null, marketCap: 4.5e9, sparkline7d: null,
+            description: 'Uniswap',
+          },
+        ],
+        sources: { WBTC: 'fallback', UNI: 'fallback' } as Record<string, string>,
+      }),
+    }))
+    const { default: Page } = await import('../page')
+    render(<TestWrapper><Page /></TestWrapper>)
+    // Every market cap row is fallback → headline aggregate must show "—",
+    // not "$1.2T" / "$1,204.5B".
+    const cardTitles = screen.getAllByText('Total Market Cap')
+    expect(cardTitles.length).toBeGreaterThan(0)
+    for (const title of cardTitles) {
+      const card = title.closest('.bg-dark-100') ?? title.parentElement!.parentElement!.parentElement!
+      expect(card.textContent || '').toContain('—')
+      // The headline value must NOT include a trillion/billion suffix from fallback data.
+      expect(card.textContent || '').not.toMatch(/\$1\.2T/)
+    }
+  })
+
+  it('renders a divergence chip on canonical rows when chain & CoinGecko disagree (task 0044)', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '', decimals: 8, address: '0xab',
+            category: 'Bitcoin' as const, color: '#F7931A',
+            price: 84_250, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+            volume24h: 1e9, marketCap: 4e11, sparkline7d: [83000, 83500, 84250],
+            description: 'Wrapped Bitcoin',
+          },
+          {
+            symbol: 'ETH', name: 'Ether', icon: '', decimals: 18, address: '0x0',
+            category: 'Infrastructure' as const, color: '#627EEA',
+            price: 3500, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+            volume24h: 1e9, marketCap: 4e11, sparkline7d: [3400, 3450, 3500],
+            description: 'Ethereum',
+          },
+        ],
+        sources: { WBTC: 'chain-oracle', ETH: 'chain-oracle' } as Record<string, string>,
+        // Chain mark $84,250 vs CoinGecko $76,531 — the PRD screenshot.
+        divergence: { WBTC: { otherUsd: 76_531 }, ETH: null } as Record<string, { otherUsd: number } | null>,
+      }),
+    }))
+    const { default: Page } = await import('../page')
+    render(<TestWrapper><Page /></TestWrapper>)
+    const wbtcRow = findTokenRow('WBTC')
+    const ethRow = findTokenRow('ETH')
+    const wbtcChip = wbtcRow.querySelector('[data-testid="price-divergence-chip"]')
+    expect(wbtcChip).not.toBeNull()
+    expect(wbtcChip!.textContent).toMatch(/disagrees|drift/i)
+    // The other source's number is exposed (title attribute or visible text).
+    const wbtcChipText = (wbtcChip!.getAttribute('title') ?? '') + ' ' + (wbtcChip!.textContent ?? '')
+    expect(wbtcChipText).toMatch(/76,?531/)
+    // Non-canonical / non-divergent rows do not get a chip.
+    expect(ethRow.querySelector('[data-testid="price-divergence-chip"]')).toBeNull()
+  })
+
+  it('omits the divergence chip when the canonical resolver reports no disagreement (task 0044)', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '', decimals: 8, address: '0xab',
+            category: 'Bitcoin' as const, color: '#F7931A',
+            price: 84_250, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+            volume24h: 1e9, marketCap: 4e11, sparkline7d: [83000, 83500, 84250],
+            description: 'Wrapped Bitcoin',
+          },
+        ],
+        sources: { WBTC: 'chain-oracle' } as Record<string, string>,
+        divergence: { WBTC: null } as Record<string, { otherUsd: number } | null>,
+      }),
+    }))
+    const { default: Page } = await import('../page')
+    render(<TestWrapper><Page /></TestWrapper>)
+    const wbtcRow = findTokenRow('WBTC')
+    expect(wbtcRow.querySelector('[data-testid="price-divergence-chip"]')).toBeNull()
+  })
+
+  it('includes only chain/coingecko rows in the Total Market Cap aggregate', async () => {
+    vi.doMock('@/lib/useOnChainMarketData', () => ({
+      TOKEN_COLORS: {} as Record<string, string>,
+      useOnChainMarketData: () => ({
+        isLive: true,
+        isLoading: false,
+        tokens: [
+          {
+            symbol: 'ETH', name: 'Ether', icon: '', decimals: 18, address: '0x0',
+            category: 'Infrastructure' as const, color: '#627EEA',
+            price: 3500, change1h: 0.5, change24h: 1.2, change7d: -2.0,
+            volume24h: 1e9, marketCap: 4e11, sparkline7d: [3400, 3450, 3500],
+            description: 'Ethereum',
+          },
+          {
+            symbol: 'UNI', name: 'Uniswap', icon: '', decimals: 18, address: '0xcd',
+            category: 'DeFi' as const, color: '#FF007A',
+            price: 7.92, change1h: null, change24h: null, change7d: null,
+            volume24h: null, marketCap: 4.5e9, sparkline7d: null,
+            description: 'Uniswap',
+          },
+        ],
+        sources: { ETH: 'chain-oracle', UNI: 'fallback' } as Record<string, string>,
+      }),
+    }))
+    const { default: Page } = await import('../page')
+    const { container } = render(<TestWrapper><Page /></TestWrapper>)
+    // Aggregate should be ETH's $400B only — not $404.5B (would include UNI).
+    expect(container.textContent || '').toContain('$400.00B')
+    expect(container.textContent || '').not.toContain('$404.50B')
   })
 })

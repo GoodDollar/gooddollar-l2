@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowUpDown, ChevronDown } from 'lucide-react'
+import { ArrowUpDown } from 'lucide-react'
 import { TokenSelector } from './TokenSelector'
 import { TOKENS, type Token } from '@/lib/tokens'
 import { UBIBreakdown } from './UBIBreakdown'
@@ -19,6 +19,9 @@ import { SwapWalletActions } from './SwapWalletActions'
 import { usePriceFeeds, getPrice } from '@/lib/usePriceFeeds'
 import { useSwapQuote } from '@/lib/useOnChainSwap'
 import { AnimatedNumber } from './ui/animated-number'
+import { PriceSourceBadge } from './PriceSourceBadge'
+import type { PriceSource } from '@/lib/priceSource'
+import { isAmountWithinCap, getSwapInputCap } from '@/lib/swapLimits'
 
 function getLiveRate(prices: Record<string, number>, from: string, to: string): number {
   if (from === to) return 1
@@ -51,10 +54,30 @@ export function SwapCard() {
   const [inputToken, setInputToken] = useState<Token>(TOKENS[1])
   const [outputToken, setOutputToken] = useState<Token>(TOKENS[0])
   const [inputAmount, setInputAmount] = useState('')
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  // Task 0031: `wasTruncated` flips on when the user's sanitized input
+  // would have exceeded `MAX_INPUT_LEN` and the slice dropped digits. It
+  // resets on the next edit that fits, so the truncation notice is a
+  // one-shot signal tied to the currently-displayed value.
+  const [wasTruncated, setWasTruncated] = useState(false)
 
   // Live price feeds — falls back to static prices when CoinGecko is unreachable
-  const { prices, isLive } = usePriceFeeds(TOKENS.map(t => t.symbol))
+  const feed = usePriceFeeds(TOKENS.map(t => t.symbol))
+  const { prices, isLive } = feed
+  // Defensive read: some legacy tests mock `usePriceFeeds` without the
+  // lane-4 `sources` field. Treat that as "we don't know" instead of crashing.
+  const sources: Record<string, PriceSource> = feed.sources ?? {}
+
+  // Pick the "less authoritative" source between the two legs so the badge
+  // honestly reflects the weakest link in the rate calculation. Chain wins
+  // when both sides have it; if either side is fallback, the rate is fallback.
+  const rateSource: PriceSource = (() => {
+    const fromSrc = sources[inputToken.symbol] ?? 'unknown'
+    const toSrc   = sources[outputToken.symbol] ?? 'unknown'
+    const order: PriceSource[] = ['chain-oracle', 'etoro-demo', 'coingecko', 'stale', 'closed', 'fallback', 'unknown']
+    const fromRank = order.indexOf(fromSrc)
+    const toRank   = order.indexOf(toSrc)
+    return order[Math.max(fromRank, toRank)] ?? 'unknown'
+  })()
 
   useEffect(() => {
     const buyParam = searchParams.get('buy')
@@ -127,10 +150,30 @@ export function SwapCard() {
     return rawOutputAmount > 0 && rawOutputAmount < FLOOR_THRESHOLD
   }, [rawOutputAmount])
 
-  // True the moment the user types a 16th character. The amber warning
-  // chip appears so they know the cap was hit and double-check the
-  // intent before submitting.
-  const inputAtCap = inputAmount.length >= MAX_INPUT_LEN
+  // Sanity cap on the parsed amount itself. The 16-char cap doesn't stop
+  // the trillion-scale pathology (99,999,999,999,999 ETH is only 14 chars)
+  // — this does. When tripped we suppress the quote and disable the CTA.
+  const isOverCap = useMemo(
+    () => !isAmountWithinCap(inputToken.symbol, inputAmount),
+    [inputAmount, inputToken.symbol],
+  )
+
+  // Task 0031: the amber "unusually large" chip is now driven by *numeric
+  // magnitude*, not raw string length. It fires only when the parsed input
+  // is close to (but still within) the per-symbol cap — within 1/10 of the
+  // cap. A 16-char sub-dust string like `0.0000000000000001` parses to 0
+  // and no longer trips this warning. Trillion-scale typos still trip the
+  // separate `isOverCap` chip.
+  const inputAtCap = useMemo(() => {
+    const parsed = parseFloat(inputAmount)
+    if (!Number.isFinite(parsed) || parsed <= 0) return false
+    if (isOverCap) return false
+    return parsed >= getSwapInputCap(inputToken.symbol) / 10
+  }, [inputAmount, inputToken.symbol, isOverCap])
+  const overCapNumeric = useMemo(
+    () => getSwapInputCap(inputToken.symbol).toLocaleString(),
+    [inputToken.symbol],
+  )
 
   const ubiFee = useMemo(() => {
     const amt = parseFloat(inputAmount)
@@ -215,8 +258,18 @@ export function SwapCard() {
   // AND the on-chain quote produces a non-trivial output. Sub-floor outputs
   // (rounded to 0 in the UI, or below FLOOR_THRESHOLD) would either revert
   // on-chain (wasted gas) or accept `amountOutMin = 0`, which disables
-  // slippage protection and exposes the user to sandwich attacks.
-  const canSubmit = hasAmount && rawOutputAmount > 0 && !isBelowFloor
+  // slippage protection and exposes the user to sandwich attacks. Task 0046
+  // adds `pairOnChain` to the gate so unsupported pairs surface a disabled
+  // CTA with an explicit reason instead of opening the Review modal.
+  const canSubmit = hasAmount && pairOnChain && rawOutputAmount > 0 && !isBelowFloor && !isOverCap
+
+  // Priority order for the disabled-CTA copy: over-cap (clearest), then
+  // pair-unsupported (only meaningful with a parsed amount), then dust.
+  const disabledReason: 'dust' | 'over-cap' | 'pair-unsupported' = isOverCap
+    ? 'over-cap'
+    : (hasAmount && !pairOnChain)
+      ? 'pair-unsupported'
+      : 'dust'
 
   return (
     <div id="swap-card" className="w-full max-w-[460px]">
@@ -224,24 +277,14 @@ export function SwapCard() {
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">Swap</h2>
+            {/* Settings gear is always mounted (task 0048) — slippage and
+                deadline are one click away, matching Uniswap/1inch/CowSwap
+                conventions. The previous two-step "Advanced toggle then
+                gear" disclosure has been removed. */}
             <div className="flex items-center gap-2">
               <FeeBreakdownBadge />
-              {showAdvanced && <SwapSettings />}
+              <SwapSettings />
             </div>
-          </div>
-
-          {/* Advanced Toggle */}
-          <div className="mt-3 flex justify-center">
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none rounded-lg"
-              aria-label={showAdvanced ? "Hide advanced settings" : "Show advanced settings"}
-            >
-              <span>Advanced</span>
-              <ChevronDown
-                className={`w-3 h-3 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}
-              />
-            </button>
           </div>
         </div>
 
@@ -268,7 +311,11 @@ export function SwapCard() {
               aria-label={`Amount to swap (${inputToken?.symbol ?? 'token'})`}
               value={inputAmount}
               maxLength={MAX_INPUT_LEN}
-              onChange={e => setInputAmount(sanitizeNumericInput(e.target.value).slice(0, MAX_INPUT_LEN))}
+              onChange={e => {
+                const sanitized = sanitizeNumericInput(e.target.value)
+                setWasTruncated(sanitized.length > MAX_INPUT_LEN)
+                setInputAmount(sanitized.slice(0, MAX_INPUT_LEN))
+              }}
               style={inputFontSize ? { fontSize: inputFontSize } : undefined}
               className={`flex-1 bg-transparent font-medium text-white outline-none placeholder:text-gray-500 min-w-0 focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:ring-offset-1 focus-visible:ring-offset-dark rounded-lg transition-[font-size] duration-100 ${inputFontSize ? '' : 'text-3xl'}`}
             />
@@ -281,13 +328,31 @@ export function SwapCard() {
           {inputUsd && (
             <p className="text-xs text-gray-500 mt-1.5" data-testid="input-usd">{inputUsd}</p>
           )}
-          {inputAtCap && (
+          {inputAtCap && !isOverCap && (
             <p
               className="text-[11px] text-amber-400 mt-1.5"
               data-testid="input-cap-warning"
               role="status"
             >
               Amount is unusually large. Double-check before swapping.
+            </p>
+          )}
+          {isOverCap && (
+            <p
+              className="text-[11px] text-amber-400 mt-1.5"
+              data-testid="swap-amount-over-cap"
+              role="alert"
+            >
+              Amount exceeds the per-swap cap ({overCapNumeric} {inputToken.symbol}). Reduce to continue.
+            </p>
+          )}
+          {wasTruncated && (
+            <p
+              className="text-[11px] text-gray-400 mt-1.5"
+              data-testid="input-truncation-notice"
+              role="status"
+            >
+              Input truncated to {MAX_INPUT_LEN} characters — extra digits were dropped. For very small amounts, switch to a token with fewer decimals.
             </p>
           )}
         </motion.div>
@@ -313,22 +378,27 @@ export function SwapCard() {
           </div>
           <div className="flex items-center gap-3">
             <span
-              title={rawOutputAmount ? rawOutputAmount.toString() : ''}
+              title={isOverCap ? '' : (rawOutputAmount ? rawOutputAmount.toString() : '')}
               className="flex-1 text-3xl sm:text-3xl font-medium min-w-0 cursor-default select-text"
               style={{ fontSize: outputAmount.length > 10 ? 'clamp(1.125rem, 5vw, 1.875rem)' : undefined }}
               data-testid="output-amount"
             >
-              {/* Mobile — already uses `compactAmount`, just patch the below-floor case */}
+              {/* Mobile — over-cap and below-floor short-circuit before the compact path. */}
               <span className="text-white sm:hidden">
-                {isBelowFloor
-                  ? FLOOR_STR
-                  : (compactOutputAmount || <span className="text-gray-600">0</span>)}
+                {isOverCap
+                  ? <span className="text-gray-500" data-testid="output-overcap">—</span>
+                  : isBelowFloor
+                    ? FLOOR_STR
+                    : (compactOutputAmount || <span className="text-gray-600">0</span>)}
               </span>
-              {/* Desktop — three paths:
-                  1. Sub-dust output → render the floor literal
-                  2. >10 integer digits → drop AnimatedNumber for compact form to avoid `.toFixed(6)` overflow
-                  3. Normal range → animate as before */}
-              {isBelowFloor ? (
+              {/* Desktop — four paths:
+                  1. Over-cap         → render em-dash literal (no fantasy quote)
+                  2. Sub-dust output  → render the floor literal
+                  3. >10 integer digits → drop AnimatedNumber for compact form to avoid `.toFixed(6)` overflow
+                  4. Normal range     → animate as before */}
+              {isOverCap ? (
+                <span className="text-gray-500 hidden sm:inline" data-testid="output-overcap-desktop">—</span>
+              ) : isBelowFloor ? (
                 <span className="text-white hidden sm:inline" data-testid="output-floor">{FLOOR_STR}</span>
               ) : integerDigits > 10 ? (
                 <span className="text-white hidden sm:inline" data-testid="output-compact">{compactOutputAmount}</span>
@@ -349,9 +419,11 @@ export function SwapCard() {
           )}
         </div>
 
-        {/* Rate */}
-        {hasAmount && showAdvanced && (
-          <div className="mx-4 mt-3 px-4 py-2 text-xs text-gray-400 flex justify-between items-center">
+        {/* Rate row — gated only on `hasAmount` now that the Advanced
+            toggle is gone (task 0048). Renders the source badge inline so
+            attribution is visible whenever the user has typed anything. */}
+        {hasAmount && (
+          <div className="mx-4 mt-3 px-4 py-2 text-xs text-gray-400 flex justify-between items-center gap-2">
             <span className="flex items-center gap-1.5">
               Rate
               {isLive && (
@@ -360,6 +432,7 @@ export function SwapCard() {
                   live
                 </span>
               )}
+              <PriceSourceBadge source={rateSource} size="sm" />
             </span>
             <span>{exchangeRate}</span>
           </div>
@@ -371,15 +444,19 @@ export function SwapCard() {
           </div>
         )}
 
-        {/* UBI - Always show to emphasize mission */}
+        {/* UBI - Always show to emphasize mission, except when we're refusing
+            to quote (over-cap) — otherwise we'd flash a fake 12B G$ UBI line. */}
         <UBIBreakdown
           ubiFeeAmount={ubiFee}
           outputToken={outputToken}
-          visible={hasAmount}
+          visible={hasAmount && !isOverCap}
         />
 
-        {/* Advanced Swap Details */}
-        {showAdvanced && (
+        {/* Swap details — gated only on `hasAmount`. The previous Advanced
+            toggle is gone (task 0048); the details are inherently
+            useful only when there's a quote, so `hasAmount` is the
+            natural trigger. */}
+        {hasAmount && (
           <>
             <SwapDetails
               priceImpact={priceImpact}
@@ -389,13 +466,13 @@ export function SwapCard() {
               visible={hasAmount}
             />
             <PriceImpactWarning priceImpact={priceImpact} visible={hasAmount} />
-            {hasAmount && <SwapRoute inputToken={inputToken} outputToken={outputToken} />}
+            <SwapRoute
+              inputToken={inputToken}
+              outputToken={outputToken}
+              pairOnChain={pairOnChain}
+              rateSource={rateSource}
+            />
           </>
-        )}
-
-        {/* Simple mode: Show only critical warnings (high / extreme tiers) */}
-        {!showAdvanced && (
-          <PriceImpactWarning priceImpact={priceImpact} visible={hasAmount && priceImpact >= 5} />
         )}
 
         {/* Swap button */}
@@ -419,6 +496,7 @@ export function SwapCard() {
               : onChainAmountOutWei}
             pairOnChain={pairOnChain}
             canSubmit={canSubmit}
+            disabledReason={disabledReason}
             onInvalidSubmit={() => setInputShake(p => p + 1)}
           />
         </div>

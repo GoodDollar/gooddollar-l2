@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useSwapSettings } from '../useSwapSettings'
+import {
+  MAX_SLIPPAGE,
+  classifySlippageInput,
+  useSwapSettings,
+} from '../useSwapSettings'
 
 beforeEach(() => {
   localStorage.clear()
@@ -49,5 +53,28 @@ describe('useSwapSettings', () => {
     expect(result.current.slippage).toBe(50)
     act(() => result.current.setSlippage(-1))
     expect(result.current.slippage).toBe(0)
+  })
+})
+
+describe('classifySlippageInput', () => {
+  it('classifies blank, punctuation-only, and garbage input as blank', () => {
+    expect(classifySlippageInput('')).toEqual({ kind: 'blank' })
+    expect(classifySlippageInput('   ')).toEqual({ kind: 'blank' })
+    expect(classifySlippageInput('.')).toEqual({ kind: 'blank' })
+    expect(classifySlippageInput('abc')).toEqual({ kind: 'blank' })
+  })
+
+  it('rejects zero values explicitly', () => {
+    expect(classifySlippageInput('0')).toEqual({ kind: 'invalid-zero' })
+    expect(classifySlippageInput('0.00')).toEqual({ kind: 'invalid-zero' })
+  })
+
+  it('accepts low, normal, high-risk, and over-max values with distinct decisions', () => {
+    expect(classifySlippageInput('0.01')).toEqual({ kind: 'low', value: 0.01 })
+    expect(classifySlippageInput('0.5')).toEqual({ kind: 'ok', value: 0.5 })
+    expect(classifySlippageInput('5.1')).toEqual({ kind: 'high-risk', value: 5.1 })
+    expect(classifySlippageInput(String(MAX_SLIPPAGE + 1))).toEqual({
+      kind: 'clamped-max',
+    })
   })
 })

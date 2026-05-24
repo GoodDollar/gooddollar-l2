@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MarketIntelligencePanel } from '@/components/stocks/MarketIntelligencePanel'
 import type { Stock } from '@/lib/stockData'
 
@@ -58,7 +58,7 @@ const stocks: Stock[] = [
 ]
 
 describe('MarketIntelligencePanel', () => {
-  it('renders core modules and demo badge when oracle is offline', () => {
+  it('renders core modules; News + Earnings always render an honest empty state until a feed is wired', () => {
     render(
       <MarketIntelligencePanel stocks={stocks} isLive={false} isLoading={false} onSelectTicker={vi.fn()} />
     )
@@ -66,19 +66,19 @@ describe('MarketIntelligencePanel', () => {
     expect(screen.getByRole('heading', { name: /Top Movers/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /Upcoming Earnings/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /News Flow/i })).toBeInTheDocument()
-    expect(screen.getByText(/Demo intelligence data/i)).toBeInTheDocument()
-    expect(screen.getByTestId('earnings-empty').textContent).toMatch(/No earnings calendar wired yet/i)
-    expect(screen.getByTestId('news-flow-empty').textContent).toMatch(/No cross-ticker news feed yet/i)
-  })
 
-  it('never renders the fabricated headline template even when stocks have positive change24h', () => {
-    render(
-      <MarketIntelligencePanel stocks={stocks} isLive={true} isLoading={false} onSelectTicker={vi.fn()} />
-    )
-    expect(screen.queryByText(/momentum turns positive/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/pulls back after recent run/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Market Wire|Tech Ledger/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Q\d FY\d{4}/)).not.toBeInTheDocument()
+    // The panel-level "Demo intelligence data" chip was replaced by per-column
+    // source captions on the columns that have no live feed.
+    expect(screen.queryByText(/Demo intelligence data/i)).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Source: feed pending/i).length).toBeGreaterThanOrEqual(2)
+
+    expect(screen.getByTestId('news-flow-empty').textContent).toMatch(/No headlines yet/i)
+    expect(screen.getByTestId('earnings-empty').textContent).toMatch(/No earnings calendar yet/i)
+
+    // No fabricated headlines or calendar dates may leak through.
+    expect(
+      screen.queryByText(/Market Wire|Tech Ledger|momentum turns positive|pulls back after recent run/i),
+    ).not.toBeInTheDocument()
   })
 
   it('switches movers mode and routes ticker clicks', () => {
@@ -113,63 +113,99 @@ describe('MarketIntelligencePanel', () => {
       <MarketIntelligencePanel stocks={[]} isLive isLoading={false} onSelectTicker={vi.fn()} />
     )
     expect(screen.getByText(/No movers available/i)).toBeInTheDocument()
-    expect(screen.getByText(/No earnings calendar wired yet/i)).toBeInTheDocument()
-    expect(screen.getByText(/No cross-ticker news feed yet/i)).toBeInTheDocument()
+    expect(screen.getByTestId('earnings-empty').textContent).toMatch(/No earnings calendar yet/i)
+    expect(screen.getByTestId('news-flow-empty').textContent).toMatch(/No headlines yet/i)
   })
 
-  it('renders the muted "oracle feed degraded" empty state when every stock is a zero sentinel', () => {
-    const degradedStocks: Stock[] = stocks.map((s) => ({
-      ...s,
-      change24h: 0,
-      volume24h: 0,
-      marketCap: 0,
-    }))
-    const { container } = render(
-      <MarketIntelligencePanel
-        stocks={degradedStocks}
-        isLive={false}
-        isLoading={false}
-        onSelectTicker={vi.fn()}
-      />
-    )
-
-    const empty = screen.getByTestId('top-movers-empty')
-    expect(empty).toBeInTheDocument()
-    expect(empty.textContent).toMatch(/oracle feed degraded/i)
-
-    const topMovers = container.querySelector('article')
-    expect(topMovers?.querySelector('.text-green-400')).toBeNull()
-    expect(topMovers?.querySelector('.text-red-400')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Losers' }))
-    expect(screen.getByTestId('top-movers-empty')).toBeInTheDocument()
-  })
-
-  it('shows only the live-change names in Top Movers when fundamentals are mixed', () => {
-    const mixed: Stock[] = [
-      { ...stocks[0]!, change24h: 2.4, volume24h: 1e9 },
-      { ...stocks[1]!, change24h: -1.1, volume24h: 5e8 },
-      { ...stocks[2]!, change24h: 0, volume24h: 0, marketCap: 0 },
-    ]
-    render(
-      <MarketIntelligencePanel stocks={mixed} isLive isLoading={false} onSelectTicker={vi.fn()} />
-    )
-
-    const topMovers = screen.getByRole('heading', { name: /Top Movers/i }).closest('article')!
-    expect(within(topMovers).getByRole('button', { name: /AAPL\+2.40%/i })).toBeInTheDocument()
-    expect(within(topMovers).queryByRole('button', { name: /META/i })).not.toBeInTheDocument()
-
-    fireEvent.click(within(topMovers).getByRole('button', { name: 'Losers' }))
-    expect(within(topMovers).getByRole('button', { name: /TSLA-1.10%/i })).toBeInTheDocument()
-    expect(within(topMovers).queryByRole('button', { name: /META/i })).not.toBeInTheDocument()
-  })
-
-  it('renders skeleton shimmer bars in Top Movers when loading', () => {
+  it('renders skeleton shimmer bars instead of plain text when loading', () => {
     const { container } = render(
       <MarketIntelligencePanel stocks={[]} isLive isLoading={true} onSelectTicker={vi.fn()} />
     )
     expect(screen.queryByText(/Loading movers/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Loading earnings/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Loading headlines/i)).not.toBeInTheDocument()
     const skeletons = container.querySelectorAll('.animate-pulse')
-    expect(skeletons.length).toBeGreaterThanOrEqual(3)
+    expect(skeletons.length).toBeGreaterThanOrEqual(9)
+  })
+
+  describe('task 0028 — Top Movers honest source attribution', () => {
+    it('oracle offline → Top Movers renders feed-pending caption and empty state, no ranking', () => {
+      render(
+        <MarketIntelligencePanel
+          stocks={stocks}
+          isLive={false}
+          isLoading={false}
+          onSelectTicker={vi.fn()}
+        />,
+      )
+
+      const topMoversCard = screen.getByRole('heading', { name: /Top Movers/i }).closest('article')
+      expect(topMoversCard).toBeTruthy()
+      // Top Movers card now carries its own feed-pending caption (3 captions total: TM + Earnings + News)
+      expect(screen.getAllByText(/Source: feed pending/i).length).toBeGreaterThanOrEqual(3)
+      // No ranking buttons — three seed tickers must NOT render as movers.
+      expect(topMoversCard!.querySelector('button[type="button"][class*="bg-dark-100/60"]')).toBeNull()
+      // Honest empty state present:
+      expect(screen.getByTestId('top-movers-empty-gainers').textContent).toMatch(/No gainers yet/i)
+    })
+
+    it('oracle live, gainers present but no losers → Losers tab renders explicit empty state, not Gainers list', () => {
+      const positiveOnly: Stock[] = stocks.filter(s => s.change24h >= 0)
+      render(
+        <MarketIntelligencePanel
+          stocks={positiveOnly}
+          isLive
+          updatedAtMs={Date.now()}
+          isLoading={false}
+          onSelectTicker={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Losers' }))
+      expect(screen.getByTestId('top-movers-empty-losers').textContent).toMatch(/No losers yet/i)
+      // Gainers ranking must NOT bleed through to the Losers tab.
+      expect(screen.queryByRole('button', { name: /AAPL\+1.80%/i })).not.toBeInTheDocument()
+    })
+
+    it('oracle live, both directions present → both tabs render their respective ranked lists', () => {
+      render(
+        <MarketIntelligencePanel
+          stocks={stocks}
+          isLive
+          updatedAtMs={Date.now()}
+          isLoading={false}
+          onSelectTicker={vi.fn()}
+        />,
+      )
+
+      // Gainers (default)
+      expect(screen.getByRole('button', { name: /AAPL\+1.80%/i })).toBeInTheDocument()
+      expect(screen.queryByTestId('top-movers-empty-gainers')).not.toBeInTheDocument()
+
+      // Losers
+      fireEvent.click(screen.getByRole('button', { name: 'Losers' }))
+      expect(screen.getByRole('button', { name: /TSLA-2.60%/i })).toBeInTheDocument()
+      expect(screen.queryByTestId('top-movers-empty-losers')).not.toBeInTheDocument()
+    })
+
+    it('oracle live caption renders Source: oracle when updatedAtMs is supplied', () => {
+      // 7s in the past so the age line reads "Updated 7s ago" deterministically
+      const updatedAtMs = Date.now() - 7_000
+      render(
+        <MarketIntelligencePanel
+          stocks={stocks}
+          isLive
+          updatedAtMs={updatedAtMs}
+          isLoading={false}
+          onSelectTicker={vi.fn()}
+        />,
+      )
+
+      const topMoversCard = screen.getByRole('heading', { name: /Top Movers/i }).closest('article')
+      expect(topMoversCard?.textContent).toMatch(/Source: oracle/i)
+      expect(topMoversCard?.textContent).toMatch(/Updated\s+\d+s\s+ago/i)
+      // Earnings + News still on feed pending (only those two captions remain "pending")
+      expect(screen.getAllByText(/Source: feed pending/i).length).toBe(2)
+    })
   })
 })

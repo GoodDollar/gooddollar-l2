@@ -6,6 +6,7 @@ import { rpcCall as rpcCallStrict, RpcError } from '@/lib/rpc'
 import type { EthBlock, EthReceipt, EthHex } from '@/lib/eth-types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { computeBarHeights } from './block-timeline'
+import { ActivityPriceStrip } from '@/components/ActivityPriceStrip'
 
 const RPC_URL = '/api/rpc'
 
@@ -291,6 +292,11 @@ export default function ActivityPage() {
 
   return (
     <div className="w-full max-w-5xl mx-auto">
+      {/* Lane 4: live-price strip above the block timeline. */}
+      <div className="mb-5">
+        <ActivityPriceStrip />
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

@@ -9,6 +9,7 @@ import { formatPerpsPrice, formatLargeValue, formatFundingRate, getFundingCountd
 import { useOnChainPairs, useOnChainAccountSummary } from '@/lib/useOnChainPerps'
 import { sanitizeNumericInput } from '@/lib/format'
 import { boundPerpsSize } from '@/lib/perpsInput'
+import { isPerpSizeWithinCap, getPerpSizeCap } from '@/lib/perpLimits'
 import { validateStopLimitOrder } from '@/lib/perpsStopLimitValidation'
 import { getChartData, type Timeframe } from '@/lib/chartData'
 import { DEFAULT_INDICATORS, type ActiveIndicators, type IndicatorId } from '@/lib/indicators'
@@ -23,9 +24,11 @@ import { PercentageChange } from '@/components/ui/percentage-change'
 import { PriceDisplay } from '@/components/ui/price-display'
 import { AmountInput } from '@/components/ui/amount-input'
 import { useSymbolSyncGuard } from '@/lib/useSymbolSyncGuard'
-import { StalePriceBanner } from '@/components/StalePriceBanner'
-import { CryptoOracleStatusBadge } from '@/components/CryptoOracleStatusBadge'
-import { useCryptoRailHealth } from '@/lib/useCryptoRailHealth'
+import { PerpsPriceStrip } from '@/components/PerpsPriceStrip'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import { usePerpsPriceSources } from '@/lib/usePerpsPriceSources'
+import { useAttributedPrice } from '@/lib/useAttributedPrice'
+import type { PriceSource } from '@/lib/priceSource'
 
 function WalletGatedTradeButton({ hasSize, exceedsMargin, children }: { hasSize: boolean; exceedsMargin: boolean; children: React.ReactNode }) {
   const { isConnected } = useAccount()
@@ -62,48 +65,19 @@ const PriceChart = dynamic(
   }
 )
 import { ChartErrorBoundary } from '@/components/ChartErrorBoundary'
-import { DemoChartOverlay } from '@/components/DemoChartOverlay'
 import { IndicatorToggle } from '@/components/IndicatorToggle'
 import { ScrollStrip } from '@/components/ScrollStrip'
-import { PairSelector } from '@/components/perps/PairSelector'
 
-const OrderBook = dynamic(
-  () => import('@/components/OrderBook').then(m => ({ default: m.OrderBook })),
+const PerpsMarketStructureCard = dynamic(
+  () => import('@/components/PerpsMarketStructureCard').then(m => ({ default: m.PerpsMarketStructureCard })),
   {
     ssr: false,
     loading: () => (
-      <div className="text-xs">
-        <div className="flex justify-between text-gray-500 px-2 py-1.5 border-b border-gray-700/20">
-          <span>Price</span><span>Size</span><span>Total</span>
-        </div>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex justify-between px-2 py-1">
-            <div className="h-3 w-16 bg-dark-50/40 rounded animate-pulse" />
-            <div className="h-3 w-10 bg-dark-50/40 rounded animate-pulse" />
-            <div className="h-3 w-10 bg-dark-50/40 rounded animate-pulse" />
-          </div>
-        ))}
-      </div>
-    ),
-  }
-)
-
-const RecentTrades = dynamic(
-  () => import('@/components/RecentTrades').then(m => ({ default: m.RecentTrades })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="text-xs">
-        <div className="flex justify-between text-gray-500 px-2 py-1.5 border-b border-gray-700/20">
-          <span>Price</span><span>Size</span><span>Time</span>
-        </div>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex justify-between px-2 py-1">
-            <div className="h-3 w-16 bg-dark-50/40 rounded animate-pulse" />
-            <div className="h-3 w-10 bg-dark-50/40 rounded animate-pulse" />
-            <div className="h-3 w-14 bg-dark-50/40 rounded animate-pulse" />
-          </div>
-        ))}
+      <div className="p-5 text-xs space-y-2">
+        <div className="h-5 w-48 bg-dark-50/40 rounded animate-pulse" />
+        <div className="h-4 w-full bg-dark-50/40 rounded animate-pulse" />
+        <div className="h-4 w-full bg-dark-50/40 rounded animate-pulse" />
+        <div className="h-4 w-full bg-dark-50/40 rounded animate-pulse" />
       </div>
     ),
   }
@@ -164,118 +138,93 @@ const OpenPositions = dynamic(
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y']
 
-const EM_DASH = '—'
+// Static em-dash cell used by the over-cap summary rows. Hoisted to module
+// scope so it isn't recreated on every render of the OrderForm.
+const OVER_CAP_DASH = <span className="text-gray-500 truncate ml-2">—</span>
 
-/**
- * PerpsOracleSurfaces — mounts the crypto-rail offline banner above
- * the pair selector when `/api/oracle/status.rails.crypto` reports the
- * rail disabled or degraded. The detail badge is mounted separately
- * inside the pair-info card so it sits next to the Mark/24h/Funding
- * stats it qualifies. Mirrors the stocks-side surfacing pattern.
- */
-function PerpsOracleSurfaces() {
-  const { health, isLoading } = useCryptoRailHealth()
-  if (isLoading) return null
-  if (health === 'live') return null
-  return <StalePriceBanner variant="crypto" className="mt-3" />
+function PairSelector({ pairs, selected, onSelect }: { pairs: PerpPair[]; selected: string; onSelect: (s: string) => void }) {
+  return (
+    <ScrollStrip className="flex gap-1.5 pb-1" ariaLabel="Select perpetual market pair">
+      {pairs.map(p => {
+        const isActive = selected === p.symbol
+        return (
+          <button key={p.symbol} onClick={() => onSelect(p.symbol)}
+            className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-medium transition-colors ${isActive ? 'bg-goodgreen/15 text-goodgreen border border-goodgreen/20' : 'text-gray-400 hover:text-white bg-dark-50/50 border border-transparent'}`}>
+            <span className="block font-semibold">{p.symbol}</span>
+            <span className="flex items-center gap-1.5 mt-0.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <span className={isActive ? 'text-goodgreen/80' : 'text-gray-500'}>{formatPerpsPrice(p.markPrice)}</span>
+              <PercentageChange value={p.change24h} decimals={1} showSign size="xs" />
+            </span>
+          </button>
+        )
+      })}
+    </ScrollStrip>
+  )
 }
 
-function PairInfoBar({ pair, railLive }: { pair: PerpPair; railLive: boolean }) {
+interface AttributedMark {
+  /** Mark price from `useAttributedPrice` for the active pair, or `null` when
+   * no source has data (em-dashes the cell). Task 0036 — strip + Mark cell
+   * read from the same hook so they cannot disagree. */
+  price: number | null
+  source: PriceSource
+}
+
+function PairInfoBar({ pair, mark }: { pair: PerpPair; mark: AttributedMark }) {
   // Mobile (≤640px): 2-column grid of stacked label/value tiles, so each
   // stat reads as a single unit. Desktop (≥640px): inline flex-wrap, identical
   // to the previous layout. See task 0099.
-  const tileCls = 'flex flex-col sm:flex-row sm:items-baseline'
+  const tileCls = "flex flex-col sm:flex-row sm:items-baseline"
   const labelCls =
-    'text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs sm:normal-case sm:tracking-normal'
-  const dashCls = 'text-gray-500 font-medium sm:ml-1.5'
-
-  // Task 0037: every 24h-aggregate cell renders `—` when the rail has
-  // nothing to report. The previous fallback shipped a confident
-  // "Vol $1.25B · Funding +0.49% · OI $890M" header even with the crypto
-  // oracle offline. `pair.high24h === pair.markPrice` is the sentinel
-  // emitted by useOnChainPerps when no live 24h band is available.
-  //
-  // Task 0058: the Mark cell joins the same honesty contract. When the
-  // crypto rail is not `live`, the headline price collapses to `—` —
-  // otherwise it sat at FALLBACK_PAIRS.markPrice next to a red "Oracle
-  // offline" badge, the canonical failure of the price-flow override.
-  const high24h = pair.high24h ?? pair.markPrice
-  const low24h = pair.low24h ?? pair.markPrice
-  const hasMark = railLive && Number.isFinite(pair.markPrice) && pair.markPrice > 0
-  const hasChange = pair.change24h !== 0
-  const hasRange = high24h !== pair.markPrice || low24h !== pair.markPrice
-  const hasVolume = pair.volume24h > 0
-  const hasFunding = pair.fundingRate !== 0
-  const hasOpenInterest = pair.openInterest > 0
-
+    "text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs sm:normal-case sm:tracking-normal"
+  const markText = mark.price === null ? '—' : formatPerpsPrice(mark.price)
   return (
     <div
       data-testid="pair-info-bar"
       className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 gap-y-2 sm:gap-x-6 sm:gap-y-0 text-xs py-2"
     >
-      <div className={tileCls} data-pair-info-cell="Mark">
+      <div className={tileCls}>
         <span className={labelCls}>Mark</span>
-        {hasMark ? (
-          <span className="text-white font-medium sm:ml-1.5">{formatPerpsPrice(pair.markPrice)}</span>
-        ) : (
-          <span className={dashCls}>{EM_DASH}</span>
-        )}
+        <span
+          data-testid="pair-info-bar-mark"
+          className={`font-medium sm:ml-1.5 ${mark.price === null ? 'text-gray-500' : 'text-white'}`}
+        >{markText}</span>
       </div>
-      <div className={tileCls} data-pair-info-cell="24h">
+      <div className={tileCls}>
         <span className={labelCls}>24h</span>
-        {hasChange ? (
-          <span className="font-medium sm:ml-1.5">
-            <PercentageChange value={pair.change24h} decimals={2} showSign size="sm" />
-          </span>
-        ) : (
-          <span className={dashCls}>{EM_DASH}</span>
-        )}
+        <span className="font-medium sm:ml-1.5">
+          <PercentageChange value={pair.change24h} decimals={2} showSign size="sm" />
+        </span>
       </div>
-      <div className={tileCls} data-pair-info-cell="24h H">
-        <span className={labelCls}>24h H</span>
-        {hasRange ? (
-          <span className="text-green-400 font-medium sm:ml-1.5">{formatPerpsPrice(high24h)}</span>
-        ) : (
-          <span className={dashCls}>{EM_DASH}</span>
-        )}
-      </div>
-      <div className={tileCls} data-pair-info-cell="24h L">
-        <span className={labelCls}>24h L</span>
-        {hasRange ? (
-          <span className="text-red-400 font-medium sm:ml-1.5">{formatPerpsPrice(low24h)}</span>
-        ) : (
-          <span className={dashCls}>{EM_DASH}</span>
-        )}
-      </div>
-      <div className={tileCls} data-pair-info-cell="Vol">
+      {pair.high24h != null && (
+        <div className={tileCls}>
+          <span className={labelCls}>24h H</span>
+          <span className="text-green-400 font-medium sm:ml-1.5">{formatPerpsPrice(pair.high24h)}</span>
+        </div>
+      )}
+      {pair.low24h != null && (
+        <div className={tileCls}>
+          <span className={labelCls}>24h L</span>
+          <span className="text-red-400 font-medium sm:ml-1.5">{formatPerpsPrice(pair.low24h)}</span>
+        </div>
+      )}
+      <div className={tileCls}>
         <span className={labelCls}>Vol</span>
-        {hasVolume ? (
-          <span className="text-white font-medium sm:ml-1.5">{formatLargeValue(pair.volume24h)}</span>
-        ) : (
-          <span className={dashCls}>{EM_DASH}</span>
-        )}
+        <span className="text-white font-medium sm:ml-1.5">{formatLargeValue(pair.volume24h)}</span>
       </div>
-      <div className={tileCls} data-pair-info-cell="Funding">
+      <div className={tileCls}>
         <span className={labelCls}>Funding</span>
-        {hasFunding ? (
-          <span className={`font-medium sm:ml-1.5 ${pair.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {formatFundingRate(pair.fundingRate)}
-          </span>
-        ) : (
-          <span className={dashCls}>{EM_DASH}</span>
-        )}
+        <span className={`font-medium sm:ml-1.5 ${pair.fundingRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          {formatFundingRate(pair.fundingRate)}
+        </span>
       </div>
-      <div className={tileCls} data-pair-info-cell="Funding in">
+      <div className={tileCls}>
         <span className={labelCls}>Funding in</span>
         <span className="text-gray-300 sm:ml-1.5">{getFundingCountdown(pair.nextFundingTime)}</span>
       </div>
-      <div className={tileCls} data-pair-info-cell="OI">
+      <div className={tileCls}>
         <span className={labelCls}>OI</span>
-        {hasOpenInterest ? (
-          <span className="text-white font-medium sm:ml-1.5">{formatLargeValue(pair.openInterest)}</span>
-        ) : (
-          <span className={dashCls}>{EM_DASH}</span>
-        )}
+        <span className="text-white font-medium sm:ml-1.5">{formatLargeValue(pair.openInterest)}</span>
       </div>
     </div>
   )
@@ -306,7 +255,7 @@ function LeverageSlider({ value, onChange, max }: { value: number; onChange: (v:
 type OrderType = 'market' | 'limit' | 'stop-limit'
 
 
-function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: AccountSummaryData; marketId: number }) {
+export function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: AccountSummaryData; marketId: number }) {
   const [side, setSide] = useState<'long' | 'short'>('long')
   const [orderType, setOrderType] = useState<OrderType>('market')
   const [size, setSize] = useState('')
@@ -420,6 +369,13 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
   const maxSize = effectivePrice > 0 ? (availableFundingUsd * leverage) / effectivePrice : 0
   const notionalValue = sizeNum * effectivePrice
 
+  // Per-symbol absurdity cap on the Size input. The chain rejects on
+  // insufficient collateral, but without this gate the UI still renders a
+  // green "$8425Q notional / $2.78Q UBI" quote for `99,999,999,999,999` BTC.
+  // Mirror of the swap cap (task 0010) — see `frontend/src/lib/perpLimits.ts`.
+  const isPerpSizeOverCap = !isPerpSizeWithinCap(pair.baseAsset, size)
+  const perpSizeCapStr = getPerpSizeCap(pair.baseAsset).toLocaleString()
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (
@@ -430,7 +386,8 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
       triggerPriceInvalid ||
       stopLimitCheck.triggerWrongSide ||
       stopLimitCheck.limitVsTriggerWrong ||
-      syncBlocked
+      syncBlocked ||
+      isPerpSizeOverCap
     ) return
 
     if (isDeployed && orderType === 'market') {
@@ -560,10 +517,23 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           maxValue={maxSize}
           maxValueLabel="max size"
           symbol={pair.baseAsset}
-          usdValue={notionalValue}
-          error={exceedsMargin ? `Needs ${formatG$Amount(totalRequiredGD)} total; available ${formatG$Amount(availableFundingGD)}` : false}
+          usdValue={isPerpSizeOverCap ? undefined : notionalValue}
+          error={isPerpSizeOverCap
+            ? false
+            : (exceedsMargin
+              ? `Needs ${formatG$Amount(totalRequiredGD)} total; available ${formatG$Amount(availableFundingGD)}`
+              : false)}
           placeholder="0.00"
         />
+        {isPerpSizeOverCap && (
+          <p
+            className="text-[11px] text-amber-400 mt-1.5"
+            data-testid="perp-size-over-cap"
+            role="alert"
+          >
+            Size exceeds per-symbol perp cap ({perpSizeCapStr} {pair.baseAsset}). Reduce to continue.
+          </p>
+        )}
       </div>
 
       <div>
@@ -605,6 +575,22 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
       </div>
 
       {sizeNum > 0 && hasValidPrice && effectivePrice > 0 && (() => {
+        // When the user enters a size that trips the per-symbol absurdity
+        // cap, render every quote row as `—` rather than a confident
+        // quadrillion-USD number. The chip under the Size input already
+        // explains why; the dashes here keep the row layout stable so
+        // the panel doesn't jump.
+        if (isPerpSizeOverCap) {
+          return (
+            <div className="space-y-1 text-xs" data-testid="perp-summary-overcap">
+              <div className="flex justify-between text-gray-400"><span>Notional</span>{OVER_CAP_DASH}</div>
+              <div className="flex justify-between text-gray-400"><span>Margin</span>{OVER_CAP_DASH}</div>
+              <div className="flex justify-between text-gray-400"><span>Liq. Price</span>{OVER_CAP_DASH}</div>
+              <div className="flex justify-between text-gray-400"><span>Fee ({orderType === 'market' ? '0.10%' : '0.02%'})</span>{OVER_CAP_DASH}</div>
+              <div className="flex justify-between text-gray-400"><span>→ UBI (33%)</span>{OVER_CAP_DASH}</div>
+            </div>
+          )
+        }
         // When the user enters a wildly oversized trade (e.g. pasting a
         // 21-digit value into Size), the summary rows would otherwise
         // render `$104.97Q` (quintillion notation) which reads as a
@@ -648,7 +634,16 @@ function OrderForm({ pair, account, marketId }: { pair: PerpPair; account: Accou
           {syncGuard.reason ?? 'Risk-increasing action blocked until symbol sync reaches current oracle block.'}
         </p>
       )}
-      {walletReady ? (
+      {isPerpSizeOverCap ? (
+        <button
+          type="button"
+          disabled
+          data-testid="perp-cta-over-cap"
+          className="w-full py-2.5 rounded-xl font-semibold text-sm bg-dark-50 text-gray-400 cursor-not-allowed"
+        >
+          Size too large
+        </button>
+      ) : walletReady ? (
         <WalletGatedTradeButton hasSize={sizeNum > 0} exceedsMargin={exceedsMargin}>
           <button type="submit"
             disabled={exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || perpPhase === 'approving' || perpPhase === 'pending' || syncBlocked}
@@ -857,7 +852,6 @@ export default function PerpsPage() {
   const searchParams = useSearchParams()
   const { pairs } = useOnChainPairs()
   const { summary: account } = useOnChainAccountSummary()
-  const { health: cryptoRailHealth } = useCryptoRailHealth()
   const [selectedSymbol, setSelectedSymbol] = useState(() => searchParams.get('market') || 'BTC-USD')
   const [timeframe, setTimeframe] = useState<Timeframe>('1M')
   const [mobileTab, setMobileTab] = useState<MobileTab>('trade')
@@ -875,6 +869,20 @@ export default function PerpsPage() {
   }, [searchParams, pairs])
 
   const pair = pairs.find(p => p.symbol === selectedSymbol) ?? pairs[0]
+
+  const { sources: priceSources } = usePerpsPriceSources()
+  const activePairSource = pair ? (priceSources[pair.symbol] ?? 'unknown') : 'unknown'
+
+  // Mark cell on the Active pair info bar reads from the same
+  // `useAttributedPrice` resolver the headline strip uses, so the two
+  // numbers can never disagree. Task 0036. When `attr.source === 'unknown'`
+  // (no chain / CG / fallback for this asset), the cell renders an em-dash
+  // and the strip card does the same — one honest "Feed pending" instead of
+  // contradictory `$0.000000` vs `$84,250` cells on the same viewport.
+  const activeAttr = useAttributedPrice(pair?.baseAsset ?? '')
+  const activeMark: AttributedMark = activeAttr && activeAttr.priceUsd > 0 && activeAttr.source !== 'unknown'
+    ? { price: activeAttr.priceUsd, source: activeAttr.source }
+    : { price: null, source: activeAttr?.source ?? 'unknown' }
 
   const chartData = useMemo(() => {
     if (!pair) return []
@@ -899,20 +907,22 @@ export default function PerpsPage() {
         </div>
       </div>
 
-      <PerpsOracleSurfaces />
+      <div className="mb-3">
+        <PerpsPriceStrip activeSymbol={selectedSymbol} />
+      </div>
 
-      <PairSelector
-        pairs={pairs}
-        selected={selectedSymbol}
-        onSelect={setSelectedSymbol}
-        railLive={cryptoRailHealth === 'live'}
-      />
+      <PairSelector pairs={pairs} selected={selectedSymbol} onSelect={setSelectedSymbol} />
 
       <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-3 mt-3 mb-3">
-        <div className="flex items-center justify-end pb-2 border-b border-gray-700/10 mb-1.5">
-          <CryptoOracleStatusBadge />
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <span className="text-xs text-gray-400">Active pair</span>
+          <span
+            data-testid={activePairSource === 'closed' ? 'perps-market-closed' : 'perps-source-badge'}
+          >
+            <PriceSourceBadge source={activePairSource} size="sm" />
+          </span>
         </div>
-        <PairInfoBar pair={pair} railLive={cryptoRailHealth === 'live'} />
+        <PairInfoBar pair={pair} mark={activeMark} />
         <div className="flex items-center gap-3 pt-1 text-xs">
           <Link href={`/explore/${pair.baseAsset === 'BTC' ? 'WBTC' : pair.baseAsset}`}
             className="text-gray-500 hover:text-goodgreen transition-colors inline-flex items-center gap-1">
@@ -957,17 +967,7 @@ export default function PerpsPage() {
               <IndicatorToggle indicators={indicators} onChange={toggleIndicator} />
             </div>
             <ChartErrorBoundary>
-              <div
-                className="relative"
-                aria-label={`${pair.symbol} illustrative chart`}
-              >
-                {/* chartData comes from getChartData() — synthetic, hash-seeded
-                    OHLC regardless of rail health. Until a real OHLC source
-                    lands the honesty pill is unconditionally visible; flip
-                    this boolean the day a live OHLC feed is wired in. */}
-                <DemoChartOverlay isLive={false} />
-                <PriceChart data={chartData} height={400} indicators={indicators} />
-              </div>
+              <PriceChart data={chartData} height={400} indicators={indicators} />
             </ChartErrorBoundary>
           </div>
         </div>
@@ -988,23 +988,21 @@ export default function PerpsPage() {
         </div>
       </div>
 
-      {/* Order book / trades / positions grid */}
-      {/* On mobile: visible when book tab active; on desktop: always visible */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+      {/* Market structure + positions grid */}
+      {/* On mobile: visible when book tab active; on desktop: always visible.
+          Task 0043 replaced the legacy 3-column OrderBook / RecentTrades /
+          OpenPositions row with this 2-column layout — the GoodPerps oracle
+          margin engine has no CLOB, so the structure card now shows the
+          honest mark/index/open-interest plus an explainer paragraph. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-700/20">
-            <h3 className="text-xs font-semibold text-white">Order Book</h3>
-          </div>
-          <OrderBook />
-        </div>
-
-        <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-700/20">
-            <h3 className="text-xs font-semibold text-white">Recent Trades</h3>
-          </div>
-          {/* No on-chain trade tape for perps yet — empty list renders the
-              honest empty state instead of a fabricated tape. */}
-          <RecentTrades markPrice={pair.markPrice} symbol={pair.baseAsset} trades={[]} />
+          <PerpsMarketStructureCard
+            symbol={pair.symbol}
+            markPrice={pair.markPrice}
+            indexPrice={pair.indexPrice}
+            openInterestUsd={pair.openInterest}
+            source={priceSources[pair.symbol] ?? 'unknown'}
+          />
         </div>
 
         <div

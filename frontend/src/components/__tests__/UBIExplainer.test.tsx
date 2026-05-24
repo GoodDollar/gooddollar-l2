@@ -23,6 +23,9 @@ describe('UBIExplainer', () => {
     expect(screen.getByText('Your Trade')).toBeInTheDocument()
     expect(screen.getByText('33% Fee')).toBeInTheDocument()
     expect(screen.getByText('UBI Pool')).toBeInTheDocument()
-    expect(screen.getByText('640K+ People')).toBeInTheDocument()
+    // Task 0040: the recipients step is no longer labelled with the
+    // fabricated `640K+ People` literal.
+    expect(screen.getByText('Recipients')).toBeInTheDocument()
+    expect(screen.queryByText('640K+ People')).toBeNull()
   })
 })

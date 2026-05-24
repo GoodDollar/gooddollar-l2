@@ -1,14 +1,14 @@
 'use client'
 
 import type { Stock } from '@/lib/stockData'
-import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
+import { formatStockPrice } from '@/lib/stockData'
+import { isNoData, usdOrDash, NO_DATA_DASH } from '@/lib/formatNoData'
 
-const EM_DASH = '—'
-const TILE_CLS = 'flex flex-col sm:flex-row sm:items-baseline'
-const LABEL_CLS =
-  'text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs sm:normal-case sm:tracking-normal'
-const MUTED_VALUE_CLS = 'text-gray-400 font-medium sm:ml-1.5'
-
+/**
+ * 24h high / low derived from the spot + change. When the chain path
+ * has no change print, both sides collapse to the spot — but the
+ * rendered tile then em-dashes the value via `isNoData(change24h)`.
+ */
 function derive24hRange(price: number, change24h: number) {
   if (change24h === 0) return { high: price, low: price }
   const baseline = price / (1 + change24h / 100)
@@ -18,38 +18,39 @@ function derive24hRange(price: number, change24h: number) {
   }
 }
 
-function isNoMarketData(stock: Stock): boolean {
-  return stock.change24h === 0 && stock.volume24h === 0
-}
-
-function Tile({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className={TILE_CLS}>
-      <span className={LABEL_CLS}>{label}</span>
-      {children}
-    </div>
-  )
-}
-
-function MutedValue({ children }: { children: React.ReactNode }) {
-  return <span className={MUTED_VALUE_CLS}>{children}</span>
-}
-
-export function StockStatsBar({ stock }: { stock: Stock }) {
-  const noData = isNoMarketData(stock)
+/**
+ * `isLive` defaults to `true` for backward compatibility. Callers
+ * should pass `useOnChainStocks().isLive` explicitly; when the gate is
+ * false the 24h%, 24h H, 24h L and Vol cells collapse to em-dashes so
+ * the strip never reprints `FALLBACK_STOCKS` literals as live market
+ * data (task 0038). The Mark cell keeps rendering — it's the
+ * well-attributed value that already carries its own source pill.
+ */
+export function StockStatsBar({ stock, isLive = true }: { stock: Stock; isLive?: boolean }) {
   const { high, low } = derive24hRange(stock.price, stock.change24h)
+  const derivedMissing = !isLive || isNoData(stock.change24h)
+  const volMissing = !isLive || isNoData(stock.volume24h)
+
+  const tileCls = 'flex flex-col sm:flex-row sm:items-baseline'
+  const labelCls =
+    'text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs sm:normal-case sm:tracking-normal'
+  const dashCls = 'text-gray-500 font-medium sm:ml-1.5'
 
   return (
     <div
       data-testid="stock-stats-bar"
       className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 gap-y-2 sm:gap-x-6 sm:gap-y-0 text-xs py-2 mb-3"
     >
-      <Tile label="Mark">
-        <span className="text-white font-medium sm:ml-1.5">{formatStockPrice(stock.price)}</span>
-      </Tile>
-      <Tile label="24h">
-        {noData ? (
-          <MutedValue>{EM_DASH}</MutedValue>
+      <div className={tileCls}>
+        <span className={labelCls}>Mark</span>
+        <span className="text-white font-medium sm:ml-1.5">
+          {formatStockPrice(stock.price)}
+        </span>
+      </div>
+      <div className={tileCls}>
+        <span className={labelCls}>24h</span>
+        {derivedMissing ? (
+          <span className={dashCls}>{NO_DATA_DASH}</span>
         ) : (
           <span
             className={`font-medium sm:ml-1.5 ${stock.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}
@@ -58,34 +59,33 @@ export function StockStatsBar({ stock }: { stock: Stock }) {
             {stock.change24h.toFixed(2)}%
           </span>
         )}
-      </Tile>
-      <Tile label="24h H">
-        {noData ? (
-          <MutedValue>{EM_DASH}</MutedValue>
+      </div>
+      <div className={tileCls}>
+        <span className={labelCls}>24h H</span>
+        {derivedMissing ? (
+          <span className={dashCls}>{NO_DATA_DASH}</span>
         ) : (
-          <span className="text-green-400 font-medium sm:ml-1.5">{formatStockPrice(high)}</span>
+          <span className="text-green-400 font-medium sm:ml-1.5">
+            {formatStockPrice(high)}
+          </span>
         )}
-      </Tile>
-      <Tile label="24h L">
-        {noData ? (
-          <MutedValue>{EM_DASH}</MutedValue>
+      </div>
+      <div className={tileCls}>
+        <span className={labelCls}>24h L</span>
+        {derivedMissing ? (
+          <span className={dashCls}>{NO_DATA_DASH}</span>
         ) : (
-          <span className="text-red-400 font-medium sm:ml-1.5">{formatStockPrice(low)}</span>
+          <span className="text-red-400 font-medium sm:ml-1.5">
+            {formatStockPrice(low)}
+          </span>
         )}
-      </Tile>
-      <Tile label="Vol">
-        {noData ? (
-          <MutedValue>{EM_DASH}</MutedValue>
-        ) : (
-          <span className="text-white font-medium sm:ml-1.5">{formatLargeNumber(stock.volume24h)}</span>
-        )}
-      </Tile>
-      <Tile label="Funding">
-        <MutedValue>{EM_DASH}</MutedValue>
-      </Tile>
-      <Tile label="OI">
-        <MutedValue>{EM_DASH}</MutedValue>
-      </Tile>
+      </div>
+      <div className={tileCls}>
+        <span className={labelCls}>Vol</span>
+        <span className={volMissing ? dashCls : 'text-white font-medium sm:ml-1.5'}>
+          {volMissing ? NO_DATA_DASH : usdOrDash(stock.volume24h)}
+        </span>
+      </div>
     </div>
   )
 }

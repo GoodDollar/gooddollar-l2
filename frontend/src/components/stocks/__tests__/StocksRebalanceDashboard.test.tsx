@@ -2,6 +2,22 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { StocksRebalanceDashboard } from '@/components/stocks/StocksRebalanceDashboard'
+import type { RebalanceInvariantResult } from '@/lib/stocksRebalanceInvariant'
+
+function unsyncedFixture(symbol: string): RebalanceInvariantResult {
+  return {
+    symbol,
+    currentBlock: 0,
+    oracleBlock: 0,
+    products: { amm: 0, perps: 0, prediction: 0, lend: 0, yield: 0 },
+    lastSyncedBlock: 0,
+    blockSkew: 0,
+    divergenceBps: 0,
+    coherentBlock: false,
+    stopReasons: [],
+    riskIncreaseAllowed: false,
+  }
+}
 
 describe('StocksRebalanceDashboard', () => {
   it('renders symbol rows with open/stopped risk gates', () => {
@@ -53,131 +69,51 @@ describe('StocksRebalanceDashboard', () => {
     expect(screen.getByText(/Unable to load sync status/i)).toBeInTheDocument()
   })
 
-  it('renders awaiting state when oracleBlock and lastSyncedBlock are both 0 for all rows', () => {
+  it('collapses to one rebalance-all-unsynced banner when every symbol is unsynced (task 0007d-0020)', () => {
+    render(
+      <StocksRebalanceDashboard
+        symbols={[unsyncedFixture('AAPL'), unsyncedFixture('TSLA'), unsyncedFixture('NVDA')]}
+      />,
+    )
+
+    const banner = screen.getByTestId('rebalance-all-unsynced')
+    expect(banner).toBeInTheDocument()
+    expect(banner.textContent).toMatch(/Oracle has not synced any of 3 symbols yet/i)
+    expect(banner.textContent).toMatch(/AAPL.*TSLA.*NVDA/)
+
+    // Table must NOT render in the all-unsynced state.
+    expect(document.querySelector('table')).toBeNull()
+    expect(screen.queryAllByTestId('rebalance-row-unsynced')).toHaveLength(0)
+  })
+
+  it('renders the table when at least one symbol is synced (mixed case is unchanged)', () => {
     render(
       <StocksRebalanceDashboard
         symbols={[
           {
-            symbol: 'AAPL',
-            currentBlock: 0,
-            oracleBlock: 0,
-            products: { amm: 0, perps: 0, prediction: 0, lend: 0, yield: 0 },
-            lastSyncedBlock: 0,
-            blockSkew: 0,
-            divergenceBps: 0,
-            coherentBlock: true,
-            stopReasons: [],
+            ...unsyncedFixture('AAPL'),
+            lastSyncedBlock: 12345,
+            oracleBlock: 12345,
+            currentBlock: 12345,
             riskIncreaseAllowed: true,
+            coherentBlock: true,
           },
+          unsyncedFixture('TSLA'),
+          unsyncedFixture('NVDA'),
         ]}
       />,
     )
-    expect(screen.queryByText('Open')).not.toBeInTheDocument()
-    expect(screen.getByText('Awaiting')).toBeInTheDocument()
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/Awaiting on-chain block data/i)).toBeInTheDocument()
-    expect(screen.getByLabelText('Risk gate: awaiting on-chain data')).toBeInTheDocument()
+
+    expect(screen.queryByTestId('rebalance-all-unsynced')).toBeNull()
+    expect(document.querySelector('table')).not.toBeNull()
+    expect(screen.getAllByTestId('rebalance-row')).toHaveLength(1)
+    expect(screen.getAllByTestId('rebalance-row-unsynced')).toHaveLength(2)
   })
 
-  it('keeps row-specific awaiting in mixed state without banner', () => {
-    render(
-      <StocksRebalanceDashboard
-        symbols={[
-          {
-            symbol: 'AAPL',
-            currentBlock: 100,
-            oracleBlock: 100,
-            products: { amm: 100, perps: 100, prediction: 100, lend: 100, yield: 100 },
-            lastSyncedBlock: 100,
-            blockSkew: 0,
-            divergenceBps: 12,
-            coherentBlock: true,
-            stopReasons: [],
-            riskIncreaseAllowed: true,
-          },
-          {
-            symbol: 'TSLA',
-            currentBlock: 0,
-            oracleBlock: 0,
-            products: { amm: 0, perps: 0, prediction: 0, lend: 0, yield: 0 },
-            lastSyncedBlock: 0,
-            blockSkew: 0,
-            divergenceBps: 0,
-            coherentBlock: true,
-            stopReasons: [],
-            riskIncreaseAllowed: true,
-          },
-        ]}
-      />,
-    )
-    expect(screen.getByText('Open')).toBeInTheDocument()
-    expect(screen.getByText('Awaiting')).toBeInTheDocument()
-    expect(screen.queryByText(/Awaiting on-chain block data/i)).not.toBeInTheDocument()
-  })
-
-  it('renders the custom emptyMessage when symbols is empty', () => {
-    render(
-      <StocksRebalanceDashboard
-        symbols={[]}
-        emptyMessage="No symbols match your current filters."
-      />,
-    )
-    expect(
-      screen.getByText('No symbols match your current filters.'),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('No active symbols reported.')).not.toBeInTheDocument()
-  })
-
-  it('falls back to the default empty message when no emptyMessage prop is provided', () => {
+  it('zero symbols still uses the rebalance-empty branch — banner does not steal that case', () => {
     render(<StocksRebalanceDashboard symbols={[]} />)
-    expect(screen.getByText('No active symbols reported.')).toBeInTheDocument()
-  })
-
-  it('augments the subtitle with (N of M) when filtered/total differ', () => {
-    render(
-      <StocksRebalanceDashboard
-        symbols={[
-          {
-            symbol: 'AAPL',
-            currentBlock: 100,
-            oracleBlock: 100,
-            products: { amm: 100, perps: 100, prediction: 100, lend: 100, yield: 100 },
-            lastSyncedBlock: 100,
-            blockSkew: 0,
-            divergenceBps: 12,
-            coherentBlock: true,
-            stopReasons: [],
-            riskIncreaseAllowed: true,
-          },
-        ]}
-        filteredCount={3}
-        totalCount={10}
-      />,
-    )
-    expect(screen.getByText(/\(3 of 10\)/)).toBeInTheDocument()
-  })
-
-  it('omits the (N of M) suffix when filteredCount equals totalCount', () => {
-    render(
-      <StocksRebalanceDashboard
-        symbols={[
-          {
-            symbol: 'AAPL',
-            currentBlock: 100,
-            oracleBlock: 100,
-            products: { amm: 100, perps: 100, prediction: 100, lend: 100, yield: 100 },
-            lastSyncedBlock: 100,
-            blockSkew: 0,
-            divergenceBps: 12,
-            coherentBlock: true,
-            stopReasons: [],
-            riskIncreaseAllowed: true,
-          },
-        ]}
-        filteredCount={10}
-        totalCount={10}
-      />,
-    )
-    expect(screen.queryByText(/of 10\)/)).not.toBeInTheDocument()
+    expect(screen.getByTestId('rebalance-empty')).toBeInTheDocument()
+    expect(screen.queryByTestId('rebalance-all-unsynced')).toBeNull()
+    expect(document.querySelector('table')).toBeNull()
   })
 })

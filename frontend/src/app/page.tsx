@@ -1,8 +1,9 @@
 'use client'
 
-import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import { ProductPills } from '@/components/ProductPills'
+import { HeroImpactLine } from '@/components/HeroImpactLine'
+import { SafeDynamic } from '@/components/SafeDynamic'
 
 const SwapCard = dynamic(
   () => import('@/components/LandingSwapCard'),
@@ -69,21 +70,17 @@ export default function Home() {
         <p className="text-sm text-gray-400">
           Trade tokenized AAPL, TSLA, NVDA 24/7. Every swap and trade automatically funds universal basic income worldwide.
         </p>
-        <p className="mt-3 text-xs text-gray-500 flex items-center justify-center gap-1.5">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-goodgreen animate-pulse" />
-          <span className="text-goodgreen/80 font-medium">$2.4M</span>
-          already distributed to
-          <span className="text-goodgreen/80 font-medium">640K+</span>
-          people worldwide
-        </p>
+        <HeroImpactLine />
       </div>
 
       <ProductPills />
 
-      <SwapPriceChart
-        inputSymbol="ETH"
-        outputSymbol="G$"
-      />
+      <SafeDynamic label="price chart">
+        <SwapPriceChart
+          inputSymbol="ETH"
+          outputSymbol="G$"
+        />
+      </SafeDynamic>
 
       {/* Swap card wrapper with glow */}
       <div className="relative w-full max-w-[460px]">
@@ -92,7 +89,9 @@ export default function Home() {
           className="pointer-events-none absolute inset-0 -m-4 opacity-[0.06] rounded-3xl blur-[60px]"
           style={{ background: 'radial-gradient(ellipse at center, #00B0A0 0%, transparent 70%)' }}
         />
-        <SwapCard />
+        <SafeDynamic label="swap form">
+          <SwapCard />
+        </SafeDynamic>
       </div>
 
       <HowItWorks />

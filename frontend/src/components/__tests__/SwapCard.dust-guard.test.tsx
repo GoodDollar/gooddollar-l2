@@ -24,6 +24,16 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
 
+vi.mock('@rainbow-me/rainbowkit', () => ({
+  ConnectButton: {
+    Custom: ({
+      children,
+    }: {
+      children: (args: { openConnectModal: () => void }) => React.ReactNode
+    }) => children({ openConnectModal: vi.fn() }),
+  },
+}))
+
 vi.mock('@/lib/usePriceFeeds', () => ({
   usePriceFeeds: () => ({
     prices: { 'G$': 0.0001, 'ETH': 3000, 'WETH': 3000, 'USDC': 1 },
@@ -62,6 +72,7 @@ vi.mock('@/lib/useOnChainSwap', () => ({
 }))
 
 vi.mock('@/lib/useSwapSettings', () => ({
+  SWAP_SETTINGS_DEFAULTS: { slippage: 0.5, deadline: 30 },
   useSwapSettings: () => ({
     slippage: 0.5,
     setSlippage: vi.fn(),

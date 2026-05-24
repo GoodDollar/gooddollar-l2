@@ -18,7 +18,14 @@
  */
 import { describe, it, expect } from 'vitest'
 import type { PredictionMarket } from '../predictData'
-import { selectBreakingNews, selectHotTopics } from '../predictDiscovery'
+import {
+  selectBreakingNews,
+  selectHotTopics,
+  selectRecentlyResolvedTopics,
+} from '../predictDiscovery'
+
+const FUTURE_DATE = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+const PAST_DATE = '2020-01-01'
 
 function mkMarket(overrides: Partial<PredictionMarket> = {}): PredictionMarket {
   return {
@@ -28,7 +35,7 @@ function mkMarket(overrides: Partial<PredictionMarket> = {}): PredictionMarket {
     yesPrice: 0.5,
     volume: 0,
     liquidity: 100,
-    endDate: '2030-12-31',
+    endDate: FUTURE_DATE,
     resolved: false,
     resolutionSource: 'test',
     createdAt: '2026-01-01',
@@ -197,17 +204,27 @@ describe('selectHotTopics', () => {
     expect(result.map(t => t.category)).toEqual(['Culture', 'World Events', 'AI & Tech'])
   })
 
-  it('counts expired markets in the aggregation (lifetime volume signal)', () => {
-    // Hot topics aren't a "what's live right now" signal — they represent
-    // sustained traction. We keep expired markets in the aggregate so a
-    // freshly-resolved high-volume market still shows its category as hot
-    // for a bit. (Active-only filtering is the breaking-news widget's job.)
+  it('filters out expired markets from the active-topics aggregation (task 0015)', () => {
+    // Hot topics must match the predicate the main markets grid uses
+    // (`getMarketStatus !== 'expired'`). A resolved-only category is
+    // dropped so a row reading "Culture · 20 markets" never lands the
+    // user on "no active markets match your filter". Sustained-traction
+    // is now the `selectRecentlyResolvedTopics` widget's job.
     const markets = [
-      mkMarket({ id: '1', category: 'Crypto', endDate: '2020-01-01', volume: 1000 }),
+      mkMarket({ id: '1', category: 'Crypto', endDate: PAST_DATE, volume: 1000 }),
       mkMarket({ id: '2', category: 'Sports', volume: 100 }),
     ]
     const result = selectHotTopics(markets, 4)
-    expect(result.map(t => t.category)).toEqual(['Crypto', 'Sports'])
+    expect(result.map(t => t.category)).toEqual(['Sports'])
+  })
+
+  it('returns an empty array when every market is resolved/expired (today\'s end-of-cycle state)', () => {
+    const markets = [
+      mkMarket({ id: '1', category: 'Crypto', endDate: PAST_DATE, volume: 1000 }),
+      mkMarket({ id: '2', category: 'Politics', endDate: PAST_DATE, volume: 500 }),
+      mkMarket({ id: '3', category: 'Culture', endDate: PAST_DATE, volume: 200 }),
+    ]
+    expect(selectHotTopics(markets, 4)).toEqual([])
   })
 
   it('is stable for ties (same input order → same output order)', () => {
@@ -221,5 +238,44 @@ describe('selectHotTopics', () => {
     // the same order as the first.
     const result2 = selectHotTopics(markets, 4)
     expect(result.map(t => t.category)).toEqual(result2.map(t => t.category))
+  })
+})
+
+describe('selectRecentlyResolvedTopics', () => {
+  it('returns an empty array when there are no markets', () => {
+    expect(selectRecentlyResolvedTopics([], 4)).toEqual([])
+  })
+
+  it('aggregates volume per category for resolved markets only and returns highest first', () => {
+    const markets = [
+      mkMarket({ id: '1', category: 'Culture', endDate: PAST_DATE, volume: 1000 }),
+      mkMarket({ id: '2', category: 'Culture', endDate: PAST_DATE, volume: 500 }),
+      mkMarket({ id: '3', category: 'Politics', endDate: PAST_DATE, volume: 200 }),
+      mkMarket({ id: '4', category: 'Sports', volume: 999 }),
+    ]
+    const result = selectRecentlyResolvedTopics(markets, 4)
+    expect(result.map(t => t.category)).toEqual(['Culture', 'Politics'])
+    expect(result.find(t => t.category === 'Culture')?.total).toBe(1500)
+    expect(result.find(t => t.category === 'Culture')?.count).toBe(2)
+  })
+
+  it('returns an empty array when all markets are still active', () => {
+    const markets = [
+      mkMarket({ id: '1', category: 'Crypto', volume: 100 }),
+      mkMarket({ id: '2', category: 'Politics', volume: 200 }),
+    ]
+    expect(selectRecentlyResolvedTopics(markets, 4)).toEqual([])
+  })
+
+  it('caps the result at n entries', () => {
+    const markets = [
+      mkMarket({ id: '1', category: 'Crypto', endDate: PAST_DATE, volume: 100 }),
+      mkMarket({ id: '2', category: 'Politics', endDate: PAST_DATE, volume: 200 }),
+      mkMarket({ id: '3', category: 'Sports', endDate: PAST_DATE, volume: 300 }),
+      mkMarket({ id: '4', category: 'Culture', endDate: PAST_DATE, volume: 400 }),
+    ]
+    const result = selectRecentlyResolvedTopics(markets, 2)
+    expect(result).toHaveLength(2)
+    expect(result.map(t => t.category)).toEqual(['Culture', 'Sports'])
   })
 })

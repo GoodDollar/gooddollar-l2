@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { InfoBanner } from '@/components/InfoBanner'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import type { PriceSource } from '@/lib/priceSource'
+import { STALE_THRESHOLD_MS } from '@/lib/priceSource'
 import {
   getReserves,
-  getReserveBySymbol,
   getUserAccountData,
   getAvailableLiquidity,
-  getUtilizationRate,
   formatAPY,
   formatUSD,
   formatHealthFactor,
@@ -26,7 +27,9 @@ import {
   useTokenBalance,
   parseTokenAmount,
   formatTokenAmount,
+  type ReserveDataResult,
 } from '@/lib/useGoodLend'
+import { useAttributedPrice } from '@/lib/useAttributedPrice'
 import { CONTRACTS } from '@/lib/chain'
 
 // Map reserve symbols to devnet contract addresses
@@ -45,6 +48,26 @@ const DEVNET_DECIMALS: Record<string, number> = {
 // is roadmap-only and must not show fabricated supply/borrow/APY numbers.
 const LIVE_SYMBOLS = new Set(Object.keys(DEVNET_RESERVE_ADDRESSES))
 const isLiveReserve = (symbol: string) => LIVE_SYMBOLS.has(symbol)
+
+/**
+ * Per-live-row chain state. Drives the source badge and the em-dash branch
+ * in `MarketsTable` so we never render `LendReserve` fixture numbers under a
+ * "live on devnet" promise. Task 0034.
+ */
+interface RowChainState {
+  source: PriceSource
+  data: ReserveDataResult['data']
+}
+
+function resolveRowSource(state: ReserveDataResult): PriceSource {
+  if (state.data && !state.error) {
+    if (state.dataUpdatedAt === 0) return 'chain-oracle'
+    const ageMs = Date.now() - state.dataUpdatedAt
+    return ageMs > STALE_THRESHOLD_MS ? 'stale' : 'chain-oracle'
+  }
+  if (state.error) return 'stale'
+  return 'unknown'
+}
 
 // ─── Health Factor Gauge ──────────────────────────────────────────────────────
 
@@ -463,15 +486,154 @@ function ActionPanel({ reserve, onClose }: { reserve: LendReserve; onClose: () =
 
 // ─── Markets Table ────────────────────────────────────────────────────────────
 
+const EM_DASH = '—'
+
+function ComingSoonRow({ reserve }: { reserve: LendReserve }) {
+  return (
+    <tr
+      aria-disabled="true"
+      className="border-b border-gray-700/10 last:border-0 cursor-not-allowed opacity-70"
+    >
+      <td className="px-5 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-full bg-gray-700/20 border border-gray-700/30 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0">
+            {reserve.symbol.slice(0, 2)}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-medium text-gray-300">{reserve.symbol}</p>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-gray-700/40 text-gray-400 text-[9px] font-semibold uppercase tracking-wider">
+                Coming Soon
+              </span>
+            </div>
+            <p className="text-[10px] text-gray-500">{reserve.name}</p>
+          </div>
+        </div>
+      </td>
+      {Array.from({ length: 6 }, (_, i) => (
+        <td key={i} className="px-4 py-3.5 text-right text-gray-500">{EM_DASH}</td>
+      ))}
+    </tr>
+  )
+}
+
+interface LiveRowProps {
+  reserve: LendReserve
+  state: RowChainState
+  priceUsd: number
+  priceKnown: boolean
+  isSelected: boolean
+  onSelect: () => void
+}
+
+function LiveReserveRow({ reserve, state, priceUsd, priceKnown, isSelected, onSelect }: LiveRowProps) {
+  const isChainLive = state.source === 'chain-oracle' && !!state.data
+  const data = state.data
+
+  // Honest data only — when chain isn't live we don't compute *anything* from
+  // the LendReserve fixture, even derived metrics like utilization. Task 0034.
+  const totalSuppliedTokens = isChainLive && data
+    ? formatTokenAmount(data.totalDeposits, DEVNET_DECIMALS[reserve.symbol] ?? reserve.decimals)
+    : 0
+  const totalBorrowedTokens = isChainLive && data
+    ? formatTokenAmount(data.totalBorrows, DEVNET_DECIMALS[reserve.symbol] ?? reserve.decimals)
+    : 0
+  const supplyAPY = isChainLive && data ? data.supplyAPY : 0
+  const borrowAPY = isChainLive && data ? data.borrowAPY : 0
+  const utilization = isChainLive && data ? data.utilization : 0
+  const availableTokens = Math.max(0, totalSuppliedTokens - totalBorrowedTokens)
+
+  // When the USD-anchor price is unknown (e.g. CoinGecko also down for ETH),
+  // we fall back to native-unit display rather than invent a USD figure.
+  const renderTokenUsd = (tokens: number): string => {
+    if (!isChainLive) return EM_DASH
+    if (!priceKnown) return `${tokens.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${reserve.symbol}`
+    return formatUSD(tokens * priceUsd)
+  }
+
+  const renderAPY = (apy: number): React.ReactNode => {
+    if (!isChainLive) return <span className="text-gray-500">{EM_DASH}</span>
+    return formatAPY(apy)
+  }
+
+  return (
+    <tr
+      onClick={onSelect}
+      className={`border-b border-gray-700/10 last:border-0 cursor-pointer transition-colors ${
+        isSelected ? 'bg-goodgreen/5 border-goodgreen/10' : 'hover:bg-dark-50/30'
+      }`}
+    >
+      <td className="px-5 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-full bg-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-[10px] font-bold text-goodgreen shrink-0">
+            {reserve.symbol.slice(0, 2)}
+          </div>
+          <div>
+            <p className="font-medium text-white">{reserve.symbol}</p>
+            <div className="flex items-center gap-1 mt-0.5">
+              <p className="text-[10px] text-gray-500">{reserve.gTokenSymbol}</p>
+              <span data-testid={`lend-row-source-${reserve.symbol}`} data-source={state.source}>
+                <PriceSourceBadge source={state.source} size="sm" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3.5 text-right text-white">{renderTokenUsd(totalSuppliedTokens)}</td>
+      <td className={`px-4 py-3.5 text-right font-medium ${isChainLive ? 'text-goodgreen' : ''}`}>
+        {renderAPY(supplyAPY)}
+      </td>
+      <td className="px-4 py-3.5 text-right text-white">{renderTokenUsd(totalBorrowedTokens)}</td>
+      <td className={`px-4 py-3.5 text-right ${isChainLive && reserve.borrowingEnabled ? 'text-red-400' : ''}`}>
+        {isChainLive
+          ? (reserve.borrowingEnabled ? formatAPY(borrowAPY) : <span className="text-gray-500">Disabled</span>)
+          : <span className="text-gray-500">{EM_DASH}</span>}
+      </td>
+      <td className="px-4 py-3.5 text-right">
+        {isChainLive ? (
+          <div className="flex items-center justify-end gap-2">
+            <div className="w-14 h-1.5 bg-dark-50 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${
+                  utilization > 0.9 ? 'bg-red-500' : utilization > 0.7 ? 'bg-yellow-400' : 'bg-goodgreen'
+                }`}
+                style={{ width: `${utilization * 100}%` }}
+              />
+            </div>
+            <span className="text-gray-300 w-10 text-right">
+              {(utilization * 100).toFixed(0)}%
+            </span>
+          </div>
+        ) : (
+          <span className="text-gray-500">{EM_DASH}</span>
+        )}
+      </td>
+      <td className="px-5 py-3.5 text-right text-gray-300">{renderTokenUsd(availableTokens)}</td>
+    </tr>
+  )
+}
+
 function MarketsTable({
   reserves,
+  chainStates,
+  ethPriceUsd,
+  ethPriceKnown,
   selectedSymbol,
   onSelect,
 }: {
   reserves: LendReserve[]
+  chainStates: Record<string, RowChainState>
+  ethPriceUsd: number
+  ethPriceKnown: boolean
   selectedSymbol: string | null
   onSelect: (symbol: string) => void
 }) {
+  const priceForSymbol = (symbol: string, reserve: LendReserve): { usd: number; known: boolean } => {
+    if (symbol === 'WETH') return { usd: ethPriceUsd, known: ethPriceKnown }
+    if (symbol === 'USDC') return { usd: 1, known: true }
+    return { usd: reserve.price, known: true }
+  }
+
   return (
     <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
       <div className="px-5 py-3 border-b border-gray-700/20">
@@ -492,98 +654,19 @@ function MarketsTable({
           </thead>
           <tbody>
             {reserves.map(r => {
-              const isLive = isLiveReserve(r.symbol)
-              const isSelected = selectedSymbol === r.symbol
-
-              if (!isLive) {
-                // Non-live reserves: show the symbol with a "Coming Soon" badge
-                // and hide all fabricated numbers behind an em dash. Row is not
-                // clickable so the action panel cannot open against a market
-                // that has no deployed contract.
-                return (
-                  <tr
-                    key={r.symbol}
-                    aria-disabled="true"
-                    className="border-b border-gray-700/10 last:border-0 cursor-not-allowed opacity-70"
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-gray-700/20 border border-gray-700/30 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0">
-                          {r.symbol.slice(0, 2)}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-gray-300">{r.symbol}</p>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-gray-700/40 text-gray-400 text-[9px] font-semibold uppercase tracking-wider">
-                              Coming Soon
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-gray-500">{r.name}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
-                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
-                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
-                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
-                    <td className="px-4 py-3.5 text-right text-gray-500">—</td>
-                    <td className="px-5 py-3.5 text-right text-gray-500">—</td>
-                  </tr>
-                )
-              }
-
-              const utilization = getUtilizationRate(r)
-              const available = getAvailableLiquidity(r)
+              if (!isLiveReserve(r.symbol)) return <ComingSoonRow key={r.symbol} reserve={r} />
+              const state = chainStates[r.symbol] ?? { source: 'unknown', data: null }
+              const { usd, known } = priceForSymbol(r.symbol, r)
               return (
-                <tr
+                <LiveReserveRow
                   key={r.symbol}
-                  onClick={() => onSelect(r.symbol)}
-                  className={`border-b border-gray-700/10 last:border-0 cursor-pointer transition-colors ${
-                    isSelected ? 'bg-goodgreen/5 border-goodgreen/10' : 'hover:bg-dark-50/30'
-                  }`}
-                >
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-goodgreen/10 border border-goodgreen/20 flex items-center justify-center text-[10px] font-bold text-goodgreen shrink-0">
-                        {r.symbol.slice(0, 2)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-white">{r.symbol}</p>
-                        <p className="text-[10px] text-gray-500">{r.gTokenSymbol}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 text-right text-white">
-                    {formatUSD(r.totalSupplied * r.price)}
-                  </td>
-                  <td className="px-4 py-3.5 text-right text-goodgreen font-medium">
-                    {formatAPY(r.supplyAPY)}
-                  </td>
-                  <td className="px-4 py-3.5 text-right text-white">
-                    {formatUSD(r.totalBorrowed * r.price)}
-                  </td>
-                  <td className="px-4 py-3.5 text-right text-red-400">
-                    {r.borrowingEnabled ? formatAPY(r.borrowAPY) : <span className="text-gray-500">Disabled</span>}
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="w-14 h-1.5 bg-dark-50 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            utilization > 0.9 ? 'bg-red-500' : utilization > 0.7 ? 'bg-yellow-400' : 'bg-goodgreen'
-                          }`}
-                          style={{ width: `${utilization * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-gray-300 w-10 text-right">
-                        {(utilization * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-right text-gray-300">
-                    {formatUSD(available * r.price)}
-                  </td>
-                </tr>
+                  reserve={r}
+                  state={state}
+                  priceUsd={usd}
+                  priceKnown={known}
+                  isSelected={selectedSymbol === r.symbol}
+                  onSelect={() => onSelect(r.symbol)}
+                />
               )
             })}
           </tbody>
@@ -593,53 +676,115 @@ function MarketsTable({
   )
 }
 
+function ProtocolStat({ label, value, tone }: { label: string; value: string; tone?: 'goodgreen' }) {
+  return (
+    <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-2.5 sm:p-4 text-center">
+      <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">{label}</p>
+      <p className={`text-sm sm:text-base font-bold truncate ${tone === 'goodgreen' ? 'text-goodgreen' : 'text-white'}`}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
+// ─── Devnet read-status banner (green when chain OK, red when both down) ────
+
+interface DevnetReadStatusBannerProps {
+  states: ReserveDataResult[]
+  onRetry: () => void
+}
+
+function DevnetReadStatusBanner({ states, onRetry }: DevnetReadStatusBannerProps) {
+  const anyDataAlive = states.some(s => s.data && !s.error)
+  const allErrored = states.length > 0 && states.every(s => !!s.error)
+  const state: 'ok' | 'error' = !anyDataAlive && allErrored ? 'error' : 'ok'
+
+  if (state === 'error') {
+    return (
+      <div
+        data-testid="lend-chain-status-banner"
+        data-state="error"
+        className="w-full mb-2 sm:mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-3"
+      >
+        <svg className="w-5 h-5 mt-0.5 shrink-0 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-red-300 mb-0.5">Couldn't reach the chain RPC</p>
+          <p className="text-xs text-red-200/80 leading-relaxed">
+            Live reserve rates are unavailable. Numbers are hidden until the RPC recovers.
+          </p>
+        </div>
+        <button
+          onClick={onRetry}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/20 hover:bg-red-500/30 text-red-100 border border-red-500/30 transition-colors shrink-0"
+        >
+          Retry now
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div data-testid="lend-chain-status-banner" data-state="ok">
+      <InfoBanner
+        title="Devnet Preview"
+        description="USDC and WETH markets are live on devnet with real on-chain rates. WBTC, DAI, and G$ are not yet deployed and show no market data."
+        storageKey="gd-banner-dismissed-lend"
+      />
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type PageTab = 'markets' | 'dashboard'
 
 export default function LendPage() {
-  const mockReserves = useMemo(() => getReserves(), [])
+  const reserves = useMemo(() => getReserves(), [])
   const [pageTab, setPageTab] = useState<PageTab>('markets')
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
 
-  // On-chain reserve data for the two devnet markets
-  const { data: usdcData } = useReserveData(CONTRACTS.MockUSDC)
-  const { data: wethData } = useReserveData(CONTRACTS.MockWETH)
+  // On-chain reserve data for the two devnet markets — keep the full result
+  // so per-row source attribution can branch on data/error/freshness.
+  const usdcState = useReserveData(CONTRACTS.MockUSDC)
+  const wethState = useReserveData(CONTRACTS.MockWETH)
 
-  // Blend mock config with on-chain rates
-  const reserves = useMemo(() => {
-    return mockReserves.map(r => {
-      if (r.symbol === 'USDC' && usdcData) {
-        return {
-          ...r,
-          address: CONTRACTS.MockUSDC,
-          totalSupplied: formatTokenAmount(usdcData.totalDeposits, 6),
-          totalBorrowed: formatTokenAmount(usdcData.totalBorrows, 6),
-          supplyAPY: usdcData.supplyAPY,
-          borrowAPY: usdcData.borrowAPY,
-        }
-      }
-      if (r.symbol === 'WETH' && wethData) {
-        return {
-          ...r,
-          address: CONTRACTS.MockWETH,
-          totalSupplied: formatTokenAmount(wethData.totalDeposits, 18),
-          totalBorrowed: formatTokenAmount(wethData.totalBorrows, 18),
-          supplyAPY: wethData.supplyAPY,
-          borrowAPY: wethData.borrowAPY,
-        }
-      }
-      return r
-    })
-  }, [mockReserves, usdcData, wethData])
+  // Shared ETH USD price (so WETH on /lend agrees with /, /activity,
+  // /analytics, /portfolio, /perps — see task 0021 / 0033).
+  const ethAttr = useAttributedPrice('ETH')
+  const ethPriceKnown = ethAttr && ethAttr.source !== 'unknown' && ethAttr.priceUsd > 0
+  const ethPriceUsd = ethPriceKnown ? ethAttr.priceUsd : 0
 
-  // Only reserves with deployed contracts count toward headline TVL/borrow/UBI
-  // figures. Mixing fabricated rows into the totals overstates real on-chain
-  // activity by orders of magnitude.
-  const liveReserves = useMemo(
-    () => reserves.filter(r => isLiveReserve(r.symbol)),
-    [reserves]
-  )
+  const chainStates = useMemo<Record<string, RowChainState>>(() => ({
+    USDC: { source: resolveRowSource(usdcState), data: usdcState.data },
+    WETH: { source: resolveRowSource(wethState), data: wethState.data },
+  }), [usdcState, wethState])
+
+  const retryReserves = useCallback(() => {
+    usdcState.refetch()
+    wethState.refetch()
+  }, [usdcState, wethState])
+
+  // Headline TVL/borrow/UBI figures: include ONLY rows we can prove with a
+  // fresh chain read. The fixture stays for the not-yet-deployed roadmap
+  // rows + the utilisation-curve chart, but the totals must reflect real
+  // devnet activity only.
+  const liveOnChainRows = useMemo(() => reserves.flatMap(r => {
+    if (!isLiveReserve(r.symbol)) return []
+    const state = chainStates[r.symbol]
+    if (!state || state.source !== 'chain-oracle' || !state.data) return []
+    const price = r.symbol === 'WETH' ? (ethPriceKnown ? ethPriceUsd : null) : 1
+    if (price === null) return []
+    const decimals = DEVNET_DECIMALS[r.symbol] ?? r.decimals
+    return [{
+      reserveFactorBPS: r.reserveFactorBPS,
+      totalSupplied: formatTokenAmount(state.data.totalDeposits, decimals),
+      totalBorrowed: formatTokenAmount(state.data.totalBorrows, decimals),
+      borrowAPY: state.data.borrowAPY,
+      price,
+    }]
+  }), [reserves, chainStates, ethPriceKnown, ethPriceUsd])
 
   const { address, isConnected } = useConnectedAccount()
   const { data: onChainAccount } = useOnChainAccountData(address)
@@ -682,11 +827,7 @@ export default function LendPage() {
         )}
       </div>
 
-      <InfoBanner
-        title="Devnet Preview"
-        description="USDC and WETH markets are live on devnet with real on-chain rates. WBTC, DAI, and G$ are not yet deployed and show no market data."
-        storageKey="gd-banner-dismissed-lend"
-      />
+      <DevnetReadStatusBanner states={[usdcState, wethState]} onRetry={retryReserves} />
 
       {/* Page tabs */}
       <div className="flex gap-1 mb-6">
@@ -713,39 +854,39 @@ export default function LendPage() {
           <div className="flex-1 min-w-0">
             <MarketsTable
               reserves={reserves}
+              chainStates={chainStates}
+              ethPriceUsd={ethPriceUsd}
+              ethPriceKnown={ethPriceKnown}
               selectedSymbol={selectedSymbol}
               onSelect={sym =>
                 isLiveReserve(sym) && setSelectedSymbol(sym === selectedSymbol ? null : sym)
               }
             />
 
-            {/* Protocol stats — live reserves only, so headline TVL/borrow/UBI
-                figures reflect real on-chain devnet activity instead of mock
-                values from yet-to-be-deployed markets. */}
+            {/* Protocol stats — only rows backed by a fresh on-chain read are
+                summed in, so when the RPC is down all three cards show an
+                em-dash instead of fixture-shaped fake totals. */}
             <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4">
-              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-2.5 sm:p-4 text-center">
-                <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">Total Value Locked</p>
-                <p className="text-sm sm:text-base font-bold text-white truncate">
-                  {formatUSD(liveReserves.reduce((s, r) => s + r.totalSupplied * r.price, 0))}
-                </p>
-              </div>
-              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-2.5 sm:p-4 text-center">
-                <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">Total Borrowed</p>
-                <p className="text-sm sm:text-base font-bold text-white truncate">
-                  {formatUSD(liveReserves.reduce((s, r) => s + r.totalBorrowed * r.price, 0))}
-                </p>
-              </div>
-              <div className="bg-dark-100 rounded-2xl border border-gray-700/20 p-2.5 sm:p-4 text-center">
-                <p className="text-[10px] sm:text-xs text-gray-400 mb-1 truncate">UBI Revenue / yr</p>
-                <p className="text-sm sm:text-base font-bold text-goodgreen truncate">
-                  {formatUSD(
-                    liveReserves.reduce((s, r) =>
-                      s + r.totalBorrowed * r.price * r.borrowAPY * (r.reserveFactorBPS / 10_000) * 0.33,
-                      0
-                    )
-                  )}
-                </p>
-              </div>
+              <ProtocolStat
+                label="Total Value Locked"
+                value={liveOnChainRows.length === 0
+                  ? EM_DASH
+                  : formatUSD(liveOnChainRows.reduce((s, r) => s + r.totalSupplied * r.price, 0))}
+              />
+              <ProtocolStat
+                label="Total Borrowed"
+                value={liveOnChainRows.length === 0
+                  ? EM_DASH
+                  : formatUSD(liveOnChainRows.reduce((s, r) => s + r.totalBorrowed * r.price, 0))}
+              />
+              <ProtocolStat
+                label="UBI Revenue / yr"
+                tone="goodgreen"
+                value={liveOnChainRows.length === 0
+                  ? EM_DASH
+                  : formatUSD(liveOnChainRows.reduce((s, r) =>
+                      s + r.totalBorrowed * r.price * r.borrowAPY * (r.reserveFactorBPS / 10_000) * 0.33, 0))}
+              />
             </div>
           </div>
 
@@ -819,7 +960,7 @@ export default function LendPage() {
       )}
 
       <p className="text-xs text-gray-600 text-center mt-4">
-        Live markets show real devnet data. Greyed markets are not yet deployed.
+        Live markets show real devnet data when the chain is reachable. Greyed markets are not yet deployed.
       </p>
     </div>
   )

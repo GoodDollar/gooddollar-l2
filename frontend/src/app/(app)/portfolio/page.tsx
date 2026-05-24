@@ -1,15 +1,16 @@
 'use client'
 
 import { useMemo } from 'react'
-import Link from 'next/link'
 import { useAccount } from 'wagmi'
+import Link from 'next/link'
 import { formatStockPrice, formatLargeNumber } from '@/lib/stockData'
 import { formatVolume } from '@/lib/predictData'
 import { useOnChainPredictPositions, useOnChainPredictSummary, useOnChainMarkets } from '@/lib/useOnChainPredict'
 import { formatPerpsPrice } from '@/lib/perpsData'
 import { useOnChainHoldings } from '@/lib/useOnChainStocks'
 import { useOnChainPositions, useOnChainAccountSummary } from '@/lib/useOnChainPerps'
-import { useMockLendPositions, useMockYieldPositions } from '@/lib/portfolioLendYieldData'
+import { useLendPositions, useYieldPositions } from '@/lib/portfolioLendYieldData'
+import { DEVNET_CHAIN_ID } from '@/lib/devnet'
 import { ConnectWalletEmptyState } from '@/components/ConnectWalletEmptyState'
 import { ConnectWalletBanner } from '@/components/ConnectWalletBanner'
 import { PortfolioOnChain } from '@/components/PortfolioOnChain'
@@ -17,12 +18,11 @@ import { Sparkline } from '@/components/Sparkline'
 import { StockLogo } from '@/components/ui/stock-logo'
 import { getStockByTicker } from '@/lib/stockData'
 import { SummaryCard, SectionHeader, EmptyState } from '@/components/ui'
-import { DEVNET_CHAIN_ID } from '@/lib/devnet'
-
-// Task 0054: shared "value unknown" placeholder used by the summary tiles
-// when no wallet is connected (or it's on the wrong chain). Mirrors the
-// em-dash treatment already used by PairInfoBar and the stocks listing.
-const NO_DATA_DASH = '—'
+import { PortfolioPriceStrip } from '@/components/PortfolioPriceStrip'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import { useStockPrices } from '@/lib/useStockPrices'
+import { usePriceServiceStatus } from '@/lib/usePriceServiceStatus'
+import type { PriceSource } from '@/lib/priceSource'
 
 
 function HealthBadge({ value }: { value: number }) {
@@ -36,20 +36,40 @@ function HealthBadge({ value }: { value: number }) {
 }
 
 export default function PortfolioPage() {
-  // Task 0054: the GoodLend / GoodYield sections use mock data in demo mode.
-  // Gate them on the same wallet signal the on-chain sections already use so
-  // disconnected/wrong-chain users do not see a fabricated $26K dashboard.
-  const { isConnected, chainId } = useAccount()
-  const isLive = isConnected && chainId === DEVNET_CHAIN_ID
-
   const { holdings: stockHoldings } = useOnChainHoldings()
   const { positions: predictPositions } = useOnChainPredictPositions()
   const predictSummary = useOnChainPredictSummary()
   const { markets: predictMarkets } = useOnChainMarkets()
   const { positions: perpsPositions } = useOnChainPositions()
   const { summary: perpsAccount } = useOnChainAccountSummary()
-  const lend = useMockLendPositions(isLive)
-  const yield_ = useMockYieldPositions(isLive)
+  const lend = useLendPositions()
+  const yield_ = useYieldPositions()
+  const { sources: stockSources } = useStockPrices()
+  const { status: priceStatus } = usePriceServiceStatus()
+  const { isConnected, chainId } = useAccount()
+  const onCanonicalChain = isConnected && chainId === DEVNET_CHAIN_ID
+
+  // Resolve per-row source for the stocks panel — overlay session state
+  // from price-service status on the chain-oracle reading from useStockPrices.
+  const resolveStockSource = (ticker: string): PriceSource => {
+    const base = stockSources[ticker] ?? 'fallback'
+    const sq = priceStatus?.quotes.find(q => q.symbol === ticker)
+    if (sq && (sq.sessionState === 'closed' || sq.sessionState === 'halted')) return 'closed'
+    if (sq && sq.lastUpdateMs > 60_000 && base === 'chain-oracle') return 'stale'
+    return base
+  }
+
+  // Stocks tickers the user currently holds — strip header.
+  const stockTickers = useMemo(() => stockHoldings.map(h => h.ticker), [stockHoldings])
+  // Perp underlyings (e.g. BTC-USD → BTC). Used for the crypto cards.
+  const cryptoSymbols = useMemo(() => {
+    const set = new Set<string>()
+    for (const pos of perpsPositions) {
+      const base = pos.pair.split('-')[0]
+      if (base) set.add(base)
+    }
+    return Array.from(set)
+  }, [perpsPositions])
 
   // Build predict market lookup
   const predictMarketMap = useMemo(() => {
@@ -80,6 +100,11 @@ export default function PortfolioPage() {
     <div className="w-full max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Portfolio Overview</h1>
 
+      {/* Lane 4: live-price strip with per-symbol source attribution. */}
+      <div className="mb-4">
+        <PortfolioPriceStrip stockTickers={stockTickers} cryptoSymbols={cryptoSymbols} />
+      </div>
+
       {/* CTA banner: prompts disconnected / wrong-chain users to take action.
           Renders nothing when connected to chain 42069. */}
       <ConnectWalletBanner />
@@ -87,23 +112,28 @@ export default function PortfolioPage() {
       {/* Live on-chain positions — only visible when connected to devnet (chain 42069) */}
       <PortfolioOnChain />
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
+      <div
+        className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8"
+        data-testid={onCanonicalChain ? 'portfolio-summary' : 'portfolio-summary-disabled'}
+      >
         <SummaryCard
           label="Total Value"
-          value={isLive ? formatLargeNumber(totalValue) : NO_DATA_DASH}
+          value={onCanonicalChain ? formatLargeNumber(totalValue) : '—'}
+          disabled={!onCanonicalChain}
+          valueTestId="portfolio-summary-totalValue"
         />
         <SummaryCard
           label="Unrealized P&L"
-          value={
-            isLive
-              ? `${totalPnl >= 0 ? '+' : ''}${formatStockPrice(totalPnl)}`
-              : NO_DATA_DASH
-          }
-          color={isLive ? pnlColor : undefined}
+          value={onCanonicalChain ? `${totalPnl >= 0 ? '+' : ''}${formatStockPrice(totalPnl)}` : '—'}
+          color={onCanonicalChain ? pnlColor : undefined}
+          disabled={!onCanonicalChain}
+          valueTestId="portfolio-summary-totalPnl"
         />
         <SummaryCard
           label="Active Positions"
-          value={isLive ? String(totalPositions) : NO_DATA_DASH}
+          value={onCanonicalChain ? String(totalPositions) : '—'}
+          disabled={!onCanonicalChain}
+          valueTestId="portfolio-summary-totalPositions"
         />
       </div>
 
@@ -146,9 +176,12 @@ export default function PortfolioPage() {
                 <Link key={h.ticker} href={`/stocks/${h.ticker}`} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
                   <div className="flex items-center gap-2.5">
                     <StockLogo ticker={h.ticker} size="sm" />
-                    <div>
-                      <span className="text-sm font-medium text-white">{h.ticker}</span>
-                      {stockName && <span className="text-xs text-gray-500 ml-1.5">{stockName}</span>}
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-white">
+                        {h.ticker}
+                        {stockName && <span className="text-xs text-gray-500 ml-1.5">{stockName}</span>}
+                      </span>
+                      <PriceSourceBadge source={resolveStockSource(h.ticker)} size="sm" />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -250,22 +283,30 @@ export default function PortfolioPage() {
           />
         ) : (
           <div className="space-y-2">
-            {perpsPositions.slice(0, 3).map((pos, i) => (
-              <Link key={i} href="/perps/portfolio" className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm font-medium text-white">{pos.pair}</span>
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
-                    {pos.side.toUpperCase()} {pos.leverage}x
-                  </span>
-                </div>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {pos.unrealizedPnl >= 0 ? '+' : ''}{formatPerpsPrice(pos.unrealizedPnl)}
+            {perpsPositions.slice(0, 3).map((pos, i) => {
+              const baseAsset = pos.pair.split('-')[0]
+              const sq = priceStatus?.quotes.find(q => q.symbol === baseAsset)
+              const cryptoSrc: PriceSource = sq && (sq.sessionState === 'closed' || sq.sessionState === 'halted')
+                ? 'closed'
+                : (pos.markPrice > 0 ? 'chain-oracle' : 'fallback')
+              return (
+                <Link key={`${pos.pair}-${i}`} href="/perps/portfolio" className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-dark-50/30 transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm font-medium text-white">{pos.pair}</span>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pos.side === 'long' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {pos.side.toUpperCase()} {pos.leverage}x
+                    </span>
+                    <PriceSourceBadge source={cryptoSrc} size="sm" />
                   </div>
-                  <div className="text-xs text-gray-500">Size {pos.size}</div>
-                </div>
-              </Link>
-            ))}
+                  <div className="text-right">
+                    <div className={`text-sm font-medium ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {pos.unrealizedPnl >= 0 ? '+' : ''}{formatPerpsPrice(pos.unrealizedPnl)}
+                    </div>
+                    <div className="text-xs text-gray-500">Size {pos.size}</div>
+                  </div>
+                </Link>
+              )
+            })}
             {perpsPositions.length > 3 && (
               <p className="text-xs text-gray-500 text-center pt-1">+{perpsPositions.length - 3} more</p>
             )}
@@ -285,16 +326,18 @@ export default function PortfolioPage() {
           }
         />
         {lend.supplies.length === 0 && lend.borrows.length === 0 ? (
-          <EmptyState
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18M8 6v12M16 6v12" />
-              </svg>
-            }
-            title="No lending positions"
-            description="Supply collateral to earn yield or borrow against your assets."
-            action={{ label: 'Start lending', href: '/lend' }}
-          />
+          <div data-testid="lend-empty-state">
+            <EmptyState
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18M8 6v12M16 6v12" />
+                </svg>
+              }
+              title="No lending positions"
+              description="Supply collateral to earn yield or borrow against your assets."
+              action={{ label: 'Start lending', href: '/lend' }}
+            />
+          </div>
         ) : (
           <div className="space-y-1">
             {lend.supplies.length > 0 && (
@@ -364,16 +407,18 @@ export default function PortfolioPage() {
           }
         />
         {yield_.vaults.length === 0 ? (
-          <EmptyState
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-            title="No yield positions"
-            description="Deposit into vaults to earn yield on your assets."
-            action={{ label: 'Browse vaults', href: '/yield' }}
-          />
+          <div data-testid="yield-empty-state">
+            <EmptyState
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+              title="No yield positions"
+              description="Deposit into vaults to earn yield on your assets."
+              action={{ label: 'Browse vaults', href: '/yield' }}
+            />
+          </div>
         ) : (
           <div className="space-y-1">
             {yield_.vaults.map(v => (

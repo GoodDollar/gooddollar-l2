@@ -2,6 +2,18 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { TokenSelector, TOKENS } from '../TokenSelector'
 
+vi.mock('wagmi', () => ({
+  useAccount: () => ({ address: undefined }),
+  useBalance: () => ({ data: undefined }),
+  useReadContracts: () => ({ data: undefined }),
+}))
+
+vi.mock('@/lib/useAttributedPrice', () => ({
+  useAttributedPrices: (symbols: string[]) => Object.fromEntries(
+    symbols.map(symbol => [symbol, { priceUsd: symbol === 'USDC' ? 1 : 100, source: 'etoro-demo' }]),
+  ),
+}))
+
 describe('TokenSelector', () => {
   const defaultProps = {
     selected: TOKENS[1], // ETH
@@ -11,9 +23,13 @@ describe('TokenSelector', () => {
 
   async function openModal() {
     fireEvent.click(screen.getByText('ETH'))
-    await waitFor(() => {
-      expect(screen.getByText('Select a token')).toBeInTheDocument()
-    })
+    // Give React.lazy() a generous window — under parallel test loads the
+    // lazy-loaded TokenSelectorModal chunk can take longer than the default
+    // 1s waitFor budget while other workers are also resolving modules.
+    await waitFor(
+      () => expect(screen.getByText('Select a token')).toBeInTheDocument(),
+      { timeout: 5000 },
+    )
   }
 
   it('opens modal on click', async () => {

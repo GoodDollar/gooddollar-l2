@@ -48,7 +48,10 @@ vi.mock('@/lib/useMounted', () => ({
 }))
 
 vi.mock('@/lib/useOnChainStocks', () => ({
-  useOnChainStocks: () => ({ stocks: [makeStock()], isLive: false, isLoading: false }),
+  // Test is about pre-mount hydration guard, not the oracle isLive gate
+  // introduced in task 0038. Keep `isLive: true` so the trend summary
+  // falls through to its existing "chart data loads" empty state.
+  useOnChainStocks: () => ({ stocks: [makeStock()], isLive: true, isLoading: false }),
 }))
 
 vi.mock('@/lib/useStocks', () => ({

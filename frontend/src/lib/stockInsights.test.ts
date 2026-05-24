@@ -3,29 +3,34 @@ import { getAnalystOutlook, getStockNews } from './stockInsights'
 
 const TICKERS = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'AMD']
 
-// Task 0036 — the previous AnalystOutlook map shipped a hand-written
-// consensus / target / rating-distribution mock for 8 tickers and
-// labelled the row "Street consensus aggregate", read by the
-// AnalystOutlookCard as a live feed. There is no real analyst
-// consensus source wired up today, so `getAnalystOutlook` must return
-// `null` for every ticker until a real provider exists.
-describe('getAnalystOutlook — honest empty state', () => {
-  it.each(TICKERS)('returns null for %s', (ticker) => {
+/**
+ * Task 0029 regression lock: no module-level analyst-consensus table.
+ * `getAnalystOutlook` returns `null` for every known ticker until a real
+ * adapter is wired. Any future PR that re-introduces hardcoded
+ * "Street consensus aggregate" values for these tickers will break here.
+ */
+describe('getAnalystOutlook — no fabricated consensus table', () => {
+  it.each(TICKERS)('%s has no hardcoded analyst outlook', (ticker) => {
     expect(getAnalystOutlook(ticker)).toBeNull()
   })
 
-  it('returns null for an unknown ticker', () => {
+  it('returns null for unknown tickers', () => {
     expect(getAnalystOutlook('ZZZZ')).toBeNull()
   })
 })
 
-// Task 0034 — same honest-empty-state contract for the News feed.
-describe('getStockNews — honest empty state', () => {
-  it.each(TICKERS)('returns [] for %s', (ticker) => {
+/**
+ * Task 0030 regression lock: no module-level news headlines table.
+ * `getStockNews` returns `[]` for every ticker until a real adapter is
+ * wired. Any future PR that re-introduces the per-ticker headline list
+ * (Apple supply-chain, Tech Ledger byline, etc.) will break here.
+ */
+describe('getStockNews — no fabricated news table', () => {
+  it.each(TICKERS)('%s has no hardcoded news items', (ticker) => {
     expect(getStockNews(ticker)).toEqual([])
   })
 
-  it('returns [] for an unknown ticker', () => {
+  it('returns [] for unknown tickers', () => {
     expect(getStockNews('ZZZZ')).toEqual([])
   })
 })

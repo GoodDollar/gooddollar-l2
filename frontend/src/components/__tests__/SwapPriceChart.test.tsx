@@ -1,101 +1,137 @@
-/**
- * Task 0061 — SwapPriceChart honesty contract.
- *
- * Locks down the four invariants the landing hero must hold:
- *   1. Live feed → "Live · last update Ns ago" pill, real 24h change.
- *   2. Live feed but no 24h-change reading → em-dash percent.
- *   3. Stale / errored feed → "Demo · prices are illustrative" pill.
- *   4. The synthetic sparkline ALWAYS carries the "Sparkline illustrative"
- *      overlay — `getChartData()` is hash-seeded regardless of feed state.
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-const usePriceFeedsMock = vi.fn()
+vi.mock('@/lib/useAttributedPrice', () => ({
+  useAttributedPrices: vi.fn(),
+}))
+
 vi.mock('@/lib/usePriceFeeds', async () => {
   const actual = await vi.importActual<typeof import('@/lib/usePriceFeeds')>('@/lib/usePriceFeeds')
   return {
     ...actual,
-    usePriceFeeds: () => usePriceFeedsMock(),
+    usePriceFeeds: vi.fn(),
   }
 })
 
 import { SwapPriceChart } from '@/components/SwapPriceChart'
+import { useAttributedPrices } from '@/lib/useAttributedPrice'
+import { usePriceFeeds } from '@/lib/usePriceFeeds'
+import type { AttributedPrice } from '@/lib/useAttributedPrice'
+import type { PriceSource } from '@/lib/priceSource'
 
-function feed(overrides: Partial<import('@/lib/usePriceFeeds').PriceFeedState> = {}) {
-  const base: import('@/lib/usePriceFeeds').PriceFeedState = {
-    prices: { ETH: 3000, 'G$': 0.01 },
-    quotes: { ETH: { price: 3000, change24h: -2.41, volume24h: 0, marketCap: 0 } },
-    isLive: true,
-    lastUpdated: new Date(Date.now() - 5_000),
-    error: null,
-    unknownSymbols: [],
+function attr(over: Partial<AttributedPrice> & { symbol: string; priceUsd: number; source: PriceSource }): AttributedPrice {
+  return {
+    change24h: 0,
+    ageMs: 1000,
+    divergent: false,
+    divergenceOtherUsd: null,
+    ...over,
   }
-  return { ...base, ...overrides }
 }
 
-describe('SwapPriceChart', () => {
+describe('SwapPriceChart — uses canonical useAttributedPrices (task 0027)', () => {
   beforeEach(() => {
-    usePriceFeedsMock.mockReset()
+    vi.mocked(usePriceFeeds).mockReturnValue({
+      prices: { ETH: 2065, 'G$': 0.01022 },
+      sources: { ETH: 'coingecko', 'G$': 'coingecko' },
+      quotes: {},
+      isLive: true,
+      lastUpdated: new Date(),
+      error: null,
+      unknownSymbols: [],
+    })
   })
 
-  it('renders a Live pill and the real 24h change when the feed is live', () => {
-    usePriceFeedsMock.mockReturnValue(feed())
+  it('renders the rate derived from useAttributedPrices, not usePriceFeeds', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 1820,   source: 'chain-oracle' }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102, source: 'fallback' }),
+    })
+
     render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
-    expect(screen.getByTestId('swap-attribution-pill').textContent).toMatch(/Live/)
-    expect(screen.getByTestId('swap-change-cell').textContent).toMatch(/2\.41%/)
-    expect(screen.getByTestId('swap-change-cell').textContent).toMatch(/ETH 24h/)
+    // 1820 / 0.0102 = 178,431.37 → formatted as 178,431 (maximumFractionDigits: 0)
+    expect(screen.getByText(/178,431\s*G\$/)).toBeInTheDocument()
+    expect(screen.queryByText(/202,025/)).not.toBeInTheDocument()
   })
 
-  it('renders an em-dash percentage when the live change24h is missing', () => {
-    usePriceFeedsMock.mockReturnValue(feed({ quotes: {} }))
+  it('shows a PriceSourceBadge for the input symbol (chain-oracle case)', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 1820,   source: 'chain-oracle' }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102, source: 'fallback' }),
+    })
+
     render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
-    expect(screen.getByTestId('swap-attribution-pill').textContent).toMatch(/Live/)
-    const cell = screen.getByTestId('swap-change-cell')
-    expect(cell.textContent).toMatch(/—/)
-    expect(cell.textContent).not.toMatch(/\d+\.\d+%/)
+    const badge = screen.getByTestId('price-source-badge')
+    expect(badge).toHaveAttribute('data-source', 'chain-oracle')
   })
 
-  it('renders a Demo pill and em-dash when the feed is stale or errored', () => {
-    usePriceFeedsMock.mockReturnValue(feed({ isLive: false, lastUpdated: null, error: 'price proxy 500' }))
-    render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
-    expect(screen.getByTestId('swap-attribution-pill').textContent).toMatch(/Demo/)
-    expect(screen.getByTestId('swap-attribution-pill').textContent).toMatch(/illustrative/)
-    expect(screen.getByTestId('swap-change-cell').textContent).toMatch(/—/)
+  it('returns null when both symbols resolve to unknown', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 0, source: 'unknown' }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0, source: 'unknown' }),
+    })
+
+    const { container } = render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
+    expect(container.firstChild).toBeNull()
   })
 
-  it('flips to Demo when the rate is live but older than the freshness window', () => {
-    usePriceFeedsMock.mockReturnValue(feed({ lastUpdated: new Date(Date.now() - 5 * 60_000) }))
+  it('shows the indicative caption when both inputs resolve to fallback', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 3012.45, source: 'fallback' }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102,  source: 'fallback' }),
+    })
+
     render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
-    expect(screen.getByTestId('swap-attribution-pill').textContent).toMatch(/Demo/)
+    expect(screen.getByTestId('hero-indicative')).toHaveTextContent(/Indicative/i)
   })
 
-  it('renders the "Sparkline illustrative" overlay regardless of feed state', () => {
-    usePriceFeedsMock.mockReturnValue(feed())
-    const { unmount } = render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
-    expect(screen.getByText(/Sparkline illustrative/)).toBeInTheDocument()
-    unmount()
+  it('does not show the indicative caption when at least one input is live', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 1820,   source: 'chain-oracle' }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102, source: 'fallback' }),
+    })
 
-    usePriceFeedsMock.mockReturnValue(feed({ isLive: false, lastUpdated: null }))
     render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
-    expect(screen.getByText(/Sparkline illustrative/)).toBeInTheDocument()
+    expect(screen.queryByTestId('hero-indicative')).not.toBeInTheDocument()
   })
 
-  it('exposes the sparkline as illustrative via aria-label', () => {
-    usePriceFeedsMock.mockReturnValue(feed())
+  // Task 0035 — the percentage displayed next to the CoinGecko badge must
+  // come from CoinGecko's `change24h`, not from a Math.random() walk in
+  // chartData.ts. We also drop the 1D/1W/1M selector because we have no
+  // multi-timeframe real series to back it up — every selection used to
+  // render the same synthetic walk under a "CoinGecko" badge.
+  it('renders the input change24h next to the badge (not a synthetic walk %)', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 2069,   source: 'coingecko', change24h: -0.95 }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102, source: 'coingecko', change24h: 0.12 }),
+    })
+
     render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
-    const svg = document.querySelector('svg[aria-label]')
-    expect(svg?.getAttribute('aria-label')).toMatch(/illustrative/)
+    const percent = screen.getByTestId('hero-change-percent')
+    expect(percent).toHaveTextContent(/0\.95\s*%/)
+    expect(percent).toHaveTextContent('▼')
+    expect(screen.queryByText(/33\.83/)).not.toBeInTheDocument()
   })
 
-  it('renders a positive sign and green color for a positive 24h change', () => {
-    usePriceFeedsMock.mockReturnValue(
-      feed({ quotes: { ETH: { price: 3000, change24h: 3.45, volume24h: 0, marketCap: 0 } } }),
-    )
+  it('hides the percentage entirely when change24h is null', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 2069,   source: 'coingecko', change24h: null }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102, source: 'coingecko', change24h: null }),
+    })
+
     render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
-    const cell = screen.getByTestId('swap-change-cell')
-    expect(cell.textContent).toMatch(/▲/)
-    expect(cell.textContent).toMatch(/3\.45%/)
+    expect(screen.queryByTestId('hero-change-percent')).toBeNull()
+  })
+
+  it('no longer renders the 1D / 1W / 1M timeframe selector', () => {
+    vi.mocked(useAttributedPrices).mockReturnValue({
+      ETH:  attr({ symbol: 'ETH',  priceUsd: 2069,   source: 'coingecko', change24h: -0.95 }),
+      'G$': attr({ symbol: 'G$',   priceUsd: 0.0102, source: 'coingecko', change24h: 0.12 }),
+    })
+
+    render(<SwapPriceChart inputSymbol="ETH" outputSymbol="G$" />)
+    expect(screen.queryByRole('button', { name: '1D' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '1W' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '1M' })).toBeNull()
   })
 })

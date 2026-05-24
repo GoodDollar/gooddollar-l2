@@ -2,21 +2,11 @@
 
 import { useState, useEffect } from 'react'
 
-import { isPageHidden, subscribePageVisibility } from './usePageVisibility'
-
 export interface QuoteStatus {
   symbol: string
   lastUpdateMs: number
   sessionState: string
   confidence: number
-  /**
-   * Optional ms-since-epoch of the *price's* as-of timestamp. For closed
-   * sessions, the time of the closing print; for after-hours, the most
-   * recent market-close time; for pre-market, the market-open time. The
-   * field is undefined for open sessions (the "Updated Xs ago" clause
-   * already covers liveness) and for upstreams that don't yet emit it.
-   */
-  sessionAsOfMs?: number
   oracleBlock?: number
   divergenceBps?: number
   productSync?: Partial<Record<'amm' | 'perps' | 'prediction' | 'lend' | 'yield', { lastSyncedBlock: number; value?: number }>>
@@ -62,7 +52,6 @@ interface StatusStore {
   inFlight: boolean
   failureCount: number
   cooldownUntil: number
-  unsubscribeVisibility: (() => void) | null
 }
 
 const store: StatusStore = {
@@ -72,7 +61,47 @@ const store: StatusStore = {
   inFlight: false,
   failureCount: 0,
   cooldownUntil: 0,
-  unsubscribeVisibility: null,
+}
+
+/**
+ * Per-symbol "when did the on-chain oracle last republish?" tracker
+ * (task 0023). The status feed refreshes independently of the oracle,
+ * so `quoteStatus.lastUpdateMs` only tells us when the price-service
+ * last polled — it does NOT tell us when a new oracle block landed.
+ *
+ * We update the tracker only when `quote.oracleBlock` strictly increases,
+ * so badges can render an honest "Oracle last published Xs ago (last
+ * close)" line instead of the misleading "Updated 1s ago" that used to
+ * lie about freshness on every status poll.
+ */
+interface OracleBlockTracker {
+  block: number
+  lastChangedAt: number
+}
+const oracleBlockTrackers = new Map<string, OracleBlockTracker>()
+
+function ingestOracleBlocks(quotes: QuoteStatus[], now: number): void {
+  for (const q of quotes) {
+    const block = q.oracleBlock
+    if (block == null || !Number.isFinite(block) || block <= 0) continue
+    const prev = oracleBlockTrackers.get(q.symbol)
+    if (!prev || block > prev.block) {
+      oracleBlockTrackers.set(q.symbol, { block, lastChangedAt: now })
+    }
+  }
+}
+
+/**
+ * Milliseconds since this symbol's on-chain oracle block last advanced.
+ * Returns `null` when we have no observation yet (i.e. the price-service
+ * has never reported an `oracleBlock` for this symbol).
+ *
+ * `now` is injectable so tests can advance the clock deterministically.
+ */
+export function getOracleAgeMs(symbol: string, now: number = Date.now()): number | null {
+  const tracker = oracleBlockTrackers.get(symbol)
+  if (!tracker) return null
+  return Math.max(0, now - tracker.lastChangedAt)
 }
 
 function notify(): void {
@@ -81,7 +110,7 @@ function notify(): void {
 
 async function fetchStatus(force = false): Promise<void> {
   if (store.inFlight) return
-  if (!force && isPageHidden()) return
+  if (typeof document !== 'undefined' && document.hidden) return
   if (!force && Date.now() < store.cooldownUntil) return
 
   store.inFlight = true
@@ -93,6 +122,7 @@ async function fetchStatus(force = false): Promise<void> {
     const data: PriceServiceStatus = await res.json()
     store.failureCount = 0
     store.cooldownUntil = 0
+    ingestOracleBlocks(data.quotes, Date.now())
     store.state = { status: data, isLoading: false, error: null, nextRetryAt: null }
   } catch (err) {
     store.failureCount += 1
@@ -113,38 +143,17 @@ async function fetchStatus(force = false): Promise<void> {
   }
 }
 
-function armInterval(): void {
-  if (store.intervalId !== null) return
-  store.intervalId = setInterval(fetchStatus, POLL_INTERVAL_MS)
-}
-
-function disarmInterval(): void {
-  if (store.intervalId === null) return
-  clearInterval(store.intervalId)
-  store.intervalId = null
-}
-
 function startPolling(): void {
+  if (store.intervalId !== null) return
   if (typeof window === 'undefined') return
-  if (store.unsubscribeVisibility === null) {
-    store.unsubscribeVisibility = subscribePageVisibility((hidden) => {
-      if (hidden) {
-        disarmInterval()
-        return
-      }
-      armInterval()
-      void fetchStatus(true)
-    })
-  }
-  if (!isPageHidden()) armInterval()
+  store.intervalId = setInterval(fetchStatus, POLL_INTERVAL_MS)
 }
 
 function stopPolling(): void {
   if (store.subscribers.size > 0) return
-  disarmInterval()
-  if (store.unsubscribeVisibility) {
-    store.unsubscribeVisibility()
-    store.unsubscribeVisibility = null
+  if (store.intervalId !== null) {
+    clearInterval(store.intervalId)
+    store.intervalId = null
   }
 }
 
@@ -207,14 +216,24 @@ export function __resetPriceServiceStatusStoreForTests(): void {
   if (store.intervalId !== null) {
     clearInterval(store.intervalId)
   }
-  if (store.unsubscribeVisibility) {
-    store.unsubscribeVisibility()
-  }
   store.state = { status: null, isLoading: true, error: null, nextRetryAt: null }
   store.subscribers.clear()
   store.intervalId = null
   store.inFlight = false
   store.failureCount = 0
   store.cooldownUntil = 0
-  store.unsubscribeVisibility = null
+  oracleBlockTrackers.clear()
+}
+
+/**
+ * Test-only seed for the oracle-block-age tracker. Sets the
+ * "last advanced" timestamp for a given symbol so badge tests can
+ * deterministically assert "Oracle last published X ago" copy.
+ */
+export function __seedOracleBlockTrackerForTests(
+  symbol: string,
+  block: number,
+  lastChangedAt: number,
+): void {
+  oracleBlockTrackers.set(symbol, { block, lastChangedAt })
 }

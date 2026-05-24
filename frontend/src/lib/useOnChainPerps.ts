@@ -154,7 +154,14 @@ export function useOnChainPairs(): { pairs: PerpPair[]; isLoading: boolean; isLi
     return result
   }, [data, fundingData, markPrices, indexPrices])
 
-  const finalPairs = pairs.length > 0 ? pairs : FALLBACK_PAIRS
+  // Brand each row so source-attribution can tell a real chain read from a
+  // fallback substitution. Task 0026: `useAttributedPrice` refuses to label
+  // `isFallback: true` rows as `chain-oracle`, which keeps the LivePriceStrip
+  // on `/activity`, `/analytics`, and the landing page honest when the RPC
+  // is unreachable.
+  const finalPairs: PerpPair[] = pairs.length > 0
+    ? pairs.map(p => ({ ...p, isFallback: false }))
+    : FALLBACK_PAIRS.map(p => ({ ...p, isFallback: true }))
   return { pairs: finalPairs, isLoading, isLive: pairs.length > 0 }
 }
 

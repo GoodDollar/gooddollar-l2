@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AnalyticsPriceStrip } from '@/components/AnalyticsPriceStrip'
+import { OracleStatusBadge } from '@/components/OracleStatusBadge'
 
 import { LANE1_RUNBOOK_HREF, LANE1_STATUS_HREF } from '@/lib/lane1Links'
 
@@ -425,6 +427,11 @@ export default function AnalyticsPage() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6">
+      {/* Lane 4: live-price source strip + aggregate oracle health */}
+      <div className="mb-5 flex flex-col gap-3">
+        <AnalyticsPriceStrip />
+      </div>
+
       {/* Header */}
       <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
@@ -439,6 +446,9 @@ export default function AnalyticsPage() {
               /api/status
             </a>
           </p>
+          <div className="mt-2">
+            <OracleStatusBadge />
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-500">

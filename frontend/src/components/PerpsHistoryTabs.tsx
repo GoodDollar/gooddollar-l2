@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { formatPerpsPrice, formatFundingRate } from '@/lib/perpsData'
 import {
-  useMockOpenOrders,
-  useMockOrderHistory,
-  useMockTradeHistory,
-  useMockFundingHistory,
+  useOpenOrders,
+  useOrderHistory,
+  useTradeHistory,
+  useFundingHistory,
   type HistoryOpenOrder,
   type OrderHistoryItem,
   type TradeHistoryItem,
@@ -71,9 +71,13 @@ function OpenOrdersPanel({ orders }: { orders: readonly HistoryOpenOrder[] }) {
       />
     )
   }
+  // NOTE: the `Cancel` column was removed alongside the mock data drop in
+  // task 0017 — the previous `<button>` had no onClick, so a click on a
+  // user's "own" order silently did nothing. The real cancel wiring will
+  // be added back when on-chain order indexing ships.
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs min-w-[540px]">
+      <table className="w-full text-xs min-w-[480px]">
         <thead>
           <tr className="text-gray-500 border-b border-gray-700/20">
             <th className="text-left py-2 px-3 font-medium">Pair</th>
@@ -82,7 +86,6 @@ function OpenOrdersPanel({ orders }: { orders: readonly HistoryOpenOrder[] }) {
             <th className="text-right py-2 px-2 font-medium">Price</th>
             <th className="text-right py-2 px-2 font-medium">Size</th>
             <th className="text-right py-2 px-3 font-medium">Time</th>
-            <th className="text-right py-2 px-3 font-medium" />
           </tr>
         </thead>
         <tbody>
@@ -94,11 +97,6 @@ function OpenOrdersPanel({ orders }: { orders: readonly HistoryOpenOrder[] }) {
               <td className="py-2 px-2 text-right text-white">{formatPerpsPrice(o.price)}</td>
               <td className="py-2 px-2 text-right text-white">{o.size}</td>
               <td className="py-2 px-3 text-right text-gray-500">{timeAgo(o.createdAt)}</td>
-              <td className="py-2 px-3 text-right">
-                <button className="text-red-400 hover:text-red-300 text-[10px] font-semibold transition-colors">
-                  Cancel
-                </button>
-              </td>
             </tr>
           ))}
         </tbody>
@@ -250,10 +248,10 @@ const TAB_CONFIG: { id: HistoryTab; label: string }[] = [
 
 export function PerpsHistoryTabs() {
   const [activeTab, setActiveTab] = useState<HistoryTab>('open-orders')
-  const openOrders = useMockOpenOrders()
-  const orderHistory = useMockOrderHistory()
-  const tradeHistory = useMockTradeHistory()
-  const fundingHistory = useMockFundingHistory()
+  const openOrders = useOpenOrders()
+  const orderHistory = useOrderHistory()
+  const tradeHistory = useTradeHistory()
+  const fundingHistory = useFundingHistory()
 
   return (
     <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">

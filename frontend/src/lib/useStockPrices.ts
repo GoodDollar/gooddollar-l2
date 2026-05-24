@@ -19,6 +19,7 @@ import { useMemo } from 'react'
 import { CONTRACTS } from './chain'
 import { PriceOracleABI } from './abi'
 import { getAllTickers, getStockByTicker } from './stockData'
+import type { PriceSource } from './priceSource'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,15 @@ export interface StockPriceState {
   isLive: boolean
   /** true while the first on-chain fetch is in flight */
   isLoading: boolean
+  /**
+   * Per-ticker price provenance.
+   *  - `chain-oracle` when the on-chain `StocksPriceOracle.getPrice(ticker)`
+   *    multicall returned a success for that ticker.
+   *  - `fallback` when the oracle is unset OR the per-ticker multicall slot
+   *    failed (in which case we render the static seed value).
+   * Added in lane 4 (task 0007d/0002).
+   */
+  sources: Record<string, PriceSource>
 }
 
 // ─── Static fallback from stockData seeds ────────────────────────────────────
@@ -77,22 +87,33 @@ export function useStockPrices(): StockPriceState {
     },
   })
 
-  const prices = useMemo<Record<string, number>>(() => {
-    if (!data || data.length === 0) return FALLBACK_PRICES
+  const { prices, sources } = useMemo<{
+    prices: Record<string, number>
+    sources: Record<string, PriceSource>
+  }>(() => {
+    if (!data || data.length === 0) {
+      const fbSources: Record<string, PriceSource> = {}
+      for (const t of tickers) fbSources[t] = 'fallback'
+      return { prices: FALLBACK_PRICES, sources: fbSources }
+    }
 
-    const out: Record<string, number> = { ...FALLBACK_PRICES }
+    const outPrices: Record<string, number> = { ...FALLBACK_PRICES }
+    const outSources: Record<string, PriceSource> = {}
     let anyLive = false
 
     for (let i = 0; i < tickers.length; i++) {
       const result = data[i]
       if (result?.status === 'success' && typeof result.result === 'bigint') {
         // Oracle returns 8-decimal price (e.g. 17872000000 = $178.72)
-        out[tickers[i]] = Number(result.result) / 1e8
+        outPrices[tickers[i]] = Number(result.result) / 1e8
+        outSources[tickers[i]] = 'chain-oracle'
         anyLive = true
+      } else {
+        outSources[tickers[i]] = 'fallback'
       }
     }
 
-    return anyLive ? out : FALLBACK_PRICES
+    return { prices: anyLive ? outPrices : FALLBACK_PRICES, sources: outSources }
   }, [data, tickers])
 
   const isLive = useMemo(() => {
@@ -100,7 +121,7 @@ export function useStockPrices(): StockPriceState {
     return data.some(r => r?.status === 'success')
   }, [data])
 
-  return { prices, isLive, isLoading }
+  return { prices, isLive, isLoading, sources }
 }
 
 /**

@@ -8,6 +8,9 @@ import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useWatchlist } from '@/lib/useWatchlist'
 import { Sparkline } from '@/components/Sparkline'
 import { OracleStatusBadge } from '@/components/OracleStatusBadge'
+import { PriceSourceBadge } from '@/components/PriceSourceBadge'
+import { useStockSources } from '@/lib/useStockSources'
+import type { PriceSource } from '@/lib/priceSource'
 import { PercentageChange } from '@/components/ui/percentage-change'
 import { WatchlistStarButton } from '@/components/stocks/WatchlistStarButton'
 
@@ -22,10 +25,11 @@ function StockIcon({ ticker }: { ticker: string }) {
 interface WatchlistRowProps {
   stock: Stock
   idx: number
+  source: PriceSource
   onRowClick: (ticker: string) => void
 }
 
-const WatchlistRow = memo(function WatchlistRow({ stock, idx, onRowClick }: WatchlistRowProps) {
+const WatchlistRow = memo(function WatchlistRow({ stock, idx, source, onRowClick }: WatchlistRowProps) {
   return (
     <tr
       onClick={() => onRowClick(stock.ticker)}
@@ -45,7 +49,10 @@ const WatchlistRow = memo(function WatchlistRow({ stock, idx, onRowClick }: Watc
         </div>
       </td>
       <td className="py-3 px-3 text-right text-white font-medium">
-        {formatStockPrice(stock.price)}
+        <div className="flex flex-col items-end gap-0.5">
+          <span data-testid="price-cell">{formatStockPrice(stock.price)}</span>
+          <PriceSourceBadge source={source} size="sm" />
+        </div>
       </td>
       <td className="py-3 px-3 text-right font-medium">
         <PercentageChange value={stock.change24h} decimals={2} size="sm" />
@@ -75,6 +82,7 @@ export default function StocksWatchlistPage() {
   const router = useRouter()
   const { push, refresh } = router
   const { stocks: data, isLoading, isLive, refetch } = useOnChainStocks()
+  const stockSources = useStockSources()
   const { watchlist, isWatched } = useWatchlist()
   const [loadingTooLong, setLoadingTooLong] = useState(false)
 
@@ -218,9 +226,12 @@ export default function StocksWatchlistPage() {
                       </div>
                     </div>
                     <div className="text-right shrink-0 w-[96px]">
-                      <p className="text-white font-medium text-sm whitespace-nowrap">{formatStockPrice(stock.price)}</p>
+                      <p className="text-white font-medium text-sm whitespace-nowrap" data-testid="price-cell">{formatStockPrice(stock.price)}</p>
                       <div className="text-xs font-medium inline-flex justify-end w-full whitespace-nowrap">
                         <PercentageChange value={stock.change24h} decimals={2} size="xs" showSign />
+                      </div>
+                      <div className="inline-flex justify-end w-full mt-0.5">
+                        <PriceSourceBadge source={stockSources[stock.ticker] ?? 'fallback'} size="sm" />
                       </div>
                       <span className="inline-flex mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-goodgreen/10 text-goodgreen">
                         Tap to trade
@@ -255,6 +266,7 @@ export default function StocksWatchlistPage() {
                           key={stock.ticker}
                           stock={stock}
                           idx={idx}
+                          source={stockSources[stock.ticker] ?? 'fallback'}
                           onRowClick={handleRowClick}
                         />
                       ))}
