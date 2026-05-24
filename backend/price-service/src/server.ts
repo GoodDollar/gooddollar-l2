@@ -1307,6 +1307,22 @@ export function createServer(
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Pragma', 'no-cache');
     if (req.method === 'OPTIONS') {
+      // Task 0085 — OPTIONS for an unregistered path falls through to
+      // the catch-all 404 handler so capability-discovery clients
+      // (browser preflight, k6 OPTIONS sweeps, OpenAPI generators)
+      // see the same "resource doesn't exist" verdict the other verbs
+      // surface. RFC 7231 §4.3.7 / RFC 9110 §9.3.7 scope OPTIONS to
+      // capabilities of the **target resource**; no resource ⇒ no
+      // capabilities. Returning 204 + a default `Allow: GET, OPTIONS`
+      // here would lie about a GET that immediately 404s and poison
+      // the browser preflight cache for `Access-Control-Max-Age: 600`
+      // seconds — every k6 OPTIONS sweep would catalog phantom
+      // endpoints. AWS API Gateway, Cloudflare WAF (strict), Polygon,
+      // and Stripe all 404 unknown-path OPTIONS for the same reason.
+      if (findCatalogEntry(req.path) === undefined) {
+        next();
+        return;
+      }
       // RFC 7231 §4.3.7 — a successful OPTIONS response (200 or 204) MUST
       // generate an `Allow` field. The CORS preflight header
       // (`Access-Control-Allow-Methods`) ships the same list, sourced

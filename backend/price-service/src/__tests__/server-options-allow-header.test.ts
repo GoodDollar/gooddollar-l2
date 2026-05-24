@@ -54,10 +54,16 @@ describe('OPTIONS responses emit RFC 7231 `Allow` header (task 0059)', () => {
     });
   }
 
-  it('OPTIONS on unregistered path returns 204 with the global default Allow', async () => {
+  it('OPTIONS on unregistered path falls through to catch-all 404 (task 0085)', async () => {
+    // Previously the OPTIONS short-circuit emitted 204 + a default
+    // `Allow: GET, OPTIONS` for any path, lying about a GET that
+    // immediately 404s and poisoning the browser preflight cache for
+    // Access-Control-Max-Age. RFC 9110 §9.3.7 scopes OPTIONS to the
+    // target resource — no resource ⇒ no capabilities ⇒ 404.
     const res = await fetch(`${baseUrl}/nope`, { method: 'OPTIONS' });
-    expect(res.status).toBe(204);
-    expect(res.headers.get('allow')).toBe('GET, OPTIONS');
+    expect(res.status).toBe(404);
+    expect(res.headers.get('allow')).toBeNull();
+    expect(res.headers.get('access-control-allow-methods')).toBeNull();
   });
 
   it('drift-proof: OPTIONS /foo and POST /foo report the same Allow value', async () => {

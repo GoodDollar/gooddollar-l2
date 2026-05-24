@@ -1114,7 +1114,7 @@ describe('REST Server — CORS preflight', () => {
     expect(text).toBe('');
   });
 
-  it('OPTIONS to an unknown path returns 204 (preflight is not the discovery surface)', async () => {
+  it('OPTIONS to an unknown path returns 404 instead of advertising phantom capabilities', async () => {
     const res = await fetch(`${baseUrl}/this-does-not-exist`, {
       method: 'OPTIONS',
       headers: {
@@ -1122,8 +1122,9 @@ describe('REST Server — CORS preflight', () => {
         'Access-Control-Request-Method': 'GET',
       },
     });
-    expect(res.status).toBe(204);
-    expect(res.headers.get('access-control-allow-methods')).toBe('GET, OPTIONS');
+    expect(res.status).toBe(404);
+    expect(res.headers.get('allow')).toBeNull();
+    expect(res.headers.get('access-control-allow-methods')).toBeNull();
   });
 
   it('POST /quotes returns 405 with Allow header that includes OPTIONS', async () => {
