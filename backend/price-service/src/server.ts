@@ -307,12 +307,16 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
     // MAX_ECHOED_PATH_BYTES bytes, truncation indicated by the three
     // companion fields when present).
     responseShape:
-      '200: env | ' +
-      '400: {error:invalid-symbol|invalid-symbol-or-path,' +
+      // 200 body shape mirrors /quotes entries; here we cover the
+      // error-envelope shapes the per-symbol route emits. The
+      // triplet (humanReason/severity/nextStep) on the 404 branch
+      // sources from `ERROR_REASONS_PUBLIC`. See task 0072.
+      '200:env | ' +
+      '400:{error:invalid-symbol|invalid-symbol-or-path,' +
       'message,expected?,didYouMean?,path*,method} | ' +
-      '404: {error,message,symbol,configured,configuredSymbols,' +
-      'configuredSymbolCount,didYouMean?,source?}; ' +
-      'tail: timestamp,timestampIso',
+      '404:{error,message,humanReason,severity,nextStep,' +
+      'symbol,configured,configuredSymbols?(+Count),' +
+      'didYouMean?,source?}; tail: ts,tsIso',
   },
   {
     path: '/status/quotes',
@@ -635,6 +639,33 @@ const METHOD_NOT_ALLOWED_SEVERITY: SourceSeverity = 'info';
 const NOT_FOUND_HUMAN_REASON = ERROR_REASONS_PUBLIC['not-found']!.humanReason;
 const NOT_FOUND_NEXT_STEP = ERROR_REASONS_PUBLIC['not-found']!.nextStep;
 const NOT_FOUND_SEVERITY: SourceSeverity = ERROR_REASONS_PUBLIC['not-found']!.severity;
+
+/**
+ * Per-symbol 404 enrichment shipped on `/quotes/:symbol` when the
+ * symbol is configured but the cache holds no fresh tick. Severity
+ * `'info'` (transient — a fresh tick is expected once the source
+ * attaches). Triplet sources from `ERROR_REASONS_PUBLIC` so the
+ * live body and `/docs/source-reasons.errorReasons` cannot drift.
+ * See task 0072.
+ */
+const NO_QUOTE_HUMAN_REASON = ERROR_REASONS_PUBLIC['no-quote']!.humanReason;
+const NO_QUOTE_NEXT_STEP = ERROR_REASONS_PUBLIC['no-quote']!.nextStep;
+const NO_QUOTE_SEVERITY: SourceSeverity = ERROR_REASONS_PUBLIC['no-quote']!.severity;
+
+/**
+ * Per-symbol 404 enrichment shipped on `/quotes/:symbol` when the
+ * symbol is NOT in `ORACLE_SYMBOLS`. Severity `'critical'`
+ * (permanent — operator must extend the subscription set and
+ * restart the service). Triplet sources from `ERROR_REASONS_PUBLIC`
+ * so the live body and `/docs/source-reasons.errorReasons` cannot
+ * drift. See task 0072.
+ */
+const SYMBOL_NOT_CONFIGURED_HUMAN_REASON =
+  ERROR_REASONS_PUBLIC['symbol-not-configured']!.humanReason;
+const SYMBOL_NOT_CONFIGURED_NEXT_STEP =
+  ERROR_REASONS_PUBLIC['symbol-not-configured']!.nextStep;
+const SYMBOL_NOT_CONFIGURED_SEVERITY: SourceSeverity =
+  ERROR_REASONS_PUBLIC['symbol-not-configured']!.severity;
 
 /**
  * Per-request `message` for the catch-all 404. Names the offending verb
@@ -1512,11 +1543,19 @@ export function createServer(
       // suggestion so a frontend can render "did you mean AAPL?" from
       // this single response (task 0040). `didYouMean` is omitted —
       // not null — when no candidate clears the threshold.
+      // Field order mirrors the 405 / catch-all 404: error → message →
+      // humanReason → severity → nextStep → existing tail. The triplet
+      // sources from `ERROR_REASONS_PUBLIC['symbol-not-configured']`
+      // so the body and the `/docs/source-reasons` catalog cannot
+      // drift. See task 0072.
       const body: Record<string, unknown> = {
         error: 'symbol-not-configured',
         message:
           'symbol is not in the deployed subscription set; ' +
           'retrying will not help — update ORACLE_SYMBOLS and restart',
+        humanReason: SYMBOL_NOT_CONFIGURED_HUMAN_REASON,
+        severity: SYMBOL_NOT_CONFIGURED_SEVERITY,
+        nextStep: SYMBOL_NOT_CONFIGURED_NEXT_STEP,
         symbol: result.symbol,
         configured: false,
         configuredSymbols: cfg.symbols,
@@ -1529,11 +1568,18 @@ export function createServer(
     }
     const entry = cache.get(result.symbol);
     if (!entry) {
+      // Field order mirrors the symbol-not-configured branch above:
+      // error → message → humanReason → severity → nextStep →
+      // existing tail. Triplet sources from
+      // `ERROR_REASONS_PUBLIC['no-quote']`. See task 0072.
       const body: Record<string, unknown> = {
         error: 'no-quote',
         message:
           'symbol is configured but the cache holds no fresh tick — ' +
           'retry once source delivers',
+        humanReason: NO_QUOTE_HUMAN_REASON,
+        severity: NO_QUOTE_SEVERITY,
+        nextStep: NO_QUOTE_NEXT_STEP,
         symbol: result.symbol,
         configured: true,
       };

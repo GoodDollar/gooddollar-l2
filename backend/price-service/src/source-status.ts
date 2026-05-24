@@ -312,16 +312,24 @@ export const SOURCE_REASONS_PUBLIC: Readonly<
 
 /**
  * Operator-facing catalog of stable error-envelope slugs that ride on the
- * service's HTTP error paths (404 today; 400/405 to follow as separate
- * tasks). Distinct namespace from `REASON_CATALOG` / `SOURCE_REASONS_PUBLIC`
- * because those catalogs describe upstream-source state, while these
- * describe HTTP-level input-handling state — mixing the two pollutes the
+ * service's HTTP error paths (404 catch-all + per-symbol 404 today;
+ * 400/405 fold in via separate tasks — 405 currently inlines its triplet
+ * as module-level constants in `server.ts`). Distinct namespace from
+ * `REASON_CATALOG` / `SOURCE_REASONS_PUBLIC` because those catalogs
+ * describe upstream-source state, while these describe HTTP-level
+ * input-handling state — mixing the two pollutes the
  * `/docs/source-reasons` semantics.
  *
  * Inner shape is identical to `SOURCE_REASONS_PUBLIC` so a consumer
  * rendering one map can render the other with a single template. Shipped
  * under the sibling `errorReasons` field on `/docs/source-reasons`
  * (task 0063) — same endpoint, no new route.
+ *
+ * Severity bucketing:
+ * - `info` — transient/expected; retry should succeed (`no-quote`,
+ *   catch-all `not-found`).
+ * - `critical` — permanent; operator action required
+ *   (`symbol-not-configured` — caller must update `ORACLE_SYMBOLS`).
  */
 export const ERROR_REASONS_PUBLIC: Readonly<
   Record<string, { humanReason: string; nextStep: string; severity: SourceSeverity }>
@@ -330,6 +338,23 @@ export const ERROR_REASONS_PUBLIC: Readonly<
     humanReason: 'No endpoint matches this URL.',
     nextStep: 'Retry `didYouMean` if present, else pick from `endpoints`.',
     severity: 'info',
+  },
+  'no-quote': {
+    humanReason:
+      'Symbol is in the subscription set but no fresh tick is cached yet.',
+    nextStep:
+      'Retry after the source delivers; check `source.reason` and ' +
+      '`source.retryAfterSeconds` for the upstream verdict.',
+    severity: 'info',
+  },
+  'symbol-not-configured': {
+    humanReason:
+      'Symbol is not in the deployed subscription set; the cache will ' +
+      'never populate without an operator change.',
+    nextStep:
+      'Update `ORACLE_SYMBOLS` and restart the price-service. ' +
+      'Try `didYouMean` first if present.',
+    severity: 'critical',
   },
 });
 

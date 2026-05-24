@@ -777,9 +777,11 @@ describe('REST Server — GET /quotes/:symbol shape validation', () => {
     expect(body.error).toBe('no-quote');
     expect(body.symbol).toBe('AAPL');
     expect(typeof body.timestamp).toBe('number');
-    // Bound stays small — the body holds a static message, the symbol,
-    // configured flag, error code, and ms timestamp. No quote, no stack.
-    expect(text.length).toBeLessThan(300);
+    // Bound stays small — the body holds a static message, the
+    // humanReason / severity / nextStep triplet (task 0072), the
+    // symbol, configured flag, error code, source block, and ms
+    // timestamp. No quote, no stack.
+    expect(text.length).toBeLessThan(600);
   });
 
   it.each([
