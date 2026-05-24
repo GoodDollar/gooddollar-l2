@@ -1789,6 +1789,7 @@ export function createServer(
       humanReason: NOT_FOUND_HUMAN_REASON,
       severity: NOT_FOUND_SEVERITY,
       nextStep: NOT_FOUND_NEXT_STEP,
+      requestId: req.requestId,
     };
     Object.assign(body, echoed);
     body.method = req.method;
