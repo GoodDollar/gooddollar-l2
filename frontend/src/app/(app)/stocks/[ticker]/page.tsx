@@ -11,7 +11,7 @@ import { useOnChainStocks } from '@/lib/useOnChainStocks'
 import { useStocksRebalanceStatus } from '@/lib/useStocksRebalanceStatus'
 import { useStockNews } from '@/lib/useStockNews'
 import { sanitizeNumericInput, formatTradeAmount } from '@/lib/format'
-import { hasLiveOracleChange } from '@/lib/oracleHonesty'
+import { hasLiveOracleChange, hasLiveOracleFundamentals } from '@/lib/oracleHonesty'
 import { AnalysisGrid } from '@/components/stocks/AnalysisGrid'
 import { DemoChartOverlay } from '@/components/DemoChartOverlay'
 import { TrendSummaryCard } from '@/components/stocks/TrendSummaryCard'
@@ -500,7 +500,11 @@ export default function StockDetailPage() {
     const directPeers = relatedSymbols.length > 0 ? relatedSymbols : topMovers.filter((candidate) => candidate.ticker !== stock.ticker)
     return directPeers.slice(0, 5)
   }, [relatedSymbols, stock, topMovers])
-  const fundamentalsRows = useMemo(() => (stock ? buildFundamentalsRows(stock) : []), [stock])
+  const liveFundamentals = !!stock && isLive && hasLiveOracleFundamentals(stock)
+  const fundamentalsRows = useMemo(
+    () => (stock ? buildFundamentalsRows(stock, liveFundamentals) : []),
+    [stock, liveFundamentals],
+  )
   const backLink = DETAIL_BACK_LINKS[searchParams.get('from') ?? ''] ?? DEFAULT_DETAIL_BACK_LINK
   const eventTimeline = useMemo(() => {
     if (!stock) return []

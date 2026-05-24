@@ -14,25 +14,46 @@ export interface FundamentalsRow {
   positive: boolean | null
 }
 
-export function buildFundamentalsRows(stock: Stock): FundamentalsRow[] {
-  const revenueBillions = stock.marketCap / Math.max(stock.peRatio, 1) / 1_000_000_000
-  const grossMargin = 42 + Math.min(12, Math.max(-8, stock.change24h))
-  const fcfMargin = 18 + Math.min(8, Math.max(-6, stock.change24h / 1.5))
-  const epsGrowth = stock.change24h * 2.1
-  const revGrowth = stock.change24h * 1.4
+const NO_FEED = 'Feed not wired'
+const DASH = '—'
+
+const EMPTY_LABELS = ['Revenue (TTM)', 'EPS (TTM)', 'P/E', 'Gross Margin', 'FCF Margin'] as const
+
+function emptyRow(label: string): FundamentalsRow {
+  return { label, value: DASH, delta: NO_FEED, positive: null }
+}
+
+function dividendRow(stock: Stock): FundamentalsRow {
+  if (stock.dividendYield > 0) {
+    return {
+      label: 'Dividend Yield',
+      value: `${stock.dividendYield.toFixed(2)}%`,
+      delta: 'Forward annualized',
+      positive: null,
+    }
+  }
+  return { label: 'Dividend Yield', value: DASH, delta: 'No cash dividend', positive: null }
+}
+
+/**
+ * Build the rows rendered by the Fundamentals tab. When `live` is false, every
+ * numeric row collapses to an em-dash with a neutral "Feed not wired" delta
+ * — mirroring the Analysis grid / Order Book / News empty states elsewhere on
+ * the page. No fabricated baselines (the previous `42`/`18` gross/FCF margin
+ * constants) ever appear in the rendered output.
+ */
+export function buildFundamentalsRows(stock: Stock, live: boolean): FundamentalsRow[] {
+  if (!live) {
+    return [...EMPTY_LABELS.map(emptyRow), dividendRow(stock)]
+  }
 
   return [
-    {
-      label: 'Revenue (TTM)',
-      value: `$${revenueBillions.toFixed(1)}B`,
-      delta: `${revGrowth >= 0 ? '+' : ''}${revGrowth.toFixed(1)}% YoY`,
-      positive: revGrowth >= 0,
-    },
+    emptyRow('Revenue (TTM)'),
     {
       label: 'EPS (TTM)',
       value: `$${stock.eps.toFixed(2)}`,
-      delta: `${epsGrowth >= 0 ? '+' : ''}${epsGrowth.toFixed(1)}% YoY`,
-      positive: epsGrowth >= 0,
+      delta: NO_FEED,
+      positive: null,
     },
     {
       label: 'P/E',
@@ -40,23 +61,8 @@ export function buildFundamentalsRows(stock: Stock): FundamentalsRow[] {
       delta: stock.peRatio < 25 ? 'Below sector median' : 'Above sector median',
       positive: null,
     },
-    {
-      label: 'Gross Margin',
-      value: `${grossMargin.toFixed(1)}%`,
-      delta: `${stock.change24h >= 0 ? '+' : ''}${Math.abs(stock.change24h * 0.4).toFixed(1)} pts`,
-      positive: stock.change24h >= 0,
-    },
-    {
-      label: 'FCF Margin',
-      value: `${fcfMargin.toFixed(1)}%`,
-      delta: `${stock.change24h >= 0 ? '+' : ''}${Math.abs(stock.change24h * 0.3).toFixed(1)} pts`,
-      positive: stock.change24h >= 0,
-    },
-    {
-      label: 'Dividend Yield',
-      value: stock.dividendYield > 0 ? `${stock.dividendYield.toFixed(2)}%` : '—',
-      delta: stock.dividendYield > 0 ? 'Forward annualized' : 'No cash dividend',
-      positive: null,
-    },
+    emptyRow('Gross Margin'),
+    emptyRow('FCF Margin'),
+    dividendRow(stock),
   ]
 }
