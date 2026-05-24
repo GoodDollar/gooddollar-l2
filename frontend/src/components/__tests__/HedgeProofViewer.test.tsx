@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   afterEach,
   beforeEach,
@@ -209,6 +209,30 @@ describe('HedgeProofViewer race protection (#0065)', () => {
     )
   })
 
+  it('renders the auto-retry sub-line on engine_down (#0080)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse(
+        { status: 'engine_down', reason: 'Hedge engine unreachable' },
+        { status: 502 },
+      ),
+    )
+    render(<HedgeProofViewer endpoint="/api/hedge/proof/latest.json" />)
+    const note = await screen.findByTestId('hedge-proof-error-auto-retry')
+    expect(note.textContent).toBe('Auto-retrying every 10s.')
+  })
+
+  it('omits the auto-retry sub-line on invalid_id (#0080 / #0072 — deterministic verdict)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse(
+        { status: 'invalid_id', reason: 'Receipt id is too long' },
+        { status: 400 },
+      ),
+    )
+    render(<HedgeProofViewer endpoint="/api/hedge/proof/x" />)
+    await screen.findByTestId('hedge-proof-error')
+    expect(screen.queryByTestId('hedge-proof-error-auto-retry')).toBeNull()
+  })
+
   it('drops a late response from a stale fetch even when the prop change happens before the first fetch resolves', async () => {
     // This is the canonical race: the seq guard must drop ANY response
     // whose `mySeq !== seqRef.current` regardless of whether the fetch
@@ -257,5 +281,217 @@ describe('HedgeProofViewer race protection (#0065)', () => {
     expect(screen.getByTestId('hedge-proof-body').textContent).not.toContain(
       'A late body',
     )
+  })
+})
+
+describe('HedgeProofViewer auto-retry (#0080)', () => {
+  let visibilityState: DocumentVisibilityState = 'visible'
+  const originalDescriptor = Object.getOwnPropertyDescriptor(
+    Document.prototype,
+    'visibilityState',
+  )
+
+  function setVisibility(state: DocumentVisibilityState): void {
+    visibilityState = state
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+
+  beforeEach(() => {
+    visibilityState = 'visible'
+    Object.defineProperty(Document.prototype, 'visibilityState', {
+      configurable: true,
+      get: () => visibilityState,
+    })
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (originalDescriptor) {
+      Object.defineProperty(
+        Document.prototype,
+        'visibilityState',
+        originalDescriptor,
+      )
+    }
+  })
+
+  function engineDownResponse() {
+    return jsonResponse(
+      { status: 'engine_down', reason: 'Hedge engine unreachable' },
+      { status: 502 },
+    )
+  }
+
+  function okResponse() {
+    return jsonResponse({
+      status: 'ok',
+      markdown: '# recovered\n',
+      pointer: { path: 'p', timestamp: 1700000000000, summary: 'demo' },
+    })
+  }
+
+  // Flush every pending microtask (and queue any new ones that the
+  // resolved chains create) while fake timers are installed. The
+  // viewer's `load()` does `await fetch(...)`, `await res.json()`,
+  // and then `setView(...)` — three microtask hops. We loop a few
+  // times to settle the chain without relying on `findBy*` which
+  // would use `setTimeout` and hang under fake timers.
+  async function flushMicrotasks() {
+    for (let i = 0; i < 10; i++) {
+      await act(async () => {
+        await Promise.resolve()
+      })
+    }
+  }
+
+  it('schedules a fetch every 10s while sitting on engine_down', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch') as unknown as Mock
+    fetchSpy.mockResolvedValue(engineDownResponse())
+
+    render(<HedgeProofViewer endpoint="/api/hedge/proof/latest.json" />)
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('hedge-proof-error')).toBeInTheDocument()
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('stops auto-retrying once the engine recovers to ok', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch') as unknown as Mock
+    fetchSpy
+      .mockResolvedValueOnce(engineDownResponse())
+      .mockResolvedValueOnce(okResponse())
+      .mockResolvedValue(okResponse())
+
+    render(<HedgeProofViewer endpoint="/api/hedge/proof/latest.json" />)
+    await flushMicrotasks()
+    expect(screen.getByTestId('hedge-proof-error')).toBeInTheDocument()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    expect(screen.getByTestId('hedge-proof-body')).toBeInTheDocument()
+
+    await act(async () => {
+      vi.advanceTimersByTime(60_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('does NOT auto-retry on invalid_id (deterministic verdict, regression of #0072)', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch') as unknown as Mock
+    fetchSpy.mockResolvedValue(
+      jsonResponse(
+        { status: 'invalid_id', reason: 'Receipt id is too long' },
+        { status: 400 },
+      ),
+    )
+
+    render(<HedgeProofViewer endpoint="/api/hedge/proof/bad" />)
+    await flushMicrotasks()
+    expect(screen.getByTestId('hedge-proof-error')).toBeInTheDocument()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(60_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('pauses auto-retry while the tab is hidden and resumes on visible', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch') as unknown as Mock
+    fetchSpy.mockResolvedValue(engineDownResponse())
+
+    render(<HedgeProofViewer endpoint="/api/hedge/proof/latest.json" />)
+    await flushMicrotasks()
+    expect(screen.getByTestId('hedge-proof-error')).toBeInTheDocument()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      setVisibility('hidden')
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(30_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      setVisibility('visible')
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('clears the interval on unmount (no leaked timers)', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch') as unknown as Mock
+    fetchSpy.mockResolvedValue(engineDownResponse())
+
+    const { unmount } = render(
+      <HedgeProofViewer endpoint="/api/hedge/proof/latest.json" />,
+    )
+    await flushMicrotasks()
+    expect(screen.getByTestId('hedge-proof-error')).toBeInTheDocument()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    unmount()
+    await act(async () => {
+      vi.advanceTimersByTime(60_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('manual Retry resets the auto-retry phase to +10s from the click', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch') as unknown as Mock
+    fetchSpy.mockResolvedValue(engineDownResponse())
+
+    render(<HedgeProofViewer endpoint="/api/hedge/proof/latest.json" />)
+    await flushMicrotasks()
+    expect(screen.getByTestId('hedge-proof-error')).toBeInTheDocument()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(4_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByTestId('hedge-proof-retry'))
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+
+    // 6s later — total elapsed = 10s since mount — the original
+    // interval phase would have fired a 3rd fetch. Since Retry
+    // reset the phase, no fetch should fire yet.
+    await act(async () => {
+      vi.advanceTimersByTime(6_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+
+    // 4s further (total 10s since the Retry click) — the next
+    // scheduled auto-retry fires.
+    await act(async () => {
+      vi.advanceTimersByTime(4_000)
+    })
+    await flushMicrotasks()
+    expect(fetchSpy).toHaveBeenCalledTimes(3)
   })
 })

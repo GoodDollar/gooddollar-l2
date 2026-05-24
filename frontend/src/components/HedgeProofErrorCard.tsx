@@ -48,6 +48,16 @@ export interface HedgeProofErrorCardProps {
    * place of) the Retry button when set.
    */
   primaryAction?: { label: string; href: string }
+  /**
+   * Optional sub-line rendered beneath `detail` (task 0080). The
+   * `HedgeProofViewer` uses this to mirror the analytics card's
+   * "Auto-retrying every 10s." promise on the auto-retried error
+   * statuses so the proof page tells the operator the *same* recovery
+   * cadence as the sibling `HedgeStatusCard`. Omitted on deterministic
+   * verdicts (`invalid_id` / `forbidden` / `missing`) so the copy
+   * never lies about behavior the viewer does not exhibit.
+   */
+  autoRetryNote?: string
 }
 
 export default function HedgeProofErrorCard({
@@ -58,6 +68,7 @@ export default function HedgeProofErrorCard({
   testid = 'hedge-proof-error',
   titleTooltip,
   primaryAction,
+  autoRetryNote,
 }: HedgeProofErrorCardProps) {
   const wrapperClass =
     variant === 'error'
@@ -110,6 +121,14 @@ export default function HedgeProofErrorCard({
             {title}
           </h2>
           <p className="mt-1 text-sm text-gray-300">{detail}</p>
+          {autoRetryNote && (
+            <p
+              data-testid="hedge-proof-error-auto-retry"
+              className="mt-2 text-xs text-gray-400"
+            >
+              {autoRetryNote}
+            </p>
+          )}
         </div>
       </div>
       {(primaryAction || onRetry) && (

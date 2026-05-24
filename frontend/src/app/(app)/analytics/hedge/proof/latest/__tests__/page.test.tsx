@@ -92,6 +92,11 @@ describe('HedgeProofViewerPage', () => {
     expect(screen.getByTestId('hedge-proof-retry')).toBeInTheDocument();
     const back = screen.getByTestId('hedge-proof-back-link');
     expect(back.getAttribute('href')).toBe('/analytics');
+    // #0080 — mirrors the analytics card's "Auto-retrying every 10s."
+    // sub-line so both surfaces give the same recovery promise.
+    expect(
+      screen.getByTestId('hedge-proof-error-auto-retry').textContent,
+    ).toBe('Auto-retrying every 10s.');
   });
 
   it('shows "No hedge proof yet" when the JSON route reports no_proof', async () => {

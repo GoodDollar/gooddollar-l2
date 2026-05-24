@@ -213,6 +213,34 @@ describe('HedgeProofErrorCard', () => {
     })
   })
 
+  describe('autoRetryNote prop (#0080)', () => {
+    it('renders the sub-line beneath detail when autoRetryNote is provided', () => {
+      render(
+        <HedgeProofErrorCard
+          title="Hedge engine unreachable"
+          detail="Could not fetch the latest proof pointer from the hedge engine."
+          variant="error"
+          onRetry={() => {}}
+          autoRetryNote="Auto-retrying every 10s."
+        />,
+      )
+      const note = screen.getByTestId('hedge-proof-error-auto-retry')
+      expect(note.textContent).toBe('Auto-retrying every 10s.')
+      expect(note.className).toMatch(/text-xs/)
+    })
+
+    it('omits the sub-line when autoRetryNote is not provided', () => {
+      render(
+        <HedgeProofErrorCard
+          title="Receipt id was rejected"
+          detail="Receipt id is too long"
+          variant="error"
+        />,
+      )
+      expect(screen.queryByTestId('hedge-proof-error-auto-retry')).toBeNull()
+    })
+  })
+
   describe('status icon anchor (#0057)', () => {
     it('variant="error" renders a red exclamation glyph at the top-left', () => {
       render(

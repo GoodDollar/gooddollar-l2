@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
+import { HEDGE_POLL_INTERVAL_MS } from '@/lib/hedgePollInterval'
+import { useIntervalWhileVisible } from '@/lib/useIntervalWhileVisible'
+
 import HedgeProofErrorCard from './HedgeProofErrorCard'
 import {
   copyForResponse,
@@ -11,6 +14,27 @@ import {
   type ProofResponse,
   type ProofSurface,
 } from './HedgeProofViewer/proof-response'
+
+/**
+ * Wire statuses for which the proof viewer auto-retries on the shared
+ * 10s cadence (task 0080). Mirrors the sibling `HedgeStatusCard`'s
+ * polling behavior so the operator sees the same recovery cadence on
+ * both surfaces. Deterministic verdicts (`invalid_id`, `forbidden`,
+ * `missing`) are intentionally absent — re-firing the same fetch will
+ * fail the same validator forever (#0072), and `ok` / `no_proof` /
+ * `empty_body` / `loading` are not error states that benefit from
+ * polling.
+ */
+const AUTO_RETRY_STATUSES = new Set([
+  'engine_down',
+  'engine_error',
+  'unreadable',
+  'network_error',
+])
+
+const AUTO_RETRY_NOTE = `Auto-retrying every ${Math.round(
+  HEDGE_POLL_INTERVAL_MS / 1000,
+)}s.`
 
 export type {
   ProofResponse,
@@ -207,6 +231,21 @@ export default function HedgeProofViewer({
     }
   }, [load])
 
+  // Auto-retry on the same 10s cadence as `HedgeStatusCard` whenever
+  // the viewer is sitting in an auto-retried error status (task 0080).
+  // `useIntervalWhileVisible` deliberately does NOT fire on mount, so
+  // the initial fetch above is not duplicated and the first scheduled
+  // retry lands exactly `HEDGE_POLL_INTERVAL_MS` after we entered the
+  // error state. Manual Retry transitions `view` through `loading`,
+  // which flips `enabled` off → on and naturally resets the interval
+  // phase so the next auto-retry is `+10s` from the click rather than
+  // `+0s`. Visibility pause/resume is provided by the hook.
+  const autoRetryEnabled =
+    view.kind === 'error' && AUTO_RETRY_STATUSES.has(view.status)
+  useIntervalWhileVisible(load, HEDGE_POLL_INTERVAL_MS, {
+    enabled: autoRetryEnabled,
+  })
+
   return (
     <div className="w-full max-w-3xl mx-auto px-4 py-6">
       <PageHeader receiptId={receiptId} receiptIdTooltip={receiptIdTooltip} />
@@ -242,7 +281,8 @@ export default function HedgeProofViewer({
             // `invalid_id` is a deterministic verdict on the URL itself —
             // re-firing the same fetch will fail the same validator
             // forever. Suppress Retry and offer the receipts table as the
-            // primary recovery (#0072).
+            // primary recovery (#0072). No auto-retry note either —
+            // copy would lie about behavior the page doesn't exhibit.
             <HedgeProofErrorCard
               title={view.copy.title}
               detail={view.copy.detail}
@@ -258,6 +298,9 @@ export default function HedgeProofViewer({
               detail={view.copy.detail}
               onRetry={load}
               variant="error"
+              autoRetryNote={
+                AUTO_RETRY_STATUSES.has(view.status) ? AUTO_RETRY_NOTE : undefined
+              }
             />
           )}
           <ProofErrorRecoveryRow

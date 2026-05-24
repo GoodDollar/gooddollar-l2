@@ -302,6 +302,10 @@ describe('HedgeProofViewerPerReceiptPage — invalid_id Retry suppression (#0072
     expect(
       screen.queryByRole('link', { name: /open receipts table/i }),
     ).toBeNull()
+    // #0080 — per-receipt engine_down also gets the auto-retry sub-line.
+    expect(
+      screen.getByTestId('hedge-proof-error-auto-retry').textContent,
+    ).toBe('Auto-retrying every 10s.')
   })
 
   it('still renders the error card title and detail on the invalid_id branch', async () => {

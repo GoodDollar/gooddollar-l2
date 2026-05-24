@@ -19,6 +19,9 @@ import {
   summarizeReceipts,
   type ReceiptsSummary,
 } from '@/lib/hedge-receipts-summary'
+import {
+  HEDGE_POLL_INTERVAL_MS as POLL_INTERVAL_MS,
+} from '@/lib/hedgePollInterval'
 import { useIntervalWhileVisible } from '@/lib/useIntervalWhileVisible'
 import { usePollWhileVisible } from '@/lib/usePollWhileVisible'
 import { Sparkline } from './Sparkline'
@@ -93,8 +96,6 @@ interface HedgeStatusResponse {
   proof: ProofPointer | null
   degraded?: DegradedFlags
 }
-
-const POLL_INTERVAL_MS = 10_000
 
 function timeAgo(ms: number | undefined): string {
   if (!ms) return '—'
