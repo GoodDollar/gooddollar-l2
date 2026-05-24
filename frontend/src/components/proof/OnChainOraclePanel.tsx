@@ -1,18 +1,24 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useReadContracts } from 'wagmi'
+import { useMemo } from 'react'
 import { CONTRACTS } from '@/lib/chain'
-import { PriceOracleABI } from '@/lib/abi'
-import { sanitiseClientError } from '@/lib/sanitiseClientError'
 import { getAllTickers } from '@/lib/stockData'
 import { formatProofUsd } from '@/lib/proofFormat'
 import { sessionPillClass } from './sessionPill'
 import { MonoLinkAtom, MonoSourceAtom, PanelHeaderMeta } from './PanelHeaderMeta'
 import { NextPollCountdown, RetryButton } from './PanelHeaderControls'
 import { usePanelRetry } from './ProofPanelActionsProvider'
+import { useProofPipelineAxesContext } from './ProofPipelineAxesProvider'
 
-const ON_CHAIN_INTERVAL_MS = 30_000
+/**
+ * User-facing copy for a failed on-chain multicall. The underlying
+ * error is already sanitised + logged at the data boundary inside
+ * `useProofPipelineAxes` (#0063) so the panel only needs a stable
+ * customer-readable string here; this keeps the panel a pure renderer
+ * with no second sanitise pair.
+ */
+const ORACLE_MULTICALL_DEGRADED_COPY =
+  'The on-chain oracle is temporarily unreachable. The next scheduled poll will retry automatically.'
 
 const SESSION_LABELS: Record<number, string> = {
   0: 'Open',
@@ -86,15 +92,6 @@ function descIdFor(key: ColumnSpec['key']): string {
   return `onchain-oracle-col-desc-${key}`
 }
 
-interface DecodedPriceData {
-  symbol: string
-  price8: bigint
-  timestamp: bigint
-  session: number
-  confidence: number
-  signerCount: number
-}
-
 function formatUsd8(symbol: string, price8: bigint): string {
   const v = Number(price8) / 1e8
   if (!Number.isFinite(v) || v === 0) return '—'
@@ -118,65 +115,25 @@ export function OnChainOraclePanel() {
     ''
   const tickers = useMemo(() => getAllTickers(), [])
 
-  const contracts = useMemo(() => {
-    if (!oracleAddress) return []
-    return tickers.map((ticker) => ({
-      address: oracleAddress,
-      abi: PriceOracleABI,
-      functionName: 'getPriceData' as const,
-      args: [ticker] as const,
-    }))
-  }, [oracleAddress, tickers])
+  const {
+    onChainRows: rows,
+    onChainStatus,
+    onChainAt,
+    onChainCadenceMs,
+    retryOnChain,
+  } = useProofPipelineAxesContext()
 
-  const { data, isLoading, error, refetch } = useReadContracts({
-    contracts,
-    query: {
-      enabled: contracts.length > 0,
-      refetchInterval: ON_CHAIN_INTERVAL_MS,
-      staleTime: ON_CHAIN_INTERVAL_MS,
-    },
-  })
+  const { busy, fire: handleRetry } = usePanelRetry('onChain', retryOnChain)
 
-  const sanitisedErrorMessage = useMemo(
-    () => (error ? sanitiseClientError('oracle-multicall', error) : null),
-    [error],
-  )
-
-  const [lastReadAt, setLastReadAt] = useState<number | null>(null)
-  useEffect(() => {
-    if (data !== undefined || error) setLastReadAt(Date.now())
-  }, [data, error])
-
-  const retry = useCallback(async () => {
-    await refetch()
-  }, [refetch])
-
-  const { busy, fire: handleRetry } = usePanelRetry('onChain', retry)
-
-  const rows = useMemo<DecodedPriceData[]>(() => {
-    if (!data) return []
-    const out: DecodedPriceData[] = []
-    for (let i = 0; i < tickers.length; i++) {
-      const r = data[i]
-      if (r?.status !== 'success' || !r.result) continue
-      const tuple = r.result as {
-        price8: bigint
-        timestamp: bigint
-        session: number
-        confidence: number
-        signerCount: number
-      }
-      out.push({
-        symbol: tickers[i],
-        price8: tuple.price8 ?? 0n,
-        timestamp: tuple.timestamp ?? 0n,
-        session: tuple.session ?? 3,
-        confidence: tuple.confidence ?? 0,
-        signerCount: tuple.signerCount ?? 0,
-      })
-    }
-    return out
-  }, [data, tickers])
+  // `rows.length === 0` and `onChainStatus === 'loading'` only line up
+  // before the first multicall settles; afterwards the loading flag
+  // drops even on subsequent refetches (wagmi sets `isLoading=true`
+  // only on the initial fetch), so the empty branch must key off the
+  // resolved status, not row count alone.
+  const isInitialLoad = onChainStatus === 'loading' && rows.length === 0
+  const isErrored = onChainStatus === 'error'
+  const isEmptyResolved = onChainStatus === 'ok' && rows.length === 0
+  const hasRows = rows.length > 0
 
   return (
     <section
@@ -193,8 +150,8 @@ export function OnChainOraclePanel() {
             source={<OracleAddressAtom oracleAddress={oracleAddress} explorer={explorer} />}
             cadence={
               <NextPollCountdown
-                lastPollAt={lastReadAt}
-                intervalMs={ON_CHAIN_INTERVAL_MS}
+                lastPollAt={onChainAt}
+                intervalMs={onChainCadenceMs}
                 busy={busy}
                 testId="onchain-oracle-countdown"
               />
@@ -210,7 +167,7 @@ export function OnChainOraclePanel() {
       </header>
 
       <div className="flex-1">
-      {isLoading && (
+      {isInitialLoad && (
         <div className="space-y-2" role="status" aria-label="Loading on-chain oracle data">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-7 animate-pulse rounded bg-white/5" />
@@ -218,14 +175,14 @@ export function OnChainOraclePanel() {
         </div>
       )}
 
-      {sanitisedErrorMessage && (
+      {isErrored && (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
           <div className="font-semibold">Oracle multicall failed</div>
-          <div className="mt-1 text-yellow-300/80">{sanitisedErrorMessage}</div>
+          <div className="mt-1 text-yellow-300/80">{ORACLE_MULTICALL_DEGRADED_COPY}</div>
         </div>
       )}
 
-      {!isLoading && !error && rows.length === 0 && (
+      {isEmptyResolved && (
         <div
           data-testid="onchain-oracle-awaiting"
           className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200"
@@ -252,7 +209,7 @@ export function OnChainOraclePanel() {
         </div>
       )}
 
-      {!isLoading && !error && rows.length > 0 && (
+      {hasRows && (
         <div className="overflow-x-auto">
           <div className="sr-only">
             <dl>

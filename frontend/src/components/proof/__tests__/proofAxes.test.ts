@@ -4,6 +4,7 @@ import {
   ResolvedAxis,
   TOTAL_AXIS_COUNT,
   countResolvedAxes,
+  deriveOnChainAxisFromRows,
   derivePartialVerdict,
   deriveVerdict,
   describeAxisForFlowNode,
@@ -229,5 +230,33 @@ describe('proofAxes — isHealthyOnChain', () => {
   it('rejects non-bigint values', () => {
     expect(isHealthyOnChain({ price8: 1, timestamp: 1 })).toBe(false)
     expect(isHealthyOnChain(null)).toBe(false)
+  })
+})
+
+describe('proofAxes — deriveOnChainAxisFromRows (#0063)', () => {
+  const healthyRow = { price8: 17_860_000_000n, timestamp: 1700000000n }
+  const zeroRow = { price8: 0n, timestamp: 0n }
+
+  it('returns unknown on first paint before any read has settled', () => {
+    expect(deriveOnChainAxisFromRows([], false, true)).toBe('unknown')
+    expect(deriveOnChainAxisFromRows([healthyRow], false, true)).toBe('unknown')
+  })
+
+  it('returns degraded when the multicall errored, even if a prior row payload lingers', () => {
+    expect(deriveOnChainAxisFromRows([healthyRow], true, false)).toBe('degraded')
+  })
+
+  it('returns degraded when the call resolved but no rows came back', () => {
+    expect(deriveOnChainAxisFromRows([], false, false)).toBe('degraded')
+  })
+
+  it('returns healthy when at least one row reports a non-zero price + timestamp', () => {
+    expect(deriveOnChainAxisFromRows([zeroRow, healthyRow, zeroRow], false, false)).toBe(
+      'healthy',
+    )
+  })
+
+  it('returns degraded when every row is zero (partial-write oracle never armed)', () => {
+    expect(deriveOnChainAxisFromRows([zeroRow, zeroRow], false, false)).toBe('degraded')
   })
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useReadContract } from 'wagmi'
+import { useReadContracts } from 'wagmi'
 import { CONTRACTS } from '@/lib/chain'
 import { PriceOracleABI } from '@/lib/abi'
 import { sanitiseClientError } from '@/lib/sanitiseClientError'
@@ -11,11 +11,27 @@ import {
   AxisState,
   Verdict,
   countResolvedAxes,
+  deriveOnChainAxisFromRows,
   derivePartialVerdict,
   deriveVerdict,
   isFreshQuotes,
-  isHealthyOnChain,
 } from './proofAxes'
+
+/**
+ * One decoded row of `StocksPriceOracle.getPriceData(symbol)`. Lifted
+ * out of `OnChainOraclePanel` so the hook can hand panel renderers a
+ * pre-decoded array and remain the single source of truth for the
+ * on-chain axis — see task lane6-onchain-probe-ticker-duplicates-
+ * onchainoraclepanel-read (0063).
+ */
+export interface DecodedPriceData {
+  symbol: string
+  price8: bigint
+  timestamp: bigint
+  session: number
+  confidence: number
+  signerCount: number
+}
 
 const DEFAULT_PRICE_SERVICE_URL = 'http://localhost:9300'
 const DEFAULT_STALENESS_THRESHOLD_MS = 30_000
@@ -28,10 +44,14 @@ const DEFAULT_STALENESS_THRESHOLD_MS = 30_000
  */
 const DEFAULT_OFF_CHAIN_INTERVAL_MS = 5_000
 /**
- * Chain `useReadContract` cadence (15s). On-chain prices update on
- * block boundaries; polling faster is wasted RPC traffic.
+ * Chain `useReadContracts` cadence (30s). On-chain prices update on
+ * block boundaries; polling the full 12-ticker multicall faster is
+ * wasted RPC traffic. The hook owns the single timer; the axis-health
+ * value is derived state, recomputed each render from the most recent
+ * multicall snapshot — no second timer is needed for the rollup
+ * (#0063 collapsed the previous 15s AAPL probe onto this poll).
  */
-const DEFAULT_CHAIN_INTERVAL_MS = 15_000
+const DEFAULT_CHAIN_PANEL_INTERVAL_MS = 30_000
 
 export interface UseProofPipelineAxesOptions {
   /** Price-service base URL — defaults to `NEXT_PUBLIC_PRICE_SERVICE_URL`. */
@@ -40,14 +60,28 @@ export interface UseProofPipelineAxesOptions {
   hedgeProofEndpoint?: string
   /** Off-chain poll cadence (quotes + hedge-proof) in ms — defaults to 5s. */
   offChainIntervalMs?: number
-  /** Chain probe cadence (wagmi refetchInterval) in ms — defaults to 15s. */
+  /**
+   * @deprecated since #0063. The hook no longer mounts a separate
+   * single-ticker probe at this cadence; the on-chain axis is derived
+   * from the same multicall result that drives `OnChainOraclePanel`.
+   * Set {@link UseProofPipelineAxesOptions.chainPanelIntervalMs} to
+   * change the on-chain cadence. Kept for source-compatibility with
+   * callers that pass it; setting it has no effect.
+   */
   chainIntervalMs?: number
+  /**
+   * On-chain multicall cadence in ms — defaults to 30s. The hook mounts
+   * ONE `useReadContracts` over every ticker at this cadence;
+   * `OnChainOraclePanel` reads back the decoded rows via context (#0063).
+   */
+  chainPanelIntervalMs?: number
   /** Staleness threshold for the quotes axis — defaults to 30s. */
   stalenessThresholdMs?: number
 }
 
 export type QuotesFetchStatus = 'loading' | 'ok' | 'error'
 export type HedgeProofFetchStatus = 'loading' | 'ok' | 'missing' | 'error'
+export type OnChainFetchStatus = 'loading' | 'ok' | 'error'
 
 interface QuotesResult {
   axis: AxisHealth
@@ -110,8 +144,22 @@ export interface ProofPipelineAxesState {
   lastHedgeProofAt: number | null
   /** Outcome of the most recent hedge-proof poll. */
   lastHedgeProofStatus: HedgeProofFetchStatus
+  /**
+   * Decoded rows from the most recent `getPriceData` multicall, one per
+   * ticker whose result returned `status: 'success'`. Empty array on
+   * first paint or when the multicall errored. Drives both the on-chain
+   * axis health AND the `OnChainOraclePanel` table — single source of
+   * truth (#0063).
+   */
+  onChainRows: readonly DecodedPriceData[]
+  /** Outcome of the most recent on-chain multicall. */
+  onChainStatus: OnChainFetchStatus
+  /** Wallclock ms when the most recent on-chain multicall response landed, else null. */
+  onChainAt: number | null
   /** Off-chain poll cadence the hook is using — consumers echo this in copy. */
   cadenceMs: number
+  /** On-chain multicall cadence the hook is using — consumers echo this in their countdown (#0063). */
+  onChainCadenceMs: number
   /** Price-service URL the hook is polling — consumers echo this in pills. */
   priceServiceUrl: string
   /** Hedge-proof endpoint the hook is polling — consumers link to it. */
@@ -129,6 +177,13 @@ export interface ProofPipelineAxesState {
    * as {@link retryQuotes} — the quotes clock is untouched.
    */
   retryHedgeProof: () => Promise<void>
+  /**
+   * Re-run the on-chain multicall immediately. Forwards to wagmi's
+   * `refetch()` so the next scheduled poll fires `onChainCadenceMs`
+   * after this manual retry (wagmi schedules from refetch time).
+   * Used by the on-chain panel's `Retry now` button (#0063).
+   */
+  retryOnChain: () => Promise<void>
 }
 
 interface UsePollerOptions<T> {
@@ -214,25 +269,37 @@ export function useProofPipelineAxes({
   priceServiceUrl = process.env.NEXT_PUBLIC_PRICE_SERVICE_URL ?? DEFAULT_PRICE_SERVICE_URL,
   hedgeProofEndpoint = '/api/hedge-proof/latest',
   offChainIntervalMs = DEFAULT_OFF_CHAIN_INTERVAL_MS,
-  chainIntervalMs = DEFAULT_CHAIN_INTERVAL_MS,
+  chainPanelIntervalMs = DEFAULT_CHAIN_PANEL_INTERVAL_MS,
   stalenessThresholdMs = DEFAULT_STALENESS_THRESHOLD_MS,
 }: UseProofPipelineAxesOptions = {}): ProofPipelineAxesState {
   const oracleAddress = CONTRACTS.StocksPriceOracle
-  const probeTicker = useMemo(() => {
-    const tickers = getAllTickers()
-    return tickers.length > 0 ? tickers[0] : null
-  }, [])
+  const tickers = useMemo(() => getAllTickers(), [])
 
-  const onChainReadEnabled = Boolean(oracleAddress) && probeTicker !== null
-  const { data: onChainData, error: onChainError } = useReadContract({
-    address: oracleAddress || undefined,
-    abi: PriceOracleABI,
-    functionName: 'getPriceData',
-    args: probeTicker ? [probeTicker] : undefined,
+  // The contracts array is what wagmi keys the multicall on — make it
+  // a stable reference so we don't re-arm every render. Empty array
+  // when we can't read (no address / no tickers) keeps the type
+  // inference happy and disables the underlying query.
+  const onChainContracts = useMemo(() => {
+    if (!oracleAddress || tickers.length === 0) return []
+    return tickers.map((ticker) => ({
+      address: oracleAddress,
+      abi: PriceOracleABI,
+      functionName: 'getPriceData' as const,
+      args: [ticker] as const,
+    }))
+  }, [oracleAddress, tickers])
+
+  const {
+    data: onChainData,
+    error: onChainError,
+    isLoading: onChainIsLoading,
+    refetch: refetchOnChain,
+  } = useReadContracts({
+    contracts: onChainContracts,
     query: {
-      enabled: onChainReadEnabled,
-      refetchInterval: chainIntervalMs,
-      staleTime: chainIntervalMs,
+      enabled: onChainContracts.length > 0,
+      refetchInterval: chainPanelIntervalMs,
+      staleTime: chainPanelIntervalMs,
     },
   })
 
@@ -279,15 +346,63 @@ export function useProofPipelineAxes({
     fetchOnce: checkHedgeProof,
   })
 
-  const onChain: AxisHealth = useMemo(() => {
-    if (!onChainReadEnabled) return 'degraded'
-    if (onChainError) {
-      sanitiseClientError('oracle-multicall', onChainError)
-      return 'degraded'
+  // Decode the wagmi multicall into one tidy row per success. Skips
+  // tickers whose slot reverted so callers don't have to thread error
+  // branches through their render. Same decode shape the panel used
+  // before #0063 — moved here so the panel can be a pure renderer.
+  const onChainRows = useMemo<readonly DecodedPriceData[]>(() => {
+    if (!onChainData) return []
+    const out: DecodedPriceData[] = []
+    for (let i = 0; i < tickers.length; i++) {
+      const r = onChainData[i]
+      if (r?.status !== 'success' || !r.result) continue
+      const tuple = r.result as {
+        price8: bigint
+        timestamp: bigint
+        session: number
+        confidence: number
+        signerCount: number
+      }
+      out.push({
+        symbol: tickers[i],
+        price8: tuple.price8 ?? 0n,
+        timestamp: tuple.timestamp ?? 0n,
+        session: tuple.session ?? 3,
+        confidence: tuple.confidence ?? 0,
+        signerCount: tuple.signerCount ?? 0,
+      })
     }
-    if (onChainData === undefined) return 'unknown'
-    return isHealthyOnChain(onChainData) ? 'healthy' : 'degraded'
-  }, [onChainReadEnabled, onChainError, onChainData])
+    return out
+  }, [onChainData, tickers])
+
+  // Log once per failed multicall — the panel renders a hardcoded copy
+  // string so we keep the single sanitise + console.error pair here at
+  // the data boundary (#0063).
+  useEffect(() => {
+    if (!onChainError) return
+    sanitiseClientError('oracle-multicall', onChainError)
+  }, [onChainError])
+
+  const onChainStatus: OnChainFetchStatus = onChainError
+    ? 'error'
+    : onChainIsLoading
+      ? 'loading'
+      : 'ok'
+
+  const [onChainAt, setOnChainAt] = useState<number | null>(null)
+  useEffect(() => {
+    if (onChainData !== undefined || onChainError) setOnChainAt(Date.now())
+  }, [onChainData, onChainError])
+
+  const onChain = deriveOnChainAxisFromRows(
+    onChainRows,
+    Boolean(onChainError),
+    onChainData === undefined && !onChainError,
+  )
+
+  const retryOnChain = useCallback(async () => {
+    await refetchOnChain()
+  }, [refetchOnChain])
 
   const axes: AxisState = useMemo(
     () => ({ quotes: quotes.axis, onChain, hedgeProof: hedgeProof.axis }),
@@ -326,12 +441,17 @@ export function useProofPipelineAxes({
       lastHedgeProofPayload: hedgeProof.payload,
       lastHedgeProofAt: hedgeProof.at,
       lastHedgeProofStatus: hedgeProof.status,
+      onChainRows,
+      onChainStatus,
+      onChainAt,
       cadenceMs: offChainIntervalMs,
+      onChainCadenceMs: chainPanelIntervalMs,
       priceServiceUrl,
       hedgeProofEndpoint,
       stalenessThresholdMs,
       retryQuotes,
       retryHedgeProof,
+      retryOnChain,
     }),
     [
       axes,
@@ -345,12 +465,17 @@ export function useProofPipelineAxes({
       hedgeProof.payload,
       hedgeProof.at,
       hedgeProof.status,
+      onChainRows,
+      onChainStatus,
+      onChainAt,
       offChainIntervalMs,
+      chainPanelIntervalMs,
       priceServiceUrl,
       hedgeProofEndpoint,
       stalenessThresholdMs,
       retryQuotes,
       retryHedgeProof,
+      retryOnChain,
     ],
   )
 }

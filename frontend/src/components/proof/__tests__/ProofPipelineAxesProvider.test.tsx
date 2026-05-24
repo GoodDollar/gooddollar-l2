@@ -3,7 +3,7 @@ import { render, renderHook, screen, cleanup } from '@testing-library/react'
 import type { PropsWithChildren } from 'react'
 
 vi.mock('wagmi', () => ({
-  useReadContract: vi.fn(),
+  useReadContracts: vi.fn(),
 }))
 
 vi.mock('@/lib/stockData', () => ({
@@ -20,7 +20,7 @@ vi.mock('@/lib/abi', () => ({
   PriceOracleABI: [],
 }))
 
-import { useReadContract } from 'wagmi'
+import { useReadContracts } from 'wagmi'
 import { PipelineFlowDiagram } from '../PipelineFlowDiagram'
 import { PipelineStatusBanner } from '../PipelineStatusBanner'
 import {
@@ -29,7 +29,7 @@ import {
   useProofPipelineAxesContext,
 } from '../ProofPipelineAxesProvider'
 
-const useReadContractMock = vi.mocked(useReadContract)
+const useReadContractsMock = vi.mocked(useReadContracts)
 
 type FetchMockEntry = { ok: boolean; status: number; body: unknown }
 
@@ -45,17 +45,23 @@ function installFetchMock(handler: (input: string) => FetchMockEntry | Promise<F
 }
 
 function mockOnChainDegraded() {
-  useReadContractMock.mockReturnValue({
-    data: { price8: 0n, timestamp: 0n, session: 3, confidence: 0, signerCount: 0 },
+  useReadContractsMock.mockReturnValue({
+    data: [
+      {
+        status: 'success',
+        result: { price8: 0n, timestamp: 0n, session: 3, confidence: 0, signerCount: 0 },
+      },
+    ],
     isLoading: false,
     error: null,
-  } as unknown as ReturnType<typeof useReadContract>)
+    refetch: () => Promise.resolve({ data: undefined } as never),
+  } as unknown as ReturnType<typeof useReadContracts>)
 }
 
 describe('ProofPipelineAxesProvider', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    useReadContractMock.mockReset()
+    useReadContractsMock.mockReset()
   })
 
   afterEach(() => {
@@ -92,12 +98,17 @@ describe('ProofPipelineAxesProvider', () => {
             lastHedgeProofPayload: null,
             lastHedgeProofAt: null,
             lastHedgeProofStatus: 'error',
+            onChainRows: [],
+            onChainStatus: 'error',
+            onChainAt: null,
             cadenceMs: 5_000,
+            onChainCadenceMs: 30_000,
             priceServiceUrl: 'http://localhost:9300',
             hedgeProofEndpoint: '/api/hedge-proof/latest',
             stalenessThresholdMs: 30_000,
             retryQuotes: () => Promise.resolve(),
             retryHedgeProof: () => Promise.resolve(),
+            retryOnChain: () => Promise.resolve(),
           }}
         >
           {children}

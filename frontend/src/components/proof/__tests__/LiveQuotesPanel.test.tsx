@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { ProofPanelActionsProvider } from '../ProofPanelActionsProvider'
 
 vi.mock('wagmi', () => ({
-  useReadContract: vi.fn(),
+  useReadContracts: vi.fn(),
 }))
 
 vi.mock('@/lib/stockData', () => ({
@@ -20,14 +20,14 @@ vi.mock('@/lib/abi', () => ({
   PriceOracleABI: [],
 }))
 
-import { useReadContract } from 'wagmi'
+import { useReadContracts } from 'wagmi'
 import { LiveQuotesPanel } from '../LiveQuotesPanel'
 import {
   ProofPipelineAxesProvider,
   type ProofPipelineAxesProviderProps,
 } from '../ProofPipelineAxesProvider'
 
-const useReadContractMock = vi.mocked(useReadContract)
+const useReadContractsMock = vi.mocked(useReadContracts)
 
 const QUOTES_FRESH = {
   quotes: {
@@ -103,14 +103,15 @@ function renderPanel(opts: Omit<ProofPipelineAxesProviderProps, 'children'> = {}
 describe('LiveQuotesPanel', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    useReadContractMock.mockReset()
+    useReadContractsMock.mockReset()
     // The panel does not read on-chain state; default mock keeps the
     // hook quiet so off-chain fetches drive the rendered output.
-    useReadContractMock.mockReturnValue({
+    useReadContractsMock.mockReturnValue({
       data: undefined,
       isLoading: true,
       error: null,
-    } as unknown as ReturnType<typeof useReadContract>)
+      refetch: () => Promise.resolve({ data: undefined } as never),
+    } as unknown as ReturnType<typeof useReadContracts>)
   })
 
   afterEach(() => {

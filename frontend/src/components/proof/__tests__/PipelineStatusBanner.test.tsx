@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, cleanup } from '@testing-library/react'
 
 vi.mock('wagmi', () => ({
-  useReadContract: vi.fn(),
+  useReadContracts: vi.fn(),
 }))
 
 vi.mock('@/lib/stockData', () => ({
@@ -19,14 +19,14 @@ vi.mock('@/lib/abi', () => ({
   PriceOracleABI: [],
 }))
 
-import { useReadContract } from 'wagmi'
+import { useReadContracts } from 'wagmi'
 import { PipelineStatusBanner } from '../PipelineStatusBanner'
 import {
   ProofPipelineAxesProvider,
   type ProofPipelineAxesProviderProps,
 } from '../ProofPipelineAxesProvider'
 
-const useReadContractMock = vi.mocked(useReadContract)
+const useReadContractsMock = vi.mocked(useReadContracts)
 
 /**
  * Render the banner inside the shared provider so the hook drives the
@@ -76,50 +76,63 @@ function installFetchMock(handler: FetchMockHandler) {
 }
 
 function mockOnChainHealthy() {
-  useReadContractMock.mockReturnValue({
-    data: {
-      price8: 17_860_000_000n,
-      timestamp: BigInt(Math.floor(Date.now() / 1000)),
-      session: 0,
-      confidence: 95,
-      signerCount: 1,
-    },
+  useReadContractsMock.mockReturnValue({
+    data: [
+      {
+        status: 'success',
+        result: {
+          price8: 17_860_000_000n,
+          timestamp: BigInt(Math.floor(Date.now() / 1000)),
+          session: 0,
+          confidence: 95,
+          signerCount: 1,
+        },
+      },
+    ],
     isLoading: false,
     error: null,
-  } as unknown as ReturnType<typeof useReadContract>)
+    refetch: () => Promise.resolve({ data: undefined } as never),
+  } as unknown as ReturnType<typeof useReadContracts>)
 }
 
 function mockOnChainDegraded() {
-  useReadContractMock.mockReturnValue({
-    data: {
-      price8: 0n,
-      timestamp: 0n,
-      session: 3,
-      confidence: 0,
-      signerCount: 0,
-    },
+  useReadContractsMock.mockReturnValue({
+    data: [
+      {
+        status: 'success',
+        result: {
+          price8: 0n,
+          timestamp: 0n,
+          session: 3,
+          confidence: 0,
+          signerCount: 0,
+        },
+      },
+    ],
     isLoading: false,
     error: null,
-  } as unknown as ReturnType<typeof useReadContract>)
+    refetch: () => Promise.resolve({ data: undefined } as never),
+  } as unknown as ReturnType<typeof useReadContracts>)
 }
 
 /**
- * On-chain probe still in flight — `useReadContract` returns
+ * On-chain probe still in flight — `useReadContracts` returns
  * `data: undefined`. Mirrors the genuine first-paint state where
  * wagmi has not yet resolved the multicall.
  */
 function mockOnChainLoading() {
-  useReadContractMock.mockReturnValue({
+  useReadContractsMock.mockReturnValue({
     data: undefined,
     isLoading: true,
     error: null,
-  } as unknown as ReturnType<typeof useReadContract>)
+    refetch: () => Promise.resolve({ data: undefined } as never),
+  } as unknown as ReturnType<typeof useReadContracts>)
 }
 
 describe('PipelineStatusBanner', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    useReadContractMock.mockReset()
+    useReadContractsMock.mockReset()
   })
 
   afterEach(() => {

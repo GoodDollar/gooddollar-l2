@@ -17,7 +17,7 @@ import { parseRunId } from '@/lib/parseRunId'
 // case any future composite test mounts `ProofPipelineAxesProvider`
 // directly (e.g. the integrated retry test below).
 vi.mock('wagmi', () => ({
-  useReadContract: vi.fn(),
+  useReadContracts: vi.fn(),
 }))
 
 vi.mock('@/lib/stockData', () => ({
@@ -97,12 +97,17 @@ const BASE_AXES_VALUE: ProofPipelineAxesState = {
   lastHedgeProofPayload: null,
   lastHedgeProofAt: null,
   lastHedgeProofStatus: 'loading',
+  onChainRows: [],
+  onChainStatus: 'ok',
+  onChainAt: null,
   cadenceMs: 5_000,
+  onChainCadenceMs: 30_000,
   priceServiceUrl: 'http://localhost:9300',
   hedgeProofEndpoint: '/api/hedge-proof/latest',
   stalenessThresholdMs: 30_000,
   retryQuotes: () => Promise.resolve(),
   retryHedgeProof: () => Promise.resolve(),
+  retryOnChain: () => Promise.resolve(),
 }
 
 interface RenderOpts {
@@ -573,14 +578,16 @@ describe('LastDemoHedgePanel', () => {
   // so the panel under the real provider must reflect whatever the hook
   // last fetched without making a second request of its own.
   it('integrated provider drives the panel via the shared hedge-proof axis', async () => {
-    // The hook also mounts a wagmi useReadContract probe for the on-chain
-    // axis; quiet that so the test focuses on the hedge-proof path.
-    const { useReadContract } = await import('wagmi')
-    vi.mocked(useReadContract).mockReturnValue({
+    // The hook also mounts a wagmi useReadContracts multicall for the
+    // on-chain axis (#0063); quiet that so the test focuses on the
+    // hedge-proof path.
+    const { useReadContracts } = await import('wagmi')
+    vi.mocked(useReadContracts).mockReturnValue({
       data: undefined,
       isLoading: true,
       error: null,
-    } as unknown as ReturnType<typeof useReadContract>)
+      refetch: () => Promise.resolve({ data: undefined } as never),
+    } as unknown as ReturnType<typeof useReadContracts>)
 
     const fetchSpy = vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
       const url = String(input)

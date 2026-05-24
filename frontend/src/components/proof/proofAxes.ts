@@ -61,6 +61,36 @@ export function isHealthyOnChain(data: unknown): boolean {
   return price8 > 0n && timestamp > 0n
 }
 
+/**
+ * Derive the on-chain axis health from a decoded multicall result set.
+ * Mirrors the per-row `isHealthyOnChain` predicate but operates on the
+ * whole row collection so a single hook call (a wagmi `useReadContracts`
+ * over every ticker) can drive both the axis-health value AND the
+ * `OnChainOraclePanel`'s table without a duplicate probe — see task
+ * lane6-onchain-probe-ticker-duplicates-onchainoraclepanel-read (0063).
+ *
+ * Rules (mirrors `OnChainOraclePanel`'s prior empty/error semantics):
+ *  - `isUnknown` → `'unknown'`. First paint before any read has settled.
+ *  - `isError` → `'degraded'`. Wagmi raised at the multicall boundary.
+ *  - `rows.length === 0` and resolved (not unknown/error) → `'degraded'`.
+ *    Matches the panel's "Awaiting first on-chain write" branch.
+ *  - At least one row reports `isHealthyOnChain` → `'healthy'`.
+ *  - Otherwise → `'degraded'`. Rows present but every row is zero.
+ */
+export function deriveOnChainAxisFromRows(
+  rows: readonly unknown[],
+  isError: boolean,
+  isUnknown: boolean,
+): AxisHealth {
+  if (isUnknown) return 'unknown'
+  if (isError) return 'degraded'
+  if (rows.length === 0) return 'degraded'
+  for (const r of rows) {
+    if (isHealthyOnChain(r)) return 'healthy'
+  }
+  return 'degraded'
+}
+
 export interface PanelLink {
   /** Human-readable failure reason rendered in the rollup chip. */
   reason: string

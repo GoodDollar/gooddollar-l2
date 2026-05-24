@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 
 vi.mock('wagmi', () => ({
-  useReadContract: vi.fn(),
+  useReadContracts: vi.fn(),
 }))
 
 vi.mock('@/lib/stockData', () => ({
@@ -19,14 +19,14 @@ vi.mock('@/lib/abi', () => ({
   PriceOracleABI: [],
 }))
 
-import { useReadContract } from 'wagmi'
+import { useReadContracts } from 'wagmi'
 import { PipelineFlowDiagram } from '../PipelineFlowDiagram'
 import {
   ProofPipelineAxesProvider,
   type ProofPipelineAxesProviderProps,
 } from '../ProofPipelineAxesProvider'
 
-const useReadContractMock = vi.mocked(useReadContract)
+const useReadContractsMock = vi.mocked(useReadContracts)
 
 function renderFlow(opts: Omit<ProofPipelineAxesProviderProps, 'children'> = {}) {
   return render(
@@ -71,39 +71,52 @@ function installFetchMock(handler: FetchMockHandler) {
 }
 
 function mockOnChainHealthy() {
-  useReadContractMock.mockReturnValue({
-    data: {
-      price8: 17_860_000_000n,
-      timestamp: BigInt(Math.floor(Date.now() / 1000)),
-      session: 0,
-      confidence: 95,
-      signerCount: 1,
-    },
+  useReadContractsMock.mockReturnValue({
+    data: [
+      {
+        status: 'success',
+        result: {
+          price8: 17_860_000_000n,
+          timestamp: BigInt(Math.floor(Date.now() / 1000)),
+          session: 0,
+          confidence: 95,
+          signerCount: 1,
+        },
+      },
+    ],
     isLoading: false,
     error: null,
-  } as unknown as ReturnType<typeof useReadContract>)
+    refetch: () => Promise.resolve({ data: undefined } as never),
+  } as unknown as ReturnType<typeof useReadContracts>)
 }
 
 function mockOnChainDegraded() {
-  useReadContractMock.mockReturnValue({
-    data: {
-      price8: 0n,
-      timestamp: 0n,
-      session: 3,
-      confidence: 0,
-      signerCount: 0,
-    },
+  useReadContractsMock.mockReturnValue({
+    data: [
+      {
+        status: 'success',
+        result: {
+          price8: 0n,
+          timestamp: 0n,
+          session: 3,
+          confidence: 0,
+          signerCount: 0,
+        },
+      },
+    ],
     isLoading: false,
     error: null,
-  } as unknown as ReturnType<typeof useReadContract>)
+    refetch: () => Promise.resolve({ data: undefined } as never),
+  } as unknown as ReturnType<typeof useReadContracts>)
 }
 
 function mockOnChainUnknown() {
-  useReadContractMock.mockReturnValue({
+  useReadContractsMock.mockReturnValue({
     data: undefined,
     isLoading: true,
     error: null,
-  } as unknown as ReturnType<typeof useReadContract>)
+    refetch: () => Promise.resolve({ data: undefined } as never),
+  } as unknown as ReturnType<typeof useReadContracts>)
 }
 
 const ALL_NODE_IDS = [
@@ -118,7 +131,7 @@ const ALL_NODE_IDS = [
 describe('PipelineFlowDiagram', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    useReadContractMock.mockReset()
+    useReadContractsMock.mockReset()
   })
 
   afterEach(() => {
