@@ -10,7 +10,7 @@ import { withApiRateLimit } from '@/lib/withApiRateLimit'
 /**
  * Iter 27 — `/api/analytics/overview`.
  *
- * Read-only join of four already-public data surfaces, served as a single
+ * Read-only join of six already-public data surfaces, served as a single
  * JSON document so the `/analytics` page can render every panel from one
  * round-trip. Each sub-source carries its own `ok: boolean` so a failure in
  * one upstream (typically the indexer or RPC) never blanks the page.
@@ -20,12 +20,19 @@ import { withApiRateLimit } from '@/lib/withApiRateLimit'
  *   - `STATUS_AGGREGATOR_URL`        (default `http://localhost:9200/status.json`).
  *   - `INDEXER_API_URL`              (default `http://127.0.0.1:4200`).
  *   - `DEVNET_RPC_URL`               (already used by `/api/rpc`).
+ *   - `PRICE_SERVICE_REST_URL`       (default `http://localhost:9300`)
+ *       — task 0063, lane-1 price-feed pillar. Reads `/health` and
+ *       `/status/quotes` in parallel and joins them into one envelope.
+ *   - `ORACLE_SIGNER_HEALTH_URL`     (default `http://localhost:9107/health`)
+ *       — task 0063, lane-1 oracle submitter health.
  *
  * Output: see `AnalyticsOverview` below.
  *
  * See:
  *   - `.autobuilder/initiatives/0004-testnet-readiness-gate/tasks/
  *      0038-iter27-internal-analytics-dashboard.md`
+ *   - `.autobuilder/initiatives/0007a-etoro-connectivity/tasks/
+ *      0063-analytics-dashboard-omits-lane1-price-feed-panel.md`
  *   - `docs/TESTNET-READINESS-50-ITERATIONS.md` (row 27)
  */
 
@@ -37,6 +44,10 @@ export const revalidate = 10
 const STATUS_URL =
   process.env.STATUS_AGGREGATOR_URL ?? 'http://localhost:9200/status.json'
 const INDEXER_URL = process.env.INDEXER_API_URL ?? 'http://127.0.0.1:4200'
+const PRICE_SERVICE_REST_URL =
+  process.env.PRICE_SERVICE_REST_URL ?? 'http://localhost:9300'
+const ORACLE_SIGNER_HEALTH_URL =
+  process.env.ORACLE_SIGNER_HEALTH_URL ?? 'http://localhost:9107/health'
 const TIMEOUT_MS = 4_000
 
 // ─── Address book (committed by iter 26) ─────────────────────────────────────
@@ -258,6 +269,173 @@ async function fetchChain(): Promise<ChainSource> {
   }
 }
 
+// ─── Lane-1 price feed (task 0063) ───────────────────────────────────────────
+
+interface PriceFeedSource {
+  ok: boolean
+  mode?: string
+  freshQuotes?: number
+  totalSymbols?: number
+  medianDivergenceBps?: number | null
+  lastUpdateMs?: number
+  healthyFlag?: boolean
+  status?: string
+  error?: string
+}
+
+interface PriceServiceHealthBody {
+  status?: string
+  mode?: string
+  freshQuotes?: number
+  totalCached?: number
+  configuredSymbols?: number
+  timestamp?: number
+  reason?: string
+}
+
+interface PriceServiceQuotesBody {
+  healthy?: boolean
+  freshCount?: number
+  totalCount?: number
+  status?: string
+  timestamp?: number
+  quotes?: Array<{ symbol?: string; divergenceBps?: number }>
+}
+
+function median(values: number[]): number | null {
+  const sorted = values
+    .filter((n) => Number.isFinite(n))
+    .slice()
+    .sort((a, b) => a - b)
+  if (sorted.length === 0) return null
+  const mid = Math.floor(sorted.length / 2)
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2
+  }
+  return sorted[mid]
+}
+
+async function fetchPriceFeed(): Promise<PriceFeedSource> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+  try {
+    const [healthRes, quotesRes] = await Promise.all([
+      fetch(`${PRICE_SERVICE_REST_URL}/health`, {
+        signal: ctrl.signal,
+        cache: 'no-store',
+      }),
+      fetch(`${PRICE_SERVICE_REST_URL}/status/quotes`, {
+        signal: ctrl.signal,
+        cache: 'no-store',
+      }),
+    ])
+
+    // Per task 0052, price-service returns 503 with body
+    // `{status:"degraded"}` or `{status:"starting"}` — surface those as
+    // `ok:false` but with the producer's reason intact.
+    const healthBody =
+      (await healthRes.json().catch(() => ({}))) as PriceServiceHealthBody
+    const quotesBody =
+      (await quotesRes.json().catch(() => ({}))) as PriceServiceQuotesBody
+
+    const status = healthBody.status ?? (healthRes.ok ? 'ok' : 'error')
+    const ok = healthRes.ok && status === 'ok'
+
+    const divs =
+      Array.isArray(quotesBody.quotes)
+        ? quotesBody.quotes
+            .map((q) => (typeof q.divergenceBps === 'number' ? q.divergenceBps : NaN))
+            .filter((n) => Number.isFinite(n))
+        : []
+
+    return {
+      ok,
+      mode: typeof healthBody.mode === 'string' ? healthBody.mode : undefined,
+      freshQuotes:
+        typeof quotesBody.freshCount === 'number'
+          ? quotesBody.freshCount
+          : healthBody.freshQuotes,
+      totalSymbols:
+        typeof quotesBody.totalCount === 'number'
+          ? quotesBody.totalCount
+          : healthBody.configuredSymbols ?? healthBody.totalCached,
+      medianDivergenceBps: median(divs),
+      lastUpdateMs:
+        typeof quotesBody.timestamp === 'number'
+          ? quotesBody.timestamp
+          : healthBody.timestamp,
+      healthyFlag: Boolean(quotesBody.healthy),
+      status,
+      error: ok ? undefined : (healthBody.reason ?? `HTTP ${healthRes.status}`),
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'unknown',
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+interface OracleSubmitterSource {
+  ok: boolean
+  status: 'ok' | 'degraded' | 'unreachable'
+  mode?: string
+  reason?: string
+  lastUpdateMs?: number
+  configuredSymbols?: number
+  error?: string
+}
+
+interface SignerHealthBody {
+  ok?: boolean
+  status?: string
+  mode?: string
+  reason?: string
+  lastUpdateMs?: number
+  configuredSymbols?: number
+}
+
+async function fetchOracleSubmitter(): Promise<OracleSubmitterSource> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetch(ORACLE_SIGNER_HEALTH_URL, {
+      signal: ctrl.signal,
+      cache: 'no-store',
+    })
+    const body = (await res.json().catch(() => ({}))) as SignerHealthBody
+    const status = body.status ?? (res.ok ? 'ok' : 'error')
+    if (res.ok && (status === 'ok' || body.ok === true)) {
+      return {
+        ok: true,
+        status: 'ok',
+        mode: body.mode,
+        lastUpdateMs: body.lastUpdateMs,
+        configuredSymbols: body.configuredSymbols,
+      }
+    }
+    return {
+      ok: false,
+      status: 'degraded',
+      mode: body.mode,
+      reason: body.reason,
+      lastUpdateMs: body.lastUpdateMs,
+      configuredSymbols: body.configuredSymbols,
+      error: body.reason ?? `HTTP ${res.status}`,
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      status: 'unreachable',
+      error: err instanceof Error ? err.message : 'unknown',
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // ─── Derived computations ────────────────────────────────────────────────────
 
 type LagStatus =
@@ -356,12 +534,17 @@ async function handleGet(_req: NextRequest) {
     )
   }
 
-  // Fetch the three live sub-sources in parallel so a slow one doesn't
-  // serialise the others.
-  const [status, indexer, chain] = await Promise.all([
+  // Fetch the five live sub-sources in parallel so a slow one doesn't
+  // serialise the others. The two lane-1 fetchers were added by task 0063;
+  // they read price-service `/health` + `/status/quotes` and the oracle-
+  // signer `/health` envelope directly so the panel surfaces quote-shape
+  // signals that the lossy status-aggregator rollup discards.
+  const [status, indexer, chain, priceFeed, oracleSubmitter] = await Promise.all([
     fetchStatus(),
     fetchIndexer(),
     fetchChain(),
+    fetchPriceFeed(),
+    fetchOracleSubmitter(),
   ])
 
   const { lagBlocks, lagStatus } = computeLag(chain, indexer)
@@ -386,6 +569,8 @@ async function handleGet(_req: NextRequest) {
       lagStatus,
     },
     chain,
+    priceFeed,
+    oracleSubmitter,
     ubi,
     protocols,
   }
