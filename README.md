@@ -32,16 +32,17 @@ Lane7 live-demo/devnet overrides live in [`op-stack/addresses.lane7.json`](op-st
 
 ## Release status — 2026-05-24
 
-_Last refreshed 2026-05-24 12:20 UTC after lane7 proof/status fixes, frontend deploy, and push-prep. Supersedes older status rows where they conflict._
+_Last refreshed 2026-05-24 16:47 UTC after merging/deploying `main@6e329ad3`, repairing Blockscout indexing without a DB wipe, restarting Paperclip testers, and rerunning public + lane-7 gates. Supersedes older status rows where they conflict._
 
-### Latest demo checkpoint — 2026-05-24 12:20 UTC
+### Latest public testnet checkpoint — 2026-05-24 16:47 UTC
 
-- **Live frontend:** `goodswap` is deployed and serving BUILD_ID `tDSHfi4rQnym103Jy7G3l` on https://goodswap.goodclaw.org.
-- **Public proof routes:** `/live-prices-proof`, `/api/status`, `/api/oracle/status`, and `/api/status/quotes` all return HTTP `200` locally and publicly.
-- **Oracle status:** `/api/oracle/status` reports `healthy: true`, `degraded: false`, fresh `TSLA`/`NVDA` quotes, `StockOracleV2` `0x5FbDB2315678afecb367f032d93F642f64180aa3`, and a live lane7 `/proof` payload with no stock submission failures.
-- **Gates:** strict BUILD_ID sync and served chunk checks pass; `./scripts/testnet/health-gate.sh` and `scripts/testnet/internal-smoke.sh` both report **GREEN-with-warnings** with `0` blockers.
-- **Warning semantics:** `/api/status` can still show `overall: "degraded"` because excluded/health-only services are surfaced honestly as warnings. This is not a demo blocker for the live-prices/proof path.
-- **Fix commits:** main repo `8edd26ff` + `b9ebf156`; lane7 source repo `4085bf36`.
+- **Live frontend:** `goodswap` is deployed from local `main@6e329ad3` on https://goodswap.goodclaw.org; public `/api/status` is reachable and actively polling backend health.
+- **Public proof routes:** `/live-prices-proof`, `/api/status`, `/api/oracle/status`, and `/api/status/quotes` were verified during deploy; `/api/status` continued returning live data in the follow-up probe.
+- **Explorer/RPC:** Blockscout was repaired non-destructively. Stale future blocks were marked non-consensus, stale future coin-balance rows were skipped, cache was flushed, and the PM2 `rpc-docker-bridge-8545` bridge keeps Docker services connected to Anvil. Final verification showed RPC/explorer at block `13777`; a follow-up probe showed explorer blocks advancing past `14029`.
+- **Gates:** `./scripts/testnet/health-gate.sh` reports **GREEN-with-warnings**, exit code `0`, blockers `0`, warnings `5`; `scripts/testnet/internal-smoke.sh` reports **GREEN-with-warnings**, exit code `0`, blockers `0`, warnings `3`.
+- **Warning semantics:** `/api/status` can still show `overall: "degraded"` because excluded/health-only services are surfaced honestly as warnings. Current accepted warnings are excluded `activity-reporter`, `harvest-keeper`, `revenue-tracker`, `monitor`, health-only `hedge-engine`, excluded `oracle-signer`, and optional `LANE7_RPC` freshness config.
+- **Paperclip:** `paperclip-continuous-testers` and `paperclip-tests-status-publisher` are online after restart.
+- **Push state:** this documentation checkpoint accompanies the approved push of local `main@6e329ad3` plus README/architecture status updates to remote `main`.
 
 ### Live-prices lane integration (merged into local `main`)
 

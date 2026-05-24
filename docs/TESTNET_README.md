@@ -1,5 +1,10 @@
 # GoodDollar L2 Testnet Readiness
 
+<!-- GOODCHAIN_STATUS:START -->
+> **Public testnet checkpoint (2026-05-24 16:47 UTC):** `main@6e329ad3` is deployed to `goodswap.goodclaw.org`. Public health gate and lane-7 internal smoke are **GREEN-with-warnings** with `0` blockers. Explorer/RPC were repaired without wiping Blockscout DB; final verification showed RPC/explorer at block `13777`, and a live follow-up probe saw the explorer advancing past `14029`. Remaining warnings are accepted/excluded health-only services or optional `LANE7_RPC` freshness config. See root `README.md` and `docs/ARCHITECTURE.md`.
+<!-- GOODCHAIN_STATUS:END -->
+
+
 _Last updated: 2026-05-18 10:30 UTC during iter 30 (README/doc checkpoint 6). The iter 26–30 work added the analytics + feedback loops surfaces (`/analytics`, `/api/analytics/overview`, the Dune package, `/api/feedback`) — see the new **Analytics + Feedback Loops (iter 26–29)** section below for the tester-facing walk-through. Iter 30 also caught and fixed a stale production build that was hiding iter 27/29 from the public app — see [`docs/testnet/iter30-stale-build-redeploy.md`](testnet/iter30-stale-build-redeploy.md). This doc has hand-curated sections (Sibling Apps, Protocol Lane Hardening Status, Analytics + Feedback Loops, Frontend health, operator runbook). **Do not re-run `scripts/update-testnet-readme.py` until its template is reconciled with those sections** — the generator currently overwrites them._
 
 ## Current Build

@@ -1,5 +1,10 @@
 # GoodChain L2 — App & Route Index
 
+<!-- GOODCHAIN_STATUS:START -->
+> **Public testnet checkpoint (2026-05-24 16:47 UTC):** `main@6e329ad3` is deployed to `goodswap.goodclaw.org`. Public health gate and lane-7 internal smoke are **GREEN-with-warnings** with `0` blockers. Explorer/RPC were repaired without wiping Blockscout DB; final verification showed RPC/explorer at block `13777`, and a live follow-up probe saw the explorer advancing past `14029`. Remaining warnings are accepted/excluded health-only services or optional `LANE7_RPC` freshness config. See root `README.md` and `docs/ARCHITECTURE.md`.
+<!-- GOODCHAIN_STATUS:END -->
+
+
 Every user-facing protocol surface in the GoodDollar L2 web app lives under a single Next.js deployment at [goodswap.goodclaw.org](https://goodswap.goodclaw.org). Routes are grouped by product family; each page below links to a focused README grounded in repository sources.
 
 **Canonical route registry:** [`frontend/src/lib/tests/e2eRegistry.json`](../../frontend/src/lib/tests/e2eRegistry.json) (29 registered Playwright routes as of 2026-05-16).

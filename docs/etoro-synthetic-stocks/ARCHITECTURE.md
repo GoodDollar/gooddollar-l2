@@ -1,5 +1,10 @@
 # GoodChain + eToro — Architecture Overview
 
+## 2026-05-24 Public Testnet Integration Status
+
+The stock architecture is now part of the merged public testnet pipeline in `main@6e329ad3`. The live path is `@goodchain/etoro-client` → `price-service` (`:9300` REST / `:9301` WS) → `oracle-signer` → `StockOracleV2` → GoodStocks/GoodPerps/status UI. The public and lane-7 gates are **GREEN-with-warnings** with `0` blockers; the current accepted warnings keep `oracle-signer`/`hedge-engine` explicit when they run health-only or excluded. Real-money trading remains source-fenced off.
+
+
 ## System Components
 
 ### Off-Chain Services

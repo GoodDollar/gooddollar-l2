@@ -1,6 +1,6 @@
 # GoodDollar L2 Architecture
 
-_Last updated: 2026-05-24 UTC after merging live-prices lanes 1–7 into `main`. This checkpoint adds the eToro → price-service → oracle → app/status → hedge/testnet-smoke architecture on top of the prior analytics + feedback pipeline._
+_Last updated: 2026-05-24 16:47 UTC after deploying `main@6e329ad3`, repairing Blockscout non-destructively, and rerunning public + lane-7 verification gates. This checkpoint records the live public testnet architecture: eToro → price-service → oracle → app/status → hedge/testnet-smoke, public RPC/explorer, Blockscout indexing repair, Paperclip testers, and health-gate warning semantics._
 
 GoodDollar L2 is the Good Chain: an OP Stack-style EVM chain where useful app activity routes protocol fees into UBI funding.
 
@@ -13,6 +13,19 @@ GoodDollar L2 is the Good Chain: an OP Stack-style EVM chain where useful app ac
 - Testnet guide: `docs/TESTNET_README.md`
 - Readiness plan: `docs/TESTNET-READINESS-50-ITERATIONS.md`
 
+## Current Public Testnet State — 2026-05-24 16:47 UTC
+
+| Layer | State | Notes |
+|---|---|---|
+| Git / deploy | `main@6e329ad3` deployed locally; remote push approved for this docs checkpoint | This update records the public testnet state being pushed to remote `main`. |
+| Public gate | **GREEN-with-warnings**, exit `0`, blockers `0`, warnings `5` | Warnings are excluded or health-only services: `activity-reporter`, `harvest-keeper`, `revenue-tracker`, `monitor`, `hedge-engine`. |
+| Lane-7 smoke | **GREEN-with-warnings**, exit `0`, blockers `0`, warnings `3` | `oracle-signer` and `hedge-engine` are accepted exclusions; `LANE7_RPC` was unset so on-chain freshness was skipped. |
+| RPC / explorer | Synced and advancing | Final verification: RPC/explorer block `13777`; follow-up public probe showed explorer advancing past `14029`. |
+| Blockscout | Repaired without wiping DB | Future consensus blocks were marked non-consensus, future unfetched coin balances were skipped, cache was flushed, and `backend`/`proxy` restarted. |
+| Docker RPC access | PM2 `rpc-docker-bridge-8545` online | Bridges Docker containers to host Anvil at `127.0.0.1:8545` through `host.docker.internal:8545`. |
+| Paperclip | Continuous testers + status publisher online | Operator/tester plane; not a GoodSwap release blocker. |
+
+
 ## System Topology
 
 ```mermaid
@@ -22,6 +35,8 @@ flowchart TB
   Wallet --> RPC[Public RPC\nrpc.goodclaw.org]
   RPC --> Chain[GoodDollar L2 Chain\nChain ID 42069]
   Chain --> Explorer[Explorer\nexplorer.goodclaw.org]
+  RPCBridge[PM2 rpc-docker-bridge-8545\nhost.docker.internal:8545] --> RPC
+  Explorer --> RPCBridge
 
   Chain --> Swap[GoodSwap]
   Chain --> Perps[GoodPerps]
@@ -105,6 +120,11 @@ flowchart TB
   PM2 --> StocksKeeper[stocks-keeper]
   PM2 --> RPCBalancer[rpc-balancer]
   PM2 --> BridgeKeeper[bridge-keeper]
+  PM2 --> OracleSigner[oracle-signer]
+  PM2 --> HedgeEngine[hedge-engine]
+  PM2 --> Paperclip[paperclip-continuous-testers
+paperclip-tests-status-publisher]
+  PM2 --> RPCBridge[rpc-docker-bridge-8545]
 
   Frontend --> StatusAPI[/api/status]
   StatusAPI --> PM2
@@ -113,6 +133,15 @@ flowchart TB
   Revenue --> ChainRPC
   Monitor --> ChainRPC
 ```
+
+## Explorer and RPC Indexing
+
+Blockscout sits behind `explorer.goodclaw.org` and indexes the same Anvil-backed GoodDollar L2 RPC exposed publicly at `rpc.goodclaw.org`. Because the current devnet RPC is non-archive, the explorer must not assume old/future block ranges are fetchable forever. The current runtime contract is:
+
+- Blockscout backend/proxy run from `/home/goodclaw/blockscout/docker-compose`.
+- Anvil listens on host `127.0.0.1:8545`; Docker services reach it through the PM2-managed `rpc-docker-bridge-8545` bridge and `host.docker.internal:8545`.
+- Historical/archive-only fetchers stay disabled for the public devnet, while realtime coin-balance fetching is enabled and the empty-block sanitizer is disabled to avoid non-archive range scans.
+- If the chain is reset or rolls back, repair is non-destructive by default: mark stale future consensus blocks non-consensus, skip stale future unfetched coin-balance rows, flush Blockscout cache by restarting `backend`/`proxy`, then verify `/api/v2/blocks?type=block` against RPC height. Do **not** wipe/reset the Blockscout DB without explicit operator approval.
 
 ## Live Price, Oracle, Hedge, and Smoke Pipeline (lanes 1–7)
 
