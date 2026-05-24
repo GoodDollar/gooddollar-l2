@@ -885,6 +885,7 @@ export default function StockDetailPage() {
             currentTicker={stock.ticker}
             related={relatedSymbols}
             movers={topMovers}
+            railLive={isLive}
           />
 
           {hasPosition ? (

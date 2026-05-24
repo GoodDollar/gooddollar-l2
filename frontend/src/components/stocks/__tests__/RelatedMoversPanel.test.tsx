@@ -93,4 +93,46 @@ describe('RelatedMoversPanel', () => {
     )
     expect(screen.getByText('MSFT')).toBeInTheDocument()
   })
+
+  // Task 0060: when the stocks rail is not live, the Related symbols
+  // sub-rail must collapse its price column to an em-dash so the page-
+  // level "Demo data" banner is not contradicted by un-attributed
+  // sidebar prices.
+  it('renders em-dash for related-symbol prices when the rail is offline', () => {
+    render(
+      <RelatedMoversPanel
+        currentTicker="AAPL"
+        related={[
+          { ...stock('MSFT', 0), price: 388.45 },
+          { ...stock('GOOGL', 0), price: 161.12 },
+          { ...stock('NVDA', 0), price: 104.75 },
+          { ...stock('META', 0), price: 567.89 },
+        ]}
+        movers={[]}
+        railLive={false}
+      />,
+    )
+
+    expect(screen.getByText('MSFT')).toBeInTheDocument()
+    expect(screen.queryByText(/\$388\.45/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\$161\.12/)).not.toBeInTheDocument()
+    expect(screen.getAllByText('—')).toHaveLength(4)
+  })
+
+  it('renders formatted prices for related-symbol rows when the rail is live', () => {
+    render(
+      <RelatedMoversPanel
+        currentTicker="AAPL"
+        related={[
+          { ...stock('MSFT', 0), price: 388.45 },
+          { ...stock('GOOGL', 0), price: 161.12 },
+        ]}
+        movers={[]}
+        railLive
+      />,
+    )
+
+    expect(screen.getByText('$388.45')).toBeInTheDocument()
+    expect(screen.getByText('$161.12')).toBeInTheDocument()
+  })
 })

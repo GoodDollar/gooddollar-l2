@@ -7,10 +7,18 @@ export function RelatedMoversPanel({
   currentTicker,
   related,
   movers,
+  railLive = true,
 }: {
   currentTicker: string
   related: Stock[]
   movers: Stock[]
+  // Task 0060: when the stocks rail is not `live`, the Related symbols
+  // price column collapses to an em-dash so the side rail does not
+  // contradict the page-level "Demo data" banner that already explains
+  // the offline state once. The default is `true` purely to preserve
+  // back-compat for any caller (including dead code) that has not yet
+  // threaded the rail signal.
+  railLive?: boolean
 }) {
   // Filter to peers with a real 24h-change reading. Without this gate the
   // "Daily movers" rail ranks the entire universe by +0.00% and renders
@@ -38,7 +46,11 @@ export function RelatedMoversPanel({
                 className="flex items-center justify-between gap-2 rounded-lg border border-gray-700/25 bg-dark-50/25 px-2.5 py-2 hover:bg-dark-50/40 transition-colors"
               >
                 <span className="text-xs text-gray-200">{stock.ticker}</span>
-                <span className="text-xs text-gray-400">{formatStockPrice(stock.price)}</span>
+                {railLive ? (
+                  <span className="text-xs text-gray-400">{formatStockPrice(stock.price)}</span>
+                ) : (
+                  <span className="text-xs text-gray-500">—</span>
+                )}
               </Link>
             ))}
           </div>

@@ -744,6 +744,7 @@ export function StockDetailContent() {
             currentTicker={stock.ticker}
             related={relatedSymbols}
             movers={topMovers}
+            railLive={oracleGuard.health === 'live'}
           />
 
           {hasPosition ? (
