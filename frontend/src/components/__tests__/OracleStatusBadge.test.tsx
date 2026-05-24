@@ -89,6 +89,7 @@ describe('OracleStatusBadge stocks fallback', () => {
       status: null,
       isLoading: false,
       error: 'Status endpoint returned 503',
+      nextRetryAt: null,
     })
 
     render(<OracleStatusBadge />)
@@ -103,6 +104,7 @@ describe('OracleStatusBadge stocks fallback', () => {
       status: null,
       isLoading: false,
       error: 'Status endpoint returned 503',
+      nextRetryAt: null,
     })
 
     render(<OracleStatusBadge />)
@@ -119,6 +121,7 @@ describe('OracleStatusBadge stocks fallback', () => {
       status: null,
       isLoading: false,
       error: 'quote status unavailable',
+      nextRetryAt: null,
     })
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}))
 
