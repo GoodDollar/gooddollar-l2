@@ -1,9 +1,9 @@
 'use client'
 
-import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import { ProductPills } from '@/components/ProductPills'
 import { HeroImpactLine } from '@/components/HeroImpactLine'
+import { SafeDynamic } from '@/components/SafeDynamic'
 
 const SwapCard = dynamic(
   () => import('@/components/LandingSwapCard'),
@@ -75,10 +75,12 @@ export default function Home() {
 
       <ProductPills />
 
-      <SwapPriceChart
-        inputSymbol="ETH"
-        outputSymbol="G$"
-      />
+      <SafeDynamic label="price chart">
+        <SwapPriceChart
+          inputSymbol="ETH"
+          outputSymbol="G$"
+        />
+      </SafeDynamic>
 
       {/* Swap card wrapper with glow */}
       <div className="relative w-full max-w-[460px]">
@@ -87,7 +89,9 @@ export default function Home() {
           className="pointer-events-none absolute inset-0 -m-4 opacity-[0.06] rounded-3xl blur-[60px]"
           style={{ background: 'radial-gradient(ellipse at center, #00B0A0 0%, transparent 70%)' }}
         />
-        <SwapCard />
+        <SafeDynamic label="swap form">
+          <SwapCard />
+        </SafeDynamic>
       </div>
 
       <HowItWorks />
