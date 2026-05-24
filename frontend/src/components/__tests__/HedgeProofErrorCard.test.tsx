@@ -213,6 +213,74 @@ describe('HedgeProofErrorCard', () => {
     })
   })
 
+  describe('secondaryAction prop (#0082)', () => {
+    it('renders both primaryAction and secondaryAction side by side when both are set', () => {
+      render(
+        <HedgeProofErrorCard
+          title="No receipt id specified"
+          detail="Pick one."
+          primaryAction={{
+            label: 'View latest proof',
+            href: '/analytics/hedge/proof/latest',
+          }}
+          secondaryAction={{
+            label: 'Open receipts table',
+            href: '/analytics#hedge-recent-receipts',
+          }}
+        />,
+      )
+      const primary = screen.getByTestId('hedge-proof-primary-action')
+      const secondary = screen.getByTestId('hedge-proof-secondary-action')
+      expect(primary.getAttribute('href')).toBe('/analytics/hedge/proof/latest')
+      expect(secondary.getAttribute('href')).toBe(
+        '/analytics#hedge-recent-receipts',
+      )
+      expect(primary.textContent).toBe('View latest proof')
+      expect(secondary.textContent).toBe('Open receipts table')
+    })
+
+    it('renders secondaryAction alone (no primary, no Retry)', () => {
+      render(
+        <HedgeProofErrorCard
+          title="x"
+          detail="y"
+          secondaryAction={{
+            label: 'Open receipts table',
+            href: '/analytics#hedge-recent-receipts',
+          }}
+        />,
+      )
+      const secondary = screen.getByTestId('hedge-proof-secondary-action')
+      expect(secondary).toBeInTheDocument()
+      expect(screen.queryByTestId('hedge-proof-primary-action')).toBeNull()
+      expect(screen.queryByTestId('hedge-proof-retry')).toBeNull()
+    })
+
+    it('omits the action row entirely when secondaryAction is the only opt-in and is absent', () => {
+      render(<HedgeProofErrorCard title="x" detail="y" />)
+      const card = screen.getByTestId('hedge-proof-error')
+      expect(card.querySelectorAll('.mt-4').length).toBe(0)
+      expect(card.querySelector('a')).toBeNull()
+      expect(card.querySelector('button')).toBeNull()
+    })
+
+    it('uses the same palette as primaryAction (Retry styling for visual parity)', () => {
+      render(
+        <HedgeProofErrorCard
+          title="x"
+          detail="y"
+          variant="error"
+          secondaryAction={{
+            label: 'Open receipts table',
+            href: '/analytics#hedge-recent-receipts',
+          }}
+        />,
+      )
+      const secondary = screen.getByTestId('hedge-proof-secondary-action')
+      for (const cls of RED_PALETTE) expect(secondary.className).toContain(cls)
+    })
+  })
+
   describe('autoRetryNote prop (#0080)', () => {
     it('renders the sub-line beneath detail when autoRetryNote is provided', () => {
       render(

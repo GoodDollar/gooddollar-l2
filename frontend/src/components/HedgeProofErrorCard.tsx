@@ -49,6 +49,17 @@ export interface HedgeProofErrorCardProps {
    */
   primaryAction?: { label: string; href: string }
   /**
+   * Optional secondary recovery affordance rendered next to
+   * `primaryAction` in the same action row (task 0082). Used by
+   * dead-end surfaces that benefit from offering the user *two*
+   * destinations — e.g. the `/analytics/hedge/proof` "no receipt id
+   * specified" recovery page offers both "View latest proof" and
+   * "Open receipts table" side by side. Inherits the same palette as
+   * `primaryAction` so both buttons read as equally-weighted
+   * affordances rather than one tucked in beside the other.
+   */
+  secondaryAction?: { label: string; href: string }
+  /**
    * Optional sub-line rendered beneath `detail` (task 0080). The
    * `HedgeProofViewer` uses this to mirror the analytics card's
    * "Auto-retrying every 10s." promise on the auto-retried error
@@ -68,6 +79,7 @@ export default function HedgeProofErrorCard({
   testid = 'hedge-proof-error',
   titleTooltip,
   primaryAction,
+  secondaryAction,
   autoRetryNote,
 }: HedgeProofErrorCardProps) {
   const wrapperClass =
@@ -131,7 +143,7 @@ export default function HedgeProofErrorCard({
           )}
         </div>
       </div>
-      {(primaryAction || onRetry) && (
+      {(primaryAction || secondaryAction || onRetry) && (
         <div className="mt-4 flex items-center gap-3 flex-wrap">
           {primaryAction && (
             <Link
@@ -140,6 +152,15 @@ export default function HedgeProofErrorCard({
               className={retryClass}
             >
               {primaryAction.label}
+            </Link>
+          )}
+          {secondaryAction && (
+            <Link
+              data-testid="hedge-proof-secondary-action"
+              href={secondaryAction.href}
+              className={retryClass}
+            >
+              {secondaryAction.label}
             </Link>
           )}
           {onRetry && (
