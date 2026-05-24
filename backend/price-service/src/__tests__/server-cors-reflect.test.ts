@@ -83,10 +83,15 @@ describe('CORS preflight reflects Access-Control-Request-Headers (task 0079)', (
     );
   });
 
-  it('preflight to an unknown path still reflects correctly', async () => {
+  it('preflight to an unknown path returns 404 (task 0085: OPTIONS scoped to target resource)', async () => {
+    // Task 0085 — OPTIONS on an unregistered path falls through to
+    // the catch-all 404 instead of pretending the URL exists. The CORS
+    // reflection contract therefore only applies to registered paths;
+    // a 404 has no preflight semantics so it does not advertise
+    // Access-Control-Allow-Headers.
     const res = await preflight('/no-such-path', 'X-Request-Id');
-    expect(res.status).toBe(204);
-    expect(res.headers.get('access-control-allow-headers')).toBe('X-Request-Id');
+    expect(res.status).toBe(404);
+    expect(res.headers.get('access-control-allow-headers')).toBeNull();
   });
 
   it('GET (non-OPTIONS) does NOT ship Access-Control-Allow-Headers', async () => {

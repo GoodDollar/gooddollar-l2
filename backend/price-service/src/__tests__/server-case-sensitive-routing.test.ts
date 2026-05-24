@@ -119,9 +119,17 @@ describe('case-sensitive routing — uppercase/mixed-case paths fall through to 
     expect(body.didYouMean).toBeUndefined();
   });
 
-  it('OPTIONS /HEALTH preflight still returns 204 (CORS intercepts before route dispatch)', async () => {
+  it('OPTIONS /HEALTH falls through to catch-all 404 with didYouMean (task 0085)', async () => {
+    // Task 0085 — uppercase /HEALTH is NOT in the catalog (exact-match
+    // map is case-sensitive), so OPTIONS now joins every other verb in
+    // routing through the 404 handler instead of advertising a default
+    // `Allow: GET, OPTIONS` that lies about a GET that immediately
+    // 404s. The catch-all still emits `didYouMean: '/health'`.
     const res = await fetch(`${baseUrl}/HEALTH`, { method: 'OPTIONS' });
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.error).toBe('not-found');
+    expect(body.didYouMean).toBe('/health');
   });
 
   it('404 envelope echoes raw request path, not the lowercase normalised form', async () => {
