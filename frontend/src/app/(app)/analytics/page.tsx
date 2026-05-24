@@ -192,6 +192,21 @@ function FreshnessBadge({
 
 const POLL_INTERVAL_MS = 30_000
 
+/**
+ * In-page section nav anchors (#0078). Order mirrors the on-page section
+ * order so the chip strip reads top→bottom. Each `href` matches the
+ * `id` of a section in the JSX below. The hedge anchor (`#hedge-status-card`)
+ * lives inside the `HedgeStatusCard` component itself (where the wrapping
+ * `<section>` carries the id) — the strip just points at it.
+ */
+const ANALYTICS_SECTIONS: readonly { href: string; label: string }[] = [
+  { href: '#service-health', label: 'Service health' },
+  { href: '#chain-indexer-activity', label: 'Chain activity' },
+  { href: '#ubi-fee-landscape', label: 'UBI fees' },
+  { href: '#hedge-status-card', label: 'Hedge proof' },
+  { href: '#protocols', label: 'Protocols' },
+]
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<OverviewResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -290,6 +305,39 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/*
+        In-page section nav (#0078). The hedge proof section sits ~1587px
+        down on desktop / 2726px on mobile, three full screens past
+        Service Health + Chain & Indexer Activity + the giant UBI Fee
+        Landscape table. A repeat-visitor watching the hedge engine
+        should not have to scroll past those every visit — one click
+        jumps them directly to the section anchor. Chips wrap on narrow
+        viewports via `flex-wrap`. `aria-current` highlighting is an
+        explicit follow-up (out-of-scope per task spec).
+      */}
+      <nav
+        aria-label="Analytics sections"
+        data-testid="analytics-section-nav"
+        className="mb-5 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm"
+      >
+        {ANALYTICS_SECTIONS.map((s, i) => (
+          <span key={s.href} className="contents">
+            {i > 0 && (
+              <span aria-hidden="true" className="text-gray-600">
+                ·
+              </span>
+            )}
+            <a
+              href={s.href}
+              data-testid={`analytics-section-nav-${s.href.slice(1)}`}
+              className="text-gray-400 hover:text-white transition-colors px-1.5 py-0.5 rounded"
+            >
+              {s.label}
+            </a>
+          </span>
+        ))}
+      </nav>
+
       {loadError && (
         <div className="mb-4">
           <PanelError message={loadError} />
@@ -348,7 +396,10 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Service Health panel ─────────────────────────────────────────── */}
-      <section className="mb-6 bg-dark-100/50 rounded-xl p-5">
+      <section
+        id="service-health"
+        className="scroll-mt-20 mb-6 bg-dark-100/50 rounded-xl p-5"
+      >
         <h2 className="text-lg font-semibold text-white mb-3">Service Health</h2>
         {!data && isInitialLoad ? (
           <p className="text-sm text-gray-500">Loading…</p>
@@ -376,7 +427,10 @@ export default function AnalyticsPage() {
       </section>
 
       {/* ── Chain & Indexer Activity panel ───────────────────────────────── */}
-      <section className="mb-6 bg-dark-100/50 rounded-xl p-5">
+      <section
+        id="chain-indexer-activity"
+        className="scroll-mt-20 mb-6 bg-dark-100/50 rounded-xl p-5"
+      >
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h2 className="text-lg font-semibold text-white">Chain &amp; Indexer Activity</h2>
           {indexer && (
@@ -460,7 +514,10 @@ export default function AnalyticsPage() {
       </section>
 
       {/* ── UBI Fee Landscape panel ──────────────────────────────────────── */}
-      <section className="mb-6 bg-dark-100/50 rounded-xl p-5">
+      <section
+        id="ubi-fee-landscape"
+        className="scroll-mt-20 mb-6 bg-dark-100/50 rounded-xl p-5"
+      >
         <h2 className="text-lg font-semibold text-white mb-3">UBI Fee Landscape</h2>
 
         {!ubi && isInitialLoad && <p className="text-sm text-gray-500">Loading…</p>}
@@ -560,7 +617,10 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Protocols panel ──────────────────────────────────────────────── */}
-      <section className="mb-6 bg-dark-100/50 rounded-xl p-5">
+      <section
+        id="protocols"
+        className="scroll-mt-20 mb-6 bg-dark-100/50 rounded-xl p-5"
+      >
         <h2 className="text-lg font-semibold text-white mb-3">Protocols</h2>
         {protocols.length === 0 ? (
           <p className="text-sm text-gray-500">No protocols loaded.</p>

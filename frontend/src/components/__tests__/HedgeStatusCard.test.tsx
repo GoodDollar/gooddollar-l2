@@ -2894,5 +2894,12 @@ describe('HedgeStatusCard', () => {
       // sticky site header when the browser scrolls to the anchor.
       expect(panel.className.split(/\s+/)).toContain('scroll-mt-20');
     });
+
+    it('outer hedge-status-card section also carries scroll-mt-20 so the analytics section-nav (#0078) jump lands cleanly under the sticky header', async () => {
+      mockFetchOnce(BASE_RESPONSE);
+      render(<HedgeStatusCard />);
+      const section = await screen.findByTestId('hedge-status-card');
+      expect(section.className.split(/\s+/)).toContain('scroll-mt-20');
+    });
   });
 });

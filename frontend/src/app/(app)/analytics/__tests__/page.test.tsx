@@ -180,3 +180,80 @@ describe('AnalyticsPage visibility-gated overview polling (#0033)', () => {
     }
   });
 });
+
+describe('AnalyticsPage section nav (#0078)', () => {
+  it('renders an in-page section nav with one anchor per section in page order', async () => {
+    const { container } = render(<AnalyticsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('analytics-section-nav')).toBeInTheDocument();
+    });
+    const nav = screen.getByTestId('analytics-section-nav');
+    const anchors = Array.from(
+      nav.querySelectorAll('a[data-testid^="analytics-section-nav-"]'),
+    ) as HTMLAnchorElement[];
+    expect(anchors.map((a) => a.getAttribute('href'))).toEqual([
+      '#service-health',
+      '#chain-indexer-activity',
+      '#ubi-fee-landscape',
+      '#hedge-status-card',
+      '#protocols',
+    ]);
+    // Every anchor must have a matching `id` on the page so the
+    // browser anchor jump actually lands somewhere. `HedgeStatusCard`
+    // is stubbed here so the `#hedge-status-card` id is asserted in
+    // `HedgeStatusCard.test.tsx`; the analytics-side ids are checked
+    // directly via the rendered DOM.
+    expect(container.querySelector('#service-health')).not.toBeNull();
+    expect(container.querySelector('#chain-indexer-activity')).not.toBeNull();
+    expect(container.querySelector('#ubi-fee-landscape')).not.toBeNull();
+    expect(container.querySelector('#protocols')).not.toBeNull();
+  });
+
+  it('Hedge proof chip carries href="#hedge-status-card" so a click triggers the browser anchor jump', async () => {
+    render(<AnalyticsPage />);
+    const chip = await screen.findByTestId(
+      'analytics-section-nav-hedge-status-card',
+    );
+    expect(chip.getAttribute('href')).toBe('#hedge-status-card');
+    expect(chip.textContent).toBe('Hedge proof');
+  });
+
+  it('section nav uses flex-wrap so chips reflow on narrow viewports (mobile)', async () => {
+    render(<AnalyticsPage />);
+    const nav = await screen.findByTestId('analytics-section-nav');
+    expect(nav.className).toContain('flex-wrap');
+  });
+
+  it('section nav anchor labels use the condensed copy (Service health, Chain activity, UBI fees, Hedge proof, Protocols)', async () => {
+    render(<AnalyticsPage />);
+    const nav = await screen.findByTestId('analytics-section-nav');
+    const labels = Array.from(
+      nav.querySelectorAll('a[data-testid^="analytics-section-nav-"]'),
+    ).map((a) => a.textContent);
+    expect(labels).toEqual([
+      'Service health',
+      'Chain activity',
+      'UBI fees',
+      'Hedge proof',
+      'Protocols',
+    ]);
+  });
+
+  it('section wrappers apply scroll-mt-20 so anchor jumps land cleanly under the sticky site header', async () => {
+    const { container } = render(<AnalyticsPage />);
+    await waitFor(() => {
+      expect(container.querySelector('#service-health')).not.toBeNull();
+    });
+    const ids = [
+      '#service-health',
+      '#chain-indexer-activity',
+      '#ubi-fee-landscape',
+      '#protocols',
+    ];
+    for (const id of ids) {
+      const el = container.querySelector(id) as HTMLElement;
+      expect(el).not.toBeNull();
+      expect(el.className).toContain('scroll-mt-20');
+    }
+  });
+});

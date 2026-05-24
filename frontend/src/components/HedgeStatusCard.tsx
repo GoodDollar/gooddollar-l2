@@ -744,7 +744,7 @@ const HedgeStatusCard = forwardRef<HedgeStatusCardHandle>(function HedgeStatusCa
     <section
       id="hedge-status-card"
       data-testid="hedge-status-card"
-      className="bg-dark-100/50 rounded-xl border border-dark-50 p-5"
+      className="scroll-mt-20 bg-dark-100/50 rounded-xl border border-dark-50 p-5"
     >
       <header className="mb-3">
         <div
