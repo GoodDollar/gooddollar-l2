@@ -7926,6 +7926,12 @@ function resolveNodesForRender(axes) {
 function PipelineFlowDiagram() {
     const { axes } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$src$2f$components$2f$proof$2f$ProofPipelineAxesProvider$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useProofPipelineAxesContext"])();
     const resolved = resolveNodesForRender(axes);
+    // Single source of truth for "is the hedge-proof subordinated indicator
+    // currently on screen?". The FlowNode for `demo-hedge` reads this via
+    // `showHedgeProofIndicator` (inside `resolveNodesForRender`) and the
+    // `ToneLegend`'s 4th entry reads it via prop — see #0075. Computed
+    // once here so the two consumers cannot drift.
+    const hedgeIndicatorVisible = resolved.some((r)=>r.spec.id === 'demo-hedge' && r.showHedgeProofIndicator);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
         "aria-label": "Pipeline flow",
         "data-testid": "pipeline-flow-diagram",
@@ -7945,25 +7951,25 @@ function PipelineFlowDiagram() {
                                 trailingEdge: null
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                                lineNumber: 224,
+                                lineNumber: 232,
                                 columnNumber: 13
                             }, this),
                             idx < resolved.length - 1 && r.trailingEdge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(MobileChevron, {
                                 edge: r.trailingEdge
                             }, void 0, false, {
                                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                                lineNumber: 232,
+                                lineNumber: 240,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, `mobile-${r.spec.id}`, true, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 223,
+                        lineNumber: 231,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 217,
+                lineNumber: 225,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ol", {
@@ -7978,23 +7984,25 @@ function PipelineFlowDiagram() {
                         trailingEdge: r.trailingEdge
                     }, `desktop-${r.spec.id}`, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 243,
+                        lineNumber: 251,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 237,
+                lineNumber: 245,
                 columnNumber: 7
             }, this),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ToneLegend, {}, void 0, false, {
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ToneLegend, {
+                hedgeIndicatorVisible: hedgeIndicatorVisible
+            }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 253,
+                lineNumber: 261,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 212,
+        lineNumber: 220,
         columnNumber: 5
     }, this);
 }
@@ -8014,27 +8022,34 @@ function PipelineFlowDiagram() {
             children: "↓"
         }, void 0, false, {
             fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-            lineNumber: 272,
+            lineNumber: 280,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 266,
+        lineNumber: 274,
         columnNumber: 5
     }, this);
 }
 /**
- * Inline three-entry tone legend mapping each pipeline-flow tone family
- * to its user-facing word — see #0057. The legend is descriptive
- * content, not interactive, and is wrapped in an `aria-label`-ed `<ul>`
- * so screen readers announce it as a single grouped region.
+ * Inline tone legend mapping each pipeline-flow tone family to its
+ * user-facing word — see #0057. The legend is descriptive content, not
+ * interactive, and is wrapped in an `aria-label`-ed `<ul>` so screen
+ * readers announce it as a single grouped region.
  *
  * Layout: on viewports ≥ sm the legend right-aligns on the same row as
  * the node strip wraps onto when there's space; on smaller viewports it
  * wraps below. The swatch uses a tiny ringed circle (not the node's
  * rounded-lg rectangle) so the visual primitive is clearly "swatch",
  * not "pill".
- */ function ToneLegend() {
+ *
+ * The optional 4th entry (`pipeline-legend-hedge-subordinated`) only
+ * renders when `hedgeIndicatorVisible` is true — the same boolean that
+ * gates the green indicator dot on the demo-hedge pill (#0075). The
+ * legend's job is to describe glyphs ON THIS DIAGRAM, RIGHT NOW; an
+ * entry for a glyph that isn't present sends the reviewer hunting for
+ * something that doesn't exist.
+ */ function ToneLegend({ hedgeIndicatorVisible }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
         "aria-label": "Pipeline tone legend",
         "data-testid": "pipeline-flow-legend",
@@ -8049,20 +8064,20 @@ function PipelineFlowDiagram() {
                         className: "inline-block h-2 w-2 rounded-full border border-green-500/50 bg-green-500/20"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 297,
+                        lineNumber: 312,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "healthy"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 301,
+                        lineNumber: 316,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 296,
+                lineNumber: 311,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
@@ -8074,20 +8089,20 @@ function PipelineFlowDiagram() {
                         className: "inline-block h-2 w-2 rounded-full border border-yellow-500/50 bg-yellow-500/20"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 304,
+                        lineNumber: 319,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "degraded"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 308,
+                        lineNumber: 323,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 303,
+                lineNumber: 318,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
@@ -8099,23 +8114,23 @@ function PipelineFlowDiagram() {
                         className: "inline-block h-2 w-2 rounded-full border border-white/15 bg-white/5"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 311,
+                        lineNumber: 326,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "loading"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 315,
+                        lineNumber: 330,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 310,
+                lineNumber: 325,
                 columnNumber: 7
             }, this),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+            hedgeIndicatorVisible && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
                 className: "inline-flex items-center gap-1.5 sm:ml-2",
                 "data-testid": "pipeline-legend-hedge-subordinated",
                 children: [
@@ -8124,26 +8139,26 @@ function PipelineFlowDiagram() {
                         className: "inline-block h-1.5 w-1.5 rounded-full bg-green-400/80"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 331,
-                        columnNumber: 9
+                        lineNumber: 351,
+                        columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "hedge-proof healthy (mirroring upstream tone)"
                     }, void 0, false, {
                         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                        lineNumber: 335,
-                        columnNumber: 9
+                        lineNumber: 355,
+                        columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 327,
-                columnNumber: 7
+                lineNumber: 347,
+                columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 291,
+        lineNumber: 306,
         columnNumber: 5
     }, this);
 }
@@ -8163,7 +8178,7 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 children: spec.label
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 368,
+                lineNumber: 389,
                 columnNumber: 7
             }, this),
             spec.subtitle && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8171,7 +8186,7 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 children: spec.subtitle
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 370,
+                lineNumber: 391,
                 columnNumber: 9
             }, this),
             showHedgeProofIndicator && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8181,7 +8196,7 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 className: "ml-1 inline-block h-1.5 w-1.5 self-center rounded-full bg-green-400/80"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 373,
+                lineNumber: 394,
                 columnNumber: 9
             }, this)
         ]
@@ -8204,7 +8219,7 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 children: pillContent
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 390,
+                lineNumber: 411,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                 className: pillClass,
@@ -8213,7 +8228,7 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 children: pillContent
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 404,
+                lineNumber: 425,
                 columnNumber: 9
             }, this),
             trailingEdge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8224,13 +8239,13 @@ function FlowNode({ spec, tone, statusSentence, trailingEdge, showHedgeProofIndi
                 children: "→"
             }, void 0, false, {
                 fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-                lineNumber: 409,
+                lineNumber: 430,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/frontend/src/components/proof/PipelineFlowDiagram.tsx",
-        lineNumber: 384,
+        lineNumber: 405,
         columnNumber: 5
     }, this);
 }
