@@ -303,6 +303,12 @@ export function useProofPipelineAxes({
     }))
   }, [oracleAddress, tickers])
 
+  // Pin all auto-refetch triggers off so the multicall fires only on
+  // `refetchInterval` plus the manual `Retry now` button. Without these,
+  // wagmi's TanStack Query defaults (refetchOnMount, refetchOnWindowFocus,
+  // refetchOnReconnect — all `true`) fire 3-4 extra POSTs per cycle on
+  // first paint and on tab focus. See task lane6-onchain-multicall-fires-
+  // 4x-per-refresh-48-eth-calls-for-12-tickers (#0067).
   const {
     data: onChainData,
     error: onChainError,
@@ -314,6 +320,9 @@ export function useProofPipelineAxes({
       enabled: onChainContracts.length > 0,
       refetchInterval: chainPanelIntervalMs,
       staleTime: chainPanelIntervalMs,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     },
   })
 

@@ -138,6 +138,36 @@ describe('ProofPipelineAxesProvider', () => {
     }
   })
 
+  // Task #0067 — wagmi's TanStack Query defaults (refetchOnMount,
+  // refetchOnWindowFocus, refetchOnReconnect) re-fire the multicall
+  // 3-4 extra times per refresh window. Pin them off so the on-chain
+  // axis fires once per `chainPanelIntervalMs` plus a manual retry.
+  it('pins wagmi auto-refetch triggers off so multicall fires on schedule only (#0067)', () => {
+    mockOnChainDegraded()
+    installFetchMock(() => ({ ok: false, status: 503, body: {} }))
+
+    render(
+      <ProofPipelineAxesProvider
+        offChainIntervalMs={60_000}
+        chainPanelIntervalMs={30_000}
+      >
+        <PipelineFlowDiagram />
+      </ProofPipelineAxesProvider>,
+    )
+
+    expect(useReadContractsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: expect.objectContaining({
+          refetchInterval: 30_000,
+          staleTime: 30_000,
+          refetchOnMount: false,
+          refetchOnWindowFocus: false,
+          refetchOnReconnect: false,
+        }),
+      }),
+    )
+  })
+
   it('integrated provider drives both consumers through the same hook', async () => {
     mockOnChainDegraded()
     installFetchMock((url) => {
