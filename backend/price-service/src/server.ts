@@ -287,9 +287,10 @@ export const ENDPOINT_CATALOG: readonly EndpointDoc[] = [
       'All cached quotes (or filter with ?symbols=AAPL,MSFT); ' +
       '503 when source dead AND no matched quotes.',
     responseShape:
-      '{totalCached,count,requestedCount?,matchedCount?,unmatched?,' +
-      'invalidRequested?,cappedAt?,degraded?,stale?,message?,' +
-      'quotes{cacheAge,filter*},source?,deprecations,timestamp*} 200/503',
+      '{totalCached,count(dep→matched|total),requestedCount?,matchedCount?,' +
+      'unmatched?,invalidRequested?,requestCap?,degraded?,stale?,message?,' +
+      'quotes{cacheAge,filter{Accepted,Reason}},source?,deprecations,' +
+      'timestamp,timestampIso} -- 200/503',
   },
   {
     path: '/quotes/fresh/all',
@@ -1349,22 +1350,24 @@ export function createServer(
       body.matchedCount = matchedCount;
       if (unmatched.length > 0) body.unmatched = unmatched;
       if (filter.invalid.length > 0) body.invalidRequested = [...filter.invalid];
-      if (filter.capped) body.cappedAt = MAX_REQUESTED_SYMBOLS;
+      if (filter.capped) body.requestCap = MAX_REQUESTED_SYMBOLS;
     }
-    const deprecations: Record<string, string> = {
-      count: filter
-        ? 'rename → matchedCount when ?symbols= filter is applied; ' +
-          'will be removed in the next release'
-        : 'rename → totalCached; will be removed in the next release',
+    body.quotes = quotes;
+    const ctx: EnvelopeCtx = {
+      deprecations: {
+        count: filter
+          ? 'rename → matchedCount when ?symbols= filter is applied; ' +
+            'will be removed in the next release'
+          : 'rename → totalCached; will be removed in the next release',
+      },
     };
-    let ctx: EnvelopeCtx = { deprecations };
     let status = 200;
     if (sourceStatusGetter) {
       const { degraded, src } = computeDegraded(cache, sourceStatusGetter, wsStatusGetter);
-      let message: string | undefined;
       // 503 only fires when source is dead AND no matched entries are
       // available — same rule whether filtered or not, where
       // `matchedCount` replaces the unfiltered `count` (task 0077).
+      let message: string | undefined;
       if (degraded && matchedCount === 0) {
         status = 503;
         message = DEGRADED_NO_CACHE_MESSAGE;
@@ -1378,10 +1381,9 @@ export function createServer(
           ? 'no requested symbols are cached yet — see body.unmatched'
           : 'no cached quotes — source is healthy, awaiting first tick';
       }
-      body.quotes = quotes;
-      ctx = { ...ctx, src, degraded, message };
-    } else {
-      body.quotes = quotes;
+      ctx.src = src;
+      ctx.degraded = degraded;
+      ctx.message = message;
     }
     if (status === 503) applyRetryAfterHeader(res, ctx.src);
     res.status(status).json(finalizeEnvelope(body, now, ctx));
