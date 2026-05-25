@@ -18,10 +18,7 @@ export function WalletButtonConnected() {
         return (
           <div
             className="shrink-0"
-            {...(!mounted && {
-              'aria-hidden': true,
-              style: { opacity: 0, pointerEvents: 'none', userSelect: 'none' },
-            })}
+            style={!mounted ? { opacity: 0, pointerEvents: 'none', userSelect: 'none' } : undefined}
           >
             {(() => {
               if (!connected) {
