@@ -8,29 +8,24 @@ import "../src/perps/MarginVault.sol";
 import "../src/perps/PerpEngine.sol";
 
 /**
- * @title DeployPerps
- * @notice Full fresh deployment of the GoodPerps system on devnet.
+ * @title RedeployPerpsFix
+ * @notice Fix for GOO-2153: Redeploy GoodPerps with correct GDT collateral address.
  *
- *   Deploy order:
- *     1. PerpPriceOracle  — price feed (admin is keeper by default)
- *     2. FundingRate      — 8-hour funding calculator
- *     3. MarginVault      — G$ collateral vault (linked to engine after step 4)
- *     4. PerpEngine       — core trading engine (vault + funding + oracle wired in constructor)
- *     5. Wire FundingRate.setPerpEngine(engine)
- *     6. Wire MarginVault.setPerpEngine(engine)
- *     7. Seed 6 markets: BTC, ETH, SOL, BNB, MATIC, ARB
+ * This is a corrected version of DeployPerps.s.sol that uses the live GDT address
+ * instead of the Anvil mock token address.
  *
- *   Environment:
- *     PRIVATE_KEY  — deployer private key
- *     GD_TOKEN     — GoodDollar token address (defaults to current devnet address)
- *     FEE_SPLITTER — UBIFeeSplitter address (defaults to current devnet address)
+ * Environment:
+ *   PRIVATE_KEY  — deployer private key
+ *   GDT_TOKEN    — live GDT address (must be set to avoid using mock)
+ *   FEE_SPLITTER — UBIFeeSplitter address (defaults to current devnet address)
  */
-contract DeployPerps is Script {
+contract RedeployPerpsFix is Script {
 
-    // Current devnet addresses (chain 42069) — GoodDollarToken from op-stack/addresses.json.
-    // GOO-2153: 0x5FbDB... is the Anvil mock — DO NOT use it here. It has no bytecode on devnet
-    // and breaks MarginVault deposits. Always use the deployed GDT address from addresses.json.
-    address constant GD_TOKEN_DEFAULT     = 0x07882Ae1ecB7429a84f1D53048d35c4bB2056877;
+    // DO NOT use the Anvil mock - this caused GOO-2153!
+    // address constant GDT_TOKEN_DEFAULT = 0x5FbDB2315678afecb367f032d93F642f64180aa3;
+
+    // Use freshly deployed live GDT
+    address constant GDT_TOKEN_DEFAULT = 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9;
     address constant FEE_SPLITTER_DEFAULT = 0x1f10F3Ba7ACB61b2F50B9d6DdCf91a6f787C0E82;
 
     struct Market {
@@ -47,8 +42,16 @@ contract DeployPerps is Script {
         );
         address deployer = vm.addr(pk);
 
-        address gdToken     = vm.envOr("GD_TOKEN",     GD_TOKEN_DEFAULT);
+        address gdToken     = vm.envOr("GD_TOKEN",     GDT_TOKEN_DEFAULT);
         address feeSplitter = vm.envOr("FEE_SPLITTER", FEE_SPLITTER_DEFAULT);
+
+        // Verify we're not using the broken mock address
+        require(gdToken != 0x5FbDB2315678afecb367f032d93F642f64180aa3, "GOO-2153: Refusing to use Anvil mock GDT");
+
+        console.log("=== GoodPerps Deployment (GOO-2153 Fix) ===");
+        console.log("Deployer:", deployer);
+        console.log("GDT Token:", gdToken);
+        console.log("Fee Splitter:", feeSplitter);
 
         vm.startBroadcast(pk);
 
@@ -60,7 +63,7 @@ contract DeployPerps is Script {
         FundingRate funding = new FundingRate(deployer);
         console.log("FundingRate:    ", address(funding));
 
-        // 3. Deploy MarginVault
+        // 3. Deploy MarginVault with CORRECT GDT address
         MarginVault vault = new MarginVault(gdToken, deployer);
         console.log("MarginVault:    ", address(vault));
 
@@ -92,6 +95,7 @@ contract DeployPerps is Script {
             Market("ARB",        120_000_000,       119_800_000, 20)
         ];
 
+        console.log("Seeding markets...");
         for (uint256 i = 0; i < markets.length; i++) {
             Market memory m = markets[i];
             bytes32 key = keccak256(abi.encodePacked(m.ticker));
@@ -99,10 +103,7 @@ contract DeployPerps is Script {
             oracle.registerMarket(key);
             oracle.setManualPrice(key, m.markPrice, m.indexPrice);
             uint256 marketId = engine.createMarket(key, key, m.maxLeverage);
-            console.log(
-                string.concat(m.ticker, " market id=", vm.toString(marketId),
-                    " leverage=", vm.toString(m.maxLeverage), "x")
-            );
+            console.log(string.concat(m.ticker, " market id=", vm.toString(marketId), " leverage=", vm.toString(m.maxLeverage), "x"));
         }
 
         vm.stopBroadcast();
@@ -116,7 +117,10 @@ contract DeployPerps is Script {
         console.log("GD collateral:  ", gdToken);
         console.log("FeeSplitter:    ", feeSplitter);
         console.log("Markets:        6 (BTC ETH SOL BNB MATIC ARB)");
-        console.log("\nNOTE: Update SeedPerpOracle.s.sol and SeedRemainingPerps.s.sol");
-        console.log("      with the new PerpPriceOracle and PerpEngine addresses above.");
+        console.log("");
+        console.log("FIXED: MarginVault now uses live GDT instead of Anvil mock!");
+        console.log("NEXT STEPS:");
+        console.log("1. Run scripts/refresh-addresses.py to update addresses.json");
+        console.log("2. Test with scripts/paperclip-continuous-testers.mjs --once --tester beta");
     }
 }

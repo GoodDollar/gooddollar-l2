@@ -16,6 +16,7 @@ set -euo pipefail
 
 RPC="${RPC:-http://localhost:8545}"
 DEPLOYER_KEY="${DEPLOYER_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
+export PRIVATE_KEY="${PRIVATE_KEY:-$DEPLOYER_KEY}"
 FORGE="${FORGE:-/home/goodclaw/.foundry/bin/forge}"
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 AUTO_YES=0
@@ -241,6 +242,8 @@ for script in "${SCRIPTS[@]}"; do
       --rpc-url "$RPC" \
       --private-key "$DEPLOYER_KEY" \
       --broadcast \
+      --non-interactive \
+      --slow \
       --legacy \
       2>&1 | tail -10
     ok "$name done"

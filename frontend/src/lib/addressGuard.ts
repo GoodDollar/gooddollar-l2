@@ -29,7 +29,8 @@
  */
 
 import { isAddress } from 'viem'
-import { CONTRACTS } from './devnet'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const DEAD_ADDRESS_SHORT = '0x000000000000000000000000000000000000dead'
@@ -45,11 +46,41 @@ const STATIC_DENY_LIST = new Set<string>([
   ALL_F_ADDRESS,
 ])
 
-// Precompute lowercase contract addresses once at module load. The frontend
-// bundle reads CONTRACTS at build time so this set is stable per PM2 cycle.
-const CONTRACT_DENY_LIST = new Set<string>(
-  Object.values(CONTRACTS).map((addr) => addr.toLowerCase()),
-)
+// Precompute lowercase contract addresses once at module load.
+// Read addresses directly from JSON to avoid import issues.
+function loadContractDenyList(): Set<string> {
+  try {
+    // Try multiple possible paths since process.cwd() varies by context
+    const possiblePaths = [
+      resolve(process.cwd(), 'op-stack', 'addresses.json'),
+      resolve(process.cwd(), '..', 'op-stack', 'addresses.json'),
+      resolve(process.cwd(), '../../op-stack', 'addresses.json'),
+    ]
+
+    let addressesData = null
+    for (const addressesPath of possiblePaths) {
+      try {
+        addressesData = JSON.parse(readFileSync(addressesPath, 'utf8'))
+        break
+      } catch (e) {
+        // Try next path
+      }
+    }
+
+    if (!addressesData) {
+      throw new Error('Could not find addresses.json in any expected location')
+    }
+
+    const contractAddresses = Object.values(addressesData.contracts) as string[]
+    return new Set(contractAddresses.map((addr) => addr.toLowerCase()))
+  } catch (error) {
+    console.warn('[addressGuard] Failed to load contract addresses:', error)
+    // Return empty set as fallback - will only check static deny list
+    return new Set<string>()
+  }
+}
+
+const CONTRACT_DENY_LIST = loadContractDenyList()
 
 /**
  * Returns true if `addr` is a syntactically valid Ethereum address AND is

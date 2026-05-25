@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/GoodDollarToken.sol";
 
+contract MockMinterContract {}
+
 contract GoodDollarTokenTest is Test {
     GoodDollarToken public token;
     address admin = address(1);
@@ -178,6 +180,97 @@ contract GoodDollarTokenTest is Test {
         vm.prank(alice);
         token.claimUBI();
         assertEq(token.balanceOf(alice), 5e18);
+    }
+
+    function test_setDailyUBI_reverts_nonAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert("Not admin");
+        token.setDailyUBIAmount(2e18);
+    }
+
+    function test_setIdentityOracle() public {
+        address newOracle = address(0xBEEF);
+
+        vm.prank(admin);
+        token.setIdentityOracle(newOracle);
+        assertEq(token.identityOracle(), newOracle);
+
+        vm.prank(newOracle);
+        token.verifyHuman(alice, true);
+        assertTrue(token.isVerifiedHuman(alice));
+    }
+
+    function test_setIdentityOracle_reverts_nonAdmin() public {
+        vm.prank(bob);
+        vm.expectRevert("Not admin");
+        token.setIdentityOracle(address(0xBEEF));
+    }
+
+    function test_setAdmin_transfersPrivileges() public {
+        address newAdmin = address(0xCAFE);
+
+        vm.prank(admin);
+        token.setAdmin(newAdmin);
+        assertEq(token.admin(), newAdmin);
+
+        vm.prank(admin);
+        vm.expectRevert("Not admin");
+        token.setDailyUBIAmount(2e18);
+
+        vm.prank(newAdmin);
+        token.setDailyUBIAmount(2e18);
+        assertEq(token.dailyUBIAmount(), 2e18);
+    }
+
+    function test_setAdmin_reverts_nonAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert("Not admin");
+        token.setAdmin(address(0xCAFE));
+    }
+
+    function test_setMinter_authorizeContractMinter() public {
+        MockMinterContract minter = new MockMinterContract();
+
+        vm.prank(admin);
+        token.setMinter(address(minter), true);
+        assertTrue(token.minters(address(minter)));
+
+        vm.prank(address(minter));
+        token.mint(alice, 10e18);
+        assertEq(token.balanceOf(alice), 10e18);
+    }
+
+    function test_setMinter_deauthorize() public {
+        MockMinterContract minter = new MockMinterContract();
+
+        vm.prank(admin);
+        token.setMinter(address(minter), true);
+
+        vm.prank(admin);
+        token.setMinter(address(minter), false);
+        assertFalse(token.minters(address(minter)));
+
+        vm.prank(address(minter));
+        vm.expectRevert("Not authorized minter");
+        token.mint(alice, 1e18);
+    }
+
+    function test_setMinter_reverts_nonAdmin() public {
+        vm.prank(bob);
+        vm.expectRevert("Not admin");
+        token.setMinter(address(0x1234), true);
+    }
+
+    function test_setMinter_reverts_zeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert("Minter cannot be zero address");
+        token.setMinter(address(0), true);
+    }
+
+    function test_setMinter_reverts_eoaWhenAuthorizing() public {
+        vm.prank(admin);
+        vm.expectRevert("Minter must be a contract");
+        token.setMinter(alice, true);
     }
 
     function test_calculateUBIFee() public view {

@@ -83,11 +83,14 @@ test.describe('Lane 6 — /live-prices-proof', () => {
     await expect(flow).toBeVisible()
     // #0074 — the diagram now ships two structural variants (desktop +
     // mobile) so the per-node testids resolve twice in the DOM. Scope
-    // every assertion through the visible container at this viewport
-    // (Playwright defaults to a desktop-class width).
+    // every assertion through the visible container at this viewport.
     const desktopFlow = page.getByTestId('pipeline-flow-desktop')
-    await expect(desktopFlow).toBeVisible()
-    const nodes = desktopFlow.locator('[data-testid^="pipeline-node-"]')
+    const mobileFlow = page.getByTestId('pipeline-flow-mobile')
+
+    // Use whichever flow variant is visible at this viewport
+    const visibleFlow = await desktopFlow.isVisible() ? desktopFlow : mobileFlow
+    await expect(visibleFlow).toBeVisible()
+    const nodes = visibleFlow.locator('[data-testid^="pipeline-node-"]')
     expect(await nodes.count()).toBeGreaterThanOrEqual(6)
 
     // #0054 — every axis-bound flow node is itself a jump-link to the
@@ -104,13 +107,23 @@ test.describe('Lane 6 — /live-prices-proof', () => {
       frontend: '#panel-onchain-oracle',
       'demo-hedge': '#panel-last-hedge',
     }
+
+    // Determine the link suffix based on which flow is visible
+    const isDesktop = await desktopFlow.isVisible()
+    const linkSuffix = isDesktop ? '-link' : '-link'
+    const nodePrefix = isDesktop ? 'pipeline-node-' : 'pipeline-node-mobile-'
+    const etoroNodePrefix = isDesktop ? 'pipeline-node-etoro' : 'pipeline-node-mobile-etoro'
+
     for (const [nodeId, expectedHref] of Object.entries(flowNodeJumpMap)) {
-      const link = desktopFlow.getByTestId(`pipeline-node-${nodeId}-link`)
+      const linkTestId = isDesktop ? `pipeline-node-${nodeId}-link` : `pipeline-node-mobile-${nodeId}-link`
+      const link = visibleFlow.getByTestId(linkTestId)
       await expect(link).toBeVisible()
       expect(await link.getAttribute('href')).toBe(expectedHref)
     }
-    expect(await desktopFlow.getByTestId('pipeline-node-etoro-link').count()).toBe(0)
-    const firstFlowLink = desktopFlow.getByTestId('pipeline-node-price-service-link')
+    expect(await visibleFlow.getByTestId(`${etoroNodePrefix}-link`).count()).toBe(0)
+
+    const firstFlowLinkId = isDesktop ? 'pipeline-node-price-service-link' : 'pipeline-node-mobile-price-service-link'
+    const firstFlowLink = visibleFlow.getByTestId(firstFlowLinkId)
     await firstFlowLink.click()
     await expect(page.locator('#panel-live-quotes')).toBeInViewport()
 

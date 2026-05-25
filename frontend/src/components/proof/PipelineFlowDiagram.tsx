@@ -224,7 +224,8 @@ export function PipelineFlowDiagram({
       data-testid="pipeline-flow-diagram"
       className="rounded-2xl border border-white/10 bg-dark-100/40 px-4 py-3"
     >
-      <div data-testid="pipeline-flow-desktop">
+      {/* Desktop layout - horizontal flow with all nodes in a single row */}
+      <div data-testid="pipeline-flow-desktop" className="hidden sm:block">
         <ol className="flex flex-wrap items-center gap-y-2 text-xs">
           {NODES.map((node, idx) => {
             const nodeTone = axisToTone(axes[node.axis])
@@ -241,6 +242,27 @@ export function PipelineFlowDiagram({
           })}
         </ol>
       </div>
+
+      {/* Mobile layout - vertical flow with stacked nodes */}
+      <div data-testid="pipeline-flow-mobile" className="block sm:hidden">
+        <ol className="space-y-2 text-xs">
+          {NODES.map((node, idx) => {
+            const nodeTone = axisToTone(axes[node.axis])
+            const edge = EDGES[idx]
+            const edgeTone = edge ? axisToTone(axes[edge.axis]) : null
+            return (
+              <MobileFlowNode
+                key={`mobile-node-${node.id}`}
+                spec={node}
+                tone={nodeTone}
+                hasTrailingEdge={Boolean(edge)}
+                edgeTone={edgeTone}
+              />
+            )
+          })}
+        </ol>
+      </div>
+
       {failedReasons.length > 0 && (
         <p
           data-testid="pipeline-flow-degradation"
@@ -296,6 +318,57 @@ function FlowNode({
           className={`mx-1.5 text-base leading-none sm:mx-2 ${TONE_EDGE_CLASS[trailingEdge.tone]}`}
         >
           →
+        </span>
+      )}
+    </li>
+  )
+}
+
+function MobileFlowNode({
+  spec,
+  tone,
+  hasTrailingEdge,
+  edgeTone,
+}: {
+  spec: NodeSpec
+  tone: Tone
+  hasTrailingEdge: boolean
+  edgeTone: Tone | null
+}) {
+  const href = PANEL_HREF_BY_NODE_ID[spec.id]
+  const nodeContent = (
+    <span
+      className={`inline-flex flex-col items-start rounded-lg border px-3 py-1.5 ${TONE_NODE_CLASS[tone]}`}
+    >
+      <span className="font-mono uppercase tracking-wider">{spec.label}</span>
+      {spec.subtitle && <span className="text-[10px] text-gray-400">{spec.subtitle}</span>}
+    </span>
+  )
+
+  return (
+    <li
+      data-testid={`pipeline-node-mobile-${spec.id}`}
+      data-tone={tone}
+      className="flex flex-col items-center space-y-1"
+    >
+      {href ? (
+        <a
+          href={href}
+          data-testid={`pipeline-node-mobile-${spec.id}-link`}
+          className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          aria-label={`Jump to ${spec.label} panel`}
+        >
+          {nodeContent}
+        </a>
+      ) : nodeContent}
+      {hasTrailingEdge && (
+        <span
+          aria-hidden
+          data-testid={`pipeline-edge-mobile-${spec.id}`}
+          data-tone={edgeTone}
+          className={`text-base leading-none ${edgeTone ? TONE_EDGE_CLASS[edgeTone] : 'text-white/40'}`}
+        >
+          ↓
         </span>
       )}
     </li>

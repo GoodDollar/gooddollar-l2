@@ -160,7 +160,7 @@ async function rejectInvalidFaucetRecipient(
     }
     if (!isClaimableFaucetAddress(address)) {
       return NextResponse.json(
-        { error: 'Invalid or unsupported recipient address' },
+        { error: 'Invalid or unsupported recipient' },
         { status: 400 },
       )
     }
@@ -185,7 +185,7 @@ async function handlePost(request: NextRequest) {
       throw new FaucetBadRequestError('Invalid address')
     }
     if (!isClaimableFaucetAddress(address)) {
-      throw new FaucetBadRequestError('Invalid or unsupported recipient address')
+      throw new FaucetBadRequestError('Invalid or unsupported recipient')
     }
 
     const key = address.toLowerCase()

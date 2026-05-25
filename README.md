@@ -42,6 +42,7 @@ _Last refreshed 2026-05-24 16:47 UTC after merging/deploying `main@6e329ad3`, re
 - **Gates:** `./scripts/testnet/health-gate.sh` reports **GREEN-with-warnings**, exit code `0`, blockers `0`, warnings `5`; `scripts/testnet/internal-smoke.sh` reports **GREEN-with-warnings**, exit code `0`, blockers `0`, warnings `3`.
 - **Warning semantics:** `/api/status` can still show `overall: "degraded"` because excluded/health-only services are surfaced honestly as warnings. Current accepted warnings are excluded `activity-reporter`, `harvest-keeper`, `revenue-tracker`, `monitor`, health-only `hedge-engine`, excluded `oracle-signer`, and optional `LANE7_RPC` freshness config.
 - **Paperclip:** `paperclip-continuous-testers` and `paperclip-tests-status-publisher` are online after restart.
+- **Paperclip restart loop:** When the testers need to stay alive between releases or recover from timeouts, run `scripts/paperclip-continuous-testers-loop.sh` (defaults: `PAPERCLIP_TESTER_INTERVAL_SECONDS=120`, `PAPERCLIP_TESTER_TIMEOUT_SECONDS=240`) to loop `paperclip-continuous-testers.mjs --once` and respawn it automatically.
 - **Push state:** this documentation checkpoint accompanies the approved push of local `main@6e329ad3` plus README/architecture status updates to remote `main`.
 
 ### Live-prices lane integration (merged into local `main`)

@@ -134,6 +134,10 @@ paperclip-tests-status-publisher]
   Monitor --> ChainRPC
 ```
 
+## Paperclip runners
+
+`paperclip-continuous-testers` and `paperclip-tests-status-publisher` run inside PM2, but the `scripts/paperclip-continuous-testers-loop.sh` helper keeps them alive between restarts. The wrapper loops forever, sleeping `PAPERCLIP_TESTER_INTERVAL_SECONDS` (default 120s) between invocations of `paperclip-continuous-testers.mjs --once` and bailing out after `PAPERCLIP_TESTER_TIMEOUT_SECONDS` (default 240s) so status publishing recovers without manual intervention.
+
 ## Explorer and RPC Indexing
 
 Blockscout sits behind `explorer.goodclaw.org` and indexes the same Anvil-backed GoodDollar L2 RPC exposed publicly at `rpc.goodclaw.org`. Because the current devnet RPC is non-archive, the explorer must not assume old/future block ranges are fetchable forever. The current runtime contract is:

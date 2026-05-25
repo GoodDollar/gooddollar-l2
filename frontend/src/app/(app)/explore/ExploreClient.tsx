@@ -74,10 +74,27 @@ const TokenRow = memo(function TokenRow({
   const marketCap = live ? token.marketCap : 0
   const sparkline = live ? token.sparkline7d : null
 
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    // Ignore clicks on the Swap button — it has its own handler with stopPropagation
+    if ((e.target as HTMLElement).closest('button')) {
+      return
+    }
+    if (token?.symbol) {
+      onRowClick(token.symbol)
+    }
+  }, [token?.symbol, onRowClick])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if ((e.key === 'Enter' || e.key === ' ') && token?.symbol) {
+      e.preventDefault()
+      onRowClick(token.symbol)
+    }
+  }, [token?.symbol, onRowClick])
+
   return (
     <tr
-      onClick={() => onRowClick(token.symbol)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick(token.symbol) } }}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
       tabIndex={0}
       className={`group border-b border-gray-700/10 hover:bg-white/[0.04] hover:-translate-y-[1px] cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-goodgreen/40 ${idx % 2 === 1 ? 'bg-dark-50/15' : ''}`}
     >
@@ -141,7 +158,8 @@ const TokenRow = memo(function TokenRow({
       <td className="py-3 px-1 text-right w-16 sm:w-20">
         <button
           onClick={(e) => { e.stopPropagation(); onSwapClick(token.symbol) }}
-          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity px-3 py-1 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/10"
+          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 group-focus:opacity-100 transition-opacity px-3 py-1 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/20"
+          data-testid="swap-button"
         >
           Swap
         </button>
@@ -532,7 +550,12 @@ function ExplorePageContent() {
   }, [data, query, selectedCategory, sortField, sortDir])
 
   const handleRowClick = useCallback((symbol: string) => {
-    router.push(`/explore/${symbol}`)
+    if (!symbol || symbol.trim() === '') {
+      return
+    }
+
+    const targetUrl = `/explore/${encodeURIComponent(symbol)}`
+    router.push(targetUrl)
   }, [router])
 
   const handleSwapClick = useCallback((symbol: string) => {
@@ -663,7 +686,13 @@ function ExplorePageContent() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {!data || data.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-12 px-4 text-center">
+                    <div className="text-gray-400 mb-3">Loading tokens...</div>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-12 px-4">
                     <div className="flex flex-col items-center text-center max-w-md mx-auto">
@@ -731,7 +760,7 @@ function ExplorePageContent() {
               ) : (
                 filtered.map((token, idx) => (
                   <TokenRow
-                    key={token.symbol}
+                    key={token.symbol || `token-${idx}`}
                     token={token}
                     idx={idx}
                     source={sources[token.symbol]}

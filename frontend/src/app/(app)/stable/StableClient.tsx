@@ -423,7 +423,7 @@ function ProtocolStats() {
         <div key={s.label} className="rounded-xl bg-dark-100 border border-dark-50/50 px-4 py-3 text-center">
           <div className="text-lg font-bold text-white">{s.value}</div>
           <div className="text-xs text-gray-400 mt-0.5">{s.label}</div>
-          <div className="text-[11px] text-gray-600 mt-0.5">{s.sub}</div>
+          <div className="text-[11px] text-gray-500 mt-0.5">{s.sub}</div>
         </div>
       ))}
     </div>

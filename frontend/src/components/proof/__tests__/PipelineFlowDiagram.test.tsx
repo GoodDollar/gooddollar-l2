@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, within } from '@testing-library/react'
 
 vi.mock('wagmi', () => ({
   useReadContract: vi.fn(),
@@ -125,16 +125,19 @@ describe('PipelineFlowDiagram', () => {
     expect(section).toBeInTheDocument()
     expect(section.getAttribute('aria-label')).toBe('Pipeline flow')
 
+    // Scope to the desktop flow container — the strict `getByTestId`
+    // would otherwise see both desktop + mobile (#0074).
+    const desktop = within(screen.getByTestId('pipeline-flow-desktop'))
     for (const id of ALL_NODE_IDS) {
-      const node = screen.getByTestId(`pipeline-node-${id}`)
+      const node = desktop.getByTestId(`pipeline-node-${id}`)
       expect(node).toBeInTheDocument()
     }
-    expect(screen.getByText(/eToro/i)).toBeInTheDocument()
-    expect(screen.getByText(/price-service/i)).toBeInTheDocument()
-    expect(screen.getByText(/oracle-signer/i)).toBeInTheDocument()
-    expect(screen.getByText('chain')).toBeInTheDocument()
-    expect(screen.getByText('frontend')).toBeInTheDocument()
-    expect(screen.getByText(/demo hedge/i)).toBeInTheDocument()
+    expect(desktop.getByText(/eToro/i)).toBeInTheDocument()
+    expect(desktop.getByText(/price-service/i)).toBeInTheDocument()
+    expect(desktop.getByText(/oracle-signer/i)).toBeInTheDocument()
+    expect(desktop.getByText('chain')).toBeInTheDocument()
+    expect(desktop.getByText('frontend')).toBeInTheDocument()
+    expect(desktop.getByText(/demo hedge/i)).toBeInTheDocument()
   })
 
   it('tone="unknown" on first render before any fetch resolves', () => {
@@ -143,8 +146,11 @@ describe('PipelineFlowDiagram', () => {
 
     render(<PipelineFlowDiagram intervalMs={60_000} />)
 
+    // Scope to the desktop flow container — the strict `getByTestId`
+    // would otherwise see both desktop + mobile (#0074).
+    const desktop = within(screen.getByTestId('pipeline-flow-desktop'))
     for (const id of ALL_NODE_IDS) {
-      const node = screen.getByTestId(`pipeline-node-${id}`)
+      const node = desktop.getByTestId(`pipeline-node-${id}`)
       expect(node.getAttribute('data-tone')).toBe('unknown')
     }
   })
@@ -256,20 +262,25 @@ describe('PipelineFlowDiagram', () => {
 
     render(<PipelineFlowDiagram intervalMs={60_000} />)
 
+    // Scope to the desktop flow container — the strict `getByTestId`
+    // would otherwise see both desktop + mobile (#0074).
+    const desktop = within(screen.getByTestId('pipeline-flow-desktop'))
+
     await vi.waitFor(() => {
-      expect(screen.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
+      expect(desktop.getByTestId('pipeline-node-demo-hedge').getAttribute('data-tone')).toBe(
         'healthy',
       )
     })
 
     // The last node has no trailing arrow — it terminates the chain.
-    const lastNode = screen.getByTestId('pipeline-node-demo-hedge')
+    const lastNode = desktop.getByTestId('pipeline-node-demo-hedge')
     expect(lastNode.querySelector('[data-testid^="pipeline-edge-"]')).toBeNull()
 
     // Every rendered edge lives inside the LI of the node that precedes it,
     // so flex-wrap can never strand an edge in empty space at the end of a
     // wrapped row.
-    const edges = document.querySelectorAll('[data-testid^="pipeline-edge-"]')
+    const desktopContainer = screen.getByTestId('pipeline-flow-desktop')
+    const edges = desktopContainer.querySelectorAll('[data-testid^="pipeline-edge-"]')
     expect(edges).toHaveLength(5)
     edges.forEach((edge) => {
       const parentLi = edge.closest('li[data-testid^="pipeline-node-"]')

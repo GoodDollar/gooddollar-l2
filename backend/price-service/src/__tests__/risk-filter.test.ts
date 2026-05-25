@@ -127,6 +127,16 @@ describe('RiskFilter', () => {
       expect(result.reason).toContain('market-closed');
     });
 
+    it('accepts closed equity session only when explicitly configured for real eToro last-close testnet flow', () => {
+      const closedMarketFilter = new RiskFilter({ acceptClosedMarketQuotes: true });
+      const result = closedMarketFilter.apply(
+        makeQuote({ assetClass: 'equity', sessionState: 'closed', confidence: 82 }),
+      );
+      expect(result.accepted).toBe(true);
+      expect(result.quote.sessionState).toBe('closed');
+      expect(result.quote.confidence).toBe(82);
+    });
+
     it('etf closed session is rejected', () => {
       const result = filter.apply(
         makeQuote({ assetClass: 'etf', sessionState: 'closed' }),

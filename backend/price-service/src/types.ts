@@ -68,6 +68,14 @@ export interface PriceServiceConfig {
   stalenessThresholdMs: number;
   maxDeviationPct: number;
   maxSpreadPct: number;
+  /**
+   * Accept official eToro last-close quotes for equity-like assets while the
+   * exchange session is closed. Default stays false so the generic price
+   * service remains conservative; the live eToro testnet producer enables this
+   * explicitly so weekend/overnight recovery still has real eToro prices
+   * flowing through the oracle instead of silently falling back to fixtures.
+   */
+  acceptClosedMarketQuotes: boolean;
   cacheTtlMs: number;
   restFallbackIntervalMs: number;
   port: number;
@@ -131,6 +139,7 @@ export const DEFAULT_CONFIG: PriceServiceConfig = {
   stalenessThresholdMs: 10_000,
   maxDeviationPct: 5,
   maxSpreadPct: 2,
+  acceptClosedMarketQuotes: false,
   cacheTtlMs: 30_000,
   restFallbackIntervalMs: 5_000,
   port: 9300,

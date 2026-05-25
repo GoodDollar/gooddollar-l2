@@ -77,7 +77,17 @@ module.exports = {
       cwd: '/home/goodclaw/gooddollar-l2/backend/predict',
       restart_delay: 3000,
       max_restarts: 10,
-      env: { NODE_ENV: 'production' },
+      env: {
+        NODE_ENV: 'production',
+        PORT: '3040',
+        L2_RPC_URL: 'https://rpc.goodclaw.org',
+        MARKET_FACTORY_ADDRESS: '0x6Da3D07a6BF01F02fB41c02984a49B5d9Aa6ea92',
+        CONDITIONAL_TOKENS_ADDRESS: '0x550Ebe4A5776eB90049391fe7C05889E0664762c',
+        GOOD_DOLLAR_ADDRESS: '0x5fbdb2315678afecb367f032d93f642f64180aa3',
+        UBI_FEE_SPLITTER_ADDRESS: '0xdc64a140aa3e981100a9beca4e685f962f0cf6c9',
+        OPERATOR_PRIVATE_KEY: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+        POLYMARKET_POLL_MS: '30000',
+      },
     },
     {
       // goodprice: backend/price-service (Lane 2 of 0007 live-prices).

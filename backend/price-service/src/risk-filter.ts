@@ -106,6 +106,9 @@ export class RiskFilter {
       case 'etf':
       case 'index':
         if (quote.sessionState === 'closed') {
+          if (this.config.acceptClosedMarketQuotes) {
+            return { accepted: true, quote };
+          }
           return {
             accepted: false,
             reason: `market-closed: ${assetClass} session is closed`,
