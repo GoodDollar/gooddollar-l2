@@ -57,6 +57,9 @@ jobs:
               --broadcast \
               --private-key $DEVNET_DEPLOYER_KEY || echo "Deploy script skipped (no changes or not configured)"
 
+            echo "=== Refreshing contract addresses ==="
+            python3 scripts/refresh-addresses.py || echo "refresh-addresses.py skipped or not configured"
+
             echo "=== Rebuilding frontend ==="
             cd frontend
             npm ci --prefer-offline
