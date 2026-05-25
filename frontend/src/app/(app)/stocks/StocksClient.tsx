@@ -531,22 +531,22 @@ export default function StocksClient() {
       {activeFilterCount > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {sectorFilter !== 'all' && (
-            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setSectorFilter('all')}>
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setSectorFilter('all')} aria-label={`Remove ${sectorFilter} sector filter`}>
               Sector: {sectorFilter} <span aria-hidden="true">x</span>
             </button>
           )}
           {capFilter !== 'all' && (
-            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setCapFilter('all')}>
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setCapFilter('all')} aria-label={`Remove ${capFilter} market cap filter`}>
               Cap: {capFilter} <span aria-hidden="true">x</span>
             </button>
           )}
           {momentumFilter !== 'all' && (
-            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setMomentumFilter('all')}>
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setMomentumFilter('all')} aria-label={`Remove ${momentumFilter} momentum filter`}>
               Momentum: {momentumFilter} <span aria-hidden="true">x</span>
             </button>
           )}
           {liquidityFilter !== 'all' && (
-            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setLiquidityFilter('all')}>
+            <button type="button" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-goodgreen/30 bg-goodgreen/10 text-goodgreen text-xs font-medium hover:bg-goodgreen/15" onClick={() => setLiquidityFilter('all')} aria-label={`Remove ${liquidityFilter} liquidity filter`}>
               Liquidity: {liquidityFilter} <span aria-hidden="true">x</span>
             </button>
           )}
@@ -686,7 +686,7 @@ export default function StocksClient() {
       </div>
       )}
 
-      <p className="text-xs text-gray-600 text-center mt-4">
+      <p className="text-xs text-gray-500 text-center mt-4">
         {isLive
           ? 'Prices sourced from on-chain oracle. Updated on every block.'
           : 'Prices sourced from on-chain oracle when live. Stocks oracle is currently offline — only Price is rendered (with a "Fallback price" pill); 24h change, volume, market cap and 7d trend are blanked until the oracle resumes.'}

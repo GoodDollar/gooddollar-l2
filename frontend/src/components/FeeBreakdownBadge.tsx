@@ -38,6 +38,7 @@ export function FeeBreakdownBadge() {
         onClick={() => setOpen(o => !o)}
         className="flex items-center gap-1.5 text-xs bg-goodgreen/10 text-goodgreen px-2.5 py-1 rounded-lg hover:bg-goodgreen/10 transition-colors focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
         aria-expanded={open}
+        aria-label={open ? "Hide fee breakdown" : "Show fee breakdown details"}
       >
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
