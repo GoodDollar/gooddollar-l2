@@ -1,0 +1,61 @@
+================================================================================
+GOODDOLLAR L2 TEST TRANSACTION LOG ANALYSIS REPORT
+================================================================================
+Generated: 2026-05-26 02:31:30
+Analyzed 95788 test results from 23 files
+
+PARSE ERRORS:
+  - tester-beta.jsonl:9 - JSON decode error: Extra data: line 1 column 10 (char 9)
+
+OVERALL STATISTICS:
+  Total Tests: 95788
+  Success Rate: 5.99%
+  Failures: 90048
+
+TESTER PERFORMANCE:
+  tester-alpha-iter22: 100.00% (43/43)
+  setup: 100.00% (5391/5391)
+  gamma: 100.00% (7/7)
+  tester-alpha-iter21: 90.38% (47/52)
+  tester-alpha-iter14: 90.00% (45/50)
+  beta: 0.23% (207/90245)
+
+FAILURE ANALYSIS:
+  Total Failures: 90048
+  Error Categories:
+    - other_errors: 11
+    - gas_issues: 319
+    - execution_reverted: 880
+    - balance_issues: 4082
+    - deployment_issues: 84746
+  Most Problematic Actions:
+    - preflight: 84748 failures
+    - actionPredictionLifecycle: 4885 failures
+    - actionPerpOpenClose: 405 failures
+    - gv_07: 1 failures
+    - gv_09: 1 failures
+
+COVERAGE ANALYSIS:
+  Contracts Tested: 22
+  Functions Tested: 114
+  Low-Coverage Actions:
+    - ls_04: 1 tests
+    - ls_05: 1 tests
+    - ls_06: 1 tests
+    - fund_gdt: 1 tests
+    - approve_gdt_vault: 1 tests
+
+IMPROVEMENT SUGGESTIONS:
+  1. Add gas estimation tests for complex transactions
+  2. Test gas limit edge cases for multi-step operations
+  3. Add balance validation tests before operations
+  4. Test insufficient funds scenarios explicitly
+  5. Add more negative test cases for contract reverts
+  6. Test edge cases that cause execution reverts
+  7. Add deployment status checks before running tests
+  8. Implement automated contract deployment validation
+  9. Increase test coverage for actions: psm_01, psm_02, psm_03, psm_04, cdp_01
+  10. Add cross-tester validation tests to ensure consistency
+
+================================================================================
+Report complete. Review failures and implement suggested improvements.

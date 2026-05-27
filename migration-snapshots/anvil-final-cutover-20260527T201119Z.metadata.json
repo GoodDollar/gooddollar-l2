@@ -1,0 +1,11 @@
+{
+  "created_at": "2026-05-27T20:11:19Z",
+  "chain_id_hex": "0xa455",
+  "chain_id_dec": 42069,
+  "block_before_hex": "0xd6a",
+  "block_before_dec": 3434,
+  "block_after_hex": "0xd6a",
+  "block_after_dec": 3434,
+  "snapshot_file": "/home/goodclaw/gooddollar-l2/migration-snapshots/anvil-final-cutover-20260527T201119Z.json",
+  "reason": "final controlled cutover snapshot after freezing old writers and putting old public RPC in maintenance"
+}
