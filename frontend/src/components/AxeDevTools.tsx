@@ -8,7 +8,14 @@ import { useEffect } from 'react'
  */
 export function AxeDevTools() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
+    // Skip axe-core during E2E tests: axe violations are logged via
+    // console.error which triggers the Next.js dev error overlay and
+    // causes false positive nextjs-portal failures. Dedicated accessibility
+    // coverage lives in e2e/accessibility.spec.ts.
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      process.env.NEXT_PUBLIC_E2E !== '1'
+    ) {
       import('@axe-core/react').then(axe => {
         const React = require('react')
         const ReactDOM = require('react-dom')

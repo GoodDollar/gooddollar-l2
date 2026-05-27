@@ -30,7 +30,14 @@ test.describe('Iter 27 — Internal analytics dashboard', () => {
 
     // No runtime error overlay (react-error-overlay or Next.js error dialog).
     await expect(page.locator('react-error-overlay')).toHaveCount(0)
-    await expect(page.locator('nextjs-portal')).toHaveCount(0)
+    // In Next.js 16 dev mode, nextjs-portal is always in the DOM (count=1);
+    // check that its shadow DOM contains no active error dialog instead.
+    const hasNextjsErrorDialog = await page.evaluate(() => {
+      const portal = document.querySelector('nextjs-portal')
+      const shadow = (portal as HTMLElement)?.shadowRoot
+      return shadow ? shadow.querySelectorAll('dialog, [data-nextjs-dialog]').length > 0 : false
+    })
+    expect(hasNextjsErrorDialog).toBe(false)
 
     // The page-level heading.
     await expect(

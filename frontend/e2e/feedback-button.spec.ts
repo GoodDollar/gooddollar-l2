@@ -103,7 +103,16 @@ test.describe('Feedback button — pipeline', () => {
     })
 
     await page.goto('/')
-    await page.getByTestId('feedback-open').click()
+    // Ensure the page is fully interactive after potential previous-test navigation
+    await page.waitForLoadState('networkidle')
+    const openBtn = page.getByTestId('feedback-open')
+    await expect(openBtn).toBeVisible()
+    await openBtn.click()
+
+    // Wait for dialog to be visible before checking submit button
+    const dialog = page.getByTestId('feedback-dialog')
+    await expect(dialog).toBeVisible()
+
     const submit = page.getByTestId('feedback-submit')
     // Empty description: button must stay disabled.
     await expect(submit).toBeDisabled()
@@ -122,7 +131,16 @@ test.describe('Feedback button — pipeline', () => {
     })
 
     await page.goto('/')
-    await page.getByTestId('feedback-open').click()
+    // Ensure the page is fully interactive after potential previous-test navigation
+    await page.waitForLoadState('networkidle')
+    const openBtn = page.getByTestId('feedback-open')
+    await expect(openBtn).toBeVisible()
+    await openBtn.click()
+
+    // Wait for dialog to be visible before interacting with form elements
+    const dialog = page.getByTestId('feedback-dialog')
+    await expect(dialog).toBeVisible()
+
     await page.getByTestId('feedback-description').fill('triggering simulated 400')
     await page.getByTestId('feedback-submit').click()
 

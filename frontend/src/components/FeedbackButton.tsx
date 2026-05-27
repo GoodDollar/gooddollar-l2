@@ -51,7 +51,7 @@ export function getFeedbackButtonClasses(pathname: string): { button: string; di
   if (!stocks) {
     return {
       button: 'fixed bottom-6 right-6 z-50 bg-accent hover:bg-accent/80 text-dark font-semibold px-4 py-2.5 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 text-sm',
-      dialog: 'fixed bottom-6 right-6 z-50 w-80 bg-dark-50 border border-white/10 rounded-2xl shadow-2xl overflow-hidden',
+      dialog: 'fixed bottom-6 right-6 z-50 w-[min(20rem,calc(100vw-1.5rem))] sm:w-80 bg-dark-50 border border-white/10 rounded-2xl shadow-2xl overflow-hidden',
       label: 'hidden sm:inline',
     }
   }

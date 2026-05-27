@@ -320,22 +320,21 @@ export default function AnalyticsClient() {
         data-testid="analytics-section-nav"
         className="mb-5 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm"
       >
-        {ANALYTICS_SECTIONS.map((s, i) => (
-          <span key={s.href} className="contents">
-            {i > 0 && (
-              <span aria-hidden="true" className="text-gray-600">
-                ·
-              </span>
-            )}
-            <a
-              href={s.href}
-              data-testid={`analytics-section-nav-${s.href.slice(1)}`}
-              className="text-gray-400 hover:text-white transition-colors px-1.5 py-0.5 rounded"
-            >
-              {s.label}
-            </a>
-          </span>
-        ))}
+        {ANALYTICS_SECTIONS.flatMap((s, i) => [
+          ...(i > 0 ? [
+            <span key={`sep-${i}`} aria-hidden="true" className="text-gray-600">
+              ·
+            </span>
+          ] : []),
+          <a
+            key={s.href}
+            href={s.href}
+            data-testid={`analytics-section-nav-${s.href.slice(1)}`}
+            className="text-gray-400 hover:text-white focus:text-white focus:outline focus:outline-2 focus:outline-goodgreen focus:outline-offset-1 transition-colors px-1.5 py-0.5 rounded"
+          >
+            {s.label}
+          </a>
+        ])}
       </nav>
 
       {loadError && (

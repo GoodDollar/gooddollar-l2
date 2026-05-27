@@ -54,6 +54,11 @@ export default defineConfig({
         command: `node scripts/e2e-web-server.mjs -p ${e2ePort}`,
         env: {
           NEXT_DIST_DIR: '.next.e2e',
+          // Suppress AxeDevTools during E2E runs: axe-core logs violations via
+          // console.error, which triggers the Next.js dev error overlay and
+          // causes nextjs-portal false positives. Dedicated accessibility tests
+          // live in e2e/accessibility.spec.ts.
+          NEXT_PUBLIC_E2E: '1',
           ...(e2eProdServer ? { E2E_PROD_SERVER: '1' } : { E2E_DEV_SERVER: '1' }),
         },
         url: baseURL,
