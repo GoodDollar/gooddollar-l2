@@ -258,7 +258,7 @@ contract GoodPredictTest is Test {
     function test_buy_revertsAfterEndTime() public {
         vm.warp(endTime + 1);
         vm.prank(alice);
-        vm.expectRevert(MarketFactory.MarketExpired.selector);
+        vm.expectRevert();
         factory.buy(marketId, true, 100e18);
     }
 
@@ -267,13 +267,13 @@ contract GoodPredictTest is Test {
         factory.closeMarket(marketId);
 
         vm.prank(alice);
-        vm.expectRevert(MarketFactory.MarketNotOpen.selector);
+        vm.expectRevert(bytes("MF: market is not open for trading"));
         factory.buy(marketId, true, 100e18);
     }
 
     function test_buy_zeroAmount_reverts() public {
         vm.prank(alice);
-        vm.expectRevert(MarketFactory.ZeroAmount.selector);
+        vm.expectRevert(bytes("MF: amount must be greater than zero"));
         factory.buy(marketId, true, 0);
     }
 

@@ -178,9 +178,15 @@ function PairInfoBar({ pair, mark }: { pair: PerpPair; mark: AttributedMark }) {
   // Mobile (≤640px): 2-column grid of stacked label/value tiles, so each
   // stat reads as a single unit. Desktop (≥640px): inline flex-wrap, identical
   // to the previous layout. See task 0099.
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const tileCls = "flex flex-col sm:flex-row sm:items-baseline"
   const labelCls =
-    "text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs sm:normal-case sm:tracking-normal"
+    "text-[10px] uppercase tracking-wide text-gray-400 sm:text-xs sm:normal-case sm:tracking-normal"
   const markText = mark.price === null ? '—' : formatPerpsPrice(mark.price)
   return (
     <div
@@ -224,7 +230,9 @@ function PairInfoBar({ pair, mark }: { pair: PerpPair; mark: AttributedMark }) {
       </div>
       <div className={tileCls}>
         <span className={labelCls}>Funding in</span>
-        <span className="text-gray-300 sm:ml-1.5">{getFundingCountdown(pair.nextFundingTime)}</span>
+        <span className="text-gray-300 sm:ml-1.5">
+          {mounted ? getFundingCountdown(pair.nextFundingTime) : '—'}
+        </span>
       </div>
       <div className={tileCls}>
         <span className={labelCls}>OI</span>

@@ -206,7 +206,7 @@ export default function TestnetGuideClient() {
         </nav>
 
         {/* Main content */}
-        <main className="flex-1 space-y-12">
+        <div className="flex-1 space-y-12">
           {/* Prerequisites */}
           <section id="prerequisites" className="scroll-mt-20">
             <h2 className="text-2xl font-bold text-white mb-4">Prerequisites</h2>
@@ -511,7 +511,7 @@ export default function TestnetGuideClient() {
               Thank you for testing GoodDollar L2! Your feedback directly shapes the protocol.
             </p>
           </section>
-        </main>
+        </div>
       </div>
     </div>
   )

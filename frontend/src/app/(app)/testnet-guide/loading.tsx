@@ -18,12 +18,12 @@ export default function TestnetGuideLoading() {
             ))}
           </div>
         </nav>
-        <main className="flex-1 space-y-8">
+        <div className="flex-1 space-y-8">
           <PageHeaderSkeleton />
           <CardSkeleton rows={3} />
           <CardSkeleton rows={5} />
           <CardSkeleton rows={4} />
-        </main>
+        </div>
       </div>
     </div>
   )

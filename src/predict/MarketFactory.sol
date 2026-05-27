@@ -159,14 +159,15 @@ contract MarketFactory is ReentrancyGuard {
      */
     // slither-disable-next-line reentrancy-no-eth
     function buy(uint256 marketId, bool isYES, uint256 amount) external nonReentrant {
-        if (amount == 0) revert ZeroAmount();
+        require(amount > 0, "MF: amount must be greater than zero");
+        require(marketId < markets.length, "MF: market does not exist");
         Market storage m = markets[marketId];
-        if (m.status != MarketStatus.Open) revert MarketNotOpen();
-        if (block.timestamp >= m.endTime) revert MarketExpired();
+        require(m.status == MarketStatus.Open, "MF: market is not open for trading");
+        require(block.timestamp < m.endTime, string(abi.encodePacked("MF: market expired at ", toString(m.endTime), " current time is ", toString(block.timestamp))));
 
         // Each token costs 1 G$
         bool ok = goodDollar.transferFrom(msg.sender, address(this), amount);
-        if (!ok) revert TransferFailed();
+        require(ok, "MF: G$ transfer failed - check balance and allowance");
 
         m.collateral += amount;
 
@@ -293,6 +294,26 @@ contract MarketFactory is ReentrancyGuard {
 
     function marketCount() external view returns (uint256) {
         return markets.length;
+    }
+
+    /// @dev Utility function to convert uint256 to string for error messages
+    function toString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
 
     function getMarket(uint256 marketId)

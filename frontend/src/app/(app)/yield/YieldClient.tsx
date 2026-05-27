@@ -342,7 +342,7 @@ export default function YieldClient() {
   const selected = vaults[selectedVault] ?? null
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8 min-h-screen text-white">
+    <div className="max-w-4xl mx-auto px-4 py-8 min-h-screen text-white">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -457,7 +457,7 @@ export default function YieldClient() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   )
 }
 

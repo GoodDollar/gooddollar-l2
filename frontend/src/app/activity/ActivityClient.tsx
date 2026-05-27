@@ -386,15 +386,15 @@ export default function ActivityClient() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <div className="text-xs text-gray-500">Balance</div>
+                    <div className="text-xs text-gray-400">Balance</div>
                     <div className="text-sm font-mono text-white">{t.balance} ETH</div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500">Transactions</div>
+                    <div className="text-xs text-gray-400">Transactions</div>
                     <div className="text-sm font-mono text-goodgreen">{t.nonce}</div>
                   </div>
                 </div>
-                <div className="mt-2 text-xs text-gray-500 font-mono truncate">
+                <div className="mt-2 text-xs text-gray-400 font-mono truncate">
                   {t.address}
                 </div>
               </div>
@@ -405,13 +405,13 @@ export default function ActivityClient() {
           <div className="rounded-2xl bg-dark-100/60 border border-gray-700/30 p-4 mb-8">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-white">Block Timeline</h2>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {totalTxsInWindow} {totalTxsInWindow === 1 ? 'tx' : 'txs'} in last {blocks.length || 0} blocks
               </span>
             </div>
             {blocks.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-16 text-center">
-                <p className="text-xs text-gray-500">No recent blocks available.</p>
+                <p className="text-xs text-gray-400">No recent blocks available.</p>
                 <p className="text-[10px] text-gray-600 mt-1">Waiting for chain to advance…</p>
               </div>
             ) : totalTxsInWindow === 0 ? (
@@ -433,7 +433,7 @@ export default function ActivityClient() {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 text-center mt-2">
+                <p className="text-xs text-gray-400 text-center mt-2">
                   No transactions in the last {blocks.length} blocks. Send a swap, perp, or predict tx to light it up.
                 </p>
               </>
@@ -457,10 +457,10 @@ export default function ActivityClient() {
               </div>
             )}
             <div className="flex justify-between mt-1">
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {blocks.length > 0 ? `#${blocks[blocks.length - 1]?.number}` : ''}
               </span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {blocks.length > 0 ? `#${blocks[0]?.number}` : ''}
               </span>
             </div>
@@ -499,7 +499,7 @@ export default function ActivityClient() {
             </div>
             <div className="divide-y divide-gray-700/20 max-h-[600px] overflow-y-auto">
               {transactions.length === 0 ? (
-                <div className="p-8 text-center text-gray-500 text-sm">No transactions in recent blocks</div>
+                <div className="p-8 text-center text-gray-400 text-sm">No transactions in recent blocks</div>
               ) : (
                 transactions.map((tx) => {
                   const tester = getTesterInfo(tx.from)
@@ -517,7 +517,7 @@ export default function ActivityClient() {
                             {shortenHash(tx.hash)}
                           </a>
                         </div>
-                        <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                        <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
                           Block #{tx.blockNumber}
                         </span>
                       </div>
@@ -540,7 +540,7 @@ export default function ActivityClient() {
                           )}
                         </span>
                         {tx.gasUsed !== '0' && (
-                          <span className="text-[10px] text-gray-500 ml-auto">⛽ {tx.gasUsed}</span>
+                          <span className="text-[10px] text-gray-400 ml-auto">⛽ {tx.gasUsed}</span>
                         )}
                       </div>
                     </div>

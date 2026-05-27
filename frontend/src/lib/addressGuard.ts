@@ -29,8 +29,6 @@
  */
 
 import { isAddress } from 'viem'
-import { readFileSync } from 'fs'
-import { resolve } from 'path'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const DEAD_ADDRESS_SHORT = '0x000000000000000000000000000000000000dead'
@@ -49,7 +47,17 @@ const STATIC_DENY_LIST = new Set<string>([
 // Precompute lowercase contract addresses once at module load.
 // Read addresses directly from JSON to avoid import issues.
 function loadContractDenyList(): Set<string> {
+  // Only load contracts on server side to avoid fs module issues in browser
+  if (typeof window !== 'undefined') {
+    // Client side - return empty set as fallback
+    return new Set<string>()
+  }
+
   try {
+    // Dynamic imports to avoid bundling fs/path in client
+    const { readFileSync } = require('fs')
+    const { resolve } = require('path')
+
     // Try multiple possible paths since process.cwd() varies by context
     const possiblePaths = [
       resolve(process.cwd(), 'op-stack', 'addresses.json'),

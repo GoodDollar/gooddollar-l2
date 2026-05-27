@@ -1,8 +1,9 @@
 # GoodDollar L2 Test Coverage Analysis & Recommendations
 
 **Analysis Date:** 2026-05-25  
+**Updated:** 2026-05-27  
 **Analyzed Files:** 22 JSONL test result files  
-**Total Tests Analyzed:** 4,394 test executions
+**Total Tests Analyzed:** 4,394 test executions (May 25) + 48,508 transactions (May 27)
 
 ## Executive Summary
 
@@ -274,3 +275,94 @@ The GoodDollar L2 protocol has recovered from major infrastructure issues and sh
 The analysis shows clear paths to resolution with specific test cases and implementation priorities. With focused effort on the identified critical bugs and systematic expansion of test coverage, the protocol can achieve production-ready reliability within 3 months.
 
 **Immediate action required on Oracle AAPL configuration and bridge reliability issues.**
+
+---
+
+## UPDATE: May 27, 2026 - Comprehensive Transaction Log Analysis
+
+### New Analysis Findings
+
+**Data Source:** Complete scan of all 22 JSONL files (48,508 total transactions)  
+**Analysis Scope:** All historical test data including alpha iterations 8-22, continuous testers, and E2E results
+
+### Critical Discovery: Systemic Infrastructure Crisis
+
+The May 27th comprehensive analysis reveals a more severe situation than initially reported:
+
+**Key Statistics:**
+- **48,508 transactions** analyzed across 696 unique contract functions
+- **Overall Success Rate: 1.9%** (dramatically different from May 25 subset analysis)
+- **42,354 "devnet drift" errors** representing 87% of all failures
+- **DevNet Infrastructure Collapse** as primary root cause
+
+### Reconciliation with May 25th Analysis
+
+The discrepancy between the May 25th analysis (88.6% success rate) and May 27th analysis (1.9% success rate) indicates:
+
+1. **Data Scope Difference**: May 25th analyzed a subset of recent successful tests
+2. **Historical Data Inclusion**: May 27th included all historical test iterations revealing systemic issues
+3. **DevNet Deterioration**: Infrastructure problems have compounded over time
+4. **Test Environment Drift**: Continuous deployment without proper address management
+
+### Updated Critical Issues Priority
+
+#### P0 - Infrastructure Collapse
+1. **DevNet Drift Crisis** - 42,354 failures (87%)
+   - Contract addresses become stale after deployments
+   - Root cause: scripts/refresh-addresses.py not executed post-deploy
+   - **Immediate Fix Required**: Automated address refresh pipeline
+
+#### P0 - Protocol Function Failures  
+2. **UBI System Complete Failure**
+   - UBIClaimV2, UBIRevenueTracker: 100% failure rate
+   - Core protocol functionality broken
+   
+3. **Vault System Critical Issues**
+   - GoodVault0.deposit(): Only 1 test, failed
+   - VaultFactory: 100% failure rate
+   - Core DeFi functionality compromised
+
+#### P1 - Previously Identified Issues (Still Valid)
+4. Oracle AAPL configuration issues
+5. Bridge operation reliability  
+6. Integration test coverage gaps
+
+### Revised Implementation Plan
+
+#### Immediate (Week 1)
+1. **Emergency Infrastructure Repair**
+   - Fix DevNet drift issue (blocks 87% of testing)
+   - Implement automated address refresh
+   - Restore basic test environment stability
+
+2. **Core Protocol Recovery**
+   - Restore UBI claiming functionality
+   - Fix vault deposit mechanisms
+   - Emergency deployment of working contracts
+
+#### Week 2-4
+1. Continue with original May 25th roadmap for Oracle and bridge issues
+2. Implement comprehensive testing for recovered systems
+3. Add monitoring to prevent future infrastructure drift
+
+### Updated Success Metrics
+
+#### Emergency Targets (1 Week)
+- [ ] DevNet drift errors <5% (from 87%)
+- [ ] UBI system operational (from 0% to >90% success)
+- [ ] Basic vault operations restored
+
+#### Recovery Targets (1 Month)  
+- [ ] Overall system success rate >90% (from 1.9%)
+- [ ] All P0 infrastructure issues resolved
+- [ ] Original May 25th targets achieved
+
+### Analysis Methodology Note
+
+Future analyses should:
+1. **Distinguish Data Scopes**: Recent vs. historical data
+2. **Track Infrastructure Health**: Separate infrastructure from protocol issues  
+3. **Segment Test Results**: By time period and test type
+4. **Monitor Trends**: Track improvement/degradation over time
+
+The comprehensive analysis provides critical visibility into systemic issues that selective sampling had missed. Both analyses are valid for their respective scopes and together provide complete situational awareness.

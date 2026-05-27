@@ -90,7 +90,7 @@ export function SwapRoute({ inputToken, outputToken, pairOnChain, rateSource }: 
       <div className="mt-2 flex items-center gap-1.5">
         {routeMode === 'pool' && (
           <>
-            <span className="text-[11px] text-gray-500">Quote:</span>
+            <span className="text-[11px] text-gray-400">Quote:</span>
             <PriceSourceBadge source={rateSource} size="sm" />
           </>
         )}

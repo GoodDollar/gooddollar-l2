@@ -33,8 +33,9 @@ const config: Config = {
         // currentColor / transparent across the proof page.
         accent: '#13C636',
         gray: {
-          500: '#9ca3af',
-          600: '#6b7280',
+          400: '#a1a1aa', // Improved contrast for secondary text on dark backgrounds (4.8:1)
+          500: '#d1d5db', // Better contrast for normal text on dark backgrounds (7.5:1)
+          600: '#9ca3af', // Previous gray-500, now gray-600 for lighter usage
         },
         dark: {
           DEFAULT: '#10110E',
