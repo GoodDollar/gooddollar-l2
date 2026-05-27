@@ -74,6 +74,25 @@ test.describe('Header navigation — mobile', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
+
+    // Wait for page to fully load
+    await page.waitForLoadState('networkidle')
+
+    // Ensure mobile menu is closed before each test
+    const mobileNav = page.getByTestId('mobile-nav')
+
+    try {
+      const isMenuOpen = await mobileNav.isVisible({ timeout: 1000 })
+      if (isMenuOpen) {
+        const closeButton = page.getByLabel('Close menu')
+        if (await closeButton.isVisible({ timeout: 1000 })) {
+          await closeButton.click()
+          await page.waitForTimeout(500) // Give time for menu to close
+        }
+      }
+    } catch (error) {
+      // Menu not found or not visible, which is fine
+    }
   })
 
   test('hamburger button is visible on mobile', async ({ page }) => {
