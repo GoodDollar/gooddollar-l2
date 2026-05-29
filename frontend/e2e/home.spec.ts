@@ -36,25 +36,33 @@ test.describe('Home / Swap page', () => {
 
   test('flip button swaps input and output tokens', async ({ page }) => {
     const swapCard = page.locator('#swap-card')
-    // Wait for token selectors to load before reading them
-    const selectors = swapCard.locator('button').filter({ hasText: /ETH|G\$|USDC|BTC/ })
-    await selectors.first().waitFor({ state: 'visible', timeout: 10_000 })
-    const firstCount = await selectors.count()
-    expect(firstCount).toBeGreaterThan(0)
 
-    // Click the flip button (the only button between pay and receive sections)
-    const flipBtn = swapCard.locator('button').filter({ hasText: '' }).nth(0)
-    // More reliable: find the button with the arrows SVG by its sibling context
-    const allBtns = swapCard.locator('button')
-    // The flip button is rendered between input and output sections
-    await allBtns.nth(0).click() // settings or fee badge - skip
-    // Use aria-label or just click the directional arrows button
-    // The flip button has no aria-label; find by its containing div with z-10
-    const flipSection = page.locator('.flex.justify-center.-my-3')
-    const flipButton = flipSection.locator('button')
+    // Wait for swap card to be fully loaded
+    await expect(swapCard).toBeVisible()
+    await expect(swapCard.getByText('You pay')).toBeVisible()
+    await expect(swapCard.getByText('You receive')).toBeVisible()
+
+    // Token selector buttons have data-testid="token-selector" (one for input, one for output)
+    const tokenButtons = swapCard.getByTestId('token-selector')
+
+    // Wait for at least one token button to be visible (default should be ETH and G$)
+    await tokenButtons.first().waitFor({ state: 'visible', timeout: 10_000 })
+    const tokenCount = await tokenButtons.count()
+
+    // Should find at least 2 token buttons (input and output selectors)
+    expect(tokenCount).toBeGreaterThanOrEqual(2)
+
+    // Click the flip button using its aria-label for reliability
+    const flipButton = swapCard.getByRole('button', { name: 'Swap token direction' })
     await flipButton.click()
+
     // After flip, token selectors should have swapped - just verify page is still intact
     await expect(swapCard.getByText('You pay')).toBeVisible()
+    await expect(swapCard.getByText('You receive')).toBeVisible()
+
+    // Verify token selectors are still present after flip
+    const tokenCountAfterFlip = await swapCard.getByTestId('token-selector').count()
+    expect(tokenCountAfterFlip).toBeGreaterThanOrEqual(2)
   })
 
   test('HowItWorks section is visible', async ({ page }) => {
