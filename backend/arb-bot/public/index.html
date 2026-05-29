@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GoodChain Arb Bot</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">GoodChain L2</p>
+        <h1>Arbitrage Control Center</h1>
+        <p class="sub">Manage dry-run scans across spot, perps, prediction, stocks, lending, and stable venues.</p>
+      </div>
+      <div class="actions">
+        <button id="scanBtn">Scan now</button>
+        <button id="startBtn">Start loop</button>
+        <button id="stopBtn" class="secondary">Stop</button>
+      </div>
+    </header>
+
+    <section class="grid cards">
+      <article><span>Status</span><strong id="runState">—</strong></article>
+      <article><span>Chain</span><strong id="chainState">—</strong></article>
+      <article><span>Health</span><strong id="healthState">—</strong></article>
+      <article><span>Last scan</span><strong id="lastScan">—</strong></article>
+      <article><span>Venues</span><strong id="venuesCount">—</strong></article>
+      <article><span>Quotes</span><strong id="quotesCount">—</strong></article>
+      <article><span>Opportunities</span><strong id="oppsCount">—</strong></article>
+      <article><span>Mode</span><strong id="dryRun">—</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Opportunities</h2>
+        <p>Live execution is guarded; dry-run is the default.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Kind</th><th>Description</th><th>Notional</th><th>Profit</th><th>Risks</th><th></th></tr></thead>
+          <tbody id="oppsBody"><tr><td colspan="6" class="empty">No opportunities yet.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article class="panel">
+        <h2>Venues</h2>
+        <ul id="venuesList" class="list"></ul>
+      </article>
+      <article class="panel">
+        <h2>Errors / Notes</h2>
+        <ul id="errorsList" class="list"></ul>
+      </article>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
