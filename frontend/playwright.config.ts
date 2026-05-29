@@ -24,6 +24,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
+  // Kill stale chromium processes left from a previous run before any worker
+  // spawns a browser.  Prevents "browserType.launch: Timeout 180000ms exceeded"
+  // after long suites (~23 min / 112+ tests).  See GOO-3048.
+  globalSetup: './e2e/global-setup.ts',
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
@@ -37,7 +41,27 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          // Fail fast at 30 s rather than hanging for the full 180 s default.
+          // The root cause of GOO-3048 is lingering zygote processes exhausting
+          // the OS pool; a shorter timeout surfaces the failure immediately so
+          // retries kick in promptly.
+          timeout: 30_000,
+          args: [
+            // Prevent /dev/shm exhaustion in Linux CI environments — the most
+            // common cause of browser-launch hangs in long sequential runs.
+            '--disable-dev-shm-usage',
+            // Reduce background process churn that accumulates across tests.
+            '--disable-renderer-backgrounding',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-background-timer-throttling',
+            // Extensions add worker threads; none are needed in E2E.
+            '--disable-extensions',
+          ],
+        },
+      },
     },
     {
       name: 'mobile-chrome',
