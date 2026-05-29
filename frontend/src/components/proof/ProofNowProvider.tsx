@@ -19,8 +19,10 @@ import {
 const ProofNowContext = createContext<number | null>(null)
 
 export function ProofNowProvider({ children }: PropsWithChildren) {
-  const [now, setNow] = useState<number>(() => Date.now())
+  const [now, setNow] = useState<number>(0)
   useEffect(() => {
+    // Set initial time on client hydration
+    setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), 1_000)
     return () => clearInterval(id)
   }, [])
