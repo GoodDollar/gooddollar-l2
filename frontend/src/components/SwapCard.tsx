@@ -273,7 +273,7 @@ export function SwapCard() {
 
   return (
     <div id="swap-card" className="w-full max-w-[460px]">
-      <div className="bg-dark-100 rounded-2xl border border-gray-700/30 shadow-xl overflow-hidden">
+      <form className="bg-dark-100 rounded-2xl border border-gray-700/30 shadow-xl overflow-hidden" onSubmit={(e) => e.preventDefault()}>
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">Swap</h2>
@@ -382,6 +382,8 @@ export function SwapCard() {
               className="flex-1 text-3xl sm:text-3xl font-medium min-w-0 cursor-default select-text"
               style={{ fontSize: outputAmount.length > 10 ? 'clamp(1.125rem, 5vw, 1.875rem)' : undefined }}
               data-testid="output-amount"
+              role="status"
+              aria-label={`Estimated output amount: ${rawOutputAmount ? formatAmount(rawOutputAmount, outputToken.symbol === 'USDC' ? 2 : 6) : '0'} ${outputToken.symbol}`}
             >
               {/* Mobile — over-cap and below-floor short-circuit before the compact path. */}
               <span className="text-white sm:hidden">
@@ -500,7 +502,7 @@ export function SwapCard() {
             onInvalidSubmit={() => setInputShake(p => p + 1)}
           />
         </div>
-      </div>
+      </form>
 
     </div>
   )

@@ -17,9 +17,25 @@ vi.mock('@/lib/chain', () => ({
 import {
   bpsToYesPrice,
   BPS_DENOMINATOR,
+  MARKET_READ_CAP,
+  marketReadWindow,
   useOnChainMarket,
   useAllOnChainMarkets,
 } from '@/lib/useMarkets'
+
+describe('marketReadWindow (GOO-3179 tail fetch)', () => {
+  it('reads from zero when count <= cap', () => {
+    expect(marketReadWindow(BigInt(5))).toEqual({ startId: 0, n: 5 })
+    expect(marketReadWindow(BigInt(MARKET_READ_CAP))).toEqual({
+      startId: 0,
+      n: MARKET_READ_CAP,
+    })
+  })
+
+  it('reads the latest cap markets when count exceeds cap', () => {
+    expect(marketReadWindow(BigInt(122))).toEqual({ startId: 102, n: MARKET_READ_CAP })
+  })
+})
 
 describe('bpsToYesPrice (MarketFactory BPS → 0-1 float)', () => {
   it('exports BPS_DENOMINATOR = 10_000', () => {
@@ -114,6 +130,29 @@ describe('useOnChainMarket — yesPrice integration', () => {
 })
 
 describe('useAllOnChainMarkets — listing yesPrice integration', () => {
+  it('requests the latest MARKET_READ_CAP ids when marketCount exceeds the cap', () => {
+    const marketBatch = Array.from({ length: MARKET_READ_CAP }, () => ({
+      status: 'success' as const,
+      result: FAKE_MARKET_TUPLE,
+    }))
+    const probBatch = Array.from({ length: MARKET_READ_CAP }, () => ({
+      status: 'success' as const,
+      result: BigInt(5000),
+    }))
+    useReadContractsMock
+      .mockReturnValueOnce({ data: marketBatch, isLoading: false })
+      .mockReturnValueOnce({ data: probBatch, isLoading: false })
+
+    renderHook(() => useAllOnChainMarkets(BigInt(122)))
+
+    const requested = useReadContractsMock.mock.calls[0]?.[0]?.contracts as
+      | Array<{ args: [bigint] }>
+      | undefined
+    expect(requested).toHaveLength(MARKET_READ_CAP)
+    expect(requested?.[0]?.args[0]).toBe(BigInt(102))
+    expect(requested?.[MARKET_READ_CAP - 1]?.args[0]).toBe(BigInt(121))
+  })
+
   it('multi-market BPS values map to correct yesPrice floats', () => {
     useReadContractsMock
       // first call: getMarket batch
@@ -260,6 +299,31 @@ describe('useAllOnChainMarkets — fallback gating (iter18)', () => {
     // First on-chain market still present even though its totals are zero.
     expect(result.current.markets[0].question).toBe('Will BTC hit $100K by 2026?')
     expect(result.current.markets[1].question).toBe('Will ETH flip BTC?')
+  })
+
+  it('active but expired on-chain market with liquidity → returns demo FALLBACK_MARKETS (GOO-3179)', () => {
+    const EXPIRED_ACTIVE_TUPLE: [string, bigint, number, bigint, bigint, bigint] = [
+      'Will BTC hit $100K by 2026?',
+      BigInt(Math.floor(new Date('2026-05-28').getTime() / 1000)),
+      0,
+      BigInt(5e18),
+      BigInt(3e18),
+      BigInt(10e18),
+    ]
+
+    useReadContractsMock
+      .mockReturnValueOnce({
+        data: [{ status: 'success', result: EXPIRED_ACTIVE_TUPLE }],
+        isLoading: false,
+      })
+      .mockReturnValueOnce({
+        data: [{ status: 'success', result: BigInt(5000) }],
+        isLoading: false,
+      })
+
+    const { result } = renderHook(() => useAllOnChainMarkets(BigInt(1)))
+    expect(result.current.markets).toHaveLength(6)
+    expect(result.current.markets[0].question).toContain('Bitcoin exceed $150,000')
   })
 
   it('only resolved on-chain markets have liquidity → returns demo FALLBACK_MARKETS', () => {

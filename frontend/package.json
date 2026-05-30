@@ -63,6 +63,7 @@
     "wagmi": "^2.19.5"
   },
   "devDependencies": {
+    "@axe-core/cli": "^4.11.3",
     "@axe-core/playwright": "^4.11.3",
     "@axe-core/react": "^4.11.1",
     "@next/bundle-analyzer": "^16.2.4",

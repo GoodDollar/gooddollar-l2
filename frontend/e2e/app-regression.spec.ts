@@ -72,15 +72,15 @@ async function waitForRegistryBody(page: Page, app: AppCoverage) {
 }
 
 async function visibleActionCount(page: Page) {
-  const links = await page.getByRole('link').evaluateAll((els) => els.filter((el) => {
-    const rect = (el as HTMLElement).getBoundingClientRect()
-    return rect.width > 0 && rect.height > 0
-  }).length)
-  const buttons = await page.getByRole('button').evaluateAll((els) => els.filter((el) => {
-    const rect = (el as HTMLElement).getBoundingClientRect()
-    return rect.width > 0 && rect.height > 0
-  }).length)
-  return links + buttons
+  try {
+    const visibleLinks = await page.getByRole('link', { includeHidden: false }).count()
+    const visibleButtons = await page.getByRole('button', { includeHidden: false }).count()
+    return visibleLinks + visibleButtons
+  } catch {
+    const allLinks = await page.getByRole('link').count()
+    const allButtons = await page.getByRole('button').count()
+    return allLinks + allButtons
+  }
 }
 
 function isAllowedConsoleError(line: string) {

@@ -11,12 +11,7 @@ export default function PerpsLeaderboardClient() {
   const { leaderboard } = useLeaderboard()
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
-        <p className="text-sm text-gray-400">Top traders by P&L</p>
-      </div>
-
+    <>
       <div className="flex gap-2 mb-4">
         {(['24h', '7d', '30d', 'all'] as TimeFilter[]).map(tf => (
           <button key={tf} onClick={() => setTimeFilter(tf)}
@@ -86,6 +81,6 @@ export default function PerpsLeaderboardClient() {
       <p className="text-xs text-gray-600 text-center mt-4">
         Rankings sourced from on-chain trade settlement events via indexer.
       </p>
-    </div>
+    </>
   )
 }

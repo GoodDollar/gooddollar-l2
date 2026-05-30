@@ -49,7 +49,7 @@ export default function FaucetClient() {
   }, [effectiveAddr])
 
   return (
-    <div className="w-full max-w-lg mx-auto mt-4 sm:mt-8">
+    <div className="w-full max-w-lg mx-auto px-4 mt-4 sm:mt-8">
       {/* Hero */}
       <div className="text-center mb-8">
         <div className="text-5xl mb-4">🚰</div>
@@ -97,7 +97,7 @@ export default function FaucetClient() {
             value={address || connectedAddr || ''}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="0x..."
-            className="w-full bg-dark border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm placeholder:text-gray-500 focus:outline-none focus:border-accent/50"
+            className="w-full bg-dark border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm placeholder:text-gray-500 focus:outline-none focus:border-accent/50 min-w-0"
           />
           {effectiveAddr && addrStatus === 'invalid' && (
             <p className="text-red-400 text-xs mt-1">Invalid Ethereum address</p>
@@ -142,7 +142,7 @@ export default function FaucetClient() {
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 text-center">
             <p className="text-emerald-400 font-semibold">Tokens sent! 🎉</p>
             {txHashes.length > 0 && (
-              <div className="text-gray-400 text-xs mt-2 space-y-1 font-mono break-all text-left">
+              <div className="text-gray-400 text-xs mt-2 space-y-1 font-mono break-all text-left overflow-hidden">
                 {txHashes.map((hash, index) => (
                   <p key={hash}>{index === 0 ? 'Gas' : index === 1 ? 'G$' : 'WETH'}: {hash}</p>
                 ))}

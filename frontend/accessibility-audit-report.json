@@ -1,0 +1,11 @@
+{
+  "url": "http://localhost:3100",
+  "timestamp": "2026-05-30T14:04:50.622Z",
+  "summary": {
+    "violations": 0,
+    "passes": 42,
+    "incomplete": 2,
+    "inapplicable": 47
+  },
+  "violations": []
+}

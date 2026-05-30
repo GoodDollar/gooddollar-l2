@@ -321,6 +321,7 @@ export function useExecuteProposal() {
 // ── Utility ───────────────────────────────────────────────────────────────────
 
 export function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '—'
   if (seconds < 3600) return `${Math.round(seconds / 60)}m`
   if (seconds < 86400) return `${Math.round(seconds / 3600)}h`
   if (seconds < 86400 * 30) return `${Math.round(seconds / 86400)}d`
@@ -330,6 +331,7 @@ export function formatDuration(seconds: number): string {
 
 export function formatVotes(votes: bigint): string {
   const num = Number(formatEther(votes))
+  if (!Number.isFinite(num)) return '—'
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
   if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`
   return num.toFixed(0)

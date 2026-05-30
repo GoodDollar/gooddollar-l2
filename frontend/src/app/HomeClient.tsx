@@ -59,7 +59,7 @@ export default function HomeClient() {
       {/* Hero glow effect */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[400px] opacity-[0.07] rounded-full blur-[100px]"
+        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-full max-w-[600px] h-[400px] opacity-[0.07] rounded-full blur-[100px]"
         style={{ background: 'radial-gradient(ellipse at center, #13C636 0%, transparent 70%)' }}
       />
 
@@ -83,10 +83,10 @@ export default function HomeClient() {
       </SafeDynamic>
 
       {/* Swap card wrapper with glow */}
-      <div className="relative w-full max-w-[460px]">
+      <div className="relative w-full max-w-[460px] mx-auto px-4">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -m-4 opacity-[0.06] rounded-3xl blur-[60px]"
+          className="pointer-events-none absolute inset-0 -mx-2 -my-4 opacity-[0.06] rounded-3xl blur-[60px]"
           style={{ background: 'radial-gradient(ellipse at center, #13C636 0%, transparent 70%)' }}
         />
         <SafeDynamic label="swap form">

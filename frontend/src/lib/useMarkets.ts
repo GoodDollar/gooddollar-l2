@@ -25,6 +25,22 @@ import { MarketFactoryABI } from './abi'
 /** BPS denominator used by MarketFactory.impliedProbabilityYES (10_000 = 100%). */
 export const BPS_DENOMINATOR = 10_000
 
+/** Max markets fetched per Predict grid refresh (RPC budget). */
+export const MARKET_READ_CAP = 20
+
+/**
+ * When `marketCount` exceeds the read cap, fetch the *latest* markets
+ * (highest ids) instead of ids 0..N-1. Continuous testers append lifecycle
+ * markets at the tail; reading from zero left the grid with only expired
+ * devnet seeds after GOO-3179.
+ */
+export function marketReadWindow(count: bigint): { startId: number; n: number } {
+  const total = Number(count)
+  const n = Math.min(total, MARKET_READ_CAP)
+  const startId = Math.max(0, total - n)
+  return { startId, n }
+}
+
 /**
  * Convert a BPS-scaled probability from MarketFactory.impliedProbabilityYES
  * into a 0-1 float suitable for UI display. Returns 0.5 when the on-chain
@@ -164,21 +180,27 @@ export function useAllOnChainMarkets(count: bigint): {
   markets: OnChainMarket[]
   isLoading: boolean
 } {
-  const n = Math.min(Number(count), 20)  // cap at 20 to avoid too many reads
+  const { startId, n } = marketReadWindow(count)
 
-  const marketCalls = Array.from({ length: n }, (_, i) => ({
-    address: CONTRACTS.MarketFactory as `0x${string}`,
-    abi: MarketFactoryABI,
-    functionName: 'getMarket' as const,
-    args: [BigInt(i)] as [bigint],
-  }))
+  const marketCalls = Array.from({ length: n }, (_, offset) => {
+    const marketId = BigInt(startId + offset)
+    return {
+      address: CONTRACTS.MarketFactory as `0x${string}`,
+      abi: MarketFactoryABI,
+      functionName: 'getMarket' as const,
+      args: [marketId] as [bigint],
+    }
+  })
 
-  const probCalls = Array.from({ length: n }, (_, i) => ({
-    address: CONTRACTS.MarketFactory as `0x${string}`,
-    abi: MarketFactoryABI,
-    functionName: 'impliedProbabilityYES' as const,
-    args: [BigInt(i)] as [bigint],
-  }))
+  const probCalls = Array.from({ length: n }, (_, offset) => {
+    const marketId = BigInt(startId + offset)
+    return {
+      address: CONTRACTS.MarketFactory as `0x${string}`,
+      abi: MarketFactoryABI,
+      functionName: 'impliedProbabilityYES' as const,
+      args: [marketId] as [bigint],
+    }
+  })
 
   const marketResults = useReadContracts({
     contracts: marketCalls,
@@ -203,7 +225,7 @@ export function useAllOnChainMarkets(count: bigint): {
       const statusNum = Number(status)
 
       markets.push({
-        id: BigInt(i),
+        id: BigInt(startId + i),
         question,
         endTime,
         status: statusNum,
@@ -236,8 +258,12 @@ export function useAllOnChainMarkets(count: bigint): {
   // resolved liquidity but no active liquidity. That is still an empty public
   // market surface, so keep demo cards visible until at least one active live
   // market exists.
+  const nowMs = Date.now()
   const hasActiveLiveLiquidity = markets.some(
-    (m) => m.isActive && (m.totalYES > BigInt(0) || m.totalNO > BigInt(0) || m.collateral > BigInt(0))
+    (m) =>
+      m.isActive &&
+      m.endTimeMs > nowMs &&
+      (m.totalYES > BigInt(0) || m.totalNO > BigInt(0) || m.collateral > BigInt(0)),
   )
   const finalMarkets = hasActiveLiveLiquidity ? markets : FALLBACK_MARKETS
   return {

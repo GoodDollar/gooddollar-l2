@@ -386,7 +386,7 @@ function PoolManager({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-dark-100 border border-gray-700/50 rounded-2xl shadow-2xl">
+      <div className="w-full max-w-md mx-auto bg-dark-100 border border-gray-700/50 rounded-2xl shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-700/30">
           <div className="flex items-center gap-2">
@@ -486,7 +486,7 @@ export default function PoolClient() {
     selectedPool && healthByKey[selectedPool] !== 'misconfigured' ? selectedPool : null
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="w-full max-w-2xl mx-auto px-4 py-8">
       {/* Page header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white mb-2">Liquidity Pools</h1>

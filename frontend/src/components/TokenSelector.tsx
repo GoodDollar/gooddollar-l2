@@ -27,12 +27,13 @@ export function TokenSelector({ selected, onSelect, exclude }: TokenSelectorProp
         onClick={handleOpen}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label={`Select token, currently ${selected.symbol}`}
         data-testid="token-selector"
         className="flex items-center gap-2 px-3 py-2 rounded-xl bg-dark-50 hover:bg-dark-50/80 border border-gray-700/50 transition-colors min-w-[120px] focus-visible:ring-2 focus-visible:ring-goodgreen/50 focus-visible:outline-none"
       >
         <TokenIcon symbol={selected.symbol} size={20} />
         <span className="font-semibold text-white">{selected.symbol}</span>
-        <svg className="w-4 h-4 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>

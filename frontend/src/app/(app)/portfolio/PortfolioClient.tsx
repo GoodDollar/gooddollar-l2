@@ -36,7 +36,7 @@ function HealthBadge({ value }: { value: number }) {
 }
 
 export default function PortfolioClient() {
-  const { holdings: stockHoldings } = useOnChainHoldings()
+  const { holdings: stockHoldings, isLoading: stocksLoading } = useOnChainHoldings()
   const { positions: predictPositions } = useOnChainPredictPositions()
   const predictSummary = useOnChainPredictSummary()
   const { markets: predictMarkets } = useOnChainMarkets()
@@ -148,7 +148,12 @@ export default function PortfolioClient() {
             </svg>
           }
         />
-        {stockHoldings.length === 0 ? (
+        {stocksLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent"></div>
+            <span className="ml-3 text-gray-400 text-sm">Loading stocks...</span>
+          </div>
+        ) : stockHoldings.length === 0 ? (
           <EmptyState
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

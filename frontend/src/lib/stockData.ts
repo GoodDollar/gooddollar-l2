@@ -52,10 +52,12 @@ export interface TradeRecord {
 // ─── Formatting ───────────────────────────────────────────────────────────────
 
 export function formatStockPrice(price: number): string {
+  if (!Number.isFinite(price)) return '$—'
   return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function _formatWithSuffix(n: number): string {
+  if (!Number.isFinite(n)) return '—'
   if (n >= 1e12) return `${(n / 1e12).toFixed(2)}T`
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`

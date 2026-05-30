@@ -155,10 +155,10 @@ const TokenRow = memo(function TokenRow({
           positive={(change24h ?? 0) >= 0}
         />
       </td>
-      <td className="py-3 px-1 text-right w-16 sm:w-20">
+      <td className="py-3 px-1 text-right w-14 sm:w-20">
         <button
           onClick={(e) => { e.stopPropagation(); onSwapClick(token.symbol) }}
-          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 group-focus:opacity-100 transition-opacity px-3 py-1 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/20"
+          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 group-focus:opacity-100 transition-opacity px-2 py-1 text-xs font-medium rounded-lg bg-goodgreen/10 text-goodgreen hover:bg-goodgreen/20"
           data-testid="swap-button"
         >
           Swap
@@ -579,7 +579,7 @@ function ExplorePageContent() {
   }, [router, searchParams])
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
+    <div className="w-full max-w-5xl mx-auto px-4">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white mb-1">Explore Tokens</h1>
         <p className="text-sm text-gray-400">Browse token prices, volume, and market data on GoodDollar L2</p>
@@ -640,7 +640,7 @@ function ExplorePageContent() {
 
       <div className="bg-dark-100 rounded-2xl border border-gray-700/20 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[320px] text-sm">
             <thead>
               <tr className="border-b border-gray-700/30 text-gray-400 bg-dark-50/25">
                 <th className="text-right py-3 px-3 font-semibold w-10">#</th>
@@ -682,7 +682,7 @@ function ExplorePageContent() {
                   Market Cap <SortArrow active={sortField === 'marketCap'} dir={sortDir} />
                 </th>
                 <th className="py-3 px-2 font-semibold hidden lg:table-cell">7d Trend</th>
-                <th className="w-16 sm:w-20" />
+                <th className="w-14 sm:w-20" />
               </tr>
             </thead>
             <tbody>
