@@ -55,13 +55,16 @@ test.describe('Explore page', () => {
   })
 
   test('clicking a token row navigates to explore/[symbol]', async ({ page }) => {
-    const firstRow = page.locator('table tbody tr').first()
+    // Wait for a row with actual token data (data-symbol) before clicking
+    const firstRow = page.locator('table tbody tr[data-symbol]').first()
+    await expect(firstRow).toBeVisible({ timeout: 10000 })
     await firstRow.click()
     await expect(page).toHaveURL(/\/explore\/[A-Z$]+/)
   })
 
   test('clicking Swap button on row navigates home with buy param', async ({ page }) => {
-    const firstRow = page.locator('table tbody tr').first()
+    const firstRow = page.locator('table tbody tr[data-symbol]').first()
+    await expect(firstRow).toBeVisible({ timeout: 10000 })
     await firstRow.hover()
     const swapBtn = firstRow.getByRole('button', { name: 'Swap' })
     await swapBtn.click()

@@ -55,6 +55,9 @@ export function LivePriceStrip({
       <div
         data-testid="live-price-strip"
         className="flex items-stretch gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide"
+        tabIndex={0}
+        role="region"
+        aria-label="Live token prices"
       >
         {isEmpty && loading && (
           Array.from({ length: 3 }, (_, i) => (

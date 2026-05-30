@@ -96,6 +96,7 @@ const TokenRow = memo(function TokenRow({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}
+      data-symbol={token.symbol}
       className={`group border-b border-gray-700/10 hover:bg-white/[0.04] hover:-translate-y-[1px] cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-goodgreen/40 ${idx % 2 === 1 ? 'bg-dark-50/15' : ''}`}
     >
       <td className="py-3 px-3 text-gray-500 text-right">{idx + 1}</td>
@@ -493,7 +494,7 @@ function ExplorePageContent() {
   })
   const [sortField, setSortField] = useState<SortField>('marketCap')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const { tokens: data, sources, divergence } = useOnChainMarketData()
+  const { tokens: data, sources, divergence, isLoading: dataLoading } = useOnChainMarketData()
 
   // Canonicalise the URL if the user arrived with a typo or unknown
   // category. We use router.replace (not push) so the back button still
@@ -686,10 +687,19 @@ function ExplorePageContent() {
               </tr>
             </thead>
             <tbody>
-              {!data || data.length === 0 ? (
+              {dataLoading || !data || data.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-12 px-4 text-center">
-                    <div className="text-gray-400 mb-3">Loading tokens...</div>
+                    <div className="text-gray-400 mb-3">
+                      {dataLoading ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent mr-2"></div>
+                          Loading tokens...
+                        </div>
+                      ) : (
+                        'Loading tokens...'
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (

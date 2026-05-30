@@ -46,7 +46,7 @@ test.describe('Lane 6 — /live-prices-proof', () => {
 
     // Safety banner — either the "Safe" pill or a refusal alert. We only
     // accept the "Safe" path in CI (real-trading must be disabled).
-    const safe = page.getByText(/REAL_TRADING_ENABLED = false/i)
+    const safe = page.getByText(/REAL_TRADING_ENABLED = false/i).first()
     await expect(safe).toBeVisible()
 
     // Four panel headings (h2 inside each card).
