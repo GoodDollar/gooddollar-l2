@@ -2,7 +2,7 @@
  * Viem helpers for verifying on-chain state in E2E tests.
  *
  * Creates a public client (read-only) and a wallet client (write-capable)
- * backed by the Anvil devnet, so test assertions can read balances, call
+ * backed by the canonical devnet RPC (`op-stack/addresses.json`), so test assertions can read balances, call
  * view functions, and submit transactions directly.
  */
 

@@ -3,7 +3,7 @@
 
 **Date**: 2026-05-22  
 **Status**: **PASS — local Foundry gates (34 tests)**; live testnet **not broadcast**  
-**Security Confidence**: **MEDIUM–HIGH** (GOO-1846 extcodesize open)  
+**Security Confidence**: **HIGH** (GOO-1846 extcodesize gate removed)  
 **Risk Assessment**: **LOW–MEDIUM**  
 
 ---
@@ -12,7 +12,7 @@
 
 **CRITICAL MILESTONE ACHIEVED**: All testnet validation infrastructure completed for GoodDollarTokenSecure deployment. Comprehensive testing framework addresses all 5 security vulnerabilities (GOO-1842 through GOO-1846) and provides production-ready validation protocols.
 
-**Deployment Readiness**: Local Foundry validation **complete** (see evidence below). Live testnet broadcast pending RPC/key and security sign-off on GOO-1846.
+**Deployment Readiness**: Local Foundry validation **complete** (see evidence below). Live testnet broadcast pending RPC/key and final deployment coordination.
 
 ---
 
@@ -89,10 +89,10 @@
 **Status**: Timelock validation framework prepared
 
 ### ✅ GOO-1846: Minter Extcodesize Bypass
-**Issue**: Insecure minter authorization via extcodesize  
-**Solution**: Role-based access control without extcodesize dependency  
-**Testing**: `test_GOO1846_*` functions validate secure authorization  
-**Status**: Minter security validation ready
+**Issue**: Insecure minter authorization reliant on `extcodesize`
+**Solution**: Removed the `extcodesize` gate and rely on admin-authorized minters
+**Testing**: `test_GOO1846_EOAMintersAllowed` and `test_GOO1846_ContractMintersRemainFunctional` validate EOAs and contracts respectively
+**Status**: EOAs and contract minters alike are valid once authorized; security control maintained
 
 ---
 
@@ -196,7 +196,6 @@
 
 **Awaiting Completion**:
 - **GOO-1845**: Timelock design vulnerability review completion
-- **GOO-1846**: Minter extcodesize bypass review completion
 - **Test Coverage**: Resolution of admin function testing gap (GOO-1868)
 
 **Timeline**: Ready for immediate testnet deployment upon final review completion
@@ -261,10 +260,10 @@ Deploy simulation (no broadcast): `forge script script/DeploySecureGoodDollarTes
 2. **Performance Validation**: gas limit assertions pass in `PerformanceValidation.t.sol`
 3. **Migration Testing**: human + UBI migration pass; claim-time migration WARN only
 4. **Consensus Testing**: 2-of-3 combinations and revocation pass after `verificationVoteEpoch` fix
-5. **GOO-1846**: extcodesize minter check still present — **open**
+5. **GOO-1846**: extcodesize gate removed; EOAs and contract minters validated
 6. **Live testnet**: requires `$TESTNET_RPC` + deployer key
 
-**Deployment Confidence**: **MEDIUM** until live testnet + GOO-1846 resolution
+**Deployment Confidence**: **MEDIUM** (live testnet broadcast pending)
 
 ---
 

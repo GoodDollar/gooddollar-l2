@@ -9,7 +9,7 @@
 
 ## Verdict: **PARTIAL**
 
-RC lane outputs are integrated cleanly with representative gates green, but **RC is not merge-ready**: the perps full on-chain E2E assertion still fails, full-suite E2E was not re-run to green, and security-deploy retains open production blockers (GOO-1846, live broadcast, claim migration).
+RC lane outputs are integrated cleanly with representative gates green, but **RC is not merge-ready**: the perps full on-chain E2E assertion still fails, full-suite E2E was not re-run to green, and security-deploy retains open production blockers (live broadcast, claim migration; GOO-1846 minter gate resolved in code — confirm ops allowlist if needed).
 
 ---
 
@@ -79,7 +79,7 @@ Test: `Perps full on-chain flow › opens a real market position through the UI 
 
 ### Security / deploy (not RC merge blockers for app-only RC, but documented)
 
-1. **GOO-1846** — `setMinter` contract-only restriction (`extcodesize`); tests document PASS for current behavior but ticket remains **open** for production policy.
+1. **GOO-1846** — extcodesize minter gate **removed** in `GoodDollarTokenSecure`; EOA minters allowed when admin-authorized. Confirm production minter allowlist operationally if contract-only minters are required.
 2. **Live testnet broadcast** — `DeploySecureGoodDollarTestnet.s.sol` simulated only; no `--broadcast`.
 3. **Claim `lastClaimTime` migration** — gap noted in `StateMigration.t.sol` / security lane (verify before mainnet migration).
 

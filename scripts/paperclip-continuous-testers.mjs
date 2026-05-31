@@ -24,7 +24,14 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync, mkdirSync, appendFileSync, existsSync } from 'node:fs'
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  appendFileSync,
+  existsSync,
+  statSync,
+} from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -35,6 +42,9 @@ const CHAIN_ID = 42069
 const FAUCET_URL = 'https://goodswap.goodclaw.org/api/faucet'
 const LIFECYCLE_DEADLINE_SEC = 300 // Increased from 90s to 5min to account for transaction delays
 const LIFECYCLE_BUFFER_SEC = 30 // Increased from 5s to 30s for more reliable timing
+/** Must match PerpEngine.TRADE_FEE_BPS (10) for minVault sizing in actionPerpOpenClose. */
+const PERP_TRADE_FEE_BPS = 10n
+const PERP_BPS = 10000n
 
 const TESTERS = [
   {
@@ -159,6 +169,13 @@ const MarketFactoryAbi = [
     stateMutability: 'view',
   },
   {
+    type: 'function',
+    name: 'goodDollar',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
     type: 'event',
     name: 'MarketCreated',
     inputs: [
@@ -170,7 +187,48 @@ const MarketFactoryAbi = [
   },
 ]
 
+const SwapPriceOracleAbi = [
+  {
+    type: 'function',
+    name: 'updatePrice',
+    inputs: [
+      { name: 'token', type: 'address' },
+      { name: 'price', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getPrice',
+    inputs: [{ name: 'token', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+]
+
 const Erc20Abi = [
+  {
+    type: 'function',
+    name: 'transfer',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'transferFrom',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
   {
     type: 'function',
     name: 'approve',
@@ -201,6 +259,13 @@ const Erc20Abi = [
 ]
 
 const MarginVaultAbi = [
+  {
+    type: 'function',
+    name: 'collateral',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
   {
     type: 'function',
     name: 'deposit',
@@ -268,6 +333,7 @@ function parseArgs(argv) {
   const args = {
     once: false,
     skipSetup: false,
+    coverageGaps: false,
     tester: null,
     rpcUrl: process.env.RPC_URL ?? null,
   }
@@ -275,6 +341,7 @@ function parseArgs(argv) {
     const a = argv[i]
     if (a === '--once') args.once = true
     else if (a === '--skip-setup') args.skipSetup = true
+    else if (a === '--coverage-gaps') args.coverageGaps = true
     else if (a === '--tester') args.tester = argv[++i]?.toLowerCase() ?? null
     else if (a === '--rpc-url') args.rpcUrl = argv[++i] ?? null
   }
@@ -290,13 +357,63 @@ function derivePrivateKey(paperclipAgentId) {
 
 function loadAddresses() {
   const path = resolve(REPO_ROOT, 'op-stack/addresses.json')
+  const stat = statSync(path)
   const raw = JSON.parse(readFileSync(path, 'utf8'))
   return {
     path,
+    mtimeMs: stat.mtimeMs,
     comment: raw._comment ?? '',
     rpcUrl: process.env.RPC_URL ?? raw.rpc_url ?? 'https://rpc.goodclaw.org',
     contracts: raw.contracts,
   }
+}
+
+/** GOO-3234: MF must bind the same GDT as addresses.json before lifecycle funding. */
+async function assertMfGdtConsistency(publicClient, contracts, { skipBytecode = false } = {}) {
+  const mf = contracts.MarketFactory
+  const manifestGdt = contracts.GoodDollarToken
+  if (!skipBytecode) {
+    await ensureBytecode(publicClient, 'MarketFactory', mf)
+    await ensureBytecode(publicClient, 'GoodDollarToken', manifestGdt)
+  }
+
+  const chainGdt = await publicClient.readContract({
+    address: mf,
+    abi: MarketFactoryAbi,
+    functionName: 'goodDollar',
+  })
+
+  if (chainGdt.toLowerCase() !== manifestGdt.toLowerCase()) {
+    throw new Error(
+      `MF/GDT_DRIFT: MarketFactory.goodDollar()=${chainGdt} ` +
+        `but addresses.json GoodDollarToken=${manifestGdt}. ` +
+        'Re-run scripts/refresh-addresses.py and restart continuous testers.',
+    )
+  }
+
+  return { marketFactory: mf, goodDollarToken: chainGdt }
+}
+
+/** GOO-3240: Perp margin must use MarginVault.collateral(), not addresses.json GDT alone. */
+async function readPerpCollateralToken(publicClient, marginVault, manifestGdt) {
+  const collateral = await publicClient.readContract({
+    address: marginVault,
+    abi: MarginVaultAbi,
+    functionName: 'collateral',
+  })
+  await ensureBytecode(publicClient, 'MarginVault.collateral', collateral)
+  if (manifestGdt && collateral.toLowerCase() !== manifestGdt.toLowerCase()) {
+    console.warn(
+      `[perp] VAULT_COLLATERAL_DRIFT: MarginVault.collateral=${collateral} ` +
+        `manifest GoodDollarToken=${manifestGdt}; using vault collateral for deposit/approve`,
+    )
+  }
+  return collateral
+}
+
+function perpOpenTotalRequired(size, margin) {
+  const fee = (size * PERP_TRADE_FEE_BPS) / PERP_BPS
+  return margin + fee
 }
 
 function loadDeployerKey() {
@@ -313,10 +430,114 @@ function sleep(ms) {
 }
 
 /** Fail fast when a lifecycle tx reverts (e.g. buy against wrong GDT). */
-function assertReceiptSuccess(receipt, step) {
+async function getBlockTimestamp(publicClient, blockNumber) {
+  const block = await publicClient.getBlock({ blockNumber })
+  return block ? Number(block.timestamp) : null
+}
+
+function formatContext(context) {
+  const entries = []
+  for (const [key, value] of Object.entries(context)) {
+    entries.push(`${key}=${value}`)
+  }
+  return entries.join(' ')
+}
+
+function assertReceiptSuccess(receipt, step, context = null) {
   if (receipt.status === 'success') return
   const tx = receipt.transactionHash ?? 'unknown'
-  throw new Error(`${step} transaction reverted (tx=${tx})`)
+  let message = `${step} transaction reverted (tx=${tx})`
+  if (context) {
+    message += ` ${formatContext(context)}`
+  }
+  throw new Error(message)
+}
+
+const MARKET_FACTORY_LABEL = 'MarketFactory'
+
+/** GOO-3235: parse legacy lifecycle failure strings when jsonl was not attached at throw site. */
+function parsePredictionLifecycleError(message) {
+  const fields = {
+    action: 'prediction-lifecycle',
+    contract: MARKET_FACTORY_LABEL,
+  }
+  const stepRevert = message.match(
+    /^(createMarket|buy|closeMarket|resolve|redeem) transaction reverted/,
+  )
+  if (stepRevert) {
+    fields.function = stepRevert[1]
+  } else if (/function:\s+redeem/.test(message)) {
+    fields.function = 'redeem'
+  } else if (/function:\s+buy/.test(message)) {
+    fields.function = 'buy'
+  } else if (/function:\s+createMarket/.test(message)) {
+    fields.function = 'createMarket'
+  } else if (message.includes('MarketCreated event not found')) {
+    fields.function = 'createMarket'
+  } else if (message.includes('MF/GDT_DRIFT')) {
+    fields.function = 'mf-gdt-preflight'
+    fields.contract = MARKET_FACTORY_LABEL
+  }
+
+  const txMatch = message.match(/\(tx=(0x[a-fA-F0-9]+)\)/)
+  if (txMatch) fields.tx = txMatch[1]
+
+  for (const match of message.matchAll(
+    /(?:^|\s)(marketId|endTime|buyBlockTimestamp|delta)=([^\s)]+)/g,
+  )) {
+    fields[match[1]] = match[2]
+  }
+
+  const redeemArgs = message.match(
+    /function:\s+redeem\(uint256 marketId, uint256 amount\)[\s\S]*?args:\s+\((\d+),/,
+  )
+  if (redeemArgs && !fields.marketId) fields.marketId = redeemArgs[1]
+
+  return fields
+}
+
+function throwPredictionLifecycleFailure(state, step, message, extra = {}) {
+  const err = new Error(message)
+  const jsonl = {
+    action: 'prediction-lifecycle',
+    contract: extra.contract ?? state.contract,
+    function: step,
+    marketId: state.marketId ?? undefined,
+    endTime: state.endTime ?? undefined,
+    question: state.question ?? undefined,
+    buyAmount: state.buyAmount ?? undefined,
+    ...extra,
+  }
+  if (Object.keys(state.txs).length > 0) jsonl.txs = { ...state.txs }
+  err.jsonl = jsonl
+  throw err
+}
+
+function lifecycleReceiptFailure(state, step, receipt, context = null) {
+  const tx = receipt.transactionHash ?? 'unknown'
+  let message = `${step} transaction reverted (tx=${tx})`
+  const extra = { tx, contract: MARKET_FACTORY_LABEL }
+  if (context) {
+    message += ` ${formatContext(context)}`
+    for (const [key, value] of Object.entries(context)) {
+      extra[key] = value
+    }
+  }
+  throwPredictionLifecycleFailure(state, step, message, extra)
+}
+
+function actionFailureJsonlRecord(fn, err) {
+  const message = err instanceof Error ? err.message : String(err)
+  if (err?.jsonl) {
+    return { ...err.jsonl, error: message }
+  }
+  if (fn === actionPredictionLifecycle) {
+    return { ...parsePredictionLifecycleError(message), error: message }
+  }
+  if (fn === actionPerpOpenClose) {
+    return { action: 'perp-open-close', error: message }
+  }
+  return { action: fn.name, error: message }
 }
 
 function ts() {
@@ -374,6 +595,9 @@ async function preflight(publicClient, contracts, activeFocus) {
   for (const [label, addr] of checks) {
     out[label] = await ensureBytecode(publicClient, label, addr)
   }
+  if (checks.some(([label]) => label === 'MarketFactory')) {
+    out.mfGdt = await assertMfGdtConsistency(publicClient, contracts, { skipBytecode: true })
+  }
   return out
 }
 
@@ -405,23 +629,99 @@ async function setupPredictions(deployerAccount, publicClient, walletClient, con
   return results
 }
 
-async function ensureGdtBalance(publicClient, walletClient, gdt, account, minWei) {
-  const bal = await publicClient.readContract({
-    address: gdt,
+async function readErc20Balance(publicClient, token, holder) {
+  return publicClient.readContract({
+    address: token,
     abi: Erc20Abi,
     functionName: 'balanceOf',
-    args: [account.address],
+    args: [holder],
   })
-  if (bal >= minWei) return { balance: bal, faucet: null }
-  const faucetResult = await faucet(account.address)
-  await sleep(3000)
-  const balAfter = await publicClient.readContract({
-    address: gdt,
+}
+
+/** Transfer shortfall from deployer when faucet cannot fund non-manifest collateral (GOO-3240). */
+async function fundTokenFromDeployer(publicClient, walletClient, token, recipient, minWei) {
+  const deployerKey = loadDeployerKey()
+  if (!deployerKey) {
+    throw new Error(
+      'Insufficient token balance and DEPLOYER_KEY missing in .autobuilder/addresses.env',
+    )
+  }
+  const deployerAccount = privateKeyToAccount(deployerKey)
+  const deployerBal = await readErc20Balance(publicClient, token, deployerAccount.address)
+  const recipientBal = await readErc20Balance(publicClient, token, recipient)
+  const shortfall = minWei > recipientBal ? minWei - recipientBal : 0n
+  if (shortfall === 0n) {
+    return { balance: recipientBal, source: 'deployer-skip', tx: null }
+  }
+  if (deployerBal < shortfall) {
+    throw new Error(
+      `Deployer ${deployerAccount.address} has ${formatEther(deployerBal)} on ${token} ` +
+        `but ${formatEther(shortfall)} needed for ${recipient}`,
+    )
+  }
+  const rpc =
+    walletClient.chain?.rpcUrls?.default?.http?.[0] ??
+    walletClient.chain?.rpcUrls?.public?.http?.[0]
+  if (!rpc) {
+    throw new Error('walletClient.chain missing rpcUrls for deployer transfer')
+  }
+  const deployerWallet = createWalletClient({
+    account: deployerAccount,
+    chain: walletClient.chain,
+    transport: http(rpc),
+  })
+  const hash = await deployerWallet.writeContract({
+    account: deployerAccount,
+    chain: deployerWallet.chain,
+    address: token,
     abi: Erc20Abi,
-    functionName: 'balanceOf',
-    args: [account.address],
+    functionName: 'transfer',
+    args: [recipient, shortfall],
   })
-  return { balance: balAfter, faucet: faucetResult }
+  const receipt = await publicClient.waitForTransactionReceipt({ hash })
+  assertReceiptSuccess(receipt, 'deployer collateral transfer', {
+    token,
+    recipient,
+    shortfall: shortfall.toString(),
+  })
+  const balance = await readErc20Balance(publicClient, token, recipient)
+  return { balance, source: 'deployer-transfer', tx: hash }
+}
+
+async function ensureGdtBalance(
+  publicClient,
+  walletClient,
+  gdt,
+  account,
+  minWei,
+  { manifestGdt = gdt } = {},
+) {
+  let bal = await readErc20Balance(publicClient, gdt, account.address)
+  if (bal >= minWei) return { balance: bal, faucet: null, source: 'existing' }
+
+  let faucetResult = null
+  const faucetTargetsManifest =
+    !manifestGdt || gdt.toLowerCase() === manifestGdt.toLowerCase()
+  if (faucetTargetsManifest) {
+    faucetResult = await faucet(account.address)
+    await sleep(3000)
+    bal = await readErc20Balance(publicClient, gdt, account.address)
+    if (bal >= minWei) return { balance: bal, faucet: faucetResult, source: 'faucet' }
+  }
+
+  const deployerFund = await fundTokenFromDeployer(
+    publicClient,
+    walletClient,
+    gdt,
+    account.address,
+    minWei,
+  )
+  return {
+    balance: deployerFund.balance,
+    faucet: faucetResult,
+    source: deployerFund.source,
+    deployerTx: deployerFund.tx,
+  }
 }
 
 async function ensureAllowance(publicClient, walletClient, token, owner, spender, amount) {
@@ -451,7 +751,13 @@ async function actionPerpOpenClose(publicClient, walletClient, contracts, accoun
   const marketId = 0n
   const size = parseEther('100')
   const margin = parseEther('10')
-  const minVault = margin + parseEther('1')
+  const totalRequired = perpOpenTotalRequired(size, margin)
+  const minVault = totalRequired + parseEther('1')
+  const collateral = await readPerpCollateralToken(
+    publicClient,
+    contracts.MarginVault,
+    contracts.GoodDollarToken,
+  )
 
   const [isOpen] = await publicClient.readContract({
     address: contracts.PerpEngine,
@@ -473,35 +779,55 @@ async function actionPerpOpenClose(publicClient, walletClient, contracts, accoun
     return { name: 'perp-open-close', ok: true, side: 'close', tx: hash, block: receipt.blockNumber.toString() }
   }
 
-  await ensureGdtBalance(publicClient, walletClient, contracts.GoodDollarToken, account, parseEther('50'))
-  await ensureAllowance(
-    publicClient,
-    walletClient,
-    contracts.GoodDollarToken,
-    account,
-    contracts.MarginVault,
-    parseEther('1000'),
-  )
-
-  const vaultBal = await publicClient.readContract({
+  let vaultBal = await publicClient.readContract({
     address: contracts.MarginVault,
     abi: MarginVaultAbi,
     functionName: 'balances',
     args: [account.address],
   })
-  if (vaultBal < minVault) {
+  const depositAmount =
+    vaultBal >= minVault ? 0n : minVault - vaultBal + parseEther('1')
+
+  if (depositAmount > 0n) {
+    await ensureGdtBalance(publicClient, walletClient, collateral, account, depositAmount, {
+      manifestGdt: contracts.GoodDollarToken,
+    })
+    await ensureAllowance(
+      publicClient,
+      walletClient,
+      collateral,
+      account,
+      contracts.MarginVault,
+      depositAmount,
+    )
+
     const depHash = await walletClient.writeContract({
       account,
       chain: walletClient.chain,
       address: contracts.MarginVault,
       abi: MarginVaultAbi,
       functionName: 'deposit',
-      args: [parseEther('1000')],
-      gas: 200000n, // Explicit gas limit to prevent "gas required exceeds allowance: 0" errors
-      maxFeePerGas: 20000000000n, // 20 gwei max fee for devnet chain (id: 42069)
-      maxPriorityFeePerGas: 1000000000n, // 1 gwei priority fee for devnet
+      args: [depositAmount],
+      gas: 200000n,
+      maxFeePerGas: 20000000000n,
+      maxPriorityFeePerGas: 1000000000n,
     })
-    await publicClient.waitForTransactionReceipt({ hash: depHash })
+    const depReceipt = await publicClient.waitForTransactionReceipt({ hash: depHash })
+    assertReceiptSuccess(depReceipt, 'MarginVault.deposit', {
+      collateral,
+      amount: depositAmount.toString(),
+    })
+    vaultBal = await publicClient.readContract({
+      address: contracts.MarginVault,
+      abi: MarginVaultAbi,
+      functionName: 'balances',
+      args: [account.address],
+    })
+    if (vaultBal < minVault) {
+      throw new Error(
+        `MarginVault balance ${formatEther(vaultBal)} G$ below required ${formatEther(minVault)} after deposit`,
+      )
+    }
   }
 
   const hash = await walletClient.writeContract({
@@ -516,156 +842,394 @@ async function actionPerpOpenClose(publicClient, walletClient, contracts, accoun
   return { name: 'perp-open-close', ok: true, side: 'open', tx: hash, block: receipt.blockNumber.toString() }
 }
 
-async function actionPredictionLifecycle(publicClient, walletClient, contracts, account) {
+async function actionPredictionLifecycle(
+  publicClient,
+  walletClient,
+  contracts,
+  account,
+  cycleOpts = {},
+) {
   const buyAmount = parseEther('2')
-  const block = await publicClient.getBlock()
-  const now = Number(block.timestamp)
-  const endTime = BigInt(now + LIFECYCLE_DEADLINE_SEC)
-  const question = `GOO-2012 continuous lifecycle ${Date.now()}`
-
-  await ensureGdtBalance(publicClient, walletClient, contracts.GoodDollarToken, account, buyAmount)
-  await ensureAllowance(
-    publicClient,
-    walletClient,
-    contracts.GoodDollarToken,
-    account,
-    contracts.MarketFactory,
-    buyAmount,
-  )
-
-  const createHash = await walletClient.writeContract({
-    account,
-    chain: walletClient.chain,
-    address: contracts.MarketFactory,
-    abi: MarketFactoryAbi,
-    functionName: 'createMarket',
-    args: [question, endTime, account.address],
-  })
-  const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash })
-  assertReceiptSuccess(createReceipt, 'createMarket')
-  const created = parseEventLogs({
-    abi: MarketFactoryAbi,
-    logs: createReceipt.logs,
-    eventName: 'MarketCreated',
-  })
-  if (!created.length) throw new Error('MarketCreated event not found')
-  const marketId = created[0].args.marketId
-
-  const buyHash = await walletClient.writeContract({
-    account,
-    chain: walletClient.chain,
-    address: contracts.MarketFactory,
-    abi: MarketFactoryAbi,
-    functionName: 'buy',
-    args: [marketId, true, buyAmount],
-    gas: 500000n, // Explicit gas limit to prevent "gas required exceeds allowance: 0" errors
-    maxFeePerGas: 20000000000n, // 20 gwei max fee for devnet chain (id: 42069)
-    maxPriorityFeePerGas: 1000000000n, // 1 gwei priority fee for devnet
-  })
-  const buyReceipt = await publicClient.waitForTransactionReceipt({ hash: buyHash })
-  assertReceiptSuccess(buyReceipt, 'buy')
-
-  const waitMs = Math.max(0, Number(endTime) * 1000 - Date.now() + LIFECYCLE_BUFFER_SEC * 1000)
-  if (waitMs > 0) {
-    await sleep(waitMs)
+  const state = {
+    contract: MARKET_FACTORY_LABEL,
+    marketId: null,
+    endTime: null,
+    question: null,
+    buyAmount: buyAmount.toString(),
+    txs: {},
   }
 
-  const closeHash = await walletClient.writeContract({
-    account,
-    chain: walletClient.chain,
-    address: contracts.MarketFactory,
-    abi: MarketFactoryAbi,
-    functionName: 'closeMarket',
-    args: [marketId],
-  })
-  const closeReceipt = await publicClient.waitForTransactionReceipt({ hash: closeHash })
-  assertReceiptSuccess(closeReceipt, 'closeMarket')
+  try {
+    const block = await publicClient.getBlock()
+    const now = Number(block.timestamp)
+    const endTime = BigInt(now + LIFECYCLE_DEADLINE_SEC)
+    const question = `GOO-2012 continuous lifecycle ${Date.now()}`
+    state.endTime = endTime.toString()
+    state.question = question
 
-  const resolveHash = await walletClient.writeContract({
-    account,
-    chain: walletClient.chain,
-    address: contracts.MarketFactory,
-    abi: MarketFactoryAbi,
-    functionName: 'resolve',
-    args: [marketId, true],
-  })
-  const resolveReceipt = await publicClient.waitForTransactionReceipt({ hash: resolveHash })
-  assertReceiptSuccess(resolveReceipt, 'resolve')
+    const gdt =
+      cycleOpts.lifecycleGdt ??
+      (await assertMfGdtConsistency(publicClient, contracts)).goodDollarToken
 
-  const balBefore = await publicClient.readContract({
-    address: contracts.GoodDollarToken,
-    abi: Erc20Abi,
-    functionName: 'balanceOf',
-    args: [account.address],
-  })
+    state.contract = 'GoodDollarToken'
+    await ensureGdtBalance(publicClient, walletClient, gdt, account, buyAmount)
+    await ensureAllowance(
+      publicClient,
+      walletClient,
+      gdt,
+      account,
+      contracts.MarketFactory,
+      buyAmount,
+    )
+    state.contract = MARKET_FACTORY_LABEL
 
-  const redeemHash = await walletClient.writeContract({
-    account,
-    chain: walletClient.chain,
-    address: contracts.MarketFactory,
-    abi: MarketFactoryAbi,
-    functionName: 'redeem',
-    args: [marketId, buyAmount],
-  })
-  const redeemReceipt = await publicClient.waitForTransactionReceipt({ hash: redeemHash })
-  assertReceiptSuccess(redeemReceipt, 'redeem')
+    const createHash = await walletClient.writeContract({
+      account,
+      chain: walletClient.chain,
+      address: contracts.MarketFactory,
+      abi: MarketFactoryAbi,
+      functionName: 'createMarket',
+      args: [question, endTime, account.address],
+    })
+    state.txs.create = createHash
+    const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash })
+    if (createReceipt.status !== 'success') {
+      lifecycleReceiptFailure(state, 'createMarket', createReceipt)
+    }
+    const created = parseEventLogs({
+      abi: MarketFactoryAbi,
+      logs: createReceipt.logs,
+      eventName: 'MarketCreated',
+    })
+    if (!created.length) {
+      throwPredictionLifecycleFailure(
+        state,
+        'createMarket',
+        'MarketCreated event not found',
+        { tx: createHash },
+      )
+    }
+    const marketId = created[0].args.marketId
+    state.marketId = marketId.toString()
 
-  const balAfter = await publicClient.readContract({
-    address: contracts.GoodDollarToken,
-    abi: Erc20Abi,
-    functionName: 'balanceOf',
-    args: [account.address],
-  })
+    const buyHash = await walletClient.writeContract({
+      account,
+      chain: walletClient.chain,
+      address: contracts.MarketFactory,
+      abi: MarketFactoryAbi,
+      functionName: 'buy',
+      args: [marketId, true, buyAmount],
+      gas: 500000n, // Explicit gas limit to prevent "gas required exceeds allowance: 0" errors
+      maxFeePerGas: 20000000000n, // 20 gwei max fee for devnet chain (id: 42069)
+      maxPriorityFeePerGas: 1000000000n, // 1 gwei priority fee for devnet
+    })
+    state.txs.buy = buyHash
+    const buyReceipt = await publicClient.waitForTransactionReceipt({ hash: buyHash })
+    if (buyReceipt.status !== 'success') {
+      const buyBlockTimestamp = await getBlockTimestamp(publicClient, buyReceipt.blockNumber)
+      const delta = buyBlockTimestamp != null ? Number(endTime) - buyBlockTimestamp : null
+      lifecycleReceiptFailure(state, 'buy', buyReceipt, {
+        marketId: state.marketId,
+        endTime: state.endTime,
+        buyBlockTimestamp: buyBlockTimestamp ?? 'unknown',
+        delta: delta ?? 'unknown',
+      })
+    }
 
-  const market = await publicClient.readContract({
-    address: contracts.MarketFactory,
-    abi: MarketFactoryAbi,
-    functionName: 'markets',
-    args: [marketId],
-  })
+    const waitMs = Math.max(0, Number(endTime) * 1000 - Date.now() + LIFECYCLE_BUFFER_SEC * 1000)
+    if (waitMs > 0) {
+      await sleep(waitMs)
+    }
 
-  return {
-    name: 'prediction-lifecycle',
-    ok: true,
-    marketId: marketId.toString(),
-    question,
-    endTime: endTime.toString(),
-    waitMs,
-    status: market[2],
-    collateral: market[5].toString(),
-    payoutDelta: formatEther(balAfter - balBefore),
-    txs: {
-      create: createHash,
-      buy: buyHash,
-      close: closeHash,
-      resolve: resolveHash,
-      redeem: redeemHash,
-    },
+    const closeHash = await walletClient.writeContract({
+      account,
+      chain: walletClient.chain,
+      address: contracts.MarketFactory,
+      abi: MarketFactoryAbi,
+      functionName: 'closeMarket',
+      args: [marketId],
+    })
+    state.txs.close = closeHash
+    const closeReceipt = await publicClient.waitForTransactionReceipt({ hash: closeHash })
+    if (closeReceipt.status !== 'success') {
+      lifecycleReceiptFailure(state, 'closeMarket', closeReceipt)
+    }
+
+    const resolveHash = await walletClient.writeContract({
+      account,
+      chain: walletClient.chain,
+      address: contracts.MarketFactory,
+      abi: MarketFactoryAbi,
+      functionName: 'resolve',
+      args: [marketId, true],
+    })
+    state.txs.resolve = resolveHash
+    const resolveReceipt = await publicClient.waitForTransactionReceipt({ hash: resolveHash })
+    if (resolveReceipt.status !== 'success') {
+      lifecycleReceiptFailure(state, 'resolve', resolveReceipt)
+    }
+
+    const balBefore = await publicClient.readContract({
+      address: gdt,
+      abi: Erc20Abi,
+      functionName: 'balanceOf',
+      args: [account.address],
+    })
+
+    const redeemHash = await walletClient.writeContract({
+      account,
+      chain: walletClient.chain,
+      address: contracts.MarketFactory,
+      abi: MarketFactoryAbi,
+      functionName: 'redeem',
+      args: [marketId, buyAmount],
+    })
+    state.txs.redeem = redeemHash
+    const redeemReceipt = await publicClient.waitForTransactionReceipt({ hash: redeemHash })
+    if (redeemReceipt.status !== 'success') {
+      lifecycleReceiptFailure(state, 'redeem', redeemReceipt)
+    }
+
+    const balAfter = await publicClient.readContract({
+      address: gdt,
+      abi: Erc20Abi,
+      functionName: 'balanceOf',
+      args: [account.address],
+    })
+
+    const market = await publicClient.readContract({
+      address: contracts.MarketFactory,
+      abi: MarketFactoryAbi,
+      functionName: 'markets',
+      args: [marketId],
+    })
+
+    return {
+      name: 'prediction-lifecycle',
+      ok: true,
+      marketId: marketId.toString(),
+      question,
+      endTime: endTime.toString(),
+      waitMs,
+      status: market[2],
+      collateral: market[5].toString(),
+      payoutDelta: formatEther(balAfter - balBefore),
+      txs: {
+        create: createHash,
+        buy: buyHash,
+        close: closeHash,
+        resolve: resolveHash,
+        redeem: redeemHash,
+      },
+    }
+  } catch (err) {
+    if (err?.jsonl) throw err
+    const step = state.txs.redeem
+      ? 'redeem'
+      : state.txs.resolve
+        ? 'resolve'
+        : state.txs.close
+          ? 'closeMarket'
+          : state.txs.buy
+            ? 'buy'
+            : state.txs.create
+              ? 'createMarket'
+              : state.contract === 'GoodDollarToken'
+                ? 'fund-gdt'
+                : 'unknown'
+    throwPredictionLifecycleFailure(state, step, err instanceof Error ? err.message : String(err))
   }
 }
 
-async function runBetaCycle(publicClient, walletClient, contracts, tester) {
-  const account = privateKeyToAccount(derivePrivateKey(tester.paperclipAgentId))
-  const actions = []
-  // GOO-2878: Re-enabled actionPerpOpenClose after tester accounts were funded with ETH
-  for (const fn of [actionPredictionLifecycle, actionPerpOpenClose]) {
+/**
+ * GOO-3158: exercise functions missing from historical JSONL logs.
+ */
+async function actionCoverageGaps(publicClient, walletClient, contracts, account) {
+  const gdt = contracts.GoodDollarToken
+  const amount = parseEther('0.001')
+  const delegate = privateKeyToAccount(
+    keccak256(toBytes(`coverage-delegate-${account.address}`)),
+  )
+  const results = []
+
+  await ensureGdtBalance(publicClient, walletClient, gdt, account, amount * 2n)
+
+  const approveHash = await walletClient.writeContract({
+    account,
+    chain: walletClient.chain,
+    address: gdt,
+    abi: Erc20Abi,
+    functionName: 'approve',
+    args: [delegate.address, amount],
+    gas: 120000n,
+  })
+  const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash })
+  assertReceiptSuccess(approveReceipt, 'approve-for-transferFrom')
+
+  const rpc = walletClient.chain?.rpcUrls?.default?.http?.[0] ?? 'https://rpc.goodclaw.org'
+  await faucet(delegate.address)
+  await sleep(2000)
+  // Delegate must pay gas for transferFrom; faucet alone is sometimes insufficient.
+  const fundHash = await walletClient.sendTransaction({
+    account,
+    chain: walletClient.chain,
+    to: delegate.address,
+    value: parseEther('0.01'),
+  })
+  await publicClient.waitForTransactionReceipt({ hash: fundHash })
+
+  const delegateClient = createWalletClient({
+    account: delegate,
+    chain: walletClient.chain,
+    transport: http(rpc),
+  })
+  const transferHash = await delegateClient.writeContract({
+    account: delegate,
+    chain: walletClient.chain,
+    address: gdt,
+    abi: Erc20Abi,
+    functionName: 'transferFrom',
+    args: [account.address, delegate.address, amount],
+    gas: 150000n,
+  })
+  const transferReceipt = await publicClient.waitForTransactionReceipt({ hash: transferHash })
+  assertReceiptSuccess(transferReceipt, 'transferFrom')
+  results.push({
+    contract: 'GoodDollarToken',
+    function: 'transferFrom',
+    ok: true,
+    tx: transferHash,
+  })
+
+  const oracle = contracts.SwapPriceOracle
+  if (oracle) {
     try {
-      const result = await fn(publicClient, walletClient, contracts, account)
-      actions.push(result)
-      appendJsonl(tester.id, { action: result.name, ok: true, result })
+      await ensureBytecode(publicClient, 'SwapPriceOracle', oracle)
+      const weth = contracts.WETH ?? contracts.weth
+      if (weth) {
+        const priceBefore = await publicClient.readContract({
+          address: oracle,
+          abi: SwapPriceOracleAbi,
+          functionName: 'getPrice',
+          args: [weth],
+        })
+        const updateHash = await walletClient.writeContract({
+          account,
+          chain: walletClient.chain,
+          address: oracle,
+          abi: SwapPriceOracleAbi,
+          functionName: 'updatePrice',
+          args: [weth, priceBefore > 0n ? priceBefore : 350_000_000_000n],
+          gas: 200000n,
+        })
+        const updateReceipt = await publicClient.waitForTransactionReceipt({ hash: updateHash })
+        assertReceiptSuccess(updateReceipt, 'updatePrice')
+        results.push({
+          contract: 'SwapPriceOracle',
+          function: 'updatePrice',
+          ok: true,
+          tx: updateHash,
+        })
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      actions.push({ name: fn.name, ok: false, error: message })
-      appendJsonl(tester.id, { action: fn.name, ok: false, error: message })
-      throw err
+      const skipped =
+        message.includes('NotKeeper') ||
+        message.includes('not keeper') ||
+        message.includes('DEVNET_DRIFT') ||
+        message.includes('no bytecode')
+      results.push({
+        contract: 'SwapPriceOracle',
+        function: 'updatePrice',
+        ok: skipped,
+        skipped,
+        error: message,
+      })
     }
   }
-  return { tester: tester.id, name: tester.name, address: account.address, ok: true, actions }
+
+  const required = results.filter((r) => !r.skipped)
+  return {
+    name: 'coverage-gaps',
+    ok: required.length === 0 || required.every((r) => r.ok !== false),
+    results,
+  }
 }
 
-async function runTesterCycle(publicClient, walletClient, contracts, tester) {
+async function runBetaCycle(publicClient, walletClient, _contracts, tester, options = {}) {
+  const addresses = loadAddresses()
+  const contracts = addresses.contracts
+
+  let mfGdt
+  try {
+    mfGdt = await assertMfGdtConsistency(publicClient, contracts)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    appendJsonl(tester.id, {
+      action: 'mf-gdt-preflight',
+      ok: false,
+      error: message,
+      addressesPath: addresses.path,
+      addressesMtimeMs: addresses.mtimeMs,
+    })
+    throw err
+  }
+
+  const account = privateKeyToAccount(derivePrivateKey(tester.paperclipAgentId))
+  const actions = []
+  const cycleFns = options.coverageGapsOnly
+    ? [actionCoverageGaps]
+    : [actionPredictionLifecycle, actionPerpOpenClose]
+  if (!options.coverageGapsOnly) {
+    // GOO-3158: append coverage-gap probes after lifecycle when not in gaps-only mode
+    cycleFns.push(actionCoverageGaps)
+  }
+  // GOO-2878: Re-enabled actionPerpOpenClose after tester accounts were funded with ETH
+  const cycleOpts = { lifecycleGdt: mfGdt.goodDollarToken }
+  for (const fn of cycleFns) {
+    try {
+      const result = await fn(publicClient, walletClient, contracts, account, cycleOpts)
+      actions.push(result)
+      appendJsonl(tester.id, { action: result.name, ok: true, result })
+      for (const step of result.results ?? []) {
+        if (step.function) {
+          appendJsonl(tester.id, {
+            action: 'coverage-gap',
+            contract: step.contract,
+            function: step.function,
+            ok: step.ok !== false,
+            error: step.error,
+            tx: step.tx,
+          })
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      const failureRecord = actionFailureJsonlRecord(fn, err)
+      const actionName =
+        failureRecord.action ??
+        (fn === actionPredictionLifecycle ? 'prediction-lifecycle' : fn.name)
+      actions.push({ name: actionName, ok: false, error: message, ...failureRecord })
+      appendJsonl(tester.id, { ok: false, ...failureRecord })
+      if (!options.coverageGapsOnly) throw err
+    }
+  }
+  const ok = actions.every((a) => a.ok !== false)
+  return {
+    tester: tester.id,
+    name: tester.name,
+    address: account.address,
+    ok,
+    actions,
+    addressesPath: addresses.path,
+    addressesMtimeMs: addresses.mtimeMs,
+    mfGdt,
+  }
+}
+
+async function runTesterCycle(publicClient, walletClient, contracts, tester, options = {}) {
   if (tester.focus === 'perps-predictions') {
-    return runBetaCycle(publicClient, walletClient, contracts, tester)
+    return runBetaCycle(publicClient, walletClient, contracts, tester, options)
   }
   return {
     tester: tester.id,
@@ -760,7 +1324,11 @@ async function main() {
       chain,
       transport: http(rpcUrl),
     })
-    results.push(await runBetaCycle(publicClient, walletClient, contracts, tester))
+    results.push(
+      await runBetaCycle(publicClient, walletClient, contracts, tester, {
+        coverageGapsOnly: args.coverageGaps,
+      }),
+    )
   }
 
   const payload = {

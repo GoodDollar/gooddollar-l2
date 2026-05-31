@@ -52,6 +52,7 @@ test.describe('Feedback button — pipeline', () => {
     })
 
     await page.goto('/faucet')
+    await page.waitForLoadState('networkidle')
 
     // The floating button is fixed to the viewport — make sure it exists
     // before clicking. We use the dedicated testid added in iter 29.
@@ -74,8 +75,18 @@ test.describe('Feedback button — pipeline', () => {
     await submit.click()
 
     // The component flips to the thank-you panel only on a 200 response, so
-    // this also covers the success-state UX.
-    await expect(page.getByTestId('feedback-sent')).toBeVisible()
+    // this also covers the success-state UX. Poll so React state settles after
+    // the intercepted POST resolves (shared context / hydration flake).
+    await expect
+      .poll(
+        async () => page.getByTestId('feedback-sent').isVisible(),
+        {
+          timeout: 15_000,
+          message: 'feedback-sent success panel should appear after successful POST',
+          intervals: [100, 250, 500],
+        },
+      )
+      .toBe(true)
 
     // Sanity-check the intercepted payload.
     expect(captured).not.toBeNull()

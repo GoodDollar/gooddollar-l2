@@ -34,7 +34,7 @@ import "../src/stocks/SyntheticAssetFactory.sol";
  *
  *   Environment variables:
  *     PRIVATE_KEY           — deployer private key (required)
- *     GOOD_DOLLAR_TOKEN     — G$ token address (required)
+ *     GOOD_DOLLAR_TOKEN     — G$ token address (required; falls back to the standard `GDT` env symbol emitted by scripts/refresh-addresses.py)
  *     UBI_FEE_SPLITTER      — UBIFeeSplitter address (required)
  *     USE_CHAINLINK_FEEDS   — set to "true" on mainnets to use real feeds
  */
@@ -93,8 +93,11 @@ contract DeployGoodStocks is Script {
         );
         address deployer    = vm.addr(deployerKey);
         address gdToken     = vm.envOr("GOOD_DOLLAR_TOKEN", address(0));
+        if (gdToken == address(0)) {
+            gdToken = vm.envOr("GDT", address(0));
+        }
         address feeSplitter = vm.envOr("UBI_FEE_SPLITTER",  address(0));
-        require(gdToken     != address(0), "Set GOOD_DOLLAR_TOKEN env var");
+        require(gdToken     != address(0), "Set GOOD_DOLLAR_TOKEN or GDT env var");
         require(feeSplitter != address(0), "Set UBI_FEE_SPLITTER env var");
         bool useChainlink   = vm.envOr("USE_CHAINLINK_FEEDS", false);
 

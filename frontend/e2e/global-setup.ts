@@ -15,7 +15,13 @@ export default async function globalSetup() {
     // Kill stale chromium/playwright processes left from a previous run.
     // Using SIGTERM first so they flush if possible; errors are expected in a
     // clean environment (no matching processes) — suppress them.
-    execSync('pkill -f "playwright.*chrome" || true', { stdio: 'ignore' })
+    // Target Playwright-managed browser binaries only. Do NOT use
+    // `playwright.*chrome` — it matches the test runner CLI when
+    // `--project=mobile-chrome` is set and SIGTERM-kills the suite (GOO-3225).
+    execSync(
+      'pkill -f "ms-playwright/chromium-.*/chrome-linux/chrome" || true',
+      { stdio: 'ignore' },
+    )
     execSync('pkill -f "chrome.*--type=zygote" || true', { stdio: 'ignore' })
   } catch {
     // pkill exits non-zero when no processes match — that's fine.

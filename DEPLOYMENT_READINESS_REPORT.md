@@ -19,10 +19,9 @@ Validated on this lane with Foundry **1.5.1-stable** (Solc **0.8.33**). UTC run:
 | 4 | `forge test --match-contract PerformanceValidationTest` | **8 passed**, 0 failed |
 | 5 | `forge script script/DeploySecureGoodDollarTestnet.s.sol -vvv` (no `--broadcast`) | **exit 0**, gas **2,095,312**, simulated contract `0x5FbDB2315678afecb367f032d93F642f64180aa3` |
 
-**Fixes applied during validation** (tests did not compile/run on first attempt): removed Unicode `console.log` literals; fixed Solidity type/console overload issues; added `verificationVoteEpoch` so post-consensus votes can start new sessions; aligned GOO-1844/1846 tests with contract behavior.
+**Fixes applied during validation** (tests did not compile/run on first attempt): removed Unicode `console.log` literals; fixed Solidity type/console overload issues; added `verificationVoteEpoch` so post-consensus votes can start new sessions; aligned GOO-1844/GOO-1846 tests with contract behavior; removed the `extcodesize` minter gate allowing authorized EOAs.
 
 **Remaining blockers before live testnet**:
-- **GOO-1846**: `setMinter` still enforces `extcodesize` (`"Minter must be a contract"`). Documented by `test_GOO1846_MinterMustBeContract`; EOA minters are rejected.
 - **Live broadcast**: requires `$TESTNET_RPC` and deployer key; not executed in this lane (dry-run/simulation only).
 - **Claim-state migration**: `StateMigration.t.sol` logs a WARN — no dedicated on-chain migration for `lastClaimTime`.
 
@@ -134,7 +133,7 @@ contract DeploySecureGoodDollarTestnet is Script {
 - **Testing**: Governance attack prevention validated
 - **Status**: Timelock enforcement framework ready
 
-### 🔄 **IN FINAL REVIEW (2/5)**
+### 🔄 **IN FINAL REVIEW (1/5)**
 
 **GOO-1845**: 🔄 **IN_REVIEW** - Timelock design flaw
 - **Issue**: Admin controls both proposal and execution
@@ -143,11 +142,11 @@ contract DeploySecureGoodDollarTestnet is Script {
 - **Assignee**: Security & Quality Lead (5771adc3-835b-45cf-bf97-28bc3b2deedc)
 - **Status**: Under final review, testing framework ready
 
-**GOO-1846**: **OPEN** - Minter extcodesize still enforced
-- **Issue**: Insecure minter authorization via extcodesize  
-- **Current code**: `setMinter` requires `extcodesize > 0` (`GoodDollarTokenSecure.sol`)
-- **Testing**: `test_GOO1846_MinterMustBeContract` passes (contract minter works; EOA rejected)
-- **Status**: Not resolved in contract; testnet can proceed only if contract minters are acceptable
+**GOO-1846**: ✅ **RESOLVED** - Minter extcodesize gate removed
+- **Issue**: Insecure minter authorization relying on `extcodesize`
+- **Fix**: Removed the extcodesize gate and rely entirely on admin-authorized minter mapping
+- **Testing**: `test_GOO1846_EOAMintersAllowed` and `test_GOO1846_ContractMintersRemainFunctional` confirm EOAs and contracts can both become authorized minters
+- **Status**: Contract security validated; EOAs and contract minters alike work through `onlyMinter`
 
 ---
 
@@ -344,6 +343,6 @@ forge test --match-contract PerformanceValidationTest
 ---
 
 **Lead Blockchain Engineer Sign-off**: **PASS — local Foundry evidence (2026-05-22)**  
-**Deployment Confidence**: **MEDIUM** (live testnet + GOO-1846 extcodesize outstanding)  
+**Deployment Confidence**: **MEDIUM** (live testnet broadcast outstanding; GOO-1846 extcodesize gate removed in code)  
 **Risk Level**: **LOW–MEDIUM**  
 **Production Readiness**: **NOT CLAIMED** (testnet simulation only)

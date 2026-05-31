@@ -5,16 +5,18 @@
  * so RainbowKit's `injectedWallet` connector picks it up automatically.
  * Also announces the provider via EIP-6963 so modern multi-wallet discovery
  * code can detect the same mock without depending on legacy globals alone.
- * All JSON-RPC requests are proxied to the Anvil devnet RPC.
+ * Browser txs use `/api/rpc` (proxied to public devnet). Direct viem clients use `RPC_URL`.
  */
 
 import { type Page } from '@playwright/test'
+import addresses from '../../../op-stack/addresses.json'
 
 const TESTER_PRIVATE_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
 const TESTER_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
-const CHAIN_ID = 42069
-const RPC_URL = 'http://127.0.0.1:8545'
+const CHAIN_ID = addresses.chain_id
+/** Must match `/api/rpc` upstream (public devnet). Local :8545 often has no deployed bytecode. */
+const RPC_URL = process.env.E2E_RPC_URL ?? addresses.rpc_url
 const BROWSER_RPC_URL = '/api/rpc'
 
 /**

@@ -158,7 +158,7 @@ async function rejectInvalidFaucetRecipient(
     if (typeof address !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
       return NextResponse.json({ error: 'Invalid address' }, { status: 400 })
     }
-    if (!isClaimableFaucetAddress(address)) {
+    if (!(await isClaimableFaucetAddress(address))) {
       return NextResponse.json(
         { error: 'Invalid or unsupported recipient' },
         { status: 400 },
@@ -184,7 +184,7 @@ async function handlePost(request: NextRequest) {
     if (typeof address !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
       throw new FaucetBadRequestError('Invalid address')
     }
-    if (!isClaimableFaucetAddress(address)) {
+    if (!(await isClaimableFaucetAddress(address))) {
       throw new FaucetBadRequestError('Invalid or unsupported recipient')
     }
 

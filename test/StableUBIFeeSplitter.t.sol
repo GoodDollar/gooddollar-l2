@@ -691,6 +691,8 @@ contract MockGoodDollarToken is IGoodDollarToken {
         return 0;
     }
 
+    function recordClaim(address) external {}
+
     // Minimal implementation of other IGoodDollarToken methods
     function burn(uint256 amount) external {}
     function transferOwnership(address newOwner) external {}

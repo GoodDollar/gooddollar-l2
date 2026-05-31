@@ -3,7 +3,7 @@
 ## Executive Summary
 
 **Status**: **PASS — local Foundry (2026-05-22)**; live testnet broadcast **not run**  
-**Security Level**: HIGH (with GOO-1846 caveat)  
+**Security Level**: HIGH (GOO-1846 resolved — EOA minters allowed by policy)  
 **Risk Assessment**: LOW–MEDIUM  
 **Deployment Recommendation**: Approved for **simulated** testnet script; live broadcast needs RPC/key  
 
@@ -54,15 +54,16 @@ This checklist validates that GoodDollarTokenSecure addresses all 5 critical sec
 - ✅ Timelock delays enforced for critical changes
 - ✅ Non-critical parameters can be updated immediately by admin
 
-### ⚠️ GOO-1846: Minter Extcodesize Bypass (OPEN)
+### ✅ GOO-1846: Minter Extcodesize Bypass (RESOLVED)
 
-**Issue**: Insecure minter authorization relying on extcodesize check  
-**Current code**: `setMinter` still requires a contract (`extcodesize > 0`)  
+**Issue**: Insecure minter authorization relying on `extcodesize` contract check  
+**Fix**: Remove the extcodesize gate and rely on admin-authorized minter mapping
 
-**Validation Results** (Foundry 2026-05-22):
-- ✅ Contract minter can mint (`test_GOO1846_MinterMustBeContract`)
-- ❌ EOA minter rejected with `"Minter must be a contract"`
-- **Blocker**: Remove or replace extcodesize check before claiming GOO-1846 resolved
+**Validation Results** (Foundry 2026-05-22; QA re-run GOO-3191 on 2026-05-30):
+- ✅ EOAs can now be authorized as minters (`test_GOO1846_EOAMintersAllowed`)
+- ✅ Contract minters continue to operate (`test_GOO1846_ContractMintersRemainFunctional`)
+- ✅ Unauthorized callers still revert via `onlyMinter`, preserving access control
+- ✅ Independent QA sign-off: `GoodDollarTokenSecure.setMinter` has no `extcodesize` gate (admin mapping only)
 
 ---
 
@@ -230,7 +231,7 @@ forge script script/DeploySecureGoodDollarTestnet.s.sol -vvv  # exit 0, no --bro
 
 ### Conditional approval
 
-**Security Status**: GOO-1842–1845 covered by passing tests; **GOO-1846 open** (extcodesize minter check)  
+**Security Status**: GOO-1842–1846 covered by passing tests (GOO-1846: extcodesize gate removed; EOA minters allowed)  
 **Testing Status**: 34/34 tests pass in the four suites above (Foundry 1.5.1-stable / Solc 0.8.33)  
 **Performance Status**: Gas assertions pass in `PerformanceValidation.t.sol`  
 **Migration Status**: Human/UBI migration tests pass; claim-time migration not implemented on-chain  
@@ -239,7 +240,7 @@ forge script script/DeploySecureGoodDollarTestnet.s.sol -vvv  # exit 0, no --bro
 
 1. Run live testnet deploy: `forge script script/DeploySecureGoodDollarTestnet.s.sol --rpc-url $TESTNET_RPC --broadcast` (with approved key)
 2. Re-run the four `forge test` gates after deploy if integrating with live addresses
-3. Resolve GOO-1846 extcodesize policy before production
+3. Confirm minter allowlist / operational policy for production minters (GOO-1846 code fix merged)
 4. Add admin migration for `lastClaimTime` if claim-state portability is required
 
 **Deployment Risk Level**: **LOW–MEDIUM**  

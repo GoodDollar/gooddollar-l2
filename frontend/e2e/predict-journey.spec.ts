@@ -131,11 +131,20 @@ test.describe('Predict Journey', () => {
 
     await expect(page.locator('h1', { hasText: 'Prediction Markets' })).toBeVisible({ timeout: 10_000 })
 
-    const volText = page.locator('text=Vol.').first()
-    await expect(volText).toBeVisible()
+    // Markets hydrate async; YES buttons prove cards rendered before metric assertions.
+    await expect(page.locator('button[aria-label^="Buy YES"]').first()).toBeVisible({
+      timeout: 15_000,
+    })
 
-    const liqText = page.locator('text=liquidity').first()
-    await expect(liqText).toBeVisible()
+    // Featured hero always labels all-time volume "Vol."; grid cards with 24h stats show "24h" instead.
+    const volumeLabel = page
+      .locator('text=Vol.')
+      .or(page.locator('text=24h'))
+      .or(page.locator('text=all-time'))
+      .first()
+    await expect(volumeLabel).toBeVisible()
+
+    await expect(page.locator('text=liquidity').first()).toBeVisible()
   })
 
   test('clicking YES on a market navigates to detail page', async ({ page }) => {

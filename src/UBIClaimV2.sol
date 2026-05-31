@@ -163,6 +163,7 @@ contract UBIClaimV2 is ReentrancyGuard {
             }
             lastClaimEpoch[user] = epoch + 1;
             goodDollar.mint(user, amount);
+            goodDollar.recordClaim(user);
             batchTotal += amount;
             unchecked { claimed++; }
             emit UBIClaimed(user, amount, epoch);
@@ -194,6 +195,7 @@ contract UBIClaimV2 is ReentrancyGuard {
 
         uint256 amount = goodDollar.dailyUBIAmount();
         goodDollar.mint(user, amount);
+        goodDollar.recordClaim(user);
 
         unchecked {
             totalClaims++;

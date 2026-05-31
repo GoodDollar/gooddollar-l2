@@ -28,7 +28,55 @@
  * All comparisons are case-insensitive.
  */
 
-import { isAddress } from 'viem'
+import { isAddress, createPublicClient, http, defineChain } from 'viem'
+import { DEVNET_CHAIN_ID, DEVNET_RPC_URL } from './devnet'
+
+const goodDollarL2 = defineChain({
+  id: DEVNET_CHAIN_ID,
+  name: 'GoodDollar L2 Devnet',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: [DEVNET_RPC_URL] },
+    public: { http: [DEVNET_RPC_URL] },
+  },
+})
+
+let publicClient: ReturnType<typeof createPublicClient> | null = null
+
+function getPublicClient() {
+  if (!publicClient && typeof window === 'undefined') {
+    // Only create client on server side to avoid issues in browser
+    publicClient = createPublicClient({
+      chain: goodDollarL2,
+      transport: http(DEVNET_RPC_URL),
+    })
+  }
+  return publicClient
+}
+
+/**
+ * Check if an address has contract bytecode. Returns false if unable to check
+ * (e.g., on client side or RPC error).
+ */
+async function isContractAddress(address: string): Promise<boolean> {
+  // Skip contract check on client side
+  if (typeof window !== 'undefined') {
+    return false
+  }
+
+  try {
+    const client = getPublicClient()
+    if (!client) return false
+
+    const bytecode = await client.getCode({ address: address as `0x${string}` })
+    return bytecode !== undefined && bytecode !== '0x'
+  } catch (error) {
+    // If we can't check, err on the side of caution and allow the address
+    // The actual token transfer will fail later if it's problematic
+    console.warn('[addressGuard] Failed to check contract status for', address, error)
+    return false
+  }
+}
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const DEAD_ADDRESS_SHORT = '0x000000000000000000000000000000000000dead'
@@ -95,7 +143,33 @@ const CONTRACT_DENY_LIST = loadContractDenyList()
  * not in the burn / contract deny-list. Safe to call from both client and
  * server with arbitrary input.
  */
-export function isClaimableFaucetAddress(addr: unknown): boolean {
+export async function isClaimableFaucetAddress(addr: unknown): Promise<boolean> {
+  if (typeof addr !== 'string' || addr.length !== 42) return false
+  if (!isAddress(addr, { strict: false })) return false
+
+  const lower = addr.toLowerCase()
+
+  if (STATIC_DENY_LIST.has(lower)) return false
+  if (CONTRACT_DENY_LIST.has(lower)) return false
+
+  // Catch close variants where only the last 20 hex characters are all-zero
+  // or all-`f` (e.g. anything ending in `…00000000000000000000` or
+  // `…ffffffffffffffffffff`). The first two hex chars (`0x`) are skipped.
+  const tail = lower.slice(-20)
+  if (/^0{20}$/.test(tail)) return false
+  if (/^f{20}$/.test(tail)) return false
+
+  // Check if the address is a contract (has bytecode)
+  if (await isContractAddress(addr)) return false
+
+  return true
+}
+
+/**
+ * Synchronous version for client-side usage where contract detection is not available.
+ * Only checks static deny lists and patterns.
+ */
+export function isClaimableFaucetAddressSync(addr: unknown): boolean {
   if (typeof addr !== 'string' || addr.length !== 42) return false
   if (!isAddress(addr, { strict: false })) return false
 
@@ -120,8 +194,17 @@ export function isClaimableFaucetAddress(addr: unknown): boolean {
  */
 export type FaucetAddressStatus = 'ok' | 'invalid' | 'unsupported'
 
-export function getFaucetAddressStatus(addr: string): FaucetAddressStatus {
+export async function getFaucetAddressStatus(addr: string): Promise<FaucetAddressStatus> {
   if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) return 'invalid'
-  if (!isClaimableFaucetAddress(addr)) return 'unsupported'
+  if (!(await isClaimableFaucetAddress(addr))) return 'unsupported'
+  return 'ok'
+}
+
+/**
+ * Synchronous version for client-side usage where contract detection is not available.
+ */
+export function getFaucetAddressStatusSync(addr: string): FaucetAddressStatus {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) return 'invalid'
+  if (!isClaimableFaucetAddressSync(addr)) return 'unsupported'
   return 'ok'
 }

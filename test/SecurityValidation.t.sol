@@ -181,20 +181,28 @@ contract SecurityValidationTest is Test {
 
     // ============ GOO-1846: Minter Extcodesize Bypass ============
 
-    function test_GOO1846_MinterMustBeContract() public {
+    function test_GOO1846_EOAMintersAllowed() public {
         vm.prank(admin);
-        vm.expectRevert("Minter must be a contract");
         token.setMinter(attacker, true);
 
+        vm.prank(attacker);
+        token.mint(attacker, 100 ether);
+
+        assertEq(token.balanceOf(attacker), 100 ether);
+        console.log("[PASS] GOO-1846: EOAs can be authorized minters");
+    }
+
+    function test_GOO1846_ContractMintersRemainFunctional() public {
         MockMinter minter = new MockMinter();
+
         vm.prank(admin);
         token.setMinter(address(minter), true);
 
         vm.prank(address(minter));
-        token.mint(attacker, 100 ether);
+        token.mint(attacker, 50 ether);
 
-        assertEq(token.balanceOf(attacker), 100 ether);
-        console.log("[PASS] GOO-1846: Minter authorization requires contract minter");
+        assertEq(token.balanceOf(attacker), 50 ether);
+        console.log("[PASS] GOO-1846: Contract minters continue to operate");
     }
 
     // ============ Comprehensive Attack Simulation ============

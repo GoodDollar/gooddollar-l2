@@ -246,6 +246,15 @@ contract GoodDollarTokenSecure is ReentrancyGuard {
         return (amount * UBI_FEE_BPS) / 10000;
     }
 
+    /**
+     * @notice Record that a verified human claimed UBI via an external contract.
+     * @param account Address whose claim timestamp should be refreshed.
+     */
+    function recordClaim(address account) external onlyMinter {
+        if (account == address(0)) revert HumanAddressCannotBeZero();
+        lastClaimTime[account] = block.timestamp;
+    }
+
     // ============ Secure Identity Management ============
 
     /**
@@ -473,11 +482,6 @@ contract GoodDollarTokenSecure is ReentrancyGuard {
 
     function setMinter(address minter, bool authorized) external onlyAdmin {
         require(minter != address(0), "Minter cannot be zero address");
-        if (authorized) {
-            uint256 size;
-            assembly { size := extcodesize(minter) }
-            require(size > 0, "Minter must be a contract");
-        }
         minters[minter] = authorized;
         emit MinterSet(minter, authorized);
     }

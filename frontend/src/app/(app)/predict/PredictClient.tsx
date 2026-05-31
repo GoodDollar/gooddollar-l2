@@ -217,7 +217,7 @@ function MarketCard({ market }: { market: PredictionMarket }) {
               {formatVolume(market.volume24h ?? 0)} 24h
               <MomentumArrow direction={arrowDir} />
             </span>
-            <span className="text-[10px] text-gray-500">{formatVolume(market.volume)} all-time</span>
+            <span className="text-[10px] text-gray-500">{formatVolume(market.volume)} Vol. all-time</span>
           </div>
         ) : (
           <span className="text-xs font-bold text-white/80">{formatVolume(market.volume)} Vol.</span>

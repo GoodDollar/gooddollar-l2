@@ -14,4 +14,6 @@ interface IGoodDollarToken {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
     function transfer(address to, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
+    /// @notice Record that `account` claimed UBI at the current block timestamp.
+    function recordClaim(address account) external;
 }

@@ -66,6 +66,31 @@ contract UBIClaimV2Test is Test {
         assertEq(token.balanceOf(alice), DAILY);
     }
 
+    function test_SelfClaim_RecordsTokenLastClaimTime() public {
+        vm.prank(alice);
+        claimContract.claim();
+
+        assertEq(token.lastClaimTime(alice), block.timestamp);
+    }
+
+    function test_RelayerClaim_RecordsTokenLastClaimTime() public {
+        vm.prank(relayer);
+        claimContract.claimFor(bob);
+
+        assertEq(token.lastClaimTime(bob), block.timestamp);
+    }
+
+    /// @dev Regression for GOO-2812: UBIClaimV2 mint must sync token lastClaimTime so claimUBI cannot double-pay.
+    function test_UBIClaimV2ThenClaimUBI_SameEpoch_Reverts() public {
+        vm.prank(alice);
+        claimContract.claim();
+        assertEq(token.balanceOf(alice), DAILY);
+
+        vm.prank(alice);
+        vm.expectRevert("Already claimed today");
+        token.claimUBI();
+    }
+
     function test_ClaimFor_UnauthorizedRelayer_Reverts() public {
         vm.expectRevert(UBIClaimV2.NotAuthorizedRelayer.selector);
         vm.prank(alice);
@@ -148,6 +173,18 @@ contract UBIClaimV2Test is Test {
         assertEq(token.balanceOf(alice), DAILY);
         assertEq(token.balanceOf(bob), DAILY);
         assertEq(claimContract.totalClaims(), 2);
+    }
+
+    function test_BatchClaim_RecordsTokenLastClaimTimes() public {
+        address[] memory users = new address[](2);
+        users[0] = alice;
+        users[1] = bob;
+
+        vm.prank(relayer);
+        claimContract.batchClaim(users);
+
+        assertEq(token.lastClaimTime(alice), block.timestamp);
+        assertEq(token.lastClaimTime(bob), block.timestamp);
     }
 
     function test_BatchClaim_SkipsUnverified() public {

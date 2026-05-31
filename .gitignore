@@ -129,6 +129,7 @@ frontend/tsconfig.tsbuildinfo
 # Local generated review artifacts
 frontend/.next.review/
 frontend/.next.e2e.stale-*/
+frontend/.next.runtime-dev/
 docs/screenshots/*.png
 scripts/paperclip-continuous-testers.mjs
 

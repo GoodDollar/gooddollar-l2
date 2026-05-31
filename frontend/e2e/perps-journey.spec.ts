@@ -3,6 +3,11 @@ import { injectMockWallet, TESTER_ADDRESS } from './fixtures'
 import { publicClient, walletClient } from './fixtures/chain'
 import { CONTRACTS } from '../src/lib/devnet'
 import { PerpEngineABI } from '../src/lib/abi'
+import {
+  ensurePerpFeeSplitterConfigured,
+  waitForOpenPositionSettled,
+  waitForPerpsOrderFormSettled,
+} from './helpers/perps-settled'
 
 test.describe('Perps Journey', () => {
   test.beforeEach(async ({ page }) => {
@@ -152,17 +157,22 @@ test.describe('Perps Journey', () => {
   })
 
   test('entering size enables submit when the connected wallet can auto-fund margin', async ({ page }) => {
-    await page.goto('/perps')
-    await page.waitForLoadState('networkidle')
+    test.setTimeout(90_000)
 
-    await expect(page.locator('h1', { hasText: 'Perpetual Futures' })).toBeVisible({ timeout: 10_000 })
+    await page.goto('/perps', { waitUntil: 'domcontentloaded' })
 
-    const sizeInput = page.locator('input[inputmode="decimal"]').first()
-    await sizeInput.fill('0.01')
-    await page.waitForTimeout(1000)
+    await expect(page.locator('h1', { hasText: 'Perpetual Futures' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(/0xf3…2266/i)).toBeVisible({ timeout: 15_000 })
 
-    const submitButton = page.getByRole('button', { name: /^Long BTC$/ })
-    await expect(submitButton).toBeVisible()
+    const sizeInput = page.locator('label', { hasText: /^Size / }).locator('..').locator('input[inputmode="decimal"]')
+    await expect(sizeInput).toBeVisible({ timeout: 15_000 })
+    await sizeInput.click()
+    await sizeInput.fill('')
+    await sizeInput.pressSequentially('0.01', { delay: 50 })
+
+    await waitForPerpsOrderFormSettled(page)
+
+    const submitButton = page.locator('button[type="submit"]').filter({ hasText: /Long|Short/ })
     await expect(submitButton).toBeEnabled()
   })
 
@@ -286,6 +296,7 @@ test.describe('Perps full on-chain flow', () => {
   test.setTimeout(120_000)
 
   test.beforeEach(async ({ page }) => {
+    await ensurePerpFeeSplitterConfigured()
     await injectMockWallet(page)
     await closeTesterPerpPositions()
   })
@@ -295,8 +306,7 @@ test.describe('Perps full on-chain flow', () => {
   })
 
   test('opens a real market position through the UI with auto margin deposit', async ({ page }) => {
-    await page.goto('/perps')
-    await page.waitForLoadState('networkidle')
+    await page.goto('/perps', { waitUntil: 'domcontentloaded' })
 
     await expect(page.locator('h1', { hasText: 'Perpetual Futures' })).toBeVisible({ timeout: 15_000 })
 
@@ -313,24 +323,18 @@ test.describe('Perps full on-chain flow', () => {
     await expect(page.getByText('Notional', { exact: true })).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText('Margin', { exact: true }).first()).toBeVisible()
 
-    const submit = page.locator('button[type="submit"]').filter({ hasText: /Long|Short/ })
-    await expect(submit).toBeVisible()
-    await expect(submit).toBeEnabled({ timeout: 10_000 })
+    await waitForPerpsOrderFormSettled(page)
 
+    const submit = page.locator('button[type="submit"]').filter({ hasText: /Long|Short/ })
     await submit.click()
 
     await expect(page.getByText(/Approving|Confirming|Order Placed!/)).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText('Order Placed!')).toBeVisible({ timeout: 90_000 })
 
-    await expect.poll(async () => {
+    await waitForOpenPositionSettled(page, async () => {
       const positions = await readOpenTesterPositions()
       return positions.some((position) => position.isOpen && position.size > 0n)
-    }, { timeout: 90_000 }).toBe(true)
-
-    const openPositionsPanel = page.getByTestId('open-positions-panel')
-    await expect(openPositionsPanel.getByRole('heading', { name: 'Open Positions' })).toBeVisible()
-    await expect(openPositionsPanel.getByText('No open positions')).not.toBeVisible({ timeout: 30_000 })
-    await expect(openPositionsPanel.getByText(/LONG \d+x|SHORT \d+x/)).toBeVisible({ timeout: 15_000 })
+    })
   })
 })
 

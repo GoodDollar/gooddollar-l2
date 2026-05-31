@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useAccount } from 'wagmi'
 import { AddNetworkButton } from '@/components/AddNetworkButton'
-import { getFaucetAddressStatus, isClaimableFaucetAddress } from '@/lib/addressGuard'
+import { getFaucetAddressStatusSync, isClaimableFaucetAddressSync } from '@/lib/addressGuard'
 
 export default function FaucetClient() {
   const { address: connectedAddr } = useAccount()
@@ -13,10 +13,10 @@ export default function FaucetClient() {
   const [errorMsg, setErrorMsg] = useState('')
 
   const effectiveAddr = address || connectedAddr || ''
-  const addrStatus = effectiveAddr ? getFaucetAddressStatus(effectiveAddr) : 'invalid'
+  const addrStatus = effectiveAddr ? getFaucetAddressStatusSync(effectiveAddr) : 'invalid'
 
   const claim = useCallback(async () => {
-    if (!isClaimableFaucetAddress(effectiveAddr)) return
+    if (!isClaimableFaucetAddressSync(effectiveAddr)) return
     setStatus('loading')
     setTxHashes([])
     setErrorMsg('')

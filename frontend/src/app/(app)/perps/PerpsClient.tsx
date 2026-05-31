@@ -402,7 +402,8 @@ export function OrderForm({ pair, account, marketId }: { pair: PerpPair; account
       isPerpSizeOverCap
     ) return
 
-    if (isDeployed && orderType === 'market') {
+    if (orderType === 'market') {
+      if (!isDeployed) return
       // Convert to G$ wei (18 decimals). Assume G$ ≈ $0.01 on devnet.
       // Route through toG$Wei (parseUnits) — never `Math.round(x * 1e18)`,
       // which drifts by tens of millions of wei on realistic positions.
@@ -412,7 +413,7 @@ export function OrderForm({ pair, account, marketId }: { pair: PerpPair; account
       const marginWei = toG$Wei(marginGD)
       await openPosition(BigInt(marketId), marginWei, sizeWei, side === 'long')
     } else {
-      // Limit/stop orders or contracts not deployed: UI-only preview
+      // Limit/stop orders: UI-only preview until on-chain order book ships
       setSubmitted(true)
       setTimeout(() => setSubmitted(false), 3000)
     }
@@ -659,15 +660,15 @@ export function OrderForm({ pair, account, marketId }: { pair: PerpPair; account
       ) : walletReady ? (
         <WalletGatedTradeButton hasSize={sizeNum > 0} exceedsMargin={exceedsMargin}>
           <button type="submit"
-            disabled={exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || perpPhase === 'approving' || perpPhase === 'pending' || syncBlocked}
+            disabled={exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || perpPhase === 'approving' || perpPhase === 'pending' || syncBlocked || (orderType === 'market' && !isDeployed)}
             className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               side === 'long' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
             }`}>
-            {perpPhase === 'approving' ? 'Approving…' : perpPhase === 'pending' ? 'Confirming…' : perpPhase === 'done' ? 'Order Placed!' : submitted ? 'Order Placed!' : `${side === 'long' ? 'Long' : 'Short'} ${pair.baseAsset}`}
+            {perpPhase === 'approving' ? 'Approving…' : perpPhase === 'pending' ? 'Confirming…' : perpPhase === 'done' ? 'Order Placed!' : orderType !== 'market' && submitted ? 'Order Placed!' : `${side === 'long' ? 'Long' : 'Short'} ${pair.baseAsset}`}
           </button>
         </WalletGatedTradeButton>
       ) : (
-        <button type="submit" disabled={sizeNum <= 0 || exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || syncBlocked}
+        <button type="submit" disabled={sizeNum <= 0 || exceedsMargin || limitPriceInvalid || triggerPriceInvalid || stopLimitCheck.triggerWrongSide || stopLimitCheck.limitVsTriggerWrong || !hasValidPrice || syncBlocked || (orderType === 'market' && !isDeployed)}
           className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
             side === 'long' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
           }`}>

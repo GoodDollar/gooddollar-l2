@@ -174,6 +174,15 @@ contract GoodDollarToken {
         return (amount * UBI_FEE_BPS) / 10000;
     }
     
+    /**
+     * @notice Record that a verified human claimed UBI via an external contract.
+     * @param account Human address whose last claim time should be updated.
+     */
+    function recordClaim(address account) external onlyMinter {
+        require(account != address(0), "Claim address cannot be zero");
+        lastClaimTime[account] = block.timestamp;
+    }
+
     // ============ Identity ============
     
     /**
