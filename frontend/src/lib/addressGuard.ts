@@ -90,6 +90,8 @@ const STATIC_DENY_LIST = new Set<string>([
   DEAD_ADDRESS_REPEAT,
   DEAD_BEEF_REPEAT,
   ALL_F_ADDRESS,
+  // Add the specific problematic contract address
+  '0x1aeecabeae5f6700eb961b1ac75c8c60c7548aeb',
 ])
 
 // Precompute lowercase contract addresses once at module load.
